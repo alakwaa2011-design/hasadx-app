@@ -407,18 +407,19 @@ router.post("/whiteboard/ask", requireTeacher, async (req, res) => {
   "boardActions": [...]
 }
 
-━━━ أنواع boardActions ━━━
-• bullet: نقطة مختصرة 3-6 كلمات — للخطوات والنقاط الرئيسية
-• highlight: أهم مصطلح أو قانون — 2-5 كلمات، يظهر بإطار مضيء
-• writeText: جملة توضيحية قصيرة
-• writeMath: معادلة LaTeX — للأرقام والصيغ والقوانين الرياضية
-  أمثلة: F = ma  أو  x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}  أو  E = mc^2
-• drawConnector: { from, to, label? } — ربط مفهومين بسهم (سبب ← نتيجة، مدخل ← مخرج)
-• drawArrow: { label } — سهم لتسلسل الخطوات
-• drawCircle: { label } — دائرة تُحيط بمصطلح أساسي
-• showChart: { description, data:[{label,value},...] } — مخطط أعمدة للمقارنات الكمية
-• showImage: { imageQuery, description } — imageQuery بالإنجليزية (عنوان ويكيبيديا). للأحياء، الفلك، التاريخ، الجغرافيا.
-• showLocation: { name, country?, description? } — بطاقة موقع جغرافي. لأي سؤال عن مدينة أو دولة أو موقع.
+━━━ أنواع boardActions — كل عنصر كائن مسطّح يبدأ بحقل "type" إلزامياً ━━━
+أمثلة حرفية للصيغة الصحيحة (انسخ البنية بالضبط):
+{ "type": "bullet", "content": "نقطة مختصرة 3-6 كلمات", "color": "white" }
+{ "type": "highlight", "content": "القانون الأهم", "color": "yellow" }
+{ "type": "writeText", "content": "جملة توضيحية قصيرة", "color": "white" }
+{ "type": "writeMath", "content": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", "color": "green" }
+{ "type": "drawConnector", "from": "الحرارة", "to": "التمدد", "label": "تسبب", "color": "orange" }
+{ "type": "drawArrow", "label": "الخطوة التالية", "color": "white" }
+{ "type": "drawCircle", "label": "مصطلح أساسي", "color": "pink" }
+{ "type": "showChart", "description": "مقارنة السرعات", "data": [{"label":"الضوء","value":300000},{"label":"الصوت","value":0.343}], "color": "blue" }
+{ "type": "showImage", "imageQuery": "Cairo Egypt", "description": "وصف بالعربية", "color": "blue" }
+{ "type": "showLocation", "name": "القاهرة", "country": "مصر", "description": "عاصمة مصر", "color": "blue" }
+⚠️ خطأ شائع ممنوع: {"showLocation": {...}} — يجب أن يكون "type" حقلاً داخل الكائن نفسه.
 
 ━━━ اختيار الألوان ━━━
 yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مواقع وصور | orange=خطوات | white=نص عام | pink=ملاحظات | red=تحذيرات | purple=مصطلحات متقدمة
@@ -436,8 +437,9 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
       // Vision model — GPT-4o
       const r = await openai.chat.completions.create({
         model: "gpt-4o",
-        max_tokens: 1200,
+        max_tokens: 3000,
         temperature: 0.3,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -454,8 +456,9 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
       // Text only — GPT-4o-mini
       const r = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        max_tokens: 1200,
+        max_tokens: 3000,
         temperature: 0.3,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question.trim() },
@@ -465,7 +468,51 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
     }
 
     const parsed = parseJsonLoose(rawJson);
-    if (!parsed) { res.status(500).json({ error: "تعذّر توليد الإجابة" }); return; }
+    if (!parsed) {
+      req.log.error({ rawSample: rawJson.slice(0, 800) }, "whiteboard ask: JSON parse failed");
+      res.status(500).json({ error: "تعذّر توليد الإجابة" });
+      return;
+    }
+
+    // ── Normalize boardActions — models sometimes emit {"showLocation": {...}}
+    //    instead of {"type":"showLocation", ...}. Unwrap and flatten those.
+    const KNOWN_TYPES = ["bullet","highlight","writeText","writeTitle","writeMath","drawArrow",
+      "drawCircle","drawConnector","showChart","showImage","showLocation","showDiagram","clearBoard","erase"];
+    const normalizeActions = (raw: any): any[] => {
+      if (!Array.isArray(raw)) return [];
+      const out: any[] = [];
+      for (const a of raw) {
+        if (!a || typeof a !== "object") continue;
+        if (typeof a.type === "string" && KNOWN_TYPES.includes(a.type)) { out.push(a); continue; }
+        // Wrapped form: { "showLocation": { name: ... } } or { "bullet": "text" }
+        const keys = Object.keys(a);
+        if (keys.length === 1 && KNOWN_TYPES.includes(keys[0])) {
+          const inner = a[keys[0]];
+          if (typeof inner === "object" && inner !== null) out.push({ type: keys[0], ...inner });
+          else if (typeof inner === "string") out.push({ type: keys[0], content: inner });
+        }
+      }
+      // Field-level validation so malformed items can't crash the renderer
+      return out.filter((a) => {
+        if (a.type === "showLocation") return typeof a.name === "string" && a.name.trim();
+        if (a.type === "showChart") {
+          if (!Array.isArray(a.data) || a.data.length === 0) return false;
+          a.data = a.data
+            .filter((d: any) => d && typeof d.label === "string" && Number.isFinite(Number(d.value)))
+            .map((d: any) => ({ label: d.label, value: Number(d.value) }))
+            .slice(0, 10);
+          return a.data.length > 0;
+        }
+        if (a.type === "drawConnector") return typeof a.from === "string" && typeof a.to === "string";
+        if (a.type === "showImage") return typeof a.imageQuery === "string" && a.imageQuery.trim();
+        return true;
+      });
+    };
+    let actions = normalizeActions(parsed.boardActions);
+    // Never leave the board blank — fall back to writing the voice text
+    if (actions.length === 0 && (parsed.voiceText ?? "").trim()) {
+      actions = [{ type: "writeText", content: parsed.voiceText.trim(), color: "white" }];
+    }
 
     // Wrap in minimal lesson-plan structure the presenter already understands
     const plan = {
@@ -476,7 +523,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
         id: "1",
         title: "الإجابة",
         voiceText: parsed.voiceText ?? "",
-        boardActions: parsed.boardActions ?? [],
+        boardActions: actions,
       }],
       summary: { voiceText: "", boardActions: [] },
       keyPoints: [],
@@ -490,20 +537,43 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
 });
 
 // ── DELETE /api/whiteboard/lessons/:id ───────────────────────────────────────
-// ── GET /api/whiteboard/geocode — proxy to Nominatim ─────────────────────────
+// ── GET /api/whiteboard/geocode — proxy to Nominatim (cached + throttled) ────
+const geocodeCache = new Map<string, { lat: number; lng: number; displayName: string } | null>();
+let lastNominatimAt = 0;
 router.get("/whiteboard/geocode", requireTeacher, async (req, res) => {
   try {
-    const q = (req.query.q as string || "").trim();
+    const q = (req.query.q as string || "").trim().slice(0, 120);
     if (!q) { res.status(400).json({ error: "query required" }); return; }
+    const key = q.toLowerCase();
+    if (geocodeCache.has(key)) {
+      const hit = geocodeCache.get(key);
+      if (hit) { res.json(hit); } else { res.status(404).json({ error: "not found" }); }
+      return;
+    }
+    // Nominatim policy: max 1 req/sec process-wide
+    const wait = Math.max(0, lastNominatimAt + 1100 - Date.now());
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    lastNominatimAt = Date.now();
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ar`;
     const r = await fetch(url, {
-      headers: { "User-Agent": "hasad-edu-app/1.0 (educational)" },
+      headers: { "User-Agent": "hasad-edu-app/1.0 (educational whiteboard)" },
+      signal: ctrl.signal,
     });
+    clearTimeout(tid);
     if (!r.ok) { res.status(502).json({ error: "geocode failed" }); return; }
     const data = await r.json() as any[];
-    if (!data?.length) { res.status(404).json({ error: "not found" }); return; }
-    const { lat, lon, display_name } = data[0];
-    res.json({ lat: parseFloat(lat), lng: parseFloat(lon), displayName: display_name });
+    const lat = parseFloat(data?.[0]?.lat), lng = parseFloat(data?.[0]?.lon);
+    if (!data?.length || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      geocodeCache.set(key, null);
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const out = { lat, lng, displayName: String(data[0].display_name ?? "") };
+    if (geocodeCache.size > 500) geocodeCache.clear();
+    geocodeCache.set(key, out);
+    res.json(out);
   } catch (err) {
     req.log.error({ err }, "geocode failed");
     res.status(500).json({ error: "geocode error" });

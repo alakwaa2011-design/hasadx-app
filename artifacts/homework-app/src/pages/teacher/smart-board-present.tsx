@@ -539,11 +539,15 @@ export default function SmartBoardPresent() {
     isPlayingRef.current = true;
     const rate = paceRef.current.rate;
     try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 20000); // never hang the board on TTS
       const r = await fetch(`${API_BASE}/api/tts`, {
         method:"POST", credentials:"include",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ text:text.trim(), voice:voiceRef.current, speed:rate }),
+        signal: ctrl.signal,
       });
+      clearTimeout(tid);
       if (!r.ok) { isPlayingRef.current=false; playFromQueue(); return; }
       const blob = await r.blob();
       const au   = new Audio(URL.createObjectURL(blob));
