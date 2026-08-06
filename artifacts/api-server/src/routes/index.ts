@@ -63,6 +63,7 @@ import soloChallengesRouter from "./solo-challenges";
 import secretGameRouter from "./secret-game";
 import directMessagesRouter from "./direct-messages";
 import parentMessagesRouter from "./parent-messages";
+import whiteboardRouter from "./whiteboard";
 
 const router: IRouter = Router();
 
@@ -133,4 +134,5 @@ router.use(soloChallengesRouter);
 router.use(secretGameRouter);
 router.use(directMessagesRouter);
 router.use(parentMessagesRouter);
+router.use(whiteboardRouter);
 export default router;

@@ -87,6 +87,10 @@ const CreateVideoLesson = lazy(() => import("@/pages/teacher/create-video-lesson
 const VideoLessonDetail = lazy(() => import("@/pages/teacher/video-lesson-detail"));
 const StudentVideoLesson = lazy(() => import("@/pages/student/video-lesson"));
 const AdaptiveSolve = lazy(() => import("@/pages/student/adaptive-solve"));
+const SmartBoard = lazy(() => import("@/pages/teacher/smart-board"));
+const SmartBoardNew  = lazy(() => import("@/pages/teacher/smart-board-new"));
+const SmartBoardEdit = lazy(() => import("@/pages/teacher/smart-board-edit"));
+const SmartBoardPresent = lazy(() => import("@/pages/teacher/smart-board-present"));
 const PublicGamesPage = lazy(() => import("@/pages/public-games"));
 const GuestCreatePage = lazy(() => import("@/pages/guest-create"));
 const SoloPlayPage = lazy(() => import("@/pages/solo-play"));
@@ -385,7 +389,17 @@ function Router() {
         <Route path="/student/register" component={StudentAuth} />
         <Route path="/student/dashboard" component={StudentDashboard} />
         
-        {/* Student Routes */}
+        {/* Teacher Smart Board */}
+        <Route path="/teacher/smart-board" component={SmartBoard} />
+        <Route path="/teacher/smart-board/new" component={SmartBoardNew} />
+        <Route path="/teacher/smart-board/edit/:id" component={SmartBoardEdit} />
+        <Route path="/teacher/smart-board/present/:id">
+          <Suspense fallback={<DarkLoadingFallback />}>
+            <ErrorBoundary label="السبورة الذكية">
+              <SmartBoardPresent />
+            </ErrorBoundary>
+          </Suspense>
+        </Route>
         <Route path="/solve/adaptive/:id" component={AdaptiveSolve} />
         <Route path="/solve/:id" component={StudentSolve} />
         <Route path="/video/:id" component={StudentVideoLesson} />

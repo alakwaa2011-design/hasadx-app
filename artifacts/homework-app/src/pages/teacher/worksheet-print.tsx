@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -11,8 +11,7 @@ import {
   type HeaderProps,
 } from "./worksheet-themes";
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
-import { Loader2, Printer, ArrowLeft, Edit3, FileType, Layout, Save, Scissors } from "lucide-react";
+import { Loader2, Printer, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -259,6 +258,8 @@ export function WorksheetPrintView({
   );
   const [showPanel, setShowPanel] = useState(false);
   const [layoutDirty, setLayoutDirty] = useState(false);
+  // ── Inline text-editing state ──────────────────────────────────────────
+  const [editMode, setEditMode] = useState(false);
   const [dragQId, setDragQId] = useState<string | null>(null);
   const [dragOverPage, setDragOverPage] = useState<number | null>(null);
 
@@ -287,6 +288,12 @@ export function WorksheetPrintView({
     setLayoutDirty(false);
   }, [localQs, localBreaks, onLayoutChange]);
 
+  // Update a single question in-place (called by QuestionView on text blur)
+  const onEditQuestion = useCallback((updated: Question) => {
+    setLocalQs(prev => prev.map(q => q.id === updated.id ? updated : q));
+    setLayoutDirty(true);
+  }, []);
+
   const handleDropOnPage = useCallback((targetPageIndex: number) => {
     if (!dragQId) return;
     setDragOverPage(null);
@@ -310,8 +317,8 @@ export function WorksheetPrintView({
   }, [dragQId, fontSizePt, data.settings.columns, localBreaks]);
 
   const labels = ar
-    ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "✓", false: "✗", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
-    : { name: "Name", date: "Date", clazz: "Class", section: "Section", school: "School", teacher: "Teacher", instructions: "Instructions", answerKey: "Answer Key", question: "Q", true: "✓", false: "✗", correct: "Answer:", goodLuck: "✦ Good luck!" };
+    ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "صح", false: "خطأ", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
+    : { name: "Name", date: "Date", clazz: "Class", section: "Section", school: "School", teacher: "Teacher", instructions: "Instructions", answerKey: "Answer Key", question: "Q", true: "True", false: "False", correct: "Answer:", goodLuck: "✦ Good luck!" };
 
   const customFields = (data.settings.customFields ?? []).filter(
     f => (f?.label?.trim() ?? "") || (f?.value?.trim() ?? ""),
@@ -488,9 +495,73 @@ export function WorksheetPrintView({
         ))}
       </div>
 
-      {/* ── Visible paginated pages ──────────────────────────────── */}
-      <div id="ws-printable-root" className={`print-host ${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`} dir={dir}>
+      {/* ── Edit mode floating bar (no-print) ──────────────────── */}
+      {onLayoutChange && (
+        <div
+          className="no-print"
+          style={{
+            position: "fixed",
+            bottom: 16,
+            [ar ? "left" : "right"]: 16,
+            zIndex: 40,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            background: editMode ? BRAND_GOLD : "white",
+            border: `2px solid ${editMode ? BRAND_GOLD : BRAND_PRIMARY}`,
+            borderRadius: 999,
+            padding: "7px 14px",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+            fontFamily: "inherit",
+            fontWeight: 700,
+            fontSize: 13,
+            color: editMode ? "white" : BRAND_PRIMARY,
+            cursor: "pointer",
+            transition: "all 0.18s",
+          }}
+          role="group"
+          aria-label={ar ? "أدوات التعديل" : "Edit tools"}
+        >
+          {editMode && layoutDirty && (
+            <button
+              onClick={saveLayout}
+              style={{
+                background: "white",
+                color: BRAND_PRIMARY,
+                border: "none",
+                borderRadius: 999,
+                padding: "3px 12px",
+                fontWeight: 800,
+                fontSize: 12,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <CheckCheck style={{ width: 14, height: 14 }} />
+              {ar ? "حفظ" : "Save"}
+            </button>
+          )}
+          <button
+            onClick={() => setEditMode(v => !v)}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "inherit", fontWeight: 700, fontSize: 13, padding: 0 }}
+          >
+            <PenLine style={{ width: 15, height: 15 }} />
+            {editMode
+              ? (ar ? "إنهاء التعديل" : "Done editing")
+              : (ar ? "تعديل النص" : "Edit text")}
+          </button>
+        </div>
+      )}
 
+      {/* ── Visible paginated pages ──────────────────────────────── */}
+      <div
+        id="ws-printable-root"
+        className={`print-host ${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`}
+        dir={dir}
+        style={editMode ? { outline: "none" } : undefined}
+      >
         {pages.map((pageQs, pi) => {
           const pageNum = pi + 1;
           const isFirst = pi === 0;
@@ -514,8 +585,19 @@ export function WorksheetPrintView({
                 )}
                 <section className="ws-questions" style={{ columnCount: cols === 2 ? 2 : 1 }}>
                   {pageQs.map(q => {
-                    const idx = data.questions.indexOf(q);
-                    return <QuestionView key={q.id} index={idx + 1} q={q} ar={ar} labels={labels} />;
+                    const lq = localQs.find(x => x.id === q.id) ?? q;
+                    const idx = localQs.findIndex(x => x.id === q.id);
+                    return (
+                      <QuestionView
+                        key={q.id}
+                        index={idx + 1}
+                        q={lq}
+                        ar={ar}
+                        labels={labels}
+                        editMode={editMode}
+                        onEdit={onEditQuestion}
+                      />
+                    );
                   })}
                 </section>
                 <FooterStrip
@@ -1018,14 +1100,68 @@ function questionIcon(type: Question["type"]) {
 
 function questionTypeLabel(type: Question["type"], ar: boolean) {
   if (ar) {
-    return { mcq: "اختيار من متعدد", true_false: "ضع (✓) أمام الصواب و(✗) أمام الخطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين" }[type];
+    return { mcq: "اختيار من متعدد", true_false: "صح / خطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين" }[type];
   }
-  return { mcq: "Multiple choice", true_false: "Mark (✓) for True and (✗) for False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching" }[type];
+  return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching" }[type];
+}
+
+/** Editable span — shows a yellow highlight in edit mode, plain in view mode */
+function EditSpan({
+  text, editMode, className, onCommit, placeholder,
+}: {
+  text: string;
+  editMode: boolean;
+  className?: string;
+  onCommit: (val: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // Keep DOM in sync when external value changes (e.g. after save)
+  useEffect(() => {
+    if (ref.current && !editMode) {
+      ref.current.textContent = text;
+    }
+  }, [text, editMode]);
+
+  if (!editMode) return <span className={className}>{text || placeholder}</span>;
+
+  return (
+    <span
+      ref={ref}
+      className={`ws-editable${className ? ` ${className}` : ""}`}
+      contentEditable
+      suppressContentEditableWarning
+      onFocus={e => {
+        // Initialise if empty
+        if (!e.currentTarget.textContent) e.currentTarget.textContent = text;
+      }}
+      onBlur={e => {
+        const val = e.currentTarget.textContent?.trim() ?? "";
+        onCommit(val || text);
+      }}
+      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
+      spellCheck={false}
+      dir="auto"
+    >
+      {text || placeholder}
+    </span>
+  );
 }
 
 function QuestionView({
-  index, q, ar, labels,
-}: { index: number; q: Question; ar: boolean; labels: { question: string; true: string; false: string; correct: string } }) {
+  index, q, ar, labels, editMode, onEdit,
+}: {
+  index: number;
+  q: Question;
+  ar: boolean;
+  labels: { question: string; true: string; false: string; correct: string };
+  editMode?: boolean;
+  onEdit?: (updated: Question) => void;
+}) {
+  const em = editMode ?? false;
+  const edit = onEdit ?? (() => {});
+
   return (
     <div className="ws-q">
       <div className="ws-q-head">
@@ -1037,8 +1173,13 @@ function QuestionView({
               <span className="ws-q-points">{q.points} {ar ? "د" : "pt"}</span>
             )}
           </div>
-          {q.type !== "matching" && <div className="ws-q-prompt">{q.prompt}</div>}
-          {q.type === "matching" && <div className="ws-q-prompt">{q.prompt || (ar ? "صل بين العمودين بخطوط:" : "Match the columns:")}</div>}
+          <div className="ws-q-prompt">
+            <EditSpan
+              text={q.prompt ?? (q.type === "matching" ? (ar ? "صل بين العمودين بخطوط:" : "Match the columns:") : "")}
+              editMode={em}
+              onCommit={val => edit({ ...q, prompt: val })}
+            />
+          </div>
         </div>
       </div>
       {q.type === "mcq" && (
@@ -1047,21 +1188,25 @@ function QuestionView({
             <li key={i}>
               <span className="ws-mcq-letter">{ar ? `${"أبجده"[i] || (i + 1)}` : String.fromCharCode(65 + i)})</span>
               <span className="ws-bubble" />
-              <span className="ws-mcq-text">{opt}</span>
+              <span className="ws-mcq-text">
+                <EditSpan
+                  text={opt}
+                  editMode={em}
+                  onCommit={val => {
+                    const opts = q.options.slice();
+                    opts[i] = val;
+                    edit({ ...q, options: opts });
+                  }}
+                />
+              </span>
             </li>
           ))}
         </ol>
       )}
       {q.type === "true_false" && (
         <div className="ws-tf">
-          <span className="ws-tf-opt">
-            <span className="ws-tf-sym ws-tf-sym-check">{labels.true}</span>
-            <span>{ar ? "صواب" : "True"}</span>
-          </span>
-          <span className="ws-tf-opt">
-            <span className="ws-tf-sym ws-tf-sym-cross">{labels.false}</span>
-            <span>{ar ? "خطأ" : "False"}</span>
-          </span>
+          <span className="ws-tf-opt"><span className="ws-bubble" /> {labels.true}</span>
+          <span className="ws-tf-opt"><span className="ws-bubble" /> {labels.false}</span>
         </div>
       )}
       {q.type === "short_answer" && (
@@ -1078,7 +1223,16 @@ function QuestionView({
             {q.pairs.map((p, i) => (
               <li key={`l${i}`}>
                 <span className="ws-match-bullet ws-match-num">{i + 1}</span>
-                <span className="ws-match-text">{p.left}</span>
+                <span className="ws-match-text">
+                  <EditSpan
+                    text={p.left}
+                    editMode={em}
+                    onCommit={val => {
+                      const pairs = q.pairs.map((pr, j) => j === i ? { ...pr, left: val } : pr);
+                      edit({ ...q, pairs });
+                    }}
+                  />
+                </span>
                 <span className="ws-match-tab" />
               </li>
             ))}
@@ -1089,7 +1243,16 @@ function QuestionView({
               <li key={`r${displayIdx}`}>
                 <span className="ws-match-tab" />
                 <span className="ws-match-bullet ws-match-letter">{String.fromCharCode(65 + displayIdx)}</span>
-                <span className="ws-match-text">{q.pairs[srcIdx].right}</span>
+                <span className="ws-match-text">
+                  <EditSpan
+                    text={q.pairs[srcIdx].right}
+                    editMode={em}
+                    onCommit={val => {
+                      const pairs = q.pairs.map((pr, j) => j === srcIdx ? { ...pr, right: val } : pr);
+                      edit({ ...q, pairs });
+                    }}
+                  />
+                </span>
               </li>
             ))}
           </ul>
@@ -1388,6 +1551,29 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       }
       .ws-q-prompt { font-weight: 600; color: #1a2421; line-height: 1.7; }
 
+      /* ── Inline text editing ────────────────────────────────── */
+      .ws-editable {
+        outline: none;
+        cursor: text;
+        border-radius: 3px;
+        transition: background 0.12s, box-shadow 0.12s;
+        white-space: pre-wrap;
+        word-break: break-word;
+        display: inline;
+        background: rgba(217, 165, 33, 0.10);
+        box-shadow: 0 0 0 1.5px rgba(217, 165, 33, 0.35);
+        padding: 0 2px;
+      }
+      .ws-editable:hover {
+        background: rgba(217, 165, 33, 0.18);
+        box-shadow: 0 0 0 2px rgba(217, 165, 33, 0.5);
+      }
+      .ws-editable:focus {
+        background: white;
+        box-shadow: 0 0 0 2px #D9A521, 0 2px 8px rgba(217, 165, 33, 0.25);
+      }
+      @media print { .ws-editable { background: none !important; box-shadow: none !important; } }
+
       .ws-mcq { list-style: none; padding-${startSide}: 36px; margin: 2mm 0 0; }
       .ws-mcq li {
         display: flex; gap: 7px; align-items: center;
@@ -1420,6 +1606,11 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-tf-opt {
         display: inline-flex; align-items: center; gap: 8px;
         font-weight: 700;
+      }
+      /* Square checkbox for true/false (override the default circle bubble) */
+      .ws-tf .ws-bubble {
+        border-radius: 2px;
+        width: 15px; height: 15px;
       }
       .ws-tf-sym {
         display: inline-flex; align-items: center; justify-content: center;

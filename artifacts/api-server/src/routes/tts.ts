@@ -64,11 +64,11 @@ async function generateChunk(text: string, voice: string): Promise<Buffer> {
     messages: [
       {
         role: "system",
-        content: "أنت مساعد يقرأ النصوص بصوت واضح وطبيعي دون إضافة أي كلام آخر.",
+        content: "أنت نظام تحويل نص إلى كلام. مهمتك الوحيدة: اقرأ النص الذي يُرسَل إليك بصوت واضح وطبيعي، بالضبط كما هو، دون إضافة أي كلمة أو عبارة من عندك.",
       },
       {
         role: "user",
-        content: `اقرأ هذا النص كما هو بالضبط: ${text.trim()}`,
+        content: text.trim(),
       },
     ],
   } as Parameters<typeof openai.chat.completions.create>[0])) as unknown as AudioChatResponse;

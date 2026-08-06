@@ -2650,6 +2650,15 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           /** Single subtle spotlight card — calm SaaS accent, not a banner. */
           featured: true,
         },
+        {
+          icon: <School className="w-6 h-6" />,
+          title: isAr ? "السبورة الذكية" : "Smart Whiteboard",
+          desc: isAr
+            ? "اكتب موضوع درسك وسيُنشئ الذكاء الاصطناعي شرحاً تدريجياً على سبورة رقمية أمام طلابك"
+            : "Enter a lesson topic and AI generates a step-by-step board presentation for your class",
+          accent: BRAND.gold,
+          href: "/teacher/smart-board",
+        },
       ],
     },
     {

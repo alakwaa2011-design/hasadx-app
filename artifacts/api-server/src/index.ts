@@ -563,6 +563,37 @@ async function runSchemaMigrations() {
     logger.error(err, "parent_message_replies table migration failed");
   }
 
+  // ── Whiteboard sessions table ──────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS whiteboard_sessions (
+        id                  SERIAL PRIMARY KEY,
+        teacher_id          INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        student_account_id  INTEGER,
+        question            TEXT NOT NULL,
+        image_url           TEXT,
+        extracted_text      TEXT,
+        plan                JSONB NOT NULL DEFAULT '{}',
+        subject             TEXT,
+        grade_level         TEXT,
+        level               TEXT,
+        language            TEXT NOT NULL DEFAULT 'ar',
+        created_at          TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS whiteboard_sessions_teacher_idx
+        ON whiteboard_sessions(teacher_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS whiteboard_sessions_student_idx
+        ON whiteboard_sessions(student_account_id, created_at DESC)
+    `);
+    logger.info("whiteboard_sessions table migrated");
+  } catch (err) {
+    logger.error(err, "whiteboard_sessions migration failed");
+  }
+
   // ── Notifications: message_id column ─────────────────────────────────────
   try {
     await db.execute(sql`
