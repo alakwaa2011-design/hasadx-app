@@ -607,22 +607,15 @@ export default function SmartBoardPresent() {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current=null; }
   }, []);
 
-  // ── Overflow detector: remove oldest section when board fills up ─────────────
+  // ── Auto-scroll: keep the latest content visible ─────────────────────────────
 
+  const boardBottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (sections.length <= 1) return;
-    // Give DOM a frame to paint, then measure
     const tid = setTimeout(() => {
-      const el = contentRef.current;
-      if (!el) return;
-      const overflow = el.scrollHeight > el.clientHeight * 0.91;
-      const tooMany  = sections.length > 2;
-      if (overflow || tooMany) {
-        setSections(prev => prev.length > 1 ? prev.slice(1) : prev);
-      }
-    }, 120);
+      boardBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 80);
     return () => clearTimeout(tid);
-  }, [sections]);
+  }, [sections, typingState]);
 
   // ── Load lesson ──────────────────────────────────────────────────────────────
 
@@ -1140,21 +1133,7 @@ export default function SmartBoardPresent() {
   const DRAW_COLORS = ["#f2ede0","#f5d76e","#a8e6b0","#f4a0a8","#9fc8f5","#f5b87a","#c4a8f0"];
   const activeId = anim.current.currentSectionId;
 
-  // ── Section layout helpers ────────────────────────────────────────────────────
-
-  /** A section is "big" if it has highlights/charts/connectors/images or many items → full width */
-  function isSectionBig(s: BoardSection, activeTypingType?: string) {
-    const BIG_TYPES = ["highlight","writeTitle","showChart","showImage","drawConnector"];
-    if (s.items.some(i => BIG_TYPES.includes(i.type))) return true;
-    const size = s.items.length + (activeId===s.id && anim.current.typing ? 1 : 0);
-    if (size >= 4) return true;
-    if (activeId===s.id && BIG_TYPES.includes(activeTypingType ?? "")) return true;
-    return false;
-  }
-
   const typingType = anim.current.typing?.type;
-  const hasBigSection = sections.some(s => isSectionBig(s, typingType));
-  const gridCols = (sections.length > 1 && !hasBigSection) ? "1fr 1fr" : "1fr";
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -1399,31 +1378,25 @@ export default function SmartBoardPresent() {
               </span>
             </div>
 
-            {/* ── Section content grid ── */}
+            {/* ── Scrollable board content ── */}
             <div
               ref={contentRef}
               style={{ position:"absolute", inset:0,
-                padding:"48px 40px 72px", overflow:"hidden", zIndex:2,
-                pointerEvents: isDrawMode ? "none" : "auto" }}
+                padding:"48px 32px 24px", overflowY:"auto", overflowX:"hidden", zIndex:2,
+                pointerEvents: isDrawMode ? "none" : "auto",
+                scrollbarWidth:"none" }}
             >
-              <div style={{
-                display:"grid",
-                gridTemplateColumns: gridCols,
-                gap:"0 0",
-                alignItems:"start",
-                height:"100%",
-              }}>
-                {sections.map((section, si) => {
+              <div style={{ display:"flex", flexDirection:"column", gap:0, minHeight:"100%" }}>
+                {sections.map((section) => {
                   const isActive = section.id === activeId;
-                  const big      = isSectionBig(section, isActive ? typingType : undefined);
-                  const showDiv  = si < sections.length-1 && !hasBigSection;
 
                   return (
                     <div key={section.id}
                       style={{
-                        gridColumn: big ? "1 / -1" : "auto",
-                        padding: sections.length > 1 && !big ? "0 28px" : "0 8px",
-                        borderRight: showDiv ? "1px dashed rgba(242,237,224,.1)" : "none",
+                        padding:"0 8px",
+                        borderTop: section !== sections[0] ? "1px dashed rgba(242,237,224,.08)" : "none",
+                        marginTop: section !== sections[0] ? 18 : 0,
+                        paddingTop: section !== sections[0] ? 14 : 0,
                         animation: "sectionAppear .4s ease",
                         position:"relative",
                       }}>
@@ -1516,7 +1489,7 @@ export default function SmartBoardPresent() {
 
                 {/* Done — key points */}
                 {isDone && plan?.keyPoints && plan.keyPoints.length > 0 && (
-                  <div style={{ gridColumn:"1 / -1", marginTop:28, padding:"18px 22px",
+                  <div style={{ marginTop:28, padding:"18px 22px",
                     border:"1.5px solid rgba(168,230,176,.2)", borderRadius:8,
                     background:"rgba(168,230,176,.04)", animation:"chalkIn .5s" }}>
                     <div style={{ color:"rgba(168,230,176,.65)", fontWeight:700,
@@ -1532,6 +1505,8 @@ export default function SmartBoardPresent() {
                     ))}
                   </div>
                 )}
+                {/* Scroll anchor — always at the bottom */}
+                <div ref={boardBottomRef} style={{ height:1 }}/>
               </div>
             </div>
 
@@ -1572,7 +1547,7 @@ export default function SmartBoardPresent() {
         <div style={{ flexShrink:0, background:"rgba(10,13,8,.97)",
           borderTop:"1px solid rgba(255,255,255,.1)",
           paddingBottom:"env(safe-area-inset-bottom)",
-          opacity: 1,
+          opacity: 1, position:"relative",
           pointerEvents: "all" }}
           onTouchStart={resetCtrlTimer}>
 
@@ -1638,11 +1613,16 @@ export default function SmartBoardPresent() {
               transition:"width .6s ease", borderRadius:2 }}/>
           </div>
 
-          {/* Expanded menu */}
+          {/* Expanded menu — opens upward above controls bar */}
           {showMoreMenu && (
-            <div style={{ borderTop:"1px solid rgba(255,255,255,.06)",
-              padding:"10px 16px 4px",
-              display:"flex", flexWrap:"wrap", gap:8 }}>
+            <div style={{
+              position:"absolute", bottom:"100%", left:0, right:0,
+              background:"rgba(8,11,7,.97)",
+              borderTop:"1px solid rgba(255,255,255,.1)",
+              borderBottom:"1px solid rgba(255,255,255,.06)",
+              padding:"12px 16px 10px",
+              display:"flex", flexWrap:"wrap", gap:8,
+              zIndex:20 }}>
 
               {/* إعادة */}
               <button onClick={() => { restartStep(); }}
