@@ -71,15 +71,24 @@ const boardActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("drawConnector"),
-    from: z.string(),            // left/start concept
-    to: z.string(),              // right/end concept
-    label: z.string().optional(),// optional middle arrow label
+    from: z.string(),
+    to: z.string(),
+    label: z.string().optional(),
     color: z.string().optional(),
   }),
   z.object({
     type: z.literal("showChart"),
-    description: z.string(),     // chart title, read aloud
+    description: z.string(),
     data: z.array(z.object({ label: z.string(), value: z.number() })),
+    color: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("showLocation"),
+    name: z.string(),            // city / place name in Arabic
+    country: z.string().optional(),
+    description: z.string().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
     color: z.string().optional(),
   }),
 ]);
@@ -144,20 +153,22 @@ function buildLessonPrompt(opts: {
 - drawCircle: { type, label, color } — دائرة حول مصطلح أساسي
 - showChart: { type, description, data:[{label,value},...], color } — مخطط أعمدة للمقارنات الكمية. description يُقرأ صوتاً. استخدم عند وجود أرقام قابلة للمقارنة (سرعات، أعداد، نسب). مثال: data:[{label:"الفهد",value:120},{label:"الحصان",value:70}]
 - showImage: { type, imageQuery, description, color } — صورة من ويكيبيديا. imageQuery بالإنجليزية. استخدم للأحياء، الجغرافيا، الفلك، التاريخ، الفيزياء — مرة واحدة فقط في الدرس.
+- showLocation: { type, name, country?, description?, color } — بطاقة موقع جغرافي بأسلوب طباشيري. استخدم عند ذكر مدينة أو دولة أو معلم جغرافي. مثال: name:"الرياض" country:"المملكة العربية السعودية" description:"على هضبة نجد، مركز شبه الجزيرة"
 - clearBoard: { type } — مسح (نادراً جداً)
-قاعدة ذهبية: كل خطوة يجب أن تحتوي على عنصر بصري واحد على الأقل (drawConnector أو showChart أو drawArrow أو showImage) إذا كان الموضوع يسمح بذلك.`
+قاعدة ذهبية: كل خطوة تحتوي على عنصر بصري واحد على الأقل — اختر الأنسب للمحتوى (موقع جغرافي، مخطط، رابط مفهومي، صورة).`
     : `Available boardActions — use smartly as needed:
 - bullet: { type, content, color } — short point (3-6 words)
 - highlight: { type, content, color } — key term or rule (2-5 words)
 - writeText: { type, content, color } — short explanatory sentence
 - writeMath: { type, content, color } — LaTeX formula. E.g. \\frac{1}{2} or a^2+b^2=c^2
 - drawArrow: { type, label, color } — labeled arrow for sequence/direction
-- drawConnector: { type, from, to, label?, color } — connects two concepts with an arrow. E.g. from:"Heat" to:"Expansion" label:"causes". Use for cause/effect, input/output, transformations, cycles.
+- drawConnector: { type, from, to, label?, color } — connects two concepts with an arrow
 - drawCircle: { type, label, color } — circles a key term
-- showChart: { type, description, data:[{label,value},...], color } — bar chart for quantitative comparisons. Use when numbers/quantities can be compared (speeds, counts, percentages). E.g. data:[{label:"Cheetah",value:120},{label:"Horse",value:70}]
-- showImage: { type, imageQuery, description, color } — Wikipedia image. imageQuery in English. Use for biology, geography, astronomy, history, physics — at most ONCE per lesson.
+- showChart: { type, description, data:[{label,value},...], color } — bar chart for comparisons
+- showImage: { type, imageQuery, description, color } — Wikipedia image. imageQuery in English. Use for biology, geography, astronomy, history — at most ONCE per lesson.
+- showLocation: { type, name, country?, description?, color } — chalk-style location card. Use when a city, country, or landmark is the topic. E.g. name:"Cairo" country:"Egypt" description:"On the Nile delta, founded 969 AD"
 - clearBoard: { type } — clear board (rarely)
-Golden rule: every step should include at least one visual element (drawConnector, showChart, drawArrow, or showImage) if the topic allows it.`;
+Golden rule: every step includes at least one visual element — choose the most fitting (location card, chart, connector, image).`;
 
   const sysPrompt = ar
     ? `أنت معلم متحمس يقدم أبرز نقاط الدرس على السبورة بسرعة وحيوية. أسلوبك: مختصر ومثير — تُلقي الفكرة بجملة واحدة قوية، ثم تكتب على السبورة النقاط الجوهرية فقط. لا شرح مطوّل، لا تكرار — فقط اللحظات التي تجعل الطالب يقول "آه فهمت!".`
@@ -367,7 +378,138 @@ router.put("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
   }
 });
 
+// ── POST /api/whiteboard/ask — instant Q&A answer on the chalkboard ──────────
+router.post("/whiteboard/ask", requireTeacher, async (req, res) => {
+  try {
+    const { question = "", imageBase64 } = req.body as { question?: string; imageBase64?: string };
+    if (!question.trim() && !imageBase64) {
+      res.status(400).json({ error: "سؤال مطلوب" }); return;
+    }
+
+    const systemPrompt = `أنت معلم علمي محترف تشرح على السبورة الذكية أمام طلابك.
+دورك: تُوصِل المعلومة بأسلوب علمي بسيط ومشوّق — كما يفعل أفضل معلمي العالم.
+
+━━━ قواعد voiceText ━━━
+• ابدأ مباشرةً بالشرح — لا تبدأ بأي كلمة من هذه القائمة المحظورة:
+  "صحيح، تماماً، بالتأكيد، بالطبع، ممتاز، رائع، أحسنت، حسناً، طبعاً، يسعدني، سأشرح لك، سؤال رائع، سؤال ممتاز"
+• ابدأ بالحقيقة العلمية أو القانون أو الظاهرة مباشرة.
+  أمثلة جيدة للبداية:
+  ✓ "قانون نيوتن الثاني يقول إن القوة تساوي الكتلة مضروبة في التسارع..."
+  ✓ "الرياض تقع في قلب الجزيرة العربية على هضبة نجد..."
+  ✓ "لنحل هذه المعادلة خطوة بخطوة..."
+  ✓ "الخلية الشمسية تحوّل ضوء الشمس إلى كهرباء عبر ظاهرة..."
+• جملة أو جملتان فقط — علمية، واضحة، مشوّقة.
+• إذا كانت مسألة رياضية: اشرح الخطوات بصوت ("نُحرّك الـ5 للطرف الآخر فتصبح سالبة...")
+
+━━━ أعد JSON نقياً فقط ━━━
+{
+  "voiceText": "...",
+  "boardActions": [...]
+}
+
+━━━ أنواع boardActions ━━━
+• bullet: نقطة مختصرة 3-6 كلمات — للخطوات والنقاط الرئيسية
+• highlight: أهم مصطلح أو قانون — 2-5 كلمات، يظهر بإطار مضيء
+• writeText: جملة توضيحية قصيرة
+• writeMath: معادلة LaTeX — للأرقام والصيغ والقوانين الرياضية
+  أمثلة: F = ma  أو  x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}  أو  E = mc^2
+• drawConnector: { from, to, label? } — ربط مفهومين بسهم (سبب ← نتيجة، مدخل ← مخرج)
+• drawArrow: { label } — سهم لتسلسل الخطوات
+• drawCircle: { label } — دائرة تُحيط بمصطلح أساسي
+• showChart: { description, data:[{label,value},...] } — مخطط أعمدة للمقارنات الكمية
+• showImage: { imageQuery, description } — imageQuery بالإنجليزية (عنوان ويكيبيديا). للأحياء، الفلك، التاريخ، الجغرافيا.
+• showLocation: { name, country?, description? } — بطاقة موقع جغرافي. لأي سؤال عن مدينة أو دولة أو موقع.
+
+━━━ اختيار الألوان ━━━
+yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مواقع وصور | orange=خطوات | white=نص عام | pink=ملاحظات | red=تحذيرات | purple=مصطلحات متقدمة
+
+━━━ قواعد ذهبية ━━━
+1. كل إجابة تحتوي عنصراً بصرياً واحداً على الأقل (drawConnector أو showChart أو showLocation أو showImage)
+2. للرياضيات: writeMath إلزامي + bullet للخطوات
+3. للجغرافيا: showLocation إلزامي
+4. للمقارنات الكمية: showChart إلزامي
+5. للعلوم (أحياء/فيزياء/كيمياء): showImage أو drawConnector`;
+
+    let rawJson: string;
+
+    if (imageBase64) {
+      // Vision model — GPT-4o
+      const r = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 1200,
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "high" } as any },
+              { type: "text", text: question.trim() ? `اشرح وحل: ${question}` : "اقرأ المسألة في الصورة وحلّها على السبورة" },
+            ] as any,
+          },
+        ],
+      });
+      rawJson = r.choices[0]?.message?.content ?? "{}";
+    } else {
+      // Text only — GPT-4o-mini
+      const r = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        max_tokens: 1200,
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: question.trim() },
+        ],
+      });
+      rawJson = r.choices[0]?.message?.content ?? "{}";
+    }
+
+    const parsed = parseJsonLoose(rawJson);
+    if (!parsed) { res.status(500).json({ error: "تعذّر توليد الإجابة" }); return; }
+
+    // Wrap in minimal lesson-plan structure the presenter already understands
+    const plan = {
+      title: question.trim() || "سؤال",
+      topic: question.trim() || "سؤال",
+      intro:   { voiceText: "", boardActions: [] },
+      steps:   [{
+        id: "1",
+        title: "الإجابة",
+        voiceText: parsed.voiceText ?? "",
+        boardActions: parsed.boardActions ?? [],
+      }],
+      summary: { voiceText: "", boardActions: [] },
+      keyPoints: [],
+    };
+
+    res.json(plan);
+  } catch (err) {
+    req.log.error({ err }, "whiteboard ask failed");
+    res.status(500).json({ error: "تعذّر توليد الإجابة" });
+  }
+});
+
 // ── DELETE /api/whiteboard/lessons/:id ───────────────────────────────────────
+// ── GET /api/whiteboard/geocode — proxy to Nominatim ─────────────────────────
+router.get("/whiteboard/geocode", requireTeacher, async (req, res) => {
+  try {
+    const q = (req.query.q as string || "").trim();
+    if (!q) { res.status(400).json({ error: "query required" }); return; }
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ar`;
+    const r = await fetch(url, {
+      headers: { "User-Agent": "hasad-edu-app/1.0 (educational)" },
+    });
+    if (!r.ok) { res.status(502).json({ error: "geocode failed" }); return; }
+    const data = await r.json() as any[];
+    if (!data?.length) { res.status(404).json({ error: "not found" }); return; }
+    const { lat, lon, display_name } = data[0];
+    res.json({ lat: parseFloat(lat), lng: parseFloat(lon), displayName: display_name });
+  } catch (err) {
+    req.log.error({ err }, "geocode failed");
+    res.status(500).json({ error: "geocode error" });
+  }
+});
+
 router.delete("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
   try {
     const id = parseInt(req.params.id);

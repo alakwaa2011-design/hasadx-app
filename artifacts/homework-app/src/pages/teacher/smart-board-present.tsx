@@ -30,11 +30,11 @@ type VoiceId = typeof VOICES[number]["id"];
 // ─── Paces ────────────────────────────────────────────────────────────────────
 
 const PACES = [
-  { id:"slow2",  ar:"بطيء جداً", icon:"🐢", chars:1, between:52, step:150, rate:0.75 },
-  { id:"slow",   ar:"بطيء",      icon:"🚶", chars:1, between:36, step:110, rate:0.9  },
-  { id:"normal", ar:"عادي",      icon:"✦",  chars:1, between:25, step:80,  rate:1.0  },
-  { id:"fast",   ar:"سريع",      icon:"🏃", chars:2, between:14, step:50,  rate:1.1  },
-  { id:"fast2",  ar:"سريع جداً", icon:"⚡", chars:3, between:8,  step:30,  rate:1.25 },
+  { id:"slow2",  ar:"بطيء جداً", icon:"🐢", chars:2, between:30, step:80,  rate:0.75 },
+  { id:"slow",   ar:"بطيء",      icon:"🚶", chars:3, between:20, step:60,  rate:0.9  },
+  { id:"normal", ar:"عادي",      icon:"✦",  chars:4, between:12, step:40,  rate:1.0  },
+  { id:"fast",   ar:"سريع",      icon:"🏃", chars:6, between:7,  step:24,  rate:1.1  },
+  { id:"fast2",  ar:"سريع جداً", icon:"⚡", chars:9, between:4,  step:14,  rate:1.25 },
 ] as const;
 type PaceId = typeof PACES[number]["id"];
 
@@ -46,6 +46,7 @@ interface BoardAction {
   imageQuery?:string;
   from?:string; to?:string;                           // drawConnector
   data?:Array<{label:string;value:number}>;           // showChart
+  name?:string; country?:string; lat?:number; lng?:number; // showLocation
 }
 interface Phase {
   title:string; voiceText:string; boardActions:BoardAction[];
@@ -163,48 +164,57 @@ function BoardLine({ item, typedChars, scale=1 }:
   }
 
   // ── Bar chart ──
+  // ── Location card with real OpenStreetMap ──
+  if (item.type === "showLocation") {
+    return <BoardMap item={item} scale={scale} />;
+  }
+
   if (item.type === "showChart" && item.data && item.data.length > 0) {
-    const d    = item.data;
-    const max  = Math.max(...d.map(r => r.value), 1);
-    const barH = fs(28);
-    const gap  = fs(10);
-    const lblW = fs(90);
-    const barMax = fs(180);
-    const svgW = lblW + barMax + fs(50);
-    const svgH = d.length * (barH + gap) + gap;
+    const d      = item.data;
+    const max    = Math.max(...d.map(r => r.value), 1);
+    const COLORS = ["#f5d76e","#a8e6b0","#9fc8f5","#f5b87a","#c4a8f0","#f4a0a8","#f2ede0","#f58080"];
+    const barW   = fs(42);
+    const barGap = fs(12);
+    const chartH = fs(120);
+    const lblH   = fs(40);
+    const svgW   = d.length * (barW + barGap) + barGap;
+    const svgH   = chartH + lblH;
     return (
       <div style={{ margin:"16px 0", animation:"chalkIn .5s" }}>
         {item.description && (
-          <div style={{ ...cs, fontSize:fs(16), opacity:.6, marginBottom:fs(10) }}>
+          <div style={{ ...cs, fontSize:fs(14), opacity:.55, marginBottom:fs(6) }}>
             {item.description}
           </div>
         )}
         <svg width={svgW} height={svgH} style={{ display:"block", overflow:"visible" }}>
+          {/* Baseline */}
+          <line x1={0} y1={chartH} x2={svgW} y2={chartH}
+            stroke={`${color}40`} strokeWidth="1.5" strokeLinecap="round"/>
           {d.map((row, i) => {
-            const y    = gap + i * (barH + gap);
-            const barW = Math.round((row.value / max) * barMax);
+            const x    = barGap + i * (barW + barGap);
+            const bH   = Math.max(4, Math.round((row.value / max) * chartH * 0.90));
+            const y    = chartH - bH;
+            const c    = COLORS[i % COLORS.length];
+            const mid  = x + barW / 2;
             return (
               <g key={i}>
-                {/* Label */}
-                <text x={lblW - fs(8)} y={y + barH * 0.72}
-                  textAnchor="end" fill={color} fontSize={barH * 0.6}
+                {/* Bar */}
+                <rect x={x} y={y} width={barW} height={bH}
+                  fill={`${c}20`} stroke={c} strokeWidth="1.5" rx={3}
+                  style={{ filter:"url(#chalk-rough)" }}/>
+                {/* Value on top */}
+                <text x={mid} y={y - fs(4)} textAnchor="middle"
+                  fill={c} fontSize={fs(12)} fontWeight="700"
                   fontFamily="'Tajawal',sans-serif"
                   style={{ filter:"url(#chalk-rough)" }}>
-                  {row.label}
-                </text>
-                {/* Bar background track */}
-                <rect x={lblW} y={y} width={barMax} height={barH}
-                  fill={`${color}08`} rx={4}/>
-                {/* Filled bar */}
-                <rect x={lblW} y={y} width={barW} height={barH}
-                  fill={`${color}28`} stroke={color} strokeWidth="1.5" rx={4}
-                  style={{ filter:"url(#chalk-rough)" }}/>
-                {/* Value */}
-                <text x={lblW + barW + fs(7)} y={y + barH * 0.72}
-                  fill={color} fontSize={barH * 0.58}
-                  fontFamily="'Tajawal',sans-serif" opacity={0.75}
-                  style={{ filter:"url(#chalk-rough)" }}>
                   {row.value}
+                </text>
+                {/* Label below */}
+                <text x={mid} y={chartH + fs(18)} textAnchor="middle"
+                  fill={`${color}80`} fontSize={fs(11)}
+                  fontFamily="'Tajawal',sans-serif"
+                  style={{ filter:"url(#chalk-rough)" }}>
+                  {row.label.length > 7 ? row.label.slice(0,7)+"…" : row.label}
                 </text>
               </g>
             );
@@ -295,6 +305,65 @@ function BoardLine({ item, typedChars, scale=1 }:
         fontWeight: isTitle ? 700 : 400, lineHeight:1.65 }}>
         {text}{Caret}
       </span>
+    </div>
+  );
+}
+
+// ─── Real map block (OpenStreetMap via Nominatim geocode) ─────────────────────
+
+function BoardMap({ item, scale = 1 }: { item: BoardItem; scale?: number }) {
+  const [coords, setCoords] = useState<{lat:number;lng:number}|null>(null);
+  const [failed,  setFailed] = useState(false);
+  const color = ch(item.color);
+  const fs = (n:number) => Math.round(n * scale);
+
+  useEffect(() => {
+    const q = item.content;
+    if (!q?.trim()) { setFailed(true); return; }
+    let cancelled = false;
+    fetch(`${API_BASE}/api/whiteboard/geocode?q=${encodeURIComponent(q)}`, { credentials:"include" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d:any) => { if (!cancelled && d?.lat) setCoords({ lat:d.lat, lng:d.lng }); else if(!cancelled) setFailed(true); })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [item.content]);
+
+  const mapUrl = coords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng-.6},${coords.lat-.4},${coords.lng+.6},${coords.lat+.4}&layer=mapnik&marker=${coords.lat},${coords.lng}`
+    : null;
+
+  return (
+    <div style={{ margin:"14px 0", animation:"chalkIn .45s" }}>
+      <div style={{ border:`1.5px solid ${color}55`, borderRadius:10, overflow:"hidden", background:"rgba(0,0,0,.25)", maxWidth:"90%" }}>
+        {/* Header bar */}
+        <div style={{ padding:`${fs(7)}px ${fs(14)}px`, display:"flex", alignItems:"center", gap:fs(8), borderBottom:`1px solid ${color}25` }}>
+          <span style={{ fontSize:fs(18) }}>📍</span>
+          <span style={{ fontFamily:"'Tajawal',sans-serif", color, fontWeight:800, fontSize:fs(24), filter:"url(#chalk-rough)", textShadow:`0 0 6px ${color}44` }}>
+            {item.content}
+          </span>
+          {item.label && <span style={{ fontFamily:"'Tajawal',sans-serif", color:`${color}80`, fontSize:fs(15), filter:"url(#chalk-rough)" }}>{item.label}</span>}
+        </div>
+        {/* Map or loading */}
+        {mapUrl ? (
+          <iframe src={mapUrl} width="100%" height={fs(170)} scrolling="no"
+            style={{ border:"none", display:"block", opacity:.78,
+              filter:"saturate(.65) brightness(.72) sepia(.12)" }}
+            loading="lazy" title={item.content}/>
+        ) : failed ? (
+          <div style={{ height:fs(60), display:"flex", alignItems:"center", justifyContent:"center",
+            fontFamily:"'Tajawal',sans-serif", color:`${color}40`, fontSize:fs(16) }}>🗺️</div>
+        ) : (
+          <div style={{ height:fs(60), display:"flex", alignItems:"center", justifyContent:"center",
+            fontFamily:"'Tajawal',sans-serif", color:`${color}30`, fontSize:fs(13) }}>جارٍ تحميل الخريطة…</div>
+        )}
+        {/* Description */}
+        {item.description && (
+          <div style={{ padding:`${fs(5)}px ${fs(14)}px`, fontFamily:"'Tajawal',sans-serif",
+            color:`${color}70`, fontSize:fs(14), filter:"url(#chalk-rough)" }}>
+            {item.description}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -452,8 +521,9 @@ export default function SmartBoardPresent() {
   const anim = useRef({
     stepIdx:0, actionIdx:0, delay:0,
     paused:false, done:false, keyCounter:0,
-    currentSectionId: "",           // which section is being written to
-    waitingForAudio: false,         // block advancement until voice finishes
+    currentSectionId: "",
+    waitingForAudio: false,         // block until voice finishes (phase end)
+    waitingForAudioStart: false,    // block items until audio STARTS playing
     typing: null as null | {
       key:string; type:string; text:string; color:string;
       label?:string; description?:string; chars:number;
@@ -480,9 +550,10 @@ export default function SmartBoardPresent() {
       const au   = new Audio(URL.createObjectURL(blob));
       au.playbackRate = rate;
       audioRef.current = au;
-      au.onended = () => { isPlayingRef.current=false; playFromQueue(); };
-      au.onerror = () => { isPlayingRef.current=false; playFromQueue(); };
-      au.play().catch(() => { isPlayingRef.current=false; playFromQueue(); });
+      au.onplay   = () => { anim.current.waitingForAudioStart = false; }; // ← unlock items
+      au.onended  = () => { isPlayingRef.current=false; playFromQueue(); };
+      au.onerror  = () => { isPlayingRef.current=false; anim.current.waitingForAudioStart=false; playFromQueue(); };
+      au.play().catch(() => { isPlayingRef.current=false; anim.current.waitingForAudioStart=false; playFromQueue(); });
     } catch { isPlayingRef.current=false; playFromQueue(); }
   }, []);
 
@@ -520,6 +591,27 @@ export default function SmartBoardPresent() {
   useEffect(() => {
     const id = params?.id;
     if (!id) { setLoadError("معرّف غير صالح"); setLoadingLesson(false); return; }
+
+    // "ask" mode: lesson plan was stored in sessionStorage by SmartBoardAsk
+    if (id === "ask") {
+      try {
+        const raw = sessionStorage.getItem("whiteboard_ask_plan");
+        if (!raw) { setLoadError("لم يُعثر على الإجابة — حاول مجدداً"); setLoadingLesson(false); return; }
+        const p: LessonPlan = JSON.parse(raw);
+        planRef.current = p;
+        // Skip empty intro/summary for Q&A mode — only the answer step matters
+        const phases: Phase[] = p.steps.map(s => ({
+          title: s.title, voiceText: s.voiceText, boardActions: s.boardActions,
+        }));
+        phasesRef.current = phases;
+        setStepTitle(phases[0]?.title ?? "الإجابة");
+      } catch {
+        setLoadError("تعذّر تحميل الإجابة");
+      }
+      setLoadingLesson(false);
+      return;
+    }
+
     fetch(`${API_BASE}/api/whiteboard/lessons/${id}`, { credentials:"include" })
       .then(r => r.json())
       .then(d => {
@@ -549,7 +641,15 @@ export default function SmartBoardPresent() {
     const firstId = `s${anim.current.keyCounter++}`;
     anim.current.currentSectionId = firstId;
     setSections([{ id:firstId, phaseIdx:0, title:phasesRef.current[0].title, items:[] }]);
-    enqueue(phasesRef.current[0]?.voiceText ?? "");
+    // Enqueue first voiceText — items wait until audio actually starts playing
+    if (phasesRef.current[0]?.voiceText?.trim()) {
+      anim.current.waitingForAudioStart = true;
+      enqueue(phasesRef.current[0].voiceText);
+      // Safety fallback: if audio never starts within 6s, unblock anyway
+      setTimeout(() => { anim.current.waitingForAudioStart = false; }, 6000);
+    } else {
+      enqueue(phasesRef.current[0]?.voiceText ?? "");
+    }
 
     const interval = setInterval(() => {
       const a      = anim.current;
@@ -557,7 +657,10 @@ export default function SmartBoardPresent() {
       const pace   = paceRef.current;
       if (a.paused || a.done || waitingTapRef.current) return;
 
-      // ── Audio gate: wait for voice to finish before next item ──
+      // ── Wait until audio actually starts playing before showing items ──
+      if (a.waitingForAudioStart) return;
+
+      // ── Audio gate: wait for voice to finish before next phase ──
       if (a.waitingForAudio) {
         const audioActive = isPlayingRef.current || audioQueueRef.current.length > 0;
         if (audioActive) return;
@@ -583,17 +686,11 @@ export default function SmartBoardPresent() {
             s.id === sid ? { ...s, items:[...s.items, committed] } : s
           ));
           setTypingState(null);
-          // Enqueue voice for this item, then wait for it before the next one
-          enqueue(t.text);
+          // ── NEW: NO individual item TTS — voice comes from phase voiceText only
+          // Items flow continuously; voice narrates the full explanation in parallel
           a.typing = null;
           a.actionIdx++;
-          if (!isMutedRef.current) {
-            // Let voice control the pace
-            a.waitingForAudio = true;
-          } else {
-            // Muted: fall back to pace delay
-            a.delay = pace.between;
-          }
+          a.delay = pace.between;   // short breather, then next item
           if (manualModeRef.current) {
             setWaitingTap(true);
             waitingTapRef.current = true;
@@ -608,25 +705,33 @@ export default function SmartBoardPresent() {
 
       const actions = phase.boardActions;
       if (a.actionIdx >= actions.length) {
+        // All board items written — now wait for voice narration to finish
+        // before moving to the next phase (voice & board may still be running)
+        const audioActive = isPlayingRef.current || audioQueueRef.current.length > 0;
+        if (!isMutedRef.current && audioActive) {
+          a.waitingForAudio = true;
+          return;
+        }
         // Phase done — advance to next
         if (a.stepIdx < phases.length - 1) {
           a.stepIdx++;
           a.actionIdx = 0;
           setStepIdx(a.stepIdx);
           setStepTitle(phases[a.stepIdx].title);
-          // Create new section for this phase
           const newId = `s${a.keyCounter++}`;
           a.currentSectionId = newId;
           setSections(prev => [
             ...prev,
             { id:newId, phaseIdx:a.stepIdx, title:phases[a.stepIdx].title, items:[] },
           ]);
-          // Say the step voiceText, then wait for it before writing bullets
-          enqueue(phases[a.stepIdx].voiceText ?? phases[a.stepIdx].title);
-          if (!isMutedRef.current) {
-            a.waitingForAudio = true;
+          // Enqueue the next phase voice — items appear only after audio starts
+          const nextVoice = phases[a.stepIdx].voiceText ?? phases[a.stepIdx].title;
+          if (nextVoice?.trim()) {
+            a.waitingForAudioStart = true;
+            enqueue(nextVoice);
+            setTimeout(() => { anim.current.waitingForAudioStart = false; }, 6000);
           } else {
-            a.delay = pace.step;
+            a.delay = pace.between * 2;
           }
         } else {
           a.done=true; setIsDone(true);
@@ -658,21 +763,20 @@ export default function SmartBoardPresent() {
       if (action.type === "pause") {
         a.paused=true; setIsPaused(true); a.actionIdx++; return;
       }
+      // ── All visual/instant actions — NO individual TTS, items appear in flow ──
       if (action.type === "drawArrow" || action.type === "drawCircle") {
         const item: BoardItem = { key:`k${a.keyCounter++}`, type:action.type, content:"",
           color:action.color??"white", label:action.label };
         const sid = a.currentSectionId;
         setSections(prev => prev.map(s => s.id===sid ? { ...s, items:[...s.items,item] } : s));
-        if (action.label) enqueue(action.label);
-        a.actionIdx++; a.delay=pace.between; return;
+        a.actionIdx++; a.delay = pace.between; return;
       }
       if (action.type === "showDiagram") {
         const item: BoardItem = { key:`k${a.keyCounter++}`, type:action.type,
           content:action.description??"", color:action.color??"blue", description:action.description };
         const sid = a.currentSectionId;
         setSections(prev => prev.map(s => s.id===sid ? { ...s, items:[...s.items,item] } : s));
-        if (action.description) enqueue(action.description);
-        a.actionIdx++; a.delay=pace.between; return;
+        a.actionIdx++; a.delay = pace.between; return;
       }
       if (action.type === "drawConnector") {
         const item: BoardItem = {
@@ -684,13 +788,7 @@ export default function SmartBoardPresent() {
         };
         const sid = a.currentSectionId;
         setSections(prev => prev.map(s => s.id===sid ? { ...s, items:[...s.items,item] } : s));
-        const spoken = action.label
-          ? `${action.from} ${action.label} ${action.to}`
-          : `${action.from} ينتج ${action.to}`;
-        enqueue(spoken);
-        if (!isMutedRef.current) a.waitingForAudio = true;
-        else a.delay = pace.between;
-        a.actionIdx++; return;
+        a.actionIdx++; a.delay = pace.between; return;
       }
       if (action.type === "showChart") {
         const item: BoardItem = {
@@ -702,28 +800,31 @@ export default function SmartBoardPresent() {
         };
         const sid = a.currentSectionId;
         setSections(prev => prev.map(s => s.id===sid ? { ...s, items:[...s.items,item] } : s));
-        if (action.description) enqueue(action.description);
-        if (!isMutedRef.current) a.waitingForAudio = true;
-        else a.delay = pace.between * 2;
-        a.actionIdx++; return;
+        a.actionIdx++; a.delay = pace.between * 2; return;
       }
       if (action.type === "showImage") {
         const item: BoardItem = {
           key:`k${a.keyCounter++}`, type:"showImage",
           content: action.description ?? "",
           color: action.color ?? "blue",
-          label: action.imageQuery ?? "",       // English Wikipedia query
+          label: action.imageQuery ?? "",
           description: action.description,
         };
         const sid = a.currentSectionId;
         setSections(prev => prev.map(s => s.id===sid ? { ...s, items:[...s.items,item] } : s));
-        if (action.description) enqueue(action.description);
-        if (!isMutedRef.current) {
-          a.waitingForAudio = true;
-        } else {
-          a.delay = pace.between * 3; // extra pause for image when muted
-        }
-        a.actionIdx++; return;
+        a.actionIdx++; a.delay = pace.between * 3; return;
+      }
+      if (action.type === "showLocation") {
+        const item: BoardItem = {
+          key:`k${a.keyCounter++}`, type:"showLocation",
+          content: action.name ?? "",
+          color: action.color ?? "blue",
+          label: action.country ?? "",
+          description: action.description ?? "",
+        };
+        const sid = a.currentSectionId;
+        setSections(prev => prev.map(s => s.id===sid ? { ...s, items:[...s.items,item] } : s));
+        a.actionIdx++; a.delay = pace.between * 2; return;
       }
 
       const text = action.content ?? action.label ?? "";

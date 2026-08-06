@@ -87,7 +87,8 @@ const CreateVideoLesson = lazy(() => import("@/pages/teacher/create-video-lesson
 const VideoLessonDetail = lazy(() => import("@/pages/teacher/video-lesson-detail"));
 const StudentVideoLesson = lazy(() => import("@/pages/student/video-lesson"));
 const AdaptiveSolve = lazy(() => import("@/pages/student/adaptive-solve"));
-const SmartBoard = lazy(() => import("@/pages/teacher/smart-board"));
+const SmartBoardAsk  = lazy(() => import("@/pages/teacher/smart-board-ask"));
+const SmartBoard     = lazy(() => import("@/pages/teacher/smart-board"));
 const SmartBoardNew  = lazy(() => import("@/pages/teacher/smart-board-new"));
 const SmartBoardEdit = lazy(() => import("@/pages/teacher/smart-board-edit"));
 const SmartBoardPresent = lazy(() => import("@/pages/teacher/smart-board-present"));
@@ -390,7 +391,8 @@ function Router() {
         <Route path="/student/dashboard" component={StudentDashboard} />
         
         {/* Teacher Smart Board */}
-        <Route path="/teacher/smart-board" component={SmartBoard} />
+        <Route path="/teacher/smart-board" component={SmartBoardAsk} />
+        <Route path="/teacher/smart-board/lessons" component={SmartBoard} />
         <Route path="/teacher/smart-board/new" component={SmartBoardNew} />
         <Route path="/teacher/smart-board/edit/:id" component={SmartBoardEdit} />
         <Route path="/teacher/smart-board/present/:id">
