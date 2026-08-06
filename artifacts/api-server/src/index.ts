@@ -594,6 +594,25 @@ async function runSchemaMigrations() {
     logger.error(err, "whiteboard_sessions migration failed");
   }
 
+  // ── Geocode cache ─────────────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS geocode_cache (
+        query_key    TEXT PRIMARY KEY,
+        result       JSONB,
+        found        BOOLEAN NOT NULL DEFAULT true,
+        created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+        expires_at   TIMESTAMP NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS geocode_cache_expires_idx ON geocode_cache(expires_at)
+    `);
+    logger.info("geocode_cache table migrated");
+  } catch (err) {
+    logger.error(err, "geocode_cache migration failed");
+  }
+
   // ── Notifications: message_id column ─────────────────────────────────────
   try {
     await db.execute(sql`

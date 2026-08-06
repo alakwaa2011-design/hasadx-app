@@ -2,6 +2,12 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
+import {
+  geocodeMemCache,
+  dbGeocacheLookup,
+  dbGeocacheStore,
+  fetchFromNominatim,
+} from "../lib/geocode-nominatim";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 import { resolveTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
@@ -213,6 +219,8 @@ Strict rules:
     rules,
   ].filter(Boolean).join("\n");
 }
+
+// ── POST /api/whiteboard/generate ─────────────────────────────────────────────
 const generateBody = z.object({
   topic: z.string().min(2).max(500),
   language: z.enum(["ar", "en"]).default("ar"),
@@ -223,7 +231,7 @@ const generateBody = z.object({
 
 router.post("/whiteboard/generate", requireTeacher, async (req, res) => {
   try {
-    const body = saveLessonBody.parse(req.body);
+    const body = generateBody.parse(req.body);
     const tier: AiTier = await resolveTier(req.session.teacherId as number);
     const prompt = buildLessonPrompt({
       topic: body.topic,
@@ -268,11 +276,12 @@ router.post("/whiteboard/lessons", requireTeacher, async (req, res) => {
     const body = saveLessonBody.parse(req.body);
     const teacherId = req.session.teacherId as number;
     const result = await db.execute(sql`
-      UPDATE whiteboard_sessions
-      SET plan     = ${JSON.stringify(body.plan)}::jsonb,
-          question = ${body.topic}
-      WHERE id = ${id} AND teacher_id = ${teacherId}
-      RETURNING id
+      INSERT INTO whiteboard_sessions
+        (teacher_id, question, plan, subject, grade_level, level, language)
+      VALUES
+        (${teacherId}, ${body.topic}, ${JSON.stringify(body.plan)}::jsonb,
+         ${body.subject ?? null}, ${body.gradeLevel ?? null}, ${body.depth ?? null}, ${body.language})
+      RETURNING id, created_at
     `);
     const row = (result.rows ?? result as any)[0];
     res.json({ id: row.id, createdAt: row.created_at });
@@ -290,34 +299,40 @@ router.get("/whiteboard/lessons", requireTeacher, async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
     const type = (req.query.type as string | undefined) ?? "lesson";
-    const result = await db.execute(sql`
-      UPDATE whiteboard_sessions
-      SET plan     = ${JSON.stringify(body.plan)}::jsonb,
-          question = ${body.topic}
-      WHERE id = ${id} AND teacher_id = ${teacherId}
-      RETURNING id
-    `);
-    if (imageCache.size > 200) imageCache.clear(); // simple eviction
-    imageCache.set(q, result);
-    res.json(result);
+    let result;
+    if (type === "ask") {
+      result = await db.execute(sql`
+        SELECT id, question AS topic, subject, grade_level, level, language, created_at
+        FROM whiteboard_sessions
+        WHERE teacher_id = ${teacherId} AND level = 'ask'
+        ORDER BY created_at DESC
+        LIMIT 100
+      `);
+    } else {
+      result = await db.execute(sql`
+        SELECT id, question AS topic, subject, grade_level, level, language, created_at
+        FROM whiteboard_sessions
+        WHERE teacher_id = ${teacherId} AND (level IS NULL OR level != 'ask')
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+    }
+    res.json({ lessons: result.rows ?? result });
   } catch (err) {
-    req.log.error({ err }, "whiteboard image fetch failed");
-    res.status(500).json({ error: "fetch failed" });
+    req.log.error({ err }, "whiteboard list lessons failed");
+    res.status(500).json({ message: "تعذّر جلب الدروس" });
   }
 });
 
-// ── PUT /api/whiteboard/lessons/:id ──────────────────────────────────────────
-router.put("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
+// ── GET /api/whiteboard/lessons/:id ──────────────────────────────────────────
+router.get("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
     const teacherId = req.session.teacherId as number;
     const result = await db.execute(sql`
-      UPDATE whiteboard_sessions
-      SET plan     = ${JSON.stringify(body.plan)}::jsonb,
-          question = ${body.topic}
+      SELECT * FROM whiteboard_sessions
       WHERE id = ${id} AND teacher_id = ${teacherId}
-      RETURNING id
     `);
     const row = (result.rows ?? result as any)[0];
     if (!row) { res.status(404).json({ message: "الدرس غير موجود" }); return; }
@@ -333,7 +348,7 @@ router.put("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
 const imageCache = new Map<string, { url: string; alt: string }>();
 
 router.get("/whiteboard/image", requireTeacher, async (req, res) => {
-    const q = (req.query.q as string || "").trim();
+  const q = ((req.query.q as string) ?? "").trim().slice(0, 200);
   if (!q) { res.status(400).json({ error: "missing q" }); return; }
 
   const cached = imageCache.get(q);
@@ -346,20 +361,10 @@ router.get("/whiteboard/image", requireTeacher, async (req, res) => {
       { headers: { "User-Agent": "Hasad-Education/1.0 (classroom app; https://hasad.app)" } }
     );
     if (!wikiRes.ok) { res.status(404).json({ error: "not found" }); return; }
-    const data = await r.json() as any[];
-
-    const { lat, lon, display_name } = data[0];
-
-    const { lat, lon, display_name } = data[0];
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ar`;
+    const data = await wikiRes.json() as any;
+    const url: string | undefined = data.thumbnail?.source ?? data.originalimage?.source;
     if (!url) { res.status(404).json({ error: "no image available" }); return; }
-    const result = await db.execute(sql`
-      UPDATE whiteboard_sessions
-      SET plan     = ${JSON.stringify(body.plan)}::jsonb,
-          question = ${body.topic}
-      WHERE id = ${id} AND teacher_id = ${teacherId}
-      RETURNING id
-    `);
+    const result = { url, alt: data.description ?? q };
     if (imageCache.size > 200) imageCache.clear(); // simple eviction
     imageCache.set(q, result);
     res.json(result);
@@ -403,48 +408,6 @@ router.post("/whiteboard/ask", requireTeacher, async (req, res) => {
 
     const KNOWN_TYPES = ["bullet","highlight","writeText","writeTitle","writeMath","drawArrow",
       "drawCircle","drawConnector","showChart","showImage","showLocation","showDiagram","clearBoard","erase"];
-
-/**
- * Normalise raw boardActions from the LLM.
- *
- * Handles two malformed patterns:
- *   1. Wrapped: { "showLocation": { name: "..." } }  → { type: "showLocation", name: "..." }
- *   2. String value: { "bullet": "some text" }        → { type: "bullet", content: "some text" }
- *
- * Then validates field-level constraints so malformed items never reach the renderer.
- */
-export function normalizeActions(raw: any): any[] {
-  if (!Array.isArray(raw)) return [];
-  const out: any[] = [];
-  for (const a of raw) {
-    if (!a || typeof a !== "object") continue;
-    if (typeof a.type === "string" && (KNOWN_TYPES as readonly string[]).includes(a.type)) {
-      out.push(a); continue;
-    }
-    // Wrapped form: { "showLocation": { name: ... } } or { "bullet": "text" }
-    const keys = Object.keys(a);
-    if (keys.length === 1 && (KNOWN_TYPES as readonly string[]).includes(keys[0])) {
-      const inner = a[keys[0]];
-      if (typeof inner === "object" && inner !== null) out.push({ type: keys[0], ...inner });
-      else if (typeof inner === "string") out.push({ type: keys[0], content: inner });
-    }
-  }
-  // Field-level validation so malformed items can't crash the renderer
-  return out.filter((a) => {
-    if (a.type === "showLocation") return typeof a.name === "string" && a.name.trim();
-    if (a.type === "showChart") {
-      if (!Array.isArray(a.data) || a.data.length === 0) return false;
-      a.data = a.data
-        .filter((d: any) => d && typeof d.label === "string" && Number.isFinite(Number(d.value)))
-        .map((d: any) => ({ label: d.label, value: Number(d.value) }))
-        .slice(0, 10);
-      return a.data.length > 0;
-    }
-    if (a.type === "drawConnector") return typeof a.from === "string" && typeof a.to === "string";
-    if (a.type === "showImage") return typeof a.imageQuery === "string" && a.imageQuery.trim();
-    return true;
-  });
-}
 
     const normalizeActions = (raw: any): any[] => {
       if (!Array.isArray(raw)) return [];
@@ -630,14 +593,34 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
     let rawJson: string;
 
     if (imageBase64) {
-    const r = await fetch(url, {
-      headers: { "User-Agent": "hasad-edu-app/1.0 (educational)" },
-    });
+      const r = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 5000,
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "high" } as any },
+              { type: "text", text: question.trim() ? `اشرح وحل: ${question}` : "اقرأ المسألة في الصورة وحلّها على السبورة بالتفصيل" },
+            ] as any,
+          },
+        ],
+      });
       rawJson = r.choices[0]?.message?.content ?? "{}";
     } else {
-    const r = await fetch(url, {
-      headers: { "User-Agent": "hasad-edu-app/1.0 (educational)" },
-    });
+      const r = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 5000,
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: question.trim() },
+        ],
+      });
       rawJson = r.choices[0]?.message?.content ?? "{}";
     }
 
@@ -659,10 +642,10 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
       })).filter((s: any) => s.voiceText.trim() || s.boardActions.length > 0);
     } else {
       // Legacy fallback
-    const actions = actionsWithFallback(
-      normalizeActions(parsed.boardActions),
-      parsed.voiceText ?? "",
-    );
+      let actions = normalizeActions(parsed.boardActions);
+      if (actions.length === 0 && (parsed.voiceText ?? "").trim()) {
+        actions = [{ type: "writeText", content: parsed.voiceText.trim(), color: "white" }];
+      }
       steps = [{ id: "1", title: "الإجابة", voiceText: parsed.voiceText ?? "", boardActions: actions }];
     }
 
@@ -674,7 +657,6 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
       return s;
     });
 
-    // Wrap in minimal lesson-plan structure the presenter already understands
     const plan = {
       title: question.trim() || "سؤال",
       topic: question.trim() || "سؤال",
@@ -687,7 +669,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
     // Auto-save to whiteboard_sessions (level='ask' marks Q&A entries)
     let savedId: number | null = null;
     try {
-    const teacherId = req.session.teacherId as number;
+      const teacherId = req.session.teacherId as number;
       const saveResult = await db.execute(sql`
         INSERT INTO whiteboard_sessions
           (teacher_id, question, plan, language, level)
@@ -695,7 +677,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
           (${teacherId}, ${question.trim() || "سؤال"}, ${JSON.stringify(plan)}::jsonb, 'ar', 'ask')
         RETURNING id
       `);
-      savedId = (saveResult.rows ?? saveResult as any)[0]?.id ?? null;
+      savedId = ((saveResult.rows ?? saveResult as any)[0] as any)?.id ?? null;
     } catch (saveErr) {
       req.log.warn({ saveErr }, "whiteboard ask auto-save failed (non-fatal)");
     }
@@ -738,7 +720,7 @@ function randomCode(len = 6) {
 // POST /api/whiteboard/broadcast — teacher creates a session
 router.post("/whiteboard/broadcast", requireTeacher, (req, res) => {
   evictBroadcasts();
-  const code = req.params.code?.toUpperCase().slice(0, 12);
+  let code: string;
   do { code = randomCode(); } while (broadcastSessions.has(code));
   const writeSecret = randomCode(16);
   broadcastSessions.set(code, {
@@ -790,18 +772,58 @@ router.delete("/whiteboard/broadcast/:code", requireTeacher, (req, res) => {
 
 
 // ── DELETE /api/whiteboard/lessons/:id ───────────────────────────────────────
-// ── GET /api/whiteboard/geocode — proxy to Nominatim (cached + throttled) ────
-    const q = (req.query.q as string || "").trim();
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ar`;
-    const r = await fetch(url, {
-      headers: { "User-Agent": "hasad-edu-app/1.0 (educational)" },
-    });
-    if (!r.ok) { res.status(502).json({ error: "geocode failed" }); return; }
-    const data = await r.json() as any[];
+// ── GET /api/whiteboard/geocode — proxy to Nominatim (mem + DB cached + throttled) ────
+// Caching and serialisation logic lives in lib/geocode-nominatim.ts.
+// TTL: 90 days (positive) / 7 days (negative). See that module for rationale.
+router.get("/whiteboard/geocode", requireTeacher, async (req, res) => {
+  try {
+    const q = (req.query.q as string || "").trim().slice(0, 120);
+    if (!q) { res.status(400).json({ error: "query required" }); return; }
+    const key = q.toLowerCase();
 
-    const { lat, lon, display_name } = data[0];
+    // L1: in-memory cache
+    if (geocodeMemCache.has(key)) {
+      const hit = geocodeMemCache.get(key);
+      req.log.info({ key, layer: "mem" }, "geocode cache hit");
+      if (hit) { res.json(hit); } else { res.status(404).json({ error: "not found" }); }
+      return;
+    }
 
-    const { lat, lon, display_name } = data[0];
+    // L2: DB cache (survives restarts)
+    const dbHit = await dbGeocacheLookup(key);
+    if (dbHit !== null) {
+      req.log.info({ key, layer: "db" }, "geocode cache hit");
+      if (geocodeMemCache.size > 500) geocodeMemCache.clear();
+      geocodeMemCache.set(key, dbHit.result);
+      if (dbHit.result) { res.json(dbHit.result); } else { res.status(404).json({ error: "not found" }); }
+      return;
+    }
+
+    // L3: Nominatim — serialised via process-wide promise-chain mutex (≥1.1 s between calls)
+    const out = await fetchFromNominatim(q);
+    if (!out) {
+      if (geocodeMemCache.size > 500) geocodeMemCache.clear();
+      geocodeMemCache.set(key, null);
+      await dbGeocacheStore(key, null);  // await so restart-survival is immediate
+      req.log.info({ key, layer: "nominatim" }, "geocode not found — cached negative");
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (geocodeMemCache.size > 500) geocodeMemCache.clear();
+    geocodeMemCache.set(key, out);
+    await dbGeocacheStore(key, out);     // await so restart-survival is immediate
+    req.log.info({ key, layer: "nominatim" }, "geocode fetched from Nominatim — cached");
+    res.json(out);
+  } catch (err) {
+    req.log.error({ err }, "geocode failed");
+    res.status(500).json({ error: "geocode error" });
+  }
+});
+
+// ── DELETE /api/whiteboard/lessons/:id ───────────────────────────────────────
+
+router.delete("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
+  try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
     const teacherId = req.session.teacherId as number;
@@ -816,7 +838,52 @@ router.delete("/whiteboard/broadcast/:code", requireTeacher, (req, res) => {
   }
 });
 
-export default router;
+
+// ── Exported boardActions helpers (unit-tested in __tests__/whiteboard-normalize.test.ts) ──
+const KNOWN_TYPES = ["bullet","highlight","writeText","writeTitle","writeMath","drawArrow",
+  "drawCircle","drawConnector","showChart","showImage","showLocation","showDiagram","clearBoard","erase"] as const;
+
+/**
+ * Normalise raw boardActions from the LLM.
+ *
+ * Handles two malformed patterns:
+ *   1. Wrapped: { "showLocation": { name: "..." } }  → { type: "showLocation", name: "..." }
+ *   2. String value: { "bullet": "some text" }        → { type: "bullet", content: "some text" }
+ *
+ * Then validates field-level constraints so malformed items never reach the renderer.
+ */
+export function normalizeActions(raw: any): any[] {
+  if (!Array.isArray(raw)) return [];
+  const out: any[] = [];
+  for (const a of raw) {
+    if (!a || typeof a !== "object") continue;
+    if (typeof a.type === "string" && (KNOWN_TYPES as readonly string[]).includes(a.type)) {
+      out.push(a); continue;
+    }
+    // Wrapped form: { "showLocation": { name: ... } } or { "bullet": "text" }
+    const keys = Object.keys(a);
+    if (keys.length === 1 && (KNOWN_TYPES as readonly string[]).includes(keys[0])) {
+      const inner = a[keys[0]];
+      if (typeof inner === "object" && inner !== null) out.push({ type: keys[0], ...inner });
+      else if (typeof inner === "string") out.push({ type: keys[0], content: inner });
+    }
+  }
+  // Field-level validation so malformed items can't crash the renderer
+  return out.filter((a) => {
+    if (a.type === "showLocation") return typeof a.name === "string" && a.name.trim();
+    if (a.type === "showChart") {
+      if (!Array.isArray(a.data) || a.data.length === 0) return false;
+      a.data = a.data
+        .filter((d: any) => d && typeof d.label === "string" && Number.isFinite(Number(d.value)))
+        .map((d: any) => ({ label: d.label, value: Number(d.value) }))
+        .slice(0, 10);
+      return a.data.length > 0;
+    }
+    if (a.type === "drawConnector") return typeof a.from === "string" && typeof a.to === "string";
+    if (a.type === "showImage") return typeof a.imageQuery === "string" && a.imageQuery.trim();
+    return true;
+  });
+}
 
 /**
  * Apply the "never leave the board blank" fallback.
@@ -829,3 +896,6 @@ export function actionsWithFallback(actions: any[], voiceText: string): any[] {
   }
   return actions;
 }
+
+
+export default router;
