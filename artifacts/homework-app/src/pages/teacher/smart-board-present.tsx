@@ -1573,12 +1573,13 @@ export default function SmartBoardPresent() {
 
       {/* ── Controls bar ── */}
       {isMobile ? (
-        /* ════ MOBILE controls ════ */
-        <div style={{ flexShrink:0, background:"rgba(10,13,8,.95)",
-          borderTop:"1px solid rgba(255,255,255,.07)",
+        /* ════ MOBILE controls — always visible, touch-friendly ════ */
+        <div style={{ flexShrink:0, background:"rgba(10,13,8,.97)",
+          borderTop:"1px solid rgba(255,255,255,.1)",
           paddingBottom:"env(safe-area-inset-bottom)",
-          opacity: showCtrl ? 1 : 0.15, transition:"opacity .4s",
-          pointerEvents: "all" }}>
+          opacity: 1,
+          pointerEvents: "all" }}
+          onTouchStart={resetCtrlTimer}>
 
           {/* Main row: prev / pause / next / mute / more */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-around",
