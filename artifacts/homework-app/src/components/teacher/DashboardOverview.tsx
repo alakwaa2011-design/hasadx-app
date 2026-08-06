@@ -110,7 +110,7 @@ const C = {
   subtle: "#A3ADA7",
 };
 
-/* Injected once — micro-animation keyframes for the dashboard */
+/* Injected once — micro-animation keyframes + polish helpers */
 const DASH_KEYFRAMES = `
 @keyframes dashShine {
   0% { transform: translateX(-160%) skewX(-18deg); }
@@ -132,7 +132,51 @@ const DASH_KEYFRAMES = `
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+@keyframes dashWave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(16deg); }
+  20%, 40% { transform: rotate(-9deg); }
+}
+.dashWave {
+  display: inline-block;
+  animation: dashWave 2.4s ease-in-out 0.7s 2;
+  transform-origin: 72% 72%;
+}
+/* thin elegant scrollbars for horizontal carousels */
+.dashScroll { scrollbar-width: thin; scrollbar-color: rgba(30,77,53,0.22) transparent; }
+.dashScroll::-webkit-scrollbar { height: 4px; }
+.dashScroll::-webkit-scrollbar-thumb { background: rgba(30,77,53,0.2); border-radius: 99px; }
+.dashScroll::-webkit-scrollbar-track { background: transparent; }
+/* creation tool pill — icon warms to gold on hover */
+.dashTool .dashToolIcon { transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease; }
+.dashTool:hover .dashToolIcon { background: rgba(232,168,14,0.15); color: #8a6407; transform: scale(1.07); }
+/* game tile — emoji springs on hover */
+.dashGame .dashGameEmoji { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+.dashGame:hover .dashGameEmoji { transform: scale(1.14) rotate(-5deg); }
+/* week-strip day cell lift */
+.dashDay { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.dashDay:hover { transform: translateY(-2px); box-shadow: 0 4px 10px -4px rgba(30,77,53,0.25); }
+/* hero stat chip lift */
+.dashStat { transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease; }
+.dashStat:hover { transform: translateY(-2px); background: rgba(255,255,255,0.11); border-color: rgba(245,200,66,0.3); }
+/* quick link chip icon nudge */
+.dashLink .dashLinkIcon { transition: transform 0.18s ease; }
+.dashLink:hover .dashLinkIcon { transform: scale(1.08); }
+/* accessible gold focus ring, scoped to the dashboard */
+.dashRoot button:focus-visible {
+  outline: 2px solid rgba(232,168,14,0.65);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
 `;
+
+/* Layered elevation tokens — one shadow language everywhere */
+const SHADOW = {
+  card: "0 1px 2px rgba(19,32,26,0.045), 0 12px 32px -20px rgba(19,32,26,0.22)",
+  cardHover:
+    "0 2px 4px rgba(19,32,26,0.05), 0 18px 40px -20px rgba(30,77,53,0.3)",
+  chip: "0 1px 3px rgba(19,32,26,0.05)",
+};
 
 function timeAgo(date: string | undefined, isAr: boolean): string {
   if (!date) return "";
@@ -412,6 +456,7 @@ export default function DashboardOverview({
   /* ── Layout ────────────────────────────────────────────────── */
   return (
     <div
+      className="dashRoot"
       style={{
         minHeight: "100vh",
         background: `radial-gradient(1100px 480px at ${isAr ? "88%" : "12%"} -8%, rgba(30,77,53,0.055), transparent 60%), radial-gradient(900px 420px at ${isAr ? "8%" : "92%"} 4%, rgba(232,168,14,0.05), transparent 55%), ${C.bg}`,
@@ -562,7 +607,7 @@ export default function DashboardOverview({
                   border: `1px solid ${C.border}`,
                   borderRadius: 18,
                   overflow: "hidden",
-                  boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+                  boxShadow: SHADOW.card,
                 }}
               >
                 {isLoading ? (
@@ -772,7 +817,7 @@ export default function DashboardOverview({
                   border: `1px solid ${C.border}`,
                   borderRadius: 16,
                   overflow: "hidden",
-                  boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+                  boxShadow: SHADOW.card,
                 }}
               >
                 {upcomingAssignments.length === 0 ? (
@@ -1090,8 +1135,8 @@ function HeroPanel({
             }}
           >
             {isAr ? `أ. ${firstName}` : firstName}
-          </span>
-          {" "}👋
+          </span>{" "}
+          <span className="dashWave">👋</span>
         </h1>
         <p
           style={{
@@ -1311,6 +1356,7 @@ function HeroStat({
   const animated = useCountUp(value);
   return (
     <div
+      className="dashStat"
       style={{
         display: "flex",
         alignItems: "center",
@@ -1906,20 +1952,21 @@ function SectionHead({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          fontSize: 14.5,
+          gap: 9,
+          fontSize: 15,
           fontWeight: 900,
           color: C.text,
-          letterSpacing: "-0.01em",
+          letterSpacing: "-0.015em",
         }}
       >
         <span
           style={{
-            width: 26,
-            height: 26,
-            borderRadius: 8,
-            background: C.card,
+            width: 27,
+            height: 27,
+            borderRadius: 9,
+            background: "linear-gradient(150deg, #FFFFFF, #F3F0E9)",
             border: `1px solid ${C.border}`,
+            boxShadow: "0 1px 3px rgba(19,32,26,0.06)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1936,8 +1983,9 @@ function SectionHead({
               fontWeight: 800,
               background: C.greenPale,
               color: C.green,
-              padding: "2px 8px",
+              padding: "2.5px 9px",
               borderRadius: 20,
+              border: "1px solid rgba(30,77,53,0.1)",
             }}
           >
             {badge}
@@ -2251,6 +2299,7 @@ function AssignmentRow({
   return (
     <div
       style={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         gap: 13,
@@ -2264,6 +2313,24 @@ function AssignmentRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* hover accent bar */}
+      <span
+        style={{
+          position: "absolute",
+          insetInlineStart: 0,
+          top: "50%",
+          width: 3,
+          height: "54%",
+          borderRadius: 99,
+          background: `linear-gradient(180deg, ${C.goldBright}, ${C.green})`,
+          transform: hovered
+            ? "translateY(-50%) scaleY(1)"
+            : "translateY(-50%) scaleY(0)",
+          opacity: hovered ? 1 : 0,
+          transition: "transform 0.22s ease, opacity 0.22s ease",
+          pointerEvents: "none",
+        }}
+      />
       <div
         style={{
           width: 42,
@@ -2616,6 +2683,7 @@ function QuickCreateStudio({
 
   return (
     <div
+      className="dashScroll"
       style={
         isMobile
           ? {
@@ -2638,6 +2706,7 @@ function QuickCreateStudio({
       {tools.map((tool, i) => (
         <motion.button
           key={tool.href}
+          className="dashTool"
           onClick={() => setLocation(tool.href)}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2656,7 +2725,7 @@ function QuickCreateStudio({
             fontFamily: "inherit",
             width: "100%",
             minWidth: 0,
-            boxShadow: "0 1px 4px rgba(19,32,26,0.03)",
+            boxShadow: SHADOW.chip,
             scrollSnapAlign: "start",
             transition:
               "border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease",
@@ -2670,10 +2739,11 @@ function QuickCreateStudio({
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = C.border;
             e.currentTarget.style.background = C.card;
-            e.currentTarget.style.boxShadow = "0 1px 4px rgba(19,32,26,0.03)";
+            e.currentTarget.style.boxShadow = SHADOW.chip;
           }}
         >
           <span
+            className="dashToolIcon"
             style={{
               width: 30,
               height: 30,
@@ -2730,6 +2800,7 @@ function GamesArcade({
 
   return (
     <div
+      className="dashScroll"
       style={{
         display: "grid",
         ...(isMobile
@@ -2748,6 +2819,7 @@ function GamesArcade({
       {games.map((g, i) => (
         <motion.button
           key={g.name}
+          className="dashGame"
           onClick={onOpen}
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -2765,7 +2837,7 @@ function GamesArcade({
             gap: 6,
             fontFamily: "inherit",
             minWidth: 0,
-            boxShadow: "0 1px 4px rgba(19,32,26,0.03)",
+            boxShadow: SHADOW.chip,
             scrollSnapAlign: "start",
             transition:
               "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
@@ -2778,12 +2850,13 @@ function GamesArcade({
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = C.border;
-            e.currentTarget.style.boxShadow = "0 1px 4px rgba(19,32,26,0.03)";
+            e.currentTarget.style.boxShadow = SHADOW.chip;
             e.currentTarget.style.transform = "translateY(0)";
           }}
           title={g.name}
         >
           <span
+            className="dashGameEmoji"
             style={{
               width: 38,
               height: 38,
@@ -2883,7 +2956,7 @@ function PulsePanel({
         border: `1px solid ${C.border}`,
         borderRadius: 16,
         padding: "16px 16px 14px",
-        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+        boxShadow: SHADOW.card,
         display: "flex",
         flexDirection: "column",
         gap: 14,
@@ -2914,6 +2987,7 @@ function PulsePanel({
               animate={{ strokeDashoffset: CIRC * (1 - rate / 100) }}
               transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
               transform="rotate(-90 32 32)"
+              style={{ filter: `drop-shadow(0 0 5px ${rateColor}55)` }}
             />
           </svg>
           <span
@@ -2996,6 +3070,7 @@ function PulsePanel({
           {week.map((d, i) => (
             <button
               key={i}
+              className="dashDay"
               onClick={onDayClick}
               title={
                 d.count > 0
@@ -3202,7 +3277,7 @@ function HighlightsCard({
         border: `1px solid ${C.border}`,
         borderRadius: 16,
         overflow: "hidden",
-        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+        boxShadow: SHADOW.card,
       }}
     >
       {/* segmented header */}
@@ -3245,6 +3320,7 @@ function HighlightsCard({
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 style={{
+                  position: "relative",
                   flex: 1,
                   display: "flex",
                   alignItems: "center",
@@ -3253,19 +3329,41 @@ function HighlightsCard({
                   padding: "6px 8px",
                   borderRadius: 8,
                   border: "none",
-                  background: active ? C.card : "transparent",
+                  background: "transparent",
                   color: active ? C.green : C.muted,
                   fontSize: 11,
                   fontWeight: 800,
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  boxShadow: active ? "0 1px 4px rgba(19,32,26,0.08)" : "none",
-                  transition: "all 0.15s ease",
+                  transition: "color 0.18s ease",
                   whiteSpace: "nowrap",
                 }}
               >
-                {t.icon}
-                {t.label}
+                {active && (
+                  <motion.span
+                    layoutId="hlSegPill"
+                    transition={{ type: "spring", stiffness: 480, damping: 38 }}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: C.card,
+                      borderRadius: 8,
+                      boxShadow:
+                        "0 1px 4px rgba(19,32,26,0.1), 0 0 0 1px rgba(30,77,53,0.06)",
+                    }}
+                  />
+                )}
+                <span
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  {t.icon}
+                  {t.label}
+                </span>
               </button>
             );
           })}
@@ -3298,33 +3396,40 @@ function HighlightsCard({
         </button>
       </div>
 
-      {/* content */}
-      {tab === "students" ? (
-        topStudents.length === 0 ? (
-          <RailEmpty
-            icon={<Crown style={{ width: 26, height: 26 }} />}
-            text={
-              isAr
-                ? "لا يوجد ترتيب بعد — انتظر تسليمات الطلاب"
-                : "No ranking yet — waiting for submissions"
-            }
-          />
+      {/* content — soft cross-fade between tabs */}
+      <motion.div
+        key={tab}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18 }}
+      >
+        {tab === "students" ? (
+          topStudents.length === 0 ? (
+            <RailEmpty
+              icon={<Crown style={{ width: 26, height: 26 }} />}
+              text={
+                isAr
+                  ? "لا يوجد ترتيب بعد — انتظر تسليمات الطلاب"
+                  : "No ranking yet — waiting for submissions"
+              }
+            />
+          ) : (
+            topStudents
+              .slice(0, 5)
+              .map((s, idx, arr) => (
+                <TopStudentRow
+                  key={`${s.id}-${idx}`}
+                  student={s}
+                  rank={idx + 1}
+                  isAr={isAr}
+                  isLast={idx === arr.length - 1}
+                />
+              ))
+          )
         ) : (
-          topStudents
-            .slice(0, 5)
-            .map((s, idx, arr) => (
-              <TopStudentRow
-                key={`${s.id}-${idx}`}
-                student={s}
-                rank={idx + 1}
-                isAr={isAr}
-                isLast={idx === arr.length - 1}
-              />
-            ))
-        )
-      ) : (
-        <ActivityFeed isAr={isAr} assignments={assignments} bare />
-      )}
+          <ActivityFeed isAr={isAr} assignments={assignments} bare />
+        )}
+      </motion.div>
     </div>
   );
 }
@@ -3387,6 +3492,7 @@ function QuickLinks({
       {links.map((link) => (
         <button
           key={link.href}
+          className="dashLink"
           onClick={() => setLocation(link.href)}
           style={{
             display: "flex",
@@ -3400,7 +3506,7 @@ function QuickLinks({
             fontFamily: "inherit",
             textAlign: isAr ? "right" : "left",
             minWidth: 0,
-            boxShadow: "0 1px 4px rgba(19,32,26,0.03)",
+            boxShadow: SHADOW.chip,
             transition:
               "border-color 0.13s ease, background 0.13s ease, box-shadow 0.13s ease",
           }}
@@ -3414,6 +3520,7 @@ function QuickLinks({
           }}
         >
           <span
+            className="dashLinkIcon"
             style={{
               width: 26,
               height: 26,
@@ -3483,7 +3590,7 @@ function ActivityFeed({
         border: `1px solid ${C.border}`,
         borderRadius: 16,
         overflow: "hidden",
-        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+        boxShadow: SHADOW.card,
       };
 
   if (items.length === 0) {
