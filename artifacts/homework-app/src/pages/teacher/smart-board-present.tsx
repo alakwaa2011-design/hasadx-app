@@ -523,7 +523,6 @@ export default function SmartBoardPresent() {
     paused:false, done:false, keyCounter:0,
     currentSectionId: "",
     waitingForAudio: false,         // block until voice finishes (phase end)
-    waitingForAudioStart: false,    // block items until audio STARTS playing
     typing: null as null | {
       key:string; type:string; text:string; color:string;
       label?:string; description?:string; chars:number;
@@ -550,10 +549,9 @@ export default function SmartBoardPresent() {
       const au   = new Audio(URL.createObjectURL(blob));
       au.playbackRate = rate;
       audioRef.current = au;
-      au.onplay   = () => { anim.current.waitingForAudioStart = false; }; // ← unlock items
-      au.onended  = () => { isPlayingRef.current=false; playFromQueue(); };
-      au.onerror  = () => { isPlayingRef.current=false; anim.current.waitingForAudioStart=false; playFromQueue(); };
-      au.play().catch(() => { isPlayingRef.current=false; anim.current.waitingForAudioStart=false; playFromQueue(); });
+      au.onended = () => { isPlayingRef.current=false; playFromQueue(); };
+      au.onerror = () => { isPlayingRef.current=false; playFromQueue(); };
+      au.play().catch(() => { isPlayingRef.current=false; playFromQueue(); });
     } catch { isPlayingRef.current=false; playFromQueue(); }
   }, []);
 
@@ -641,24 +639,15 @@ export default function SmartBoardPresent() {
     const firstId = `s${anim.current.keyCounter++}`;
     anim.current.currentSectionId = firstId;
     setSections([{ id:firstId, phaseIdx:0, title:phasesRef.current[0].title, items:[] }]);
-    // Enqueue first voiceText — items wait until audio actually starts playing
-    if (phasesRef.current[0]?.voiceText?.trim()) {
-      anim.current.waitingForAudioStart = true;
-      enqueue(phasesRef.current[0].voiceText);
-      // Safety fallback: if audio never starts within 6s, unblock anyway
-      setTimeout(() => { anim.current.waitingForAudioStart = false; }, 6000);
-    } else {
-      enqueue(phasesRef.current[0]?.voiceText ?? "");
-    }
+    // Enqueue voice then start writing after a short delay so items appear WITH the voice
+    enqueue(phasesRef.current[0]?.voiceText ?? "");
+    anim.current.delay = 12; // ~720ms — lets TTS start loading before items appear
 
     const interval = setInterval(() => {
       const a      = anim.current;
       const phases = phasesRef.current;
       const pace   = paceRef.current;
       if (a.paused || a.done || waitingTapRef.current) return;
-
-      // ── Wait until audio actually starts playing before showing items ──
-      if (a.waitingForAudioStart) return;
 
       // ── Audio gate: wait for voice to finish before next phase ──
       if (a.waitingForAudio) {
@@ -724,15 +713,9 @@ export default function SmartBoardPresent() {
             ...prev,
             { id:newId, phaseIdx:a.stepIdx, title:phases[a.stepIdx].title, items:[] },
           ]);
-          // Enqueue the next phase voice — items appear only after audio starts
-          const nextVoice = phases[a.stepIdx].voiceText ?? phases[a.stepIdx].title;
-          if (nextVoice?.trim()) {
-            a.waitingForAudioStart = true;
-            enqueue(nextVoice);
-            setTimeout(() => { anim.current.waitingForAudioStart = false; }, 6000);
-          } else {
-            a.delay = pace.between * 2;
-          }
+          // Enqueue the next phase voice, then items flow after a short pause
+          enqueue(phases[a.stepIdx].voiceText ?? phases[a.stepIdx].title);
+          a.delay = pace.between * 3;
         } else {
           a.done=true; setIsDone(true);
         }
