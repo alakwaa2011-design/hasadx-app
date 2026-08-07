@@ -36,14 +36,8 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="حصاد" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <!-- All fonts loaded asynchronously to never block the module script (and React mounting).
-             System Arabic fonts (Geeza Pro on iOS, Noto on Android) render immediately as fallback. -->
-        <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@500;700;800;900&display=swap">
-        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@500;700;800;900&display=swap"></noscript>
-        <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700&display=swap">
-        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700&display=swap"></noscript>
+        <!-- Fonts are self-hosted in /fonts/ — zero external network dependency.
+             Fallback stack: named font → Geeza Pro (iOS Arabic) → system-ui. -->
 
         <!-- Schema.org: Organization -->
         <script type="application/ld+json">
@@ -123,13 +117,13 @@
             }
         }
         </script>
-      <script type="module" crossorigin src="/assets/index-BcRFd8KM.js"></script>
+      <script type="module" crossorigin src="/assets/index-B9R5Bg_T.js"></script>
       <link rel="modulepreload" crossorigin href="/assets/vendor-BxYjvUzn.js">
       <link rel="modulepreload" crossorigin href="/assets/vendor-radix-NKxx0A_R.js">
       <link rel="modulepreload" crossorigin href="/assets/vendor-react-nSsBnU22.js">
       <link rel="modulepreload" crossorigin href="/assets/vendor-query-Bib9NpEm.js">
       <link rel="stylesheet" crossorigin href="/assets/vendor-DywYRkvg.css">
-      <link rel="stylesheet" crossorigin href="/assets/index-DUf52Ir2.css">
+      <link rel="stylesheet" crossorigin href="/assets/index-Wk1s2gdj.css">
       <link rel="canonical" href="https://hasadx.com/">
 <script type="application/ld+json">
 {
@@ -221,6 +215,17 @@
                 0%   { transform: translateX(300%); opacity: 0.7; }
                 50%  { transform: translateX(0%);   opacity: 1;   }
                 100% { transform: translateX(-300%); opacity: 0.7; }
+            }
+            /* Safety net: if React never mounts (JS error, slow network, etc.)
+               auto-hide the splash after 10 s so users aren't stuck on a blank screen.
+               opacity + pointer-events are animatable; display is not, so we omit it. */
+            @keyframes hasad-splash-timeout {
+                0%  { opacity: 1; pointer-events: auto; }
+                90% { opacity: 1; pointer-events: auto; }
+                100% { opacity: 0; pointer-events: none; }
+            }
+            #hasad-splash {
+                animation: hasad-splash-timeout 10s ease-in forwards;
             }
         </style>
 
