@@ -63,10 +63,13 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 const GUEST_COUNT_KEY = "guestUsageCount";
 
 interface PublicStats {
+  hidden?: boolean;
   teacherCount: number;
   assignmentCount: number;
   studentCount: number;
   submissionCount: number;
+  labels?: { teacher: string | null; assignment: string | null; student: string | null; submission: string | null };
+  notes?:  { teacher: string | null; assignment: string | null; student: string | null; submission: string | null };
 }
 
 interface PublicAssignment {
@@ -3429,6 +3432,7 @@ export default function Home() {
                 </div>
               </div>
 
+              {!stats?.hidden && stats && (
               <div className="soft-card rounded-[30px] p-6 sm:p-8">
                 <p className="text-sm font-black text-[hsl(145,55%,32%)]">
                   إحصائيات نشطة
@@ -3440,27 +3444,27 @@ export default function Home() {
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   {[
                     {
-                      label: "معلمًا نشطًا ",
-                      value: stats?.teacherCount || 0,
-                      note: "ينشئون مسابقاتهم بأنفسهم",
+                      label: stats.labels?.teacher ?? "معلمًا نشطًا",
+                      value: stats.teacherCount || 0,
+                      note: stats.notes?.teacher ?? "ينشئون مسابقاتهم بأنفسهم",
                       w: 76,
                     },
                     {
-                      label: "نشاطًا منشورًا",
-                      value: stats?.assignmentCount || 0,
-                      note: "تتنوع بين المسابقات والواجبات",
+                      label: stats.labels?.assignment ?? "نشاطًا منشورًا",
+                      value: stats.assignmentCount || 0,
+                      note: stats.notes?.assignment ?? "تتنوع بين المسابقات والواجبات",
                       w: 84,
                     },
                     {
-                      label: "طالبًا مشاركًا",
-                      value: stats?.studentCount || 0,
-                      note: "يدخلون بكود من 6 أرقام",
+                      label: stats.labels?.student ?? "طالبًا مشاركًا",
+                      value: stats.studentCount || 0,
+                      note: stats.notes?.student ?? "يدخلون بكود من 6 أرقام",
                       w: 70,
                     },
                     {
-                      label: "تسليمًا مكتملاً",
-                      value: stats?.submissionCount || 0,
-                      note: "تسجَّل تلقائيًا للمعلم",
+                      label: stats.labels?.submission ?? "تسليمًا مكتملاً",
+                      value: stats.submissionCount || 0,
+                      note: stats.notes?.submission ?? "تسجَّل تلقائيًا للمعلم",
                       w: 88,
                     },
                   ].map((item, i) => (
@@ -3491,6 +3495,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+              )}
             </div>
           </div>
         </section>

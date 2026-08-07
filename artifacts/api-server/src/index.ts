@@ -282,6 +282,14 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS teacher_xp_rewards_enabled BOOLEAN NOT NULL DEFAULT TRUE
     `);
     await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS show_public_stats BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS public_stats_override JSONB
+    `);
+    await db.execute(sql`
       ALTER TABLE teacher_stats
         ADD COLUMN IF NOT EXISTS display_level_override INTEGER
     `);

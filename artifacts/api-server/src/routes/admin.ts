@@ -61,18 +61,41 @@ const router: IRouter = Router();
 
 router.get("/stats/public", async (req, res) => {
   try {
+    const settings = await getPlatformSettings();
+    if (!settings.showPublicStats) {
+      return res.json({ hidden: true });
+    }
+    const ov = (settings.publicStatsOverride as any) ?? {};
     const [
-      [{ count: teacherCount }],
-      [{ count: assignmentCount }],
-      [{ count: studentCount }],
-      [{ count: submissionCount }],
+      [{ count: teacherCountRaw }],
+      [{ count: assignmentCountRaw }],
+      [{ count: studentCountRaw }],
+      [{ count: submissionCountRaw }],
     ] = await Promise.all([
       db.select({ count: sql<number>`COUNT(*)::int` }).from(teachersTable),
       db.select({ count: sql<number>`COUNT(*)::int` }).from(assignmentsTable),
       db.select({ count: sql<number>`COUNT(*)::int` }).from(studentsTable),
       db.select({ count: sql<number>`COUNT(*)::int` }).from(submissionsTable),
     ]);
-    res.json({ teacherCount, assignmentCount, studentCount, submissionCount });
+    res.json({
+      hidden: false,
+      teacherCount:    ov.teacherValue    != null ? Number(ov.teacherValue)    : teacherCountRaw,
+      assignmentCount: ov.assignmentValue != null ? Number(ov.assignmentValue) : assignmentCountRaw,
+      studentCount:    ov.studentValue    != null ? Number(ov.studentValue)    : studentCountRaw,
+      submissionCount: ov.submissionValue != null ? Number(ov.submissionValue) : submissionCountRaw,
+      labels: {
+        teacher:    ov.teacherLabel    ?? null,
+        assignment: ov.assignmentLabel ?? null,
+        student:    ov.studentLabel    ?? null,
+        submission: ov.submissionLabel ?? null,
+      },
+      notes: {
+        teacher:    ov.teacherNote    ?? null,
+        assignment: ov.assignmentNote ?? null,
+        student:    ov.studentNote    ?? null,
+        submission: ov.submissionNote ?? null,
+      },
+    });
   } catch (err) {
     req.log.error(err, "Failed to get public stats");
     res.status(500).json({ message: "حدث خطأ" });
@@ -626,6 +649,8 @@ async function getPlatformSettings() {
     classroomAllowedEmails: row?.classroomAllowedEmails ?? [],
     arenaImportSources: row?.arenaImportSources ?? { ...DEFAULT_ARENA_IMPORT_SOURCES },
     teacherXpRewardsEnabled: row?.teacherXpRewardsEnabled ?? true,
+    showPublicStats: row?.showPublicStats ?? false,
+    publicStatsOverride: row?.publicStatsOverride ?? null,
   };
 }
 
@@ -676,6 +701,8 @@ router.patch("/admin/platform-settings", async (req, res) => {
       classroomEnabled,
       classroomAllowedEmails,
       arenaImportSources,
+      showPublicStats,
+      publicStatsOverride,
     } = patchBody;
 
     const update: Record<string, unknown> = {};
@@ -746,6 +773,10 @@ router.patch("/admin/platform-settings", async (req, res) => {
         return res.status(400).json({ message: "arenaImportSources غير صالح" });
       }
       update.arenaImportSources = parsed.data;
+    }
+    if (showPublicStats !== undefined) update.showPublicStats = coerceBodyBool(showPublicStats);
+    if (publicStatsOverride !== undefined) {
+      update.publicStatsOverride = publicStatsOverride === null ? null : publicStatsOverride;
     }
     /* XP toggle: must use property checks — value `false` is valid; some proxies send snake_case. */
     if (

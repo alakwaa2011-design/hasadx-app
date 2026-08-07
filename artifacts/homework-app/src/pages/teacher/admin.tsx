@@ -434,6 +434,16 @@ export default function AdminPage() {
   const [savingArenaSources, setSavingArenaSources] = useState(false);
   const [teacherXpRewardsEnabled, setTeacherXpRewardsEnabled] = useState(true);
   const [savingTeacherXpRewards, setSavingTeacherXpRewards] = useState(false);
+  const [showPublicStats, setShowPublicStats] = useState(false);
+  const [publicStatsOverride, setPublicStatsOverride] = useState({
+    teacherValue: "" as string, assignmentValue: "" as string,
+    studentValue: "" as string, submissionValue: "" as string,
+    teacherLabel: "معلمًا نشطًا", assignmentLabel: "نشاطًا منشورًا",
+    studentLabel: "طالبًا مشاركًا", submissionLabel: "تسليمًا مكتملاً",
+    teacherNote: "ينشئون مسابقاتهم بأنفسهم", assignmentNote: "تتنوع بين المسابقات والواجبات",
+    studentNote: "يدخلون بكود من 6 أرقام", submissionNote: "تسجَّل تلقائيًا للمعلم",
+  });
+  const [savingPublicStats, setSavingPublicStats] = useState(false);
 
   // Appearance
   const [appearancePrimaryColor, setAppearancePrimaryColor] = useState("#0d6b75");
@@ -774,6 +784,25 @@ export default function AdminPage() {
           setShowMaraqui(ps.showMaraqui ?? false);
           setShowSecretGame(ps.showSecretGame ?? false);
           setTeacherXpRewardsEnabled(ps.teacherXpRewardsEnabled ?? true);
+          setShowPublicStats(ps.showPublicStats ?? false);
+          if (ps.publicStatsOverride) {
+            const ov = ps.publicStatsOverride;
+            setPublicStatsOverride(prev => ({
+              ...prev,
+              teacherValue:    ov.teacherValue    != null ? String(ov.teacherValue)    : "",
+              assignmentValue: ov.assignmentValue != null ? String(ov.assignmentValue) : "",
+              studentValue:    ov.studentValue    != null ? String(ov.studentValue)    : "",
+              submissionValue: ov.submissionValue != null ? String(ov.submissionValue) : "",
+              teacherLabel:    ov.teacherLabel    ?? "معلمًا نشطًا",
+              assignmentLabel: ov.assignmentLabel ?? "نشاطًا منشورًا",
+              studentLabel:    ov.studentLabel    ?? "طالبًا مشاركًا",
+              submissionLabel: ov.submissionLabel ?? "تسليمًا مكتملاً",
+              teacherNote:     ov.teacherNote     ?? "ينشئون مسابقاتهم بأنفسهم",
+              assignmentNote:  ov.assignmentNote  ?? "تتنوع بين المسابقات والواجبات",
+              studentNote:     ov.studentNote     ?? "يدخلون بكود من 6 أرقام",
+              submissionNote:  ov.submissionNote  ?? "تسجَّل تلقائيًا للمعلم",
+            }));
+          }
           if (ps.arenaImportSources) setArenaImportSources(ps.arenaImportSources);
           setClassroomEnabled(ps.classroomEnabled ?? false);
           const emails = Array.isArray(ps.classroomAllowedEmails) ? ps.classroomAllowedEmails : [];
@@ -1068,6 +1097,34 @@ export default function AdminPage() {
     } finally {
       setSavingPresentationLimits(false);
     }
+  };
+
+  const handleSavePublicStats = async () => {
+    setSavingPublicStats(true);
+    try {
+      const ov = publicStatsOverride;
+      const override = {
+        teacherValue:    ov.teacherValue    !== "" ? Number(ov.teacherValue)    : null,
+        assignmentValue: ov.assignmentValue !== "" ? Number(ov.assignmentValue) : null,
+        studentValue:    ov.studentValue    !== "" ? Number(ov.studentValue)    : null,
+        submissionValue: ov.submissionValue !== "" ? Number(ov.submissionValue) : null,
+        teacherLabel:    ov.teacherLabel,
+        assignmentLabel: ov.assignmentLabel,
+        studentLabel:    ov.studentLabel,
+        submissionLabel: ov.submissionLabel,
+        teacherNote:     ov.teacherNote,
+        assignmentNote:  ov.assignmentNote,
+        studentNote:     ov.studentNote,
+        submissionNote:  ov.submissionNote,
+      };
+      const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ showPublicStats, publicStatsOverride: override }),
+      });
+      if (res.ok) toast.success(lang === "ar" ? "تم حفظ إعدادات الإحصائيات" : "Stats settings saved");
+      else toast.error(lang === "ar" ? "حدث خطأ" : "Error saving");
+    } finally { setSavingPublicStats(false); }
   };
 
   const handleDelete = async (id: number, name: string) => {
@@ -2514,6 +2571,85 @@ export default function AdminPage() {
                   {savingGuestLimit ? (lang === "ar" ? "جارٍ الحفظ…" : "Saving…") : (lang === "ar" ? "حفظ" : "Save")}
                 </button>
               </div>
+            </Card>
+
+            {/* Public Homepage Stats */}
+            <Card className="p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <BarChart3 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-extrabold text-foreground">{lang === "ar" ? "إحصائيات الصفحة الرئيسية" : "Homepage Statistics"}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">{lang === "ar" ? "تحكم في ظهور الإحصائيات للزوار وخصّص الأرقام والعناوين" : "Control stats visibility for visitors and customize values & labels"}</p>
+                </div>
+              </div>
+
+              {/* Toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3 mb-4">
+                <div>
+                  <p className="font-bold text-sm text-foreground">{lang === "ar" ? "إظهار قسم الإحصائيات" : "Show Statistics Section"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{lang === "ar" ? "عند التفعيل يظهر قسم «حصاد ينمو» في الصفحة الرئيسية" : "When enabled, the stats section is visible to all visitors"}</p>
+                </div>
+                <button
+                  onClick={() => setShowPublicStats(v => !v)}
+                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${showPublicStats ? "bg-primary" : "bg-muted-foreground/30"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${showPublicStats ? (lang === "ar" ? "right-1" : "left-7") : (lang === "ar" ? "right-7" : "left-1")}`} />
+                </button>
+              </div>
+
+              {/* Stat rows — editable only when stats visible */}
+              {showPublicStats && (
+                <div className="space-y-3">
+                  {([
+                    { key: "teacher",    defaultLabel: "معلمًا نشطًا",       valueKey: "teacherValue",    labelKey: "teacherLabel",    noteKey: "teacherNote"    },
+                    { key: "assignment", defaultLabel: "نشاطًا منشورًا",     valueKey: "assignmentValue", labelKey: "assignmentLabel", noteKey: "assignmentNote" },
+                    { key: "student",    defaultLabel: "طالبًا مشاركًا",     valueKey: "studentValue",    labelKey: "studentLabel",    noteKey: "studentNote"    },
+                    { key: "submission", defaultLabel: "تسليمًا مكتملاً",    valueKey: "submissionValue", labelKey: "submissionLabel", noteKey: "submissionNote" },
+                  ] as const).map(row => (
+                    <div key={row.key} className="rounded-xl border border-border/60 bg-card p-3.5 space-y-2">
+                      <p className="text-xs font-black text-muted-foreground uppercase tracking-wide">{row.defaultLabel}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[11px] text-muted-foreground font-semibold">{lang === "ar" ? "الرقم (فارغ = تلقائي)" : "Value (empty = auto)"}</label>
+                          <input
+                            type="number" min={0}
+                            placeholder={lang === "ar" ? "تلقائي" : "auto"}
+                            value={(publicStatsOverride as any)[row.valueKey]}
+                            onChange={e => setPublicStatsOverride(prev => ({ ...prev, [row.valueKey]: e.target.value }))}
+                            className="mt-1 w-full rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground font-semibold">{lang === "ar" ? "المسمى" : "Label"}</label>
+                          <input
+                            type="text"
+                            value={(publicStatsOverride as any)[row.labelKey]}
+                            onChange={e => setPublicStatsOverride(prev => ({ ...prev, [row.labelKey]: e.target.value }))}
+                            className="mt-1 w-full rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-muted-foreground font-semibold">{lang === "ar" ? "الوصف" : "Note"}</label>
+                          <input
+                            type="text"
+                            value={(publicStatsOverride as any)[row.noteKey]}
+                            onChange={e => setPublicStatsOverride(prev => ({ ...prev, [row.noteKey]: e.target.value }))}
+                            className="mt-1 w-full rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={handleSavePublicStats}
+                disabled={savingPublicStats}
+                className="mt-4 w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors"
+              >
+                {savingPublicStats ? (lang === "ar" ? "جارٍ الحفظ…" : "Saving…") : (lang === "ar" ? "حفظ إعدادات الإحصائيات" : "Save Stats Settings")}
+              </button>
             </Card>
 
             {/* Game Visibility */}

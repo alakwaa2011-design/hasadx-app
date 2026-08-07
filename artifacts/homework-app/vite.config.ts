@@ -40,6 +40,21 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/")) return "vendor-react";
+            if (id.includes("@radix-ui")) return "vendor-radix";
+            if (id.includes("framer-motion")) return "vendor-framer";
+            if (id.includes("@tanstack") || id.includes("react-query")) return "vendor-query";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("socket.io") || id.includes("engine.io")) return "vendor-socket";
+            return "vendor";
+          }
+        },
+      },
+    },
   },
   server: {
     port,

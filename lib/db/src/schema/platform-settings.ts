@@ -74,4 +74,24 @@ export const platformSettingsTable = pgTable("platform_settings", {
   /* Gamification (XP / badges / quests / navbar pill). Admin can disable
      platform-wide so teachers no longer earn or see reward UX. */
   teacherXpRewardsEnabled: boolean("teacher_xp_rewards_enabled").notNull().default(true),
+  /* Public homepage statistics section. When false the stats cards are
+     completely hidden from visitors. The optional override JSONB lets
+     the admin supply custom values / labels instead of the live DB counts. */
+  showPublicStats: boolean("show_public_stats").notNull().default(false),
+  publicStatsOverride: jsonb("public_stats_override").$type<PublicStatsOverride | null>(),
 });
+
+export type PublicStatsOverride = {
+  teacherValue?:     number | null;
+  assignmentValue?:  number | null;
+  studentValue?:     number | null;
+  submissionValue?:  number | null;
+  teacherLabel?:     string;
+  assignmentLabel?:  string;
+  studentLabel?:     string;
+  submissionLabel?:  string;
+  teacherNote?:      string;
+  assignmentNote?:   string;
+  studentNote?:      string;
+  submissionNote?:   string;
+};
