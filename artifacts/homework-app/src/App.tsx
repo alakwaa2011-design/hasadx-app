@@ -208,6 +208,16 @@ const SoloChallengeManage = lazy(() => import("@/pages/teacher/solo-challenge-ma
 const ParentMessagesPage = lazy(() => import("@/pages/teacher/parent-messages"));
 const ParentPortalPage = lazy(() => import("@/pages/parent-portal"));
 
+// Feature landing pages (SEO / public)
+const FeatureWameeth        = lazy(() => import("@/pages/features/wameeth"));
+const FeatureGames          = lazy(() => import("@/pages/features/games"));
+const FeatureWorksheetAI    = lazy(() => import("@/pages/features/worksheet-ai"));
+const FeaturePresentationsAI = lazy(() => import("@/pages/features/presentations-ai"));
+const FeatureInteractiveVideo = lazy(() => import("@/pages/features/interactive-video"));
+const FeatureSmartWhiteboard = lazy(() => import("@/pages/features/smart-whiteboard"));
+const FeatureEscapeRoom     = lazy(() => import("@/pages/features/escape-room"));
+const FeatureLessonPlanAI   = lazy(() => import("@/pages/features/lesson-plan-ai"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -252,6 +262,16 @@ function Router() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
+        {/* Feature landing pages — public, no auth */}
+        <Route path="/features/wameeth"          component={FeatureWameeth} />
+        <Route path="/features/games"            component={FeatureGames} />
+        <Route path="/features/worksheet-ai"     component={FeatureWorksheetAI} />
+        <Route path="/features/presentations-ai" component={FeaturePresentationsAI} />
+        <Route path="/features/interactive-video" component={FeatureInteractiveVideo} />
+        <Route path="/features/smart-whiteboard" component={FeatureSmartWhiteboard} />
+        <Route path="/features/escape-room"      component={FeatureEscapeRoom} />
+        <Route path="/features/lesson-plan-ai"   component={FeatureLessonPlanAI} />
+
         <Route path="/" component={Home} />
         <Route path="/login" component={Auth} />
         <Route path="/register" component={Auth} />
