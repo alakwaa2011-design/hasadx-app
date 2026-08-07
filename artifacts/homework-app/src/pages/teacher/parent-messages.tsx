@@ -107,7 +107,7 @@ function statusBadge(msg: Message) {
   return { label: "مُرسَلة", color: C.gold, bg: "#fef9ec", icon: <Mail size={11} /> };
 }
 
-export default function ParentMessagesPage() {
+export function ParentMessagesContent() {
   const searchStr = useSearch();
   const targetMessageId = useMemo(() => {
     const params = new URLSearchParams(searchStr);
@@ -391,8 +391,7 @@ export default function ParentMessagesPage() {
   const studentsWithNoEmail = students.filter(s => !s.parentEmail).length;
 
   return (
-    <Layout>
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 16px", direction: "rtl", fontFamily: "'Tajawal', sans-serif" }}>
+    <><div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 16px", direction: "rtl", fontFamily: "'Tajawal', sans-serif" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -895,6 +894,14 @@ export default function ParentMessagesPage() {
       </AnimatePresence>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </>
+  );
+}
+
+export default function ParentMessagesPage() {
+  return (
+    <Layout>
+      <ParentMessagesContent />
     </Layout>
   );
 }

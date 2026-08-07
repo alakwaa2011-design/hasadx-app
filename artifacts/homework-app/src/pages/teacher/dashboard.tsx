@@ -91,6 +91,7 @@ import {
 } from "lucide-react";
 import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import SharedContentPage from "@/pages/teacher/shared-content";
+import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
@@ -293,7 +294,8 @@ type TabId =
   | "islamic"
   | "videos"
   | "stats"
-  | "students";
+  | "students"
+  | "parent_messages";
 
 interface SharedAssignment {
   id: number;
@@ -326,6 +328,8 @@ export default function TeacherDashboard() {
     null,
   );
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "content" | "other">("ai-tools");
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const [gameSetupModal, setGameSetupModal] = useState<number | null>(null);
   const [gameTargetClass, setGameTargetClass] = useState<string>(() => getRememberedTargetClass());
   const [gameMode, setGameMode] = useState<GameMode>("solo");
@@ -697,8 +701,8 @@ export default function TeacherDashboard() {
     },
     {
       id: "assignments",
-      label: lang === "ar" ? "واجباتي" : "My Assignments",
-      shortLabel: lang === "ar" ? "واجباتي" : "Assignments",
+      label: lang === "ar" ? "أنشطتي" : "My Activities",
+      shortLabel: lang === "ar" ? "أنشطتي" : "Activities",
       icon: <BookText className="w-4 h-4" />,
     },
     {
@@ -748,6 +752,12 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "صفوفي وطلابي" : "My Classes & Students",
       shortLabel: lang === "ar" ? "الطلاب" : "Students",
       icon: <Users className="w-4 h-4" />,
+    },
+    {
+      id: "parent_messages",
+      label: lang === "ar" ? "رسائل أولياء الأمور" : "Parent Messages",
+      shortLabel: lang === "ar" ? "الأهالي" : "Parents",
+      icon: <MessageSquarePlus className="w-4 h-4" />,
     },
   ];
 
@@ -828,7 +838,7 @@ export default function TeacherDashboard() {
           />
         )}
         {activeTab === "tools" && (
-          <ToolsTab t={t} lang={lang} setLocation={setLocation} user={user} classroomEnabled={classroomEnabled} />
+          <ToolsTab t={t} lang={lang} setLocation={setLocation} user={user} classroomEnabled={classroomEnabled} activeGroup={toolsSubTab} />
         )}
         {activeTab === "videos" && (
           <VideoLessonsTab lang={lang} setLocation={setLocation} user={user} />
@@ -846,6 +856,9 @@ export default function TeacherDashboard() {
         )}
         {activeTab === "students" && (
           <StudentsInlineTab lang={lang} setLocation={setLocation} />
+        )}
+        {activeTab === "parent_messages" && (
+          <ParentMessagesContent />
         )}
         {activeTab === "library_homework" && (
           <SharedContentPage embedded forceKind="homework" />
@@ -894,7 +907,10 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
               {isAr ? "الرئيسية" : "Main"}
             </p>
-            {tabs.filter(t => ["overview","assignments","library_homework","library_competitions","competitive","solo_challenges","islamic","stats","students"].includes(t.id)).map((tab) => {
+            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
+                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"];
+                return order.indexOf(a.id) - order.indexOf(b.id);
+              }).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
@@ -929,6 +945,91 @@ export default function TeacherDashboard() {
             </p>
             {tabs.filter(t => ["tools","presentations","videos"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
+              const isTools = tab.id === "tools";
+
+              if (isTools) {
+                const subItems: { id: "ai-tools" | "content" | "other"; label: string; icon: ReactNode }[] = [
+                  { id: "ai-tools",  label: isAr ? "أدوات الذكاء الاصطناعي" : "AI Tools",            icon: <Sparkles className="w-3.5 h-3.5" /> },
+                  { id: "content",   label: isAr ? "أدوات تنظيم المحتوى"   : "Content Organization", icon: <Database className="w-3.5 h-3.5" /> },
+                  { id: "other",     label: isAr ? "أخرى"                   : "Other",                icon: <MessageSquarePlus className="w-3.5 h-3.5" /> },
+                ];
+                return (
+                  <div key={tab.id}>
+                    {/* Parent row */}
+                    <button
+                      onClick={() => {
+                        if (activeTab === "tools") {
+                          setToolsExpanded((prev) => !prev);
+                        } else {
+                          setActiveTab("tools");
+                          setToolsExpanded(true);
+                          // show all groups when clicking the parent
+                          setToolsSubTab("ai-tools");
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+                        }
+                      }}
+                      className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
+                      style={active ? { background: "rgba(255,255,255,0.15)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
+                    >
+                      {!active && (
+                        <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.07)" }} />
+                      )}
+                      {active && (
+                        <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
+                      )}
+                      <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#fff" : "rgba(255,255,255,0.55)"}}>
+                        {tab.icon}
+                      </span>
+                      <span className="relative truncate flex-1 text-start">{tab.label}</span>
+                      <ChevronDown
+                        className="relative w-3.5 h-3.5 shrink-0 transition-transform"
+                        style={{
+                          color: active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)",
+                          transform: toolsExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                        }}
+                      />
+                    </button>
+
+                    {/* Sub-items — visible only when tools tab is active and expanded */}
+                    {active && toolsExpanded && (
+                      <div className="mt-0.5 mb-1 space-y-0.5" style={{ paddingInlineStart: 12 }}>
+                        {subItems.map((sub) => {
+                          const subActive = toolsSubTab === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => {
+                                setToolsSubTab(sub.id);
+                                if (activeTab !== "tools") setActiveTab("tools");
+                                setTimeout(() => {
+                                  document.getElementById(`tools-group-${sub.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }, 80);
+                              }}
+                              className="relative w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden group"
+                              style={subActive
+                                ? { background: "rgba(232,168,14,0.18)", color: "#E8A80E" }
+                                : { color: "rgba(255,255,255,0.5)" }
+                              }
+                            >
+                              {!subActive && (
+                                <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.05)" }} />
+                              )}
+                              {subActive && (
+                                <span className={cn("absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
+                              )}
+                              <span className="relative shrink-0" style={{ color: subActive ? "#E8A80E" : "rgba(255,255,255,0.4)" }}>
+                                {sub.icon}
+                              </span>
+                              <span className="relative truncate">{sub.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={tab.id}
@@ -2580,9 +2681,15 @@ function CompetitiveTab({
   );
 }
 
-function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
+function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }: any) {
   const isAr = lang === "ar";
   const isAdmin = !!user?.isAdmin;
+  // Map sidebar sub-tab id → which toolGroups to show
+  const groupFilter: Record<string, string[]> = {
+    "ai-tools": ["ai-tools"],
+    "content":  ["content"],
+    "other":    ["students", "other"],
+  };
 
   // Brand palette for tools — green primary, gold accent, warm white bg
   const BRAND = { green: "#225739", gold: "#D9A521", light: "#FCFAF8" };
@@ -2789,6 +2896,9 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
     },
   ].filter((g) => g.tools.length > 0);
 
+  // Always show all groups; activeGroup is used only for scroll-targeting
+  const visibleGroups = toolGroups;
+
   const ChevronEnd = isAr ? ArrowLeft : ArrowRight;
   let globalIdx = 0;
 
@@ -2815,8 +2925,8 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
         </div>
       </div>
 
-      {toolGroups.map((group) => (
-        <section key={group.groupId}>
+      {visibleGroups.map((group) => (
+        <section key={group.groupId} id={`tools-group-${group.groupId}`}>
           {/* Group header — clean, left-aligned with a soft accent
               underline. Reads more like a Notion/Linear section than a
               decorative chip-in-a-divider. */}
@@ -4175,13 +4285,6 @@ function AssignmentsTabRender({
       icon: Gamepad2,
     },
     {
-      type: "knowledge_race",
-      title: lang === "ar" ? "وميض" : "Wameeth",
-      desc: lang === "ar" ? "لعبة جماعية سريعة" : "Live group game",
-      icon: Zap,
-      tag: lang === "ar" ? "شائع" : "Popular",
-    },
-    {
       type: "tug_of_war",
       title: lang === "ar" ? "شد الحبل" : "Tug of War",
       desc: lang === "ar" ? "فريقان يتنافسان" : "Two teams compete",
@@ -4222,8 +4325,8 @@ function AssignmentsTabRender({
 
   const launchGame = (type: string) => {
     switch (type) {
-      case "knowledge_race":
-        setActiveTab?.("competitive");
+      case "hack":
+        setLocation("/game/hack");
         break;
       case "tug_of_war":
         setLocation("/game/tug/create");

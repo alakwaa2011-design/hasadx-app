@@ -396,8 +396,7 @@ export default function DashboardOverview({
     }
   }, [isAr]);
 
-  const teacherName =
-    user?.fullName || user?.username || (isAr ? "أستاذ" : "Teacher");
+  const teacherName = user?.fullName || user?.username || "";
   const firstName = teacherName.split(" ")[0];
 
   async function copyLink(a: Assignment) {
@@ -575,7 +574,7 @@ export default function DashboardOverview({
                 <GamesArcade
                   isAr={isAr}
                   isMobile={isMobile}
-                  onOpen={() => setActiveTab("competitive")}
+                  setLocation={setLocation}
                 />
                 <WameethPreviewCard
                   onStart={() => setLocation("/game/wameeth/create")}
@@ -1134,7 +1133,7 @@ function HeroPanel({
               color: "transparent",
             }}
           >
-            {isAr ? `أ. ${firstName}` : firstName}
+            {firstName}
           </span>{" "}
           <span className="dashWave">👋</span>
         </h1>
@@ -2640,11 +2639,6 @@ function QuickCreateStudio({
     href: string;
   }[] = [
     {
-      icon: <Plus style={{ width: 16, height: 16 }} />,
-      title: isAr ? "نشاط جديد" : "New activity",
-      href: "/teacher/new",
-    },
-    {
       icon: <Monitor style={{ width: 16, height: 16 }} />,
       title: isAr ? "عرض تفاعلي" : "Presentation",
       href: "/teacher/presentations/new",
@@ -2783,19 +2777,19 @@ function QuickCreateStudio({
 function GamesArcade({
   isAr,
   isMobile,
-  onOpen,
+  setLocation,
 }: {
   isAr: boolean;
   isMobile: boolean;
-  onOpen: () => void;
+  setLocation: (path: string) => void;
 }) {
   const games = [
-    { emoji: "⚡", name: isAr ? "وميض" : "Wameeth" },
-    { emoji: "🚀", name: isAr ? "سباق الصواريخ" : "Rocket Race" },
-    { emoji: "💰", name: isAr ? "المليون" : "Million" },
-    { emoji: "🎡", name: isAr ? "عجلة الحظ" : "Lucky Wheel" },
-    { emoji: "🪢", name: isAr ? "شد الحبل" : "Tug of War" },
-    { emoji: "🔥", name: isAr ? "الكرسي الساخن" : "Hot Seat" },
+    { emoji: "🎯", name: isAr ? "مسابقة ذاتية" : "Solo Challenge", to: "/teacher/solo-challenges" },
+    { emoji: "🚀", name: isAr ? "سباق الصواريخ" : "Rocket Race", to: "/game/rocket/create" },
+    { emoji: "💰", name: isAr ? "المليون" : "Million", to: "/game/million" },
+    { emoji: "🎡", name: isAr ? "عجلة الحظ" : "Lucky Wheel", to: "/game/wheel/create" },
+    { emoji: "🪢", name: isAr ? "شد الحبل" : "Tug of War", to: "/game/tug/create" },
+    { emoji: "🧠", name: isAr ? "تحديات ذكاء" : "Brain Challenges", to: "/islamic" },
   ];
 
   return (
@@ -2820,7 +2814,7 @@ function GamesArcade({
         <motion.button
           key={g.name}
           className="dashGame"
-          onClick={onOpen}
+          onClick={() => setLocation(g.to)}
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.2, delay: 0.04 * i }}
@@ -3455,6 +3449,21 @@ function QuickLinks({
       href: "/teacher/question-bank",
     },
     {
+      icon: <Users style={{ width: 14, height: 14 }} />,
+      label: isAr ? "صفوفي وطلابي" : "My classes",
+      href: "/teacher/students",
+    },
+    {
+      icon: <Medal style={{ width: 14, height: 14 }} />,
+      label: isAr ? "إنجازاتي" : "Achievements",
+      href: "/teacher/achievements",
+    },
+    {
+      icon: <MessageCircle style={{ width: 14, height: 14 }} />,
+      label: isAr ? "رسائل الأهالي" : "Parent messages",
+      href: "/teacher/parent-messages",
+    },
+    {
       icon: <Library style={{ width: 14, height: 14 }} />,
       label: isAr ? "مكتبة المحتوى" : "Content library",
       href: "/teacher/library",
@@ -3463,21 +3472,6 @@ function QuickLinks({
       icon: <Target style={{ width: 14, height: 14 }} />,
       label: isAr ? "التحديات الفردية" : "Solo challenges",
       href: "/teacher/solo-challenges",
-    },
-    {
-      icon: <MessageCircle style={{ width: 14, height: 14 }} />,
-      label: isAr ? "رسائل الأهالي" : "Parent messages",
-      href: "/teacher/parent-messages",
-    },
-    {
-      icon: <Medal style={{ width: 14, height: 14 }} />,
-      label: isAr ? "إنجازاتي" : "Achievements",
-      href: "/teacher/achievements",
-    },
-    {
-      icon: <Users style={{ width: 14, height: 14 }} />,
-      label: isAr ? "صفوفي وطلابي" : "My classes",
-      href: "/teacher/students",
     },
   ];
 
