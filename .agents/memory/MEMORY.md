@@ -8,4 +8,5 @@
 - [API server slow build & restart](api-server-slow-build.md) — workflow restart timeouts are usually the 2-min esbuild bundle, not a crash; use 300s timeout and test dist manually to tell them apart.
 - [Whiteboard action normalization](whiteboard-action-normalization.md) — LLM board actions may arrive wrapped without "type"; normalize server-side or the presenter silently shows a blank board.
 - [Rebase semantic-merge corruption](rebase-semantic-merge-corruption.md) — task-merge rebases can splice code outside conflict markers; verify both sides' changes survive, rebuild from clean git shows if not.
+- [manualChunks React split](manualchunks-react-split.md) — splitting react into its own vendor chunk broke prod with "Cannot set properties of undefined (Children)"; never manualChunk react.
 - [Worksheet design theme system](worksheet-theme-system.md) — 7 themes in worksheet-themes.tsx; ThemeId in Settings.template; auto-selected on AI generation via selectTheme(); localStorage tracks last theme to prevent repeats.
