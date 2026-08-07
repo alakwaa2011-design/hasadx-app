@@ -14,7 +14,6 @@
 import http from "http";
 import fs from "fs";
 import path from "path";
-import zlib from "zlib";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -67,30 +66,19 @@ function cacheHeader(filePath: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Gzip helper
+// Send file helper
 // ---------------------------------------------------------------------------
-function acceptsGzip(req: http.IncomingMessage): boolean {
-  return (req.headers["accept-encoding"] ?? "").includes("gzip");
-}
-
 function sendFile(
   res: http.ServerResponse,
   filePath: string,
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
 ): void {
-  const ext = path.extname(filePath).toLowerCase();
-  const isText = [".html", ".js", ".mjs", ".css", ".json", ".svg", ".xml", ".txt", ".webmanifest"].includes(ext);
-
   res.setHeader("Content-Type", mime(filePath));
   res.setHeader("Cache-Control", cacheHeader(filePath));
-
-  if (isText && acceptsGzip(req)) {
-    res.setHeader("Content-Encoding", "gzip");
-    const stream = fs.createReadStream(filePath).pipe(zlib.createGzip());
-    stream.pipe(res);
-  } else {
-    fs.createReadStream(filePath).pipe(res);
-  }
+  // No manual gzip: Replit's reverse proxy handles Content-Encoding
+  // automatically. Double-compressing (proxy + server) corrupts JS/CSS
+  // and prevents React from mounting.
+  fs.createReadStream(filePath).pipe(res);
 }
 
 // ---------------------------------------------------------------------------

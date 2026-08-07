@@ -1,0 +1,1 @@
+import{a as e}from"./vendor-react-nSsBnU22.js";import{bE as r}from"./vendor-BxYjvUzn.js";import"./vendor-radix-NKxx0A_R.js";function c(){const[,t]=r();return e.useEffect(()=>{t("/teacher/settings",{replace:!0})},[t]),null}export{c as default};

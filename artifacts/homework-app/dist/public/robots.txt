@@ -46,5 +46,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://hasadx.com/sitemap.xml
-Sitemap: https://hasadx.com/image-sitemap.xml
+Sitemap: https://hasadx.com/sitemap-index.xml
