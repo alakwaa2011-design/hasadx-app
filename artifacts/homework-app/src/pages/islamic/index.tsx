@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useSeo } from "@/lib/seo";
 import { api, IslamicShell, IslamicCard, IslamicNavBar, GoldButton, GhostButton, ISLAMIC_GOLD, ISLAMIC_GOLD_LIGHT } from "./_shared";
 
 interface Category {
@@ -35,6 +36,12 @@ const LEVEL_ICONS: Record<number, string>  = { 1: "🌱", 2: "🔥", 3: "💎" }
 const LEVEL_COLORS: Record<number, string> = { 1: "#16a34a", 2: "#d97706", 3: "#dc2626" };
 
 export default function IslamicHome() {
+  useSeo({
+    title: "المسابقات الإسلامية | منصة حصاد — قرآن وسيرة وفقه وتاريخ إسلامي",
+    description: "خصّص وقتك للتعلم الإسلامي مع منصة حصاد: مسابقات في القرآن الكريم، السيرة النبوية، الفقه، التاريخ الإسلامي، مع شهادات ولوحة متصدرين وتحديات بين الأصدقاء.",
+    canonicalPath: "/islamic",
+    ogImage: "/opengraph.jpg",
+  });
   const [, setLocation] = useLocation();
   const [access, setAccess] = useState<{ hasAccess: boolean; isAdmin: boolean; showCertificates?: boolean } | null>(null);
   const [sections, setSections]   = useState<Section[]>([]);

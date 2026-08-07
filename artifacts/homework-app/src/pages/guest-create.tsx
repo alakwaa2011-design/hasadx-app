@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 import { toast } from "@/components/ui/sonner";
 import {
   loadGuestDraft, saveGuestDraft,
@@ -91,6 +92,12 @@ function AuthGateOverlay({
 }
 
 export default function GuestCreatePage() {
+  useSeo({
+    title: "أنشئ نشاطاً بدون تسجيل | منصة حصاد",
+    description: "أنشئ مسابقة أو واجباً تعليمياً بسرعة بدون الحاجة لحساب. شارك الرابط مع طلابك مباشرةً وابدأ في ثوانٍ.",
+    canonicalPath: "/guest/create",
+    ogImage: "/opengraph.jpg",
+  });
   const { t, lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [, setLocation] = useLocation();

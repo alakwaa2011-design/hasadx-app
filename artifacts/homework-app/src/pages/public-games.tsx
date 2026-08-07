@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { useSeo } from "@/lib/seo";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -28,6 +29,12 @@ interface PublicAssignment {
 
 export default function PublicGamesPage() {
   const { t, lang } = useI18n();
+  useSeo({
+    title: "الأنشطة العامة | منصة حصاد — واجبات ومسابقات مفتوحة للجميع",
+    description: "تصفّح الأنشطة والمسابقات التعليمية المفتوحة للجميع في منصة حصاد. حلّ الواجبات وشارك في المسابقات بدون تسجيل.",
+    canonicalPath: "/public/games",
+    ogImage: "/opengraph.jpg",
+  });
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;

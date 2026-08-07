@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { useSeo } from "@/lib/seo";
 import { motion } from "framer-motion";
 import QRCode from "react-qr-code";
 import { Copy, Check, ArrowRight, ArrowLeft, Smartphone } from "lucide-react";
@@ -107,6 +108,12 @@ const ANDROID_STEPS = [
 ];
 
 export default function InstallPage() {
+  useSeo({
+    title: "تثبيت تطبيق حصاد | منصة حصاد",
+    description: "ثبّت منصة حصاد على جهازك للوصول السريع.",
+    canonicalPath: "/install",
+    noindex: true,
+  });
   const [device, setDevice] = useState<Device>("iphone");
   const [copied, setCopied] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null);

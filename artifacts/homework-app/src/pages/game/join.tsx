@@ -4,6 +4,7 @@ import { StudentLoginLayout } from "@/components/layout";
 import { motion } from "framer-motion";
 import { Terminal, ShieldAlert, CheckCircle, Users, GraduationCap, Gamepad2, ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 import { NORMAL_AVATARS, HACK_ICONS, DEFAULT_AVATAR } from "@/lib/avatars";
 import { AvatarDisplay } from "@/components/avatar-display";
 
@@ -16,6 +17,12 @@ interface StudentAccount {
 }
 
 export default function GameJoin() {
+  useSeo({
+    title: "انضم إلى لعبة | منصة حصاد",
+    description: "أدخل رمز الجلسة للانضمام إلى لعبة تعليمية مباشرة في منصة حصاد.",
+    canonicalPath: "/game/join",
+    noindex: true,
+  });
   const params = useParams<{ pin?: string }>();
   const [pin, setPin] = useState(params.pin || "");
   const [name, setName] = useState("");

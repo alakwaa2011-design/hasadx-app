@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSeo } from "@/lib/seo";
 
 const SCENES = ["intro", "hook", "iphone", "android", "outro"] as const;
 type Scene = (typeof SCENES)[number];
@@ -768,6 +769,12 @@ function SceneOutro({ phase }: { phase: number }) {
 }
 
 export default function InstallTutorial() {
+  useSeo({
+    title: "دليل تثبيت حصاد | منصة حصاد",
+    description: "دليل خطوة بخطوة لتثبيت منصة حصاد.",
+    canonicalPath: "/install-tutorial",
+    noindex: true,
+  });
   const [currentSceneIdx, setCurrentSceneIdx] = useState(() => {
     if (typeof window === "undefined") return 0;
     const params = new URLSearchParams(window.location.search);

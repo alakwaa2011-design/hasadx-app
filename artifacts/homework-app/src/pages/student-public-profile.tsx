@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
+import { useSeo } from "@/lib/seo";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { BadgeCheck, Trophy, Gamepad2, Star, Loader2 } from "lucide-react";
@@ -44,6 +45,15 @@ export default function StudentPublicProfile() {
   const [data, setData] = useState<StudentProfileResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  useSeo({
+    title: data?.student?.displayName
+      ? `${data.student.displayName} | منصة حصاد`
+      : "ملف الطالب | منصة حصاد",
+    description: data?.student?.displayName
+      ? `ملف ${data.student.displayName} في منصة حصاد — النقاط والإنجازات والمسابقات التعليمية.`
+      : "ملف طالب في منصة حصاد التعليمية.",
+    canonicalPath: `/stu/${username}`,
+  });
 
   useEffect(() => {
     let cancelled = false;

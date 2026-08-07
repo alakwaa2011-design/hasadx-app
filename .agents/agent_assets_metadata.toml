@@ -775,3 +775,10 @@ uri = "file://brand/brand-guidelines.html"
 type = "unspecified"
 title = "دليل الهوية البصرية — Brand Guidelines"
 description = "ألوان، خطوط، نسخ الشعار، قواعد الاستخدام"
+
+[[outputs]]
+id = "Tfft1-UEw91w7NnFMd8Wx"
+uri = "file://hasad-platform-knowledge.md"
+type = "text"
+title = "وثيقة منصة حصاد — Knowledge Base"
+description = "وثيقة شاملة عن منصة حصاد جاهزة للنسخ ومشاركتها مع أي ذكاء اصطناعي"

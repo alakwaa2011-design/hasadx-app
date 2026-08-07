@@ -6,7 +6,7 @@
         <title>منصة حصاد | HasadX — عروض تفاعلية ومسابقات تعليمية وواجبات وأنشطة</title>
         <meta name="description" content="منصة حصاد (HasadX) منصة تعليم تفاعلي عربية للمعلمين والمدارس: أنشئ عروضًا تفاعلية ومسابقات تعليمية وواجبات وأنشطة، وأنشئ عروضًا بالذكاء الاصطناعي بسهولة وسرعة.">
         <meta name="keywords" content="حصاد, منصة حصاد, HasadX, حصاد التعليمية, عروض تفاعلية, مسابقات تعليمية, تحدي حصاد, مسابقات حصاد, واجبات وأنشطة, تعليم تفاعلي, إنشاء عروض بالذكاء الاصطناعي">
-        <link rel="canonical" href="https://hasadx.com/">
+        <!-- canonical is set per-route by the useSeo hook in React -->
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
         <!-- Open Graph -->
@@ -51,13 +51,19 @@
             "name": "منصة حصاد",
             "alternateName": ["HasadX", "حصاد X", "حصاد التعليمية"],
             "url": "https://hasadx.com/",
-            "logo": "https://hasadx.com/images/logo-mark.png",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://hasadx.com/images/logo-mark.png",
+                "width": 512,
+                "height": 512
+            },
             "description": "منصة حصاد (HasadX) منصة تعليم تفاعلي عربية للمعلمين والمدارس، تتيح إنشاء عروض تفاعلية ومسابقات تعليمية وواجبات وأنشطة، وإنشاء عروض بالذكاء الاصطناعي.",
-            "inLanguage": "ar"
+            "inLanguage": "ar",
+            "sameAs": ["https://hasadx.com"]
         }
         </script>
 
-        <!-- Schema.org: WebSite + SearchAction -->
+        <!-- Schema.org: WebSite + Sitelinks SearchBox -->
         <script type="application/ld+json">
         {
             "@context": "https://schema.org",
@@ -70,6 +76,48 @@
                 "@type": "Organization",
                 "name": "منصة حصاد",
                 "alternateName": "HasadX"
+            },
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                    "@type": "EntryPoint",
+                    "urlTemplate": "https://hasadx.com/public/games?q={search_term_string}"
+                },
+                "query-input": "required name=search_term_string"
+            }
+        }
+        </script>
+
+        <!-- Schema.org: SoftwareApplication — tells Google/Gemini this is an educational app -->
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "منصة حصاد",
+            "alternateName": "HasadX",
+            "url": "https://hasadx.com/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web, iOS, Android",
+            "inLanguage": "ar",
+            "description": "منصة تعليم تفاعلي عربية للمعلمين والمدارس. تتيح إنشاء عروض تفاعلية، مسابقات تعليمية، واجبات وأنشطة، وألعاب تعليمية جماعية وفردية. تدعم الذكاء الاصطناعي لتوليد المحتوى.",
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "SAR"
+            },
+            "featureList": [
+                "عروض تفاعلية مباشرة",
+                "مسابقات تعليمية جماعية",
+                "واجبات وأنشطة إلكترونية",
+                "ألعاب تعليمية: وميض، أرينا حصاد، شد الحبل، هاك، من سيربح المليون",
+                "إنشاء المحتوى بالذكاء الاصطناعي",
+                "تكامل مع Google Classroom وMicrosoft Teams",
+                "مسابقات إسلامية متخصصة",
+                "لوحة تحكم المعلم وتقارير الأداء"
+            ],
+            "audience": {
+                "@type": "EducationalAudience",
+                "educationalRole": "teacher"
             }
         }
         </script>
@@ -156,22 +204,77 @@
         </style>
 
         <div id="root">
+            <!--
+              noscript: rich fallback for crawlers that don't execute JavaScript
+              (GPTBot, OAI-SearchBot, ClaudeBot, Perplexity, and limited Googlebot passes).
+              Keep this in sync with the actual page content.
+            -->
             <noscript>
                 <style>#hasad-splash{display:none !important;}</style>
-                <div style="max-width:760px;margin:48px auto;padding:24px;font-family:'Tajawal','IBM Plex Sans Arabic',sans-serif;direction:rtl;text-align:right;color:#0f172a;line-height:1.8">
-                    <h1 style="font-size:32px;color:#14532d;margin:0 0 12px">منصة حصاد التعليمية — HasadX</h1>
-                    <p>منصة <strong>حصاد</strong> (HasadX) منصة عربية للتعليم التفاعلي، تتيح للمعلمين إنشاء <strong>عروض تفاعلية</strong> و<strong>مسابقات تعليمية</strong> و<strong>واجبات وأنشطة</strong> ومشاركتها مع الطلاب عبر رابط أو رمز دخول.</p>
-                    <h2 style="font-size:22px;color:#14532d;margin:24px 0 8px">ماذا تقدّم منصة حصاد؟</h2>
-                    <ul style="padding-inline-start:0;list-style-position:inside">
-                        <li>عروض تفاعلية مباشرة مع أسئلة واستطلاعات.</li>
-                        <li>مسابقات تعليمية وتحدي حصاد بأسلوب لعبي محفّز.</li>
-                        <li>واجبات وأنشطة قابلة للتصحيح الآلي.</li>
-                        <li>إنشاء عروض بالذكاء الاصطناعي في دقيقة واحدة.</li>
-                        <li>تعليم تفاعلي بهوية عربية كاملة ودعم RTL.</li>
+                <main style="max-width:800px;margin:48px auto;padding:24px 32px;font-family:'Tajawal','IBM Plex Sans Arabic',system-ui,sans-serif;direction:rtl;text-align:right;color:#0f172a;line-height:2">
+
+                    <h1 style="font-size:36px;font-weight:900;color:#14532d;margin:0 0 12px">منصة حصاد التعليمية — HasadX</h1>
+                    <p style="font-size:17px;color:#374151;margin:0 0 24px">
+                        <strong>منصة حصاد</strong> (HasadX — hasadx.com) منصة تعليم تفاعلي عربية موجّهة للمعلمين والمدارس.
+                        تُتيح للمعلم إنشاء <strong>عروض تفاعلية</strong> و<strong>مسابقات تعليمية</strong> و<strong>واجبات وأنشطة</strong>
+                        ومشاركتها مع الطلاب فوراً عبر رابط أو رمز دخول مكوّن من 6 أرقام — بدون الحاجة لحساب للطالب.
+                    </p>
+
+                    <h2 style="font-size:24px;font-weight:800;color:#14532d;margin:32px 0 12px">الألعاب التعليمية الجماعية</h2>
+                    <ul style="padding-inline-start:20px;color:#374151">
+                        <li><strong>وميض / سباق المعرفة:</strong> أسئلة مباشرة على الشاشة الكبيرة والطلاب يُجيبون من هواتفهم.</li>
+                        <li><strong>أرينا حصاد:</strong> لوحة مسابقات جماعية على شكل شبكة فئات (Jeopardy) لفريقين مع نقاط متدرجة ومساعدات استراتيجية.</li>
+                        <li><strong>اكتشف السر (غرفة الإفلات):</strong> أسئلة تتراكم لكشف سر مخفي — وضع تعاوني أو فردي مع مؤقت وصوت إنذار.</li>
+                        <li><strong>شد الحبل:</strong> فريقان يتنافسان بإجابات الأسئلة لتحريك الحبل لصالحهم.</li>
+                        <li><strong>عجلة التحدي:</strong> عجلة تختار التحديات عشوائياً مع إمكانية التوليد بالذكاء الاصطناعي.</li>
+                        <li><strong>سباق الصواريخ:</strong> صواريخ الطلاب تتقدم بسرعة الإجابة ودقتها.</li>
+                        <li><strong>الكرسي الساخن:</strong> طالب يُجيب على أسئلة مجهولة المصدر من زملائه والفصل يصوت.</li>
+                        <li><strong>من سيربح المليون؟:</strong> سلّم أسئلة تصاعدي بنقاط متزايدة ومساعدات — فردي أو فرق.</li>
+                        <li><strong>هاك:</strong> ماراثون تنافسي سريع بأسلوب قرصنة مع سرقة نقاط وصناديق غنائم.</li>
+                        <li><strong>الفيديو التفاعلي:</strong> فيديو يتوقف لطرح أسئلة تكوينية على الطلاب.</li>
                     </ul>
-                    <p>للمزيد عن المنصة: <a href="/about">عن منصة حصاد</a> · <a href="/faq">الأسئلة الشائعة</a></p>
-                    <p>هذا الموقع يعمل بشكل أفضل عند تفعيل JavaScript في المتصفح.</p>
-                </div>
+
+                    <h2 style="font-size:24px;font-weight:800;color:#14532d;margin:32px 0 12px">الألعاب الفردية</h2>
+                    <ul style="padding-inline-start:20px;color:#374151">
+                        <li><strong>مراقي:</strong> سلّم ثقافي تصاعدي بفئات متنوعة.</li>
+                        <li><strong>لترلي (WORDLE عربي):</strong> خمّن الكلمة السرية بتلميحات الألوان — قابل للمشاركة.</li>
+                        <li><strong>مسابقة الأعلام وعواصم العالم:</strong> اختبار جغرافي ممتع.</li>
+                        <li><strong>المطابقة:</strong> لعبة ذاكرة بتقليب البطاقات.</li>
+                        <li><strong>الضرب وستروب والكلمة المبعثرة:</strong> ألعاب تركيز ومهارات.</li>
+                    </ul>
+
+                    <h2 style="font-size:24px;font-weight:800;color:#14532d;margin:32px 0 12px">أدوات الذكاء الاصطناعي</h2>
+                    <ul style="padding-inline-start:20px;color:#374151">
+                        <li>منشئ الأنشطة والأسئلة التلقائي من موضوع أو ملف.</li>
+                        <li>منشئ العروض التفاعلية بالذكاء الاصطناعي.</li>
+                        <li>منشئ خطة الدرس وورقة العمل والخريطة الذهنية.</li>
+                        <li>منشئ الفيديو التعليمي التفاعلي.</li>
+                    </ul>
+
+                    <h2 style="font-size:24px;font-weight:800;color:#14532d;margin:32px 0 12px">المحتوى الإسلامي</h2>
+                    <p style="color:#374151">قسم مخصص للمسابقات الإسلامية: قرآن كريم، سيرة نبوية، فقه، تاريخ إسلامي، رمضان. يدعم التحديات، البطولات، الشهادات الإلكترونية، ولوحة المتصدرين.</p>
+
+                    <h2 style="font-size:24px;font-weight:800;color:#14532d;margin:32px 0 12px">تكاملات المنصة</h2>
+                    <p style="color:#374151">تدعم منصة حصاد التكامل مع <strong>Google Classroom</strong> و<strong>Microsoft Teams</strong> لاستيراد الطلاب ونشر الأنشطة ومزامنة الدرجات.</p>
+
+                    <h2 style="font-size:24px;font-weight:800;color:#14532d;margin:32px 0 12px">روابط مهمة</h2>
+                    <nav style="color:#374151">
+                        <a href="/about" style="color:#14532d;margin-inline-end:16px">عن منصة حصاد</a>
+                        <a href="/faq" style="color:#14532d;margin-inline-end:16px">الأسئلة الشائعة</a>
+                        <a href="/games" style="color:#14532d;margin-inline-end:16px">الألعاب التعليمية</a>
+                        <a href="/islamic" style="color:#14532d;margin-inline-end:16px">المسابقات الإسلامية</a>
+                        <a href="/public/games" style="color:#14532d;margin-inline-end:16px">الأنشطة العامة</a>
+                        <a href="/leaderboard" style="color:#14532d;margin-inline-end:16px">لوحة المتصدرين</a>
+                        <a href="/register" style="color:#14532d;margin-inline-end:16px">إنشاء حساب</a>
+                        <a href="/privacy" style="color:#14532d;margin-inline-end:16px">سياسة الخصوصية</a>
+                        <a href="/terms" style="color:#14532d">شروط الاستخدام</a>
+                    </nav>
+
+                    <p style="margin-top:32px;font-size:14px;color:#6b7280">
+                        هذا الموقع تطبيق تفاعلي ويعمل بشكل أفضل مع تفعيل JavaScript.
+                        للوصول الكامل للمحتوى يُرجى تفعيل JavaScript في متصفحك.
+                    </p>
+                </main>
             </noscript>
 
             <!-- شاشة التحميل — تظهر فوراً قبل React وتختفي بعده -->

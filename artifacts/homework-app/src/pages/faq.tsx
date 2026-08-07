@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { ArrowLeft, HelpCircle, ChevronDown } from "lucide-react";
@@ -76,6 +76,26 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function FaqPage() {
   const { lang } = useI18n();
+
+  // Inject FAQPage structured data for Google Rich Snippets
+  useEffect(() => {
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": faqs.map(({ q, a }) => ({
+        "@type": "Question",
+        "name": q,
+        "acceptedAnswer": { "@type": "Answer", "text": a },
+      })),
+    };
+    const el = document.createElement("script");
+    el.type = "application/ld+json";
+    el.id = "faq-schema";
+    el.textContent = JSON.stringify(schema);
+    document.head.appendChild(el);
+    return () => { document.getElementById("faq-schema")?.remove(); };
+  }, []);
+
   useSeo(
     lang === "ar"
       ? {

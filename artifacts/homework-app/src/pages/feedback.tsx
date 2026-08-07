@@ -7,11 +7,18 @@ import { Loader2, MessageSquarePlus, Lightbulb, Bug, Sparkles, CheckCircle2, Arr
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { useSeo } from "@/lib/seo";
 
 const FEEDBACK_TYPES = ["suggestion", "bug", "feature"] as const;
 
 export default function FeedbackPage() {
   const { t, lang } = useI18n();
+  useSeo({
+    title: "اقتراحات وملاحظات | منصة حصاد",
+    description: "شاركنا اقتراحاتك وملاحظاتك لتطوير منصة حصاد التعليمية. رأيك يهمنا ويساعدنا على تحسين تجربة المعلمين والطلاب.",
+    canonicalPath: "/feedback",
+    ogImage: "/opengraph.jpg",
+  });
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
 

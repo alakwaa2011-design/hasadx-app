@@ -6,6 +6,7 @@ import {
   Globe, Brain, Shuffle, Landmark, Sparkles, Calculator, ArrowRight, ArrowLeft, Gamepad2, Trophy, Terminal, Type, Swords, Eye,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -20,6 +21,12 @@ interface GameCard {
 
 export default function GamesPage() {
   const { lang } = useI18n();
+  useSeo({
+    title: "الألعاب التعليمية | منصة حصاد — مسابقات ووميض وملايين وهاك",
+    description: "استعرض كل الألعاب التعليمية في منصة حصاد: وميض، أرينا، شد الحبل، من سيربح المليون، هاك، مراقي، لترلي، الأعلام وعواصم العالم والمزيد.",
+    canonicalPath: "/games",
+    ogImage: "/opengraph.jpg",
+  });
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
   const ChevronIcon = lang === "ar" ? ArrowLeft : ArrowRight;

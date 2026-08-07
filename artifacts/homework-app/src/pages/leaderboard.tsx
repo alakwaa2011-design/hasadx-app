@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { Link } from "wouter";
 import { Trophy, Crown } from "lucide-react";
+import { useSeo } from "@/lib/seo";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -20,6 +21,12 @@ interface Row {
 const RANK_BG = ["bg-yellow-100 border-yellow-300", "bg-slate-100 border-slate-300", "bg-amber-100 border-amber-300"];
 
 export default function Leaderboard() {
+  useSeo({
+    title: "لوحة المتصدرين | منصة حصاد — أفضل المعلمين والطلاب",
+    description: "تعرّف على أكثر المعلمين نشاطاً في منصة حصاد التعليمية. لوحة المتصدرين تُحدَّث يومياً بالنقاط والمستويات والشارات.",
+    canonicalPath: "/leaderboard",
+    ogImage: "/opengraph.jpg",
+  });
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 

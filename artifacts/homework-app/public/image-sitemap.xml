@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- Homepage — logo + opengraph -->
+  <url>
+    <loc>https://hasadx.com/</loc>
+    <image:image>
+      <image:loc>https://hasadx.com/images/logo-mark.png</image:loc>
+      <image:title>شعار منصة حصاد التعليمية</image:title>
+      <image:caption>منصة حصاد (HasadX) — منصة التعليم التفاعلي العربية للمعلمين</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/opengraph.jpg</image:loc>
+      <image:title>منصة حصاد التعليمية — HasadX</image:title>
+      <image:caption>منصة تعليم تفاعلي عربية للمعلمين والمدارس: عروض تفاعلية ومسابقات تعليمية وواجبات وأنشطة</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Games page — arena covers -->
+  <url>
+    <loc>https://hasadx.com/games</loc>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/arab-capitals.webp</image:loc>
+      <image:title>عواصم العرب — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/arabic-food.webp</image:loc>
+      <image:title>الطعام العربي — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/arabic-proverbs.webp</image:loc>
+      <image:title>الأمثال العربية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/asia-capitals.webp</image:loc>
+      <image:title>عواصم آسيا — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/astronauts.webp</image:loc>
+      <image:title>رواد الفضاء — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/astronomical-phenomena.webp</image:loc>
+      <image:title>الظواهر الفلكية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/beverages.webp</image:loc>
+      <image:title>المشروبات — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/body-organs.webp</image:loc>
+      <image:title>أعضاء جسم الإنسان — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/caliphs.webp</image:loc>
+      <image:title>الخلفاء الراشدون — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/cars-american.webp</image:loc>
+      <image:title>السيارات الأمريكية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/cars-european.webp</image:loc>
+      <image:title>السيارات الأوروبية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/cars-japanese.webp</image:loc>
+      <image:title>السيارات اليابانية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/desserts.webp</image:loc>
+      <image:title>الحلويات — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/europe-capitals.webp</image:loc>
+      <image:title>عواصم أوروبا — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/first-aid.webp</image:loc>
+      <image:title>الإسعافات الأولية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/folk-proverbs.webp</image:loc>
+      <image:title>الأمثال الشعبية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/healthy-nutrition.webp</image:loc>
+      <image:title>التغذية الصحية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/muslim-scientists.webp</image:loc>
+      <image:title>علماء المسلمين — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/rivers-seas.webp</image:loc>
+      <image:title>الأنهار والبحار — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/solar-system.webp</image:loc>
+      <image:title>المجموعة الشمسية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/stars-galaxies.webp</image:loc>
+      <image:title>النجوم والمجرات — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/world-cuisines.webp</image:loc>
+      <image:title>المطابخ العالمية — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/world-scientists.webp</image:loc>
+      <image:title>علماء العالم — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/world-wisdom.webp</image:loc>
+      <image:title>حكم العالم — فئة أرينا حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/writers-poets.webp</image:loc>
+      <image:title>الكتّاب والشعراء — فئة أرينا حصاد</image:title>
+    </image:image>
+  </url>
+
+  <!-- Islamic section — Islamic arena covers -->
+  <url>
+    <loc>https://hasadx.com/islamic</loc>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/seerah.webp</image:loc>
+      <image:title>السيرة النبوية — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/caliphs.webp</image:loc>
+      <image:title>الخلفاء الراشدون — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/ten-companions.webp</image:loc>
+      <image:title>العشرة المبشرون بالجنة — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/mothers-believers.webp</image:loc>
+      <image:title>أمهات المؤمنين — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/prophets-ulul-azm.webp</image:loc>
+      <image:title>أولو العزم من الأنبياء — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/prophets-lineage.webp</image:loc>
+      <image:title>أنساب الأنبياء — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/prophets-israel.webp</image:loc>
+      <image:title>أنبياء بني إسرائيل — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/joseph-brothers.webp</image:loc>
+      <image:title>سيدنا يوسف وإخوته — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/moses-pharaoh.webp</image:loc>
+      <image:title>سيدنا موسى وفرعون — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/tabiin.webp</image:loc>
+      <image:title>التابعون — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/scholars-wisdom.webp</image:loc>
+      <image:title>حكم العلماء — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/leaders-conquerors.webp</image:loc>
+      <image:title>القادة والفاتحون — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_ramadan.webp</image:loc>
+      <image:title>رمضان المبارك — المسابقات الإسلامية حصاد</image:title>
+    </image:image>
+  </url>
+
+  <!-- Public games / assignments page -->
+  <url>
+    <loc>https://hasadx.com/public/games</loc>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_curriculum.webp</image:loc>
+      <image:title>المناهج الدراسية — أنشطة حصاد العامة</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_kids.webp</image:loc>
+      <image:title>أنشطة الأطفال — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_riddles.webp</image:loc>
+      <image:title>الألغاز — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_picture-q.webp</image:loc>
+      <image:title>أسئلة الصور — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_space-planets.webp</image:loc>
+      <image:title>الفضاء والكواكب — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_cinema-arabic.webp</image:loc>
+      <image:title>السينما العربية — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_world-cuisine.webp</image:loc>
+      <image:title>المطبخ العالمي — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_animals.webp</image:loc>
+      <image:title>عالم الحيوانات — منصة حصاد</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://hasadx.com/arena-covers/sec_cars-engines.webp</image:loc>
+      <image:title>السيارات والمحركات — منصة حصاد</image:title>
+    </image:image>
+  </url>
+
+</urlset>

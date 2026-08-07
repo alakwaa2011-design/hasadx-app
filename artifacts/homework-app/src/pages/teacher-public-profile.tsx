@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
+import { useSeo } from "@/lib/seo";
 import { motion } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
@@ -40,6 +41,15 @@ export default function TeacherPublicProfile() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [following, setFollowing] = useState(false);
+  useSeo({
+    title: data?.teacher?.name
+      ? `${data.teacher.name} | منصة حصاد`
+      : "ملف المعلم | منصة حصاد",
+    description: data?.teacher?.name
+      ? `تعرّف على ${data.teacher.name} — معلم في منصة حصاد التعليمية. اطّلع على إنجازاته وأنشطته ومسابقاته.`
+      : "ملف معلم في منصة حصاد التعليمية.",
+    canonicalPath: `/t/${idOrSlug}`,
+  });
 
   useEffect(() => {
     let cancelled = false;
