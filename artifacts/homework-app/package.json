@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "node scripts/generate-image-sitemap.mjs && vite build --config vite.config.ts",
-    "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
+    "build": "node scripts/generate-image-sitemap.mjs && vite build --config vite.config.ts && pnpm run prerender",
+    "prerender": "tsx scripts/prerender.ts",
+    "serve": "tsx serve.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test"
