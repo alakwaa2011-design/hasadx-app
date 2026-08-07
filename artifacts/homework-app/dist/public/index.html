@@ -38,6 +38,10 @@
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <!-- Fonts are self-hosted in /fonts/ — zero external network dependency.
              Fallback stack: named font → Geeza Pro (iOS Arabic) → system-ui. -->
+        <!-- Preload the two highest-priority Arabic font weights so the browser
+             fetches them in parallel with HTML parsing, eliminating FOIT/FOUT. -->
+        <link rel="preload" href="/fonts/tajawal-400-arabic.woff2" as="font" type="font/woff2" crossorigin />
+        <link rel="preload" href="/fonts/tajawal-700-arabic.woff2" as="font" type="font/woff2" crossorigin />
 
         <!-- Schema.org: Organization -->
         <script type="application/ld+json">
@@ -117,13 +121,13 @@
             }
         }
         </script>
-      <script type="module" crossorigin src="/assets/index-B9R5Bg_T.js"></script>
+      <script type="module" crossorigin src="/assets/index-BnM-C2cn.js"></script>
       <link rel="modulepreload" crossorigin href="/assets/vendor-BxYjvUzn.js">
       <link rel="modulepreload" crossorigin href="/assets/vendor-radix-NKxx0A_R.js">
       <link rel="modulepreload" crossorigin href="/assets/vendor-react-nSsBnU22.js">
       <link rel="modulepreload" crossorigin href="/assets/vendor-query-Bib9NpEm.js">
       <link rel="stylesheet" crossorigin href="/assets/vendor-DywYRkvg.css">
-      <link rel="stylesheet" crossorigin href="/assets/index-Wk1s2gdj.css">
+      <link rel="stylesheet" crossorigin href="/assets/index-CU-PF7YS.css">
       <link rel="canonical" href="https://hasadx.com/">
 <script type="application/ld+json">
 {
