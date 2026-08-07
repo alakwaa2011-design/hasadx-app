@@ -36,12 +36,13 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="حصاد" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <!-- Fonts are self-hosted in /fonts/ — zero external network dependency.
-             Fallback stack: named font → Geeza Pro (iOS Arabic) → system-ui. -->
-        <!-- Preload the two highest-priority Arabic font weights so the browser
-             fetches them in parallel with HTML parsing, eliminating FOIT/FOUT. -->
-        <link rel="preload" href="/fonts/tajawal-400-arabic.woff2" as="font" type="font/woff2" crossorigin />
-        <link rel="preload" href="/fonts/tajawal-700-arabic.woff2" as="font" type="font/woff2" crossorigin />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <!-- All Google Fonts loaded async — never blocks the module script -->
+        <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@500;700;800;900&display=swap">
+        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;600;700;800;900&family=Noto+Kufi+Arabic:wght@500;700;800;900&display=swap"></noscript>
+        <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700&display=swap">
+        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700&display=swap"></noscript>
 
         <!-- Schema.org: Organization -->
         <script type="application/ld+json">
@@ -200,6 +201,9 @@
                 0%   { transform: translateX(300%); opacity: 0.7; }
                 50%  { transform: translateX(0%);   opacity: 1;   }
                 100% { transform: translateX(-300%); opacity: 0.7; }
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
             }
             /* Safety net: if React never mounts (JS error, slow network, etc.)
                auto-hide the splash after 10 s so users aren't stuck on a blank screen.

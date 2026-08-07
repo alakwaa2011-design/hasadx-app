@@ -229,8 +229,8 @@ const queryClient = new QueryClient({
 
 function LoadingFallback() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100svh", background: "#f7f6f2" }}>
+      <div style={{ width: 40, height: 40, border: "4px solid #0d6b75", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
     </div>
   );
 }
