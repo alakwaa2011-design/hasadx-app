@@ -56,6 +56,7 @@ ALLOWED_ORIGINS = "https://hasadx.com,https://www.hasadx.com,https://hasaadx.com
 [userenv.shared]
 GOOGLE_CLIENT_ID = "281565681069-37f3c0p8lijijjmj3nie7a2hs3iilm7f.apps.googleusercontent.com"
 VITE_GOOGLE_CLIENT_ID = "281565681069-37f3c0p8lijijjmj3nie7a2hs3iilm7f.apps.googleusercontent.com"
+PUBLIC_APP_URL = "https://hasaadx.com"
 
 [[ports]]
 localPort = 8080
