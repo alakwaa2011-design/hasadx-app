@@ -62,6 +62,7 @@ function VerificationNudgeBanner({
   if (dismissed) return null;
 
   const identifier = user.email || user.phone || "";
+  const isPhone = !user.email && !!user.phone;
 
   const handleSend = async () => {
     if (!identifier || sending || sent) return;
@@ -77,10 +78,18 @@ function VerificationNudgeBanner({
       if (res.ok) {
         setSent(true);
       } else {
-        setSendError(lang === "ar" ? "تعذّر إرسال الرابط، حاول مجدداً" : "Failed to send the link, please try again");
+        setSendError(
+          isPhone
+            ? (lang === "ar" ? "تعذّر إرسال الرمز، حاول مجدداً" : "Failed to send the code, please try again")
+            : (lang === "ar" ? "تعذّر إرسال الرابط، حاول مجدداً" : "Failed to send the link, please try again")
+        );
       }
     } catch {
-      setSendError(lang === "ar" ? "تعذّر إرسال الرابط، حاول مجدداً" : "Failed to send the link, please try again");
+      setSendError(
+        isPhone
+          ? (lang === "ar" ? "تعذّر إرسال الرمز، حاول مجدداً" : "Failed to send the code, please try again")
+          : (lang === "ar" ? "تعذّر إرسال الرابط، حاول مجدداً" : "Failed to send the link, please try again")
+      );
     } finally {
       setSending(false);
     }
@@ -105,9 +114,13 @@ function VerificationNudgeBanner({
             {sendError
               ? sendError
               : sent
-              ? (lang === "ar"
-                  ? "✅ أرسلنا رابط تأكيد إلى بريدك — تحقق من صندوق الوارد"
-                  : "✅ We sent a confirmation link to your email — check your inbox")
+              ? (isPhone
+                  ? (lang === "ar"
+                      ? "✅ أرسلنا رمز تأكيد إلى هاتفك — تحقق من رسائلك"
+                      : "✅ We sent a verification code to your phone — check your messages")
+                  : (lang === "ar"
+                      ? "✅ أرسلنا رابط تأكيد إلى بريدك — تحقق من صندوق الوارد"
+                      : "✅ We sent a confirmation link to your email — check your inbox"))
               : (lang === "ar"
                   ? `حسابك بحاجة للتحقق للاحتفاظ ببياناتك واستعادة كلمة المرور مستقبلاً`
                   : `Your account needs verification to keep your data and enable password recovery`)}
@@ -126,7 +139,9 @@ function VerificationNudgeBanner({
               }}
             >
               {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-              {lang === "ar" ? "إعادة الإرسال" : "Resend link"}
+              {isPhone
+                ? (lang === "ar" ? "إعادة إرسال الرمز" : "Resend code")
+                : (lang === "ar" ? "إعادة الإرسال" : "Resend link")}
             </button>
           )}
           {sent && (
