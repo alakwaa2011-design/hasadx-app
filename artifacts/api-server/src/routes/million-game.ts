@@ -315,8 +315,7 @@ router.post("/million/hint", hintLimiter, async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 150,
-      temperature: 0.7,
+      max_completion_tokens: 500,
     });
 
     const hint = completion.choices[0]?.message?.content?.trim() ?? "لا يتوفر تلميح الآن.";

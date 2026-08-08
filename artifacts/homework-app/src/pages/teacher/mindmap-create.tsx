@@ -35,18 +35,26 @@ const GRID_DOT  = "#CBD5E1";
 interface MindMapBranch { label: string; icon: string; color: string; children: string[] }
 interface MindMap { center: string; branches: MindMapBranch[] }
 
-/* ── SVG constants ───────────────────────────────────────────────────── */
-const W = 1200;
-const H = 860;
-const CX = W / 2;
-const CY = H / 2 + 20;
-const CENTER_R = 72;
-const BRANCH_DIST = 200;
-const LEAF_EXTRA = 162;
+/* ── Layout constants (balanced left/right tree — no overlap possible) ── */
+const H_GAP1 = 130;   // centre edge → branch pill
+const H_GAP2 = 64;    // branch pill → leaf card
+const LEAF_GAP = 12;  // vertical gap between sibling leaves
+const BLOCK_GAP = 30; // vertical gap between branch blocks
+const MARGIN = 46;    // outer canvas margin
 
-function splitLines(text: string, max: number): string[] {
+function splitLines(text: string, max: number, maxLines = 2): string[] {
   if (text.length <= max) return [text];
-  const words = text.split(" ");
+  // Hard-break any single token longer than the limit so it can never
+  // overflow the measured card width.
+  const words = text.split(" ").flatMap((w) => {
+    if (w.length <= max) return [w];
+    const parts: string[] = [];
+    for (const seg of Array.from(w)) {
+      if (parts.length && parts[parts.length - 1].length < max) parts[parts.length - 1] += seg;
+      else parts.push(seg);
+    }
+    return parts;
+  });
   const lines: string[] = [];
   let cur = "";
   for (const w of words) {
@@ -55,214 +63,237 @@ function splitLines(text: string, max: number): string[] {
     else { if (cur) lines.push(cur); cur = w; }
   }
   if (cur) lines.push(cur);
-  return lines.slice(0, 2);
+  if (lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    kept[maxLines - 1] = kept[maxLines - 1].replace(/.{0,2}$/, "…");
+    return kept;
+  }
+  return lines;
 }
 
-/* ── SVG Mind Map Renderer ───────────────────────────────────────────── */
-function MindMapSVG({ map, isAr }: { map: MindMap; isAr: boolean }) {
-  const N = map.branches.length;
-  if (!N) return null;
+/* Generous glyph-width estimate (Arabic-safe) */
+const chW = (s: string, fs: number) => s.length * fs * 0.62;
+const maxLineW = (lines: string[], fs: number) =>
+  Math.max(...lines.map((l) => chW(l, fs)));
 
-  const sector = (2 * Math.PI) / N;
+/* ── Layout engine — balanced left/right tree (XMind-style) ──────────── */
+interface LeafBox { label: string; lines: string[]; w: number; h: number; y: number }
+interface BranchBox {
+  label: string; icon: string; pal: (typeof PALETTE)[number];
+  lines: string[]; w: number; h: number; blockH: number;
+  side: 1 | -1; x: number; y: number; leaves: LeafBox[];
+}
 
-  const branches = map.branches.map((b, i) => {
-    const angle   = i * sector - Math.PI / 2;
-    const bx      = CX + BRANCH_DIST * Math.cos(angle);
-    const by      = CY + BRANCH_DIST * Math.sin(angle);
-    const pal     = PALETTE[i % PALETTE.length];
-    const M       = b.children.length;
-    const spread  = M <= 1 ? 0 : Math.min(0.30, (sector * 0.68) / (M - 1));
-    const children = b.children.map((child, j) => {
-      const ca    = angle + (j - (M - 1) / 2) * spread;
-      const total = BRANCH_DIST + LEAF_EXTRA;
-      return { label: child, x: CX + total * Math.cos(ca), y: CY + total * Math.sin(ca) };
+function layoutMindMap(map: MindMap) {
+  // 1 — measure every node
+  const measured = map.branches.map((b, i) => {
+    const lines = splitLines(b.label, 16);
+    const hasIcon = !!(b.icon && b.icon.trim());
+    const w = Math.min(250, Math.max(140, maxLineW(lines, 14.5) + (hasIcon ? 40 : 0) + 44));
+    const h = lines.length > 1 ? 64 : 50;
+    const leaves: LeafBox[] = b.children.map((c) => {
+      const ll = splitLines(c, 22);
+      return {
+        label: c, lines: ll,
+        w: Math.min(270, Math.max(110, maxLineW(ll, 13) + 34)),
+        h: ll.length > 1 ? 54 : 40,
+        y: 0,
+      };
     });
-    return { ...b, x: bx, y: by, angle, pal, children };
+    const leavesH = leaves.reduce((s, l) => s + l.h, 0) + Math.max(0, leaves.length - 1) * LEAF_GAP;
+    return {
+      label: b.label, icon: hasIcon ? b.icon : "",
+      pal: PALETTE[i % PALETTE.length],
+      lines, w, h, leaves,
+      blockH: Math.max(h + 14, leavesH),
+      side: 1 as 1 | -1, x: 0, y: 0,
+    };
   });
+
+  // 2 — greedy side balancing (first branch on the right for RTL reading)
+  let rightH = 0, leftH = 0;
+  const right: typeof measured = [], left: typeof measured = [];
+  for (const m of measured) {
+    if (rightH <= leftH) { m.side = 1; right.push(m); rightH += m.blockH + BLOCK_GAP; }
+    else { m.side = -1; left.push(m); leftH += m.blockH + BLOCK_GAP; }
+  }
+  rightH -= right.length ? BLOCK_GAP : 0;
+  leftH  -= left.length ? BLOCK_GAP : 0;
+
+  // 3 — centre node size
+  const cLines = splitLines(map.center, 16, 3);
+  const cW = Math.min(340, Math.max(190, maxLineW(cLines, 19) + 64));
+  const cH = 66 + (cLines.length - 1) * 28;
+
+  // 4 — canvas size
+  const sideW = (arr: typeof measured) =>
+    arr.length ? Math.max(...arr.map((m) => m.w + H_GAP2 + Math.max(0, ...m.leaves.map((l) => l.w)))) : 0;
+  const halfW = cW / 2 + H_GAP1 + Math.max(sideW(right), sideW(left), 200);
+  const W = Math.ceil((halfW + MARGIN) * 2);
+  const H = Math.ceil(Math.max(rightH, leftH, cH + 80) + MARGIN * 2);
+  const CX = W / 2, CY = H / 2;
+
+  // 5 — vertical stacking per side + leaf positions
+  for (const [arr, total] of [[right, rightH], [left, leftH]] as const) {
+    let cursor = CY - total / 2;
+    for (const m of arr) {
+      m.y = cursor + m.blockH / 2;
+      m.x = CX + m.side * (cW / 2 + H_GAP1 + m.w / 2);
+      const leavesH = m.leaves.reduce((s, l) => s + l.h, 0) + Math.max(0, m.leaves.length - 1) * LEAF_GAP;
+      let ly = m.y - leavesH / 2;
+      for (const l of m.leaves) { l.y = ly + l.h / 2; ly += l.h + LEAF_GAP; }
+      cursor += m.blockH + BLOCK_GAP;
+    }
+  }
+
+  return { W, H, CX, CY, cW, cH, cLines, branches: measured as BranchBox[] };
+}
+
+/* Smooth horizontal S-curve between two points */
+const sCurve = (x1: number, y1: number, x2: number, y2: number) => {
+  const mx = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+};
+
+/* ── SVG Mind Map Renderer ───────────────────────────────────────────── */
+export function MindMapSVG({ map, isAr, variant = "screen" }: { map: MindMap; isAr: boolean; variant?: "screen" | "print" }) {
+  if (!map.branches.length) return null;
+  const L = layoutMindMap(map);
+  const { W, H, CX, CY } = L;
+  /* Unique def ids per instance — the hidden print copy must not shadow the
+     visible one (a filter/gradient referenced inside display:none renders
+     nothing, hiding every node). */
+  const uid = variant;
+  const ref = (id: string) => `url(#${id}-${uid})`;
 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-full"
+      className="w-full h-auto block"
       style={{ fontFamily: "inherit" }}
-      id="mindmap-svg"
+      id={variant === "screen" ? "mindmap-svg" : "mindmap-svg-print"}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        {/* Background gradient */}
-        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`bgGrad-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%"   stopColor={BG_LIGHT}  />
           <stop offset="100%" stopColor={BG_LIGHT2} />
         </linearGradient>
-        {/* Center gradient */}
-        <radialGradient id="cg" cx="38%" cy="32%" r="70%">
+        <linearGradient id={`cg-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%"   stopColor="#2d7050" />
           <stop offset="100%" stopColor={BRAND_GREEN} />
-        </radialGradient>
-        {/* Soft shadow for leaf nodes */}
-        <filter id="dropLeaf" x="-25%" y="-25%" width="150%" height="150%">
-          <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#00000022" />
+        </linearGradient>
+        <filter id={`dropLeaf-${uid}`} x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="3" floodColor="#0000001c" />
         </filter>
-        {/* Soft shadow for branch pills */}
-        <filter id="dropBranch" x="-25%" y="-25%" width="150%" height="150%">
-          <feDropShadow dx="0" dy="3" stdDeviation="6" floodColor="#00000028" />
+        <filter id={`dropBranch-${uid}`} x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="2.5" stdDeviation="5" floodColor="#00000026" />
         </filter>
-        {/* Soft shadow for center */}
-        <filter id="dropCenter" x="-35%" y="-35%" width="170%" height="170%">
-          <feDropShadow dx="0" dy="4" stdDeviation="10" floodColor="#22573940" />
+        <filter id={`dropCenter-${uid}`} x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="4" stdDeviation="10" floodColor="#22573945" />
         </filter>
       </defs>
 
-      {/* Background */}
-      <rect width={W} height={H} fill="url(#bgGrad)" rx="16" />
-
-      {/* Subtle dot grid */}
-      {Array.from({ length: 14 }, (_, r) =>
-        Array.from({ length: 20 }, (_, c) => (
-          <circle key={`${r}-${c}`}
-            cx={30 + c * 62} cy={30 + r * 62}
-            r="1.1" fill={GRID_DOT} fillOpacity="0.45"
-          />
+      {/* Background + subtle dot grid */}
+      <rect width={W} height={H} fill={ref("bgGrad")} rx="16" />
+      {Array.from({ length: Math.ceil(H / 64) }, (_, r) =>
+        Array.from({ length: Math.ceil(W / 64) }, (_, c) => (
+          <circle key={`${r}-${c}`} cx={32 + c * 64} cy={32 + r * 64}
+            r="1.1" fill={GRID_DOT} fillOpacity="0.4" />
         ))
       )}
 
-      {/* Subtle radial rings around centre */}
-      {[160, 200, 370, 420].map((r, i) => (
-        <circle key={i} cx={CX} cy={CY} r={r}
-          fill="none" stroke="#64748B" strokeWidth="0.5"
-          strokeOpacity={i < 2 ? "0.08" : "0.04"}
-          strokeDasharray={i >= 2 ? "5 9" : undefined}
-        />
-      ))}
-
-      {/* Connectors: centre → branch */}
-      {branches.map((b, i) => (
+      {/* Connectors: centre → branch (thick, tapering into branch colour) */}
+      {L.branches.map((b, i) => (
         <path key={`c-${i}`}
-          d={`M ${CX} ${CY} C ${CX + (b.x - CX) * 0.45} ${CY}, ${b.x - (b.x - CX) * 0.35} ${b.y}, ${b.x} ${b.y}`}
-          stroke={b.pal.bg} strokeWidth="2.5" strokeOpacity="0.55"
+          d={sCurve(CX + b.side * (L.cW / 2 - 8), CY, b.x - b.side * (b.w / 2), b.y)}
+          stroke={b.pal.bg} strokeWidth="3.5" strokeOpacity="0.6"
           fill="none" strokeLinecap="round"
         />
       ))}
 
       {/* Connectors: branch → leaf */}
-      {branches.map((b, i) =>
-        b.children.map((ch, j) => (
-          <path key={`cl-${i}-${j}`}
-            d={`M ${b.x} ${b.y} Q ${(b.x + ch.x) / 2} ${(b.y + ch.y) / 2} ${ch.x} ${ch.y}`}
-            stroke={b.pal.border} strokeWidth="1.5" strokeOpacity="0.35"
-            fill="none" strokeLinecap="round"
-          />
-        ))
+      {L.branches.map((b, i) =>
+        b.leaves.map((l, j) => {
+          const lx = b.x + b.side * (b.w / 2 + H_GAP2 + l.w / 2);
+          return (
+            <path key={`cl-${i}-${j}`}
+              d={sCurve(b.x + b.side * (b.w / 2), b.y, lx - b.side * (l.w / 2), l.y)}
+              stroke={b.pal.border} strokeWidth="1.8" strokeOpacity="0.45"
+              fill="none" strokeLinecap="round"
+            />
+          );
+        })
       )}
 
-      {/* Leaf nodes — white card with colour accent border + dark text */}
-      {branches.map((b, i) =>
-        b.children.map((ch, j) => {
-          const lines = splitLines(ch.label, 15);
-          const rw    = Math.min(108, Math.max(54, ch.label.length * 6.2));
-          const rh    = lines.length > 1 ? 30 : 22;
+      {/* Leaf cards — soft tinted card with colour accent on inner edge */}
+      {L.branches.map((b, i) =>
+        b.leaves.map((l, j) => {
+          const lx = b.x + b.side * (b.w / 2 + H_GAP2 + l.w / 2);
           return (
-            <g key={`leaf-${i}-${j}`} filter="url(#dropLeaf)">
-              {/* White card */}
+            <g key={`leaf-${i}-${j}`} filter={ref("dropLeaf")}>
+              <rect x={lx - l.w / 2} y={l.y - l.h / 2} width={l.w} height={l.h}
+                rx="11" fill="#FFFFFF" stroke={b.pal.border} strokeWidth="1.4" strokeOpacity="0.55" />
+              <rect x={lx - l.w / 2} y={l.y - l.h / 2} width={l.w} height={l.h}
+                rx="11" fill={b.pal.soft} fillOpacity="0.5" />
+              {/* Accent bar on the side facing the branch */}
               <rect
-                x={ch.x - rw} y={ch.y - rh}
-                width={rw * 2} height={rh * 2}
-                rx="10"
-                fill="#FFFFFF" fillOpacity="0.96"
-                stroke={b.pal.border} strokeWidth="1.8"
+                x={b.side === 1 ? lx - l.w / 2 : lx + l.w / 2 - 4}
+                y={l.y - l.h / 2 + 8} width="4" height={l.h - 16}
+                rx="2" fill={b.pal.bg} fillOpacity="0.9"
               />
-              {/* Top colour bar */}
-              <rect
-                x={ch.x - rw} y={ch.y - rh}
-                width={rw * 2} height="3"
-                rx="10" fill={b.pal.bg} fillOpacity="0.85"
-              />
-              {lines.map((ln, li) => (
-                <text key={li}
-                  x={ch.x}
-                  y={ch.y + (li - (lines.length - 1) / 2) * 16 + 1}
+              {l.lines.map((ln, li) => (
+                <text key={li} x={lx}
+                  y={l.y + (li - (l.lines.length - 1) / 2) * 17 + 1}
                   textAnchor="middle" dominantBaseline="middle"
-                  fontSize="12.5" fill="#1E293B" fontWeight="700"
-                  direction={isAr ? "rtl" : "ltr"}
-                  style={{ userSelect: "none" }}
-                >
-                  {ln}
-                </text>
+                  fontSize="13" fill="#1E293B" fontWeight="700"
+                  direction={isAr ? "rtl" : "ltr"} style={{ userSelect: "none" }}
+                >{ln}</text>
               ))}
             </g>
           );
         })
       )}
 
-      {/* Branch nodes — vivid pill with soft colour halo + white text */}
-      {branches.map((b, i) => {
-        const lines   = splitLines(b.label, 11);
-        const hasIcon = b.icon && b.icon.trim();
-        const totalH  = hasIcon ? 62 : 50;
-        return (
-          <g key={`br-${i}`} filter="url(#dropBranch)">
-            {/* Soft colour halo */}
-            <rect
-              x={b.x - 76} y={b.y - totalH / 2 - 5}
-              width="152" height={totalH + 10}
-              rx="24" fill={b.pal.bg} fillOpacity="0.18"
-            />
-            {/* Solid pill */}
-            <rect
-              x={b.x - 68} y={b.y - totalH / 2}
-              width="136" height={totalH}
-              rx="18" fill={b.pal.bg}
-            />
-            {/* Subtle shine */}
-            <rect
-              x={b.x - 68} y={b.y - totalH / 2}
-              width="136" height={totalH / 2}
-              rx="18" fill="white" fillOpacity="0.15"
-            />
-            {hasIcon && (
-              <text x={b.x} y={b.y - totalH / 2 + 18}
-                textAnchor="middle" dominantBaseline="middle" fontSize="15"
-              >{b.icon}</text>
-            )}
-            {lines.map((ln, li) => (
-              <text key={li}
-                x={b.x}
-                y={b.y + (hasIcon ? 9 : 0) + (li - (lines.length - 1) / 2) * 15}
-                textAnchor="middle" dominantBaseline="middle"
-                fontSize="13" fill="#FFFFFF" fontWeight="800"
-                direction={isAr ? "rtl" : "ltr"}
-                style={{ userSelect: "none" }}
-              >
-                {ln}
-              </text>
-            ))}
-          </g>
-        );
-      })}
-
-      {/* Centre glow ring */}
-      <circle cx={CX} cy={CY} r={CENTER_R + 18}
-        fill={BRAND_GREEN} fillOpacity="0.14" filter="url(#dropCenter)"
-      />
-
-      {/* Centre node */}
-      <circle cx={CX} cy={CY} r={CENTER_R} fill="url(#cg)" />
-      <circle cx={CX} cy={CY - CENTER_R * 0.26} r={CENTER_R * 0.62}
-        fill="white" fillOpacity="0.10"
-      />
-
-      {/* Centre text */}
-      {splitLines(map.center, 10).map((ln, i, arr) => (
-        <text key={i}
-          x={CX} y={CY + (i - (arr.length - 1) / 2) * 21}
-          textAnchor="middle" dominantBaseline="middle"
-          fontSize="18" fill="#FFFFFF" fontWeight="900"
-          direction={isAr ? "rtl" : "ltr"}
-          style={{ userSelect: "none" }}
-        >
-          {ln}
-        </text>
+      {/* Branch pills — vivid colour, icon inline with label */}
+      {L.branches.map((b, i) => (
+        <g key={`br-${i}`} filter={ref("dropBranch")}>
+          <rect x={b.x - b.w / 2 - 5} y={b.y - b.h / 2 - 5}
+            width={b.w + 10} height={b.h + 10}
+            rx="20" fill={b.pal.bg} fillOpacity="0.16" />
+          <rect x={b.x - b.w / 2} y={b.y - b.h / 2} width={b.w} height={b.h}
+            rx="15" fill={b.pal.bg} />
+          <rect x={b.x - b.w / 2} y={b.y - b.h / 2} width={b.w} height={b.h / 2}
+            rx="15" fill="white" fillOpacity="0.14" />
+          {b.lines.map((ln, li) => (
+            <text key={li} x={b.x}
+              y={b.y + (li - (b.lines.length - 1) / 2) * 18}
+              textAnchor="middle" dominantBaseline="middle"
+              fontSize="14.5" fill="#FFFFFF" fontWeight="800"
+              direction={isAr ? "rtl" : "ltr"} style={{ userSelect: "none" }}
+            >{li === 0 && b.icon ? `${b.icon} ${ln}` : ln}</text>
+          ))}
+        </g>
       ))}
+
+      {/* Centre node — rounded rectangle */}
+      <g filter={ref("dropCenter")}>
+        <rect x={CX - L.cW / 2 - 7} y={CY - L.cH / 2 - 7}
+          width={L.cW + 14} height={L.cH + 14}
+          rx="26" fill={BRAND_GREEN} fillOpacity="0.15" />
+        <rect x={CX - L.cW / 2} y={CY - L.cH / 2} width={L.cW} height={L.cH}
+          rx="20" fill={ref("cg")} />
+        <rect x={CX - L.cW / 2} y={CY - L.cH / 2} width={L.cW} height={L.cH / 2}
+          rx="20" fill="white" fillOpacity="0.10" />
+        {L.cLines.map((ln, i) => (
+          <text key={i} x={CX}
+            y={CY + (i - (L.cLines.length - 1) / 2) * 24}
+            textAnchor="middle" dominantBaseline="middle"
+            fontSize="19" fill="#FFFFFF" fontWeight="900"
+            direction={isAr ? "rtl" : "ltr"} style={{ userSelect: "none" }}
+          >{ln}</text>
+        ))}
+      </g>
     </svg>
   );
 }
@@ -334,7 +365,28 @@ export default function MindMapCreate() {
   }, [topic, lang, depth, isAr]);
 
   const handleExample = (ex: string) => { setTopic(ex); generate(ex); };
-  const handlePrint   = () => window.print();
+  /* ── Print / PDF — isolated iframe so app CSS can't blank the page ── */
+  const handlePrint = useCallback(() => {
+    const svgEl = document.getElementById("mindmap-svg") as SVGSVGElement | null;
+    if (!svgEl || !map) return;
+    const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    clone.removeAttribute("class");
+    clone.setAttribute("style", "width:100%;height:auto;max-height:100vh;display:block");
+    const html = `<!doctype html><html dir="${isAr ? "rtl" : "ltr"}"><head><meta charset="utf-8">
+      <title>${map.center || (isAr ? "خريطة ذهنية" : "Mind map")}</title>
+      <style>@page{size:landscape;margin:8mm}body{margin:0;font-family:system-ui,sans-serif;background:${BG_LIGHT}}</style>
+      </head><body>${new XMLSerializer().serializeToString(clone)}</body></html>`;
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "position:fixed;right:100%;bottom:100%;width:0;height:0;border:0";
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument!;
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      setTimeout(() => frame.remove(), 60000);
+    }, 250);
+  }, [map, isAr]);
 
   /* ── Copy as text ─────────────────────────────────────────────────── */
   const handleCopyText = () => {
@@ -361,6 +413,8 @@ export default function MindMapCreate() {
       const scale = 2;
       /* Clone the SVG and set explicit pixel dimensions so the browser
          renders the full viewBox instead of the CSS-shrunk display size. */
+      const vb = (svgEl.getAttribute("viewBox") || "0 0 1400 900").split(" ").map(Number);
+      const W = vb[2], H = vb[3];
       const clone = svgEl.cloneNode(true) as SVGSVGElement;
       clone.setAttribute("width",  String(W));
       clone.setAttribute("height", String(H));
@@ -406,9 +460,10 @@ export default function MindMapCreate() {
     const svgEl = document.getElementById("mindmap-svg") as SVGSVGElement | null;
     if (!svgEl || !map) return;
     /* Same fix: explicit dimensions so the exported file has a known size. */
+    const vb = (svgEl.getAttribute("viewBox") || "0 0 1400 900").split(" ").map(Number);
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
-    clone.setAttribute("width",  String(W));
-    clone.setAttribute("height", String(H));
+    clone.setAttribute("width",  String(vb[2]));
+    clone.setAttribute("height", String(vb[3]));
     const svgData = new XMLSerializer().serializeToString(clone);
     const blob    = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
     const a       = document.createElement("a");
@@ -426,22 +481,6 @@ export default function MindMapCreate() {
 
   return (
     <>
-      {/* Print CSS */}
-      <style>{`
-        @media print {
-          body > *:not(#mindmap-print-area) { display: none !important; }
-          #mindmap-print-area { display: block !important; position: fixed; inset: 0; background: ${BG_LIGHT}; }
-          #mindmap-print-area svg { width: 100vw; height: 100vh; }
-        }
-      `}</style>
-
-      {/* Hidden print target */}
-      {map && (
-        <div id="mindmap-print-area" style={{ display: "none" }}>
-          <MindMapSVG map={map} isAr={isAr} />
-        </div>
-      )}
-
       <div dir={isAr ? "rtl" : "ltr"} className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
 
         {/* Top bar */}
@@ -738,7 +777,7 @@ export default function MindMapCreate() {
                 {/* SVG canvas */}
                 <div
                   className="rounded-2xl overflow-hidden shadow-2xl"
-                  style={{ aspectRatio: `${W} / ${H}`, background: BG_LIGHT }}
+                  style={{ background: BG_LIGHT }}
                 >
                   <MindMapSVG map={map} isAr={isAr} />
                 </div>

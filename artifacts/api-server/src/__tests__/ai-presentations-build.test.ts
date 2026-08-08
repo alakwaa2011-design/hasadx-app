@@ -55,6 +55,13 @@ vi.mock("@workspace/db", () => {
   };
 });
 
+vi.mock("../lib/check-credits", () => ({
+  checkCredits: () => (_req: any, _res: any, next: any) => next(),
+  captureCredits: async () => {},
+  refundCredits: async () => {},
+  invalidateCreditsSettingsCache: () => {},
+}));
+
 vi.mock("../lib/materialize-slide", async (importOriginal) => {
   const orig = await importOriginal<typeof import("../lib/materialize-slide")>();
   return {
