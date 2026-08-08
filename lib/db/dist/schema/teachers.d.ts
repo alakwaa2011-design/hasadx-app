@@ -617,6 +617,40 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        emailVerifyToken: import("drizzle-orm/pg-core").PgColumn<{
+            name: "email_verify_token";
+            tableName: "teachers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        emailVerifyTokenExpiresAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "email_verify_token_expires_at";
+            tableName: "teachers";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
     };
     dialect: "pg";
 }>;
@@ -655,6 +689,8 @@ export declare const insertTeacherSchema: z.ZodObject<{
     otpExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     verifiedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     emailVerified: z.ZodOptional<z.ZodBoolean>;
+    emailVerifyToken: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    emailVerifyTokenExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
 }, {
     out: {};
     in: {};

@@ -9,7 +9,30 @@ import { esc, safeUrl } from "./html-escape";
 export function buildOtpEmail(
   name: string,
   otp: string,
+  verifyLink?: string,
 ): { html: string; text: string } {
+  // One-click button block (shown only when a verify link is provided, i.e. email channel)
+  const buttonBlock = verifyLink
+    ? `
+          <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px">
+            اضغط على الزر أدناه لتأكيد بريدك الإلكتروني والدخول إلى المنصة مباشرة:
+          </p>
+          <div style="text-align:center;margin:0 0 28px">
+            <a href="${safeUrl(verifyLink)}"
+               style="display:inline-block;background:linear-gradient(135deg,#1e5238,#2a6647);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:12px;font-size:16px;font-weight:900;letter-spacing:0.5px">
+              تأكيد البريد الإلكتروني
+            </a>
+          </div>
+          <p style="font-size:13px;color:#888;text-align:center;margin:0 0 24px">
+            الرابط صالح لمدة <strong>30 دقيقة</strong> ويمكن استخدامه مرة واحدة فقط.
+          </p>
+          <hr style="border:none;border-top:1px solid #ebebeb;margin:0 0 24px"/>
+          <p style="font-size:13px;color:#888;text-align:center;margin:0 0 12px">
+            إذا لم يعمل الزر، يمكنك استخدام رمز التحقق التالي يدوياً:
+          </p>`
+    : `
+          <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 28px">شكراً لتسجيلك في منصة حصاد. أدخل الرمز التالي لتفعيل حسابك:</p>`;
+
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head><meta charset="UTF-8"/></head>
@@ -22,7 +45,7 @@ export function buildOtpEmail(
         </td></tr>
         <tr><td style="padding:40px">
           <p style="font-size:16px;color:#1a1a1a;margin:0 0 8px">مرحباً ${esc(name)}،</p>
-          <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 28px">شكراً لتسجيلك في منصة حصاد. أدخل الرمز التالي لتفعيل حسابك:</p>
+          ${buttonBlock}
           <div style="text-align:center;margin:0 0 28px">
             <div style="display:inline-block;background:#f0f9f0;border:2px solid #1e5238;border-radius:12px;padding:16px 40px">
               <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#1e5238;font-family:monospace">${esc(otp)}</span>
@@ -38,7 +61,12 @@ export function buildOtpEmail(
   </table>
 </body>
 </html>`;
-  const text = `مرحباً ${name}،\n\nرمز التحقق من حسابك في منصة حصاد هو:\n\n${otp}\n\nهذا الرمز صالح لمدة 30 دقيقة. لا تشاركه مع أحد.`;
+
+  const textLink = verifyLink
+    ? `\nرابط التحقق المباشر (صالح 30 دقيقة، مرة واحدة):\n${verifyLink}\n\nأو استخدم رمز التحقق يدوياً:\n`
+    : `\nرمز التحقق:\n`;
+
+  const text = `مرحباً ${name}،\n\nشكراً لتسجيلك في منصة حصاد.${textLink}\n${otp}\n\nهذا الرمز صالح لمدة 30 دقيقة. لا تشاركه مع أحد.`;
   return { html, text };
 }
 

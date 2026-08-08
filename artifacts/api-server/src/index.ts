@@ -317,6 +317,12 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS verified_at        TIMESTAMP,
         ADD COLUMN IF NOT EXISTS email_verified     BOOLEAN NOT NULL DEFAULT FALSE
     `);
+    // One-click email verification token (complement to OTP; same TTL, single-use).
+    await db.execute(sql`
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS email_verify_token            TEXT,
+        ADD COLUMN IF NOT EXISTS email_verify_token_expires_at TIMESTAMP
+    `);
     await db.execute(sql`
       ALTER TABLE teachers
         ADD COLUMN IF NOT EXISTS school_logo TEXT

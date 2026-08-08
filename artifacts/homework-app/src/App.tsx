@@ -19,6 +19,7 @@ const Auth = lazy(() => import("@/pages/auth"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const VerifyAccount = lazy(() => import("@/pages/verify-account"));
+const VerifyEmail = lazy(() => import("@/pages/verify-email"));
 const TeacherDashboard = lazy(() => import("@/pages/teacher/dashboard"));
 const OrganizerDashboard = lazy(() => import("@/pages/organizer/dashboard"));
 const CreateAssignment = lazy(() => import("@/pages/teacher/create-assignment"));
@@ -278,6 +279,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/verify-account" component={VerifyAccount} />
+        <Route path="/verify-email" component={VerifyEmail} />
         
         {/* Teacher Routes — most specific `/teacher/*` paths first; dashboard `/teacher` last */}
         {/* مسابقة ذاتية — standalone solo challenge management */}

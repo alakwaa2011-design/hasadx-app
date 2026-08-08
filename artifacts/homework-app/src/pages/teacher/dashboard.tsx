@@ -512,6 +512,14 @@ export default function TeacherDashboard() {
     setAssignmentGamePickerId(assignmentId);
   };
 
+  // فتح إعداد وميض مباشرة (بدون المرور بنافذة اختيار اللعبة)
+  const openWameethSetup = (assignmentId: number) => {
+    setGameMode("solo");
+    setTeamCount(2);
+    setCustomTeamNames(["", "", "", "", "", ""]);
+    setGameSetupModal(assignmentId);
+  };
+
   const handleAssignmentGameChoice = (choice: AssignmentLiveGameChoice) => {
     const id = assignmentGamePickerId;
     if (id == null) return;
@@ -833,6 +841,7 @@ export default function TeacherDashboard() {
             mcqAssignments={mcqAssignments}
             creatingGameForId={creatingGameForId}
             startGame={openGameSetup}
+            openWameethSetup={openWameethSetup}
             initialOpenWameeth={openWameethDeepLink}
             onConsumeWameethDeepLink={consumeWameethDeepLink}
           />
@@ -1944,6 +1953,7 @@ function CompetitiveTab({
   mcqAssignments,
   creatingGameForId,
   startGame,
+  openWameethSetup,
   initialOpenWameeth,
   onConsumeWameethDeepLink,
 }: any) {
@@ -2528,7 +2538,8 @@ function CompetitiveTab({
                         key={assignment.id}
                         onClick={() => {
                           setShowWameethModal(false);
-                          startGame(assignment.id);
+                          // فتح إعداد وميض مباشرة دون المرور بنافذة اختيار اللعبة
+                          openWameethSetup(assignment.id);
                         }}
                         disabled={creatingGameForId === assignment.id}
                         className="text-start p-4 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/[0.03] hover:shadow-md transition-all group disabled:opacity-60"

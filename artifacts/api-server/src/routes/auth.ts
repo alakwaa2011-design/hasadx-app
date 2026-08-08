@@ -349,6 +349,9 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     const otp = generateOtp();
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
 
+    // Generate a one-click verification token for email accounts
+    const rawVerifyToken = body.email ? crypto.randomBytes(32).toString("hex") : null;
+
     const [teacher] = await db
       .insert(teachersTable)
       .values({
@@ -359,6 +362,8 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         role: requestedRole,
         verificationOtp: otp,
         otpExpiresAt,
+        emailVerifyToken: rawVerifyToken,
+        emailVerifyTokenExpiresAt: rawVerifyToken ? otpExpiresAt : null,
         acquisitionSource: (body as any).acquisitionSource || null,
         acquisitionMedium: (body as any).acquisitionMedium || null,
         acquisitionCampaign: (body as any).acquisitionCampaign || null,
@@ -373,10 +378,11 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     const channel = body.email ? "email" : "sms";
 
     if (channel === "email") {
-      const { html, text } = buildOtpEmail(teacher.name, otp);
+      const verifyLink = rawVerifyToken ? buildVerifyEmailUrl(req, rawVerifyToken) : undefined;
+      const { html, text } = buildOtpEmail(teacher.name, otp, verifyLink);
       void sendEmail({
         to: body.email!,
-        subject: "رمز تفعيل حساب حصاد",
+        subject: "تأكيد البريد الإلكتروني — منصة حصاد",
         html,
         text,
       }).catch((err) => req.log.error({ err }, "OTP email send failed"));
@@ -706,6 +712,14 @@ router.patch("/auth/change-password", async (req, res) => {
     res.status(500).json({ message: "خطأ في تغيير كلمة السر" });
   }
 });
+
+function buildVerifyEmailUrl(req: any, token: string): string {
+  const configured = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (configured) return `${configured}/verify-email?token=${token}`;
+  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "";
+  return `${proto}://${host}/verify-email?token=${token}`;
+}
 
 function buildResetUrl(req: any, token: string): string {
   const configured = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -1409,6 +1423,85 @@ router.post("/auth/google", authLimiter, async (req, res) => {
   }
 });
 
+// ── GET /auth/verify-email?token=... ──────────────────────────────────────
+// One-click email verification via the link sent in the OTP email.
+// Security: token is unique, short-lived, single-use, server-side validated.
+// The token is NOT tied to any user-supplied ID — the DB lookup is by token value only.
+router.get("/auth/verify-email", authLimiter, async (req, res) => {
+  try {
+    const token = String(req.query.token ?? "").trim();
+    if (!token || token.length < 10) {
+      res.status(400).json({ message: "رابط التحقق غير صالح" });
+      return;
+    }
+
+    const [teacher] = await db
+      .select()
+      .from(teachersTable)
+      .where(eq(teachersTable.emailVerifyToken, token))
+      .limit(1);
+
+    if (!teacher) {
+      res.status(400).json({ message: "رابط التحقق غير صالح أو تم استخدامه مسبقاً", invalid: true });
+      return;
+    }
+
+    if (teacher.emailVerified) {
+      // Already verified — create a session and let them in
+      req.session.teacherId = teacher.id;
+      stampTeacherSession(req);
+      res.json({ ok: true, alreadyVerified: true, teacher: { id: teacher.id, name: teacher.name, email: teacher.email, role: teacher.role, isAdmin: teacher.isAdmin } });
+      return;
+    }
+
+    if (!teacher.emailVerifyTokenExpiresAt || new Date() > teacher.emailVerifyTokenExpiresAt) {
+      // Expired — clear the stale token but keep OTP so user can still use it
+      await db.update(teachersTable)
+        .set({ emailVerifyToken: null, emailVerifyTokenExpiresAt: null })
+        .where(eq(teachersTable.id, teacher.id));
+      res.status(410).json({ message: "انتهت صلاحية رابط التحقق. اطلب رمزاً جديداً", expired: true });
+      return;
+    }
+
+    // Mark as verified, clear both token and OTP, establish session
+    const [verified] = await db
+      .update(teachersTable)
+      .set({
+        verifiedAt: new Date(),
+        emailVerified: true,
+        verificationOtp: null,
+        otpExpiresAt: null,
+        emailVerifyToken: null,
+        emailVerifyTokenExpiresAt: null,
+        lastLoginAt: new Date(),
+      })
+      .where(eq(teachersTable.id, teacher.id))
+      .returning();
+
+    delete req.session.studentAccountId;
+    req.session.teacherId = verified.id;
+    stampTeacherSession(req);
+
+    void detectAndSaveCountry(verified.id, req);
+    void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "email-verify-link" } });
+
+    res.json({
+      ok: true,
+      teacher: {
+        id: verified.id,
+        name: verified.name,
+        email: verified.email,
+        phone: verified.phone,
+        role: verified.role,
+        isAdmin: verified.isAdmin,
+      },
+    });
+  } catch (err: any) {
+    req.log.error({ err }, "verify-email-link error");
+    res.status(500).json({ message: "خطأ في التحقق" });
+  }
+});
+
 // ── POST /auth/verify-otp ──────────────────────────────────────────────────
 const VerifyOtpSchema = z.object({
   identifier: z.string().min(1).max(320),
@@ -1525,16 +1618,23 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
 
     const otp = generateOtp();
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+    const rawVerifyToken = teacher.email ? crypto.randomBytes(32).toString("hex") : null;
 
     await db
       .update(teachersTable)
-      .set({ verificationOtp: otp, otpExpiresAt })
+      .set({
+        verificationOtp: otp,
+        otpExpiresAt,
+        emailVerifyToken: rawVerifyToken,
+        emailVerifyTokenExpiresAt: rawVerifyToken ? otpExpiresAt : null,
+      })
       .where(eq(teachersTable.id, teacher.id));
 
     const channel = teacher.email ? "email" : "sms";
     if (channel === "email") {
-      const { html, text } = buildOtpEmail(teacher.name, otp);
-      void sendEmail({ to: teacher.email!, subject: "رمز تفعيل حساب حصاد", html, text })
+      const verifyLink = rawVerifyToken ? buildVerifyEmailUrl(req, rawVerifyToken) : undefined;
+      const { html, text } = buildOtpEmail(teacher.name, otp, verifyLink);
+      void sendEmail({ to: teacher.email!, subject: "تأكيد البريد الإلكتروني — منصة حصاد", html, text })
         .catch((err) => req.log.error({ err }, "OTP resend email failed"));
     } else if (isSmsConfigured() && teacher.phone) {
       void sendSms(teacher.phone, `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`)

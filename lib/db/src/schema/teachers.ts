@@ -51,6 +51,10 @@ export const teachersTable = pgTable("teachers", {
   // True only after completing the OTP flow (or Google login which is always verified).
   // Legacy accounts grandfathered in have this false — they see a soft nudge banner.
   emailVerified: boolean("email_verified").notNull().default(false),
+  // One-click email verification token (sent as a link in the OTP email).
+  // Short-lived (same TTL as OTP), single-use, server-validated.
+  emailVerifyToken: text("email_verify_token"),
+  emailVerifyTokenExpiresAt: timestamp("email_verify_token_expires_at"),
 });
 
 export const insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });
