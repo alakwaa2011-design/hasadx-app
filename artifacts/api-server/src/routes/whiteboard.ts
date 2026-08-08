@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { z } from "zod";
 import {
   geocodeMemCache,
@@ -229,7 +230,7 @@ const generateBody = z.object({
   depth: z.enum(["brief", "standard", "detailed"]).default("standard"),
 });
 
-router.post("/whiteboard/generate", requireTeacher, async (req, res) => {
+router.post("/whiteboard/generate", requireTeacher, checkCredits("whiteboard"), async (req, res) => {
   try {
     const body = generateBody.parse(req.body);
     const tier: AiTier = await resolveTier(req.session.teacherId as number);
@@ -253,8 +254,10 @@ router.post("/whiteboard/generate", requireTeacher, async (req, res) => {
       req.log.warn({ issues: validated.error.issues }, "whiteboard generate schema mismatch");
       res.status(500).json({ message: "تعذّر توليد خطة الدرس" }); return;
     }
+    await captureCredits(req);
     res.json({ plan: validated.data });
   } catch (err: any) {
+    await refundCredits(req, "فشل توليد السبورة");
     if (err?.issues) { res.status(400).json({ message: "إدخال غير صالح" }); return; }
     req.log.error({ err }, "whiteboard generate failed");
     res.status(500).json({ message: "تعذّر توليد خطة الدرس" });

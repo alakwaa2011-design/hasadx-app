@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 
 const router: IRouter = Router();
 
@@ -16,7 +17,7 @@ const BRANCH_COLORS = [
   "#0284C7",
 ];
 
-router.post("/ai/generate-mindmap", async (req, res) => {
+router.post("/ai/generate-mindmap", checkCredits("mindmap"), async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول" });
     return;
@@ -120,11 +121,13 @@ Return ONLY this exact JSON:
       };
     }).filter((b) => b.label.trim().length > 0);
 
+    await captureCredits(req);
     res.json({
       center: String(parsed.center ?? topic.trim()).slice(0, 60),
       branches,
     });
   } catch (err) {
+    await refundCredits(req, "فشل توليد الخريطة الذهنية");
     req.log.error({ err }, "Mind map generation failed");
     res.status(500).json({ message: "فشل توليد الخريطة الذهنية، يرجى المحاولة مجدداً" });
   }

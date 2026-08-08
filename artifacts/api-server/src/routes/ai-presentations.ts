@@ -6,6 +6,7 @@
 import crypto from "node:crypto";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { z, ZodError } from "zod";
 import {
   db,
@@ -338,7 +339,7 @@ router.get("/presentations/ai/limits", requireTeacher, async (req, res) => {
 
 /* ── POST /api/presentations/ai/outline — Step 1 → Step 2 generation.
    Tier-gated, density-gated, slide-count-gated, rate-limited. */
-router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter, async (req, res) => {
+router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter, checkCredits("presentation"), async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
     let brief = briefSchema.parse(req.body) as OutlineBrief;
@@ -572,11 +573,13 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       })
       .returning();
 
+    await captureCredits(req);
     res.status(201).json({
       ...row,
       guardrails: { feedback: report.feedback, usedCache },
     });
   } catch (err) {
+    await refundCredits(req, "فشل توليد مخطط العرض");
     if (err instanceof ZodError) {
       res.status(400).json({ message: "Invalid brief", issues: err.issues });
       return;
@@ -766,7 +769,7 @@ const buildCancelFlags = new Map<number, { cancelled: boolean }>();
      • Cancel is supported via a sibling endpoint that flips an
        in-memory flag; the build loop returns early and persists
        whatever slides were already validated. */
-router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res) => {
+router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("presentation"), async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
     const draftId = parseInt(String(req.params.draftId), 10);
@@ -1044,6 +1047,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
       })
       .where(eq(presentationDraftsTable.id, draftId));
 
+    await captureCredits(req);
     res.status(201).json({
       presentationId: deck.id,
       warnings,
@@ -1052,6 +1056,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
       alreadyBuilt: false,
     });
   } catch (err) {
+    await refundCredits(req, "فشل بناء العرض التقديمي");
     if (err instanceof ZodError) {
       res.status(400).json({ message: "Invalid build body", issues: err.issues });
       return;

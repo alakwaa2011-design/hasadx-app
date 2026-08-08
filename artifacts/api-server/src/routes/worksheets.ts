@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, worksheetsTable, teachersTable } from "@workspace/db";
 import { and, desc, eq, or } from "drizzle-orm";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
@@ -379,7 +380,7 @@ const aiGenerateBody = z.object({
   counts: countsSchema,
 });
 
-router.post("/worksheets/ai/generate", requireTeacher, async (req, res) => {
+router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet"), async (req, res) => {
   let language: "ar" | "en" = "ar";
   try {
     const teacherId = req.session.teacherId as number;
@@ -411,8 +412,10 @@ router.post("/worksheets/ai/generate", requireTeacher, async (req, res) => {
       res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
       return;
     }
+    await captureCredits(req);
     res.json({ questions: validated.data });
   } catch (err: any) {
+    await refundCredits(req, "فشل توليد الورقة العمل");
     if (err?.issues) {
       res.status(400).json({ message: language === "ar" ? "إدخال غير صالح" : "Invalid input", issues: err.issues });
       return;

@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, teachersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { imageUploadLimiter } from "../lib/rate-limiter";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 
 const router: IRouter = Router();
 
@@ -12,7 +13,7 @@ const MAX_SUBJECT_LENGTH = 200;
 const MIN_QUESTIONS = 1;
 const MAX_QUESTIONS = 30;
 
-router.post("/ai/generate-questions", async (req, res) => {
+router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول" });
     return;
@@ -117,8 +118,10 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
       return;
     }
 
+    await captureCredits(req);
     res.json({ questions: validQuestions });
   } catch (error: any) {
+    await refundCredits(req, "خطأ في توليد الأسئلة");
     req.log.error({ err: error }, "AI question generation error");
     res.status(500).json({ message: "خطأ في توليد الأسئلة. يرجى المحاولة مرة أخرى." });
   }

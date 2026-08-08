@@ -79,6 +79,15 @@ export const platformSettingsTable = pgTable("platform_settings", {
      the admin supply custom values / labels instead of the live DB counts. */
   showPublicStats: boolean("show_public_stats").notNull().default(false),
   publicStatsOverride: jsonb("public_stats_override").$type<PublicStatsOverride | null>(),
+  /* ── Credits system ───────────────────────────────────────────────────────────
+     Global ON/OFF switch. When false (default) the entire credits system is a
+     no-op: no balances shown, no deductions, zero UX change for teachers.
+     adminCreditTestMode lets the admin account test credits without flipping the
+     global switch. welcomeCredits is auto-granted on first login when the system
+     is ON (wired but not yet fired until activation). */
+  creditsEnabled:       boolean("credits_enabled").notNull().default(false),
+  welcomeCredits:       integer("welcome_credits").notNull().default(120),
+  adminCreditTestMode:  boolean("admin_credit_test_mode").notNull().default(false),
 });
 
 export type PublicStatsOverride = {

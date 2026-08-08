@@ -321,9 +321,119 @@ async function runSchemaMigrations() {
       ALTER TABLE teachers
         ADD COLUMN IF NOT EXISTS school_logo TEXT
     `);
+    // ── Credits system — platform_settings columns ────────────────────────────
+    await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS credits_enabled       BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS welcome_credits       INTEGER NOT NULL DEFAULT 120,
+        ADD COLUMN IF NOT EXISTS admin_credit_test_mode BOOLEAN NOT NULL DEFAULT FALSE
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");
+  }
+
+  // ── Credits system — tables ──────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_tool_prices (
+        tool_key               TEXT PRIMARY KEY,
+        tool_name_ar           TEXT NOT NULL,
+        category               TEXT NOT NULL DEFAULT 'ai',
+        credits_cost           INTEGER NOT NULL DEFAULT 0,
+        default_credits_cost   INTEGER NOT NULL DEFAULT 0,
+        is_credit_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+        timeout_seconds        INTEGER NOT NULL DEFAULT 60,
+        estimated_api_cost_usd NUMERIC(10,6),
+        updated_by             INTEGER,
+        updated_at             TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_accounts (
+        teacher_id   INTEGER PRIMARY KEY,
+        balance      INTEGER NOT NULL DEFAULT 0,
+        total_earned INTEGER NOT NULL DEFAULT 0,
+        total_spent  INTEGER NOT NULL DEFAULT 0,
+        updated_at   TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_transactions (
+        id         SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL,
+        amount     INTEGER NOT NULL,
+        type       TEXT NOT NULL,
+        reason     TEXT,
+        tool_key   TEXT,
+        request_id TEXT UNIQUE,
+        status     TEXT NOT NULL DEFAULT 'completed',
+        admin_id   INTEGER,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_transactions_teacher_idx ON credit_transactions(teacher_id, created_at DESC)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_transactions_type_idx   ON credit_transactions(type, tool_key)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_holds (
+        id              SERIAL PRIMARY KEY,
+        teacher_id      INTEGER NOT NULL,
+        tool_key        TEXT NOT NULL,
+        credits_held    INTEGER NOT NULL,
+        request_id      TEXT NOT NULL UNIQUE,
+        status          TEXT NOT NULL DEFAULT 'pending',
+        timeout_seconds INTEGER NOT NULL DEFAULT 60,
+        created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+        completed_at    TIMESTAMP,
+        refunded_at     TIMESTAMP
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_holds_pending_idx ON credit_holds(status, created_at)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_packages (
+        id             SERIAL PRIMARY KEY,
+        price_usd_cents INTEGER NOT NULL,
+        credits        INTEGER NOT NULL,
+        sort_order     INTEGER NOT NULL DEFAULT 0,
+        is_visible     BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    // ── Seed default tool prices (INSERT only — never overwrite customized values) ──
+    await db.execute(sql`
+      INSERT INTO credit_tool_prices (tool_key, tool_name_ar, category, credits_cost, default_credits_cost, timeout_seconds)
+      VALUES
+        ('whiteboard',       'السبورة الذكية',          'ai',     5,  5,  120),
+        ('mindmap',          'الخريطة الذهنية',         'ai',     5,  5,  120),
+        ('ai-questions',     'توليد أسئلة AI',          'ai',    10, 10,  120),
+        ('ai-image',         'توليد صورة AI',           'ai',    10, 10,   60),
+        ('worksheet',        'ورقة العمل',              'ai',    15, 15,  120),
+        ('lesson-plan',      'خطة الدرس',               'ai',    15, 15,  120),
+        ('pdf-to-questions', 'استخراج أسئلة من PDF',    'ai',    15, 15,  120),
+        ('presentation',     'العرض التقديمي',           'ai',    20, 20,  300),
+        ('video-interactive','الفيديو التفاعلي',         'ai',    20, 20,  180),
+        ('adaptive-test',    'الاختبار التكيّفي',        'ai',    20, 20,  120),
+        ('arena',            'ميدان التحدي',            'game',   0,  0,   60),
+        ('hack',             'لعبة هاك',                'game',   0,  0,   60),
+        ('solo',             'التحدي الفردي',           'game',   0,  0,   60),
+        ('flags',            'لعبة الأعلام',            'game',   0,  0,   60),
+        ('colors',           'لعبة الألوان',            'game',   0,  0,   60),
+        ('memory',           'الذاكرة',                 'game',   0,  0,   60),
+        ('multiply',         'الضرب السريع',            'game',   0,  0,   60),
+        ('scramble',         'الكلمات المبعثرة',        'game',   0,  0,   60),
+        ('capitals',         'عواصم العالم',            'game',   0,  0,   60),
+        ('million',          'من سيربح المليون',        'game',   0,  0,   60),
+        ('stroop',           'اختبار ستروب',            'game',   0,  0,   60),
+        ('secret-game',      'اكتشف السر',              'game',   0,  0,   60),
+        ('letrly',           'كلمة اليوم',              'game',   0,  0,   60),
+        ('assignments',      'الواجبات',               'tool',    0,  0,   60),
+        ('video-lessons',    'دروس الفيديو',            'tool',    0,  0,   60)
+      ON CONFLICT (tool_key) DO NOTHING
+    `);
+    logger.info("Credits tables ready");
+  } catch (err) {
+    logger.error(err, "Credits table migration failed");
   }
 
   // ── Solo Challenge Links — isolated block so earlier failures don't block it ──
@@ -759,6 +869,18 @@ httpServer.listen(port, () => {
       startActivityLogsCleanupJob();
       startOnlineSessionsCleanupJob();
       startEmailOutboxWorker();
+
+      // ── Credits: auto-refund stale holds every 60s ─────────────────────────
+      import("./lib/credit-service").then(({ CreditService }) => {
+        setInterval(() => {
+          CreditService.autoRefundStaleHolds().catch((err) => {
+            logger.warn({ err }, "Auto-refund stale holds failed");
+          });
+        }, 60_000);
+        logger.info("Credits auto-refund cron started");
+      }).catch((err) => {
+        logger.warn({ err }, "Failed to start credits auto-refund cron");
+      });
     })
     .catch((err) => {
       logger.error(err, "Post-startup migrations/seeds failed");

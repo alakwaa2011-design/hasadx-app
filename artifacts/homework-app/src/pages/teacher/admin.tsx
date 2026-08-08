@@ -8,9 +8,10 @@ import {
   Mail, BarChart3, HelpCircle, UserX, Crown, Eye, ChevronDown, Copy,
   Globe, FileText, Settings2, Palette, RotateCcw, Type, Link2, Zap, Gamepad2,
   MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
-  CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy,
+  CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy, Coins,
 } from "lucide-react";
 import { BillingTab } from "@/components/admin/billing-tab";
+import { CreditsTab } from "@/components/admin/credits-tab";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { RealtimeTab } from "@/components/admin/realtime-tab";
 import { RewardsTab } from "@/components/admin/rewards-tab";
@@ -88,7 +89,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime" | "messages";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime" | "messages" | "credits";
 
 interface FeedbackItem {
   id: number;
@@ -1406,6 +1407,12 @@ export default function AdminPage() {
                 ],
               },
               {
+                title: lang === "ar" ? "الرصيد" : "Credits",
+                tabs: [
+                  { key: "credits" as Tab, label: lang === "ar" ? "إدارة الرصيد" : "Credits", icon: Coins },
+                ],
+              },
+              {
                 title: lang === "ar" ? "النظام" : "System",
                 tabs: [
                   { key: "messages" as Tab, label: lang === "ar" ? "الرسائل" : "Messages", icon: MessageSquare },
@@ -1463,6 +1470,8 @@ export default function AdminPage() {
         {activeTab === "rewards" && <RewardsTab />}
 
         {activeTab === "messages" && <MessagesTab />}
+
+        {activeTab === "credits" && <CreditsTab />}
 
         {activeTab === "online" && (
           <div className="space-y-4">
