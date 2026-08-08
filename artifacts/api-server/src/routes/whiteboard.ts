@@ -40,7 +40,7 @@ async function runCompletion(opts: {
   }
   const r = await openai.chat.completions.create({
     model: "gpt-4o-mini",
-    max_tokens: max,
+    max_completion_tokens: max,
     messages: [{ role: "user", content: opts.prompt }],
   });
   return r.choices[0]?.message?.content ?? "";
