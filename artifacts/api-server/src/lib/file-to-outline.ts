@@ -296,7 +296,10 @@ export async function fileToOutline(
 
     const resp = await openai.chat.completions.create({
       model: FILE_OUTLINE_MODEL,
-      max_completion_tokens: 4096,
+      /* gpt-5 counts hidden reasoning tokens against max_completion_tokens;
+         minimal effort + a large budget prevents empty truncated replies. */
+      max_completion_tokens: 16000,
+      reasoning_effort: "minimal",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -315,7 +318,8 @@ export async function fileToOutline(
     const userPrompt = buildDocPrompt(ef, filename);
     const resp = await openai.chat.completions.create({
       model: FILE_OUTLINE_MODEL,
-      max_completion_tokens: 4096,
+      max_completion_tokens: 16000,
+      reasoning_effort: "minimal",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -570,7 +574,8 @@ export async function multiImagesToOutline(
   /* Larger token budget — content-driven decks need room to breathe. */
   const resp = await openai.chat.completions.create({
     model: FILE_OUTLINE_MODEL,
-    max_completion_tokens: 6000,
+    max_completion_tokens: 16000,
+    reasoning_effort: "minimal",
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },

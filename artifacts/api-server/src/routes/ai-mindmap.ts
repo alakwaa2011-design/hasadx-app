@@ -93,7 +93,10 @@ Return ONLY this exact JSON:
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 4000,
+      /* gpt-5 reasoning tokens count against this budget — keep effort
+         minimal and the budget high or replies come back empty. */
+      max_completion_tokens: 12000,
+      reasoning_effort: "minimal",
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";

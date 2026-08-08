@@ -315,7 +315,10 @@ router.post("/million/hint", hintLimiter, async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
       messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 500,
+      /* reasoning tokens count against this budget — 500 was fully
+         consumed by hidden reasoning, returning an empty hint. */
+      max_completion_tokens: 2000,
+      reasoning_effort: "minimal",
     });
 
     const hint = completion.choices[0]?.message?.content?.trim() ?? "لا يتوفر تلميح الآن.";

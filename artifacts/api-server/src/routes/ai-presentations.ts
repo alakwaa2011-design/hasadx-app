@@ -255,9 +255,18 @@ async function runOutlineCompletion(opts: {
       tokensOut: response.usage?.output_tokens ?? 0,
     };
   }
+  const model = modelForTier(opts.tier);
+  const isGpt5 = model.startsWith("gpt-5");
   const completion = await openai.chat.completions.create({
-    model: modelForTier(opts.tier),
-    max_completion_tokens: 4000,
+    model,
+    /* gpt-5 counts hidden reasoning tokens against max_completion_tokens.
+       With the full outline prompt it burned the entire 4000 budget on
+       reasoning and returned EMPTY content (finish_reason: "length"),
+       so every call failed and the request hit the 120s proxy abort.
+       Verified fix: reasoning_effort "minimal" + a 16k budget returns a
+       complete valid outline in ~50s. */
+    max_completion_tokens: isGpt5 ? 16000 : 4000,
+    ...(isGpt5 ? { reasoning_effort: "minimal" as const } : {}),
     messages: [
       { role: "system" as const, content: opts.system },
       ...opts.userMessages.map((content) => ({ role: "user" as const, content })),
