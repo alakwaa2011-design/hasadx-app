@@ -54,12 +54,19 @@ router.get("/million/questions", questionsLimiter, async (req, res) => {
     const visibility = await getPublicVisibility();
 
     let dbQuestions;
+
     if (assignmentId && !isNaN(Number(assignmentId))) {
       const aId = Number(assignmentId);
       const [assignment] = await db
         .select({ id: assignmentsTable.id, isShared: assignmentsTable.isShared, teacherId: assignmentsTable.teacherId })
-        .from(assignmentsTable).where(eq(assignmentsTable.id, aId)).limit(1);
-      if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+        .from(assignmentsTable)
+        .where(eq(assignmentsTable.id, aId))
+        .limit(1);
+
+      if (!assignment) {
+        return res.status(404).json({ message: "الواجب غير موجود" });
+      }
+
       const isOwner = req.session.teacherId && req.session.teacherId === assignment.teacherId;
       const isPubliclyVisible = assignment.isShared || visibility === "all";
 
@@ -75,12 +82,14 @@ router.get("/million/questions", questionsLimiter, async (req, res) => {
       if (visibility === "none") {
         return res.json({ questions: [], assignmentTitle: "عشوائي" });
       }
-      const baseQ = db.select({ q: questionsTable }).from(questionsTable)
+      const baseQ = db
+        .select({ q: questionsTable })
+        .from(questionsTable)
         .innerJoin(assignmentsTable, eq(questionsTable.assignmentId, assignmentsTable.id));
 
       const rows = visibility === "all"
-        ? await baseQ.limit(300)
-        : await baseQ.where(eq(assignmentsTable.isShared, true)).limit(300);
+        ? await baseQ.limit(200)
+        : await baseQ.where(eq(assignmentsTable.isShared, true)).limit(200);
 
       dbQuestions = rows.map(r => r.q);
     }
@@ -98,9 +107,18 @@ router.get("/million/questions", questionsLimiter, async (req, res) => {
       return res.status(400).json({ message: "لا توجد أسئلة كافية في هذا الواجب (الحد الأدنى 5 أسئلة)" });
     }
 
-    const shuffled = shuffleArray(pool).slice(0, 15);
+    const shuffled = shuffleArray(mcqQuestions).slice(0, 40);
 
-    const questions = shuffled.map(mapQuestion);
+    const questions = shuffled.map(q => ({
+      id: q.id,
+      text: q.text,
+      optionA: q.optionA!,
+      optionB: q.optionB!,
+      optionC: q.optionC!,
+      optionD: q.optionD!,
+      correctAnswer: q.correctAnswer!,
+      imageUrl: q.imageUrl ?? null,
+    }));
 
     let assignmentTitle = "أسئلة عشوائية";
     if (assignmentId && !isNaN(Number(assignmentId))) {
@@ -190,19 +208,13 @@ router.post("/million/swap-question", questionsLimiter, async (req, res) => {
       if (typeof bankCategory === "string" && bankCategory !== "" && bankCategory !== "all" && !VALID_BANK_CATEGORIES.includes(bankCategory as typeof VALID_BANK_CATEGORIES[number])) {
         return res.status(400).json({ message: `قيمة التخصص غير صالحة: ${bankCategory}` });
       }
-    const levelFilter = typeof level === "string" && VALID_BANK_LEVELS.includes(level as typeof VALID_BANK_LEVELS[number]) ? level : null;
-    const categoryFilter = typeof category === "string" && VALID_BANK_CATEGORIES.includes(category as typeof VALID_BANK_CATEGORIES[number]) ? category : null;
-    const excludeIds: number[] = typeof excludeIdsParam === "string" && excludeIdsParam !== ""
-      ? excludeIdsParam.split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).slice(0, MAX_EXCLUDE)
-      : [];
+      const levelFilter = typeof bankLevel === "string" && VALID_BANK_LEVELS.includes(bankLevel as typeof VALID_BANK_LEVELS[number]) ? bankLevel : null;
+      const categoryFilter = typeof bankCategory === "string" && VALID_BANK_CATEGORIES.includes(bankCategory as typeof VALID_BANK_CATEGORIES[number]) ? bankCategory : null;
+      const excludeIds = Array.from(usedSet);
       const allBankQ = await fetchBankQuestions(levelFilter, categoryFilter, excludeIds.length > 0 ? excludeIds : []);
-    let pool = await fetchBankQuestions(levelFilter, categoryFilter, excludeIds);
-
-    if (pool.length === 0) {
-      return res.status(400).json({ message: "لا توجد أسئلة بديلة متاحة" });
-    }
-
-    const q = shuffleArray(pool)[0]!;
+      const pool = allBankQ.filter(q => !usedSet.has(q.id));
+      if (pool.length === 0) return res.status(400).json({ message: "لا توجد أسئلة بديلة في بنك الأسئلة" });
+      const q = shuffleArray(pool)[0]!;
       return res.json({
         id: q.id,
         text: q.text,
@@ -244,7 +256,12 @@ router.post("/million/swap-question", questionsLimiter, async (req, res) => {
     }
 
     const VALID = new Set(["A", "B", "C", "D"]);
-    let pool = await fetchBankQuestions(levelFilter, categoryFilter, excludeIds);
+    const pool = dbQuestions.filter(q =>
+      q.questionType === "mcq" && !q.allowMultipleAnswers &&
+      q.optionA && q.optionB && q.optionC && q.optionD &&
+      q.correctAnswer && VALID.has(q.correctAnswer.trim().toUpperCase()) &&
+      !usedSet.has(q.id)
+    );
 
     if (pool.length === 0) {
       return res.status(400).json({ message: "لا توجد أسئلة بديلة متاحة" });

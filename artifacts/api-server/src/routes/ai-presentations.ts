@@ -240,14 +240,22 @@ async function runOutlineCompletion(opts: {
   tier: AiTier;
   system: string;
   userMessages: string[];
+  /* Hard cap for this single provider call. The platform proxy aborts
+     the whole request at 120s, so each call must be individually
+     bounded or a slow provider can still blow the total budget. */
+  timeoutMs?: number;
 }): Promise<CompletionResult> {
+  const requestOptions = { timeout: opts.timeoutMs ?? 100_000 };
   if (isClaudeTier(opts.tier)) {
     const response = await anthropic.messages.create({
       model: SONNET_MODEL,
-      max_tokens: 4000,
+      /* A full outline for a 12-20 slide deck is ~5-6k output tokens.
+         4000 truncated the JSON mid-object (stop_reason: max_tokens),
+         so every claude-tier request failed validation with a 422. */
+      max_tokens: 16000,
       system: opts.system,
       messages: opts.userMessages.map((content) => ({ role: "user" as const, content })),
-    });
+    }, requestOptions);
     const block = response.content.find((c) => c.type === "text");
     return {
       text: block && "text" in block ? block.text : "",
@@ -271,7 +279,7 @@ async function runOutlineCompletion(opts: {
       { role: "system" as const, content: opts.system },
       ...opts.userMessages.map((content) => ({ role: "user" as const, content })),
     ],
-  });
+  }, requestOptions);
   return {
     text: completion.choices[0]?.message?.content || "",
     tokensIn: completion.usage?.prompt_tokens ?? 0,
@@ -439,6 +447,19 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const system = systemPromptFor(brief.language);
     const userPrompt = buildOutlinePrompt(brief);
 
+    /* Time budget: the platform proxy hard-aborts requests at 120s.
+       A single claude/gpt-5 outline call takes 50-80s, so a second
+       sequential call only fits if the first one was fast. Any retry
+       (JSON repair or corrective) must check the remaining budget —
+       otherwise the request dies at exactly 120s with no response,
+       which the UI reports as a generation failure. */
+    const startedAt = Date.now();
+    const RETRY_BUDGET_MS = 30_000; // retry only if the first call finished this fast
+    /* Total in-process deadline, kept well under the proxy's 120s so
+       sanitize/DB/serialization work still fits after the last call. */
+    const DEADLINE_MS = 110_000;
+    const remainingMs = () => Math.max(1_000, DEADLINE_MS - (Date.now() - startedAt));
+
     if (!outlineRaw) {
       try {
         await reserveOutlineSlot(teacherId);
@@ -446,12 +467,13 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
           tier,
           system,
           userMessages: [userPrompt],
+          timeoutMs: remainingMs(),
         });
         tokensIn += first.tokensIn;
         tokensOut += first.tokensOut;
         outlineRaw = parseJsonLoose(first.text);
 
-        if (!outlineRaw) {
+        if (!outlineRaw && Date.now() - startedAt < RETRY_BUDGET_MS) {
           // JSON-repair retry — counts against the daily quota.
           await reserveOutlineSlot(teacherId);
           const retryMsg = brief.language === "ar"
@@ -461,6 +483,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             tier,
             system,
             userMessages: [userPrompt, retryMsg],
+            timeoutMs: remainingMs(),
           });
           tokensIn += second.tokensIn;
           tokensOut += second.tokensOut;
@@ -491,7 +514,14 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     /* If the guardrails reported issues AND we still have budget, try
        one corrective retry with feedback to the model. Skipped when
        we served from cache (no provider call to retry against). */
-    if (!usedCache && report.feedback.length > 0 && !report.fatal) {
+    if (
+      !usedCache && report.feedback.length > 0 && !report.fatal &&
+      /* Skip the quality retry when a second provider call would push
+         the request past the 120s proxy abort. Sanitize already
+         repaired the outline, so serving the first attempt is far
+         better than timing out with nothing. */
+      Date.now() - startedAt < RETRY_BUDGET_MS
+    ) {
       try {
         // Corrective retry — counts against the daily quota.
         await reserveOutlineSlot(teacherId);
@@ -499,6 +529,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
           tier,
           system,
           userMessages: [userPrompt, buildRetryMessage(report, brief.language)],
+          timeoutMs: remainingMs(),
         });
         tokensIn += retry.tokensIn;
         tokensOut += retry.tokensOut;
