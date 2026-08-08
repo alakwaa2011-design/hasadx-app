@@ -77,10 +77,10 @@ function VerificationNudgeBanner({
       if (res.ok) {
         setSent(true);
       } else {
-        setSendError(lang === "ar" ? "تعذّر إرسال الرمز، حاول مجدداً" : "Failed to send code, please try again");
+        setSendError(lang === "ar" ? "تعذّر إرسال الرابط، حاول مجدداً" : "Failed to send the link, please try again");
       }
     } catch {
-      setSendError(lang === "ar" ? "تعذّر إرسال الرمز، حاول مجدداً" : "Failed to send code, please try again");
+      setSendError(lang === "ar" ? "تعذّر إرسال الرابط، حاول مجدداً" : "Failed to send the link, please try again");
     } finally {
       setSending(false);
     }
@@ -106,8 +106,8 @@ function VerificationNudgeBanner({
               ? sendError
               : sent
               ? (lang === "ar"
-                  ? "✅ تم إرسال رمز التحقق — تحقق من بريدك أو هاتفك وأدخل الرمز لتفعيل حسابك"
-                  : "✅ Verification code sent — check your email or phone to activate your account")
+                  ? "✅ أرسلنا رابط تأكيد إلى بريدك — تحقق من صندوق الوارد"
+                  : "✅ We sent a confirmation link to your email — check your inbox")
               : (lang === "ar"
                   ? `حسابك بحاجة للتحقق للاحتفاظ ببياناتك واستعادة كلمة المرور مستقبلاً`
                   : `Your account needs verification to keep your data and enable password recovery`)}
@@ -126,7 +126,7 @@ function VerificationNudgeBanner({
               }}
             >
               {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-              {lang === "ar" ? "تحقق الآن" : "Verify now"}
+              {lang === "ar" ? "إعادة الإرسال" : "Resend link"}
             </button>
           )}
           {sent && (
