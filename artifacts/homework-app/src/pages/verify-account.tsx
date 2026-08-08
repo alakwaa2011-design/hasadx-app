@@ -183,13 +183,19 @@ export default function VerifyAccountPage() {
                   className="rounded-xl p-4 mb-5 text-sm leading-relaxed"
                   style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "#78350f" }}
                 >
-                  {lang === "ar"
-                    ? `سنرسل رمزاً للتحقق إلى`
-                    : `We'll send a verification code to`}{" "}
-                  <span className="font-bold" dir="ltr">
-                    {channel === "sms" && <Phone className="w-3 h-3 inline me-0.5" />}
-                    {maskedIdentifier}
-                  </span>
+                  {channel === "email" ? (
+                    lang === "ar"
+                      ? <>سنرسل <span className="font-bold">رابط تحقق</span> ورمزاً مكوناً من 6 أرقام إلى{" "}<span className="font-bold" dir="ltr">{maskedIdentifier}</span> — يمكنك النقر على الرابط أو إدخال الرمز</>
+                      : <>We'll send a <span className="font-bold">magic link</span> and a 6-digit code to{" "}<span className="font-bold" dir="ltr">{maskedIdentifier}</span> — you can click the link or enter the code</>
+                  ) : (
+                    <>
+                      {lang === "ar" ? `سنرسل رمزاً للتحقق إلى` : `We'll send a verification code to`}{" "}
+                      <span className="font-bold" dir="ltr">
+                        <Phone className="w-3 h-3 inline me-0.5" />
+                        {maskedIdentifier}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <Button
@@ -205,8 +211,12 @@ export default function VerifyAccountPage() {
             ) : (
               <>
                 <p className="text-sm text-center mb-4" style={{ color: "#3a6a4d" }}>
-                  {lang === "ar" ? "تم إرسال الرمز إلى" : "Code sent to"}{" "}
-                  <span className="font-bold" dir="ltr">{maskedIdentifier}</span>
+                  {channel === "email"
+                    ? (lang === "ar"
+                        ? <>تم إرسال رابط التحقق والرمز إلى{" "}<span className="font-bold" dir="ltr">{maskedIdentifier}</span> — انقر الرابط في الإيميل أو أدخل الرمز أدناه</>
+                        : <>Magic link and code sent to{" "}<span className="font-bold" dir="ltr">{maskedIdentifier}</span> — click the link in the email or enter the code below</>)
+                    : <>{lang === "ar" ? "تم إرسال الرمز إلى" : "Code sent to"}{" "}<span className="font-bold" dir="ltr">{maskedIdentifier}</span></>
+                  }
                 </p>
 
                 {/* OTP Input */}
@@ -267,7 +277,10 @@ export default function VerifyAccountPage() {
                   </p>
                   <ul className="space-y-1 text-muted-foreground" style={{ listStyleType: "disc", paddingInlineStart: "1.2rem" }}>
                     {channel === "email" && (
-                      <li>{lang === "ar" ? "تحقق من مجلد البريد غير المرغوب (Spam / Junk)" : "Check your spam or junk folder"}</li>
+                      <>
+                        <li>{lang === "ar" ? "افتح الإيميل وانقر على رابط التحقق مباشرةً — أسرع من إدخال الرمز" : "Open the email and click the magic link directly — it's faster than entering the code"}</li>
+                        <li>{lang === "ar" ? "تحقق من مجلد البريد غير المرغوب (Spam / Junk)" : "Check your spam or junk folder"}</li>
+                      </>
                     )}
                     <li>
                       {lang === "ar"
