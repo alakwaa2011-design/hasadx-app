@@ -55,6 +55,80 @@ function matchStudentByName(
   return contains.length === 1 ? contains[0] : null;
 }
 
+/* ── تطبيع خانة الصف المقروءة من الورقة.
+   قراءة الصف كثيراً ما تكون مشوّهة («3أ» تُقرأ «i3» أو «13») لأن النموذج
+   يخلط بين الأرقام والحروف. نقبل فقط الأنماط المعروفة:
+   - رقم صف (1-12) بأرقام لاتينية أو عربية-هندية + حرف شعبة عربي اختياري
+   - صف لفظي («ثالث»، «الثالث»، «حادي عشر») + حرف شعبة اختياري
+   وأي قيمة لا تطابق نمطاً معروفاً تُرفض (تُعاد فارغة) بدل حفظ قيمة مشوهة. */
+export function normalizeExtractedClass(raw: string): string {
+  let s = (raw || "").trim();
+  if (!s) return "";
+  // أرقام عربية-هندية وفارسية → لاتينية
+  s = s
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+  // إزالة التشكيل وكلمات الحشو وعلامات الترقيم
+  s = s
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/الصف|صف|الفصل|فصل|الشعبة|شعبه|شعبة|ابتدائي|الابتدائي|متوسط|المتوسط|ثانوي|الثانوي/g, " ")
+    .replace(/[\/\\_.,:،؛;()\[\]{}«»"'’‘\-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!s) return "";
+
+  // صف لفظي → رقم (الأطول أولاً حتى لا يلتقط «ثاني» قبل «ثاني عشر»)
+  const ordinals: Array<[RegExp, string]> = [
+    [/(?:ال)?حادي\s*عشر/, "11"],
+    [/(?:ال)?ثاني\s*عشر/, "12"],
+    [/(?:ال)?اول|(?:ال)?أول/, "1"],
+    [/(?:ال)?ثاني/, "2"],
+    [/(?:ال)?ثالث/, "3"],
+    [/(?:ال)?رابع/, "4"],
+    [/(?:ال)?خامس/, "5"],
+    [/(?:ال)?سادس/, "6"],
+    [/(?:ال)?سابع/, "7"],
+    [/(?:ال)?ثامن/, "8"],
+    [/(?:ال)?تاسع/, "9"],
+    [/(?:ال)?عاشر/, "10"],
+  ];
+  for (const [re, num] of ordinals) {
+    if (re.test(s)) {
+      s = s.replace(re, ` ${num} `).replace(/\s+/g, " ").trim();
+      break;
+    }
+  }
+
+  // حروف لاتينية ملتصقة بالأرقام هي ضجيج OCR شائع (i3 → 3) — نحذفها
+  const hadLatinNoise = /[A-Za-z]/.test(s);
+  s = s.replace(/[A-Za-z]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!s) return "";
+
+  // رقم الصف: 1-12 فقط. رقم أكبر (مثل «13» الناتجة عن قراءة «3أ» خاطئة)
+  // غير موثوق → نرفض القيمة كلها بدل تخمينها.
+  const numMatch = s.match(/\d+/);
+  if (!numMatch) return "";
+  const grade = parseInt(numMatch[0], 10);
+  if (grade < 1 || grade > 12) return "";
+
+  // حرف الشعبة: حرف عربي مفرد بعد إزالة الرقم (أ/ب/ج/د/هـ...)
+  const rest = s.replace(/\d+/g, " ").replace(/\s+/g, " ").trim();
+  let section = "";
+  if (rest) {
+    const letter = rest.replace(/ـ/g, ""); // هـ → ه
+    if (/^[\u0621-\u064A]$/.test(letter)) {
+      section = letter.replace(/[اإآٱ]/, "أ"); // توحيد الألف إلى همزة الشعبة الشائعة
+    } else if (!hadLatinNoise && letter.length > 1) {
+      // نص عربي متبقٍ لا يشبه شعبة — غير موثوق
+      return "";
+    } else if (letter.length > 1) {
+      return "";
+    }
+  }
+
+  return section ? `${grade}${section}` : String(grade);
+}
+
 async function checkAccessAndDuplicate(
   assignmentId: number,
   assignment: any,
@@ -823,6 +897,7 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
 
       const nameExtractionBlock = isWorksheetSource
         ? `0. أولاً: ابحث في أعلى الورقة عن خانة اسم الطالب (والصف إن وُجد) واقرأهما.
+   الصف عادةً رقم من 1 إلى 12 متبوعاً بحرف شعبة عربي (مثل «3أ» أو «5ب») أو لفظاً (مثل «ثالث أ»). انتبه: لا تخلط بين الحروف والأرقام. إذا لم تكن متأكداً من قراءة الصف اكتب - بدلاً منه.
 `
         : "";
       const nameLineFormat = isWorksheetSource
@@ -1012,7 +1087,8 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
     if (isWorksheetSource) {
       if (!finalStudentName && extractedName) finalStudentName = extractedName.trim();
-      if (!finalStudentClass && extractedClass) finalStudentClass = extractedClass.trim();
+      // الصف المستخرج يُطبَّع؛ القيم المشوهة تُرفض وتُترك فارغة.
+      if (!finalStudentClass && extractedClass) finalStudentClass = normalizeExtractedClass(extractedClass);
       if (!finalStudentName) {
         finalStudentName = "غير معروف";
         nameConfidence = "uncertain";
@@ -1026,7 +1102,11 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
         if (matchedStudent) {
           // نعتمد اسم السجل الرسمي وصفّه عند التطابق.
           finalStudentName = matchedStudent.name;
-          if (!finalStudentClass && matchedStudent.studentClass) finalStudentClass = matchedStudent.studentClass;
+          // سجل الطالب أدق من القراءة الضوئية — نعتمد صفّه عند التطابق
+          // (ما لم يُدخل المعلم الصف يدوياً، فالمدخل اليدوي يتقدم).
+          if (!(body.studentClass || "").trim() && matchedStudent.studentClass) {
+            finalStudentClass = matchedStudent.studentClass;
+          }
         }
       } catch (e) {
         req.log.error({ err: e }, "Student roster match failed (non-fatal)");

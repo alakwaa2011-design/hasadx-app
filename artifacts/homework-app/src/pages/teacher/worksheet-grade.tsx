@@ -604,6 +604,11 @@ export default function WorksheetGrade() {
               <div className="flex items-center gap-2 flex-wrap text-sm">
                 <User className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span className="font-bold text-slate-800 dark:text-slate-100">{result.studentName}</span>
+                {result.nameExtraction?.extractedClass && (
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    {result.nameExtraction.extractedClass}
+                  </span>
+                )}
                 {result.nameExtraction?.matchedStudentId != null ? (
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
                     ✓ مرتبط بطالب موجود

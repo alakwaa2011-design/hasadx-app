@@ -18,6 +18,7 @@ Worksheets with smart grading enabled link to a hidden internal assignment (`ass
 **Name auto-extraction (worksheet flow only):**
 - Student name/class are read by the same grading vision call (extra "الاسم:" line in prompt); manual input is optional and takes precedence. Never block grading on a missing/unclear name — save as-read, offer post-hoc correction (owner-only PATCH on the submission).
 - Roster matching must be scoped to the assignment's teacher and normalized for Arabic variants (hamza/alef/ta-marbuta/عبدال). NEVER trust a client-supplied studentId in the worksheet flow — cross-teacher injection risk.
+- Extracted class must pass `normalizeExtractedClass` (digit/ordinal normalization, 1-12 only, OCR noise stripped); untrustworthy readings are stored blank, and a matched roster student's class overrides the OCR reading unless the teacher typed one manually.
 - Parse AI answer lines into a map keyed by question number (incl. Arabic-Indic digits), never by array position — a dropped/reordered line otherwise shifts all grades.
 
 **QR + multi-page (worksheet flow only):**
