@@ -345,6 +345,85 @@ describe("نسب الأسئلة والملخص", () => {
   });
 });
 
+describe("تعديل الورقة بعد التصحيح (حذف/إضافة سؤال)", () => {
+  it("إجابات مرتبطة بسؤال محذوف تُتجاهل ولا تُحسب في أي سؤال متبقٍ", async () => {
+    const a = sub({ studentName: "أحمد", earnedPoints: 2 });
+    const b = sub({ studentName: "سارة", earnedPoints: 1 });
+    queueReport({
+      // السؤال 52 حُذف بعد التصحيح — لم يعد ضمن الأسئلة الحالية
+      questions: [{ id: 51, text: "س١", points: 1 }],
+      subs: [a, b],
+      answers: [
+        { submissionId: a.id, questionId: 51, isCorrect: true, teacherPoints: null },
+        { submissionId: b.id, questionId: 51, isCorrect: false, teacherPoints: null },
+        // إجابات يتيمة تشير إلى السؤال المحذوف 52
+        { submissionId: a.id, questionId: 52, isCorrect: true, teacherPoints: null },
+        { submissionId: b.id, questionId: 52, isCorrect: true, teacherPoints: null },
+      ],
+    });
+    const body = await getReport();
+    // لا ينهار التقرير، والسؤال المحذوف لا يظهر
+    expect(body.questions).toHaveLength(1);
+    expect(body.questions[0].questionId).toBe(51);
+    // الإجابات اليتيمة لا تنحرف بإحصاءات السؤال المتبقي
+    expect(body.questions[0].answeredCount).toBe(2);
+    expect(body.questions[0].correctCount).toBe(1);
+    expect(body.questions[0].correctPercent).toBe(50);
+  });
+
+  it("سؤال جديد أُضيف بعد التصحيح بلا إجابات: correctPercent = null والقديم سليم", async () => {
+    const a = sub({ studentName: "أحمد", earnedPoints: 1 });
+    queueReport({
+      questions: [
+        { id: 51, text: "س١ قديم", points: 1 },
+        { id: 60, text: "س٢ جديد بعد التصحيح", points: 1 },
+      ],
+      subs: [a],
+      answers: [
+        { submissionId: a.id, questionId: 51, isCorrect: true, teacherPoints: null },
+      ],
+    });
+    const body = await getReport();
+    expect(body.questions).toHaveLength(2);
+    const oldQ = body.questions.find((q: any) => q.questionId === 51);
+    const newQ = body.questions.find((q: any) => q.questionId === 60);
+    expect(oldQ.correctPercent).toBe(100);
+    expect(oldQ.answeredCount).toBe(1);
+    expect(newQ.correctPercent).toBeNull();
+    expect(newQ.answeredCount).toBe(0);
+    expect(newQ.correctCount).toBe(0);
+    expect(newQ.wrongCount).toBe(0);
+  });
+
+  it("حذف وإضافة معاً: النسب تُحسب من الإجابات المطابقة للأسئلة الحالية فقط", async () => {
+    const a = sub({ studentName: "أحمد", earnedPoints: 2 });
+    const b = sub({ studentName: "سارة", earnedPoints: 0 });
+    queueReport({
+      questions: [
+        { id: 51, text: "س١ باقٍ", points: 1 },
+        { id: 60, text: "س جديد", points: 2 },
+      ],
+      subs: [a, b],
+      answers: [
+        { submissionId: a.id, questionId: 51, isCorrect: true, teacherPoints: null },
+        { submissionId: b.id, questionId: 51, isCorrect: false, teacherPoints: null },
+        // سؤالان محذوفان 52 و53 بإجابات قديمة
+        { submissionId: a.id, questionId: 52, isCorrect: true, teacherPoints: null },
+        { submissionId: b.id, questionId: 53, isCorrect: false, teacherPoints: 2 },
+      ],
+    });
+    const body = await getReport();
+    expect(body.questions.map((q: any) => q.questionId)).toEqual([51, 60]);
+    const q1 = body.questions.find((q: any) => q.questionId === 51);
+    const qNew = body.questions.find((q: any) => q.questionId === 60);
+    expect(q1.correctPercent).toBe(50);
+    expect(qNew.correctPercent).toBeNull();
+    // الملخص لا ينهار: النسب من درجات التصحيحات المحفوظة كما هي
+    expect(body.summary.studentCount).toBe(2);
+    expect(body.summary.avgPercent).toBe(10);
+  });
+});
+
 describe("حالات الوصول والحواف", () => {
   it("بدون تصحيحات: ملخص صفري وقوائم فارغة", async () => {
     queueReport({ subs: [] });
