@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
   ArrowRight, Loader2, XCircle, CheckCircle2, User, Users,
-  TrendingUp, TrendingDown, AlertTriangle, X, Printer,
+  TrendingUp, TrendingDown, AlertTriangle, X, Printer, UserPen,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,26 +78,83 @@ export default function WorksheetReport() {
   const [details, setDetails] = useState<SubmissionDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  useEffect(() => {
+  // تصحيح اسم ورقة «غير معروف» وربطها بطالب من قائمة المعلم
+  const [fixTarget, setFixTarget] = useState<{ submissionId: number } | null>(null);
+  const [fixName, setFixName] = useState("");
+  const [fixClass, setFixClass] = useState("");
+  const [fixSaving, setFixSaving] = useState(false);
+  const [roster, setRoster] = useState<Array<{ id: number; name: string; studentClass: string | null }> | null>(null);
+
+  const loadReport = async (silent = false) => {
     if (!worksheetId) return;
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/worksheets/${worksheetId}/report`, { credentials: "include" });
-        if (res.status === 401) {
-          setLocation(`/login?returnTo=${encodeURIComponent(`/teacher/worksheets/${worksheetId}/report`)}`);
-          return;
-        }
-        if (res.status === 403) { setLoadState("forbidden"); return; }
-        if (!res.ok) throw new Error();
-        setData(await res.json());
-        setLoadState("ready");
-      } catch {
-        toast.error("تعذّر تحميل التقرير");
-        setLoadState("error");
+    try {
+      const res = await fetch(`${API_BASE}/api/worksheets/${worksheetId}/report`, { credentials: "include" });
+      if (res.status === 401) {
+        setLocation(`/login?returnTo=${encodeURIComponent(`/teacher/worksheets/${worksheetId}/report`)}`);
+        return;
       }
-    })();
+      if (res.status === 403) { setLoadState("forbidden"); return; }
+      if (!res.ok) throw new Error();
+      setData(await res.json());
+      setLoadState("ready");
+    } catch {
+      toast.error("تعذّر تحميل التقرير");
+      if (!silent) setLoadState("error");
+    }
+  };
+
+  useEffect(() => {
+    loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worksheetId]);
+
+  const openFixName = (submissionId: number) => {
+    setFixTarget({ submissionId });
+    setFixName("");
+    setFixClass("");
+    if (roster === null) {
+      fetch(`${API_BASE}/api/students`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((list) => setRoster(Array.isArray(list) ? list : []))
+        .catch(() => setRoster([]));
+    }
+  };
+
+  const saveFixName = async () => {
+    if (!fixTarget) return;
+    const name = fixName.trim();
+    if (name.length < 2) { toast.error("اكتب اسم الطالب (حرفان على الأقل)"); return; }
+    setFixSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/submissions/${fixTarget.submissionId}/student-name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          studentName: name,
+          ...(fixClass.trim() ? { studentClass: fixClass.trim() } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        toast.error(body?.message || "تعذّر تحديث الاسم");
+        return;
+      }
+      const updated = await res.json();
+      toast.success(
+        updated.matchedStudentId
+          ? `تم ربط الورقة بالطالب «${updated.studentName}»`
+          : `تم تحديث الاسم إلى «${updated.studentName}»`,
+      );
+      setFixTarget(null);
+      // يعاد تحميل التقرير فتندمج المحاولات المكررة تلقائياً
+      await loadReport(true);
+    } catch {
+      toast.error("حدث خطأ في الاتصال");
+    } finally {
+      setFixSaving(false);
+    }
+  };
 
   const openDetails = async (submissionId: number) => {
     setLoadingDetails(true);
@@ -278,38 +335,136 @@ export default function WorksheetReport() {
             <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
               <h2 className="font-extrabold text-slate-800 dark:text-slate-100 mb-2">الطلاب والدرجات</h2>
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {students.map((s) => (
-                  <li key={s.submissionId}>
-                    <button
-                      onClick={() => openDetails(s.submissionId)}
-                      className="w-full py-2.5 flex items-center justify-between gap-3 text-start hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg px-1.5 -mx-1.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{s.studentName}</p>
-                          {!s.registered && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">غير مسجل</span>
-                          )}
-                          {s.attempts > 1 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">{s.attempts} محاولات — الأحدث</span>
-                          )}
-                        </div>
-                        {s.studentClass && <p className="text-xs text-slate-500">{s.studentClass}</p>}
+                {students.map((s) => {
+                  const isUnknown = s.studentName === "غير معروف";
+                  return (
+                    <li key={s.submissionId}>
+                      <div className="w-full py-2.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg px-1.5 -mx-1.5">
+                        <button onClick={() => openDetails(s.submissionId)} className="min-w-0 flex-1 text-start">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{s.studentName}</p>
+                            {!s.registered && !isUnknown && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">غير مسجل</span>
+                            )}
+                            {s.attempts > 1 && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">{s.attempts} محاولات — الأحدث</span>
+                            )}
+                          </div>
+                          {s.studentClass && <p className="text-xs text-slate-500">{s.studentClass}</p>}
+                        </button>
+                        {isUnknown && (
+                          <button
+                            onClick={() => openFixName(s.submissionId)}
+                            className="shrink-0 flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-950 print:hidden"
+                          >
+                            <UserPen className="w-3.5 h-3.5" />
+                            تصحيح الاسم
+                          </button>
+                        )}
+                        <button onClick={() => openDetails(s.submissionId)} className="shrink-0 text-end">
+                          <p className={`font-extrabold text-sm ${s.percent < 50 ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                            {s.earnedPoints} / {s.totalPoints}
+                          </p>
+                          <p className="text-[11px] text-slate-500">{Math.round(s.percent)}٪</p>
+                        </button>
                       </div>
-                      <div className="shrink-0 text-end">
-                        <p className={`font-extrabold text-sm ${s.percent < 50 ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}`}>
-                          {s.earnedPoints} / {s.totalPoints}
-                        </p>
-                        <p className="text-[11px] text-slate-500">{Math.round(s.percent)}٪</p>
-                      </div>
-                    </button>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           </>
         )}
       </main>
+
+      {/* نافذة تصحيح اسم ورقة «غير معروف» */}
+      {fixTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 print:hidden"
+          onClick={() => { if (!fixSaving) setFixTarget(null); }}
+        >
+          <div
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl p-4 space-y-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 font-extrabold text-slate-800 dark:text-slate-100">
+                <UserPen className="w-4 h-4 text-amber-600" />
+                تصحيح اسم الطالب
+              </div>
+              <button
+                onClick={() => { if (!fixSaving) setFixTarget(null); }}
+                aria-label="إغلاق"
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              اكتب اسم الطالب أو اختره من قائمتك — سيُربط تلقائياً بسجل الطالب إن وُجد وتُحدَّث الإحصاءات فوراً.
+            </p>
+            <div className="space-y-2">
+              <input
+                value={fixName}
+                onChange={(e) => setFixName(e.target.value)}
+                list="fix-name-roster"
+                placeholder="اسم الطالب"
+                autoFocus
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <datalist id="fix-name-roster">
+                {(roster ?? []).map((st) => (
+                  <option key={st.id} value={st.name}>{st.studentClass ?? ""}</option>
+                ))}
+              </datalist>
+              <input
+                value={fixClass}
+                onChange={(e) => setFixClass(e.target.value)}
+                placeholder="الصف (اختياري)"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            {roster && roster.length > 0 && (
+              <div className="max-h-36 overflow-y-auto flex flex-wrap gap-1.5">
+                {roster
+                  .filter((st) => !fixName.trim() || st.name.includes(fixName.trim()))
+                  .slice(0, 30)
+                  .map((st) => (
+                    <button
+                      key={st.id}
+                      onClick={() => { setFixName(st.name); if (st.studentClass) setFixClass(st.studentClass); }}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                        fixName.trim() === st.name
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {st.name}
+                    </button>
+                  ))}
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={saveFixName}
+                disabled={fixSaving || fixName.trim().length < 2}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {fixSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                حفظ وربط
+              </button>
+              <button
+                onClick={() => { if (!fixSaving) setFixTarget(null); }}
+                disabled={fixSaving}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* نافذة تفاصيل تصحيح طالب */}
       {(details || loadingDetails) && (
