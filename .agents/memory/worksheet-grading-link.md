@@ -25,3 +25,8 @@ Worksheets with smart grading enabled link to a hidden internal assignment (`ass
 - Printed QR carries only the grade-page URL + p/of page numbers — never answers or codes. Page count is a client print-layout fact, so the server never knows it; the grade page learns it from the QR/URL.
 - Multi-page = one submission: ordered imagesBase64 (worksheet source only, cap 10 pages, per-page and total base64 size validated server-side; express caps image routes at 25mb) sent as multiple image parts in ONE grading call. The PAPER-ONLY branch is the one worksheets use — there are three near-identical messageContent blocks in submit-image; editing "the last one" hits the MCQ branch by mistake.
 - Client reads the QR inside each captured photo (jsQR at full res, then compress for upload); page fallback allocation must happen inside the functional setState (concurrent captures otherwise race for the same missing slot); clamp any QR-supplied page total to ≤10.
+
+## تقرير النتائج وتحليلات التصحيح
+- أي إحصاءات/تقارير تُبنى على نتائج التصحيح **يجب** أن تعتمد الدرجة الفعلية: `teacherAdjustedPoints ?? earnedPoints` للورقة، و`teacherPoints != null ? teacherPoints > 0 : isCorrect` للإجابة — تجاهلها يجعل التقرير يكذب بعد مراجعة المعلم اليدوية.
+- `GET /api/submissions/:id/details` يعيد `{ submission: {...}, answers: [...] }` (شكل مغلّف) — لا يعيد الحقول مسطّحة.
+- دمج محاولات نفس الطالب في التقارير: الهوية = studentId إن وُجد وإلا `normalizeArabicName` من lib/worksheet-grading؛ «غير معروف»/الاسم الفارغ لا يُدمج أبداً (كل ورقة مستقلة).

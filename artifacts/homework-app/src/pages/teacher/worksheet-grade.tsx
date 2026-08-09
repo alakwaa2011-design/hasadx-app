@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
   ArrowRight, Camera, Image as ImageIcon, Loader2, RefreshCcw,
-  CheckCircle2, XCircle, User, ListChecks, Trash2,
+  CheckCircle2, XCircle, User, ListChecks, Trash2, Users, X, UserPlus, BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import jsQR from "jsqr";
@@ -141,6 +141,11 @@ export default function WorksheetGrade() {
   const missingPages = Array.from({ length: totalPages }, (_, i) => i + 1).filter((n) => !pagesMap[n]);
   const [grading, setGrading] = useState(false);
   const [result, setResult] = useState<GradeResult | null>(null);
+
+  // ── جلسة التصحيح المتتابع: نتائج الطلاب المصححين في هذه الجلسة
+  // (كل نتيجة محفوظة أصلاً في الخادم لحظة تصحيحها — هذه نسخة للعرض السريع)
+  const [sessionResults, setSessionResults] = useState<GradeResult[]>([]);
+  const [reviewIdx, setReviewIdx] = useState<number | null>(null);
 
   const [subs, setSubs] = useState<SubmissionRow[]>([]);
 
@@ -336,6 +341,8 @@ export default function WorksheetGrade() {
       }
       setResult(data);
       setNameFix(data?.nameExtraction?.extractedName && data.nameExtraction.extractedName !== "غير معروف" ? data.nameExtraction.extractedName : "");
+      // إضافة النتيجة لقائمة الجلسة — النتيجة محفوظة في الخادم بالفعل
+      setSessionResults((prev) => [...prev, data]);
       toast.success("تم التصحيح");
       void loadSubmissions(info.assignmentId);
       setStudentName("");
@@ -349,6 +356,24 @@ export default function WorksheetGrade() {
     } finally {
       setGrading(false);
     }
+  };
+
+  /**
+   * الانتقال للطالب التالي في الجلسة: تصفير صور/صفحات الطالب السابق فقط
+   * (نتيجته محفوظة في الخادم وفي قائمة الجلسة) وفتح الكاميرا مباشرة.
+   * عدد صفحات الورقة يبقى معروفاً — لا حاجة لإعادة مسح QR.
+   */
+  const nextStudent = () => {
+    setResult(null);
+    setNameFix("");
+    setStudentName("");
+    setStudentClass("");
+    setShowManualName(false);
+    setImgPrev(null);
+    setImageB64(null);
+    setPagesMap({});
+    if (!camReady) void startCamera();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   /* ── حالات التحميل */
@@ -398,6 +423,17 @@ export default function WorksheetGrade() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-5 space-y-5">
+        {/* عدّاد الجلسة */}
+        {sessionResults.length > 0 && (
+          <div className="flex items-center justify-between gap-2 bg-emerald-600 text-white rounded-2xl px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-2 font-extrabold">
+              <Users className="w-5 h-5" />
+              تم تصحيح {sessionResults.length === 1 ? "طالب واحد" : sessionResults.length === 2 ? "طالبين" : `${sessionResults.length} طلاب`}
+            </div>
+            <span className="text-xs font-bold bg-white/20 rounded-full px-2.5 py-1">في هذه الجلسة</span>
+          </div>
+        )}
+
         {/* الاسم يُقرأ تلقائياً من الورقة — إدخال يدوي اختياري فقط */}
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -688,14 +724,117 @@ export default function WorksheetGrade() {
                 ))}
               </ul>
             )}
+
+            {/* الانتقال السريع للطالب التالي — تصوير → تصحيح → نتيجة → الكاميرا */}
+            <button
+              onClick={nextStudent}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-emerald-600 text-white font-extrabold text-base hover:bg-emerald-700 shadow-sm mt-2"
+            >
+              <UserPlus className="w-5 h-5" /> تصحيح طالب آخر
+            </button>
+            <button
+              onClick={() => setLocation(`/teacher/worksheets/${info?.worksheetId}/report`)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+            >
+              <BarChart3 className="w-5 h-5" /> إنهاء جلسة التصحيح وعرض التقرير
+            </button>
           </section>
+        )}
+
+        {/* نتائج الجلسة — مراجعة سريعة دون تعطيل التصوير */}
+        {sessionResults.length > 0 && (
+          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 mb-3">
+              <Users className="w-4 h-4 text-emerald-600" />
+              طلاب هذه الجلسة ({sessionResults.length})
+            </div>
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {sessionResults.map((r, i) => (
+                <li key={r.id ?? i}>
+                  <button
+                    onClick={() => setReviewIdx(i)}
+                    className="w-full py-2.5 flex items-center justify-between gap-3 text-start hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg px-1.5 -mx-1.5"
+                  >
+                    <div className="min-w-0 flex items-center gap-2">
+                      <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold flex items-center justify-center">{i + 1}</span>
+                      <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
+                        {r.studentName || "غير معروف"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-bold text-emerald-700 dark:text-emerald-400 text-sm">
+                      {r.earnedPoints} / {r.totalPoints ?? info?.totalPoints}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* نافذة مراجعة نتيجة طالب من الجلسة */}
+        {reviewIdx !== null && sessionResults[reviewIdx] && (
+          <div
+            className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setReviewIdx(null)}
+          >
+            <div
+              dir="rtl"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl p-4 space-y-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex items-center gap-2">
+                  <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                    {sessionResults[reviewIdx].studentName || "غير معروف"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
+                    {sessionResults[reviewIdx].earnedPoints} / {sessionResults[reviewIdx].totalPoints ?? info?.totalPoints}
+                  </span>
+                  <button onClick={() => setReviewIdx(null)} aria-label="إغلاق" className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              {sessionResults[reviewIdx].aiFeedback && (
+                <p className="text-sm text-slate-700 dark:text-slate-300">{sessionResults[reviewIdx].aiFeedback}</p>
+              )}
+              {Array.isArray(sessionResults[reviewIdx].answers) && (
+                <ul className="space-y-1.5">
+                  {sessionResults[reviewIdx].answers!.map((r, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      {r.isCorrect
+                        ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
+                        : <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />}
+                      <span className="min-w-0">
+                        <span className="font-semibold">س{i + 1}:</span> {r.selectedAnswer || "—"}
+                        <span className="text-xs text-slate-500"> ({r.earnedPoints}/{r.points})</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
 
         {/* الأوراق المصححة */}
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 mb-3">
-            <ListChecks className="w-4 h-4 text-emerald-600" />
-            الأوراق المصححة ({subs.length})
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200">
+              <ListChecks className="w-4 h-4 text-emerald-600" />
+              الأوراق المصححة ({subs.length})
+            </div>
+            {subs.length > 0 && (
+              <button
+                onClick={() => setLocation(`/teacher/worksheets/${info?.worksheetId}/report`)}
+                className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-400 hover:underline"
+              >
+                <BarChart3 className="w-4 h-4" /> عرض التقرير
+              </button>
+            )}
           </div>
           {subs.length === 0 ? (
             <p className="text-sm text-slate-500 text-center py-4">لم تُصحَّح أي ورقة بعد</p>

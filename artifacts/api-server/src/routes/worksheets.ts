@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable } from "@workspace/db";
+import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable } from "@workspace/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
+import { normalizeArabicName } from "../lib/worksheet-grading";
 import {
   createUploadFilesMiddleware,
   processUploadedFiles,
@@ -608,6 +609,141 @@ router.get("/worksheets/:id/grading-info", requireTeacher, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Worksheet grading info failed");
     res.status(500).json({ message: "Failed to load grading info" });
+  }
+});
+
+/* ── تقرير نتائج التصحيح الورقي. المالك فقط.
+   يُحسب بالكامل من البيانات المحفوظة — لا استدعاء ذكاء اصطناعي.
+   عند تكرار تصحيح نفس الطالب تُعتمد أحدث محاولة في الإحصاءات
+   (مع إظهار عدد المحاولات) حتى لا تنحرف المتوسطات. */
+router.get("/worksheets/:id/report", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [ws] = await db
+      .select()
+      .from(worksheetsTable)
+      .where(eq(worksheetsTable.id, id))
+      .limit(1);
+    if (!ws) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    if (ws.teacherId !== teacherId) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    if (!ws.linkedAssignmentId) {
+      res.status(409).json({ message: "grading_not_enabled" });
+      return;
+    }
+
+    const [questions, subs] = await Promise.all([
+      db.select().from(questionsTable)
+        .where(eq(questionsTable.assignmentId, ws.linkedAssignmentId))
+        .orderBy(questionsTable.id),
+      db.select().from(submissionsTable)
+        .where(eq(submissionsTable.assignmentId, ws.linkedAssignmentId))
+        .orderBy(submissionsTable.submittedAt),
+    ]);
+
+    // أحدث تصحيح لكل طالب: الهوية = سجل الطالب إن كان مرتبطاً، وإلا الاسم
+    // المطبَّع عربياً (نفس تطبيع مطابقة السجل). الأسماء الفارغة/«غير معروف»
+    // لا تُدمج — كل ورقة مجهولة تبقى طالباً مستقلاً في التقرير.
+    const latestByStudent = new Map<string, { sub: typeof subs[number]; attempts: number }>();
+    for (const s of subs) {
+      const norm = normalizeArabicName(s.studentName || "");
+      const key = s.studentId != null
+        ? `id:${s.studentId}`
+        : norm && s.studentName !== "غير معروف"
+          ? `name:${norm}`
+          : `anon:${s.id}`;
+      const prev = latestByStudent.get(key);
+      // subs مرتبة تصاعدياً بوقت الإرسال — الأخيرة هي الأحدث
+      latestByStudent.set(key, { sub: s, attempts: (prev?.attempts ?? 0) + 1 });
+    }
+    const latest = Array.from(latestByStudent.values());
+
+    if (latest.length === 0) {
+      res.json({
+        worksheetId: ws.id,
+        worksheetTitle: ws.title,
+        summary: { studentCount: 0, avgPercent: null, maxPercent: null, minPercent: null, passRate: null, totalPoints: 0 },
+        questions: [],
+        students: [],
+      });
+      return;
+    }
+
+    // إجابات أحدث التصحيحات فقط — لتحليل الأسئلة
+    const latestIds = latest.map((l) => l.sub.id);
+    const answers = latestIds.length > 0
+      ? await db.select().from(answersTable)
+          .where(sql`${answersTable.submissionId} IN (${sql.join(latestIds.map((i) => sql`${i}`), sql`, `)})`)
+      : [];
+
+    // الدرجة الفعلية: تعديل المعلم (إن وُجد) يتقدم على درجة التصحيح الآلي.
+    const effEarned = (s: typeof subs[number]) => s.teacherAdjustedPoints ?? s.earnedPoints ?? 0;
+    const pct = (s: typeof subs[number]) => {
+      const tp = s.totalPoints ?? 0;
+      return tp > 0 ? (effEarned(s) / tp) * 100 : (s.score ?? 0);
+    };
+    const percents = latest.map((l) => pct(l.sub));
+    const avg = percents.reduce((a, b) => a + b, 0) / percents.length;
+    const passCount = percents.filter((p) => p >= 50).length;
+
+    const qStats = questions.map((q, idx) => {
+      const qa = answers.filter((a) => a.questionId === q.id);
+      // مراجعة المعلم للإجابة (درجة يدوية) تتقدم على حكم التصحيح الآلي:
+      // أي درجة يدوية أكبر من صفر تُحتسب إجابة صحيحة (تشمل الدرجة الجزئية).
+      const correct = qa.filter((a) => (a.teacherPoints != null ? a.teacherPoints > 0 : a.isCorrect)).length;
+      const answered = qa.length;
+      return {
+        questionId: q.id,
+        order: idx + 1,
+        text: q.text,
+        points: q.points || 1,
+        correctCount: correct,
+        wrongCount: answered - correct,
+        answeredCount: answered,
+        correctPercent: answered > 0 ? Math.round((correct / answered) * 100) : null,
+      };
+    });
+
+    res.json({
+      worksheetId: ws.id,
+      worksheetTitle: ws.title,
+      summary: {
+        studentCount: latest.length,
+        gradedPapersCount: subs.length,
+        avgPercent: Math.round(avg * 10) / 10,
+        maxPercent: Math.round(Math.max(...percents) * 10) / 10,
+        minPercent: Math.round(Math.min(...percents) * 10) / 10,
+        passRate: Math.round((passCount / latest.length) * 100),
+        totalPoints: latest[0].sub.totalPoints ?? 0,
+      },
+      questions: qStats,
+      students: latest
+        .map((l) => ({
+          submissionId: l.sub.id,
+          studentName: l.sub.studentName,
+          studentClass: l.sub.studentClass,
+          registered: l.sub.studentId != null,
+          earnedPoints: effEarned(l.sub),
+          totalPoints: l.sub.totalPoints ?? 0,
+          percent: Math.round(pct(l.sub) * 10) / 10,
+          attempts: l.attempts,
+          submittedAt: l.sub.submittedAt.toISOString(),
+        }))
+        .sort((a, b) => b.percent - a.percent),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Worksheet report failed");
+    res.status(500).json({ message: "تعذّر إنشاء التقرير" });
   }
 });
 

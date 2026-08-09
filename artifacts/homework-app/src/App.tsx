@@ -121,6 +121,7 @@ const WheelPlay = lazy(() => import("@/pages/game/wheel-play"));
 const WorksheetCreate = lazy(() => import("@/pages/teacher/worksheet-create"));
 const WorksheetPrint = lazy(() => import("@/pages/teacher/worksheet-print"));
 const WorksheetGrade = lazy(() => import("@/pages/teacher/worksheet-grade"));
+const WorksheetReport = lazy(() => import("@/pages/teacher/worksheet-report"));
 const MindMapCreate = lazy(() => import("@/pages/teacher/mindmap-create"));
 const LessonPlanCreate = lazy(() => import("@/pages/teacher/lesson-plan-create"));
 const LessonPlanPrint = lazy(() => import("@/pages/teacher/lesson-plan-print"));
@@ -468,6 +469,7 @@ function Router() {
         <Route path="/teacher/worksheets/create" component={WorksheetCreate} />
         <Route path="/teacher/worksheets/:id/print" component={WorksheetPrint} />
         <Route path="/teacher/worksheets/:id/grade" component={WorksheetGrade} />
+        <Route path="/teacher/worksheets/:id/report" component={WorksheetReport} />
         <Route path="/teacher/mindmap/create" component={MindMapCreate} />
         <Route path="/teacher/lesson-plans/create" component={LessonPlanCreate} />
         <Route path="/teacher/lesson-plans/:id/print" component={LessonPlanPrint} />

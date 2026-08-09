@@ -18,9 +18,42 @@ import {
 import { imageUploadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
 
-import { matchStudentByName, parseWorksheetGradingResponse } from "../lib/worksheet-grading";
-
 const router: IRouter = Router();
+
+/* ── مطابقة أسماء عربية بتسامح: توحيد الهمزات والألف والتاء المربوطة
+   وإزالة التشكيل والمسافات الزائدة، ليطابق «عبد الله» «عبدالله» مثلاً. */
+function normalizeArabicName(s: string): string {
+  return (s || "")
+    .replace(/[\u064B-\u065F\u0670]/g, "") // تشكيل
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .replace(/عبد\s+ال/g, "عبدال")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** يبحث عن أفضل تطابق لاسم مستخرج ضمن طلاب المعلم (تطابق كامل أو احتواء). */
+function matchStudentByName(
+  extracted: string,
+  students: { id: number; name: string; studentClass: string | null }[],
+): { id: number; name: string; studentClass: string | null } | null {
+  const target = normalizeArabicName(extracted);
+  if (target.length < 2) return null;
+  // تطابق كامل أولاً
+  for (const st of students) {
+    if (normalizeArabicName(st.name) === target) return st;
+  }
+  // ثم احتواء (اسم الورقة جزء من الاسم الكامل أو العكس) بشرط طول معقول
+  const contains = students.filter((st) => {
+    const n = normalizeArabicName(st.name);
+    return (n.includes(target) || target.includes(n)) && Math.min(n.length, target.length) >= 5;
+  });
+  return contains.length === 1 ? contains[0] : null;
+}
 
 /* ── تطبيع خانة الصف المقروءة من الورقة.
    قراءة الصف كثيراً ما تكون مشوّهة («3أ» تُقرأ «i3» أو «13») لأن النموذج
@@ -140,13 +173,13 @@ async function checkAccessAndDuplicate(
 
 router.post("/assignments/:id/start-exam", async (req, res) => {
   try {
-    const { id } = ListSubmissionsParams.parse(req.params);
-    const body = UpdateAnswerGradeBody.parse(req.body);
+    const { id } = StartExamSessionParams.parse(req.params);
+    const body = StartExamSessionBody.parse(req.body);
 
     const [assignment] = await db
-      .select({ teacherId: assignmentsTable.teacherId })
+      .select()
       .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .where(eq(assignmentsTable.id, id))
       .limit(1);
 
     if (!assignment) {
@@ -172,11 +205,20 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
       }
     }
 
-      const existing = weeklyAggregate.get(key);
+    const existing = await db
+      .select()
+      .from(examSessionsTable)
+      .where(
+        and(
+          eq(examSessionsTable.assignmentId, id),
+          eq(examSessionsTable.deviceFingerprint, body.deviceFingerprint),
+        ),
+      )
+      .limit(1);
 
     if (existing.length > 0) {
       const session = existing[0];
-    const expiresAt = new Date(session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000);
+      const expiresAt = new Date(session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000);
       res.json({
         sessionId: session.id,
         startedAt: session.startedAt.toISOString(),
@@ -185,17 +227,15 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
       return;
     }
 
-      const [session] = await db
-        .select()
-        .from(examSessionsTable)
-        .where(
-          and(
-            eq(examSessionsTable.id, body.examSessionId),
-            eq(examSessionsTable.assignmentId, id),
-            eq(examSessionsTable.deviceFingerprint, body.deviceFingerprint),
-          ),
-        )
-        .limit(1);
+    const [session] = await db
+      .insert(examSessionsTable)
+      .values({
+        assignmentId: id,
+        studentName: body.studentName,
+        studentClass: body.studentClass,
+        deviceFingerprint: body.deviceFingerprint,
+      })
+      .returning();
 
     const expiresAt = new Date(session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000);
     res.json({
@@ -211,14 +251,14 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
 
 router.post("/assignments/:id/submit", async (req, res) => {
   try {
-    const { id } = ListSubmissionsParams.parse(req.params);
+    const { id } = SubmitAssignmentParams.parse(req.params);
     const rawStudentId = req.body?.studentId ? parseInt(req.body.studentId) : null;
-    const body = UpdateAnswerGradeBody.parse(req.body);
+    const body: any = { ...SubmitAssignmentBody.parse(req.body), studentId: isNaN(rawStudentId as any) ? null : rawStudentId };
 
     const [assignment] = await db
-      .select({ teacherId: assignmentsTable.teacherId })
+      .select()
       .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .where(eq(assignmentsTable.id, id))
       .limit(1);
 
     if (!assignment) {
@@ -266,12 +306,11 @@ router.post("/assignments/:id/submit", async (req, res) => {
       }
     }
 
-      const allowed = await checkAccessAndDuplicate(id, assignment, body.accessCode, body.deviceFingerprint, res);
-      if (!allowed) return;
-    }
+    const allowed = await checkAccessAndDuplicate(id, assignment, body.accessCode, body.deviceFingerprint, res);
+    if (!allowed) return;
 
     const questions = await db
-      .select({ id: questionsTable.id, text: questionsTable.text, questionType: questionsTable.questionType })
+      .select()
       .from(questionsTable)
       .where(eq(questionsTable.assignmentId, id));
 
@@ -280,11 +319,11 @@ router.post("/assignments/:id/submit", async (req, res) => {
       return;
     }
 
-    const questionMap = new Map(questions.map(q => [q.id, q]));
-        const correctCount = s?.correctCount || 0;
-    let earnedPoints = answerResults.reduce((sum, a) => sum + a.earnedPoints, 0);
-    const totalPointsVal = questions.reduce((sum, q) => sum + (q.points || 1), 0);
-    let answerResults: Array<{
+    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    let correctCount = 0;
+    let earnedPoints = 0;
+    let totalPointsVal = questions.reduce((sum, q) => sum + (q.points || 1), 0);
+    const answerResults: Array<{
       questionId: number;
       questionText: string;
       selectedAnswer: string;
@@ -306,13 +345,11 @@ router.post("/assignments/:id/submit", async (req, res) => {
     }> = [];
 
     for (const answer of body.answers) {
-        const question = questions[i];
-
-          const r = parsed.results[i];
+      const question = questionMap.get(answer.questionId);
       if (!question) continue;
 
       const qType = question.questionType || "mcq";
-        const isCorrect = selectedAnswer === question.correctAnswer;
+      let isCorrect = false;
       let needsAiGrading = false;
       // For listening assignments, dictation + open answers are reviewed
       // manually by the teacher (no auto-compare, no AI grading). They count
@@ -331,14 +368,12 @@ router.post("/assignments/:id/submit", async (req, res) => {
         const correctSet = new Set(question.correctAnswer.split(",").map((s: string) => s.trim()));
         const studentSet = new Set(answer.selectedAnswer.split(",").map((s: string) => s.trim()).filter(Boolean));
         isCorrect = correctSet.size === studentSet.size && [...correctSet].every(c => studentSet.has(c));
-      } else if (qType === "fill_blank") {
-        isCorrect = answer.selectedAnswer.trim().toLowerCase() === (question.correctAnswer || "").trim().toLowerCase();
       } else {
         isCorrect = answer.selectedAnswer === question.correctAnswer;
       }
 
-        const qPoints = question.points || 1;
-        const qEarned = isCorrect ? qPoints : 0;
+      const qPoints = question.points || 1;
+      const qEarned = (needsAiGrading || needsManualReview) ? 0 : (isCorrect ? qPoints : 0);
       if (isCorrect && !needsAiGrading && !needsManualReview) correctCount++;
       earnedPoints += qEarned;
 
@@ -404,11 +439,11 @@ ${textQuestions.map((q, i) => `${i + 1}. السؤال: ${q.questionText} (${q.po
 أعد النتائج بالتنسيق التالي فقط (سطر لكل سؤال):
 ${textQuestions.map((q, i) => `${i + 1}: [الدرجة المستحقة من ${q.points}] | [صحيح/خطأ/جزئي]`).join("\n")}`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        max_completion_tokens: 500,
-        messages: [{ role: "user", content: feedbackPrompt }],
-      });
+        const completion = await openai.chat.completions.create({
+          model: "gpt-5.2",
+          max_completion_tokens: 500,
+          messages: [{ role: "user", content: aiPrompt }],
+        });
         parseAiGradingResponse(completion.choices[0]?.message?.content || "", textQuestions);
       } catch (e: any) {
         req.log.error({ err: e }, "AI grading error for fill_blank");
@@ -419,28 +454,30 @@ ${textQuestions.map((q, i) => `${i + 1}: [الدرجة المستحقة من ${q
       try {
         for (const wq of whiteboardQuestions) {
           const isBase64Image = wq.studentAnswer.startsWith("data:image");
-      const messageContent: any[] = [
-        { type: "text", text: imagePrompt },
-        ...pageImages.flatMap((img, pi) =>
-          pageImages.length > 1
-            ? [
-                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length}:` },
-                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } },
-              ]
-            : [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } }],
-        ),
-      ];
+          const messageContent: any[] = [
+            {
+              type: "text",
+              text: `أنت مصحح واجبات ذكي. صحح إجابة الطالب على السؤال التالي.
+${assignment.aiGradingInstructions ? `تعليمات التصحيح من المعلم: ${assignment.aiGradingInstructions}` : ""}
+السؤال: ${wq.questionText} (${wq.points} درجة)
+${wq.correctAnswer ? `الإجابة الصحيحة: ${wq.correctAnswer}` : "لا توجد إجابة نموذجية - قيّم حسب صحة المحتوى"}
+${isBase64Image ? "إجابة الطالب مرفقة كصورة من السبورة التفاعلية. حلل الكتابة/الرسم في الصورة." : `إجابة الطالب: ${wq.studentAnswer}`}
+
+أعد النتيجة بالتنسيق التالي فقط:
+1: [الدرجة المستحقة من ${wq.points}] | [صحيح/خطأ/جزئي]`,
+            },
+          ];
           if (isBase64Image) {
             messageContent.push({
               type: "image_url",
               image_url: { url: wq.studentAnswer },
             });
           }
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        max_completion_tokens: 500,
-        messages: [{ role: "user", content: feedbackPrompt }],
-      });
+          const completion = await openai.chat.completions.create({
+            model: "gpt-5.2",
+            max_completion_tokens: 200,
+            messages: [{ role: "user", content: messageContent }],
+          });
           parseAiGradingResponse(completion.choices[0]?.message?.content || "", [wq]);
         }
       } catch (e: any) {
@@ -449,7 +486,7 @@ ${textQuestions.map((q, i) => `${i + 1}: [الدرجة المستحقة من ${q
     }
 
     const totalQuestions = questions.length;
-    const score = total > 0 ? (earned / total) * 100 : 0;
+    const score = totalPointsVal > 0 ? (earnedPoints / totalPointsVal) * 100 : 0;
 
     const notifBody = `${body.studentName}${body.studentClass ? ` (${body.studentClass})` : ""} أجاب على الواجب — ${earnedPoints}/${totalPointsVal} (${Math.round(score)}%)`;
     try {
@@ -466,11 +503,13 @@ ${textQuestions.map((q, i) => `${i + 1}: [الدرجة المستحقة من ${q
 
     let aiFeedback: string | null = null;
     try {
-      const feedbackPrompt = `أنت معلم عربي. طالب اسمه "${finalStudentName}" أرسل واجبه ورقياً عبر صورة.
+      const feedbackPrompt = `أنت معلم عربي. طالب اسمه "${body.studentName}" أجاب على واجب يحتوي على ${totalQuestions} سؤال.
 حصل على ${earnedPoints} درجة من أصل ${totalPointsVal} (${Math.round(score)}%).
 
-تفاصيل الإجابات:
-${answerResults.map((a, i) => `${i + 1}. ${a.questionText} (${a.points} درجة) - حصل على ${a.earnedPoints} درجة`).join("\n")}
+الأسئلة والإجابات:
+${answerResults.map((a, i) => `${i + 1}. ${a.questionText} (${a.points} درجة)
+   إجابة الطالب: ${a.selectedAnswer} ${a.isCorrect ? "✓" : "✗"}
+   الإجابة الصحيحة: ${a.correctAnswer}`).join("\n")}
 ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من المعلم:\n${assignment.aiGradingInstructions}\n` : ""}
 قدم تعليقاً مختصراً وتشجيعياً بالعربية عن أداء الطالب (3-4 جمل).`;
 
@@ -490,10 +529,23 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
     const startedAtVal = durationSec !== null ? new Date(Date.now() - durationSec * 1000) : null;
 
     const [submission] = await db
-      .select()
-      .from(submissionsTable)
-      .where(eq(submissionsTable.id, submissionId))
-      .limit(1);
+      .insert(submissionsTable)
+      .values({
+        assignmentId: id,
+        studentName: body.studentName,
+        studentClass: body.studentClass,
+        studentId: body.studentId || null,
+        deviceFingerprint: body.deviceFingerprint || null,
+        score,
+        totalQuestions,
+        correctAnswers: correctCount,
+        earnedPoints,
+        totalPoints: totalPointsVal,
+        aiFeedback,
+        startedAt: startedAtVal,
+        durationSeconds: durationSec,
+      })
+      .returning();
 
     await db.insert(answersTable).values(
       answerResults.map((a) => ({
@@ -563,7 +615,7 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
 router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res) => {
   try {
     const assignmentId = parseInt(req.params.id);
-    const submissionId = parseInt(req.params.submissionId, 10);
+    const submissionId = parseInt(req.params.submissionId);
     if (isNaN(assignmentId) || isNaN(submissionId)) {
       res.status(400).json({ message: "معرّف غير صالح" });
       return;
@@ -576,23 +628,17 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
       })).min(1),
       deviceFingerprint: z.string().optional(),
     });
-    const body = UpdateAnswerGradeBody.parse(req.body);
+    const body = RepeatBody.parse(req.body);
 
-    const [assignment] = await db
-      .select({ teacherId: assignmentsTable.teacherId })
-      .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
-      .limit(1);
+    const [assignment] = await db.select().from(assignmentsTable).where(eq(assignmentsTable.id, assignmentId));
     if (!assignment) {
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
 
-    const [submission] = await db
-      .select()
-      .from(submissionsTable)
-      .where(eq(submissionsTable.id, submissionId))
-      .limit(1);
+    const [submission] = await db.select().from(submissionsTable).where(
+      and(eq(submissionsTable.id, submissionId), eq(submissionsTable.assignmentId, assignmentId))
+    );
     if (!submission) {
       res.status(404).json({ message: "الإجابة غير موجودة" });
       return;
@@ -616,10 +662,7 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
       return;
     }
 
-    const questions = await db
-      .select({ id: questionsTable.id, text: questionsTable.text, questionType: questionsTable.questionType })
-      .from(questionsTable)
-      .where(eq(questionsTable.assignmentId, id));
+    const questions = await db.select().from(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
     const questionMap = new Map(questions.map(q => [q.id, q]));
 
     const existingAnswers = await db.select().from(answersTable).where(eq(answersTable.submissionId, submissionId));
@@ -628,16 +671,14 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
     let earnedPointsDelta = 0;
 
     for (const answer of body.answers) {
-        const question = questions[i];
-
-          const r = parsed.results[i];
+      const question = questionMap.get(answer.questionId);
       if (!question || !question.repeatQuestion) continue;
 
-      const existing = weeklyAggregate.get(key);
+      const existing = existingAnswerMap.get(answer.questionId);
       if (!existing || existing.isCorrect) continue;
 
       const qType = question.questionType || "mcq";
-        const isCorrect = selectedAnswer === question.correctAnswer;
+      let isCorrect = false;
       if (qType === "true_false") {
         isCorrect = answer.selectedAnswer === question.correctAnswer;
       } else if (qType === "mcq" && question.allowMultipleAnswers && question.correctAnswer) {
@@ -650,7 +691,7 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
         isCorrect = answer.selectedAnswer === question.correctAnswer;
       }
 
-        const qPoints = question.points || 1;
+      const qPoints = question.points || 1;
       const prevEarned = existing.isCorrect ? qPoints : 0;
       const newEarned = isCorrect ? qPoints : 0;
       earnedPointsDelta += newEarned - prevEarned;
@@ -672,18 +713,8 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
       repeatAttempted: true,
     }).where(eq(submissionsTable.id, submissionId));
 
-    const allAnswers = submissions.length > 0
-      ? await db
-          .select()
-          .from(answersTable)
-          .where(
-            sql`${answersTable.submissionId} IN (${sql.join(
-              submissions.map((s) => sql`${s.id}`),
-              sql`, `
-            )})`
-          )
-      : [];
-        const correctCount = s?.correctCount || 0;
+    const allAnswers = await db.select().from(answersTable).where(eq(answersTable.submissionId, submissionId));
+    const correctCount = allAnswers.filter(a => a.isCorrect).length;
 
     await db.update(submissionsTable).set({ correctAnswers: correctCount }).where(eq(submissionsTable.id, submissionId));
 
@@ -708,7 +739,7 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
         showResults: true,
         answers: allAnswers.map(a => {
           const q = questionMap.get(a.questionId);
-        const qPoints = question.points || 1;
+          const qPoints = q?.points || 1;
           return {
             questionId: a.questionId,
             questionText: q?.text || "",
@@ -744,14 +775,14 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
 
 router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res) => {
   try {
-    const { id } = ListSubmissionsParams.parse(req.params);
+    const { id } = SubmitAssignmentImageParams.parse(req.params);
     const rawStudentId2 = req.body?.studentId ? parseInt(req.body.studentId) : null;
-    const body = UpdateAnswerGradeBody.parse(req.body);
+    const body: any = { ...SubmitAssignmentImageBody.parse(req.body), studentId: isNaN(rawStudentId2 as any) ? null : rawStudentId2 };
 
     const [assignment] = await db
-      .select({ teacherId: assignmentsTable.teacherId })
+      .select()
       .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .where(eq(assignmentsTable.id, id))
       .limit(1);
 
     if (!assignment) {
@@ -789,7 +820,7 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
     }
 
     const questions = await db
-      .select({ id: questionsTable.id, text: questionsTable.text, questionType: questionsTable.questionType })
+      .select()
       .from(questionsTable)
       .where(eq(questionsTable.assignmentId, id));
 
@@ -861,11 +892,8 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
 
     if (isPaperOnly) {
       const questionsText = questions
-        .map(
-          (q, i) =>
-            `السؤال ${i + 1} (${q.points || 1} درجة): ${q.text}\nأ) ${q.optionA}\nب) ${q.optionB}\nج) ${q.optionC}\nد) ${q.optionD}`,
-        )
-        .join("\n\n");
+        .map((q, i) => `السؤال ${i + 1} (${q.points || 1} درجة): ${q.text}`)
+        .join("\n");
 
       const nameExtractionBlock = isWorksheetSource
         ? `0. أولاً: ابحث في أعلى الورقة عن خانة اسم الطالب (والصف إن وُجد) واقرأهما.
@@ -877,23 +905,26 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
 `
         : "";
 
-      const imagePrompt = `أنت مساعد ذكي لتصحيح الواجبات. هذه صورة لورقة إجابات طالب.
-${assignment.modelImageBase64 ? "تم إرفاق نموذج الإجابة من المعلم أيضاً. قارن إجابات الطالب مع النموذج." : ""}
-
+      const imagePrompt = `أنت مصحح واجبات ذكي وخبير. هذه صورة لورقة إجابات طالب.
+${assignment.modelImageBase64 ? "تم إرفاق نموذج الإجابة الصحيح من المعلم. قارن إجابات الطالب مع النموذج بدقة." : ""}
+${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من المعلم:\n${assignment.aiGradingInstructions}\n` : ""}
 الأسئلة هي:
 ${questionsText}
 
-انظر إلى صورة الطالب واستخرج إجاباته. أعد الإجابات بالتنسيق التالي فقط (بدون أي نص إضافي):
-${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
+المطلوب:
+${nameExtractionBlock}1. اقرأ إجابات الطالب من الصورة بعناية
+2. صحح كل إجابة وحدد الدرجة التي يستحقها الطالب من أصل الدرجة الكاملة للسؤال
+3. يمكن إعطاء درجات جزئية إذا كانت الإجابة صحيحة جزئياً
 
-مهم: أعد فقط الأرقام والإجابات بالتنسيق المطلوب. إذا لم تستطع قراءة إجابة، اكتب "?" بدلاً منها.`;
+أعد النتائج بالتنسيق التالي فقط (بدون أي نص إضافي):
+${nameLineFormat}${questions.map((q, i) => `${i + 1}: [إجابة الطالب المختصرة] | [الدرجة المستحقة من ${q.points || 1}] | [صحيح/خطأ/جزئي]`).join("\n")}`;
 
       const messageContent: any[] = [
         { type: "text", text: imagePrompt },
         ...pageImages.flatMap((img, pi) =>
           pageImages.length > 1
             ? [
-                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length}:` },
+                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length} من ورقة الطالب:` },
                 { type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } },
               ]
             : [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } }],
@@ -909,20 +940,68 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
       }
 
       try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        max_completion_tokens: 500,
-        messages: [{ role: "user", content: feedbackPrompt }],
-      });
+        const completion = await openai.chat.completions.create({
+          model: "gpt-5.2",
+          max_completion_tokens: 1500,
+          messages: [{ role: "user", content: messageContent }],
+        });
 
         const responseText = completion.choices[0]?.message?.content || "";
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i];
+        const allLines = responseText.split("\n").filter((l) => l.trim());
 
-          const r = parsed.results[i];
-        const qPoints = question.points || 1;
-        const qEarned = isCorrect ? qPoints : 0;
-        const isCorrect = selectedAnswer === question.correctAnswer;
+        // سطر الاسم (إن طُلب) ثم أسطر الأسئلة المرقمة — لا نعتمد على الترتيب فقط.
+        const nameLine = allLines.find((l) => /^\s*الاسم\s*[:：]/.test(l));
+        if (nameLine) {
+          const parts = nameLine.replace(/^\s*الاسم\s*[:：]\s*/, "").split("|").map((p) => p.trim());
+          const rawName = parts[0] || "";
+          if (rawName && !/غير\s*واضح/.test(rawName)) extractedName = rawName;
+          const rawClass = parts[1] || "";
+          if (rawClass && rawClass !== "-") extractedClass = rawClass;
+          nameConfidence = /واضح/.test(parts[2] || "") && !/غير\s*مؤكد/.test(parts[2] || "") ? "clear" : "uncertain";
+          if (!extractedName) nameConfidence = "uncertain";
+        }
+        // خريطة برقم السؤال (يدعم الأرقام العربية-الهندية) بدل الاعتماد على الترتيب،
+        // حتى لا تنحرف الدرجات إذا أسقط النموذج سطراً أو أعاد ترتيبه.
+        const toLatinDigits = (t: string) => t.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+        const lineByQuestionNo = new Map<number, string>();
+        for (const l of allLines) {
+          const m = toLatinDigits(l).match(/^\s*(\d+)\s*[:：]/);
+          if (m) lineByQuestionNo.set(parseInt(m[1], 10), toLatinDigits(l));
+        }
+
+        for (let i = 0; i < questions.length; i++) {
+          const question = questions[i];
+          const qPoints = question.points || 1;
+          const line = lineByQuestionNo.get(i + 1) || "";
+          const parts = line.split("|").map(p => p.trim());
+
+          let studentAnswer = parts[0]?.replace(/^\d+:\s*/, "") || "غير واضح";
+          let qEarned = 0;
+          let isCorrect = false;
+
+          if (parts.length >= 3) {
+            const earnedStr = parts[1]?.match(/[\d.]+/);
+            qEarned = earnedStr ? Math.min(parseFloat(earnedStr[0]), qPoints) : 0;
+            const status = parts[2]?.trim();
+            isCorrect = status === "صحيح" || qEarned >= qPoints;
+          }
+
+          answerResults.push({
+            questionId: question.id,
+            questionText: question.text,
+            selectedAnswer: studentAnswer,
+            correctAnswer: null,
+            isCorrect,
+            points: qPoints,
+            earnedPoints: qEarned,
+          });
+        }
+      } catch (e: any) {
+        req.log.error({ err: e }, "AI paper grading error");
+        res.status(500).json({ message: "خطأ في تصحيح الورقة. يرجى المحاولة مرة أخرى." });
+        return;
+      }
+    } else {
       const questionsText = questions
         .map(
           (q, i) =>
@@ -963,11 +1042,11 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
       let extractedAnswers: string[] = [];
       try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        max_completion_tokens: 500,
-        messages: [{ role: "user", content: feedbackPrompt }],
-      });
+        const completion = await openai.chat.completions.create({
+          model: "gpt-5.2",
+          max_completion_tokens: 1000,
+          messages: [{ role: "user", content: messageContent }],
+        });
 
         const responseText = completion.choices[0]?.message?.content || "";
         const lines = responseText.split("\n").filter((l) => l.trim());
@@ -983,8 +1062,6 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
       for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
-
-          const r = parsed.results[i];
         const selectedAnswer = extractedAnswers[i] || "?";
         const isCorrect = selectedAnswer === question.correctAnswer;
         const qPoints = question.points || 1;
@@ -1017,10 +1094,10 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
         nameConfidence = "uncertain";
       }
       try {
-      const roster = await db
-        .select({ id: studentsTable.id, name: studentsTable.name, studentClass: studentsTable.studentClass })
-        .from(studentsTable)
-        .where(eq(studentsTable.teacherId, req.session.teacherId));
+        const roster = await db
+          .select({ id: studentsTable.id, name: studentsTable.name, studentClass: studentsTable.studentClass })
+          .from(studentsTable)
+          .where(eq(studentsTable.teacherId, assignment.teacherId));
         matchedStudent = matchStudentByName(finalStudentName, roster);
         if (matchedStudent) {
           // نعتمد اسم السجل الرسمي وصفّه عند التطابق.
@@ -1039,11 +1116,11 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
       finalStudentClass = body.studentClass;
     }
 
-        const correctCount = s?.correctCount || 0;
+    let correctCount = answerResults.filter(a => a.isCorrect).length;
     let earnedPoints = answerResults.reduce((sum, a) => sum + a.earnedPoints, 0);
     const totalPointsVal = questions.reduce((sum, q) => sum + (q.points || 1), 0);
     const totalQuestions = questions.length;
-    const score = total > 0 ? (earned / total) * 100 : 0;
+    const score = totalPointsVal > 0 ? (earnedPoints / totalPointsVal) * 100 : 0;
 
     const notifBody2 = `${finalStudentName}${finalStudentClass ? ` (${finalStudentClass})` : ""} أرسل إجابة ورقية — ${earnedPoints}/${totalPointsVal} (${Math.round(score)}%)`;
     try {
@@ -1079,10 +1156,22 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
     }
 
     const [submission] = await db
-      .select()
-      .from(submissionsTable)
-      .where(eq(submissionsTable.id, submissionId))
-      .limit(1);
+      .insert(submissionsTable)
+      .values({
+        assignmentId: id,
+        studentName: finalStudentName,
+        studentClass: finalStudentClass,
+        // ورقة العمل: لا نثق بأي studentId من العميل — الربط عبر مطابقة السجل فقط.
+        studentId: isWorksheetSource ? (matchedStudent?.id ?? null) : (body.studentId ?? null),
+        deviceFingerprint: body.deviceFingerprint || null,
+        score,
+        totalQuestions,
+        correctAnswers: correctCount,
+        earnedPoints,
+        totalPoints: totalPointsVal,
+        aiFeedback,
+      })
+      .returning();
 
     await db.insert(answersTable).values(
       answerResults.map((a) => ({
@@ -1176,18 +1265,10 @@ router.patch("/submissions/:id/student-name", async (req, res) => {
       return;
     }
     const [row] = await db
-      .select({
-        answerId: answersTable.id,
-        submissionId: answersTable.submissionId,
-        assignmentId: submissionsTable.assignmentId,
-        teacherId: assignmentsTable.teacherId,
-        questionPoints: questionsTable.points,
-      })
-      .from(answersTable)
-      .innerJoin(submissionsTable, eq(answersTable.submissionId, submissionsTable.id))
-      .innerJoin(assignmentsTable, eq(submissionsTable.assignmentId, assignmentsTable.id))
-      .innerJoin(questionsTable, eq(answersTable.questionId, questionsTable.id))
-      .where(eq(answersTable.id, answerId))
+      .select({ submission: submissionsTable, assignment: assignmentsTable })
+      .from(submissionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentsTable.id, submissionsTable.assignmentId))
+      .where(eq(submissionsTable.id, subId))
       .limit(1);
     if (!row) {
       res.status(404).json({ message: "النتيجة غير موجودة" });
@@ -1241,12 +1322,9 @@ router.get("/assignments/:id/submissions", async (req, res) => {
     const [assignment] = await db
       .select({ teacherId: assignmentsTable.teacherId })
       .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .where(eq(assignmentsTable.id, id))
       .limit(1);
 
-    // ملكية الواجب شرط دائماً — وينطبق ذلك صراحةً أيضاً على واجبات أوراق العمل
-    // الداخلية (source='worksheet'): نتائج طلاب ورقة عمل يراها مالكها فقط،
-    // حتى لو كانت الورقة نفسها مشاركة في مكتبة المشرف.
     if (!assignment || assignment.teacherId !== req.session.teacherId) {
       res.status(403).json({ message: "غير مصرح لك بعرض هذه النتائج" });
       return;
@@ -1294,13 +1372,17 @@ router.patch("/submissions/:submissionId", async (req, res) => {
       res.status(400).json({ message: "معرف غير صالح" });
       return;
     }
-    const body = UpdateAnswerGradeBody.parse(req.body);
+    const body = UpdateSubmissionBody.parse(req.body);
 
     const [submission] = await db
-      .select()
+      .select({
+        id: submissionsTable.id,
+        assignmentId: submissionsTable.assignmentId,
+      })
       .from(submissionsTable)
       .where(eq(submissionsTable.id, submissionId))
       .limit(1);
+
     if (!submission) {
       res.status(404).json({ message: "الإجابة غير موجودة" });
       return;
@@ -1391,18 +1473,18 @@ router.get("/assignments/:id/export-csv", async (req, res) => {
     }
 
     const [assignment] = await db
-      .select({ teacherId: assignmentsTable.teacherId })
+      .select({ teacherId: assignmentsTable.teacherId, title: assignmentsTable.title })
       .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .where(eq(assignmentsTable.id, id))
       .limit(1);
 
     if (!assignment || assignment.teacherId !== req.session.teacherId) {
-      res.status(403).json({ message: "غير مصرح لك بعرض هذه النتائج" });
+      res.status(403).json({ message: "غير مصرح لك بتصدير هذه النتائج" });
       return;
     }
 
     const questions = await db
-      .select({ id: questionsTable.id, text: questionsTable.text, questionType: questionsTable.questionType })
+      .select()
       .from(questionsTable)
       .where(eq(questionsTable.assignmentId, id));
 
@@ -1444,27 +1526,32 @@ router.get("/assignments/:id/export-csv", async (req, res) => {
       return s;
     };
 
-    const rows = await db
-      .select({
-        id: answersTable.id,
-        questionId: answersTable.questionId,
-        selectedAnswer: answersTable.selectedAnswer,
-        isCorrect: answersTable.isCorrect,
-        teacherPoints: answersTable.teacherPoints,
-        teacherNote: answersTable.teacherNote,
-        questionText: questionsTable.text,
-        questionType: questionsTable.questionType,
-        points: questionsTable.points,
-        correctAnswer: questionsTable.correctAnswer,
-        optionA: questionsTable.optionA,
-        optionB: questionsTable.optionB,
-        optionC: questionsTable.optionC,
-        optionD: questionsTable.optionD,
-      })
-      .from(answersTable)
-      .innerJoin(questionsTable, eq(answersTable.questionId, questionsTable.id))
-      .where(eq(answersTable.submissionId, submissionId))
-      .orderBy(answersTable.id);
+    const rows = submissions.map((s) => {
+      const finalPoints = s.teacherAdjustedPoints !== null ? s.teacherAdjustedPoints : s.earnedPoints;
+      const pct = s.totalPoints > 0 ? Math.round((finalPoints / s.totalPoints) * 100) : 0;
+      const subAnswers = answersBySubmission.get(s.id) || [];
+      const answerMap = new Map(subAnswers.map((a) => [a.questionId, a]));
+
+      const baseRow = [
+        sanitizeCsvField(s.studentName),
+        sanitizeCsvField(s.studentClass || ""),
+        s.earnedPoints.toString(),
+        s.totalPoints.toString(),
+        pct.toString(),
+        s.teacherAdjustedPoints !== null ? s.teacherAdjustedPoints.toString() : "",
+        sanitizeCsvField(s.teacherNote || ""),
+        new Date(s.submittedAt).toLocaleString("ar-EG"),
+      ];
+
+      const questionCols = questions.map((q) => {
+        const ans = answerMap.get(q.id);
+        if (!ans) return "";
+        const mark = ans.isCorrect ? "✓" : "✗";
+        return sanitizeCsvField(`${ans.selectedAnswer} ${mark}`);
+      });
+
+      return [...baseRow, ...questionCols];
+    });
 
     const csvContent = BOM + [headers.map((h) => `"${sanitizeCsvField(h)}"`).join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
 
@@ -1551,7 +1638,7 @@ router.get("/teacher/stats", async (req, res) => {
     const studentScores = new Map<string, { total: number; count: number }>();
     for (const sub of allSubmissions) {
       const pct = getPct(sub);
-      const existing = weeklyAggregate.get(key);
+      const existing = studentScores.get(sub.studentName) || { total: 0, count: 0 };
       existing.total += pct;
       existing.count++;
       studentScores.set(sub.studentName, existing);
@@ -1569,7 +1656,7 @@ router.get("/teacher/stats", async (req, res) => {
     for (const sub of allSubmissions) {
       const date = new Date(sub.submittedAt).toISOString().split("T")[0];
       const pct = getPct(sub);
-      const existing = weeklyAggregate.get(key);
+      const existing = timelineMap.get(date) || { count: 0, totalScore: 0 };
       existing.count++;
       existing.totalScore += pct;
       timelineMap.set(date, existing);
@@ -1644,7 +1731,7 @@ router.get("/assignments/:id/question-stats", async (req, res) => {
     const [assignment] = await db
       .select({ teacherId: assignmentsTable.teacherId })
       .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .where(eq(assignmentsTable.id, id))
       .limit(1);
 
     if (!assignment || assignment.teacherId !== req.session.teacherId) {
