@@ -59,47 +59,75 @@ function findPaperQuad(srcCanvas: HTMLCanvasElement): Quad | null {
   // محاولتان: العادية أولاً، ثم حساسية أعلى للورق منخفض التباين —
   // حتى لا يظل الماسح «يبحث» طويلاً في الإضاءة العادية للفصول.
   return (
-    findPaperQuadPass(srcCanvas, 50, 200) ?? findPaperQuadPass(srcCanvas, 25, 110)
+    findPaperQuadPass(srcCanvas, 50, 150) ?? findPaperQuadPass(srcCanvas, 25, 100)
   );
+}
+
+/** ترتيب 4 نقاط إلى زوايا حسب موقعها من مركزها */
+function orderQuad(pts: Corner[]): Quad | null {
+  const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+  const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+  let tl: Corner | null = null, tr: Corner | null = null, bl: Corner | null = null, br: Corner | null = null;
+  for (const p of pts) {
+    if (p.x < cx && p.y < cy) tl = p;
+    else if (p.x >= cx && p.y < cy) tr = p;
+    else if (p.x < cx && p.y >= cy) bl = p;
+    else br = p;
+  }
+  return tl && tr && bl && br ? { tl, tr, bl, br } : null;
 }
 
 function findPaperQuadPass(srcCanvas: HTMLCanvasElement, cannyLo: number, cannyHi: number): Quad | null {
   const src = cv.imread(srcCanvas);
-  const edges = new cv.Mat();
+  const gray = new cv.Mat();
   const blur = new cv.Mat();
-  const thresh = new cv.Mat();
+  const edges = new cv.Mat();
+  const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
-  let best: any = null;
   try {
-    cv.Canny(src, edges, cannyLo, cannyHi);
-    cv.GaussianBlur(edges, blur, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
-    cv.threshold(blur, thresh, 0, 255, cv.THRESH_OTSU);
-    cv.findContours(thresh, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
-    let maxArea = 0;
+    // المعالجة القياسية لاكتشاف المستندات: رمادي → تنعيم → Canny → توسيع
+    // (التوسيع يغلق الفجوات الصغيرة في حواف الورقة فلا تنكسر إلى قطع)
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    cv.Canny(blur, edges, cannyLo, cannyHi);
+    cv.dilate(edges, edges, kernel);
+    cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    // نجمع الأشكال الكبيرة ونرتبها بالمساحة، ثم نبحث عن أول شكل يشبه ورقة
+    // فعلاً: رباعي محدّب بعد التبسيط (approxPolyDP) — وليس مجرد أكبر شكل،
+    // فأكبر شكل قد يكون لابتوب/طاولة/ظلاً خلف الورقة.
+    const frameArea = srcCanvas.width * srcCanvas.height;
+    const idx: { i: number; area: number }[] = [];
     for (let i = 0; i < contours.size(); i++) {
       const c = contours.get(i);
       const a = cv.contourArea(c);
-      if (a > maxArea) { maxArea = a; best?.delete(); best = c; }
-      else c.delete();
+      c.delete();
+      if (a > frameArea * 0.08) idx.push({ i, area: a });
     }
-    if (!best) return null;
-    const center = cv.minAreaRect(best).center;
-    const pts = best.data32S as Int32Array;
-    let tl: Corner | null = null, tr: Corner | null = null, bl: Corner | null = null, br: Corner | null = null;
-    let dTl = 0, dTr = 0, dBl = 0, dBr = 0;
-    for (let i = 0; i < pts.length; i += 2) {
-      const p = { x: pts[i], y: pts[i + 1] };
-      const d = Math.hypot(p.x - center.x, p.y - center.y);
-      if (p.x < center.x && p.y < center.y) { if (d > dTl) { tl = p; dTl = d; } }
-      else if (p.x > center.x && p.y < center.y) { if (d > dTr) { tr = p; dTr = d; } }
-      else if (p.x < center.x && p.y > center.y) { if (d > dBl) { bl = p; dBl = d; } }
-      else if (p.x > center.x && p.y > center.y) { if (d > dBr) { br = p; dBr = d; } }
+    idx.sort((a, b) => b.area - a.area);
+    for (const { i } of idx.slice(0, 5)) {
+      const c = contours.get(i);
+      const approx = new cv.Mat();
+      try {
+        const peri = cv.arcLength(c, true);
+        cv.approxPolyDP(c, approx, 0.02 * peri, true);
+        if (approx.rows === 4 && cv.isContourConvex(approx)) {
+          const d = approx.data32S as Int32Array;
+          const quad = orderQuad([
+            { x: d[0], y: d[1] }, { x: d[2], y: d[3] },
+            { x: d[4], y: d[5] }, { x: d[6], y: d[7] },
+          ]);
+          if (quad) return quad;
+        }
+      } finally {
+        approx.delete(); c.delete();
+      }
     }
-    return tl && tr && bl && br ? { tl, tr, bl, br } : null;
+    return null;
   } finally {
-    best?.delete();
-    hierarchy.delete(); contours.delete(); thresh.delete(); blur.delete(); edges.delete(); src.delete();
+    hierarchy.delete(); contours.delete(); edges.delete(); blur.delete(); gray.delete();
+    kernel.delete(); src.delete();
   }
 }
 
