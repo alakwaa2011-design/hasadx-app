@@ -90,6 +90,7 @@
     "@react-three/fiber": "^9.5.0",
     "@types/three": "^0.183.1",
     "html2canvas": "^1.4.1",
+    "jscanify": "^1.4.3",
     "jsqr": "^1.4.0",
     "katex": "^0.18.1",
     "mammoth": "^1.12.0",

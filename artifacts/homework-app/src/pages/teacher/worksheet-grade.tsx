@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import jsQR from "jsqr";
+import DocScannerCamera from "@/components/doc-scanner-camera";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -149,9 +150,8 @@ export default function WorksheetGrade() {
 
   const [subs, setSubs] = useState<SubmissionRow[]>([]);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [camReady, setCamReady] = useState(false);
+  // كاميرا المسح الضوئي (اكتشاف الحدود + التقاط تلقائي + قص وتصحيح منظور)
+  const [scanning, setScanning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   /* ── تحميل معلومات التصحيح، مع إعادة توجيه لتسجيل الدخول والرجوع تلقائياً */
@@ -188,38 +188,6 @@ export default function WorksheetGrade() {
       setSubs(Array.isArray(rows) ? rows : []);
     } catch { /* غير حرج */ }
   };
-
-  /* ── كاميرا (نفس نمط smart-board-ask) */
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCamReady(false);
-  }, []);
-
-  const startCamera = useCallback(async () => {
-    try {
-      // facingMode كتفضيل غير إلزامي: اللابتوب لا يملك كاميرا خلفية،
-      // والقيد الصارم قد يعيد بثاً فارغاً على بعض الأجهزة.
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-      });
-      streamRef.current = s;
-      setCamReady(true);
-    } catch {
-      toast.error("تعذّر الوصول للكاميرا — استخدم اختيار ملف بدلاً منها");
-    }
-  }, []);
-
-  // عنصر <video> لا يُرسم إلا بعد camReady، لذا يجب ربط البث بعد الرسم
-  // وليس داخل startCamera (وإلا تبقى الشاشة سوداء لأن ref يكون فارغاً).
-  useEffect(() => {
-    if (!camReady || !streamRef.current || !videoRef.current) return;
-    const v = videoRef.current;
-    v.srcObject = streamRef.current;
-    v.play().catch(() => { /* بعض المتصفحات تشغّل تلقائياً */ });
-  }, [camReady]);
-
-  useEffect(() => () => stopCamera(), [stopCamera]);
 
   /**
    * استلام صورة (من الكاميرا أو ملف): يقرأ QR الصفحة تلقائياً لترتيبها،
@@ -266,18 +234,6 @@ export default function WorksheetGrade() {
       setDetecting(false);
     }
   }, [worksheetId]);
-
-  const capturePhoto = () => {
-    if (!videoRef.current) return;
-    const c = document.createElement("canvas");
-    c.width = videoRef.current.videoWidth;
-    c.height = videoRef.current.videoHeight;
-    c.getContext("2d")?.drawImage(videoRef.current, 0, 0);
-    const url = c.toDataURL("image/jpeg", 0.85);
-    void ingestImage(url);
-    // في تعدد الصفحات تبقى الكاميرا مفتوحة للصفحة التالية مباشرة
-    if (!isMulti) stopCamera();
-  };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -372,7 +328,7 @@ export default function WorksheetGrade() {
     setImgPrev(null);
     setImageB64(null);
     setPagesMap({});
-    if (!camReady) void startCamera();
+    setScanning(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -583,33 +539,27 @@ export default function WorksheetGrade() {
                 </button>
               </div>
             </div>
-          ) : camReady ? (
-            <div className="space-y-3">
-              {isMulti && missingPages.length > 0 && (
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">
-                  صوّر الصفحة {missingPages[0]} (أو أي صفحة أخرى — الترتيب يُقرأ من QR تلقائياً)
-                </p>
-              )}
-              <video ref={videoRef} playsInline muted className="w-full rounded-xl bg-black aspect-[3/4] object-cover" />
-              <div className="flex gap-2">
-                <button
-                  onClick={capturePhoto}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700"
-                >
-                  <Camera className="w-4 h-4" /> التقط الصورة
-                </button>
-                <button
-                  onClick={stopCamera}
-                  className="px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </div>
+          ) : scanning ? (
+            <DocScannerCamera
+              hint={
+                isMulti && missingPages.length > 0
+                  ? `صوّر الصفحة ${missingPages[0]} (أو أي صفحة أخرى — الترتيب يُقرأ من QR تلقائياً)`
+                  : undefined
+              }
+              onCapture={(url) => {
+                void (async () => {
+                  await ingestImage(url);
+                  // ورقة صفحة واحدة: أغلق الكاميرا بعد الاستلام. أما إذا كشف QR
+                  // أنها متعددة الصفحات فتبقى مفتوحة لالتقاط بقية الصفحات تلقائياً.
+                  if (totalPagesRef.current === 1) setScanning(false);
+                })();
+              }}
+              onClose={() => setScanning(false)}
+            />
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={startCamera}
+                onClick={() => setScanning(true)}
                 className="flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
               >
                 <Camera className="w-6 h-6" /> فتح الكاميرا

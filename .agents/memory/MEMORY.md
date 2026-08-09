@@ -14,3 +14,4 @@
 - [gpt-5 reasoning token budget](gpt5-reasoning-token-budget.md) — gpt-5 spends max_completion_tokens on hidden reasoning; without reasoning_effort:"minimal" + big budget, replies come back EMPTY (finish=length).
 - [Worksheet smart grading link](worksheet-grading-link.md) — hidden source='worksheet' assignments power photo grading; owner-session only, no access code, version on edit-after-results.
 - [Credits system architecture](credits-system.md) — 5 DB tables + 3 platform_settings columns; CreditService hold/capture/refund; checkCredits middleware is a no-op when creditsEnabled=OFF; @workspace/db dist/ must be rebuilt (npx tsc -p tsconfig.json) after schema changes or tsc errors on new tables; Button in ui-elements.tsx has no size prop, only variant.
+- [jscanify/OpenCV scanner](jscanify-opencv-scanner.md) — jscanify 1.4.x leaks cv.Mat in findPaperContour/extractPaper; call cv directly with full deletes in any per-frame loop.
