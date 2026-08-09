@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
   ArrowRight, Loader2, XCircle, CheckCircle2, User, Users,
-  TrendingUp, TrendingDown, AlertTriangle, X, Printer, UserPen,
+  TrendingUp, TrendingDown, AlertTriangle, X, Printer, UserPen, Mail, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +40,10 @@ type ReportData = {
     studentName: string;
     studentClass: string | null;
     registered: boolean;
+    studentId: number | null;
+    parentEmail: string | null;
+    parentName: string | null;
+    wrongQuestions: Array<{ order: number; text: string }>;
     earnedPoints: number;
     totalPoints: number;
     percent: number;
@@ -77,6 +81,8 @@ export default function WorksheetReport() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error" | "forbidden">("loading");
   const [details, setDetails] = useState<SubmissionDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  // حالة إرسال النتيجة لولي الأمر لكل صف: sending أثناء الإرسال، sent بعد النجاح
+  const [parentSend, setParentSend] = useState<Record<number, "sending" | "sent">>({});
 
   // تصحيح اسم ورقة «غير معروف» وربطها بطالب من قائمة المعلم
   const [fixTarget, setFixTarget] = useState<{ submissionId: number } | null>(null);
@@ -166,6 +172,48 @@ export default function WorksheetReport() {
       toast.error("حدث خطأ في الاتصال");
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  // إرسال ملخص نتيجة الطالب (الدرجة + الأسئلة الخاطئة) لولي الأمر
+  const sendToParent = async (s: NonNullable<ReportData>["students"][number]) => {
+    if (!data || s.studentId == null || !s.parentEmail) return;
+    if (parentSend[s.submissionId]) return;
+    setParentSend((p) => ({ ...p, [s.submissionId]: "sending" }));
+    try {
+      const wrongList = s.wrongQuestions.length > 0
+        ? `\n\nالأسئلة التي أخطأ فيها:\n${s.wrongQuestions.map((q) => `- س${q.order}: ${q.text}`).join("\n")}`
+        : "\n\nأجاب على جميع الأسئلة إجابة صحيحة. أحسنت!";
+      const body =
+        `السلام عليكم ورحمة الله وبركاته،\n\n` +
+        `نفيدكم بنتيجة الطالب ${s.studentName} في ورقة العمل «${data.worksheetTitle}»:\n\n` +
+        `الدرجة: ${s.earnedPoints} من ${s.totalPoints} (${Math.round(s.percent)}٪)` +
+        wrongList +
+        `\n\nمع خالص التحية،`;
+      const res = await fetch(`${API_BASE}/api/parent-messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          studentId: s.studentId,
+          subject: `نتيجة ورقة العمل: ${data.worksheetTitle}`.slice(0, 200),
+          body: body.slice(0, 3000),
+          parentEmail: s.parentEmail,
+          ...(s.parentName ? { parentName: s.parentName } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || "فشل الإرسال");
+      }
+      setParentSend((p) => ({ ...p, [s.submissionId]: "sent" }));
+      toast.success(`أُرسلت النتيجة لولي أمر ${s.studentName}`);
+    } catch (e) {
+      setParentSend((p) => {
+        const { [s.submissionId]: _, ...rest } = p;
+        return rest;
+      });
+      toast.error(e instanceof Error && e.message !== "فشل الإرسال" ? e.message : "تعذّر إرسال الرسالة لولي الأمر");
     }
   };
 
@@ -337,6 +385,8 @@ export default function WorksheetReport() {
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                 {students.map((s) => {
                   const isUnknown = s.studentName === "غير معروف";
+                  const canShare = s.registered && s.studentId != null && !!s.parentEmail;
+                  const sendState = parentSend[s.submissionId];
                   return (
                     <li key={s.submissionId}>
                       <div className="w-full py-2.5 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg px-1.5 -mx-1.5">
@@ -359,6 +409,25 @@ export default function WorksheetReport() {
                           >
                             <UserPen className="w-3.5 h-3.5" />
                             تصحيح الاسم
+                          </button>
+                        )}
+                        {canShare && (
+                          <button
+                            onClick={() => sendToParent(s)}
+                            disabled={!!sendState}
+                            title={sendState === "sent" ? "أُرسلت النتيجة لولي الأمر" : "إرسال النتيجة لولي الأمر"}
+                            aria-label={`إرسال نتيجة ${s.studentName} لولي الأمر`}
+                            className={`shrink-0 p-2 rounded-lg print:hidden ${
+                              sendState === "sent"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
+                            } disabled:cursor-default`}
+                          >
+                            {sendState === "sending"
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : sendState === "sent"
+                                ? <Check className="w-4 h-4" />
+                                : <Mail className="w-4 h-4" />}
                           </button>
                         )}
                         <button onClick={() => openDetails(s.submissionId)} className="shrink-0 text-end">

@@ -126,14 +126,20 @@ function sub(partial: Partial<Sub> & { studentName: string }): Sub {
   } as Sub;
 }
 
-/** يجهّز الطابور: ورقة العمل، ثم الأسئلة، ثم التصحيحات، ثم الإجابات (إن لزم). */
+/** يجهّز الطابور: ورقة العمل، ثم الأسئلة، ثم التصحيحات، ثم الإجابات (إن لزم)،
+ *  ثم بيانات أولياء الأمور للطلاب المسجلين (إن وُجدوا). */
 function queueReport(opts: {
   questions?: unknown[];
   subs: Sub[];
   answers?: unknown[];
+  parents?: unknown[];
 }) {
   mockState.queue.push([WS], opts.questions ?? [], opts.subs);
-  if (opts.subs.length > 0) mockState.queue.push(opts.answers ?? []);
+  if (opts.subs.length > 0) {
+    mockState.queue.push(opts.answers ?? []);
+    // المسار يستعلم عن بيانات ولي الأمر فقط عند وجود طلاب مسجلين
+    if (opts.subs.some((s) => s.studentId != null)) mockState.queue.push(opts.parents ?? []);
+  }
 }
 
 async function getReport() {

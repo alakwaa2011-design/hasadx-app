@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable } from "@workspace/db";
+import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable, studentsTable } from "@workspace/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { z } from "zod";
@@ -686,6 +686,20 @@ router.get("/worksheets/:id/report", requireTeacher, async (req, res) => {
           .where(sql`${answersTable.submissionId} IN (${sql.join(latestIds.map((i) => sql`${i}`), sql`, `)})`)
       : [];
 
+    // بيانات ولي الأمر للطلاب المسجلين — لزر مشاركة النتيجة مع ولي الأمر
+    const registeredIds = Array.from(new Set(latest.map((l) => l.sub.studentId).filter((v): v is number => v != null)));
+    const parentByStudentId = new Map<number, { parentEmail: string | null; parentName: string | null }>();
+    if (registeredIds.length > 0) {
+      const rows = await db
+        .select({ id: studentsTable.id, parentEmail: studentsTable.parentEmail, parentName: studentsTable.parentName })
+        .from(studentsTable)
+        .where(and(
+          eq(studentsTable.teacherId, teacherId),
+          sql`${studentsTable.id} IN (${sql.join(registeredIds.map((i) => sql`${i}`), sql`, `)})`,
+        ));
+      for (const r of rows) parentByStudentId.set(r.id, { parentEmail: r.parentEmail, parentName: r.parentName });
+    }
+
     // الدرجة الفعلية: تعديل المعلم (إن وُجد) يتقدم على درجة التصحيح الآلي.
     const effEarned = (s: typeof subs[number]) => s.teacherAdjustedPoints ?? s.earnedPoints ?? 0;
     const pct = (s: typeof subs[number]) => {
@@ -733,6 +747,17 @@ router.get("/worksheets/:id/report", requireTeacher, async (req, res) => {
           studentName: l.sub.studentName,
           studentClass: l.sub.studentClass,
           registered: l.sub.studentId != null,
+          studentId: l.sub.studentId ?? null,
+          parentEmail: l.sub.studentId != null ? parentByStudentId.get(l.sub.studentId)?.parentEmail ?? null : null,
+          parentName: l.sub.studentId != null ? parentByStudentId.get(l.sub.studentId)?.parentName ?? null : null,
+          // الأسئلة التي أخطأ فيها الطالب (مراجعة المعلم اليدوية تتقدم على الحكم الآلي)
+          wrongQuestions: answers
+            .filter((a) => a.submissionId === l.sub.id && !(a.teacherPoints != null ? a.teacherPoints > 0 : a.isCorrect))
+            .map((a) => {
+              const qIdx = questions.findIndex((q) => q.id === a.questionId);
+              return { order: qIdx + 1, text: questions[qIdx]?.text ?? "" };
+            })
+            .sort((a, b) => a.order - b.order),
           earnedPoints: effEarned(l.sub),
           totalPoints: l.sub.totalPoints ?? 0,
           percent: Math.round(pct(l.sub) * 10) / 10,

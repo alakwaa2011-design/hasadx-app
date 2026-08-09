@@ -169,9 +169,13 @@ async function patchStudentName(
 }
 
 async function getReport(subs: Sub[]) {
-  // طابور التقرير: الورقة، الأسئلة، التصحيحات، الإجابات
+  // طابور التقرير: الورقة، الأسئلة، التصحيحات، الإجابات،
+  // ثم بيانات أولياء الأمور عند وجود طلاب مسجلين
   mockState.queue.push([WS], [], subs);
-  if (subs.length > 0) mockState.queue.push([]);
+  if (subs.length > 0) {
+    mockState.queue.push([]);
+    if (subs.some((s) => s.studentId != null)) mockState.queue.push([]);
+  }
   const res = await request(makeApp(worksheetsRouter, { teacherId: TEACHER_ID }))
     .get("/api/worksheets/1/report");
   expect(res.status).toBe(200);
