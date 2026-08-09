@@ -385,7 +385,12 @@ router.get("/worksheets", requireTeacher, async (req, res) => {
         and(eq(worksheetsTable.isShared, true), eq(teachersTable.isAdmin, true)),
       ))
       .orderBy(desc(worksheetsTable.updatedAt));
-    res.json(rows);
+    // لا نكشف معرف واجب التصحيح الداخلي لغير المالك — يُستخدم للوصول لنتائج
+    // الطلاب (أسماء ودرجات)، ومكتبة المشاركة تعرض المحتوى فقط.
+    res.json(rows.map((r) => ({
+      ...r,
+      linkedAssignmentId: r.teacherId === teacherId ? r.linkedAssignmentId : null,
+    })));
   } catch (err) {
     req.log.error({ err }, "List worksheets failed");
     res.status(500).json({ message: "Failed to load worksheets" });
@@ -421,7 +426,13 @@ router.get("/worksheets/:id", requireTeacher, async (req, res) => {
       res.status(403).json({ message: "Forbidden" });
       return;
     }
-    res.json({ ...row.worksheet, ownerName: row.owner.name, isOwner });
+    // إخفاء معرف واجب التصحيح الداخلي عن غير المالك (يقود لنتائج الطلاب).
+    res.json({
+      ...row.worksheet,
+      linkedAssignmentId: isOwner ? row.worksheet.linkedAssignmentId : null,
+      ownerName: row.owner.name,
+      isOwner,
+    });
   } catch (err) {
     req.log.error({ err }, "Read worksheet failed");
     res.status(500).json({ message: "Failed to load worksheet" });
