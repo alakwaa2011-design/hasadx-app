@@ -56,6 +56,14 @@ type Quad = { tl: Corner; tr: Corner; bl: Corner; br: Corner };
  * هذه الدالة تعمل كل ~160ms فأي تسريب يراكم ذاكرة WASM حتى يتوقف المسح.
  */
 function findPaperQuad(srcCanvas: HTMLCanvasElement): Quad | null {
+  // محاولتان: العادية أولاً، ثم حساسية أعلى للورق منخفض التباين —
+  // حتى لا يظل الماسح «يبحث» طويلاً في الإضاءة العادية للفصول.
+  return (
+    findPaperQuadPass(srcCanvas, 50, 200) ?? findPaperQuadPass(srcCanvas, 25, 110)
+  );
+}
+
+function findPaperQuadPass(srcCanvas: HTMLCanvasElement, cannyLo: number, cannyHi: number): Quad | null {
   const src = cv.imread(srcCanvas);
   const edges = new cv.Mat();
   const blur = new cv.Mat();
@@ -64,7 +72,7 @@ function findPaperQuad(srcCanvas: HTMLCanvasElement): Quad | null {
   const hierarchy = new cv.Mat();
   let best: any = null;
   try {
-    cv.Canny(src, edges, 50, 200);
+    cv.Canny(src, edges, cannyLo, cannyHi);
     cv.GaussianBlur(edges, blur, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
     cv.threshold(blur, thresh, 0, 255, cv.THRESH_OTSU);
     cv.findContours(thresh, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
@@ -114,18 +122,20 @@ function warpPaper(srcCanvas: HTMLCanvasElement, q: Quad, outW: number, outH: nu
   }
 }
 
-/* ── معايير الالتقاط التلقائي ── */
-const ANALYZE_MS = 160;          // فاصل تحليل الإطارات
+/* ── معايير الالتقاط التلقائي ──
+ * مضبوطة للسرعة (نمط تطبيقات السكانر): الالتقاط خلال ~ثلث ثانية من ظهور
+ * الورقة كاملة، والفحوص متساهلة — الهدف منع الصور السيئة فعلاً فقط. */
+const ANALYZE_MS = 100;          // فاصل تحليل الإطارات
 const WORK_MAX_SIDE = 400;       // دقة التحليل (منخفضة = سريعة)
-const MIN_AREA_RATIO = 0.18;     // الورقة يجب أن تملأ ≥18% من الكادر
-const MAX_AREA_RATIO = 0.985;
-const EDGE_MARGIN_RATIO = 0.012; // كل الزوايا داخل الكادر بهامش
-const MIN_BRIGHTNESS = 55;       // متوسط الإضاءة (0-255)
-const MIN_SHARPNESS = 90;        // تباين لابلاس التقريبي
-const STABLE_MOVE_RATIO = 0.02;  // أقصى حركة للزوايا بين إطارين
-const HOLD_MS = 750;             // مدة الثبات قبل الالتقاط
+const MIN_AREA_RATIO = 0.14;     // الورقة يجب أن تملأ ≥14% من الكادر
+const MAX_AREA_RATIO = 0.99;
+const EDGE_MARGIN_RATIO = 0.008; // كل الزوايا داخل الكادر بهامش
+const MIN_BRIGHTNESS = 45;       // متوسط الإضاءة (0-255)
+const MIN_SHARPNESS = 30;        // تباين لابلاس التقريبي (يمنع الضبابي جداً فقط)
+const STABLE_MOVE_RATIO = 0.035; // أقصى حركة للزوايا بين إطارين
+const HOLD_MS = 320;             // مدة الثبات قبل الالتقاط
 const REARM_LOST_FRAMES = 3;     // إطارات بلا ورقة قبل إعادة التسليح
-const PREVIEW_AUTO_MS = 2000;    // اعتماد المعاينة تلقائياً
+const PREVIEW_AUTO_MS = 1200;    // اعتماد المعاينة تلقائياً
 const OUT_MAX_SIDE = 1800;       // أقصى بعد للصورة الناتجة
 
 function quadArea(q: Quad): number {
