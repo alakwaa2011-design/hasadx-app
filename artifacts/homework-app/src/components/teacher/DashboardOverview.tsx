@@ -53,6 +53,7 @@ import {
   Shuffle,
   ChevronDown,
   ExternalLink,
+  ScanLine,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
@@ -182,6 +183,33 @@ const DASH_KEYFRAMES = `
   outline: 2px solid rgba(232,168,14,0.65);
   outline-offset: 2px;
   border-radius: 10px;
+}
+/* ── fluid page container — widens gracefully on large desktops ──
+   Base (768–1439px) keeps the original 1240px reading width so
+   laptop/tablet layouts are untouched; wider tiers open up the
+   canvas while preserving generous side gutters. */
+.dashContainer {
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 26px 30px 40px;
+}
+.dashMainGrid { grid-template-columns: minmax(0, 1fr) 350px; }
+@media (max-width: 767px) {
+  .dashContainer { padding: 14px 14px 20px; }
+  .dashMainGrid { grid-template-columns: 1fr; }
+}
+@media (min-width: 1440px) {
+  .dashContainer { max-width: 1360px; padding: 30px 40px 46px; }
+  .dashMainGrid { grid-template-columns: minmax(0, 1fr) 380px; }
+}
+@media (min-width: 1680px) {
+  .dashContainer { max-width: 1560px; padding: 34px 52px 52px; }
+  .dashMainGrid { grid-template-columns: minmax(0, 1fr) 410px; }
+}
+@media (min-width: 1920px) {
+  .dashContainer { max-width: 1720px; padding: 38px 64px 56px; }
+  .dashMainGrid { grid-template-columns: minmax(0, 1fr) 430px; }
 }
 `;
 
@@ -484,11 +512,8 @@ export default function DashboardOverview({
       <style dangerouslySetInnerHTML={{ __html: DASH_KEYFRAMES }} />
 
       <div
+        className="dashContainer"
         style={{
-          padding: isMobile ? "14px 14px 20px" : "26px 30px 40px",
-          maxWidth: 1240,
-          width: "100%",
-          margin: "0 auto",
           display: "flex",
           flexDirection: "column",
           gap: isMobile ? 14 : 20,
@@ -541,9 +566,9 @@ export default function DashboardOverview({
 
         {/* ══════════ MAIN GRID — content + insight rail ══════════ */}
         <div
+          className="dashMainGrid"
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "minmax(0,1fr) 350px",
             gap: isMobile ? 14 : 20,
             alignItems: "start",
           }}
@@ -2687,6 +2712,11 @@ function QuickCreateStudio({
       icon: <Pencil style={{ width: 16, height: 16 }} />,
       title: isAr ? "السبورة الذكية" : "Smart board",
       href: "/teacher/smart-board",
+    },
+    {
+      icon: <ScanLine style={{ width: 16, height: 16 }} />,
+      title: isAr ? "التصحيح الورقي" : "Paper grading",
+      href: "/teacher/new/paper-grading",
     },
   ];
 
