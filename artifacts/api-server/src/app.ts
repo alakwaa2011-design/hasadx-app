@@ -144,14 +144,19 @@ const IMAGE_UPLOAD_PATHS = new Set(["/api/ai/extract-questions-from-image"]);
 // Routes that may carry image data (paper-submission photo, whiteboard PNG
 // dataURLs, etc.) get the larger 8mb cap.
 const IMAGE_UPLOAD_PATTERN = /^\/api\/assignments\/\d+\/(submit|submit-image)$/;
+// Assignment create/update payloads may embed manually-added question images
+// as base64 dataURLs (several MB each), so they get a larger cap too.
+const ASSIGNMENT_BODY_PATTERN = /^\/api\/assignments(\/\d+)?$/;
 
 // Image-bearing endpoints get a higher cap (camera photos can run a few MB)
 // but we cap at 8mb to make memory exhaustion attacks much harder. Other
 // endpoints stay at a tight 2mb — most JSON payloads are well under 100KB.
 app.use((req, res, next) => {
   const isImageUpload =
-    IMAGE_UPLOAD_PATHS.has(req.path) || IMAGE_UPLOAD_PATTERN.test(req.path);
-  express.json({ limit: isImageUpload ? "8mb" : "2mb" })(req, res, next);
+    IMAGE_UPLOAD_PATHS.has(req.path) ||
+    IMAGE_UPLOAD_PATTERN.test(req.path) ||
+    (STATE_MUTATING_METHODS.has(req.method) && ASSIGNMENT_BODY_PATTERN.test(req.path));
+  express.json({ limit: isImageUpload ? "25mb" : "2mb" })(req, res, next);
 });
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
