@@ -425,26 +425,57 @@ export default function WorksheetReport() {
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
-            {roster && roster.length > 0 && (
-              <div className="max-h-36 overflow-y-auto flex flex-wrap gap-1.5">
-                {roster
-                  .filter((st) => !fixName.trim() || st.name.includes(fixName.trim()))
-                  .slice(0, 30)
-                  .map((st) => (
-                    <button
-                      key={st.id}
-                      onClick={() => { setFixName(st.name); if (st.studentClass) setFixClass(st.studentClass); }}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                        fixName.trim() === st.name
-                          ? "bg-emerald-600 text-white border-emerald-600"
-                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      {st.name}
-                    </button>
-                  ))}
-              </div>
-            )}
+            {roster && roster.length > 0 && (() => {
+              // أسماء الطلاب الظاهرة حالياً في التقرير — من ليس منهم فهو مرشح أرجح لهذه الورقة
+              const reportNames = new Set(
+                (data?.students ?? [])
+                  .map((s) => s.studentName.trim())
+                  .filter((n) => n && n !== "غير معروف"),
+              );
+              const q = fixName.trim();
+              const matches = roster.filter((st) => !q || st.name.includes(q));
+              const candidates = matches.filter((st) => !reportNames.has(st.name.trim()));
+              const others = matches.filter((st) => reportNames.has(st.name.trim()));
+              const chip = (st: { id: number; name: string; studentClass: string | null }, candidate: boolean) => (
+                <button
+                  key={st.id}
+                  onClick={() => { setFixName(st.name); if (st.studentClass) setFixClass(st.studentClass); }}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                    fixName.trim() === st.name
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : candidate
+                        ? "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700 dark:hover:bg-amber-900/50"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {st.name}
+                </button>
+              );
+              return (
+                <div className="max-h-44 overflow-y-auto space-y-2">
+                  {candidates.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-1">
+                        مرشحون محتملون (لم تظهر لهم ورقة في التقرير)
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {candidates.slice(0, 30).map((st) => chip(st, true))}
+                      </div>
+                    </div>
+                  )}
+                  {others.length > 0 && (
+                    <div>
+                      {candidates.length > 0 && (
+                        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-1">بقية الطلاب</p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {others.slice(0, 30).map((st) => chip(st, false))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div className="flex gap-2 pt-1">
               <button
                 onClick={saveFixName}
