@@ -341,6 +341,7 @@ export default function CreateAssignment() {
   const [aiTopic, setAiTopic] = useState("");
   const [aiCount, setAiCount] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [aiWithImages, setAiWithImages] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -421,15 +422,20 @@ export default function CreateAssignment() {
     if (!aiTopic.trim()) return;
     setAiLoading(true); setAiError("");
     try {
-      const res = await fetch(`${API_BASE}/api/ai/generate-questions`, {
+      const endpoint = aiWithImages ? "/api/ai/generate-questions-with-images" : "/api/ai/generate-questions";
+      const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, subject: subject || undefined }),
+        body: JSON.stringify({ topic: aiTopic, count: aiWithImages ? Math.min(aiCount, 20) : aiCount, difficulty: aiDifficulty, subject: subject || undefined }),
       });
       let data: any;
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
       if (!res.ok) throw new Error(data.message || t.createAssignment.generateError);
       if (!Array.isArray(data.questions) || data.questions.length === 0) throw new Error(t.createAssignment.noQuestionsGenerated);
-      const generated = data.questions as CreateQuestionBody[];
+      const generated = (data.questions as CreateQuestionBody[]).map(q => ({
+        ...q,
+        /* Object-storage paths (/objects/...) are only reachable via the API server at /api/objects/... */
+        imageUrl: q.imageUrl && q.imageUrl.startsWith("/objects/") ? `${API_BASE}/api${q.imageUrl}` : q.imageUrl,
+      }));
       const hasRealQuestions = questions.length > 0 && questions.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
       setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
       setShowAiPanel(false); setAiTopic("");
@@ -1209,7 +1215,7 @@ export default function CreateAssignment() {
                           <Input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.createAssignment.aiTopicPlaceholder} className="bg-background border-primary/20 focus-visible:border-primary text-sm" />
                           <div className="flex gap-2">
                             <select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value))} className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-primary/20 text-sm focus:outline-none focus:border-primary">
-                              {[5, 10, 15, 20, 25, 30].map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}
+                              {(aiWithImages ? [5, 10, 15, 20] : [5, 10, 15, 20, 25, 30]).map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}
                             </select>
                             <div className="flex gap-1 flex-1">
                               {difficultyOptions.map(d => (
@@ -1220,10 +1226,33 @@ export default function CreateAssignment() {
                               ))}
                             </div>
                           </div>
+                          {/* Image-per-question toggle */}
+                          <button
+                            type="button"
+                            onClick={() => setAiWithImages(v => !v)}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border-2 text-sm font-bold transition-all ${aiWithImages ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300" : "border-border bg-background text-muted-foreground hover:border-primary/30"}`}
+                          >
+                            <span className="text-lg leading-none">🖼️</span>
+                            <span className="flex-1 text-start">
+                              {lang === "ar" ? "توليد صورة لكل سؤال" : "Generate an image per question"}
+                            </span>
+                            <span className={`w-9 h-5 rounded-full flex items-center transition-colors ${aiWithImages ? "bg-amber-400" : "bg-muted"}`}>
+                              <span className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${aiWithImages ? (lang === "ar" ? "-translate-x-1" : "translate-x-4") : (lang === "ar" ? "-translate-x-4" : "translate-x-1")}`} />
+                            </span>
+                          </button>
+                          {aiWithImages && (
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed px-0.5">
+                              {lang === "ar"
+                                ? "سيُولّد الذكاء الاصطناعي صورة واضحة لكل سؤال تلقائياً — قد يستغرق التوليد دقيقة أو أكثر حسب عدد الأسئلة."
+                                : "AI will generate a clear image for each question automatically — may take a minute or more depending on count."}
+                            </p>
+                          )}
                           {aiError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-2 text-xs text-red-700 dark:text-red-300">{aiError}</div>}
                           <button type="button" onClick={handleAiGenerate} disabled={aiLoading || !aiTopic.trim()}
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                            {aiLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{t.createAssignment.aiGenerating}</> : <><Sparkles className="w-4 h-4" />{t.createAssignment.aiGenerateBtn} {aiCount}</>}
+                            {aiLoading
+                              ? <><Loader2 className="w-4 h-4 animate-spin" />{aiWithImages ? (lang === "ar" ? "جارٍ توليد الأسئلة والصور…" : "Generating questions & images…") : t.createAssignment.aiGenerating}</>
+                              : <><Sparkles className="w-4 h-4" />{t.createAssignment.aiGenerateBtn} {aiWithImages ? Math.min(aiCount, 20) : aiCount}{aiWithImages ? (lang === "ar" ? " بصور" : " with images") : ""}</>}
                           </button>
                         </motion.div>
                       )}

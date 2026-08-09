@@ -4,6 +4,7 @@ import { db, teachersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { imageUploadLimiter } from "../lib/rate-limiter";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -125,6 +126,142 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
     req.log.error({ err: error }, "AI question generation error");
     res.status(500).json({ message: "خطأ في توليد الأسئلة. يرجى المحاولة مرة أخرى." });
   }
+});
+
+/* ── Generate questions WITH AI-generated images (DALL-E 3) ─────────────── */
+router.post("/ai/generate-questions-with-images", checkCredits("ai-questions-images"), async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول" });
+    return;
+  }
+
+  const { topic, count, difficulty, subject } = req.body;
+
+  if (!topic || typeof topic !== "string" || !topic.trim()) {
+    res.status(400).json({ message: "يجب تحديد موضوع الأسئلة" });
+    return;
+  }
+  if (topic.length > MAX_TOPIC_LENGTH) {
+    res.status(400).json({ message: `الموضوع طويل جداً (الحد الأقصى ${MAX_TOPIC_LENGTH} حرف)` });
+    return;
+  }
+
+  const parsedCount = parseInt(count, 10);
+  if (isNaN(parsedCount) || parsedCount < MIN_QUESTIONS || parsedCount > 20) {
+    res.status(400).json({ message: `عدد الأسئلة يجب أن يكون بين 1 و 20 عند توليد الصور` });
+    return;
+  }
+
+  const diff = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
+  const difficultyText = diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة";
+  const subjectText = typeof subject === "string" && subject.trim() ? subject.trim().slice(0, 100) : "";
+
+  /* Step 1 — Ask GPT to produce questions + a short English image prompt per question */
+  const prompt = `أنت خبير تعليمي. المطلوب: إنشاء ${parsedCount} سؤال اختيار من متعدد عن الموضوع التالي:
+الموضوع: ${topic.trim()}
+${subjectText ? `المادة: ${subjectText}` : ""}
+الصعوبة: ${difficultyText}
+
+القواعد:
+- كل سؤال يعتمد على صورة يراها الطالب (لا تذكر "الصورة" في نص السؤال إذا كانت الصورة تعبّر عن نفسها)
+- كل سؤال له 4 خيارات (A, B, C, D) وإجابة صحيحة واحدة
+- وزّع الإجابات الصحيحة عشوائياً بين A وB وC وD
+- أضف حقل "imagePrompt": وصف بالإنجليزية لصورة واضحة تُمثّل السؤال (مناسب لتوليد الصور بالذكاء الاصطناعي، تصوير فوتوغرافي أو رسم توضيحي بسيط، خلفية بيضاء، بدون نصوص)
+
+أعد JSON فقط بدون أي نص إضافي:
+[
+  {
+    "text": "نص السؤال",
+    "imagePrompt": "A clear photographic image of ..., white background, no text",
+    "optionA": "الخيار أ",
+    "optionB": "الخيار ب",
+    "optionC": "الخيار ج",
+    "optionD": "الخيار د",
+    "correctAnswer": "B",
+    "points": 1
+  }
+]`;
+
+  let parsed: any[];
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.2",
+      max_completion_tokens: 6000,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const responseText = completion.choices[0]?.message?.content || "";
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد الأسئلة. حاول مرة أخرى." });
+      return;
+    }
+    parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
+  } catch {
+    res.status(500).json({ message: "خطأ في توليد الأسئلة. يرجى المحاولة مرة أخرى." });
+    return;
+  }
+
+  const validParsed = parsed.filter((q: any) => q && typeof q.text === "string" && q.text.trim());
+  if (validParsed.length === 0) {
+    res.status(500).json({ message: "لم يتم توليد أسئلة صالحة. حاول مرة أخرى." });
+    return;
+  }
+
+  /* Step 2 — Generate images in parallel (max 6 concurrent to avoid rate limits) */
+  const storage = new ObjectStorageService();
+
+  const generateImage = async (imagePrompt: string): Promise<string | null> => {
+    try {
+      const imgRes = await openai.images.generate({
+        model: "gpt-image-1",
+        prompt: imagePrompt,
+        n: 1,
+        size: "1024x1024",
+      });
+      const b64 = imgRes.data?.[0]?.b64_json;
+      if (!b64) {
+        req.log.error({ imagePrompt }, "image generation returned no b64_json");
+        return null;
+      }
+      const buffer = Buffer.from(b64, "base64");
+      const objectUrl = await storage.uploadBufferAsPublic({ buffer, contentType: "image/png", extension: ".png" });
+      return objectUrl;
+    } catch (err) {
+      req.log.error({ err, imagePrompt }, "image generation failed");
+      return null;
+    }
+  };
+
+  /* Process in batches of 4 to stay within rate limits */
+  const BATCH = 4;
+  const imageUrls: (string | null)[] = [];
+  for (let i = 0; i < validParsed.length; i += BATCH) {
+    const batch = validParsed.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map((q: any) => generateImage(q.imagePrompt || `Educational illustration of: ${q.text}`)));
+    imageUrls.push(...results);
+  }
+
+  const failedCount = imageUrls.filter((u) => u === null).length;
+  if (failedCount === validParsed.length) {
+    await refundCredits(req, "فشل توليد الصور");
+    res.status(500).json({ message: "تعذّر توليد الصور. لم يتم خصم أي رصيد — حاول مرة أخرى." });
+    return;
+  }
+
+  const questions = validParsed.map((q: any, idx: number) => ({
+    text: q.text.trim(),
+    optionA: typeof q.optionA === "string" ? q.optionA.trim() : "",
+    optionB: typeof q.optionB === "string" ? q.optionB.trim() : "",
+    optionC: typeof q.optionC === "string" ? q.optionC.trim() : "",
+    optionD: typeof q.optionD === "string" ? q.optionD.trim() : "",
+    correctAnswer: ["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A",
+    points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
+    imageUrl: imageUrls[idx] || null,
+  }));
+
+  await captureCredits(req);
+  res.json({ questions, failedImages: failedCount });
 });
 
 router.post("/ai/extract-questions-from-image", imageUploadLimiter, async (req, res) => {
