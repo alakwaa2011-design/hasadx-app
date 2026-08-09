@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Trophy,
   BookOpen,
+  Brain,
 } from "lucide-react";
 
 interface ActivityType {
@@ -129,6 +130,21 @@ const SECTIONS: ActivitySection[] = [
         border: "border-border",
         hoverBorder: "hover:border-rose-400 hover:shadow-rose-100 dark:hover:shadow-rose-900/30",
         route: "/teacher/lesson-plans/create",
+      },
+      {
+        id: "paper-grading",
+        icon: <Brain className="w-10 h-10" />,
+        title: "تصحيح ورقي ذكي",
+        titleEn: "AI Paper Grading",
+        description: "ارفع صور أوراق الطلاب — الذكاء الاصطناعي يصحّح فوراً حسب تعليماتك",
+        descriptionEn: "Student uploads a photo — AI grades it instantly per your instructions",
+        color: "text-amber-600 dark:text-amber-400",
+        iconBg: "bg-amber-100 dark:bg-amber-900/40",
+        border: "border-amber-200 dark:border-amber-800",
+        hoverBorder: "hover:border-amber-400 hover:shadow-amber-100 dark:hover:shadow-amber-900/30",
+        badge: "🤖 ذكي",
+        badgeColor: "bg-amber-500 text-white",
+        route: "/teacher/new/paper-grading",
       },
     ],
   },

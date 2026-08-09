@@ -26,20 +26,11 @@ import { toast } from "@/components/ui/sonner";
 import { GoogleLogin } from "@react-oauth/google";
 import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
 import { captureAcquisition, getAcquisition } from "@/lib/acquisition";
+import { type Country, KUWAIT } from "@/lib/countries";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 /* ─────────────────────────── Country data ─────────────────────────── */
-
-interface Country {
-  iso: string;
-  code: string;
-  flag: string;
-  name: string;
-  nameEn: string;
-  digits: number;
-  group: "gulf" | "arab" | "world";
-}
 
 const COUNTRIES: Country[] = [
   // Gulf
@@ -145,7 +136,140 @@ const COUNTRIES: Country[] = [
   { iso: "ZW", code: "+263", flag: "🇿🇼", name: "زيمبابوي",          nameEn: "Zimbabwe",         digits: 9,  group: "world" },
 ];
 
-const KUWAIT = COUNTRIES[0];
+// KUWAIT imported from @/lib/countries
+
+/* ─────────────────────────── OptionalPhoneField ─────────────────── */
+/**
+ * A self-contained optional phone field with country picker for use in
+ * the registration form. Calls onChange(fullPhone) on every change.
+ * When empty, calls onChange("").
+ */
+function OptionalPhoneField({
+  onChange, lang, dir, disabled,
+}: {
+  onChange: (v: string) => void;
+  lang: string;
+  dir: "rtl" | "ltr";
+  disabled?: boolean;
+}) {
+  const [digits, setDigits] = useState("");
+  const [country, setCountry] = useState<Country>(KUWAIT);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const fn = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false); setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [open]);
+
+  const handleDigits = (val: string) => {
+    const v = val.replace(/\D/g, "").slice(0, country.digits);
+    setDigits(v);
+    onChange(v ? `${country.code}${v}` : "");
+  };
+
+  const selectCountry = (c: Country) => {
+    setCountry(c); setDigits(""); setOpen(false); setSearch(""); onChange("");
+  };
+
+  const filtered = search.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.includes(search) ||
+        c.nameEn.toLowerCase().includes(search.toLowerCase()) ||
+        c.code.includes(search)
+      )
+    : COUNTRIES;
+  const gulf  = filtered.filter(c => c.group === "gulf");
+  const arab  = filtered.filter(c => c.group === "arab");
+  const world = filtered.filter(c => c.group === "world");
+
+  const GroupLabel = ({ label }: { label: string }) => (
+    <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">{label}</div>
+  );
+  const CountryRow = ({ c }: { c: Country }) => (
+    <button type="button" onClick={() => selectCountry(c)}
+      className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${country.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}>
+      <span className="text-base shrink-0">{c.flag}</span>
+      <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
+      <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
+    </button>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-2">
+        <label className="text-sm font-medium text-foreground leading-none">
+          {lang === "ar" ? "رقم الهاتف" : "Phone Number"}
+        </label>
+        <span className="text-xs text-muted-foreground">
+          ({lang === "ar" ? "اختياري" : "optional"})
+        </span>
+      </div>
+      <div className="flex gap-0 relative" ref={ref} dir="ltr">
+        <button
+          type="button"
+          onClick={() => { setOpen(!open); setSearch(""); }}
+          disabled={disabled}
+          className="flex items-center gap-1.5 px-3 py-2.5 border-2 border-input border-e-0 rounded-s-xl bg-muted hover:bg-muted/80 transition-colors text-sm font-medium whitespace-nowrap shrink-0 focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-50"
+        >
+          <span className="text-base leading-none">{country.flag}</span>
+          <span className="text-xs text-muted-foreground font-mono">{country.code}</span>
+          <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        <Input
+          type="tel"
+          placeholder={"x".repeat(country.digits)}
+          value={digits}
+          onChange={(e) => handleDigits(e.target.value)}
+          className="rounded-s-none border-s-0 text-left flex-1 min-w-0"
+          dir="ltr"
+          disabled={disabled}
+          autoComplete="tel"
+        />
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-full mt-1 start-0 z-50 w-72 bg-card border border-border rounded-xl shadow-xl overflow-hidden"
+              dir={dir}
+            >
+              <div className="p-2 border-b border-border">
+                <Input type="text" placeholder={lang === "ar" ? "ابحث عن دولة..." : "Search country..."}
+                  value={search} onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 text-sm" autoFocus />
+              </div>
+              <div className="max-h-56 overflow-y-auto">
+                {gulf.length  > 0 && <><GroupLabel label={lang === "ar" ? "دول الخليج"   : "Gulf Countries"}  />{gulf.map(c  => <CountryRow key={c.iso} c={c} />)}</>}
+                {arab.length  > 0 && <><GroupLabel label={lang === "ar" ? "الدول العربية": "Arab Countries"}  />{arab.map(c  => <CountryRow key={c.iso} c={c} />)}</>}
+                {world.length > 0 && <><GroupLabel label={lang === "ar" ? "دول العالم"   : "World Countries"} />{world.map(c => <CountryRow key={c.iso} c={c} />)}</>}
+                {filtered.length === 0 && (
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    {lang === "ar" ? "لا توجد نتائج" : "No results"}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+        {lang === "ar"
+          ? "يمكنك تركه فارغاً وإضافته لاحقاً من إعدادات حسابك."
+          : "You can leave this blank and add it later from your account settings."}
+      </p>
+    </div>
+  );
+}
 
 /* ─────────────────────────── LoginLayout ─────────────────────────── */
 
@@ -343,6 +467,7 @@ interface LoginFormProps {
   t: ReturnType<typeof useI18n>["t"];
   lang: string;
   dir: "rtl" | "ltr";
+  onOptPhoneChange: (v: string) => void;
 }
 
 function LoginForm({
@@ -354,7 +479,7 @@ function LoginForm({
   showPassword, setShowPassword, isLoading, ctaLabel, handleSubmit,
   iconPositionClass, inputPaddingClass, pickerRef,
   gulfCountries, arabCountries, worldCountries, filteredCountries,
-  t, lang, dir,
+  t, lang, dir, onOptPhoneChange,
 }: LoginFormProps) {
   const loginTeacherWithGoogleMutation = useLoginTeacherWithGoogle();
   return (
@@ -476,163 +601,35 @@ function LoginForm({
             </div>
           )}
 
-          {/* Email / Phone toggle */}
+          {/* Email — always email, no phone toggle */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label htmlFor="contact" className="mb-0">
-                {usePhone ? t.auth.phone : t.auth.email}
-              </Label>
-              <button
-                type="button"
-                onClick={() => {
-                  setUsePhone(!usePhone);
-                  setEmail("");
-                  setPhone("");
-                  setShowCountryPicker(false);
-                }}
-                className="text-xs font-semibold transition-colors"
-                style={{ color: "#1a4731" }}
-              >
-                {usePhone ? t.auth.useEmail : t.auth.usePhone}
-              </button>
+            <Label htmlFor="contact" className="mb-2 block">{t.auth.email}</Label>
+            <div className="relative">
+              <Mail className={`absolute ${iconPositionClass} top-3.5 w-5 h-5 text-muted-foreground`} />
+              <Input
+                id="contact"
+                type="email"
+                placeholder="example@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={`${inputPaddingClass} text-left`}
+                dir="ltr"
+                disabled={isLoading}
+                autoComplete="email"
+              />
             </div>
-
-            {usePhone ? (
-              <div className="flex gap-0 relative" ref={pickerRef} dir="ltr">
-                <button
-                  type="button"
-                  onClick={() => { setShowCountryPicker(!showCountryPicker); setCountrySearch(""); }}
-                  disabled={isLoading}
-                  className="flex items-center gap-1.5 px-3 py-2.5 border-2 border-input border-e-0 rounded-s-xl bg-muted hover:bg-muted/80 transition-colors text-sm font-medium whitespace-nowrap shrink-0 focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-50"
-                >
-                  <span className="text-base leading-none">{selectedCountry.flag}</span>
-                  <span className="text-xs text-muted-foreground font-mono">{selectedCountry.code}</span>
-                  <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showCountryPicker ? "rotate-180" : ""}`} />
-                </button>
-
-                <Input
-                  id="contact"
-                  type="tel"
-                  placeholder={"x".repeat(selectedCountry.digits)}
-                  value={phone}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
-                    if (val.length <= selectedCountry.digits) setPhone(val);
-                  }}
-                  required
-                  minLength={selectedCountry.digits}
-                  maxLength={selectedCountry.digits}
-                  className="rounded-s-none border-s-0 text-left flex-1 min-w-0"
-                  dir="ltr"
-                  disabled={isLoading}
-                  autoComplete="tel"
-                />
-
-                <AnimatePresence>
-                  {showCountryPicker && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute top-full mt-1 start-0 z-50 w-72 bg-card border border-border rounded-xl shadow-xl overflow-hidden"
-                      dir={dir}
-                    >
-                      <div className="p-2 border-b border-border">
-                        <Input
-                          type="text"
-                          placeholder={lang === "ar" ? "ابحث عن دولة..." : "Search country..."}
-                          value={countrySearch}
-                          onChange={(e) => setCountrySearch(e.target.value)}
-                          className="h-8 text-sm"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {gulfCountries.length > 0 && (
-                          <>
-                            <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">
-                              {lang === "ar" ? "دول الخليج" : "Gulf Countries"}
-                            </div>
-                            {gulfCountries.map(c => (
-                              <button
-                                key={c.iso}
-                                type="button"
-                                onClick={() => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(""); setPhone(""); }}
-                                className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${selectedCountry.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}
-                              >
-                                <span className="text-base shrink-0">{c.flag}</span>
-                                <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
-                                <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {arabCountries.length > 0 && (
-                          <>
-                            <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">
-                              {lang === "ar" ? "الدول العربية" : "Arab Countries"}
-                            </div>
-                            {arabCountries.map(c => (
-                              <button
-                                key={c.iso}
-                                type="button"
-                                onClick={() => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(""); setPhone(""); }}
-                                className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${selectedCountry.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}
-                              >
-                                <span className="text-base shrink-0">{c.flag}</span>
-                                <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
-                                <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {worldCountries.length > 0 && (
-                          <>
-                            <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">
-                              {lang === "ar" ? "دول العالم" : "World"}
-                            </div>
-                            {worldCountries.map(c => (
-                              <button
-                                key={c.iso}
-                                type="button"
-                                onClick={() => { setSelectedCountry(c); setShowCountryPicker(false); setCountrySearch(""); setPhone(""); }}
-                                className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${selectedCountry.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}
-                              >
-                                <span className="text-base shrink-0">{c.flag}</span>
-                                <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
-                                <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
-                              </button>
-                            ))}
-                          </>
-                        )}
-                        {filteredCountries.length === 0 && (
-                          <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                            {lang === "ar" ? "لا توجد نتائج" : "No results"}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <div className="relative">
-                <Mail className={`absolute ${iconPositionClass} top-3.5 w-5 h-5 text-muted-foreground`} />
-                <Input
-                  id="contact"
-                  type="email"
-                  placeholder="example@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className={`${inputPaddingClass} text-left`}
-                  dir="ltr"
-                  disabled={isLoading}
-                />
-              </div>
-            )}
           </div>
+
+          {/* Optional phone — shown when registering */}
+          {!isLogin && (
+            <OptionalPhoneField
+              onChange={onOptPhoneChange}
+              lang={lang}
+              dir={dir}
+              disabled={isLoading}
+            />
+          )}
 
           {/* Password */}
           <div>
@@ -1000,6 +997,8 @@ export default function Auth() {
   const [usePhone, setUsePhone] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Optional phone collected during email-based registration
+  const [optPhoneValue, setOptPhoneValue] = useState("");
   // For the registration flow we first ask the user to pick a role:
   //   student → /student/register, teacher → form, organizer → form (role passed to API).
   // When isLogin is true, the role picker is bypassed entirely.
@@ -1140,36 +1139,20 @@ export default function Auth() {
     e.preventDefault();
     setErrorMsg("");
 
-    if (usePhone) {
-      if (phone.length !== selectedCountry.digits) {
-        setErrorMsg(
-          lang === "ar"
-            ? `رقم الهاتف يجب أن يتكون من ${selectedCountry.digits} أرقام للدولة المختارة`
-            : `Phone number must be ${selectedCountry.digits} digits for the selected country`
-        );
-        return;
-      }
-    }
-
-    const fullPhone = usePhone ? `${selectedCountry.code}${phone}` : undefined;
-
     if (isLogin) {
       loginMutation.mutate({
-        data: {
-          ...(usePhone ? { phone: fullPhone } : { email }),
-          password,
-          rememberMe,
-        }
+        data: { email, password, rememberMe }
       });
     } else {
       const acq = getAcquisition();
       registerMutation.mutate({
         data: {
           name,
-          ...(usePhone ? { phone: fullPhone } : { email }),
+          email,
           password,
-          // Send selected role; defaults to teacher when picker was skipped.
           role: registerRole === "organizer" ? "organizer" : "teacher",
+          // Optional contact phone (not used for auth)
+          ...(optPhoneValue ? { phone: optPhoneValue } : {}),
           ...(acq ? {
             acquisitionSource: acq.source || undefined,
             acquisitionMedium: acq.medium || undefined,
@@ -1458,6 +1441,7 @@ export default function Auth() {
                 t={t}
                 lang={lang}
                 dir={dir}
+                onOptPhoneChange={setOptPhoneValue}
               />
 
               {/* Register / Login switch — full-width outlined green button */}

@@ -81,6 +81,51 @@ function clearWsPrefs() {
   try { localStorage.removeItem(WS_PREFS_KEY); } catch { }
 }
 
+// ── Teacher header profile (persists across worksheets) ───────────────────
+const TEACHER_PROFILE_KEY = "hasad:worksheet:teacher-profile";
+
+interface TeacherHeaderProfile {
+  schoolName?: string;
+  section?: string;
+  teacherName?: string;
+  logoUrl?: string;
+  customFields?: CustomField[];
+}
+
+function loadTeacherProfile(): TeacherHeaderProfile {
+  try {
+    const raw = localStorage.getItem(TEACHER_PROFILE_KEY);
+    if (!raw) return {};
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    const profile: TeacherHeaderProfile = {};
+    if (typeof p.schoolName === "string") profile.schoolName = p.schoolName.slice(0, 200);
+    if (typeof p.section === "string") profile.section = p.section.slice(0, 100);
+    if (typeof p.teacherName === "string") profile.teacherName = p.teacherName.slice(0, 100);
+    // logoUrl is a base64 data URI — validate prefix to avoid garbage
+    if (typeof p.logoUrl === "string" && p.logoUrl.startsWith("data:image/")) {
+      profile.logoUrl = p.logoUrl;
+    }
+    if (Array.isArray(p.customFields)) {
+      profile.customFields = (p.customFields as unknown[])
+        .filter((f): f is CustomField =>
+          f !== null && typeof f === "object" &&
+          typeof (f as CustomField).label === "string" &&
+          typeof (f as CustomField).value === "string",
+        )
+        .slice(0, 6);
+    }
+    return profile;
+  } catch { return {}; }
+}
+
+function saveTeacherProfile(profile: TeacherHeaderProfile) {
+  try { localStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(profile)); } catch { }
+}
+
+function clearTeacherProfile() {
+  try { localStorage.removeItem(TEACHER_PROFILE_KEY); } catch { }
+}
+
 type QType = "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching";
 
 interface QMcq { id: string; type: "mcq"; prompt: string; options: string[]; correctIndex: number; points?: number }
@@ -110,6 +155,8 @@ interface Settings {
   headerNote?: string;
 
   footerNote?: string;
+  /** Custom closing line shown at the bottom of the last page (e.g. "نتمنى لك التوفيق"). Empty string = use default. */
+  goodLuck?: string;
   // Header identity fields, typography, and Hasaad watermark control.
 
   schoolName?: string;
@@ -220,6 +267,7 @@ const DEFAULT_SETTINGS: Settings = {
   columns: 1,
   headerNote: "",
   footerNote: "",
+  goodLuck: "",
   schoolName: "",
   section: "",
   teacherName: "",
@@ -249,6 +297,7 @@ export default function WorksheetCreate() {
 
   // Load saved AI prefs once at mount time.
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
+  const _teacherProfile = useMemo(() => loadTeacherProfile(), []);
 
   const [contentLang, setContentLang] = useState<"ar" | "en">(_wsPrefs.contentLang ?? lang);
   const [title, setTitle] = useState("");
@@ -257,7 +306,17 @@ export default function WorksheetCreate() {
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  // Pre-fill header identity fields from saved teacher profile on NEW worksheets.
+  // When loading an existing worksheet, the setSettings call in the edit-load
+  // effect (below) will overwrite these with the worksheet's own values.
+  const [settings, setSettings] = useState<Settings>({
+    ...DEFAULT_SETTINGS,
+    schoolName: _teacherProfile.schoolName ?? DEFAULT_SETTINGS.schoolName,
+    section: _teacherProfile.section ?? DEFAULT_SETTINGS.section,
+    teacherName: _teacherProfile.teacherName ?? DEFAULT_SETTINGS.teacherName,
+    logoUrl: _teacherProfile.logoUrl ?? DEFAULT_SETTINGS.logoUrl,
+    customFields: _teacherProfile.customFields ?? DEFAULT_SETTINGS.customFields,
+  });
 
   // AI panel state
   const [aiOpen, setAiOpen] = useState(true);
@@ -280,6 +339,21 @@ export default function WorksheetCreate() {
     if (wsSkipNextSaveRef.current) { wsSkipNextSaveRef.current = false; return; }
     saveWsPrefs({ contentLang, aiDifficulty, aiPages, aiCounts });
   }, [contentLang, aiDifficulty, aiPages, aiCounts]);
+
+  // Auto-save teacher header profile whenever identity fields change.
+  // This fills new worksheets automatically so the teacher doesn't re-type.
+  const profileDidMountRef = useRef(false);
+  useEffect(() => {
+    if (!profileDidMountRef.current) { profileDidMountRef.current = true; return; }
+    saveTeacherProfile({
+      schoolName: settings.schoolName,
+      section: settings.section,
+      teacherName: settings.teacherName,
+      logoUrl: settings.logoUrl,
+      customFields: settings.customFields,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.schoolName, settings.section, settings.teacherName, settings.logoUrl, settings.customFields]);
 
   const handleWsRestoreDefaults = useCallback(() => {
     clearWsPrefs();
@@ -800,6 +874,27 @@ export default function WorksheetCreate() {
                   className="overflow-hidden"
                 >
                   <div className="pt-3 space-y-3 pb-1">
+                    {/* Profile auto-save notice */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <Save className="w-3 h-3" />
+                        {ar
+                          ? "تُحفظ هذه البيانات تلقائياً وتُملأ في كل ورقة جديدة"
+                          : "Saved automatically and pre-filled on every new worksheet"}
+                      </p>
+                      {(settings.schoolName || settings.section || settings.teacherName || settings.logoUrl || (settings.customFields ?? []).length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearTeacherProfile();
+                            setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
+                          }}
+                          className="text-[11px] text-red-500 hover:underline flex-shrink-0"
+                        >
+                          {ar ? "مسح المحفوظ" : "Clear saved"}
+                        </button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <Field label={ar ? "اسم المدرسة" : "School name"}>
                         <input
@@ -1125,6 +1220,15 @@ export default function WorksheetCreate() {
                         <input value={settings.footerNote ?? ""} onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" maxLength={300} />
                       </Field>
                     </div>
+                    <Field label={ar ? "جملة التشجيع في نهاية الورقة" : "Closing encouragement line"}>
+                      <input
+                        value={settings.goodLuck ?? ""}
+                        onChange={e => setSettings(s => ({ ...s, goodLuck: e.target.value }))}
+                        placeholder={ar ? "نتمنى لك التوفيق ✦  (الافتراضي)" : "✦ Good luck!  (default)"}
+                        className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                        maxLength={200}
+                      />
+                    </Field>
                     <div className="rounded-lg p-3 border flex items-center gap-3 flex-wrap" style={{ borderColor: `${BRAND_GOLD}55`, background: `${BRAND_GOLD}0c` }}>
                       <div className="flex-1 min-w-[160px]">
                         <div className="text-xs font-bold mb-0.5" style={{ color: BRAND_PRIMARY }}>{ar ? "علامة حصاد المائية" : "Hasaad watermark"}</div>

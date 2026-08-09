@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { COUNTRIES, KUWAIT, parseStoredPhone, type Country } from "@/lib/countries";
 import { useLocation } from "wouter";
 import {
   useGetCurrentTeacher,
@@ -38,7 +39,12 @@ export default function TeacherSettings() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  // Phone stored as local digits only; phoneCountry holds the dial prefix
   const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<Country>(KUWAIT);
+  const [phonePickerOpen, setPhonePickerOpen] = useState(false);
+  const [phoneSearch, setPhoneSearch] = useState("");
+  const phonePickerRef = useRef<HTMLDivElement>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -74,6 +80,19 @@ export default function TeacherSettings() {
     const t = setTimeout(() => setVerifyCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [verifyCountdown]);
+
+  // Close phone picker when clicking outside
+  useEffect(() => {
+    if (!phonePickerOpen) return;
+    const fn = (e: MouseEvent) => {
+      if (phonePickerRef.current && !phonePickerRef.current.contains(e.target as Node)) {
+        setPhonePickerOpen(false);
+        setPhoneSearch("");
+      }
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [phonePickerOpen]);
 
   const verifyIdentifier = (user as any)?.email || (user as any)?.phone || "";
   const verifyChannel: "email" | "sms" = (user as any)?.email ? "email" : "sms";
@@ -160,7 +179,10 @@ export default function TeacherSettings() {
     if (user) {
       setName(user.name || "");
       setEmail(user.email || "");
-      setPhone(user.phone || "");
+      // Parse stored phone into country + local digits
+      const { country, digits } = parseStoredPhone(user.phone || "");
+      setPhoneCountry(country);
+      setPhone(digits);
       const u = user as typeof user & {
         publicProfileEnabled?: boolean | null;
         showOnLeaderboard?: boolean | null;
@@ -250,15 +272,20 @@ export default function TeacherSettings() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone && phone.length !== 8) {
-      toast.error(t.auth.phoneError);
+    if (phone && phone.length !== phoneCountry.digits) {
+      toast.error(
+        lang === "ar"
+          ? `رقم الهاتف يجب أن يتكون من ${phoneCountry.digits} أرقام للدولة المختارة`
+          : `Phone number must be ${phoneCountry.digits} digits for the selected country`
+      );
       return;
     }
     updateMutation.mutate({
       data: {
         name: name || undefined,
         email: email || undefined,
-        phone: phone || undefined,
+        // Send full international format, or empty string to clear
+        phone: phone ? `${phoneCountry.code}${phone}` : "",
       },
     });
   };
@@ -747,25 +774,118 @@ export default function TeacherSettings() {
                 </div>
               </div>
 
+              {/* Phone with country picker */}
               <div>
-                <Label htmlFor="settings-phone">{t.profile.phone}</Label>
-                <div className="relative">
-                  <Phone className={`absolute ${iconPos} top-3.5 w-5 h-5 text-muted-foreground`} />
-                  <Input
-                    id="settings-phone"
-                    type="tel"
-                    placeholder={t.profile.phonePlaceholder}
-                    value={phone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      if (val.length <= 8) setPhone(val);
-                    }}
-                    maxLength={8}
-                    className={`${inputPad} text-left`}
-                    dir="ltr"
-                    disabled={updateMutation.isPending}
-                  />
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Label className="mb-0">{t.profile.phone}</Label>
+                  <span className="text-xs text-muted-foreground">
+                    ({lang === "ar" ? "اختياري" : "optional"})
+                  </span>
                 </div>
+                {(() => {
+                  const filtered = phoneSearch.trim()
+                    ? COUNTRIES.filter(c =>
+                        c.name.includes(phoneSearch) ||
+                        c.nameEn.toLowerCase().includes(phoneSearch.toLowerCase()) ||
+                        c.code.includes(phoneSearch)
+                      )
+                    : COUNTRIES;
+                  const gulf  = filtered.filter(c => c.group === "gulf");
+                  const arab  = filtered.filter(c => c.group === "arab");
+                  const world = filtered.filter(c => c.group === "world");
+                  return (
+                    <div className="flex gap-0 relative" ref={phonePickerRef} dir="ltr">
+                      <button
+                        type="button"
+                        onClick={() => { setPhonePickerOpen(!phonePickerOpen); setPhoneSearch(""); }}
+                        disabled={updateMutation.isPending}
+                        className="flex items-center gap-1.5 px-3 py-2.5 border-2 border-input border-e-0 rounded-s-xl bg-muted hover:bg-muted/80 transition-colors text-sm font-medium whitespace-nowrap shrink-0 focus:outline-none disabled:opacity-50"
+                      >
+                        <span className="text-base leading-none">{phoneCountry.flag}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{phoneCountry.code}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${phonePickerOpen ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
+                      </button>
+                      <Input
+                        id="settings-phone"
+                        type="tel"
+                        placeholder={"x".repeat(phoneCountry.digits)}
+                        value={phone}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, "").slice(0, phoneCountry.digits);
+                          setPhone(v);
+                        }}
+                        className="rounded-s-none border-s-0 text-left flex-1 min-w-0"
+                        dir="ltr"
+                        disabled={updateMutation.isPending}
+                        autoComplete="tel"
+                      />
+                      {phonePickerOpen && (
+                        <div className="absolute top-full mt-1 start-0 z-50 w-72 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+                          <div className="p-2 border-b border-border">
+                            <Input type="text" placeholder={lang === "ar" ? "ابحث عن دولة..." : "Search country..."}
+                              value={phoneSearch} onChange={(e) => setPhoneSearch(e.target.value)}
+                              className="h-8 text-sm" autoFocus />
+                          </div>
+                          <div className="max-h-56 overflow-y-auto">
+                            {gulf.length > 0 && (
+                              <>
+                                <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">
+                                  {lang === "ar" ? "دول الخليج" : "Gulf Countries"}
+                                </div>
+                                {gulf.map(c => (
+                                  <button key={c.iso} type="button"
+                                    onClick={() => { setPhoneCountry(c); setPhone(""); setPhonePickerOpen(false); setPhoneSearch(""); }}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${phoneCountry.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}>
+                                    <span className="text-base shrink-0">{c.flag}</span>
+                                    <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
+                                    <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
+                                  </button>
+                                ))}
+                              </>
+                            )}
+                            {arab.length > 0 && (
+                              <>
+                                <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">
+                                  {lang === "ar" ? "الدول العربية" : "Arab Countries"}
+                                </div>
+                                {arab.map(c => (
+                                  <button key={c.iso} type="button"
+                                    onClick={() => { setPhoneCountry(c); setPhone(""); setPhonePickerOpen(false); setPhoneSearch(""); }}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${phoneCountry.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}>
+                                    <span className="text-base shrink-0">{c.flag}</span>
+                                    <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
+                                    <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
+                                  </button>
+                                ))}
+                              </>
+                            )}
+                            {world.length > 0 && (
+                              <>
+                                <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50">
+                                  {lang === "ar" ? "دول العالم" : "World Countries"}
+                                </div>
+                                {world.map(c => (
+                                  <button key={c.iso} type="button"
+                                    onClick={() => { setPhoneCountry(c); setPhone(""); setPhonePickerOpen(false); setPhoneSearch(""); }}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted transition-colors text-start ${phoneCountry.iso === c.iso ? "bg-primary/10 text-primary font-bold" : ""}`}>
+                                    <span className="text-base shrink-0">{c.flag}</span>
+                                    <span className="flex-1 truncate">{lang === "ar" ? c.name : c.nameEn}</span>
+                                    <span className="text-xs text-muted-foreground font-mono shrink-0">{c.code}</span>
+                                  </button>
+                                ))}
+                              </>
+                            )}
+                            {filtered.length === 0 && (
+                              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                                {lang === "ar" ? "لا توجد نتائج" : "No results"}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <Button

@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, Sparkles, BookOpen, ChevronLeft, Plus, Trash2, Check,
   Loader2, Search, Clock, Trophy, FileText, Calendar, ChevronDown,
-  Edit3, Save, X, AlertCircle, Settings, Layers, PenLine,
+  Edit3, Save, X, AlertCircle, Settings, Layers, PenLine, Users,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
@@ -302,6 +302,8 @@ export default function SoloChallengeCreatePage() {
   const [expiresAt, setExpiresAt] = useState("");
   const [questionsPerParticipant, setQuestionsPerParticipant] = useState<number | "">("");
   const [showSettings, setShowSettings] = useState(false);
+  const [allowedClasses, setAllowedClasses] = useState<string[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   // === Multi-level + difficulty distribution ===
   const [isMultiLevel, setIsMultiLevel] = useState(false);
@@ -313,6 +315,18 @@ export default function SoloChallengeCreatePage() {
   useEffect(() => {
     if (!authLoading && !user) setLocation("/login");
   }, [user, authLoading]);
+
+  // Fetch teacher classes for class restriction picker
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${API}/api/teacher/classes`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{ name: string; group_name?: string }>) => {
+        const names = data.map(c => c.group_name ? `${c.name} - ${c.group_name}` : c.name);
+        setTeacherClasses([...new Set(names)]);
+      })
+      .catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     if (source !== "assignment") return;
@@ -389,6 +403,7 @@ export default function SoloChallengeCreatePage() {
           difficultyDistribution: diffDistribution,
           isMultiLevel,
           levels: isMultiLevel ? challengeLevels : null,
+          allowedClasses,
         }),
       });
 
@@ -428,6 +443,7 @@ export default function SoloChallengeCreatePage() {
           difficultyDistribution: diffDistribution,
           isMultiLevel,
           levels: isMultiLevel ? challengeLevels : null,
+          allowedClasses,
         }),
       });
       const data = await res.json();
@@ -568,6 +584,8 @@ export default function SoloChallengeCreatePage() {
               diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
               isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
               challengeLevels={challengeLevels} onChallengeLevels={setChallengeLevels}
+              allowedClasses={allowedClasses} onAllowedClasses={setAllowedClasses}
+              teacherClasses={teacherClasses}
             />
 
             <button
@@ -716,6 +734,8 @@ export default function SoloChallengeCreatePage() {
               diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
               isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
               challengeLevels={challengeLevels} onChallengeLevels={setChallengeLevels}
+              allowedClasses={allowedClasses} onAllowedClasses={setAllowedClasses}
+              teacherClasses={teacherClasses}
             />
 
             {/* Create button */}
@@ -799,6 +819,8 @@ export default function SoloChallengeCreatePage() {
               diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
               isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
               challengeLevels={challengeLevels} onChallengeLevels={setChallengeLevels}
+              allowedClasses={allowedClasses} onAllowedClasses={setAllowedClasses}
+              teacherClasses={teacherClasses}
             />
 
             {/* Create button */}
@@ -827,6 +849,8 @@ function SettingsPanel({
   diffDistribution, onDiffDistribution,
   isMultiLevel, onIsMultiLevel,
   challengeLevels, onChallengeLevels,
+  allowedClasses, onAllowedClasses,
+  teacherClasses,
 }: {
   notes: string; onNotes: (v: string) => void;
   timePerQuestion: number; onTime: (v: number) => void;
@@ -837,6 +861,8 @@ function SettingsPanel({
   diffDistribution: DiffDistribution | null; onDiffDistribution: (v: DiffDistribution | null) => void;
   isMultiLevel: boolean; onIsMultiLevel: (v: boolean) => void;
   challengeLevels: ChallengeLevel[]; onChallengeLevels: (v: ChallengeLevel[]) => void;
+  allowedClasses: string[]; onAllowedClasses: (v: string[]) => void;
+  teacherClasses: string[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -1074,6 +1100,46 @@ function SettingsPanel({
                   <input type="datetime-local" lang="en" value={expiresAt} onChange={e => onExpires(e.target.value)}
                     className="text-xs px-2 py-1.5 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-foreground min-w-0" />
                 </span>
+              </div>
+
+              {/* ── Class restriction ── */}
+              <div className="px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Users className="w-3.5 h-3.5" />
+                    تقييد المشاركة بالصف
+                  </label>
+                  {allowedClasses.length > 0 && (
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      {allowedClasses.length} صف مختار
+                    </span>
+                  )}
+                </div>
+                {teacherClasses.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">لا توجد صفوف مضافة — أضف صفوفاً من إعدادات الطلاب أولاً.</p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      اختر الصفوف المسموح لها بالمشاركة. إذا تركت هذا فارغاً يمكن للجميع الدخول.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {teacherClasses.map(cls => (
+                        <button
+                          key={cls}
+                          onClick={() => onAllowedClasses(allowedClasses.includes(cls) ? allowedClasses.filter(c => c !== cls) : [...allowedClasses, cls])}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
+                            allowedClasses.includes(cls)
+                              ? "bg-amber-500 border-amber-500 text-white"
+                              : "border-border text-muted-foreground hover:bg-muted/40",
+                          )}
+                        >
+                          {cls}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
             </div>

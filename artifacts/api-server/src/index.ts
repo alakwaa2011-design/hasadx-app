@@ -766,6 +766,16 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "parent_message_replies.attachments column migration failed");
   }
+
+  // ── Solo challenges: allowed_classes column ────────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS allowed_classes JSONB
+    `);
+    logger.info("solo_challenges.allowed_classes column migrated");
+  } catch (err) {
+    logger.error(err, "solo_challenges.allowed_classes column migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

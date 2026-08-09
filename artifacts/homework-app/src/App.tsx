@@ -24,6 +24,7 @@ const TeacherDashboard = lazy(() => import("@/pages/teacher/dashboard"));
 const OrganizerDashboard = lazy(() => import("@/pages/organizer/dashboard"));
 const CreateAssignment = lazy(() => import("@/pages/teacher/create-assignment"));
 const NewActivity = lazy(() => import("@/pages/teacher/new-activity"));
+const PaperGradingCreate = lazy(() => import("@/pages/teacher/paper-grading-create"));
 const DictationCreate = lazy(() => import("@/pages/teacher/dictation-create"));
 const TeacherAssignmentDetail = lazy(() => import("@/pages/teacher/assignment-detail"));
 const IslamicHome = lazy(() => import("@/pages/islamic/index"));
@@ -287,6 +288,7 @@ function Router() {
         <Route path="/teacher/solo-challenges/:slug" component={SoloChallengeManage} />
         <Route path="/teacher/solo-challenges" component={SoloChallengesPage} />
         <Route path="/teacher/new/assignment" component={CreateAssignment} />
+        <Route path="/teacher/new/paper-grading" component={PaperGradingCreate} />
         <Route path="/teacher/new/dictation" component={DictationCreate} />
         <Route path="/teacher/new" component={NewActivity} />
         <Route path="/teacher/assignment/:id" component={TeacherAssignmentDetail} />

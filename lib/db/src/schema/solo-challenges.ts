@@ -48,6 +48,9 @@ export const soloChallengesTable = pgTable("solo_challenges", {
    *  When set, the /start handler picks questions by difficulty bucket
    *  (questions.difficulty: 1=easy 2=medium 3=hard). */
   difficultyDistribution: jsonb("difficulty_distribution"),
+  /** Optional class restriction — only students from these classes may participate.
+   *  Shape: string[] (class names from teacher_classes). Empty / null = open to all. */
+  allowedClasses: jsonb("allowed_classes"),
 }, (t) => ({
   slugIdx: index("solo_challenges_slug_idx").on(t.slug),
   shortSlugIdx: index("solo_challenges_short_slug_idx").on(t.shortSlug),

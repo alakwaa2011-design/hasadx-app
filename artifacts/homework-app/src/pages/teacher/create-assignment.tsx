@@ -146,20 +146,8 @@ const TEMPLATES: AssignmentTemplate[] = [
     tagsEn: ["10 questions", "True/False"],
     defaults: { submissionMode: "electronic", questionCount: 10, pointsPerQuestion: 1, questionType: "true_false", hasDeadline: false, examMode: false, examDurationMinutes: 15 },
   },
-  {
-    id: "paper",
-    emoji: "🖨️",
-    title: "اختبار ورقي",
-    titleEn: "Paper Exam",
-    desc: "واجب ورقي مع تصحيح يدوي أو بالذكاء الاصطناعي",
-    descEn: "Paper assignment with manual or AI grading",
-    color: "#4b5563",
-    bgColor: "#f3f4f6",
-    tags: ["ورقي", "AI تصحيح"],
-    tagsEn: ["Paper", "AI grading"],
-    defaults: { submissionMode: "paper", questionCount: 1, pointsPerQuestion: 10, questionType: "mcq", hasDeadline: true, examMode: false, examDurationMinutes: 60 },
-  },
 ];
+// Note: "paper" preset removed — use the standalone "تصحيح ورقي ذكي" tool at /teacher/new/paper-grading
 
 const MATH_GROUPS = [
   { labelAr: "أساسي", labelEn: "Basic", symbols: ["×", "÷", "≠", "≈", "≤", "≥", "±", "∞"] },

@@ -391,113 +391,152 @@ export function ParentMessagesContent() {
   const studentsWithNoEmail = students.filter(s => !s.parentEmail).length;
 
   return (
-    <><div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 16px", direction: "rtl", fontFamily: "'Tajawal', sans-serif" }}>
+    <><div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 20px 48px", direction: "rtl", fontFamily: "'Tajawal', sans-serif" }}>
 
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        {/* ── Page Header ── */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 14 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: C.green, margin: 0 }}>رسائل أولياء الأمور</h1>
-            <p style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>أرسل رسائل لأولياء الأمور وتابع ردودهم</p>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: C.green, margin: 0, lineHeight: 1.2 }}>رسائل أولياء الأمور</h1>
+            <p style={{ fontSize: 13.5, color: C.muted, margin: "5px 0 0" }}>تواصل مع أولياء الأمور وتابع الردود بسهولة</p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
             <button onClick={() => setShowBulkCompose(true)}
-              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", background: "#fff", color: C.green, border: `1.5px solid ${C.green}`, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", background: C.card, color: C.green, border: `1.5px solid ${C.green}`, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               <Users size={15} /> رسالة جماعية
             </button>
             <button onClick={() => setShowCompose(true)}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 20px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(30,77,53,0.2)" }}>
               <Plus size={16} /> رسالة جديدة
             </button>
           </div>
         </div>
 
-        {/* Warning */}
+        {/* ── Warning ── */}
         {studentsWithNoEmail > 0 && (
-          <div style={{ background: "#fef9ec", border: `1px solid ${C.gold}`, borderRadius: 12, padding: "11px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#92670a" }}>
+          <div style={{ background: "#fef9ec", border: `1px solid ${C.gold}`, borderRadius: 12, padding: "11px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#92670a" }}>
             <AlertCircle size={15} style={{ color: C.gold, flexShrink: 0 }} />
             <span><strong>{studentsWithNoEmail} طالب</strong> بدون إيميل ولي أمر — أضفه من صفحة الطلاب</span>
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 16, background: C.surface, borderRadius: 10, padding: 4, border: `1px solid ${C.border}` }}>
-          {(["inbox", "archived"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", background: tab === t ? C.green : "transparent", color: tab === t ? "#fff" : C.muted, transition: "all 0.15s" }}>
-              {t === "inbox" ? "📥 الصندوق" : "📁 الأرشيف"}
-            </button>
-          ))}
-        </div>
+        {/* ── Main Inbox Card ── */}
+        <div style={{ background: C.card, borderRadius: 18, border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(30,77,53,0.05)", overflow: "hidden" }}>
 
-        {/* Search */}
-        <div style={{ position: "relative", marginBottom: 12 }}>
-          <Search size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث..."
-            style={{ width: "100%", padding: "9px 36px 9px 12px", border: `1px solid ${C.border}`, borderRadius: 10, fontSize: 13, fontFamily: "inherit", background: C.surface, color: C.text, outline: "none" }} />
-        </div>
-
-        {/* Message List */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 40 }}>
-            <Loader2 size={28} style={{ color: C.green, animation: "spin 1s linear infinite", display: "block", margin: "0 auto" }} />
+          {/* Card top bar: tabs + search */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", borderBottom: `1px solid ${C.border}`, gap: 12, flexWrap: "wrap" }}>
+            {/* Tabs */}
+            <div style={{ display: "flex" }}>
+              {(["inbox", "archived"] as const).map(t => (
+                <button key={t} onClick={() => setTab(t)}
+                  style={{ padding: "14px 20px", border: "none", borderBottom: tab === t ? `2px solid ${C.green}` : "2px solid transparent", marginBottom: -1, background: "transparent", fontFamily: "inherit", fontSize: 14, fontWeight: 700, cursor: "pointer", color: tab === t ? C.green : C.muted, transition: "all 0.15s" }}>
+                  {t === "inbox" ? "الصندوق" : "الأرشيف"}
+                </button>
+              ))}
+            </div>
+            {/* Search */}
+            <div style={{ position: "relative", flex: "1", maxWidth: 260, padding: "10px 0" }}>
+              <Search size={13} style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث عن رسالة أو طالب..."
+                style={{ width: "100%", boxSizing: "border-box", padding: "7px 34px 7px 12px", border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 13, fontFamily: "inherit", background: C.surface, color: C.text, outline: "none" }} />
+            </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60, color: C.muted }}>
-            <MessageSquare size={40} style={{ margin: "0 auto 12px", opacity: 0.3, display: "block" }} />
-            <p style={{ fontSize: 15, fontWeight: 700 }}>{tab === "archived" ? "لا توجد رسائل مؤرشفة" : "لا توجد رسائل"}</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {filtered.map(msg => {
-              const status = statusBadge(msg);
-              const isOpen = expandedId === msg.id;
-              const thread = threads[msg.id] || [];
-              const tLoading = threadLoading[msg.id];
-              return (
-                <motion.div key={msg.id} id={`msg-${msg.id}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                  style={{ background: isOpen ? "#f0f7f3" : C.card, border: `1px solid ${isOpen ? C.green : C.border}`, borderRadius: 14, overflow: "hidden", transition: "border-color 0.15s" }}>
 
-                  {/* Message Header */}
-                  <div style={{ padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
-                    onClick={() => toggleExpand(msg.id)}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{msg.studentName}</span>
-                        {(msg.studentClass || msg.gradeLevel) && (
-                          <span style={{ fontSize: 11, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: "1px 7px" }}>
-                            {[msg.gradeLevel, msg.studentClass].filter(Boolean).join(" — ")}
+          {/* ── Message List ── */}
+          <div style={{ minHeight: 200 }}>
+            {loading ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 60 }}>
+                <Loader2 size={28} style={{ color: C.green, animation: "spin 1s linear infinite" }} />
+              </div>
+            ) : filtered.length === 0 ? (
+              /* Empty state */
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(30,77,53,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <MessageSquare size={26} style={{ color: C.green, opacity: 0.65 }} />
+                </div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>
+                  {tab === "archived" ? "لا توجد رسائل مؤرشفة" : "لا توجد رسائل بعد"}
+                </p>
+                {tab === "inbox" && (
+                  <>
+                    <p style={{ fontSize: 13.5, color: C.muted, margin: "0 0 22px", maxWidth: 280 }}>
+                      ابدأ بإرسال رسالة إلى ولي أمر أحد طلابك
+                    </p>
+                    <button onClick={() => setShowCompose(true)}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 24px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <Send size={15} /> إرسال أول رسالة
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {filtered.map((msg, idx) => {
+                  const status = statusBadge(msg);
+                  const isOpen = expandedId === msg.id;
+                  const thread = threads[msg.id] || [];
+                  const tLoading = threadLoading[msg.id];
+                  return (
+                    <motion.div key={msg.id} id={`msg-${msg.id}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      style={{ borderBottom: idx < filtered.length - 1 ? `1px solid ${C.border}` : "none", background: isOpen ? "rgba(30,77,53,0.025)" : "transparent", transition: "background 0.15s" }}>
+
+                      {/* ── Row ── */}
+                      <div style={{ padding: "15px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
+                        onClick={() => toggleExpand(msg.id)}>
+
+                        {/* Avatar */}
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: isOpen ? C.green : "rgba(30,77,53,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }}>
+                          <User size={16} style={{ color: isOpen ? "#fff" : C.green }} />
+                        </div>
+
+                        {/* Main info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{msg.parentName || "ولي أمر"}</span>
+                            <span style={{ fontSize: 12.5, color: C.muted }}>· {msg.studentName}</span>
+                            {(msg.studentClass || msg.gradeLevel) && (
+                              <span style={{ fontSize: 11, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 5, padding: "1px 6px" }}>
+                                {[msg.gradeLevel, msg.studentClass].filter(Boolean).join(" — ")}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>{msg.subject}</div>
+                          <div style={{ fontSize: 12, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {msg.body.slice(0, 90)}{msg.body.length > 90 ? "…" : ""}
+                          </div>
+                        </div>
+
+                        {/* Meta */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, color: C.muted, whiteSpace: "nowrap" }}>
+                            {new Date(msg.sentAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric" })}
                           </span>
-                        )}
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            {msg.hasUnreadReply && (
+                              <span style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: "#fff7ed", color: "#c2730a", border: "1px solid #fcd89a" }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} />
+                                رد جديد
+                              </span>
+                            )}
+                            <span style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: status.bg, color: status.color }}>
+                              {status.icon} {status.label}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {tab === "inbox" ? (
+                              <button onClick={e => { e.stopPropagation(); handleArchive(msg.id); }}
+                                style={{ padding: "4px 6px", borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: C.muted, display: "flex", alignItems: "center" }} title="أرشفة">
+                                <Archive size={13} />
+                              </button>
+                            ) : (
+                              <button onClick={e => { e.stopPropagation(); handleRestore(msg.id); }}
+                                style={{ padding: "4px 6px", borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: C.green, display: "flex", alignItems: "center" }} title="استعادة">
+                                <RotateCcw size={13} />
+                              </button>
+                            )}
+                            {isOpen ? <ChevronUp size={14} style={{ color: C.muted }} /> : <ChevronDown size={14} style={{ color: C.muted }} />}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{msg.subject}</div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                        {new Date(msg.sentAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                      {msg.hasUnreadReply && (
-                        <span style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: "#fff7ed", color: "#c2730a", border: "1px solid #fcd89a" }}>
-                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} />
-                          رد جديد
-                        </span>
-                      )}
-                      <span style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: status.bg, color: status.color }}>
-                        {status.icon} {status.label}
-                      </span>
-                      {tab === "inbox" ? (
-                        <button onClick={e => { e.stopPropagation(); handleArchive(msg.id); }}
-                          style={{ padding: 5, borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: C.muted }} title="أرشفة">
-                          <Archive size={13} />
-                        </button>
-                      ) : (
-                        <button onClick={e => { e.stopPropagation(); handleRestore(msg.id); }}
-                          style={{ padding: 5, borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: C.green }} title="استعادة">
-                          <RotateCcw size={13} />
-                        </button>
-                      )}
-                      {isOpen ? <ChevronUp size={14} style={{ color: C.muted }} /> : <ChevronDown size={14} style={{ color: C.muted }} />}
-                    </div>
-                  </div>
 
                   {/* Thread Expansion */}
                   <AnimatePresence>
@@ -646,7 +685,9 @@ export function ParentMessagesContent() {
             })}
           </div>
         )}
-      </div>
+        </div>{/* end Message List */}
+        </div>{/* end Main Inbox Card */}
+      </div>{/* end page wrapper */}
 
       {/* ── Bulk Compose Modal ─────────────────────────────── */}
       <AnimatePresence>

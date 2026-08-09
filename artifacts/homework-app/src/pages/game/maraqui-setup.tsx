@@ -360,7 +360,7 @@ export default function MaraquiSetup() {
           {/* Back button */}
           <motion.div initial={{ opacity: 0, x: isRtl ? 10 : -10 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
             <button
-              onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/teacher/dashboard")}
+              onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/teacher")}
               className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/60 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
             >
               <BackArrow className="w-4 h-4" />

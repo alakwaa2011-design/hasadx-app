@@ -1,5 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Lightbulb } from "lucide-react";
+import {
+  WameethIcon,
+  RocketIcon,
+  MillionIcon,
+  WheelIcon,
+  TugWarIcon,
+  HotSeatIcon,
+} from "@/components/game-icons";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +46,13 @@ import {
   AlertTriangle,
   TrendingUp,
   Wand2,
+  Globe,
+  Landmark,
+  Calculator,
+  Type,
+  Shuffle,
+  ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
@@ -2784,12 +2799,12 @@ function GamesArcade({
   setLocation: (path: string) => void;
 }) {
   const games = [
-    { emoji: "🎯", name: isAr ? "مسابقة ذاتية" : "Solo Challenge", to: "/teacher/solo-challenges" },
-    { emoji: "🚀", name: isAr ? "سباق الصواريخ" : "Rocket Race", to: "/game/rocket/create" },
-    { emoji: "💰", name: isAr ? "المليون" : "Million", to: "/game/million" },
-    { emoji: "🎡", name: isAr ? "عجلة الحظ" : "Lucky Wheel", to: "/game/wheel/create" },
-    { emoji: "🪢", name: isAr ? "شد الحبل" : "Tug of War", to: "/game/tug/create" },
-    { emoji: "🧠", name: isAr ? "تحديات ذكاء" : "Brain Challenges", to: "/islamic" },
+    { icon: <WameethIcon height={32} />, name: isAr ? "مسابقة ذاتية" : "Solo Challenge", to: "/teacher/solo-challenges" },
+    { icon: <RocketIcon size={32} />,    name: isAr ? "سباق الصواريخ" : "Rocket Race",    to: "/game/rocket/create" },
+    { icon: <MillionIcon size={32} />,   name: isAr ? "المليون" : "Million",               to: "/game/million" },
+    { icon: <WheelIcon size={32} />,     name: isAr ? "عجلة الحظ" : "Lucky Wheel",         to: "/game/wheel/create" },
+    { icon: <TugWarIcon size={32} />,    name: isAr ? "شد الحبل" : "Tug of War",           to: "/game/tug/create" },
+    { icon: <HotSeatIcon size={32} />,   name: isAr ? "تحديات ذكاء" : "Brain Challenges",  to: "/teacher/games#solo" },
   ];
 
   return (
@@ -2833,13 +2848,11 @@ function GamesArcade({
             minWidth: 0,
             boxShadow: SHADOW.chip,
             scrollSnapAlign: "start",
-            transition:
-              "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
+            transition: "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = "rgba(30,77,53,0.35)";
-            e.currentTarget.style.boxShadow =
-              "0 8px 18px -8px rgba(30,77,53,0.3)";
+            e.currentTarget.style.boxShadow = "0 8px 18px -8px rgba(30,77,53,0.3)";
             e.currentTarget.style.transform = "translateY(-3px)";
           }}
           onMouseLeave={(e) => {
@@ -2858,13 +2871,10 @@ function GamesArcade({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background:
-                "linear-gradient(145deg, rgba(30,77,53,0.08), rgba(232,168,14,0.07))",
-              fontSize: 20,
-              lineHeight: 1,
+              background: "linear-gradient(145deg, rgba(30,77,53,0.08), rgba(232,168,14,0.07))",
             }}
           >
-            {g.emoji}
+            {g.icon}
           </span>
           <span
             style={{

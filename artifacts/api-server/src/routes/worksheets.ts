@@ -401,7 +401,10 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
 
     const prompt = buildWorksheetPrompt(body);
-    const text = await runTierCompletion({ tier, prompt, maxTokens: 4000 + body.pages * 4000 });
+    const system = body.language === "ar"
+      ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
+      : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
+    const text = await runTierCompletion({ tier, prompt, system, maxTokens: 4000 + body.pages * 4000 });
     const json = parseJsonLoose(text);
     const raw = Array.isArray(json?.questions) ? json.questions : [];
     const cleaned = sanitizeGeneratedQuestions(raw, body.counts);
@@ -497,9 +500,12 @@ router.post(
       });
 
       const maxTokens = 4000 + parsedBody.pages * 4000;
+      const system = parsedBody.language === "ar"
+        ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
+        : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
       const text = prepared.images.length > 0
         ? await runVisionCompletionMulti({ tier, prompt, images: prepared.images, maxTokens })
-        : await runTierCompletion({ tier, prompt, maxTokens });
+        : await runTierCompletion({ tier, prompt, system, maxTokens });
 
       const json = parseJsonLoose(text);
       const raw = Array.isArray(json?.questions) ? json.questions : [];
@@ -576,12 +582,22 @@ function sanitizeGeneratedQuestions(
     const id = `q_${++idx}_${Date.now().toString(36)}`;
 
     if (type === "mcq" && tally.mcq < cap.mcq) {
-      const options = Array.isArray(q.options)
-        ? q.options
-            .filter((o: any) => typeof o === "string" && o.trim())
-            .map((o: string) => o.trim().slice(0, 300))
-            .slice(0, 6)
-        : [];
+      // Recover options from multiple possible model output formats:
+      // 1. Proper array in "options" (expected)
+      // 2. Array in "choices" or "answers" (alternate key)
+      // 3. Object like {"A":"...","B":"...","C":"...","D":"..."} → values
+      // 4. Numbered object like {"1":"...","2":"..."} → values
+      let rawOpts: any[] = [];
+      if (Array.isArray(q.options)) rawOpts = q.options;
+      else if (Array.isArray(q.choices)) rawOpts = q.choices;
+      else if (Array.isArray(q.answers)) rawOpts = q.answers;
+      else if (q.options && typeof q.options === "object") rawOpts = Object.values(q.options);
+      else if (q.choices && typeof q.choices === "object") rawOpts = Object.values(q.choices);
+
+      const options = rawOpts
+        .filter((o: any) => typeof o === "string" && o.trim())
+        .map((o: string) => o.trim().slice(0, 300))
+        .slice(0, 6);
       if (options.length < 2) continue;
       const correctIndex = typeof q.correctIndex === "number"
         ? Math.max(0, Math.min(options.length - 1, Math.floor(q.correctIndex)))
@@ -637,28 +653,36 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
   if (counts.fill_blank > 0) requested.push(ar ? `${counts.fill_blank} إكمال الفراغ` : `${counts.fill_blank} fill-in-the-blank`);
   if (counts.matching > 0) requested.push(ar ? `${counts.matching} توصيل (مع 4–6 أزواج)` : `${counts.matching} matching (with 4–6 pairs)`);
 
+  const mcqExample = ar
+    ? `مثال إلزامي لسؤال اختيار من متعدد — اتبع هذا التنسيق بدقة:
+{"type":"mcq","prompt":"ما عاصمة المملكة العربية السعودية؟","options":["الرياض","جدة","مكة المكرمة","الدمام"],"correctIndex":0}`
+    : `Mandatory MCQ example — follow this format exactly:
+{"type":"mcq","prompt":"What is the capital of France?","options":["Paris","London","Berlin","Madrid"],"correctIndex":0}`;
+
   const rules = ar
     ? [
-        "أعد ردًّا بصيغة JSON نقية فقط — بدون أي شرح أو ترميز.",
+        "أعد ردًّا بصيغة JSON نقية فقط — بدون أي شرح أو ترميز خارج الـ JSON.",
         "صيغة الرد: { \"questions\": [...] }.",
         "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching.",
-        "للـ mcq: options مصفوفة من 4 خيارات نصّية بالضبط (لا أقل ولا أكثر)، و correctIndex فهرس صحيح بين 0 و 3.",
-        "للـ true_false: correct قيمة منطقية.",
-        "للـ short_answer: prompt هو السؤال، و lines رقم بين 1 و 5، و answer هو الإجابة المُقترحة.",
-        "للـ fill_blank: prompt يحتوي على \"____\" مكان الفراغ، و answer هو الكلمة الصحيحة.",
-        "للـ matching: pairs مصفوفة من 4-6 أزواج {left, right}.",
-        "اجعل الأسئلة دقيقة، تربوية، ومناسبة للمرحلة. تجنّب الأسئلة المتكرّرة أو المضلِّلة.",
+        "⚠️ mcq (إلزامي): كل سؤال اختيار متعدد يجب أن يحتوي على حقل options وهو مصفوفة من 4 نصوص مختلفة، وحقل correctIndex بين 0 و 3. لا تكتب سؤال mcq بدون options أبداً.",
+        mcqExample,
+        "true_false: correct قيمة منطقية (true أو false).",
+        "short_answer: prompt هو السؤال، lines رقم بين 1 و 5، answer هو الإجابة.",
+        "fill_blank: prompt يحتوي على '____' مكان الفراغ، answer هو الكلمة الصحيحة.",
+        "matching: pairs مصفوفة من 4–6 أزواج {left, right}.",
+        "اجعل الأسئلة دقيقة وتربوية ومناسبة للمرحلة الدراسية.",
       ]
     : [
         "Reply with strict JSON ONLY — no prose, no code fences.",
         "Reply shape: { \"questions\": [...] }.",
         "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching.",
-        "mcq: options must be an array of EXACTLY 4 strings (no more, no less); correctIndex is 0–3.",
+        "⚠️ mcq (MANDATORY): every MCQ must have an 'options' array of EXACTLY 4 distinct strings and a 'correctIndex' (0–3). Never omit options.",
+        mcqExample,
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
-        "fill_blank: prompt contains \"____\" where the blank goes; answer is the missing word/phrase.",
+        "fill_blank: prompt contains '____' where the blank goes; answer is the missing word.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
-        "Keep questions accurate, pedagogical, and grade-appropriate. Avoid duplicates or trick questions.",
+        "Keep questions accurate, pedagogical, and grade-appropriate.",
       ];
 
   return [

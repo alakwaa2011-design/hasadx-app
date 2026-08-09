@@ -434,6 +434,20 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
         expiresAt: soloChallengesTable.expiresAt,
         assignmentId: soloChallengesTable.assignmentId,
         questions: soloChallengesTable.questions,
+        allowedClasses: soloChallengesTable.allowedClasses,
+        slug: soloChallengesTable.slug,
+        shortSlug: soloChallengesTable.shortSlug,
+        assignmentTitle: soloChallengesTable.assignmentTitle,
+        notes: soloChallengesTable.notes,
+        timePerQuestion: soloChallengesTable.timePerQuestion,
+        questionsPerParticipant: soloChallengesTable.questionsPerParticipant,
+        leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
+        maxAttempts: soloChallengesTable.maxAttempts,
+        playCount: soloChallengesTable.playCount,
+        createdAt: soloChallengesTable.createdAt,
+        isMultiLevel: soloChallengesTable.isMultiLevel,
+        levels: soloChallengesTable.levels,
+        difficultyDistribution: soloChallengesTable.difficultyDistribution,
       })
       .from(soloChallengesTable)
       .where(eq(soloChallengesTable.slug, req.params.slug))
@@ -459,11 +473,16 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
       questionCount = cnt?.count ?? 0;
     }
 
+    const allowedClassesList = Array.isArray((challenge as any).allowedClasses)
+      ? ((challenge as any).allowedClasses as string[]).filter(c => typeof c === "string" && c.trim())
+      : [];
+
     res.json({
       ...challenge,
       isStandalone,
       isExpired,
       questionCount,
+      allowedClasses: allowedClassesList,
     });
   } catch (err) {
     req.log.error(err, "Get teacher solo challenge error");
@@ -647,6 +666,14 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
         if (lv !== null) update.levels = lv;
       }
     }
+    if ("allowedClasses" in req.body) {
+      const ac = req.body.allowedClasses;
+      if (!Array.isArray(ac)) {
+        return res.status(400).json({ message: "allowedClasses يجب أن يكون مصفوفة" });
+      }
+      const cleaned = ac.map((c: unknown) => String(c).trim()).filter(c => c.length > 0 && c.length <= 100).slice(0, 50);
+      update.allowedClasses = cleaned.length > 0 ? cleaned : null;
+    }
 
     if (Object.keys(update).length === 0) return res.json({ ok: true });
 
@@ -702,6 +729,7 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
         isMultiLevel: soloChallengesTable.isMultiLevel,
         levels: soloChallengesTable.levels,
         difficultyDistribution: soloChallengesTable.difficultyDistribution,
+        allowedClasses: soloChallengesTable.allowedClasses,
       })
       .from(soloChallengesTable)
       .where(eq(soloChallengesTable.slug, req.params.slug))
@@ -732,6 +760,10 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
         ? challenge.questionsPerParticipant
         : questionCount;
 
+    const allowedClassesList = Array.isArray((challenge as any).allowedClasses)
+      ? ((challenge as any).allowedClasses as string[]).filter(c => typeof c === "string" && c.trim())
+      : [];
+
     res.json({
       slug: challenge.slug,
       assignmentTitle: challenge.assignmentTitle,
@@ -749,6 +781,7 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
       difficultyAffectsPoints: false,
       isMultiLevel: Boolean(challenge.isMultiLevel),
       levels: challenge.levels ?? null,
+      allowedClasses: allowedClassesList,
     });
   } catch (err) {
     req.log.error(err, "Get solo challenge slug error");
@@ -775,6 +808,7 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
         assignmentTitle: soloChallengesTable.assignmentTitle,
         shortSlug: soloChallengesTable.shortSlug,
         leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
+        allowedClasses: soloChallengesTable.allowedClasses,
       })
       .from(soloChallengesTable)
       .where(eq(soloChallengesTable.slug, req.params.slug))
@@ -785,6 +819,21 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
     const now = new Date();
     if (challenge.expiresAt && new Date(challenge.expiresAt) < now) {
       return res.status(403).json({ message: "انتهت مدة هذه المسابقة" });
+    }
+
+    // ── Class restriction check ───────────────────────────────────────────────
+    const allowedClasses = Array.isArray((challenge as any).allowedClasses)
+      ? ((challenge as any).allowedClasses as string[]).filter(c => typeof c === "string" && c.trim())
+      : [];
+    if (allowedClasses.length > 0) {
+      const playerClass = String(req.body?.playerClass || "").trim();
+      if (!playerClass || !allowedClasses.includes(playerClass)) {
+        return res.status(403).json({
+          message: playerClass
+            ? "الصف المحدد غير مسموح به في هذه المسابقة"
+            : "يجب اختيار صفك أولاً للمشاركة في هذه المسابقة",
+        });
+      }
     }
 
     const duration = Math.max(5, Math.min(120, challenge.timePerQuestion ?? 20));

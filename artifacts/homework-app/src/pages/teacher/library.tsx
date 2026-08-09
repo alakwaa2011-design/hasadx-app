@@ -54,6 +54,8 @@ import {
   Play,
   Copy,
   Layers,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -994,6 +996,14 @@ export default function TeacherLibraryPage() {
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6" dir={isAr ? "rtl" : "ltr"}>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setLocation("/teacher")}
+              className="flex items-center justify-center w-9 h-9 rounded-xl border border-border bg-card hover:bg-muted transition-colors shrink-0"
+              aria-label={isAr ? "رجوع" : "Back"}
+            >
+              {isAr ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+            </button>
             <div className="p-3 bg-gradient-to-br from-violet-500/20 to-purple-500/20 rounded-2xl">
               <Library className="w-7 h-7 text-violet-600" />
             </div>

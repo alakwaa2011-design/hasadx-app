@@ -50,6 +50,7 @@ interface ChallengeTeacherData {
   difficultyDistribution?: { easy: number; medium: number; hard: number } | null;
   isMultiLevel?: boolean;
   levels?: Array<{ name: string; questionCount: number; timePerQuestion: number }> | null;
+  allowedClasses?: string[];
 }
 
 interface Participant {
@@ -86,6 +87,8 @@ export default function SoloChallengeManagePage() {
   const [editQpp, setEditQpp] = useState<number | "">("");
   const [editMaxAttempts, setEditMaxAttempts] = useState(1);
   const [editDiffDistribution, setEditDiffDistribution] = useState<{ easy: number; medium: number; hard: number } | null>(null);
+  const [editAllowedClasses, setEditAllowedClasses] = useState<string[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [deletingParticipantId, setDeletingParticipantId] = useState<number | null>(null);
@@ -124,6 +127,7 @@ export default function SoloChallengeManagePage() {
       setEditExpires(
         chal.expiresAt ? new Date(chal.expiresAt).toISOString().slice(0, 16) : ""
       );
+      setEditAllowedClasses(Array.isArray(chal.allowedClasses) ? chal.allowedClasses : []);
       if (chal.assignmentId === null && Array.isArray(chal.questions)) {
         setEditQuestions(chal.questions as SoloQuestion[]);
       }
@@ -138,6 +142,18 @@ export default function SoloChallengeManagePage() {
     if (!authLoading && !user) { setLocation("/login"); return; }
     if (user) load();
   }, [user, authLoading, load]);
+
+  // Fetch teacher classes for class restriction picker
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${API}/api/teacher/classes`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{ name: string; group_name?: string }>) => {
+        const names = data.map(c => c.group_name ? `${c.name} - ${c.group_name}` : c.name);
+        setTeacherClasses([...new Set(names)]);
+      })
+      .catch(() => {});
+  }, [user]);
 
   const saveSettings = async () => {
     if (!challenge) return;
@@ -155,6 +171,7 @@ export default function SoloChallengeManagePage() {
           questionsPerParticipant: editQpp === "" ? null : editQpp,
           maxAttempts: editMaxAttempts,
           difficultyDistribution: editDiffDistribution,
+          allowedClasses: editAllowedClasses,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
@@ -506,6 +523,49 @@ export default function SoloChallengeManagePage() {
                   <button onClick={() => { setEditExpires(""); mark(); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">إزالة</button>
                 )}
               </div>
+            </div>
+
+            {/* ── Class restriction ── */}
+            <div className="px-4 py-3">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Users className="w-3.5 h-3.5" />
+                  تقييد المشاركة بالصف
+                </label>
+                {editAllowedClasses.length > 0 && (
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    {editAllowedClasses.length} صف
+                  </span>
+                )}
+              </div>
+              {teacherClasses.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">لا توجد صفوف مضافة — أضف صفوفاً من إعدادات الطلاب أولاً.</p>
+              ) : (
+                <>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    اختر الصفوف المسموح لها. إذا تركت هذا فارغاً يمكن للجميع الدخول.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {teacherClasses.map(cls => (
+                      <button
+                        key={cls}
+                        onClick={() => {
+                          setEditAllowedClasses(prev => prev.includes(cls) ? prev.filter(c => c !== cls) : [...prev, cls]);
+                          mark();
+                        }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
+                          editAllowedClasses.includes(cls)
+                            ? "bg-amber-500 border-amber-500 text-white"
+                            : "border-border text-muted-foreground hover:bg-muted/40",
+                        )}
+                      >
+                        {cls}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ── Save ── */}

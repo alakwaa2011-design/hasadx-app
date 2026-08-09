@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
@@ -18,6 +19,11 @@ import {
   Eye,
   Lock,
   School,
+  Globe,
+  Landmark,
+  Sparkles,
+  Calculator,
+  Type,
 } from "lucide-react";
 
 interface GameItem {
@@ -43,6 +49,16 @@ export default function TeacherGamesPage() {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
   const isAr = lang === "ar";
+
+  // Scroll to #solo section when navigated with hash
+  useEffect(() => {
+    if (window.location.hash === "#solo") {
+      const el = document.getElementById("solo");
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+      }
+    }
+  }, []);
 
   const sections: Section[] = [
     {
@@ -201,27 +217,75 @@ export default function TeacherGamesPage() {
     },
     {
       key: "solo",
-      titleAr: "ألعاب فردية",
-      titleEn: "Solo Games",
-      descAr: "العب بمفردك في وقتك الخاص وتتبع تقدمك",
-      descEn: "Play alone at your own pace and track your progress",
+      titleAr: "تحديات ذكاء فردية",
+      titleEn: "Solo Brain Challenges",
+      descAr: "تمارين تركيز وذاكرة ولعبة للعب الذاتي أو مسابقات الزوار — بدون غرفة صفية كاملة",
+      descEn: "Focus and memory drills playable solo or with visitors — no full classroom needed",
       accent: "from-emerald-600 to-teal-600",
       items: [
         {
-          icon: <Star />,
-          titleAr: "المسابقات العامة",
-          titleEn: "General Quizzes",
-          to: "/islamic",
-          iconBg: "bg-emerald-500/10",
-          iconColor: "text-emerald-700",
+          icon: <Sparkles />,
+          titleAr: "لعبة الألوان",
+          titleEn: "Color Game",
+          to: "/game/color",
+          iconBg: "bg-green-500/10",
+          iconColor: "text-green-600",
         },
         {
-          icon: <User />,
-          titleAr: "الألعاب الفردية",
-          titleEn: "Solo Games",
-          to: "/public/games",
+          icon: <Globe />,
+          titleAr: "أعلام الدول",
+          titleEn: "World Flags",
+          to: "/game/flags",
+          iconBg: "bg-blue-500/10",
+          iconColor: "text-blue-600",
+        },
+        {
+          icon: <Landmark />,
+          titleAr: "عواصم البلدان",
+          titleEn: "World Capitals",
+          to: "/game/capitals",
           iconBg: "bg-teal-500/10",
           iconColor: "text-teal-600",
+        },
+        {
+          icon: <Brain />,
+          titleAr: "لعبة الذاكرة",
+          titleEn: "Memory Match",
+          to: "/game/memory",
+          iconBg: "bg-purple-500/10",
+          iconColor: "text-purple-600",
+        },
+        {
+          icon: <Calculator />,
+          titleAr: "جدول الضرب",
+          titleEn: "Multiplication",
+          to: "/game/multiply",
+          iconBg: "bg-orange-500/10",
+          iconColor: "text-orange-600",
+        },
+        {
+          icon: <Palette />,
+          titleAr: "لعبة ارتباك",
+          titleEn: "Stroop Game",
+          to: "/game/stroop",
+          iconBg: "bg-red-500/10",
+          iconColor: "text-red-600",
+        },
+        {
+          icon: <Shuffle />,
+          titleAr: "الكلمات المبعثرة",
+          titleEn: "Scrambled Words",
+          to: "/game/scramble",
+          iconBg: "bg-yellow-500/10",
+          iconColor: "text-yellow-700",
+        },
+        {
+          icon: <Type />,
+          titleAr: "خمن الكلمة",
+          titleEn: "Word Challenge",
+          to: "/game/letrly",
+          iconBg: "bg-emerald-500/10",
+          iconColor: "text-emerald-700",
         },
       ],
     },
@@ -255,6 +319,7 @@ export default function TeacherGamesPage() {
           {sections.map((section) => (
             <section
               key={section.key}
+              id={section.key}
               className="rounded-2xl border border-border/60 bg-card overflow-hidden"
             >
               <div

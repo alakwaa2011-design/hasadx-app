@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -44,6 +44,8 @@ export interface Settings {
   headerNote?: string;
 
   footerNote?: string;
+  /** Custom closing line (overrides the default "نتمنى لك التوفيق"). */
+  goodLuck?: string;
 
   schoolName?: string;
 
@@ -256,6 +258,17 @@ export function WorksheetPrintView({
   const [localBreaks, setLocalBreaks] = useState<Set<string>>(
     () => new Set(data.settings.pageBreaks ?? []),
   );
+
+  // IDs of questions that are the first in a consecutive run of the same type.
+  // These get a one-time section instruction printed above them.
+  const firstOfTypeSet = useMemo(() => {
+    const set = new Set<string>();
+    let prev: Question["type"] | null = null;
+    for (const q of localQs) {
+      if (q.type !== prev) { set.add(q.id); prev = q.type; }
+    }
+    return set;
+  }, [localQs]);
   const [showPanel, setShowPanel] = useState(false);
   const [layoutDirty, setLayoutDirty] = useState(false);
   // ── Inline text-editing state ──────────────────────────────────────────
@@ -393,28 +406,27 @@ export function WorksheetPrintView({
   // ── Classic (default) header — used when no theme is active ──
   const classicHeader = (
     <header className="ws-header">
-      <div className={`ws-headgrid${hasIdentity ? "" : " ws-headgrid-titleonly"}`}>
-        {hasIdentity && (
-          <div className="ws-headside ws-headside-start">
-            {logoUrl && (
-              <div className="ws-logo-wrap">
-                <img src={logoUrl} alt={ar ? "شعار المدرسة" : "School logo"} className="ws-logo-img" />
-              </div>
-            )}
-            {data.settings.schoolName && (
-              <IdentityCell label={labels.school} value={data.settings.schoolName} icon={<IconSchool />} />
-            )}
-            {data.settings.section && (
-              <IdentityCell label={labels.section} value={data.settings.section} icon={<IconSection />} />
-            )}
-            {data.settings.teacherName && (
-              <IdentityCell label={labels.teacher} value={data.settings.teacherName} icon={<IconTeacher />} />
-            )}
-            {customFields.map((f, i) => (
-              <IdentityCell key={`cf-${i}`} label={f.label.trim() || (ar ? "حقل" : "Field")} value={f.value} icon={<IconField />} />
-            ))}
-          </div>
-        )}
+      {/* Three-column row: identity (right) | title (center) | logo (left).
+          Both side columns are fixed width so the title stays truly centered
+          and the logo faces the identity text at exactly the same height.
+          dir is forced so the flex order is right→center→left in Arabic. */}
+      <div className="ws-headrow" dir={ar ? "rtl" : "ltr"}>
+        {/* START side (right in Arabic): teacher-written identity info */}
+        <div className="ws-headstart">
+          {data.settings.schoolName && (
+            <IdentityCell label={labels.school} value={data.settings.schoolName} icon={<IconSchool />} />
+          )}
+          {data.settings.section && (
+            <IdentityCell label={labels.section} value={data.settings.section} icon={<IconSection />} />
+          )}
+          {data.settings.teacherName && (
+            <IdentityCell label={labels.teacher} value={data.settings.teacherName} icon={<IconTeacher />} />
+          )}
+          {customFields.map((f, i) => (
+            <IdentityCell key={`cf-${i}`} label={f.label.trim() || (ar ? "حقل" : "Field")} value={f.value} icon={<IconField />} />
+          ))}
+        </div>
+        {/* CENTER: worksheet title */}
         <div className="ws-headcenter">
           <h1 className="ws-title">{data.title}</h1>
           {(data.subject || data.gradeLevel) && (
@@ -422,7 +434,12 @@ export function WorksheetPrintView({
           )}
           <DoubleDivider />
         </div>
-        {hasIdentity && <div className="ws-headside ws-headside-end" aria-hidden="true" />}
+        {/* END side (left in Arabic): school logo — mirrors the identity column */}
+        <div className="ws-headend">
+          {logoUrl && (
+            <img src={logoUrl} alt={ar ? "شعار المدرسة" : "School logo"} className="ws-logo-img" />
+          )}
+        </div>
       </div>
       {(data.settings.includeName || data.settings.includeDate || data.settings.includeClass) && (
         <div className="ws-fields">
@@ -596,13 +613,14 @@ export function WorksheetPrintView({
                         labels={labels}
                         editMode={editMode}
                         onEdit={onEditQuestion}
+                        showTypeHeader={firstOfTypeSet.has(q.id)}
                       />
                     );
                   })}
                 </section>
                 <FooterStrip
                   note={isLast ? data.settings.footerNote : undefined}
-                  goodLuck={isLast ? labels.goodLuck : ""}
+                  goodLuck={isLast ? (data.settings.goodLuck?.trim() || labels.goodLuck) : ""}
                 />
               </div>
             </article>
@@ -1105,6 +1123,26 @@ function questionTypeLabel(type: Question["type"], ar: boolean) {
   return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching" }[type];
 }
 
+/** Instruction shown once before the first question of each type group. */
+function sectionInstruction(type: Question["type"], ar: boolean): string {
+  if (ar) {
+    return ({
+      mcq:          "اختر الإجابة الصحيحة من الاختيارات التالية:",
+      true_false:   "ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:",
+      short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
+      fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
+      matching:     "صل بين العمودين بخطوط:",
+    } as Record<Question["type"], string>)[type];
+  }
+  return ({
+    mcq:          "Choose the correct answer from the following:",
+    true_false:   "Write (✓) for True and (✗) for False:",
+    short_answer: "Answer the following questions briefly:",
+    fill_blank:   "Fill in the blanks with the appropriate word:",
+    matching:     "Match the following columns:",
+  } as Record<Question["type"], string>)[type];
+}
+
 /** Editable span — shows a yellow highlight in edit mode, plain in view mode */
 function EditSpan({
   text, editMode, className, onCommit, placeholder,
@@ -1150,7 +1188,7 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit,
+  index, q, ar, labels, editMode, onEdit, showTypeHeader,
 }: {
   index: number;
   q: Question;
@@ -1158,22 +1196,26 @@ function QuestionView({
   labels: { question: string; true: string; false: string; correct: string };
   editMode?: boolean;
   onEdit?: (updated: Question) => void;
+  showTypeHeader?: boolean;
 }) {
   const em = editMode ?? false;
   const edit = onEdit ?? (() => {});
 
   return (
-    <div className="ws-q">
-      <div className="ws-q-head">
-        <span className="ws-q-num" aria-label={`${labels.question} ${index}`}>{index}</span>
-        <div className="ws-q-prompt-wrap">
-          <div className="ws-q-typeline">
-            <span className="ws-q-typebadge">{questionIcon(q.type)} <span>{questionTypeLabel(q.type, ar)}</span></span>
+    <>
+      {showTypeHeader && (
+        <div className="ws-section-instr">{sectionInstruction(q.type, ar)}</div>
+      )}
+      <div className="ws-q">
+        <div className="ws-q-head">
+          <span className="ws-q-num" aria-label={`${labels.question} ${index}`}>{index}</span>
+          <div className="ws-q-prompt-wrap">
             {typeof q.points === "number" && q.points > 0 && (
-              <span className="ws-q-points">{q.points} {ar ? "د" : "pt"}</span>
+              <div className="ws-q-typeline">
+                <span className="ws-q-points">{q.points} {ar ? "د" : "pt"}</span>
+              </div>
             )}
-          </div>
-          <div className="ws-q-prompt">
+            <div className="ws-q-prompt">
             <EditSpan
               text={q.prompt ?? (q.type === "matching" ? (ar ? "صل بين العمودين بخطوط:" : "Match the columns:") : "")}
               editMode={em}
@@ -1259,6 +1301,7 @@ function QuestionView({
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -1382,22 +1425,27 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-corner-bl { bottom: 8mm; left: 8mm; border-right: 0; border-top: 0; border-bottom-left-radius: 6px; }
       .ws-corner-br { bottom: 8mm; right: 8mm; border-left: 0; border-top: 0; border-bottom-right-radius: 6px; }
 
-      /* Header — top-of-page grid: identity panel pinned to the START
-         side, title centered in the middle column, opposite side reserved
-         for symmetry so the title stays visually centered on the page. */
+      /* ── Header layout ───────────────────────────────────────────
+         Three fixed columns: identity (right) | title (center) | logo (left).
+         Both side columns are the same width so the title is always truly
+         centered and the logo sits exactly opposite the identity text. */
       .ws-header { margin-bottom: 6mm; }
-      .ws-headgrid {
-        display: grid;
-        grid-template-columns: minmax(58mm, 1fr) minmax(0, 1.6fr) minmax(58mm, 1fr);
-        gap: 6mm;
-        align-items: start;
+      .ws-headrow {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 5mm;
       }
-      .ws-headgrid-titleonly {
-        grid-template-columns: 1fr;
-      }
-      .ws-headside {
+      .ws-headstart {
+        flex: 0 0 52mm;
         display: flex; flex-direction: column; gap: 3mm;
         font-size: ${Math.max(9, fontSizePt - 1.5)}pt;
+      }
+      .ws-headend {
+        flex: 0 0 52mm;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
       }
       .ws-headcenter {
         display: flex; flex-direction: column; align-items: center;
@@ -1530,17 +1578,20 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         box-shadow: 0 0 0 2px ${BRAND_GOLD}55;
       }
       .ws-q-prompt-wrap { flex: 1; min-width: 0; }
-      .ws-q-typeline { display: flex; align-items: center; gap: 8px; margin-bottom: 1.5mm; flex-wrap: wrap; }
-      .ws-q-typebadge {
-        display: inline-flex; align-items: center; gap: 4px;
-        font-size: ${Math.max(7.5, fontSizePt - 3.5)}pt;
+      /* Section instruction — shown once before the first question of each type group */
+      .ws-section-instr {
+        font-size: ${Math.max(9, fontSizePt - 1.5)}pt;
         font-weight: 700;
         color: ${TC};
-        background: ${TC}0e;
-        padding: 1.5px 7px 1.5px 5px;
-        border-radius: 999px;
-        letter-spacing: 0.02em;
+        border-${startSide}: 3px solid ${TC};
+        padding: 2mm 4mm;
+        margin: 3mm 0 2mm;
+        background: ${TC}08;
+        border-radius: 0 4px 4px 0;
+        break-inside: avoid;
       }
+      /* Points badge — still shown per-question when points are assigned */
+      .ws-q-typeline { display: flex; align-items: center; gap: 8px; margin-bottom: 1mm; }
       .ws-q-points {
         font-size: ${Math.max(7.5, fontSizePt - 3.5)}pt;
         font-weight: 800;
@@ -1574,10 +1625,9 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       }
       @media print { .ws-editable { background: none !important; box-shadow: none !important; } }
 
-      .ws-mcq { list-style: none; padding-${startSide}: 36px; margin: 2mm 0 0; }
+      .ws-mcq { list-style: none; padding-${startSide}: 36px; margin: 2mm 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm 16px; }
       .ws-mcq li {
         display: flex; gap: 7px; align-items: center;
-        margin: 2mm 0;
         line-height: 1.6;
       }
       .ws-mcq-letter {
@@ -1725,14 +1775,12 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         border-radius: 999px;
       }
 
-      /* School logo in the header identity panel */
-      .ws-logo-wrap {
-        display: flex; align-items: center; justify-content: center;
-        margin-bottom: 3mm;
-      }
+      /* School logo — sits in ws-headend, which mirrors ws-headstart width */
       .ws-logo-img {
-        max-height: 18mm; max-width: 40mm;
+        max-height: 22mm; max-width: 44mm;
+        width: auto; height: auto;
         object-fit: contain;
+        display: block;
       }
 
       /* Answer key tweaks */

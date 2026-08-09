@@ -26,6 +26,7 @@ interface ChallengeInfo {
   difficultyDistribution?: { easy: number; medium: number; hard: number } | null;
   isMultiLevel?: boolean;
   levels?: Array<{ name: string; questionCount: number; timePerQuestion: number }> | null;
+  allowedClasses?: string[];
 }
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
@@ -41,6 +42,7 @@ export default function SoloPlayPage() {
   const [info, setInfo] = useState<ChallengeInfo | null>(null);
   const [loadError, setLoadError] = useState("");
   const [playerName, setPlayerName] = useState("");
+  const [playerClass, setPlayerClass] = useState("");
   const [nameError, setNameError] = useState("");
   const [starting, setStarting] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -105,13 +107,21 @@ export default function SoloPlayPage() {
       setNameError(lang === "ar" ? "أدخل اسمك أولاً" : "Please enter your name");
       return;
     }
+    const isRestricted = (info?.allowedClasses?.length ?? 0) > 0;
+    if (isRestricted && !playerClass) {
+      setNameError(lang === "ar" ? "اختر صفك أولاً" : "Please select your class");
+      return;
+    }
     setNameError("");
     setStarting(true);
     try {
+      const body: Record<string, unknown> = {};
+      if (isRestricted && playerClass) body.playerClass = playerClass;
       const res = await fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug!)}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "خطأ");
@@ -293,37 +303,62 @@ export default function SoloPlayPage() {
             </div>
           )}
 
-          {/* Name input */}
-          <div className="p-6">
-            <label className="block text-sm font-bold mb-2" style={{ color: "rgba(255,255,255,0.75)" }}>
-              {lang === "ar" ? "اكتب اسمك للبدء" : "Enter your name to start"}
-            </label>
-            <input
-              type="text"
-              value={playerName}
-              onChange={e => { setPlayerName(e.target.value); setNameError(""); }}
-              onKeyDown={e => e.key === "Enter" && handleStart()}
-              placeholder={lang === "ar" ? "اسمك هنا..." : "Your name..."}
-              maxLength={40}
-              autoFocus
-              className="w-full rounded-2xl px-4 py-3.5 text-base font-bold outline-none transition-all"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: nameError ? "2px solid rgba(239,68,68,0.7)" : "2px solid rgba(255,255,255,0.15)",
-                color: "white",
-                direction: "auto",
-              }}
-              onFocus={e => { if (!nameError) e.target.style.borderColor = "rgba(232,184,75,0.7)"; }}
-              onBlur={e => { if (!nameError) e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
-            />
-            <AnimatePresence>
-              {nameError && (
-                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="text-red-400 text-sm font-bold mt-2">
-                  {nameError}
-                </motion.p>
-              )}
-            </AnimatePresence>
+          {/* Name + class input */}
+          <div className="p-6 space-y-4">
+            {/* Class selector — shown only when the challenge is class-restricted */}
+            {(info?.allowedClasses?.length ?? 0) > 0 && (
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: "rgba(255,255,255,0.75)" }}>
+                  {lang === "ar" ? "اختر صفك" : "Select your class"}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {info!.allowedClasses!.map(cls => (
+                    <button
+                      key={cls}
+                      onClick={() => { setPlayerClass(cls); setNameError(""); }}
+                      className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+                      style={playerClass === cls
+                        ? { background: "rgba(232,184,75,0.9)", color: "#1a1a1a", border: "2px solid rgba(232,184,75,0.9)" }
+                        : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", border: "2px solid rgba(255,255,255,0.15)" }}
+                    >
+                      {cls}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-bold mb-2" style={{ color: "rgba(255,255,255,0.75)" }}>
+                {lang === "ar" ? "اكتب اسمك للبدء" : "Enter your name to start"}
+              </label>
+              <input
+                type="text"
+                value={playerName}
+                onChange={e => { setPlayerName(e.target.value); setNameError(""); }}
+                onKeyDown={e => e.key === "Enter" && handleStart()}
+                placeholder={lang === "ar" ? "اسمك هنا..." : "Your name..."}
+                maxLength={40}
+                autoFocus
+                className="w-full rounded-2xl px-4 py-3.5 text-base font-bold outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: nameError ? "2px solid rgba(239,68,68,0.7)" : "2px solid rgba(255,255,255,0.15)",
+                  color: "white",
+                  direction: "auto",
+                }}
+                onFocus={e => { if (!nameError) e.target.style.borderColor = "rgba(232,184,75,0.7)"; }}
+                onBlur={e => { if (!nameError) e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
+              />
+              <AnimatePresence>
+                {nameError && (
+                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="text-red-400 text-sm font-bold mt-2">
+                    {nameError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Start button */}
             <motion.button

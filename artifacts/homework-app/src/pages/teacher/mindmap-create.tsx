@@ -487,7 +487,7 @@ export default function MindMapCreate() {
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-border/60">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
             <button
-              onClick={() => setLocation("/teacher/dashboard?tab=tools")}
+              onClick={() => setLocation("/teacher")}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
             >
               <Home className="w-4 h-4" />

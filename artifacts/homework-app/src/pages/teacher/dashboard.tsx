@@ -81,6 +81,7 @@ import {
   Rocket,
   ChevronLeft,
   FileText,
+  FileImage,
   BookOpen,
   Monitor,
   Brain,
@@ -181,13 +182,13 @@ function SidebarXpCard({
   const emoji = LEVEL_EMOJIS[Math.min(data.level - 1, LEVEL_EMOJIS.length - 1)];
 
   return (
-    <div style={{ padding: "12px 12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "auto" }}>
+    <div style={{ padding: "12px 12px 14px", borderTop: "1px solid hsl(var(--border))", marginTop: "auto" }}>
       <button
         type="button"
         onClick={() => setLocation("/teacher/achievements")}
         style={{
           width: "100%",
-          background: "rgba(255,255,255,0.06)",
+          background: "rgba(201,160,80,0.08)",
           border: "1px solid rgba(201,160,80,0.35)",
           borderRadius: 12,
           padding: "12px 14px",
@@ -196,15 +197,15 @@ function SidebarXpCard({
           fontFamily: "inherit",
           transition: "background 0.15s",
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
-        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,160,80,0.14)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "rgba(201,160,80,0.08)")}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {/* SVG donut ring */}
           <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
             <svg viewBox="0 0 44 44" style={{ width: 44, height: 44, transform: "rotate(0deg)" }}>
               {/* Track */}
-              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="3.5" />
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(30,77,53,0.12)" strokeWidth="3.5" />
               {/* Progress arc */}
               <path
                 d={arcPath(pct)}
@@ -887,17 +888,17 @@ export default function TeacherDashboard() {
       {/* ── Desktop sidebar layout ── */}
       <div className="hidden lg:flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-56 shrink-0 flex flex-col sticky top-0 h-screen overflow-y-auto" style={{background: "#1E4D35", borderInlineEnd: "none", paddingTop: 12}}>
+        <aside className="w-56 shrink-0 flex flex-col sticky top-0 h-screen overflow-y-auto" style={{background: "hsl(var(--background))", borderInlineEnd: "1px solid hsl(var(--border))", paddingTop: 12}}>
           {/* Logo intentionally removed — the main top header already shows the Hasaad logo. */}
           {/* User greeting — shown only on overview tab */}
           {activeTab === "overview" && (
-            <div style={{padding: "10px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10}}>
-              <div style={{width: 30, height: 30, background: "rgba(255,255,255,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0, border: "1.5px solid rgba(255,255,255,0.2)"}}>
+            <div style={{padding: "10px 16px 10px", borderBottom: "1px solid hsl(var(--border))", display: "flex", alignItems: "center", gap: 10}}>
+              <div style={{width: 30, height: 30, background: "rgba(30,77,53,0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#1E4D35", fontWeight: 800, fontSize: 12, flexShrink: 0, border: "1.5px solid rgba(30,77,53,0.2)"}}>
                 {(user?.name || "?").charAt(0)}
               </div>
               <div style={{flex: 1, minWidth: 0}}>
-                <p style={{fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0, fontWeight: 600}}>{isAr ? "مرحباً" : "Hello"}</p>
-                <p style={{fontSize: 12, fontWeight: 800, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{user?.name}</p>
+                <p style={{fontSize: 9, color: "hsl(var(--muted-foreground))", margin: 0, fontWeight: 600}}>{isAr ? "مرحباً" : "Hello"}</p>
+                <p style={{fontSize: 12, fontWeight: 800, color: "#1E4D35", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{user?.name}</p>
               </div>
             </div>
           )}
@@ -913,7 +914,7 @@ export default function TeacherDashboard() {
           </div>
           <nav className="flex-1 space-y-0.5">
             {/* ── Section: Main ── */}
-            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
+            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {isAr ? "الرئيسية" : "Main"}
             </p>
             {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
@@ -929,15 +930,15 @@ export default function TeacherDashboard() {
                     else setActiveTab(tab.id);
                   }}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
-                  style={active ? { background: "rgba(255,255,255,0.15)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
+                  style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
                 >
                   {!active && (
-                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.07)" }} />
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
                   )}
                   {active && (
                     <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
                   )}
-                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#fff" : "rgba(255,255,255,0.55)"}}>
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#1E4D35" : "rgba(30,77,53,0.62)"}}>
                     {tab.icon}
                   </span>
                   <span className="relative truncate">{tab.label}</span>
@@ -949,7 +950,7 @@ export default function TeacherDashboard() {
             <div className="my-3 border-t border-border/50" />
 
             {/* ── Section: Content ── */}
-            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
+            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {isAr ? "المحتوى" : "Content"}
             </p>
             {tabs.filter(t => ["tools","presentations","videos"].includes(t.id)).map((tab) => {
@@ -978,10 +979,10 @@ export default function TeacherDashboard() {
                         }
                       }}
                       className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
-                      style={active ? { background: "rgba(255,255,255,0.15)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
+                      style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
                     >
                       {!active && (
-                        <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.07)" }} />
+                        <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
                       )}
                       {active && (
                         <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
@@ -993,7 +994,7 @@ export default function TeacherDashboard() {
                       <ChevronDown
                         className="relative w-3.5 h-3.5 shrink-0 transition-transform"
                         style={{
-                          color: active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)",
+                          color: active ? "rgba(30,77,53,0.6)" : "rgba(30,77,53,0.3)",
                           transform: toolsExpanded ? "rotate(180deg)" : "rotate(0deg)",
                         }}
                       />
@@ -1016,17 +1017,17 @@ export default function TeacherDashboard() {
                               }}
                               className="relative w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden group"
                               style={subActive
-                                ? { background: "rgba(232,168,14,0.18)", color: "#E8A80E" }
-                                : { color: "rgba(255,255,255,0.5)" }
+                                ? { background: "rgba(201,160,80,0.12)", color: "#C9A050", fontWeight: 700 }
+                                : { color: "rgba(30,77,53,0.68)" }
                               }
                             >
                               {!subActive && (
-                                <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.05)" }} />
+                                <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.04)" }} />
                               )}
                               {subActive && (
                                 <span className={cn("absolute top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
                               )}
-                              <span className="relative shrink-0" style={{ color: subActive ? "#E8A80E" : "rgba(255,255,255,0.4)" }}>
+                              <span className="relative shrink-0" style={{ color: subActive ? "#C9A050" : "rgba(30,77,53,0.58)" }}>
                                 {sub.icon}
                               </span>
                               <span className="relative truncate">{sub.label}</span>
@@ -1047,15 +1048,15 @@ export default function TeacherDashboard() {
                     else setActiveTab(tab.id);
                   }}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
-                  style={active ? { background: "rgba(255,255,255,0.15)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
+                  style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
                 >
                   {!active && (
-                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.07)" }} />
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
                   )}
                   {active && (
                     <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
                   )}
-                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#fff" : "rgba(255,255,255,0.55)"}}>
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#1E4D35" : "rgba(30,77,53,0.62)"}}>
                     {tab.icon}
                   </span>
                   <span className="relative truncate">{tab.label}</span>
@@ -1097,7 +1098,8 @@ export default function TeacherDashboard() {
               {activeTab !== "library_competitions" &&
                 activeTab !== "library_homework" &&
                 activeTab !== "assignments" &&
-                activeTab !== "competitive" && (
+                activeTab !== "competitive" &&
+                activeTab !== "stats" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
@@ -1105,7 +1107,7 @@ export default function TeacherDashboard() {
               </div>
               )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
-          {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions"].includes(activeTab) && (
+          {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions", "videos", "presentations", "parent_messages", "stats"].includes(activeTab) && (
           <div
             className={cn(
               "grid grid-cols-3 gap-3",
@@ -2772,10 +2774,19 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           icon: <School className="w-6 h-6" />,
           title: isAr ? "السبورة الذكية" : "Smart Whiteboard",
           desc: isAr
-            ? "اكتب موضوع درسك وسيُنشئ الذكاء الاصطناعي شرحاً تدريجياً على سبورة رقمية أمام طلابك"
-            : "Enter a lesson topic and AI generates a step-by-step board presentation for your class",
+            ? "اطرح سؤالاً أو اكتب معلومة أو طلباً وسيعرضه الذكاء الاصطناعي على السبورة أمام طلابك"
+            : "Ask a question, share information, or make a request — AI displays it on the board for your class",
           accent: BRAND.gold,
           href: "/teacher/smart-board",
+        },
+        {
+          icon: <FileImage className="w-6 h-6" />,
+          title: isAr ? "تصحيح ورقي ذكي" : "AI Paper Grading",
+          desc: isAr
+            ? "ارفع صور أوراق الطلاب والذكاء الاصطناعي يصحّح فوراً حسب تعليماتك"
+            : "Students photograph their papers — AI grades them instantly per your instructions",
+          accent: BRAND.gold,
+          href: "/teacher/new/paper-grading",
         },
       ],
     },
@@ -3221,15 +3232,15 @@ function StatsTab({
 
   return (
     <div>
-      <div className="text-center py-4 mb-4">
+      <div className="text-center pt-1 pb-4 mb-2">
         <motion.div
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-flex p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl mb-4"
+          className="inline-flex p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl mb-3"
         >
           <BarChart3 className="w-10 h-10 text-blue-600" />
         </motion.div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-foreground mb-2">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-foreground mb-1">
           {t.dashboard.statsTitle}
         </h2>
       </div>
