@@ -12,6 +12,7 @@ interface QuestionData {
   options: string[];
   duration: number;
   isPower?: boolean;
+  imageUrl?: string | null;
 }
 
 type MusicStyle = "energetic" | "electronic" | "epic" | "chill" | "challenge";

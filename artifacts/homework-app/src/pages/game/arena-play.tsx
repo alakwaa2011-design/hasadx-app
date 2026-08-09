@@ -800,6 +800,7 @@ export default function ArenaPlay() {
     const activeQ = state.active
       ? {
           questionText: state.active.question.q,
+          imageUrl: state.active.question.imageUrl ?? null,
           difficulty: state.active.difficulty,
           subCategoryName:
             findSubCategory(state.active.subCategoryId, allSections)?.name ??

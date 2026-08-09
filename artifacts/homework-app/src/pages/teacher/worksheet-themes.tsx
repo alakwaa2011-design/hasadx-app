@@ -124,6 +124,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
     css({ TC, GOLD, fontSizePt, isAr, startSide }) {
       return `
         .ws-theme-geometric.ws-page {
+          --ws-frame: 5px; /* حد 2.5px أعلى + أسفل */
           background: white;
           border: 2.5px solid ${TC};
           border-radius: 0;
@@ -226,6 +227,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
     css({ TC, GOLD, BG, fontSizePt, isAr, startSide }) {
       return `
         .ws-theme-arabic_ink.ws-page {
+          --ws-frame: 3px; /* حد 1.5px أعلى + أسفل */
           background: ${BG};
           border: 1.5px solid ${TC}33;
           border-radius: 4px;
@@ -554,6 +556,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
       const THIRD = "#4CAF50";
       return `
         .ws-theme-kids_play.ws-page {
+          --ws-frame: 6px; /* حد 3px أعلى + أسفل */
           background: #FFFBF0;
           border: 3px dashed ${TC};
           border-radius: 16px;
@@ -685,6 +688,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
       const ACCENT2 = "#4FC3F7";
       return `
         .ws-theme-science_lab.ws-page {
+          --ws-frame: 3px; /* حد 1.5px أعلى + أسفل */
           background: white;
           /* Graph-paper grid watermark via CSS gradients */
           background-image:

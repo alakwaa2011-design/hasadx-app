@@ -100,10 +100,11 @@ export default function WameethCreate() {
       const qs = (data.questions || [])
         .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
           q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
-        .map((q: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => ({
+        .map((q: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; imageUrl?: string | null }) => ({
           text: q.text,
           options: [q.optionA, q.optionB, q.optionC, q.optionD],
           correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer),
+          imageUrl: q.imageUrl || null,
         }));
       if (qs.length < 2) {
         toast.error(ar ? "يحتاج وميض الصف سؤالين اختيار متعدد على الأقل" : "Wameeth Class needs at least 2 MCQ questions");

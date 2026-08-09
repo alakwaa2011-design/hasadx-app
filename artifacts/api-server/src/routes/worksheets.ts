@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, worksheetsTable, teachersTable } from "@workspace/db";
-import { and, desc, eq, or } from "drizzle-orm";
+import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable } from "@workspace/db";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
@@ -155,7 +155,198 @@ const upsertBody = z.object({
   subject: z.string().max(100).nullish(),
   questions: questionsArraySchema,
   settings: settingsSchema,
+  /** Enable smart paper grading: a hidden internal assignment is created/
+   *  synced behind the scenes so the existing grading engine can grade
+   *  photos of this worksheet. Optional for backwards compatibility. */
+  smartGrading: z.boolean().optional(),
 });
+
+/* ────────────────────────────────────────────────────────────────────────
+   Smart paper grading link.
+
+   Converts worksheet questions into the assignment-question shape used by
+   the existing photo-grading engine (POST /assignments/:id/submit-image).
+
+   Design decision: ALL converted questions carry `correctAnswer: null` so
+   the grader always takes its *paper* path (partial credit, reads the whole
+   sheet with vision). The full answer key is passed via the assignment's
+   `aiGradingInstructions`, which that path already injects into the grading
+   prompt. This keeps every worksheet type (mcq / true-false / short answer /
+   fill blank / matching) on one uniform, already-tested grading path, and
+   avoids the all-or-nothing MCQ-letter extraction path.                    */
+type WorksheetQuestion = z.infer<typeof questionSchema>;
+
+function worksheetToGradingData(questions: WorksheetQuestion[], language: "ar" | "en") {
+  const ar = language !== "en";
+  const rows: Array<{ text: string; points: number }> = [];
+  const keyLines: string[] = [];
+
+  questions.forEach((q, i) => {
+    const n = i + 1;
+    const points = q.points && q.points > 0 ? q.points : 1;
+    if (q.type === "mcq") {
+      const letters = ["A", "B", "C", "D", "E", "F"];
+      const opts = q.options.map((o, j) => `${letters[j]}) ${o}`).join("  ");
+      rows.push({ text: `${q.prompt}\n${opts}`, points });
+      keyLines.push(`${n}: ${letters[q.correctIndex]}) ${q.options[q.correctIndex]}`);
+    } else if (q.type === "true_false") {
+      rows.push({ text: q.prompt, points });
+      keyLines.push(`${n}: ${q.correct ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False")}`);
+    } else if (q.type === "short_answer") {
+      rows.push({ text: q.prompt, points });
+      keyLines.push(`${n}: ${q.answer?.trim() || (ar ? "إجابة مفتوحة — قدّر حسب الفهم" : "Open answer — grade on understanding")}`);
+    } else if (q.type === "fill_blank") {
+      rows.push({ text: q.prompt, points });
+      keyLines.push(`${n}: ${q.answer}`);
+    } else {
+      // matching
+      const pairsText = q.pairs.map((p, j) => `${j + 1}. ${p.left}`).join(" / ");
+      const rightCol = q.pairs.map((p) => p.right).join(" / ");
+      rows.push({
+        text: `${q.prompt || (ar ? "صِل كل عنصر بما يناسبه" : "Match each item")}: ${pairsText} ↔ ${rightCol}`,
+        points,
+      });
+      keyLines.push(`${n}: ${q.pairs.map((p) => `${p.left} → ${p.right}`).join("، ")}`);
+    }
+  });
+
+  const answerKey = (ar
+    ? "نموذج الإجابة الصحيح لهذه الورقة (استخدمه للتصحيح مع السماح بالدرجات الجزئية):\n"
+    : "Answer key for this worksheet (use for grading, partial credit allowed):\n")
+    + keyLines.join("\n");
+
+  return { rows, answerKey: answerKey.slice(0, 8000) };
+}
+
+/** Create the hidden internal assignment for a worksheet. Returns its id. */
+async function createLinkedAssignment(opts: {
+  teacherId: number;
+  title: string;
+  subject: string | null;
+  language: "ar" | "en";
+  questions: WorksheetQuestion[];
+}): Promise<number> {
+  const { rows, answerKey } = worksheetToGradingData(opts.questions, opts.language);
+  const totalPoints = rows.reduce((s, r) => s + r.points, 0);
+  return db.transaction(async (tx) => {
+    const [assignment] = await tx
+      .insert(assignmentsTable)
+      .values({
+        title: opts.title,
+        subject: opts.subject,
+        description: null,
+        // No access code at all: worksheet grading is gated purely by the
+        // owner's teacher session (see the source==='worksheet' branch in
+        // submit-image). private + NULL code means the public access-code
+        // path rejects everyone — students can never reach this assignment.
+        submissionMode: "paper",
+        accessMode: "private",
+        accessCode: null,
+        showResults: true,
+        teacherId: opts.teacherId,
+        totalPoints,
+        aiGradingInstructions: answerKey,
+        isShared: false,
+        isShareApproved: true,
+        contentKind: "homework",
+        source: "worksheet",
+      })
+      .returning({ id: assignmentsTable.id });
+    await tx.insert(questionsTable).values(
+      rows.map((r) => ({
+        assignmentId: assignment.id,
+        questionType: "open" as const,
+        text: r.text.slice(0, 2000),
+        correctAnswer: null,
+        points: r.points,
+      })),
+    );
+    return assignment.id;
+  });
+}
+
+/** True when the linked assignment already has graded submissions. */
+async function linkedAssignmentHasSubmissions(assignmentId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ id: submissionsTable.id })
+    .from(submissionsTable)
+    .where(eq(submissionsTable.assignmentId, assignmentId))
+    .limit(1);
+  return !!row;
+}
+
+/** Sync questions/title of a linked assignment that has NO submissions. */
+async function syncLinkedAssignment(assignmentId: number, opts: {
+  title: string;
+  subject: string | null;
+  language: "ar" | "en";
+  questions: WorksheetQuestion[];
+}): Promise<void> {
+  const { rows, answerKey } = worksheetToGradingData(opts.questions, opts.language);
+  const totalPoints = rows.reduce((s, r) => s + r.points, 0);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(assignmentsTable)
+      .set({ title: opts.title, subject: opts.subject, totalPoints, aiGradingInstructions: answerKey })
+      .where(eq(assignmentsTable.id, assignmentId));
+    await tx.delete(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
+    await tx.insert(questionsTable).values(
+      rows.map((r) => ({
+        assignmentId,
+        questionType: "open" as const,
+        text: r.text.slice(0, 2000),
+        correctAnswer: null,
+        points: r.points,
+      })),
+    );
+  });
+}
+
+/** Resolve the linked assignment id after a worksheet save.
+    Returns { id, versioned } — versioned=true when a new internal
+    assignment was created because the old one already had results. */
+async function ensureGradingLink(opts: {
+  worksheetId: number;
+  currentLinkId: number | null;
+  smartGrading: boolean | undefined;
+  teacherId: number;
+  title: string;
+  subject: string | null;
+  language: "ar" | "en";
+  questions: WorksheetQuestion[];
+}): Promise<{ id: number | null; versioned: boolean }> {
+  // Toggle absent → keep whatever exists (backwards compat: old clients
+  // never send the field, so an existing link is preserved untouched).
+  if (opts.smartGrading === undefined) return { id: opts.currentLinkId, versioned: false };
+  // Toggle OFF → detach but never delete (protects old results).
+  if (!opts.smartGrading) return { id: null, versioned: false };
+
+  const assignmentOpts = {
+    teacherId: opts.teacherId,
+    title: opts.title,
+    subject: opts.subject,
+    language: opts.language,
+    questions: opts.questions,
+  };
+  if (!opts.currentLinkId) {
+    return { id: await createLinkedAssignment(assignmentOpts), versioned: false };
+  }
+  // Verify the linked assignment still exists and belongs to this teacher.
+  const [linked] = await db
+    .select({ id: assignmentsTable.id, teacherId: assignmentsTable.teacherId })
+    .from(assignmentsTable)
+    .where(eq(assignmentsTable.id, opts.currentLinkId))
+    .limit(1);
+  if (!linked || linked.teacherId !== opts.teacherId) {
+    return { id: await createLinkedAssignment(assignmentOpts), versioned: false };
+  }
+  if (await linkedAssignmentHasSubmissions(opts.currentLinkId)) {
+    // Never mutate questions under existing results — version instead.
+    return { id: await createLinkedAssignment(assignmentOpts), versioned: true };
+  }
+  await syncLinkedAssignment(opts.currentLinkId, assignmentOpts);
+  return { id: opts.currentLinkId, versioned: false };
+}
 
 /* ── Auth middleware (session-based). Mirrors wheel.ts. */
 function requireTeacher(req: any, res: any, next: any) {
@@ -181,6 +372,7 @@ router.get("/worksheets", requireTeacher, async (req, res) => {
         questions: worksheetsTable.questions,
         settings: worksheetsTable.settings,
         isShared: worksheetsTable.isShared,
+        linkedAssignmentId: worksheetsTable.linkedAssignmentId,
         createdAt: worksheetsTable.createdAt,
         updatedAt: worksheetsTable.updatedAt,
         ownerName: teachersTable.name,
@@ -263,7 +455,27 @@ router.post("/worksheets", requireTeacher, async (req, res) => {
       return { row: inserted, runAfterCommit: xp.runAfterCommit };
     });
     void runAfterCommit();
-    res.status(201).json(row);
+
+    let finalRow = row;
+    if (body.smartGrading) {
+      const link = await ensureGradingLink({
+        worksheetId: row.id,
+        currentLinkId: null,
+        smartGrading: true,
+        teacherId,
+        title: body.title,
+        subject: body.subject ?? null,
+        language: body.language,
+        questions: body.questions,
+      });
+      const [updated] = await db
+        .update(worksheetsTable)
+        .set({ linkedAssignmentId: link.id })
+        .where(eq(worksheetsTable.id, row.id))
+        .returning();
+      finalRow = updated;
+    }
+    res.status(201).json(finalRow);
   } catch (err: any) {
     if (err?.issues) {
       req.log.warn({ issues: err.issues }, "Worksheet create validation failed");
@@ -298,6 +510,16 @@ router.put("/worksheets/:id", requireTeacher, async (req, res) => {
       res.status(403).json({ message: "Forbidden" });
       return;
     }
+    const link = await ensureGradingLink({
+      worksheetId: id,
+      currentLinkId: existing.linkedAssignmentId ?? null,
+      smartGrading: body.smartGrading,
+      teacherId,
+      title: body.title,
+      subject: body.subject ?? null,
+      language: body.language,
+      questions: body.questions,
+    });
     const [row] = await db
       .update(worksheetsTable)
       .set({
@@ -307,11 +529,12 @@ router.put("/worksheets/:id", requireTeacher, async (req, res) => {
         subject: body.subject ?? null,
         questions: body.questions,
         settings: body.settings,
+        linkedAssignmentId: link.id,
         updatedAt: new Date(),
       })
       .where(eq(worksheetsTable.id, id))
       .returning();
-    res.json(row);
+    res.json({ ...row, gradingVersioned: link.versioned });
   } catch (err: any) {
     if (err?.issues) {
       res.status(400).json({ message: "Invalid worksheet", issues: err.issues });
@@ -319,6 +542,61 @@ router.put("/worksheets/:id", requireTeacher, async (req, res) => {
     }
     req.log.error({ err }, "Update worksheet failed");
     res.status(500).json({ message: "Failed to update worksheet" });
+  }
+});
+
+/* ── Grading info — owner only. Powers the worksheet grading page
+   (/teacher/worksheets/:id/grade). The internal assignment's access code
+   is intentionally NOT part of the teacher UX; the grading page passes it
+   behind the scenes to the existing submit-image engine. */
+router.get("/worksheets/:id/grading-info", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [ws] = await db
+      .select()
+      .from(worksheetsTable)
+      .where(eq(worksheetsTable.id, id))
+      .limit(1);
+    if (!ws) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    if (ws.teacherId !== teacherId) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    if (!ws.linkedAssignmentId) {
+      res.status(409).json({ message: "grading_not_enabled" });
+      return;
+    }
+    const [assignment] = await db
+      .select({
+        id: assignmentsTable.id,
+        totalPoints: assignmentsTable.totalPoints,
+        submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions WHERE submissions.assignment_id = ${assignmentsTable.id})`,
+      })
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, ws.linkedAssignmentId))
+      .limit(1);
+    if (!assignment) {
+      res.status(409).json({ message: "grading_not_enabled" });
+      return;
+    }
+    res.json({
+      worksheetId: ws.id,
+      worksheetTitle: ws.title,
+      assignmentId: assignment.id,
+      totalPoints: assignment.totalPoints,
+      submissionCount: Number(assignment.submissionCount) || 0,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Worksheet grading info failed");
+    res.status(500).json({ message: "Failed to load grading info" });
   }
 });
 

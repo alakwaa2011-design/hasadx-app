@@ -15,6 +15,7 @@ export interface ClassQuestion {
   text: string;
   options: string[];
   correct: number;
+  imageUrl?: string | null;
 }
 
 export interface TeamState {

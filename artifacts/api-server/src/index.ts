@@ -149,6 +149,10 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT false
     `);
     await db.execute(sql`
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS source TEXT
+    `);
+    await db.execute(sql`
       ALTER TABLE million_class_sessions
         ADD COLUMN IF NOT EXISTS question_count INTEGER NOT NULL DEFAULT 15,
         ADD COLUMN IF NOT EXISTS points_scheme TEXT NOT NULL DEFAULT 'even',
@@ -195,6 +199,10 @@ async function runSchemaMigrations() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE worksheets
+        ADD COLUMN IF NOT EXISTS linked_assignment_id INTEGER
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS lesson_plans (

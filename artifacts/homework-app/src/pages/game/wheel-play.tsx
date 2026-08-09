@@ -29,6 +29,7 @@ interface Segment {
   color?: string;
   kind: "question" | "bonus";
   bonusType?: BonusType;
+  imageUrl?: string | null;
 }
 
 interface WheelConfig {
@@ -801,6 +802,11 @@ export default function WheelPlay() {
                 {currentSeg.kind === "question" ? (
                   <>
                     <p className="text-2xl font-black leading-relaxed">{currentSeg.text}</p>
+                    {currentSeg.imageUrl && (
+                      <div className="flex justify-center mt-2">
+                        <img src={currentSeg.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }} />
+                      </div>
+                    )}
                     {showAnswer ? (
                       <div className="rounded-xl p-4 border-2"
                         style={{ background: `${BRAND_GOLD}15`, borderColor: `${BRAND_GOLD}66` }}>
@@ -863,6 +869,11 @@ export default function WheelPlay() {
                 ) : (
                   <>
                     <p className="text-2xl font-black leading-relaxed">{currentSeg.text}</p>
+                    {currentSeg.imageUrl && (
+                      <div className="flex justify-center mt-2">
+                        <img src={currentSeg.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }} />
+                      </div>
+                    )}
                     {currentSeg.bonusType && (
                       <div className="rounded-xl p-4 border-2"
                         style={{ background: `${BRAND_GOLD}15`, borderColor: `${BRAND_GOLD}66` }}>

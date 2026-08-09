@@ -56,6 +56,7 @@ import {
   Layers,
   ArrowRight,
   ArrowLeft,
+  Camera,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -2170,6 +2171,7 @@ type SavedDoc = {
   isShared?: boolean;
   ownerName?: string | null;
   ownerIsAdmin?: boolean;
+  linkedAssignmentId?: number | null;
 };
 
 function SavedDocsList({
@@ -2219,6 +2221,7 @@ function SavedDocsList({
     confirm: isAr ? "تأكيد الحذف؟" : "Confirm delete?",
     cancel: isAr ? "إلغاء" : "Cancel",
     sharedByAdmin: isAr ? "مُشارك من الإدارة" : "Shared by admin",
+    grade: isAr ? "تصحيح" : "Grade",
     deleted: isAr ? "تم الحذف" : "Deleted",
     deleteFailed: isAr ? "تعذّر الحذف" : "Delete failed",
   };
@@ -2311,6 +2314,17 @@ function SavedDocsList({
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
+                {kind === "worksheets" && row.linkedAssignmentId != null && (
+                  <Button
+                    size="sm"
+                    onClick={() => setLocation(`/teacher/worksheets/${row.id}/grade`)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    data-testid={`btn-grade-${kind}-${row.id}`}
+                  >
+                    <Camera className="w-3.5 h-3.5 me-1" />
+                    {T.grade}
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"

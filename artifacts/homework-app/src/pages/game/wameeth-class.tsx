@@ -697,6 +697,11 @@ function TeamPanel({
               <h2 className="font-black text-white" style={{ fontSize:"clamp(0.85rem,2.6vw,1.2rem)", lineHeight:1.6 }}>
                 {question.text}
               </h2>
+              {question.imageUrl && (
+                <div className="flex justify-center mt-2">
+                  <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,18vh,180px)", maxWidth: "80%" }} />
+                </div>
+              )}
             </motion.div>
           ) : exhausted ? (
             <div className="flex items-center justify-center py-6">

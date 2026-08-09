@@ -614,6 +614,11 @@ function TeamZone({
             <p className="text-center text-sm sm:text-lg lg:text-xl font-black leading-snug text-white">
               {question.text}
             </p>
+            {question.imageUrl && (
+              <div className="flex justify-center mt-1.5">
+                <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(70px,14vh,140px)", maxWidth: "70%" }} />
+              </div>
+            )}
             {/* Idle beckon — the zone waves at its team after 8 quiet seconds */}
             <AnimatePresence>
               {idle && (

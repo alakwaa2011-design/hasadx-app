@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, questionsTable, submissionsTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable } from "@workspace/db";
+import { db, questionsTable, submissionsTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable, studentsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
@@ -19,6 +19,41 @@ import { imageUploadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
 
 const router: IRouter = Router();
+
+/* ── مطابقة أسماء عربية بتسامح: توحيد الهمزات والألف والتاء المربوطة
+   وإزالة التشكيل والمسافات الزائدة، ليطابق «عبد الله» «عبدالله» مثلاً. */
+function normalizeArabicName(s: string): string {
+  return (s || "")
+    .replace(/[\u064B-\u065F\u0670]/g, "") // تشكيل
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .replace(/عبد\s+ال/g, "عبدال")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** يبحث عن أفضل تطابق لاسم مستخرج ضمن طلاب المعلم (تطابق كامل أو احتواء). */
+function matchStudentByName(
+  extracted: string,
+  students: { id: number; name: string; studentClass: string | null }[],
+): { id: number; name: string; studentClass: string | null } | null {
+  const target = normalizeArabicName(extracted);
+  if (target.length < 2) return null;
+  // تطابق كامل أولاً
+  for (const st of students) {
+    if (normalizeArabicName(st.name) === target) return st;
+  }
+  // ثم احتواء (اسم الورقة جزء من الاسم الكامل أو العكس) بشرط طول معقول
+  const contains = students.filter((st) => {
+    const n = normalizeArabicName(st.name);
+    return (n.includes(target) || target.includes(n)) && Math.min(n.length, target.length) >= 5;
+  });
+  return contains.length === 1 ? contains[0] : null;
+}
 
 async function checkAccessAndDuplicate(
   assignmentId: number,
@@ -696,8 +731,19 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       return;
     }
 
-    const allowed = await checkAccessAndDuplicate(id, assignment, body.accessCode, body.deviceFingerprint, res);
-    if (!allowed) return;
+    const isWorksheetSource = (assignment as any).source === "worksheet";
+    if (isWorksheetSource) {
+      // Internal assignment powering worksheet smart paper grading:
+      // gated purely by the OWNER's teacher session — no access code
+      // exists and none is ever exposed to any client.
+      if (!req.session.teacherId || req.session.teacherId !== assignment.teacherId) {
+        res.status(403).json({ message: "صفحة التصحيح خاصة بمالك ورقة العمل فقط" });
+        return;
+      }
+    } else {
+      const allowed = await checkAccessAndDuplicate(id, assignment, body.accessCode, body.deviceFingerprint, res);
+      if (!allowed) return;
+    }
 
     const questions = await db
       .select()
@@ -725,10 +771,64 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
 
     const imageData = body.imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
+    // دعم تعدد الصفحات (ورقة العمل فقط): imagesBase64 مصفوفة صور مرتبة حسب
+    // رقم الصفحة، تُرسل كلها في نفس نداء التصحيح كإجابة طالب واحدة.
+    // الحقل خارج مخطط zod عمداً حتى لا يتأثر عقد الواجبات العادية.
+    const MAX_PAGES = 10;
+    const MAX_PAGE_B64 = 5 * 1024 * 1024; // ~3.7MB مفكوكة لكل صفحة
+    const MAX_TOTAL_B64 = 20 * 1024 * 1024; // ضمن سقف 25mb لجسم الطلب
+    const rawPages = (req.body as any)?.imagesBase64;
+    let pageImages: string[] = [imageData];
+    if (isWorksheetSource && Array.isArray(rawPages) && rawPages.length > 1) {
+      if (rawPages.length > MAX_PAGES) {
+        res.status(400).json({ message: `الحد الأقصى ${MAX_PAGES} صفحات لكل ورقة` });
+        return;
+      }
+      const cleaned: string[] = [];
+      let totalLen = 0;
+      for (const x of rawPages) {
+        if (typeof x !== "string" || x.length === 0) {
+          res.status(400).json({ message: "صيغة الصفحات غير صحيحة" });
+          return;
+        }
+        const stripped = x.replace(/^data:image\/\w+;base64,/, "");
+        // يجب أن تكون base64 صالحة لصورة (نتحقق من الشكل لا المحتوى الكامل)
+        if (!/^[A-Za-z0-9+/=\s]+$/.test(stripped.slice(0, 1000))) {
+          res.status(400).json({ message: "إحدى الصفحات ليست صورة صالحة" });
+          return;
+        }
+        if (stripped.length > MAX_PAGE_B64) {
+          res.status(400).json({ message: "إحدى صفحات الصورة كبيرة جداً — صغّر الصورة وأعد المحاولة" });
+          return;
+        }
+        totalLen += stripped.length;
+        cleaned.push(stripped);
+      }
+      if (totalLen > MAX_TOTAL_B64) {
+        res.status(400).json({ message: "الحجم الكلي للصفحات كبير جداً — صغّر الصور وأعد المحاولة" });
+        return;
+      }
+      pageImages = cleaned;
+    }
+
+    // استخراج اسم الطالب تلقائياً من الورقة (تدفق ورقة العمل فقط).
+    let extractedName = "";
+    let extractedClass = "";
+    let nameConfidence: "clear" | "uncertain" = "uncertain";
+
     if (isPaperOnly) {
       const questionsText = questions
         .map((q, i) => `السؤال ${i + 1} (${q.points || 1} درجة): ${q.text}`)
         .join("\n");
+
+      const nameExtractionBlock = isWorksheetSource
+        ? `0. أولاً: ابحث في أعلى الورقة عن خانة اسم الطالب (والصف إن وُجد) واقرأهما.
+`
+        : "";
+      const nameLineFormat = isWorksheetSource
+        ? `الاسم: [اسم الطالب كما هو مكتوب أو "غير واضح"] | [الصف أو -] | [واضح/غير مؤكد]
+`
+        : "";
 
       const imagePrompt = `أنت مصحح واجبات ذكي وخبير. هذه صورة لورقة إجابات طالب.
 ${assignment.modelImageBase64 ? "تم إرفاق نموذج الإجابة الصحيح من المعلم. قارن إجابات الطالب مع النموذج بدقة." : ""}
@@ -737,16 +837,23 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
 ${questionsText}
 
 المطلوب:
-1. اقرأ إجابات الطالب من الصورة بعناية
+${nameExtractionBlock}1. اقرأ إجابات الطالب من الصورة بعناية
 2. صحح كل إجابة وحدد الدرجة التي يستحقها الطالب من أصل الدرجة الكاملة للسؤال
 3. يمكن إعطاء درجات جزئية إذا كانت الإجابة صحيحة جزئياً
 
 أعد النتائج بالتنسيق التالي فقط (بدون أي نص إضافي):
-${questions.map((q, i) => `${i + 1}: [إجابة الطالب المختصرة] | [الدرجة المستحقة من ${q.points || 1}] | [صحيح/خطأ/جزئي]`).join("\n")}`;
+${nameLineFormat}${questions.map((q, i) => `${i + 1}: [إجابة الطالب المختصرة] | [الدرجة المستحقة من ${q.points || 1}] | [صحيح/خطأ/جزئي]`).join("\n")}`;
 
       const messageContent: any[] = [
         { type: "text", text: imagePrompt },
-        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } },
+        ...pageImages.flatMap((img, pi) =>
+          pageImages.length > 1
+            ? [
+                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length} من ورقة الطالب:` },
+                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } },
+              ]
+            : [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } }],
+        ),
       ];
 
       if (assignment.modelImageBase64) {
@@ -765,12 +872,32 @@ ${questions.map((q, i) => `${i + 1}: [إجابة الطالب المختصرة] 
         });
 
         const responseText = completion.choices[0]?.message?.content || "";
-        const lines = responseText.split("\n").filter((l) => l.trim());
+        const allLines = responseText.split("\n").filter((l) => l.trim());
+
+        // سطر الاسم (إن طُلب) ثم أسطر الأسئلة المرقمة — لا نعتمد على الترتيب فقط.
+        const nameLine = allLines.find((l) => /^\s*الاسم\s*[:：]/.test(l));
+        if (nameLine) {
+          const parts = nameLine.replace(/^\s*الاسم\s*[:：]\s*/, "").split("|").map((p) => p.trim());
+          const rawName = parts[0] || "";
+          if (rawName && !/غير\s*واضح/.test(rawName)) extractedName = rawName;
+          const rawClass = parts[1] || "";
+          if (rawClass && rawClass !== "-") extractedClass = rawClass;
+          nameConfidence = /واضح/.test(parts[2] || "") && !/غير\s*مؤكد/.test(parts[2] || "") ? "clear" : "uncertain";
+          if (!extractedName) nameConfidence = "uncertain";
+        }
+        // خريطة برقم السؤال (يدعم الأرقام العربية-الهندية) بدل الاعتماد على الترتيب،
+        // حتى لا تنحرف الدرجات إذا أسقط النموذج سطراً أو أعاد ترتيبه.
+        const toLatinDigits = (t: string) => t.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+        const lineByQuestionNo = new Map<number, string>();
+        for (const l of allLines) {
+          const m = toLatinDigits(l).match(/^\s*(\d+)\s*[:：]/);
+          if (m) lineByQuestionNo.set(parseInt(m[1], 10), toLatinDigits(l));
+        }
 
         for (let i = 0; i < questions.length; i++) {
           const question = questions[i];
           const qPoints = question.points || 1;
-          const line = lines[i] || "";
+          const line = lineByQuestionNo.get(i + 1) || "";
           const parts = line.split("|").map(p => p.trim());
 
           let studentAnswer = parts[0]?.replace(/^\d+:\s*/, "") || "غير واضح";
@@ -820,7 +947,14 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
       const messageContent: any[] = [
         { type: "text", text: imagePrompt },
-        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } },
+        ...pageImages.flatMap((img, pi) =>
+          pageImages.length > 1
+            ? [
+                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length}:` },
+                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } },
+              ]
+            : [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } }],
+        ),
       ];
 
       if (assignment.modelImageBase64) {
@@ -870,13 +1004,45 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
       }
     }
 
+    // حسم اسم الطالب: المُدخل يدوياً (إن وُجد) يتقدم على المستخرج من الورقة.
+    // في تدفق ورقة العمل لا نوقف التصحيح أبداً بسبب الاسم — نحفظ ما قُرئ.
+    let finalStudentName = (body.studentName || "").trim();
+    let finalStudentClass = (body.studentClass || "").trim();
+    let matchedStudent: { id: number; name: string; studentClass: string | null } | null = null;
+
+    if (isWorksheetSource) {
+      if (!finalStudentName && extractedName) finalStudentName = extractedName.trim();
+      if (!finalStudentClass && extractedClass) finalStudentClass = extractedClass.trim();
+      if (!finalStudentName) {
+        finalStudentName = "غير معروف";
+        nameConfidence = "uncertain";
+      }
+      try {
+        const roster = await db
+          .select({ id: studentsTable.id, name: studentsTable.name, studentClass: studentsTable.studentClass })
+          .from(studentsTable)
+          .where(eq(studentsTable.teacherId, assignment.teacherId));
+        matchedStudent = matchStudentByName(finalStudentName, roster);
+        if (matchedStudent) {
+          // نعتمد اسم السجل الرسمي وصفّه عند التطابق.
+          finalStudentName = matchedStudent.name;
+          if (!finalStudentClass && matchedStudent.studentClass) finalStudentClass = matchedStudent.studentClass;
+        }
+      } catch (e) {
+        req.log.error({ err: e }, "Student roster match failed (non-fatal)");
+      }
+    } else {
+      if (!finalStudentName) finalStudentName = body.studentName;
+      finalStudentClass = body.studentClass;
+    }
+
     let correctCount = answerResults.filter(a => a.isCorrect).length;
     let earnedPoints = answerResults.reduce((sum, a) => sum + a.earnedPoints, 0);
     const totalPointsVal = questions.reduce((sum, q) => sum + (q.points || 1), 0);
     const totalQuestions = questions.length;
     const score = totalPointsVal > 0 ? (earnedPoints / totalPointsVal) * 100 : 0;
 
-    const notifBody2 = `${body.studentName}${body.studentClass ? ` (${body.studentClass})` : ""} أرسل إجابة ورقية — ${earnedPoints}/${totalPointsVal} (${Math.round(score)}%)`;
+    const notifBody2 = `${finalStudentName}${finalStudentClass ? ` (${finalStudentClass})` : ""} أرسل إجابة ورقية — ${earnedPoints}/${totalPointsVal} (${Math.round(score)}%)`;
     try {
       await db.insert(notificationsTable).values({
         teacherId: assignment.teacherId,
@@ -891,7 +1057,7 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
     let aiFeedback: string | null = null;
     try {
-      const feedbackPrompt = `أنت معلم عربي. طالب اسمه "${body.studentName}" أرسل واجبه ورقياً عبر صورة.
+      const feedbackPrompt = `أنت معلم عربي. طالب اسمه "${finalStudentName}" أرسل واجبه ورقياً عبر صورة.
 حصل على ${earnedPoints} درجة من أصل ${totalPointsVal} (${Math.round(score)}%).
 
 تفاصيل الإجابات:
@@ -913,9 +1079,10 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
       .insert(submissionsTable)
       .values({
         assignmentId: id,
-        studentName: body.studentName,
-        studentClass: body.studentClass,
-        studentId: body.studentId || null,
+        studentName: finalStudentName,
+        studentClass: finalStudentClass,
+        // ورقة العمل: لا نثق بأي studentId من العميل — الربط عبر مطابقة السجل فقط.
+        studentId: isWorksheetSource ? (matchedStudent?.id ?? null) : (body.studentId ?? null),
         deviceFingerprint: body.deviceFingerprint || null,
         score,
         totalQuestions,
@@ -943,11 +1110,22 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
       canSeeResults = !!assignment.showResults;
     }
 
+    // معلومات استخراج الاسم — تدفق ورقة العمل فقط.
+    const nameExtraction = isWorksheetSource
+      ? {
+          extractedName: finalStudentName,
+          extractedClass: finalStudentClass || null,
+          nameConfidence,
+          matchedStudentId: matchedStudent?.id ?? null,
+        }
+      : undefined;
+
     if (canSeeResults) {
       res.json({
         id: submission.id,
-        studentName: body.studentName,
-        studentClass: body.studentClass,
+        studentName: finalStudentName,
+        studentClass: finalStudentClass,
+        ...(nameExtraction ? { nameExtraction } : {}),
         totalQuestions,
         correctAnswers: correctCount,
         score,
@@ -969,8 +1147,9 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
     } else {
       res.json({
         id: submission.id,
-        studentName: body.studentName,
-        studentClass: body.studentClass,
+        studentName: finalStudentName,
+        studentClass: finalStudentClass,
+        ...(nameExtraction ? { nameExtraction } : {}),
         totalQuestions: 0,
         correctAnswers: 0,
         score: 0,
@@ -985,6 +1164,69 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
   } catch (error: any) {
     req.log.error({ err: error }, "Submit image error");
     res.status(400).json({ message: error.message || "خطأ في إرسال الصورة" });
+  }
+});
+
+/* ── تصحيح اسم الطالب بعد الاستخراج التلقائي (ورقة العمل فقط، مالك الجلسة). */
+router.patch("/submissions/:id/student-name", async (req, res) => {
+  try {
+    const subId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(subId)) {
+      res.status(400).json({ message: "معرّف غير صالح" });
+      return;
+    }
+    const parsed = z.object({
+      studentName: z.string().trim().min(2).max(120),
+      studentClass: z.string().trim().max(60).optional(),
+    }).parse(req.body);
+
+    if (!req.session.teacherId) {
+      res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
+      return;
+    }
+    const [row] = await db
+      .select({ submission: submissionsTable, assignment: assignmentsTable })
+      .from(submissionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentsTable.id, submissionsTable.assignmentId))
+      .where(eq(submissionsTable.id, subId))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ message: "النتيجة غير موجودة" });
+      return;
+    }
+    if ((row.assignment as any).source !== "worksheet" || row.assignment.teacherId !== req.session.teacherId) {
+      res.status(403).json({ message: "غير مسموح" });
+      return;
+    }
+
+    // إعادة محاولة الربط بطالب موجود بعد التصحيح اليدوي.
+    let matched: { id: number; name: string; studentClass: string | null } | null = null;
+    try {
+      const roster = await db
+        .select({ id: studentsTable.id, name: studentsTable.name, studentClass: studentsTable.studentClass })
+        .from(studentsTable)
+        .where(eq(studentsTable.teacherId, req.session.teacherId));
+      matched = matchStudentByName(parsed.studentName, roster);
+    } catch { /* غير حرج */ }
+
+    const [updated] = await db
+      .update(submissionsTable)
+      .set({
+        studentName: matched?.name ?? parsed.studentName,
+        studentClass: parsed.studentClass ?? row.submission.studentClass,
+        studentId: matched?.id ?? null,
+      })
+      .where(eq(submissionsTable.id, subId))
+      .returning();
+    res.json({
+      id: updated.id,
+      studentName: updated.studentName,
+      studentClass: updated.studentClass,
+      matchedStudentId: matched?.id ?? null,
+    });
+  } catch (error: any) {
+    req.log.error({ err: error }, "Update submission student name error");
+    res.status(400).json({ message: error.message || "تعذّر تحديث الاسم" });
   }
 });
 

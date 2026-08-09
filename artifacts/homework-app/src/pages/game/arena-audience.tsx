@@ -13,6 +13,7 @@ interface AudienceTeam {
 
 interface AudienceActiveQuestion {
   questionText: string;
+  imageUrl?: string | null;
   difficulty: number;
   subCategoryName: string;
 }
@@ -440,6 +441,16 @@ export default function ArenaAudience() {
                     >
                       {session.activeQuestion.questionText}
                     </div>
+                    {session.activeQuestion.imageUrl && (
+                      <div className="flex justify-center mt-3">
+                        <img
+                          src={session.activeQuestion.imageUrl}
+                          alt=""
+                          className="rounded-lg object-contain"
+                          style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ) : (

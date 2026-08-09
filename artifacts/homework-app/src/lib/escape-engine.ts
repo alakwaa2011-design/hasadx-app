@@ -19,6 +19,7 @@ export interface EscapeQuestion {
   text: string;
   options: string[];
   correct: number;
+  imageUrl?: string | null;
 }
 
 export type LockType = "digits" | "laser" | "wires" | "vault";

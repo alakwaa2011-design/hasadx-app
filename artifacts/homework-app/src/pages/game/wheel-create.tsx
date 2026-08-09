@@ -63,6 +63,7 @@ interface Segment {
   color?: string;
   kind: "question" | "bonus";
   bonusType?: BonusType;
+  imageUrl?: string | null;
 }
 
 interface WheelConfig {
@@ -398,6 +399,7 @@ export default function WheelCreate() {
         explanation: q.explanation ?? "",
         points: 100,
         kind: "question" as const,
+        imageUrl: q.imageUrl || null,
       }));
       setSegments(colorize(newSegs));
       // Always apply title, subject, grade from the selected assignment

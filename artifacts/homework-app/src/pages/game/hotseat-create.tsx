@@ -22,6 +22,7 @@ interface HotSeatQuestion {
   type: "mcq" | "truefalse" | "open";
   options?: string[];
   correct?: string;
+  imageUrl?: string | null;
 }
 
 interface Assignment {
@@ -125,12 +126,13 @@ export default function HotSeatCreate() {
       const res = await fetch(`${API_BASE}/api/assignments/${assignId}`, { credentials: "include" });
       if (!res.ok) { toast.error(ar ? "تعذّر التحميل" : "Failed to load"); return; }
       const data = await res.json();
-      const qs: HotSeatQuestion[] = (data.questions || []).map((q: { id: number; text: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; questionType?: string }) => ({
+      const qs: HotSeatQuestion[] = (data.questions || []).map((q: { id: number; text: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; questionType?: string; imageUrl?: string | null }) => ({
         id: String(q.id),
         text: q.text,
         type: q.questionType === "true_false" ? "truefalse" : q.optionA ? "mcq" : "open",
         options: q.optionA ? [q.optionA, q.optionB, q.optionC, q.optionD].filter(Boolean) as string[] : undefined,
         correct: q.correctAnswer,
+        imageUrl: q.imageUrl || null,
       }));
       if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة" : "No questions found"); return; }
       setQuestions(qs.slice(0, 40));
@@ -163,6 +165,7 @@ export default function HotSeatCreate() {
       type: (q.optionA ? "mcq" : "open") as "mcq" | "open",
       options: q.optionA ? [q.optionA, q.optionB, q.optionC, q.optionD].filter(Boolean) as string[] : undefined,
       correct: q.correctAnswer,
+      imageUrl: (q as { imageUrl?: string | null }).imageUrl || null,
     }));
     setQuestions(prev => [...prev, ...qs].slice(0, 40));
     setBankOpen(false);

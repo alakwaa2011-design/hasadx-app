@@ -1044,6 +1044,16 @@ export default function Auth() {
       setLocation("/guest/create");
       return;
     }
+    // Deep-link support (e.g. worksheet grading page opened from a QR code):
+    // /auth?returnTo=/teacher/... sends the user straight back after login.
+    // Only same-app absolute paths are honored (no open redirects).
+    try {
+      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+      if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+        setLocation(returnTo);
+        return;
+      }
+    } catch {}
     if (isAdmin || role === "admin") {
       const lastPath = getAdminLastSurfacePath();
       setLocation(lastPath ?? "/teacher");

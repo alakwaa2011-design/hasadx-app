@@ -440,6 +440,12 @@ export default function CreateAssignment() {
       setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
       setShowAiPanel(false); setAiTopic("");
       toast.success(lang === "ar" ? `تم توليد ${generated.length} سؤال بنجاح` : `${generated.length} questions generated successfully`);
+      const failedImages = Number(data.failedImages) || 0;
+      if (failedImages > 0) {
+        toast.warning(lang === "ar"
+          ? `تعذّر توليد صور لـ ${failedImages} من الأسئلة — يمكنك إضافة صورة يدوياً من محرر السؤال`
+          : `Images failed for ${failedImages} question(s) — you can add an image manually in the question editor`);
+      }
     } catch (err: any) { setAiError(err.message || t.common.error); } finally { setAiLoading(false); }
   };
 

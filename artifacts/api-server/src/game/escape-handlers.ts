@@ -15,6 +15,7 @@ interface EscapeQuestion {
   text: string;
   options: string[];
   correct: number;
+  imageUrl?: string | null;
 }
 
 interface EscapeConfig {
@@ -79,7 +80,12 @@ function sanitizeConfig(raw: unknown): EscapeConfig | null {
     const options = qq.options.filter((o): o is string => typeof o === "string").slice(0, 4).map((o) => o.slice(0, 200));
     const correct = typeof qq.correct === "number" ? qq.correct : 0;
     if (options.length < 2 || correct < 0 || correct >= options.length) continue;
-    questions.push({ text: qq.text.slice(0, 400), options, correct });
+    questions.push({
+      text: qq.text.slice(0, 400),
+      options,
+      correct,
+      imageUrl: typeof qq.imageUrl === "string" ? qq.imageUrl.slice(0, 2000) : null,
+    });
   }
   if (questions.length < 3) return null;
   const totalTime = Math.max(120, Math.min(1800, Number(r.totalTime) || 600));

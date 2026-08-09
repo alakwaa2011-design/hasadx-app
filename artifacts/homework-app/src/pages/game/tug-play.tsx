@@ -1314,6 +1314,11 @@ export default function TugPlay() {
                       </motion.div>
                     )}
                     <p className="text-lg sm:text-xl lg:text-2xl font-black leading-snug">{question.text}</p>
+                    {question.imageUrl && (
+                      <div className="flex justify-center mt-2">
+                        <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(80px,16vh,160px)", maxWidth: "80%" }} />
+                      </div>
+                    )}
                     {phase === "round-end" && roundData && (
                       <p className="text-green-600 dark:text-green-300 text-sm lg:text-base font-bold mt-2">
                         ✅ {question.options[roundData.correctIndex]}

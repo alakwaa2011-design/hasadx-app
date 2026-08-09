@@ -35,3 +35,5 @@ Each theme CSS uses `.ws-theme-{id}.ws-page { ... }` and `.ws-theme-{id} .ws-* {
 `localStorage("ws_last_theme")` stores the last used theme; `selectTheme()` always picks an alternative when the natural match equals the last theme.
 
 **How to apply:** When adding new subjects or grade patterns, add them to the `subjectMap` array in `selectTheme()` in worksheet-themes.tsx.
+
+**Print pagination (A4) hard rule:** any .ws-page taller than 297mm by even a fraction of a px splits into page+sliver in print/PDF ("repeated pages"). Three causes fixed: (1) themed page borders add to the 297mm content — subtract via `--ws-frame` var; (2) the hidden measurement div must carry the `ws-theme-*` class or questions are measured with default (smaller) styles; (3) keep SAFETY margins in the packer and a ~10px print-only slack on .ws-content min-height. Verify prints with headless chromium (playwright is in node_modules; login via ctx.request.post then page.pdf) — counting `/Type /Page` in the PDF catches slivers instantly.

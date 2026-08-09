@@ -488,6 +488,23 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        source: import("drizzle-orm/pg-core").PgColumn<{
+            name: "source";
+            tableName: "assignments";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         isAdaptive: import("drizzle-orm/pg-core").PgColumn<{
             name: "is_adaptive";
             tableName: "assignments";
@@ -645,7 +662,6 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
     dialect: "pg";
 }>;
 export declare const insertAssignmentSchema: z.ZodObject<{
-    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -654,6 +670,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClasses: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    teacherId: z.ZodInt;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     showResults: z.ZodOptional<z.ZodBoolean>;
     modelImageBase64: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -671,6 +688,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     hiddenById: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     hideReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    source: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isAdaptive: z.ZodOptional<z.ZodBoolean>;
     adaptiveConfig: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     fromPresentationSlide: z.ZodOptional<z.ZodNullable<z.ZodString>>;

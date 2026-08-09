@@ -843,6 +843,11 @@ export function EscapeGameView({
             <p className={`text-center font-black leading-snug text-white ${big ? "text-lg sm:text-2xl" : "text-base sm:text-lg"}`}>
               {question.text}
             </p>
+            {question.imageUrl && (
+              <div className="flex justify-center mt-2">
+                <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: big ? "clamp(90px,18vh,180px)" : "clamp(70px,14vh,140px)", maxWidth: "80%" }} />
+              </div>
+            )}
           </motion.div>
 
           {/* Options 2×2 with letter badges (Hasaad answer identity).

@@ -11,7 +11,8 @@ import {
   type HeaderProps,
 } from "./worksheet-themes";
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
-import { Loader2, Printer, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck } from "lucide-react";
+import QRCode from "react-qr-code";
+import { Loader2, Printer, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -88,6 +89,7 @@ export interface WorksheetData {
   settings: Settings;
   ownerName?: string | null;
   isOwner?: boolean;
+  linkedAssignmentId?: number | null;
 }
 
 // Resolve a font-family CSS string from the teacher's selection, with
@@ -362,6 +364,7 @@ export function WorksheetPrintView({
       data.settings.includeDate ? "d" : "",
       data.settings.includeClass ? "c" : "",
       data.settings.instructions ?? "",
+      themeId ?? "",
     ].join("|");
     if (key === lastKeyRef.current) return;
     const root = measureRef.current;
@@ -375,8 +378,12 @@ export function WorksheetPrintView({
     const contentH = (297 - 18 - 16) * PX_MM;
     const headerH = headerEl ? headerEl.offsetHeight : 60 * PX_MM;
     const footerH = 12 * PX_MM;
-    const firstPageH = Math.max(contentH - headerH - footerH, 80 * PX_MM);
-    const otherPageH = Math.max(contentH - footerH - 12 * PX_MM, 150 * PX_MM);
+    // هامش أمان: القوالب تضيف هوامش/إطارات لا تدخل في القياس، وأي تجاوز
+    // ولو ببكسلات يقسم الصفحة المطبوعة إلى صفحتين (شريحة مكررة).
+    const SAFETY_FIRST = 12 * PX_MM;
+    const SAFETY_OTHER = 8 * PX_MM;
+    const firstPageH = Math.max(contentH - headerH - footerH - SAFETY_FIRST, 80 * PX_MM);
+    const otherPageH = Math.max(contentH - footerH - 12 * PX_MM - SAFETY_OTHER, 150 * PX_MM);
     const GAP = 4 * PX_MM;
     const heights = qEls.map(el => el.offsetHeight + GAP);
     const newPages: Question[][] = [];
@@ -500,7 +507,10 @@ export function WorksheetPrintView({
       <div
         ref={measureRef}
         aria-hidden="true"
-        className="print-host"
+        // فئة القالب ضرورية هنا: بدونها تُقاس الأسئلة بالتنسيق الافتراضي
+        // بينما تُعرض ببطاقات القالب الأكبر، فتمتلئ الصفحة أكثر من طاقتها
+        // وتنقسم عند الطباعة إلى صفحات مكررة.
+        className={`print-host${themeId ? ` ws-theme-${themeId}` : ""}`}
         style={{ position: "absolute", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none" }}
         dir={dir}
       >
@@ -623,6 +633,15 @@ export function WorksheetPrintView({
                   goodLuck={isLast ? (data.settings.goodLuck?.trim() || labels.goodLuck) : ""}
                 />
               </div>
+              {/* QR التصحيح الذكي — يفتح صفحة تصحيح هذه الورقة مباشرة (رابط فقط، بلا إجابات) */}
+              {data.linkedAssignmentId != null && (
+                <GradeQrBadge
+                  worksheetId={data.id}
+                  page={pageNum}
+                  total={pages.length}
+                  ar={ar}
+                />
+              )}
             </article>
           );
         })}
@@ -725,6 +744,18 @@ export default function WorksheetPrint() {
           {data.title}
         </div>
         <div className="flex gap-1.5 flex-wrap justify-end">
+          {data.isOwner !== false && data.linkedAssignmentId != null && (
+            <button
+              onClick={() => setLocation(`/teacher/worksheets/${data.id}/grade`)}
+              className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
+              style={{ background: "#059669" }}
+              title={uiLang === "ar" ? "تصحيح الأوراق بالكاميرا" : "Grade papers with camera"}
+              data-testid="btn-open-grading"
+            >
+              <CameraIcon className="w-3.5 h-3.5" />
+              {uiLang === "ar" ? "تصحيح" : "Grade"}
+            </button>
+          )}
           {data.isOwner !== false && (
             <button
               onClick={() => setLocation(`/teacher/worksheets/create?edit=${data.id}`)}
@@ -1393,7 +1424,10 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         padding: 18mm 18mm 16mm 18mm;
         display: flex;
         flex-direction: column;
-        min-height: calc(297mm - 0px);
+        /* --ws-frame = مجموع سماكة إطار الصفحة (أعلى+أسفل) في القوالب ذات الحدود.
+           بدون خصمه يتجاوز ارتفاع الصفحة 297mm بضع بكسلات فتنقسم كل صفحة
+           مطبوعة إلى صفحتين (شريحة مكررة) عند الطباعة/تصدير PDF. */
+        min-height: calc(297mm - var(--ws-frame, 0px));
       }
 
       /* Faint Hasaad watermark behind content. */
@@ -1974,6 +2008,11 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
           width: 210mm !important;
           min-height: 297mm !important;
         }
+        /* عند الطباعة نترك بضع بكسلات احتياطاً — أي صفحة يتجاوز ارتفاعها
+           297mm ولو بكسراً واحداً تنقسم في PDF إلى صفحة + شريحة مكررة. */
+        .ws-content {
+          min-height: calc(297mm - var(--ws-frame, 0px) - 10px) !important;
+        }
         /* Core base elements */
         .ws-watermark, .ws-watermark-word,
         .ws-corner, .ws-q, .ws-instructions, .ws-school-cell,
@@ -1991,5 +2030,35 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         }
       }
     `}</style>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// شارة QR للتصحيح الذكي — تُطبع في أسفل كل صفحة عند تفعيل التصحيح.
+// تحتوي رابط صفحة التصحيح فقط (+ رقم الصفحة) — لا إجابات ولا بيانات حساسة.
+function GradeQrBadge({ worksheetId, page, total, ar }: {
+  worksheetId: number; page: number; total: number; ar: boolean;
+}) {
+  const url = `${window.location.origin}/teacher/worksheets/${worksheetId}/grade?p=${page}&of=${total}`;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: "6mm",
+        insetInlineStart: "8mm",
+        display: "flex",
+        alignItems: "center",
+        gap: "2mm",
+        zIndex: 5,
+      }}
+    >
+      <div style={{ background: "white", padding: "1mm", border: "0.4mm solid #d4d4d4", borderRadius: "1mm", lineHeight: 0 }}>
+        <QRCode value={url} size={52} style={{ width: "13mm", height: "13mm" }} />
+      </div>
+      <div style={{ fontSize: "7pt", color: "#8a8a8a", lineHeight: 1.5, fontWeight: 600 }}>
+        <div>{ar ? "امسح للتصحيح الذكي" : "Scan to grade"}</div>
+        {total > 1 && <div style={{ fontWeight: 800, color: "#5a5a5a" }}>{ar ? `صفحة ${page} / ${total}` : `Page ${page} / ${total}`}</div>}
+      </div>
+    </div>
   );
 }

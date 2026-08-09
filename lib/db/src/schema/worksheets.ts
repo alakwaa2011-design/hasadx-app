@@ -44,6 +44,11 @@ export const worksheetsTable = pgTable("worksheets", {
   questions: jsonb("questions").notNull(),
   settings: jsonb("settings").notNull(),
   isShared: boolean("is_shared").notNull().default(false),
+  /** When smart paper grading is enabled, points at the internal
+   *  behind-the-scenes assignment that powers the existing grading engine.
+   *  NULL = grading not enabled. The linked assignment has source='worksheet'
+   *  and is hidden from the teacher's normal assignment lists. */
+  linkedAssignmentId: integer("linked_assignment_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

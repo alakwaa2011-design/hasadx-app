@@ -13,6 +13,7 @@ interface AudienceTeam {
 
 interface AudienceActiveQuestion {
   questionText: string;
+  imageUrl?: string | null;
   difficulty: number;
   subCategoryName: string;
 }
@@ -56,6 +57,7 @@ const TeamSchema = z.object({
 
 const ActiveQuestionSchema = z.object({
   questionText: z.string().max(500),
+  imageUrl: z.string().max(2000).nullable().optional(),
   difficulty: z.number().int().refine(v => [200, 400, 600, 800].includes(v)),
   subCategoryName: z.string().max(80),
 });

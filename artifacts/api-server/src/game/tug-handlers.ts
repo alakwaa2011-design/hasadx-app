@@ -9,6 +9,7 @@ interface TugQuestion {
   options: string[];
   correct: number;
   duration: number;
+  imageUrl?: string | null;
 }
 
 interface TugPlayer {
@@ -192,6 +193,7 @@ function startQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame, q: TugQue
     options: q.options,
     duration: q.duration,
     isPower: power,
+    imageUrl: q.imageUrl || null,
   });
 
   scheduleBotAnswers(tugNs, game);
@@ -361,6 +363,7 @@ export function setupTugSocket(io: Server) {
             options: q.options,
             correct: q.correct,
             duration,
+            imageUrl: typeof q.imageUrl === "string" ? q.imageUrl.slice(0, 2000) : null,
           }));
 
           const game: TugGame = {

@@ -32,6 +32,7 @@ export interface HotSeatQuestion {
   authorUid: string;   // "teacher" | student uid — only teacher sees uid
   likes: number;
   likedBy: string[];
+  imageUrl?: string | null;
 }
 
 interface HotSeatGame {
@@ -49,6 +50,7 @@ interface HotSeatGame {
   currentSeatUid?: string;
   currentQuestion?: string;
   currentQuestionId?: string;
+  currentQuestionImageUrl?: string | null;
   timerVal: number;
   timerInterval?: ReturnType<typeof setInterval>;
   timerStartedAt?: number;
@@ -106,7 +108,7 @@ function getPublicStudents(game: HotSeatGame) {
 
 function getPublicQuestions(game: HotSeatGame) {
   return Object.values(game.questions).map(q => ({
-    id: q.id, text: q.text, isPreset: q.isPreset, likes: q.likes,
+    id: q.id, text: q.text, isPreset: q.isPreset, likes: q.likes, imageUrl: q.imageUrl ?? null,
   }));
 }
 
@@ -117,6 +119,7 @@ function getHostQuestions(game: HotSeatGame) {
     text: q.text,
     isPreset: q.isPreset,
     likes: q.likes,
+    imageUrl: q.imageUrl ?? null,
     authorName: q.authorUid === "teacher" ? "المعلم" : (game.students[q.authorUid]?.name ?? "طالب"),
   }));
 }
@@ -133,6 +136,7 @@ function baseState(game: HotSeatGame) {
     timerVal: game.timerVal,
     currentSeatUid: game.currentSeatUid,
     currentQuestion: game.currentQuestion,
+    currentQuestionImageUrl: game.currentQuestionImageUrl ?? null,
     votes: game.votes,
     rounds: game.rounds,
     lastResult: game.lastResult,
@@ -170,7 +174,7 @@ export function setupHotSeatSocket(io: Server) {
       subject: string;
       topic?: string;
       timerDuration?: number;
-      seedQuestions?: Array<{ id: string; text: string; type?: string; options?: string[]; correct?: string }>;
+      seedQuestions?: Array<{ id: string; text: string; type?: string; options?: string[]; correct?: string; imageUrl?: string | null }>;
     }, cb: (r: object) => void) => {
       try {
         const pin = generatePin();
@@ -188,6 +192,7 @@ export function setupHotSeatSocket(io: Server) {
               authorUid: "teacher",
               likes: 0,
               likedBy: [],
+              imageUrl: typeof q.imageUrl === "string" ? q.imageUrl.slice(0, 2000) : null,
             };
           });
         }
@@ -312,6 +317,7 @@ export function setupHotSeatSocket(io: Server) {
       game.votes = { yes: 0, no: 0 };
       game.currentQuestion = undefined;
       game.currentQuestionId = undefined;
+      game.currentQuestionImageUrl = null;
       game.questionCountByUid = {}; // reset per-student question counts
       game.rounds++;
 
@@ -407,6 +413,7 @@ export function setupHotSeatSocket(io: Server) {
 
       let questionText = "";
       let questionId = "";
+      let questionImageUrl: string | null = null;
 
       if (data.customText) {
         questionText = data.customText.trim();
@@ -415,6 +422,7 @@ export function setupHotSeatSocket(io: Server) {
         const q = game.questions[data.questionId];
         questionText = q.text;
         questionId = data.questionId;
+        questionImageUrl = q.imageUrl ?? null;
         // Award points to question author
         if (!q.isPreset && q.authorUid && q.authorUid !== "teacher") {
           const author = Object.values(game.students).find(s => s.uid === q.authorUid);
@@ -426,6 +434,7 @@ export function setupHotSeatSocket(io: Server) {
 
       game.currentQuestion = questionText;
       game.currentQuestionId = questionId;
+      game.currentQuestionImageUrl = questionImageUrl;
       game.phase = "answering";
       game.timerVal = game.timerDuration;
       game.timerStartedAt = Date.now();
@@ -531,6 +540,7 @@ export function setupHotSeatSocket(io: Server) {
       game.currentSeatUid = undefined;
       game.currentQuestion = undefined;
       game.currentQuestionId = undefined;
+      game.currentQuestionImageUrl = null;
       game.questions = {};
       game.votes = { yes: 0, no: 0 };
       game.phase = "picking";

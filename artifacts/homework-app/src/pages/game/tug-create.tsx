@@ -21,6 +21,7 @@ interface TugQuestion {
   text: string;
   options: string[];
   correct: number;
+  imageUrl?: string | null;
 }
 
 interface BankQuestion {
@@ -34,6 +35,7 @@ interface BankQuestion {
   correctAnswer: string | null;
   points: number;
   tags: string | null;
+  imageUrl?: string | null;
 }
 
 const correctAnswerToIndex = (ca: string | null): number => {
@@ -45,6 +47,7 @@ const bankToTug = (bq: BankQuestion): TugQuestion => ({
   text: bq.text,
   options: [bq.optionA || "", bq.optionB || "", bq.optionC || "", bq.optionD || ""],
   correct: correctAnswerToIndex(bq.correctAnswer),
+  imageUrl: bq.imageUrl || null,
 });
 
 export default function TugCreate() {
@@ -190,10 +193,10 @@ export default function TugCreate() {
       const qs = (data.questions || [])
         .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
           q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
-        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number }) => bankToTug({
+        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number; imageUrl?: string | null }) => bankToTug({
           id: q.id, subject: data.subject || "", text: q.text,
           optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-          correctAnswer: q.correctAnswer, points: q.points || 1, tags: null,
+          correctAnswer: q.correctAnswer, points: q.points || 1, tags: null, imageUrl: q.imageUrl || null,
         } as BankQuestion));
       if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد في هذا الواجب" : "No MCQ questions found"); return; }
       const sliced = qs.slice(0, 20);

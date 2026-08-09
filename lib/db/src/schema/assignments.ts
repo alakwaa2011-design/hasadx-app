@@ -34,6 +34,10 @@ export const assignmentsTable = pgTable("assignments", {
   hiddenAt: timestamp("hidden_at"),
   hiddenById: integer("hidden_by_id").references(() => teachersTable.id, { onDelete: "set null" }),
   hideReason: text("hide_reason"),
+  /** Origin of this assignment. NULL = created normally by the teacher.
+   *  'worksheet' = auto-created behind the scenes to power smart paper
+   *  grading for a worksheet; hidden from normal teacher assignment lists. */
+  source: text("source"),
   isAdaptive: boolean("is_adaptive").notNull().default(false),
   adaptiveConfig: text("adaptive_config"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

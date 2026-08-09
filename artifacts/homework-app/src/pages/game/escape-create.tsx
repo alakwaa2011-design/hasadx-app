@@ -23,6 +23,7 @@ interface EscapeQuestion {
   text: string;
   options: string[];
   correct: number;
+  imageUrl?: string | null;
 }
 
 interface BankQuestion {
@@ -36,6 +37,7 @@ interface BankQuestion {
   correctAnswer: string | null;
   points: number;
   tags: string | null;
+  imageUrl?: string | null;
 }
 
 const correctAnswerToIndex = (ca: string | null): number => {
@@ -47,6 +49,7 @@ const bankToEscape = (bq: BankQuestion): EscapeQuestion => ({
   text: bq.text,
   options: [bq.optionA || "", bq.optionB || "", bq.optionC || "", bq.optionD || ""],
   correct: correctAnswerToIndex(bq.correctAnswer),
+  imageUrl: bq.imageUrl || null,
 });
 
 export default function EscapeCreate() {

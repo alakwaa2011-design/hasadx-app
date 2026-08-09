@@ -14,7 +14,7 @@ import { fileToBase64 } from "@/lib/utils";
 import {
   ArrowRight, ArrowLeft, Brain, Star, Calendar,
   BookOpen, Users, Loader2, CheckCircle2, ChevronDown,
-  Image, Upload, X,
+  Image, Upload, X, Camera, FileText,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -41,6 +41,25 @@ export default function PaperGradingCreate() {
   const [deadline, setDeadline] = useState("");
   const [targetClasses, setTargetClasses] = useState<string[]>([]);
   const modelImageRef = useRef<HTMLInputElement>(null);
+
+  // Worksheets already linked to smart grading — offered as a fast path
+  // so teachers can jump straight to camera grading from this tool.
+  const [gradableWorksheets, setGradableWorksheets] = useState<
+    { id: number; title: string; subject?: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/worksheets`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : []))
+      .then((rows) =>
+        setGradableWorksheets(
+          (Array.isArray(rows) ? rows : [])
+            .filter((w: any) => w.linkedAssignmentId != null)
+            .map((w: any) => ({ id: w.id, title: w.title, subject: w.subject }))
+        )
+      )
+      .catch(() => {});
+  }, []);
 
   // Class list
   const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -171,6 +190,50 @@ export default function PaperGradingCreate() {
 
       {/* Form */}
       <main className="max-w-2xl mx-auto px-4 py-8">
+        {/* Fast path: camera-grade an existing smart-grading worksheet */}
+        {gradableWorksheets.length > 0 && (
+          <div className="mb-6 bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Camera className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <h2 className="text-sm font-black text-emerald-800 dark:text-emerald-200">
+                  {isAr ? "تصحيح سريع لورقة عمل جاهزة" : "Quick-grade an existing worksheet"}
+                </h2>
+                <p className="text-[11px] text-emerald-700/70 dark:text-emerald-300/70 mt-0.5">
+                  {isAr
+                    ? "هذه أوراق العمل المفعّل فيها التصحيح الذكي — اختر ورقة وابدأ التصوير مباشرة دون إنشاء اختبار جديد."
+                    : "These worksheets already have smart grading enabled — pick one and start photographing right away."}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {gradableWorksheets.map(w => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => setLocation(`/teacher/worksheets/${w.id}/grade`)}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white dark:bg-background border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-colors text-start"
+                  data-testid={`btn-quickgrade-worksheet-${w.id}`}
+                >
+                  <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-bold truncate">{w.title || (isAr ? "(بدون عنوان)" : "(untitled)")}</span>
+                    {w.subject && <span className="block text-[11px] text-muted-foreground truncate">{w.subject}</span>}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600 rounded-lg px-3 py-1.5 shrink-0">
+                    <Camera className="w-3.5 h-3.5" />
+                    {isAr ? "تصحيح" : "Grade"}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-emerald-700/60 dark:text-emerald-300/50">
+              {isAr
+                ? "أو أنشئ اختباراً ورقياً جديداً بالنموذج أدناه إذا لم تكن لديك ورقة عمل جاهزة."
+                : "Or create a new paper exam with the form below."}
+            </p>
+          </div>
+        )}
         <motion.form
           onSubmit={handleSubmit}
           initial={{ opacity: 0, y: 16 }}

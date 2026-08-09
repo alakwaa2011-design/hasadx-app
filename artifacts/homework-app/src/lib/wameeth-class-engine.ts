@@ -17,6 +17,7 @@ export interface WameethClassQuestion {
   text: string;
   options: string[];
   correct: number; // 0-based index
+  imageUrl?: string | null;
 }
 
 /**

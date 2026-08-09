@@ -46,9 +46,9 @@ export default function SmartBoardAsk() {
 
   const startCamera = useCallback(async () => {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
       streamRef.current = s;
-      if (videoRef.current) { videoRef.current.srcObject = s; await videoRef.current.play(); }
+      if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play().catch(() => {}); }
       setCamReady(true);
     } catch { setError("تعذّر الوصول للكاميرا"); }
   }, []);

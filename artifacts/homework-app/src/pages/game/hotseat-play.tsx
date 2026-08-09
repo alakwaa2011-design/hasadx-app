@@ -14,10 +14,11 @@ const DARK_BG = "linear-gradient(180deg, #050818 0%, #0d1230 50%, #1a0800 100%)"
 type Phase = "lobby"|"picking"|"asking"|"answering"|"voting"|"result"|"ended";
 
 interface Student { uid: string; name: string; avatar: string; color: string; score: number; isOnSeat: boolean; roundsOnSeat: number; }
-interface Question { id: string; text: string; isPreset: boolean; likes: number; }
+interface Question { id: string; text: string; isPreset: boolean; likes: number; imageUrl?: string | null; }
 interface GameState {
   pin: string; phase: Phase; teacherName: string; grade: string; subject: string; topic?: string;
   timerDuration: number; timerVal: number; currentSeatUid?: string; currentQuestion?: string;
+  currentQuestionImageUrl?: string | null;
   votes: { yes: number; no: number }; rounds: number;
   students: Student[]; questions: Question[];
   lastResult?: { convincingPct: number; pointsAwarded: number; speedBonus: boolean };
@@ -995,6 +996,11 @@ export default function HotSeatPlay() {
                 <p style={{ color: "#fff", fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1.5 }}>
                   "{currentQuestion}"
                 </p>
+                {state.currentQuestionImageUrl && (
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+                    <img src={state.currentQuestionImageUrl} alt="" style={{ borderRadius: 12, objectFit: "contain", maxHeight: "clamp(80px,18vh,160px)", maxWidth: "80%" }} />
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                 <CircleTimer val={timerVal} max={timerDuration} size={120} />
@@ -1030,6 +1036,11 @@ export default function HotSeatPlay() {
               <p style={{ color: "#fff", fontSize: 16, fontWeight: 800, margin: 0, lineHeight: 1.5 }}>
                 "{currentQuestion}"
               </p>
+              {state.currentQuestionImageUrl && (
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+                  <img src={state.currentQuestionImageUrl} alt="" style={{ borderRadius: 12, objectFit: "contain", maxHeight: "clamp(80px,16vh,140px)", maxWidth: "80%" }} />
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
               <CircleTimer val={timerVal} max={timerDuration} size={90} />

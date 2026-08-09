@@ -114,14 +114,21 @@ router.get("/assignments", async (req, res) => {
     /* Exclude assignments auto-generated from presentation activity slides — they are
        reused internally by the launch-game endpoint and should not clutter the list. */
     const notFromPresentation = isNull(assignmentsTable.fromPresentationSlide);
+    /* Also exclude internal assignments auto-created to power worksheet
+       smart paper grading — the teacher manages those through the
+       worksheet grading page, never through the assignments list. */
+    const notInternal = and(
+      notFromPresentation,
+      sql`${assignmentsTable.source} IS DISTINCT FROM 'worksheet'`,
+    );
 
     let ownResults;
     if (query.teacherId) {
-      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, query.teacherId), notFromPresentation));
+      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, query.teacherId), notInternal));
     } else if (req.session?.teacherId) {
-      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, req.session.teacherId), notFromPresentation));
+      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, req.session.teacherId), notInternal));
     } else {
-      ownResults = await baseQuery.where(notFromPresentation);
+      ownResults = await baseQuery.where(notInternal);
     }
 
     let sharedResults: typeof ownResults = [];
@@ -562,11 +569,20 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         listeningVoice: assignmentsTable.listeningVoice,
         listeningSpeed: assignmentsTable.listeningSpeed,
         listeningSettings: assignmentsTable.listeningSettings,
+        source: assignmentsTable.source,
       })
       .from(assignmentsTable)
       .innerJoin(teachersTable, eq(assignmentsTable.teacherId, teachersTable.id))
       .where(eq(assignmentsTable.id, id))
       .limit(1);
+
+    /* Internal worksheet-grading assignments are never addressable through
+       the generic assignment detail endpoint — they carry no access code and
+       are managed exclusively via the worksheet grading page. */
+    if (assignment && (assignment as any).source === "worksheet") {
+      res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
 
     if (!assignment) {
       res.status(404).json({ message: "الواجب غير موجود" });

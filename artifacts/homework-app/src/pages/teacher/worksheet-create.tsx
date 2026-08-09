@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, Plus, Trash2, Save, FolderOpen, Loader2,
+  Sparkles, Plus, Trash2, Save, FolderOpen, Loader2, Camera,
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
@@ -203,6 +203,7 @@ interface WorksheetRow {
   questions: Question[];
   settings: Settings;
   isShared: boolean;
+  linkedAssignmentId?: number | null;
   createdAt: string;
   updatedAt: string;
   ownerName?: string | null;
@@ -382,6 +383,9 @@ export default function WorksheetCreate() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [saving, setSaving] = useState(false);
+  // التصحيح الورقي الذكي: عند التفعيل يُنشأ خلف الكواليس واجب داخلي مرتبط
+  // يشغّل محرك التصحيح بالصور — بدون أي كود يظهر للمعلم.
+  const [smartGrading, setSmartGrading] = useState(false);
 
   // Preview-without-save: when true, renders a full-screen overlay using
   // <WorksheetPrintView /> with the current draft. The teacher can return
@@ -427,6 +431,7 @@ export default function WorksheetCreate() {
         setGradeLevel(row.gradeLevel ?? "");
         setQuestions(row.questions);
         setSettings({ ...DEFAULT_SETTINGS, ...row.settings, customFields: row.settings?.customFields ?? [] });
+        setSmartGrading(!!row.linkedAssignmentId);
         setEditingId(row.id);
         toast.success(lang === "ar" ? "تم تحميل الورقة للتعديل" : "Worksheet loaded for editing");
       })
@@ -674,6 +679,7 @@ export default function WorksheetCreate() {
         subject: subject.trim() || null,
         questions,
         settings,
+        smartGrading,
       };
       const url = editingId ? `${API_BASE}/api/worksheets/${editingId}` : `${API_BASE}/api/worksheets`;
       const method = editingId ? "PUT" : "POST";
@@ -690,6 +696,11 @@ export default function WorksheetCreate() {
       }
       const row = await res.json();
       setEditingId(row.id);
+      if (row.gradingVersioned) {
+        toast.info(ar
+          ? "تم إنشاء نسخة تصحيح جديدة — نتائج الأوراق المصححة سابقاً محفوظة كما هي"
+          : "A new grading version was created — previously graded results are preserved");
+      }
       toast.success(ar ? "تم الحفظ" : "Saved");
       return row.id as number;
     } catch {
@@ -1603,6 +1614,37 @@ export default function WorksheetCreate() {
             <Save className="w-4 h-4" />
             {ar ? "حفظ وفتح صفحة الطباعة" : "Save & Open Print Page"}
           </button>
+        </div>
+
+        {/* التصحيح الورقي الذكي */}
+        <div className="mt-4 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 p-4 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-3 cursor-pointer select-none flex-1 min-w-[240px]">
+            <input
+              type="checkbox"
+              checked={smartGrading}
+              onChange={(e) => setSmartGrading(e.target.checked)}
+              className="w-5 h-5 accent-emerald-600"
+            />
+            <span>
+              <span className="block font-bold text-emerald-800 dark:text-emerald-300">
+                {ar ? "تفعيل التصحيح الورقي الذكي" : "Enable smart paper grading"}
+              </span>
+              <span className="block text-xs text-emerald-700/80 dark:text-emerald-400/80">
+                {ar
+                  ? "بعد الحفظ: صوّر أوراق الطلاب من صفحة التصحيح ويقوم الذكاء الاصطناعي بتصحيحها تلقائياً"
+                  : "After saving: photograph student papers on the grading page and AI grades them automatically"}
+              </span>
+            </span>
+          </label>
+          {smartGrading && editingId && (
+            <button
+              onClick={() => setLocation(`/teacher/worksheets/${editingId}/grade`)}
+              className="px-4 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Camera className="w-4 h-4" />
+              {ar ? "فتح صفحة التصحيح" : "Open grading page"}
+            </button>
+          )}
         </div>
       </div>
 
