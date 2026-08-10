@@ -65,6 +65,7 @@ interface Question {
   type: QType;
   options: string[];
   duration: number;
+  imageUrl?: string | null;
 }
 
 interface Player {
@@ -2905,6 +2906,21 @@ function QuestionPanel({
         <p style={{ color: "#fff", fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.65, textShadow: "0 1px 5px rgba(0,0,0,0.6)" }}>
           {currentQ.text}
         </p>
+        {currentQ.imageUrl && (
+          <img
+            src={currentQ.imageUrl}
+            alt=""
+            style={{
+              marginTop: 12,
+              maxWidth: "100%",
+              maxHeight: 220,
+              borderRadius: 12,
+              objectFit: "contain",
+              background: "rgba(0,0,0,0.25)",
+              display: "block",
+            }}
+          />
+        )}
       </div>
 
       {/* Encouragement */}

@@ -1199,7 +1199,24 @@ export default function CreateAssignment() {
                             <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Wand2 className="w-4 h-4" />{t.createAssignment.aiGenerate}</h3>
                             <button type="button" onClick={() => { setShowAiPanel(false); setAiError(""); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                           </div>
-                          <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.createAssignment.aiTopicPlaceholder} className="bg-background border-primary/20 focus-visible:border-primary text-sm" />
+                          <div className="relative">
+                            <input
+                              value={aiTopic}
+                              onChange={e => setAiTopic(e.target.value)}
+                              placeholder={t.createAssignment.aiTopicPlaceholder}
+                              autoFocus
+                              className="w-full px-4 py-3 rounded-xl border-2 border-emerald-400 dark:border-emerald-500 bg-white dark:bg-[#0B100E] text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15 shadow-sm shadow-emerald-200/50 dark:shadow-none transition-all"
+                            />
+                            {aiTopic.trim() && (
+                              <button
+                                type="button"
+                                onClick={() => setAiTopic("")}
+                                className="absolute inset-y-0 start-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                           <div className="flex gap-2">
                             <select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value))} className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-primary/20 text-sm focus:outline-none focus:border-primary">
                               {(aiWithImages ? [5, 10, 15, 20] : [5, 10, 15, 20, 25, 30]).map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}

@@ -157,7 +157,7 @@ export default function RocketHost() {
   const [showQR, setShowQR] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
-  const [hostQuestion, setHostQuestion] = useState<{ index: number; text: string } | null>(null);
+  const [hostQuestion, setHostQuestion] = useState<{ index: number; text: string; imageUrl?: string | null } | null>(null);
   // Race timer (seconds remaining). null = unknown / not started.
   const [gameTimeLeft, setGameTimeLeft] = useState<number | null>(null);
 
@@ -219,7 +219,7 @@ export default function RocketHost() {
           success?: boolean; error?: string;
           state?: string; players?: Player[]; totalQuestions?: number; duration?: number; title?: string;
           advanceMode?: "per_player" | "host_sync"; syncQuestionIdx?: number;
-          currentQuestionPreview?: { index: number; text: string };
+          currentQuestionPreview?: { index: number; text: string; imageUrl?: string | null };
         }) => {
           if (res.error) {
             toast.error(res.error);
@@ -255,13 +255,13 @@ export default function RocketHost() {
       }) => {
         setPhase("racing");
         if (data.advanceMode) setAdvanceMode(data.advanceMode);
-        if (data.question) setHostQuestion({ index: data.question.index, text: data.question.text });
+        if (data.question) setHostQuestion({ index: data.question.index, text: data.question.text, imageUrl: (data.question as { index: number; text: string; imageUrl?: string | null }).imageUrl ?? null });
         const dur = data.totalDurationSecs ?? data.gameDuration ?? null;
         if (typeof dur === "number") setGameTimeLeft(dur);
       },
     );
-    socket.on("rocket:sync-question", (q: { index: number; text: string }) => {
-      setHostQuestion({ index: q.index, text: q.text });
+    socket.on("rocket:sync-question", (q: { index: number; text: string; imageUrl?: string | null }) => {
+      setHostQuestion({ index: q.index, text: q.text, imageUrl: q.imageUrl ?? null });
     });
     socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));
     socket.on("rocket:game-end", (data: { players: Player[] }) => {
@@ -598,10 +598,19 @@ export default function RocketHost() {
                   : (ar ? "لمحة عن السؤال الحالي للطلاب" : "Approx. student question")}
               </p>
               {hostQuestion && (
-                <p style={{ margin: 0, color: "#fff", fontSize: 14, lineHeight: 1.45, fontWeight: 600 }}>
-                  <span style={{ opacity: 0.65, marginInlineEnd: 8 }}>#{hostQuestion.index + 1}</span>
-                  {hostQuestion.text}
-                </p>
+                <div style={{ margin: 0 }}>
+                  <p style={{ margin: 0, color: "#fff", fontSize: 14, lineHeight: 1.45, fontWeight: 600 }}>
+                    <span style={{ opacity: 0.65, marginInlineEnd: 8 }}>#{hostQuestion.index + 1}</span>
+                    {hostQuestion.text}
+                  </p>
+                  {hostQuestion.imageUrl && (
+                    <img
+                      src={hostQuestion.imageUrl}
+                      alt=""
+                      style={{ marginTop: 8, maxHeight: 140, maxWidth: "100%", borderRadius: 10, objectFit: "contain", background: "rgba(0,0,0,0.2)" }}
+                    />
+                  )}
+                </div>
               )}
               {advanceMode === "host_sync" && (
                 <button
