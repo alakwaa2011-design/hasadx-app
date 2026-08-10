@@ -822,10 +822,10 @@ export default function NewPresentationPage() {
 
         <div className={`max-w-3xl mx-auto px-4 sm:px-6 ${mode === null ? "max-w-5xl" : ""}`}>
           
-          {/* ── HERO HEADER FOR MODE PICKER ── */}
+          {/* ── SLIM HEADER FOR MODE PICKER ── */}
           {mode === null && (
-            <div className="mb-8 space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-5">
                 <button
                   type="button"
                   onClick={goBack}
@@ -843,22 +843,16 @@ export default function NewPresentationPage() {
                   </button>
                 </Link>
               </div>
-              <div className="relative overflow-hidden rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B]">
-                <div className="absolute top-0 start-1/2 -translate-x-1/2 w-[30rem] h-32 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
-                <div className="relative z-10 flex flex-col items-center text-center gap-4 px-6 sm:px-10 py-10 sm:py-12">
-                  <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/40 border border-emerald-100 dark:border-emerald-800 rounded-full px-4 py-1.5 mb-2">
-                    <Sparkles className="w-4 h-4 text-emerald-500" />
-                    <span className="text-emerald-700 dark:text-emerald-300 text-xs font-black tracking-wide">
-                      {isAr ? "مدعوم بالذكاء الاصطناعي" : "AI-Powered"}
-                    </span>
-                  </div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-800 dark:text-slate-100 leading-tight">
-                    {isAr ? "إنشاء عرض تفاعلي جديد" : "Create Interactive Deck"}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">
+                    {isAr ? "عرض تفاعلي جديد" : "New Interactive Deck"}
                   </h1>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base max-w-md font-bold leading-relaxed">
-                    {isAr
-                      ? "اختر الوضع المناسب ودع الذكاء الاصطناعي يبني حصتك التعليمية كاملة في ثوانٍ."
-                      : "Choose your mode and let AI build your complete lesson in seconds."}
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                    {isAr ? "ابنِ حصتك من موضوع أو ملف" : "Build from a topic or a file"}
                   </p>
                 </div>
               </div>
@@ -867,45 +861,56 @@ export default function NewPresentationPage() {
 
           {/* ── MODE PICKER ── */}
           {mode === null && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {/* AI options label */}
+              <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+                {isAr ? "ابنِ من موضوع" : "Build with AI"}
+              </p>
+
+              {/* Quick + Pro side by side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Quick Mode */}
                 <button
                   onClick={() => setMode("quick")}
-                  className="group relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 p-6 sm:p-8 text-start transition-all duration-300 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-lg hover:-translate-y-1"
+                  className="group relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 p-5 sm:p-6 text-start transition-all duration-300 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-lg hover:-translate-y-0.5"
                 >
-                  <div className="absolute top-0 start-0 w-32 h-32 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none transition-all group-hover:bg-emerald-400/20" />
+                  <div className="absolute top-0 start-0 w-28 h-28 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none transition-all group-hover:bg-emerald-400/20" />
                   <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Zap className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Zap className="w-5 h-5 text-emerald-500" strokeWidth={2.5} />
                       </div>
-                      <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800/50">
+                      <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800/50">
                         {isAr ? "الأسرع" : "Fastest"}
                       </span>
                     </div>
-                    <div className="text-slate-800 dark:text-slate-100 text-xl font-black mb-2">
+                    <div className="text-slate-800 dark:text-slate-100 text-lg font-black mb-1.5">
                       {isAr ? "إنشاء سريع" : "Quick Mode"}
                     </div>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm font-bold leading-relaxed mb-6 flex-1">
+                    <div className="text-slate-500 dark:text-slate-400 text-xs font-bold leading-relaxed mb-4 flex-1">
                       {isAr
-                        ? "اكتب الموضوع فقط والذكاء الاصطناعي يبني الحصة كاملةً في ثوانٍ معدودة."
-                        : "Write your topic only and AI builds the full lesson in seconds."}
+                        ? "اكتب الموضوع فقط، الذكاء يبني الحصة كاملة في ثوانٍ."
+                        : "Write your topic only — AI builds the full lesson in seconds."}
                     </div>
-                    <div className="flex flex-col gap-2.5 mb-6">
+                    <div className="flex flex-col gap-1.5 mb-4">
                       {(isAr
                         ? ["شرائح محتوى تلقائية", "أسئلة MCQ تفاعلية جاهزة", "استطلاع + جدار أفكار"]
                         : ["Auto-generated content slides", "Ready MCQ interactive questions", "Poll + word wall included"]
                       ).map((item) => (
                         <div key={item} className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800">
-                            <Check className="w-2.5 h-2.5 text-emerald-500" strokeWidth={3} />
+                          <div className="w-3.5 h-3.5 rounded-full bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800">
+                            <Check className="w-2 h-2 text-emerald-500" strokeWidth={3} />
                           </div>
-                          <span className="text-xs text-slate-600 dark:text-slate-400 font-bold">{item}</span>
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400 font-bold">{item}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="inline-flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] text-emerald-600 dark:text-emerald-400 text-sm font-black px-5 py-3 rounded-xl group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 group-hover:gap-3 transition-all duration-200 self-start border border-emerald-100 dark:border-emerald-800/50">
+                    <div className="inline-flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] text-emerald-600 dark:text-emerald-400 text-sm font-black px-4 py-2.5 rounded-xl group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 group-hover:gap-3 transition-all duration-200 self-start border border-emerald-100 dark:border-emerald-800/50">
                       {isAr ? "ابدأ الآن" : "Get started"}
                       {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </div>
@@ -915,40 +920,40 @@ export default function NewPresentationPage() {
                 {/* Pro Studio */}
                 <button
                   onClick={() => setMode("pro")}
-                  className="group relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 p-6 sm:p-8 text-start transition-all duration-300 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-1"
+                  className="group relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 p-5 sm:p-6 text-start transition-all duration-300 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-0.5"
                 >
-                  <div className="absolute top-0 start-0 w-32 h-32 rounded-full bg-slate-400/10 blur-3xl pointer-events-none transition-all group-hover:bg-slate-400/20" />
+                  <div className="absolute top-0 start-0 w-28 h-28 rounded-full bg-slate-400/10 blur-3xl pointer-events-none transition-all group-hover:bg-slate-400/20" />
                   <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Settings2 className="w-6 h-6 text-slate-600 dark:text-slate-400" strokeWidth={2} />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Settings2 className="w-5 h-5 text-slate-600 dark:text-slate-400" strokeWidth={2} />
                       </div>
-                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                         {isAr ? "تحكم كامل" : "Full control"}
                       </span>
                     </div>
-                    <div className="text-slate-800 dark:text-slate-100 text-xl font-black mb-2">
+                    <div className="text-slate-800 dark:text-slate-100 text-lg font-black mb-1.5">
                       {isAr ? "استوديو المحترف" : "Pro Studio"}
                     </div>
-                    <div className="text-slate-500 dark:text-slate-400 text-sm font-bold leading-relaxed mb-6 flex-1">
+                    <div className="text-slate-500 dark:text-slate-400 text-xs font-bold leading-relaxed mb-4 flex-1">
                       {isAr
                         ? "راجع المخطط وعدّله قبل بناء الشرائح، مع محرر احترافي متقدم."
                         : "Review outline before building, with an advanced professional editor."}
                     </div>
-                    <div className="flex flex-col gap-2.5 mb-6">
+                    <div className="flex flex-col gap-1.5 mb-4">
                       {(isAr
                         ? ["مراجعة المخطط قبل البناء", "تخصيص كامل للشرائح", "دعم المحتوى المتقدم"]
                         : ["Review outline before build", "Full slide customization", "Advanced content support"]
                       ).map((item) => (
                         <div key={item} className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
-                            <Check className="w-2.5 h-2.5 text-slate-500" strokeWidth={3} />
+                          <div className="w-3.5 h-3.5 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                            <Check className="w-2 h-2 text-slate-500" strokeWidth={3} />
                           </div>
-                          <span className="text-xs text-slate-600 dark:text-slate-400 font-bold">{item}</span>
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400 font-bold">{item}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="inline-flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] text-slate-600 dark:text-slate-300 text-sm font-black px-5 py-3 rounded-xl group-hover:bg-slate-100 dark:group-hover:bg-slate-800 group-hover:gap-3 transition-all duration-200 self-start border border-slate-200 dark:border-slate-700/50">
+                    <div className="inline-flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] text-slate-600 dark:text-slate-300 text-sm font-black px-4 py-2.5 rounded-xl group-hover:bg-slate-100 dark:group-hover:bg-slate-800 group-hover:gap-3 transition-all duration-200 self-start border border-slate-200 dark:border-slate-700/50">
                       {isAr ? "فتح الاستوديو" : "Open Studio"}
                       {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </div>
@@ -956,24 +961,33 @@ export default function NewPresentationPage() {
                 </button>
               </div>
 
-              {/* Import File */}
+              {/* Divider */}
+              <div className="flex items-center gap-3 py-1">
+                <div className="flex-1 h-px bg-emerald-100 dark:bg-emerald-900/40" />
+                <span className="text-[11px] font-black text-slate-400 dark:text-slate-500">
+                  {isAr ? "أو" : "or"}
+                </span>
+                <div className="flex-1 h-px bg-emerald-100 dark:bg-emerald-900/40" />
+              </div>
+
+              {/* Import File — same visual weight, dashed border signals "bring your own" */}
               <button
                 onClick={() => setMode("import")}
-                className="group w-full relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 p-5 sm:p-6 text-start transition-all duration-300 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-lg active:scale-[0.99]"
+                className="group w-full relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border-2 border-dashed border-emerald-200 dark:border-emerald-800/60 p-4 sm:p-5 text-start transition-all duration-300 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md active:scale-[0.99]"
               >
-                <div className="absolute inset-0 bg-emerald-50/50 dark:bg-emerald-900/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10 flex items-center gap-5">
-                  <div className="w-14 h-14 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] flex items-center justify-center shrink-0 group-hover:scale-105 transition-all border border-emerald-100 dark:border-emerald-800/50">
-                    <UploadCloud className="w-6 h-6 text-emerald-500" strokeWidth={2} />
+                <div className="absolute inset-0 bg-emerald-50/30 dark:bg-emerald-900/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+                <div className="relative z-10 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-emerald-100 dark:border-emerald-800/50">
+                    <UploadCloud className="w-5 h-5 text-emerald-500" strokeWidth={2} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-black text-lg text-slate-800 dark:text-slate-100 mb-1">
+                    <div className="font-black text-base text-slate-800 dark:text-slate-100 mb-0.5">
                       {isAr ? "استيراد ملف أو رابط" : "Import File or Link"}
                     </div>
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       {isAr
-                        ? `ارفع ${IMPORT_ACCEPT_LABEL_AR} ليتحول تلقائياً إلى عرض`
-                        : `Upload ${IMPORT_ACCEPT_LABEL_EN} to convert it instantly`}
+                        ? `ارفع ${IMPORT_ACCEPT_LABEL_AR} وحوّله تلقائياً`
+                        : `Upload ${IMPORT_ACCEPT_LABEL_EN} and convert instantly`}
                     </div>
                   </div>
                   <div className="shrink-0 flex items-center gap-1.5 text-sm font-black text-emerald-600 dark:text-emerald-400 group-hover:gap-2.5 transition-all duration-200">
@@ -982,7 +996,7 @@ export default function NewPresentationPage() {
                   </div>
                 </div>
               </button>
-            </div>
+            </motion.div>
           )}
 
           {/* ── QUICK MODE: FORM ── */}

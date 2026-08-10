@@ -209,7 +209,7 @@ export default function PaperGradingCreate() {
                       {isAr ? "تصحيح سريع لورقة عمل جاهزة" : "Quick-grade existing worksheet"}
                     </h2>
                     <p className="text-[11px] font-bold text-slate-500 mt-0.5 truncate">
-                      {isAr ? "اختر ورقة وابدأ التصوير مباشرة" : "Choose a worksheet and start scanning"}
+                      {isAr ? "أوراق عمل حصاد ذات التصحيح الإلكتروني" : "Hasaad worksheets with smart grading"}
                     </p>
                   </div>
                   <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0">
@@ -368,7 +368,7 @@ export default function PaperGradingCreate() {
               </div>
 
               {/* Metadata Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                 {/* Total Points */}
                 <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-4 flex flex-col justify-center border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all group">
                   <label className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
@@ -443,33 +443,6 @@ export default function PaperGradingCreate() {
                 )}
               </div>
 
-              {/* AI Instructions */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                    <Brain className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight">
-                      {isAr ? "تعليمات التصحيح للذكاء الاصطناعي" : "AI Grading Instructions"}
-                    </h3>
-                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">
-                      {isAr ? "كيف تريد من الذكاء الاصطناعي أن يصحّح؟ (اختياري)" : "How should the AI grade? (Optional)"}
-                    </p>
-                  </div>
-                </div>
-                <div className="relative group">
-                  <textarea
-                    value={aiInstructions}
-                    onChange={e => setAiInstructions(e.target.value)}
-                    placeholder={isAr ? "مثال: لا تخصم درجات على الأخطاء الإملائية، اقبل الإجابات بالعامية..." : "e.g., Don't deduct for spelling, accept colloquial answers..."}
-                    disabled={isLoading}
-                    rows={3}
-                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 dark:focus:border-emerald-600 focus:ring-4 focus:ring-emerald-400/10 transition-all resize-none"
-                  />
-                </div>
-              </div>
-
               {/* Model Image */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -537,6 +510,31 @@ export default function PaperGradingCreate() {
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* AI Instructions — after model answer so teacher fills it informed */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                    <Brain className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight">
+                      {isAr ? "تعليمات التصحيح للذكاء الاصطناعي" : "AI Grading Instructions"}
+                    </h3>
+                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                      {isAr ? "كيف تريد من الذكاء الاصطناعي أن يصحّح؟ (اختياري)" : "How should the AI grade? (Optional)"}
+                    </p>
+                  </div>
+                </div>
+                <textarea
+                  value={aiInstructions}
+                  onChange={e => setAiInstructions(e.target.value)}
+                  placeholder={isAr ? "مثال: لا تخصم درجات على الأخطاء الإملائية، اقبل الإجابات بالعامية..." : "e.g., Don't deduct for spelling, accept colloquial answers..."}
+                  disabled={isLoading}
+                  rows={3}
+                  className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 dark:focus:border-emerald-600 focus:ring-4 focus:ring-emerald-400/10 transition-all resize-none"
+                />
               </div>
             </div>
 
