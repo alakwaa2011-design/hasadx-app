@@ -116,7 +116,7 @@ function detectContentKind(title: string): ContentKind {
 const KIND_THEME: Record<ContentKind, { bar: string; bg: string; text: string; dim: string }> = {
   "islamic":    { bar: "#1a5c3a", bg: "#f0faf4", text: "#0f3d25", dim: "#1a5c3a" },
   "math":       { bar: "#1e3a8a", bg: "#eff6ff", text: "#1e3a8a", dim: "#3b82f6" },
-  "science":    { bar: "#0d5f6c", bg: "#ecfeff", text: "#0e4f5a", dim: "#06b6d4" },
+  "science":    { bar: "#0d5f6c", bg: "#ecfeff", text: "#0e4f5a", dim: "#6ba184" },
   "arabic-lang":{ bar: "#5b21b6", bg: "#f5f3ff", text: "#3b0764", dim: "#8b5cf6" },
   "history":    { bar: "#7c2d12", bg: "#fff7ed", text: "#7c2d12", dim: "#ea580c" },
   "general":    { bar: "#374151", bg: "#f9fafb", text: "#1f2937", dim: "#6b7280" },
@@ -592,7 +592,7 @@ function PresentationCard({
   for (let i = 0; i < p.title.length; i++) _h = (_h * 31 + p.title.charCodeAt(i)) >>> 0;
 
   const COVER_PALETTES = [
-    { bg: "linear-gradient(140deg, #064e3b 0%, #065f46 40%, #047857 100%)",  accent: "#6ee7b7", shape: "circles" },
+    { bg: "linear-gradient(140deg, #173a28 0%, #1c4630 40%, #225739 100%)",  accent: "#99c1ab", shape: "circles" },
     { bg: "linear-gradient(125deg, #1e3a8a 0%, #1e40af 45%, #2563eb 100%)",  accent: "#93c5fd", shape: "bars"    },
     { bg: "linear-gradient(150deg, #3b0764 0%, #4c1d95 45%, #6d28d9 100%)",  accent: "#d8b4fe", shape: "dots"    },
     { bg: "linear-gradient(130deg, #7c2d12 0%, #9a3412 40%, #b45309 100%)",  accent: "#fcd34d", shape: "waves"   },

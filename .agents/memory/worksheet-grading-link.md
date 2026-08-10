@@ -30,3 +30,7 @@ Worksheets with smart grading enabled link to a hidden internal assignment (`ass
 - أي إحصاءات/تقارير تُبنى على نتائج التصحيح **يجب** أن تعتمد الدرجة الفعلية: `teacherAdjustedPoints ?? earnedPoints` للورقة، و`teacherPoints != null ? teacherPoints > 0 : isCorrect` للإجابة — تجاهلها يجعل التقرير يكذب بعد مراجعة المعلم اليدوية.
 - `GET /api/submissions/:id/details` يعيد `{ submission: {...}, answers: [...] }` (شكل مغلّف) — لا يعيد الحقول مسطّحة.
 - دمج محاولات نفس الطالب في التقارير: الهوية = studentId إن وُجد وإلا `normalizeArabicName` من lib/worksheet-grading؛ «غير معروف»/الاسم الفارغ لا يُدمج أبداً (كل ورقة مستقلة).
+
+**Owner photo-grading of any assignment:**
+- submit-image has a second privileged branch: the assignment's owner session bypasses electronic/examMode/deadline and access-code/duplicate checks, and multi-page uploads must be gated on BOTH worksheet-source OR owner — forgetting the owner side silently drops pages 2+.
+- The grading page serves both worksheet and assignment routes; worksheet-only UI (report links, edit-back) must stay guarded on a nullable worksheetId.

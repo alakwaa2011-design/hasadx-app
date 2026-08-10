@@ -1,11 +1,13 @@
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import {
   Sparkles, ChevronRight, Loader2, CheckCircle2,
   Edit2, Trash2, GripVertical, Plus, PlayCircle, X, Check,
+  ArrowRight, ArrowLeft, BookOpen, Clock, Users, Wand2, Volume2
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { motion, AnimatePresence } from "framer-motion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
@@ -45,11 +47,11 @@ const SUBJECTS = ["الرياضيات", "العلوم", "اللغة العربي
 const GRADES = ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس", "الصف السابع", "الصف الثامن", "الصف التاسع", "الصف العاشر", "الصف الحادي عشر", "الصف الثاني عشر"];
 
 const ACTION_COLOR: Record<string, string> = {
-  writeText: "#4ade80", writeMath: "#60a5fa", bullet: "#c4b5fd",
+  writeText: "#2f684d", writeMath: "#60a5fa", bullet: "#c4b5fd",
   highlight: "#fbbf24", underline: "#f9a8d4", drawArrow: "#fb923c",
-  drawCircle: "#34d399", showDiagram: "#a78bfa", clearBoard: "#6b7280",
+  drawCircle: "#468064", showDiagram: "#a78bfa", clearBoard: "#6b7280",
   erase: "#ef4444", pause: "#fbbf24", bullet2: "#c4b5fd", writeTitle: "#f97316",
-  showImage: "#06b6d4", drawConnector: "#f59e0b", showChart: "#a855f7",
+  showImage: "#0ea5e9", drawConnector: "#f59e0b", showChart: "#a855f7",
 };
 
 const ACTION_LABEL: Record<string, string> = {
@@ -83,11 +85,7 @@ function MathPreview({ src }: { src: string }) {
   } catch { return null; }
   return (
     <div
-      style={{
-        background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)",
-        borderRadius: 8, padding: "8px 12px", marginTop: 6,
-        color: "#93c5fd", fontSize: 18, overflowX: "auto",
-      }}
+      className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-3 py-2 mt-2 text-blue-600 dark:text-blue-400 overflow-x-auto text-lg"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -131,71 +129,70 @@ function ActionRow({
       onDragStart={onDragStart}
       onDragOver={e => { e.preventDefault(); onDragOver(e); }}
       onDrop={e => { e.preventDefault(); onDrop(); }}
-      style={{
-        background: isDragOver ? `${color}14` : "var(--background)",
-        border: `1px solid ${isDragOver ? color + "60" : "var(--border)"}`,
-        borderRadius: 8, padding: "6px 8px", marginBottom: 4,
-        transition: "border-color 0.15s, background 0.15s",
-      }}
+      className={`group relative rounded-2xl p-2 mb-2 border transition-all ${
+        isDragOver 
+          ? "border-emerald-400 bg-emerald-50/50 dark:border-emerald-600 dark:bg-emerald-900/20" 
+          : "border-emerald-50 dark:border-emerald-900/30 bg-[#f4f7f5] dark:bg-[#0B100E]"
+      }`}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-        <span style={{ cursor: "grab", color: "var(--muted-foreground)", paddingTop: 2, flexShrink: 0 }} title="اسحب لإعادة الترتيب">
-          <GripVertical size={14} />
-        </span>
-        <span style={{
-          flexShrink: 0, background: `${color}18`, color, border: `1px solid ${color}40`,
-          borderRadius: 5, padding: "1px 6px", fontSize: 10, fontWeight: 700,
-          marginTop: 2, whiteSpace: "nowrap",
-        }}>
+      <div className="flex items-start gap-3">
+        <div 
+          className="cursor-grab text-slate-300 hover:text-emerald-500 dark:text-slate-600 dark:hover:text-emerald-400 pt-1 shrink-0 transition-colors"
+          title="اسحب لإعادة الترتيب"
+        >
+          <GripVertical size={16} />
+        </div>
+        <div 
+          className="shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-black mt-1 whitespace-nowrap"
+          style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}
+        >
           {ACTION_LABEL[action.type] ?? action.type}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        </div>
+        <div className="flex-1 min-w-0">
           {editing ? (
-            <div>
+            <div className="animate-in fade-in zoom-in-95 duration-200">
               <textarea
                 autoFocus
                 value={draft}
                 onChange={e => setDraft(e.target.value)}
                 rows={2}
-                style={{
-                  width: "100%", resize: "vertical", borderRadius: 6,
-                  border: `1px solid ${color}60`, padding: "5px 8px",
-                  fontSize: 13, fontFamily: "inherit",
-                  background: "var(--background)", color: "var(--foreground)",
-                  boxSizing: "border-box", outline: "none",
-                }}
+                className="w-full resize-y rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#15201B] p-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all leading-relaxed"
                 onKeyDown={e => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
                   if (e.key === "Escape") cancel();
                 }}
               />
               {action.type === "writeMath" && <MathPreview src={draft} />}
-              <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
-                <button onClick={save} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 5, padding: "3px 10px", cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 3 }}>
-                  <Check size={11} /> حفظ
+              <div className="flex gap-2 mt-2">
+                <button onClick={save} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-1.5 text-xs font-black transition-colors">
+                  <Check size={14} /> حفظ
                 </button>
-                <button onClick={cancel} style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "none", borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 3 }}>
-                  <X size={11} /> إلغاء
+                <button onClick={cancel} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-1.5 text-xs font-bold transition-colors">
+                  <X size={14} /> إلغاء
                 </button>
               </div>
             </div>
           ) : (
             <div
               onClick={isNonText ? undefined : startEdit}
-              style={{
-                fontSize: 12, color: isNonText ? "var(--muted-foreground)" : "var(--foreground)",
-                lineHeight: 1.5, cursor: isNonText ? "default" : "pointer",
-                fontStyle: isNonText ? "italic" : "normal", wordBreak: "break-word",
-              }}
+              className={`text-sm font-bold leading-relaxed break-words rounded-xl p-1.5 -ml-1.5 border border-transparent transition-colors ${
+                isNonText 
+                  ? "text-slate-400 italic cursor-default" 
+                  : "text-slate-700 dark:text-slate-200 cursor-text hover:bg-white dark:hover:bg-[#15201B] hover:border-emerald-100 dark:hover:border-emerald-800/50"
+              }`}
               title={isNonText ? undefined : "انقر للتعديل"}
             >
-              {text || <span style={{ opacity: 0.4 }}>(فارغ)</span>}
-              {!isNonText && <Edit2 size={10} style={{ marginRight: 4, opacity: 0.4, verticalAlign: "middle" }} />}
+              {text || <span className="opacity-40">(فارغ)</span>}
+              {!isNonText && <Edit2 size={12} className="inline-block ms-2 opacity-0 group-hover:opacity-40 transition-opacity" />}
             </div>
           )}
         </div>
-        <button onClick={onDelete} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2, flexShrink: 0, opacity: 0.6, lineHeight: 1 }} title="حذف">
-          <Trash2 size={13} />
+        <button 
+          onClick={onDelete} 
+          className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-1.5 shrink-0 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" 
+          title="حذف"
+        >
+          <Trash2 size={16} />
         </button>
       </div>
     </div>
@@ -218,36 +215,32 @@ function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (
   }
 
   return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", marginBottom: 5 }}>
-        عناصر السبورة
-        <span style={{ fontWeight: 400, marginRight: 4 }}>— اسحب لإعادة الترتيب · انقر لتعديل النص</span>
+    <div className="mt-4 pt-4 border-t border-emerald-50 dark:border-emerald-900/30">
+      <div className="text-xs font-black text-slate-500 mb-3 flex items-center justify-between">
+        <span>عناصر السبورة <span className="font-bold font-sans text-[10px] text-slate-400 ms-1">— اسحب للترتيب · انقر للتعديل</span></span>
       </div>
       {actions.length === 0 && (
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)", fontStyle: "italic", marginBottom: 6 }}>لا توجد عناصر</div>
+        <div className="text-xs font-bold text-slate-400 italic mb-3 px-2">لا توجد عناصر</div>
       )}
-      {actions.map((a, i) => (
-        <ActionRow
-          key={i}
-          action={a}
-          onUpdate={updated => { const next = [...actions]; next[i] = updated; onChange(next); }}
-          onDelete={() => onChange(actions.filter((_, idx) => idx !== i))}
-          onDragStart={() => setDragIdx(i)}
-          onDragOver={() => setOverIdx(i)}
-          onDrop={() => handleDrop(i)}
-          isDragOver={overIdx === i && dragIdx !== i}
-        />
-      ))}
+      <div className="space-y-1">
+        {actions.map((a, i) => (
+          <ActionRow
+            key={i}
+            action={a}
+            onUpdate={updated => { const next = [...actions]; next[i] = updated; onChange(next); }}
+            onDelete={() => onChange(actions.filter((_, idx) => idx !== i))}
+            onDragStart={() => setDragIdx(i)}
+            onDragOver={() => setOverIdx(i)}
+            onDrop={() => handleDrop(i)}
+            isDragOver={overIdx === i && dragIdx !== i}
+          />
+        ))}
+      </div>
       <button
         onClick={() => onChange([...actions, { type: "bullet", content: "نقطة جديدة" }])}
-        style={{
-          display: "flex", alignItems: "center", gap: 4,
-          background: "none", border: "1px dashed var(--border)", borderRadius: 7,
-          padding: "4px 10px", cursor: "pointer", color: "var(--muted-foreground)",
-          fontSize: 11, fontWeight: 600, width: "100%", justifyContent: "center", marginTop: 4,
-        }}
+        className="w-full flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl py-2.5 mt-2 text-xs font-black transition-colors"
       >
-        <Plus size={11} /> إضافة نقطة
+        <Plus size={14} /> إضافة نقطة
       </button>
     </div>
   );
@@ -277,95 +270,96 @@ function StepCard({
     : ("title" in step ? step.title : "");
 
   return (
-    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+    <div className="bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 rounded-3xl overflow-hidden shadow-sm transition-all hover:border-emerald-100 dark:hover:border-emerald-800/60">
       {/* Header */}
       <div
-        style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "10px 14px",
-          borderBottom: expanded ? "1px solid var(--border)" : "none",
-          cursor: "pointer", userSelect: "none",
-        }}
+        className={`flex items-center gap-3 p-4 sm:p-5 select-none cursor-pointer transition-colors hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 ${expanded ? 'border-b border-emerald-50 dark:border-emerald-900/30' : ''}`}
         onClick={() => setExpanded(e => !e)}
       >
-        {!isIntro && !isSummary && <GripVertical size={15} color="var(--muted-foreground)" style={{ flexShrink: 0 }} />}
-        <span style={{
-          display: "inline-block",
-          background: isIntro ? "#1e3a4a" : isSummary ? "#2a1a3e" : "#1a3025",
-          color: isIntro ? "#7dd3fc" : isSummary ? "#c4b5fd" : "#4ade80",
-          borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700, flexShrink: 0,
-        }}>
+        {!isIntro && !isSummary && <GripVertical size={18} className="text-slate-300 dark:text-slate-600 shrink-0" />}
+        <span className={`shrink-0 rounded-xl px-2.5 py-1 text-[10px] font-black ${
+          isIntro ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400' :
+          isSummary ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' :
+          'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+        }`}>
           {isIntro ? "مقدمة" : isSummary ? "خلاصة" : `خطوة ${index}`}
         </span>
 
         {!isIntro && !isSummary && onEditTitle ? (
           editingTitle ? (
-            <div style={{ flex: 1, display: "flex", gap: 5 }} onClick={e => e.stopPropagation()}>
+            <div className="flex-1 flex gap-2" onClick={e => e.stopPropagation()}>
               <input
                 autoFocus value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
-                style={{ flex: 1, borderRadius: 6, border: "1px solid #4ade8060", padding: "3px 8px", fontSize: 13, fontFamily: "inherit", background: "var(--background)", color: "var(--foreground)", outline: "none" }}
+                className="flex-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-[#0B100E] px-2 py-1 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-400/20"
                 onKeyDown={e => {
                   if (e.key === "Enter") { onEditTitle(titleDraft); setEditingTitle(false); }
                   if (e.key === "Escape") setEditingTitle(false);
                 }}
               />
-              <button onClick={() => { onEditTitle(titleDraft); setEditingTitle(false); }} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontSize: 11 }}><Check size={11} /></button>
-              <button onClick={() => setEditingTitle(false)} style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "none", borderRadius: 5, padding: "3px 6px", cursor: "pointer", fontSize: 11 }}><X size={11} /></button>
+              <button onClick={() => { onEditTitle(titleDraft); setEditingTitle(false); }} className="bg-emerald-600 text-white rounded-lg px-2"><Check size={14} /></button>
+              <button onClick={() => setEditingTitle(false)} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg px-2"><X size={14} /></button>
             </div>
           ) : (
             <div
-              style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--foreground)", display: "flex", alignItems: "center", gap: 4 }}
+              className="flex-1 text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 group"
               onClick={e => { e.stopPropagation(); setTitleDraft(titleText); setEditingTitle(true); }}
               title="انقر لتعديل العنوان"
             >
               {titleText}
-              <Edit2 size={11} style={{ opacity: 0.4 }} />
+              <Edit2 size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
             </div>
           )
         ) : (
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{titleText}</span>
+          <span className="flex-1 text-sm font-black text-slate-800 dark:text-slate-100">{titleText}</span>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: "auto" }}>
+        <div className="flex items-center gap-3 ms-auto shrink-0">
           {onDelete && (
-            <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 3, lineHeight: 1 }}>
-              <Trash2 size={14} />
+            <button onClick={e => { e.stopPropagation(); onDelete(); }} className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-1.5 transition-colors">
+              <Trash2 size={16} />
             </button>
           )}
-          <span style={{ fontSize: 11, color: "var(--muted-foreground)", transform: expanded ? "rotate(90deg)" : "rotate(0)", transition: "transform 0.2s" }}>▶</span>
+          <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${expanded ? '-rotate-90' : 'rotate-180'}`} />
         </div>
       </div>
 
-      {expanded && (
-        <div style={{ padding: "12px 14px" }}>
-          {/* Voice text */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", marginBottom: 4 }}>🔊 النص الصوتي</div>
-            {editingVoice ? (
+      <AnimatePresence>
+        {expanded && (
+          <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+            <div className="p-4 sm:p-5">
+              {/* Voice text */}
               <div>
-                <textarea
-                  autoFocus value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)}
-                  style={{ width: "100%", minHeight: 64, resize: "vertical", borderRadius: 8, border: "1px solid var(--border)", padding: "8px 10px", fontSize: 13, fontFamily: "inherit", background: "var(--background)", color: "var(--foreground)", boxSizing: "border-box", outline: "none" }}
-                />
-                <div style={{ display: "flex", gap: 6, marginTop: 5 }}>
-                  <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>حفظ</button>
-                  <button onClick={() => setEditingVoice(false)} style={{ background: "var(--muted)", color: "var(--muted-foreground)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 11 }}>إلغاء</button>
+                <div className="text-xs font-black text-slate-500 mb-2 flex items-center gap-1.5">
+                  <Volume2 size={16} className="text-emerald-500" /> النص الصوتي
                 </div>
+                {editingVoice ? (
+                  <div className="animate-in fade-in zoom-in-95 duration-200">
+                    <textarea
+                      autoFocus value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)}
+                      className="w-full min-h-[80px] resize-y rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#15201B] p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all leading-relaxed"
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-xs font-black transition-colors">حفظ</button>
+                      <button onClick={() => setEditingVoice(false)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-xs font-bold transition-colors">إلغاء</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="text-sm font-bold leading-relaxed text-slate-600 dark:text-slate-300 bg-[#f4f7f5] dark:bg-[#0B100E] border border-slate-100 dark:border-slate-800/60 rounded-xl p-3 cursor-text hover:border-emerald-200 dark:hover:border-emerald-800/60 transition-colors flex items-start gap-2 group"
+                    onClick={() => { setVoiceDraft(step.voiceText); setEditingVoice(true); }}
+                    title="انقر للتعديل"
+                  >
+                    <span className="flex-1">{step.voiceText}</span>
+                    <Edit2 size={14} className="shrink-0 text-slate-400 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                )}
               </div>
-            ) : (
-              <div
-                style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.6, background: "var(--muted)", borderRadius: 8, padding: "7px 10px", cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 6 }}
-                onClick={() => { setVoiceDraft(step.voiceText); setEditingVoice(true); }}
-                title="انقر للتعديل"
-              >
-                <span style={{ flex: 1 }}>{step.voiceText}</span>
-                <Edit2 size={11} style={{ flexShrink: 0, marginTop: 3, opacity: 0.4 }} />
-              </div>
-            )}
-          </div>
 
-          <ActionList actions={step.boardActions} onChange={onEditActions} />
-        </div>
-      )}
+              <ActionList actions={step.boardActions} onChange={onEditActions} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -443,153 +437,178 @@ export default function SmartBoardNew() {
 
   return (
     <Layout>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px" }} dir="rtl">
-
-        {/* Breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24, color: "var(--muted-foreground)", fontSize: 13 }}>
-          <button onClick={() => navigate("/teacher/smart-board")} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0 }}>
-            السبورة الذكية
+      <div className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] font-display pb-32" dir={lang === "ar" ? "rtl" : "ltr"}>
+        
+        {/* Header */}
+        <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+          <button
+            onClick={() => navigate("/teacher/smart-board")}
+            className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+            title="رجوع"
+          >
+            {lang === "ar" ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </button>
-          <ChevronRight size={14} />
-          <span style={{ color: "var(--foreground)", fontWeight: 600 }}>درس جديد</span>
-        </div>
-
-        {/* Topic input */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: "24px", marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--foreground)", marginBottom: 6 }}>موضوع الدرس</h2>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 13, marginBottom: 16 }}>
-            اكتب الموضوع وسيُنشئ الذكاء الاصطناعي خطة درس كاملة لعرضها على السبورة
-          </p>
-
-          <textarea
-            value={topic} onChange={e => setTopic(e.target.value)}
-            placeholder="مثال: جمع الكسور المتشابهة وغير المتشابهة، قانون نيوتن الثالث، التمييز في اللغة العربية…"
-            rows={3}
-            style={{
-              width: "100%", borderRadius: 10, border: "1.5px solid var(--border)",
-              padding: "12px 14px", fontSize: 14, resize: "none",
-              background: "var(--background)", color: "var(--foreground)",
-              fontFamily: "inherit", lineHeight: 1.7, boxSizing: "border-box",
-              outline: "none", transition: "border-color 0.2s",
-            }}
-            onFocus={e => { e.currentTarget.style.borderColor = "#16a34a"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
-          />
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 14 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 5 }}>المادة</label>
-              <select value={subject} onChange={e => setSubject(e.target.value)} style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: "8px 10px", fontSize: 13, background: "var(--background)", color: "var(--foreground)", cursor: "pointer" }}>
-                <option value="">اختر المادة</option>
-                {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 5 }}>الصف الدراسي</label>
-              <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: "8px 10px", fontSize: 13, background: "var(--background)", color: "var(--foreground)", cursor: "pointer" }}>
-                <option value="">اختر الصف</option>
-                {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
+              <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
+                درس جديد
+              </h1>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+                توليد خطة سبورة تفاعلية بالذكاء الاصطناعي
+              </p>
             </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", display: "block", marginBottom: 5 }}>عمق الشرح</label>
-              <select value={depth} onChange={e => setDepth(e.target.value as any)} style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", padding: "8px 10px", fontSize: 13, background: "var(--background)", color: "var(--foreground)", cursor: "pointer" }}>
-                <option value="brief">موجز (~١٠ دقائق)</option>
-                <option value="standard">عادي (~٢٠ دقيقة)</option>
-                <option value="detailed">تفصيلي (~٣٠ دقيقة)</option>
-              </select>
+          </div>
+        </header>
+
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+          
+          {/* Topic input */}
+          <div className="bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">موضوع الدرس</h2>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
+              اكتب الموضوع وسيُنشئ الذكاء الاصطناعي خطة درس كاملة لعرضها على السبورة
+            </p>
+
+            <div className="space-y-5">
+              <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-1 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all group">
+                <textarea
+                  value={topic} onChange={e => setTopic(e.target.value)}
+                  placeholder="مثال: جمع الكسور المتشابهة وغير المتشابهة، قانون نيوتن الثالث..."
+                  rows={2}
+                  className="w-full bg-transparent border-none p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none resize-none leading-relaxed"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1">
+                    <BookOpen size={14} className="text-emerald-500"/> المادة
+                  </label>
+                  <select 
+                    value={subject} onChange={e => setSubject(e.target.value)} disabled={loading}
+                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
+                  >
+                    <option value="">اختر المادة</option>
+                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1">
+                    <Users size={14} className="text-emerald-500"/> الصف الدراسي
+                  </label>
+                  <select 
+                    value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} disabled={loading}
+                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
+                  >
+                    <option value="">اختر الصف</option>
+                    {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1">
+                    <Clock size={14} className="text-emerald-500"/> عمق الشرح
+                  </label>
+                  <select 
+                    value={depth} onChange={e => setDepth(e.target.value as any)} disabled={loading}
+                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
+                  >
+                    <option value="brief">موجز (~١٠ دقائق)</option>
+                    <option value="standard">عادي (~٢٠ دقيقة)</option>
+                    <option value="detailed">تفصيلي (~٣٠ دقيقة)</option>
+                  </select>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl p-3 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2">
+                  <X size={16} /> {error}
+                </div>
+              )}
+
+              <button
+                onClick={generate} disabled={loading || !topic.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-3.5 font-black shadow-md shadow-emerald-600/10 transition-all hover:-translate-y-0.5 mt-2"
+              >
+                {loading ? (
+                  <><Loader2 size={18} className="animate-spin" /> <span>جارٍ التوليد الذكي…</span></>
+                ) : (
+                  <><Wand2 size={18} /> <span>{plan ? "أعد توليد الخطة" : "أنشئ خطة الدرس"}</span></>
+                )}
+              </button>
             </div>
           </div>
 
-          {error && (
-            <div style={{ marginTop: 12, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13 }}>
-              {error}
-            </div>
-          )}
-
-          <button
-            onClick={generate} disabled={loading || !topic.trim()}
-            style={{
-              marginTop: 16, width: "100%",
-              background: loading ? "#6b7280" : "linear-gradient(135deg,#166534,#16a34a)",
-              color: "white", border: "none", borderRadius: 10,
-              padding: "13px", cursor: loading ? "not-allowed" : "pointer",
-              fontWeight: 800, fontSize: 15, fontFamily: "inherit",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}
-          >
-            {loading ? (
-              <><Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> جارٍ إنشاء خطة الدرس…</>
-            ) : (
-              <><Sparkles size={18} /> {plan ? "أعد توليد الخطة" : "أنشئ خطة الدرس"}</>
-            )}
-          </button>
-        </div>
-
-        {/* Generated plan */}
-        {plan && (
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <CheckCircle2 size={18} color="#4ade80" />
-              <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--foreground)", margin: 0 }}>{plan.title}</h2>
-              <span style={{ color: "var(--muted-foreground)", fontSize: 12 }}>— انقر على أي عنصر لتعديله</span>
-            </div>
-
-            {plan.keyPoints && plan.keyPoints.length > 0 && (
-              <div style={{ background: "rgba(74,222,128,0.07)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#4ade80", marginBottom: 8 }}>النقاط الرئيسية للدرس</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {plan.keyPoints.map((kp, i) => (
-                    <span key={i} style={{ background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 600 }}>{kp}</span>
-                  ))}
+          {/* Generated plan */}
+          {plan && (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between mt-8 mb-4 px-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-800 dark:text-slate-100">{plan.title}</h2>
+                    <p className="text-xs font-bold text-slate-500">انقر على أي خطوة للتعديل</p>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div style={{ marginBottom: 10 }}>
-              <StepCard step={plan.intro} index={0} onEditVoice={updateIntroVoice} onEditActions={updateIntroActions} isIntro />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
-              {plan.steps.map((step, i) => (
-                <StepCard
-                  key={step.id} step={step} index={i + 1}
-                  onEditTitle={v => updateStep(i, { title: v })}
-                  onEditVoice={v => updateStep(i, { voiceText: v })}
-                  onEditActions={a => updateStep(i, { boardActions: a })}
-                  onDelete={() => deleteStep(i)}
-                />
-              ))}
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <StepCard step={plan.summary} index={plan.steps.length + 2} onEditVoice={updateSummaryVoice} onEditActions={updateSummaryActions} isSummary />
-            </div>
-
-            <button
-              onClick={startPresent} disabled={saving}
-              style={{
-                width: "100%",
-                background: saving ? "#6b7280" : "linear-gradient(135deg,#1a4731,#16a34a)",
-                color: "white", border: "none", borderRadius: 12,
-                padding: "16px", cursor: saving ? "not-allowed" : "pointer",
-                fontWeight: 800, fontSize: 17, fontFamily: "inherit",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                boxShadow: "0 4px 20px rgba(22,163,74,0.35)",
-              }}
-            >
-              {saving ? (
-                <><Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} /> جارٍ الحفظ…</>
-              ) : (
-                <><PlayCircle size={20} /> ابدأ العرض على السبورة</>
+              {plan.keyPoints && plan.keyPoints.length > 0 && (
+                <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-3xl p-5">
+                  <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-1.5">
+                    <Sparkles size={14} /> النقاط الرئيسية
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {plan.keyPoints.map((kp, i) => (
+                      <span key={i} className="bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/60 rounded-xl px-3 py-1.5 text-xs font-bold shadow-sm">
+                        {kp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
-            </button>
+
+              <div className="space-y-4">
+                <StepCard step={plan.intro} index={0} onEditVoice={updateIntroVoice} onEditActions={updateIntroActions} isIntro />
+                
+                {plan.steps.map((step, i) => (
+                  <StepCard
+                    key={step.id} step={step} index={i + 1}
+                    onEditTitle={v => updateStep(i, { title: v })}
+                    onEditVoice={v => updateStep(i, { voiceText: v })}
+                    onEditActions={a => updateStep(i, { boardActions: a })}
+                    onDelete={() => deleteStep(i)}
+                  />
+                ))}
+
+                <StepCard step={plan.summary} index={plan.steps.length + 2} onEditVoice={updateSummaryVoice} onEditActions={updateSummaryActions} isSummary />
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Floating Action Bar */}
+        {plan && (
+          <div className="fixed bottom-0 inset-x-0 z-30 p-4 bg-gradient-to-t from-[#f4f7f5] via-[#f4f7f5]/90 to-transparent dark:from-[#0B100E] dark:via-[#0B100E]/90 pb-6 pointer-events-none animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="max-w-2xl mx-auto pointer-events-auto">
+              <button
+                onClick={startPresent} disabled={saving}
+                className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white rounded-2xl py-4 font-black text-lg shadow-xl shadow-emerald-600/25 transition-all hover:-translate-y-1"
+              >
+                {saving ? (
+                  <><Loader2 size={22} className="animate-spin" /> <span>جارٍ تجهيز العرض…</span></>
+                ) : (
+                  <><PlayCircle size={22} /> <span>ابدأ العرض على السبورة</span></>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
-        <style>{`
-          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        `}</style>
       </div>
     </Layout>
   );

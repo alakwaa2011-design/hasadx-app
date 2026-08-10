@@ -600,7 +600,7 @@ export default function PresentationControl() {
                           }`}
                           style={{
                             background: highlight
-                              ? "linear-gradient(135deg,#059669 0%,#047857 100%)"
+                              ? "linear-gradient(135deg,#2f684d 0%,#225739 100%)"
                               : tileBg,
                             color: "#fff",
                           }}
@@ -917,7 +917,7 @@ export default function PresentationControl() {
                             style={{
                               width: `${pct}%`,
                               background: done
-                                ? "linear-gradient(90deg, #059669, #047857)"
+                                ? "linear-gradient(90deg, #2f684d, #225739)"
                                 : "linear-gradient(90deg, #D9A521, #a87a10)",
                             }}
                           />

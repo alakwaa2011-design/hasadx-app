@@ -822,7 +822,7 @@ export default function PresentationPlay() {
                     const isWrong = revealed && isChosen && typeof correctIdx === "number" && correctIdx !== i;
                     const dim = revealed && !isCorrect && !isWrong;
                     const bg = isCorrect
-                      ? "linear-gradient(135deg,#059669 0%,#047857 100%)"
+                      ? "linear-gradient(135deg,#2f684d 0%,#225739 100%)"
                       : isWrong
                         ? "linear-gradient(135deg,#dc2626 0%,#991b1b 100%)"
                         : wameedhTiles[i % wameedhTiles.length];

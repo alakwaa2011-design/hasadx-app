@@ -2,13 +2,11 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
-  Loader2, RefreshCw, Printer, Copy, ArrowRight,
+  Loader2, RefreshCw, Printer, Copy, ArrowRight, ArrowLeft,
   Sparkles, Brain, BookOpen, Lightbulb, Zap,
   ChevronDown, Globe, Layers, CheckCheck, Home,
   ImageDown, FileImage,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const BRAND_GREEN = "#225739";
@@ -18,7 +16,7 @@ const API_BASE = "";
 const PALETTE = [
   { bg: "#5B5BD6", soft: "#EEF0FF", border: "#5B5BD6" },
   { bg: "#0891B2", soft: "#E0F7FA", border: "#0891B2" },
-  { bg: "#059669", soft: "#D1FAE5", border: "#059669" },
+  { bg: "#2f684d", soft: "#e0ede5", border: "#2f684d" },
   { bg: "#D97706", soft: "#FEF3C7", border: "#D97706" },
   { bg: "#DC2626", soft: "#FEE2E2", border: "#DC2626" },
   { bg: "#7C3AED", soft: "#EDE9FE", border: "#7C3AED" },
@@ -310,14 +308,14 @@ const EXAMPLES_EN = [
 ];
 
 const USE_CASES_AR = [
-  { icon: <BookOpen className="w-6 h-6" />, title: "شرح الدروس", desc: "لخّص مفاهيم الدرس في صورة بصرية واضحة يسهل فهمها وحفظها" },
-  { icon: <Brain className="w-6 h-6" />, title: "المراجعة للاختبار", desc: "حوّل الفصل الدراسي كاملاً إلى خريطة ذهنية للمراجعة السريعة" },
-  { icon: <Lightbulb className="w-6 h-6" />, title: "إثارة الأفكار", desc: "استخدمها مع الطلاب لتنشيط التفكير وتوليد أفكار جديدة في الحصة" },
+  { icon: <BookOpen className="w-5 h-5" />, title: "شرح الدروس", desc: "لخّص مفاهيم الدرس في صورة بصرية واضحة يسهل فهمها وحفظها" },
+  { icon: <Brain className="w-5 h-5" />, title: "المراجعة للاختبار", desc: "حوّل الفصل الدراسي كاملاً إلى خريطة ذهنية للمراجعة السريعة" },
+  { icon: <Lightbulb className="w-5 h-5" />, title: "إثارة الأفكار", desc: "استخدمها مع الطلاب لتنشيط التفكير وتوليد أفكار جديدة في الحصة" },
 ];
 const USE_CASES_EN = [
-  { icon: <BookOpen className="w-6 h-6" />, title: "Lesson Explanation", desc: "Summarise lesson concepts in a clear visual that's easy to understand and remember" },
-  { icon: <Brain className="w-6 h-6" />, title: "Exam Revision", desc: "Turn an entire chapter into a mind map for quick, efficient revision" },
-  { icon: <Lightbulb className="w-6 h-6" />, title: "Brainstorming", desc: "Use it with students to activate thinking and generate new ideas in class" },
+  { icon: <BookOpen className="w-5 h-5" />, title: "Lesson Explanation", desc: "Summarise lesson concepts in a clear visual that's easy to understand and remember" },
+  { icon: <Brain className="w-5 h-5" />, title: "Exam Revision", desc: "Turn an entire chapter into a mind map for quick, efficient revision" },
+  { icon: <Lightbulb className="w-5 h-5" />, title: "Brainstorming", desc: "Use it with students to activate thinking and generate new ideas in class" },
 ];
 
 /* ── Main page ────────────────────────────────────────────────────────── */
@@ -329,11 +327,11 @@ export default function MindMapCreate() {
   const [loading, setLoading]         = useState(false);
   const [map, setMap]                 = useState<MindMap | null>(null);
   const [copied, setCopied]           = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [exporting, setExporting]     = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isAr = lang === "ar";
+  const dir = isAr ? "rtl" : "ltr";
 
   /* ── Generate ─────────────────────────────────────────────────────── */
   const generate = useCallback(async (overrideTopic?: string) => {
@@ -365,6 +363,7 @@ export default function MindMapCreate() {
   }, [topic, lang, depth, isAr]);
 
   const handleExample = (ex: string) => { setTopic(ex); generate(ex); };
+
   /* ── Print / PDF — isolated iframe so app CSS can't blank the page ── */
   const handlePrint = useCallback(() => {
     const svgEl = document.getElementById("mindmap-svg") as SVGSVGElement | null;
@@ -391,10 +390,10 @@ export default function MindMapCreate() {
   /* ── Copy as text ─────────────────────────────────────────────────── */
   const handleCopyText = () => {
     if (!map) return;
-    const lines: string[] = [`📍 ${map.center}`, ""];
+    const lines: string[] = [`- ${map.center}`, ""];
     map.branches.forEach((b) => {
-      lines.push(`${b.icon || "●"} ${b.label}`);
-      b.children.forEach((c) => lines.push(`    ├─ ${c}`));
+      lines.push(`${b.icon || "-"} ${b.label}`);
+      b.children.forEach((c) => lines.push(`    - ${c}`));
       lines.push("");
     });
     navigator.clipboard.writeText(lines.join("\n")).then(() => {
@@ -480,328 +479,214 @@ export default function MindMapCreate() {
   const examples = isAr ? EXAMPLES_AR : EXAMPLES_EN;
 
   return (
-    <>
-      <div dir={isAr ? "rtl" : "ltr"} className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+    <div dir={dir} className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] pb-32 font-display">
 
-        {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-border/60">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
-            <button
-              onClick={() => setLocation("/teacher")}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            >
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">{isAr ? "الأدوات" : "Tools"}</span>
-            </button>
-            <div className="w-px h-5 bg-border shrink-0" />
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: BRAND_GREEN }}>
-                <Brain className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bold text-foreground text-sm">
-                {isAr ? "مولّد الخرائط الذهنية" : "AI Mind Map Generator"}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0" />
-            <button
-              onClick={() => setLang(l => l === "ar" ? "en" : "ar")}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              {lang === "ar" ? "EN" : "ع"}
-            </button>
+      {/* Header */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+        <button
+          type="button"
+          onClick={() => setLocation("/teacher")}
+          className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+          aria-label={isAr ? "رجوع" : "Back"}
+        >
+          {isAr ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+        </button>
+        <div className="flex-1 min-w-0 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+            <Brain className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
+              {isAr ? "مولّد الخرائط الذهنية" : "AI Mind Map Generator"}
+            </h1>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+              {isAr ? "لخّص مفاهيم الدرس في خريطة بصرية جذابة" : "Summarise lesson concepts into an engaging visual map"}
+            </p>
           </div>
         </div>
+        <button
+          onClick={() => setLang(l => l === "ar" ? "en" : "ar")}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800/60 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+        >
+          <Globe className="w-4 h-4" />
+          <span className="mt-0.5">{lang === "ar" ? "English" : "عربي"}</span>
+        </button>
+      </header>
 
-        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-
-          {/* Input card */}
-          <div className="rounded-2xl border border-border/70 bg-white shadow-sm overflow-hidden">
-            <div className="p-5 space-y-4">
+      <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
+        
+        {/* Input Form Card */}
+        <div className="max-w-3xl mx-auto">
+          <motion.form
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            onSubmit={(e) => { e.preventDefault(); generate(); }}
+            className="bg-white dark:bg-[#15201B] rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 overflow-hidden transition-all hover:shadow-md hover:border-emerald-100 dark:hover:border-emerald-800/50"
+          >
+            <div className="p-5 sm:p-6 space-y-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ background: BRAND_GREEN }}>
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0 mt-0.5">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <label className="block text-sm font-bold text-foreground mb-1">
-                    {isAr ? "موضوع الخريطة الذهنية" : "Mind Map Topic"}
-                  </label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {isAr
-                      ? "أدخل عنوان الدرس أو الموضوع وسيولّد الذكاء الاصطناعي خريطة ذهنية شاملة"
-                      : "Enter your lesson title or topic and AI will generate a comprehensive mind map"}
-                  </p>
-                  <Textarea
+                  <textarea
                     ref={textareaRef}
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) generate(); }}
-                    placeholder={isAr ? "مثال: الثورة الصناعية في أوروبا…" : "e.g. The Industrial Revolution in Europe…"}
-                    className="resize-none text-base leading-relaxed"
+                    placeholder={isAr ? "عن ماذا تريد أن تنشئ خريطة ذهنية؟ (مثال: الثورة الصناعية...)" : "What do you want to map? (e.g. Industrial Revolution...)"}
+                    disabled={loading}
                     rows={2}
                     maxLength={400}
+                    data-testid="input-topic"
+                    className="w-full bg-transparent text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-700 outline-none resize-none leading-relaxed"
                   />
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-muted-foreground">{topic.length}/400</span>
-                    <button
-                      onClick={() => setShowAdvanced(v => !v)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      {isAr ? "خيارات" : "Options"}
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-                    </button>
+                  <div className="flex items-center justify-end px-1 mt-1">
+                    <span className="text-[11px] font-bold text-slate-400">{topic.length}/400</span>
                   </div>
                 </div>
               </div>
+              
+              <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-100 dark:via-emerald-900/50 to-transparent" />
 
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="border-t border-border/50 pt-4 flex flex-wrap gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-muted-foreground mb-2">
-                          {isAr ? "مستوى التفصيل" : "Detail Level"}
-                        </p>
-                        <div className="flex gap-2">
-                          {(["standard", "detailed"] as const).map((d) => (
-                            <button key={d} onClick={() => setDepth(d)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                                depth === d ? "border-transparent text-white" : "border-border text-muted-foreground hover:border-primary/40"
-                              }`}
-                              style={depth === d ? { background: BRAND_GREEN } : {}}
-                            >
-                              {d === "standard"
-                                ? (isAr ? "⚡ عادي (4-6 فروع)" : "⚡ Standard (4-6)")
-                                : (isAr ? "🔍 تفصيلي (6-8 فروع)" : "🔍 Detailed (6-8)")}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <Button
-                onClick={() => generate()}
-                disabled={loading || !topic.trim()}
-                className="w-full h-12 text-base font-bold rounded-xl gap-2"
-                style={{ background: BRAND_GREEN }}
-              >
-                {loading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" />{isAr ? "جارٍ توليد الخريطة…" : "Generating map…"}</>
-                ) : (
-                  <><Brain className="w-5 h-5" />{isAr ? "توليد الخريطة الذهنية" : "Generate Mind Map"}<Zap className="w-4 h-4" /></>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {/* Onboarding */}
-            {!map && !loading && (
-              <motion.div key="intro" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-6">
-                {/* Hero */}
-                <div className="rounded-2xl p-6 sm:p-8 text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${BRAND_GREEN} 0%, #1a4429 100%)` }}>
-                  <div className="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-white/5" />
-                  <div className="absolute -bottom-8 -right-8 w-36 h-36 rounded-full bg-white/5" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center">
-                        <Brain className="w-7 h-7" />
-                      </div>
-                      <div>
-                        <h1 className="text-xl sm:text-2xl font-black">
-                          {isAr ? "مولّد الخرائط الذهنية بالذكاء الاصطناعي" : "AI Mind Map Generator"}
-                        </h1>
-                        <p className="text-white/75 text-sm">
-                          {isAr ? "حوّل أي فكرة إلى خريطة بصرية في ثوانٍ" : "Turn any idea into a visual map in seconds"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        isAr ? "✅ توليد فوري بالذكاء الاصطناعي" : "✅ Instant AI generation",
-                        isAr ? "🖼️ تصدير PNG & SVG" : "🖼️ Export PNG & SVG",
-                        isAr ? "🖨️ قابل للطباعة" : "🖨️ Print-ready",
-                        isAr ? "🌐 عربي وإنجليزي" : "🌐 Arabic & English",
-                      ].map((f) => (
-                        <span key={f} className="text-xs bg-white/15 px-3 py-1 rounded-full font-semibold">{f}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Use cases */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {useCases.map((uc, i) => (
-                    <motion.div key={i}
-                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                      className="rounded-xl border border-border/60 bg-white p-4 space-y-2"
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-1.5 flex items-center border border-emerald-50 dark:border-emerald-900/30 w-full sm:w-auto">
+                  {(["standard", "detailed"] as const).map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDepth(d)}
+                      className={`flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl transition-all ${depth === d ? "bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                     >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: BRAND_GREEN + "18", color: BRAND_GREEN }}>{uc.icon}</div>
-                      <h3 className="font-bold text-sm text-foreground">{uc.title}</h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{uc.desc}</p>
-                    </motion.div>
+                      {d === "standard" ? (isAr ? "عادي (4-6)" : "Standard (4-6)") : (isAr ? "تفصيلي (6-8)" : "Detailed (6-8)")}
+                    </button>
                   ))}
                 </div>
 
-                {/* Steps */}
-                <div className="rounded-2xl border border-border/60 bg-white p-5">
-                  <h2 className="font-bold text-sm text-foreground mb-4 flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4" style={{ color: BRAND_GREEN }} />
-                    {isAr ? "كيفية الاستخدام" : "How to Use"}
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {(isAr ? [
-                      { n: "١", t: "أدخل الموضوع", d: "اكتب عنوان الدرس أو الموضوع الذي تريد شرحه في الحقل أعلاه" },
-                      { n: "٢", t: "ولّد الخريطة", d: "اضغط «توليد» وسيبني الذكاء الاصطناعي خريطة ذهنية شاملة لك" },
-                      { n: "٣", t: "صدّر وشارك", d: "صدّر الخريطة كصورة PNG أو SVG أو اطبعها وشاركها مع طلابك" },
-                    ] : [
-                      { n: "1", t: "Enter a Topic", d: "Type your lesson title or subject you want to explain above" },
-                      { n: "2", t: "Generate the Map", d: "Press 'Generate' and AI will build a comprehensive mind map for you" },
-                      { n: "3", t: "Export & Share", d: "Export as PNG or SVG, or print it and share directly with your students" },
-                    ]).map((step, i) => (
-                      <div key={i} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0" style={{ background: BRAND_GREEN }}>{step.n}</div>
-                        <div>
-                          <p className="font-bold text-sm text-foreground">{step.t}</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{step.d}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <div className="flex-1" />
 
-                {/* Example topics */}
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    {isAr ? "جرّب أحد هذه المواضيع:" : "Try one of these topics:"}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {examples.map((ex) => (
-                      <button key={ex} onClick={() => handleExample(ex)} disabled={loading}
-                        className="px-3 py-1.5 rounded-full border border-border text-xs font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50"
-                      >{ex}</button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Loading */}
-            {loading && (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="rounded-2xl border border-border/60 bg-white overflow-hidden"
-              >
-                <div className="h-[520px] flex flex-col items-center justify-center gap-5">
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: BRAND_GREEN + "15" }}>
-                    <Brain className="w-10 h-10 animate-pulse" style={{ color: BRAND_GREEN }} />
-                  </div>
-                  <div className="text-center">
-                    <p className="font-bold text-foreground text-lg mb-1">
-                      {isAr ? "جارٍ توليد الخريطة الذهنية…" : "Generating your mind map…"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {isAr ? "الذكاء الاصطناعي يحلّل الموضوع ويبني الخريطة" : "AI is analysing your topic and building the map"}
-                    </p>
-                  </div>
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Result */}
-            {map && !loading && (
-              <motion.div key="result" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
-
-                {/* Action bar */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-foreground flex-1 min-w-0 truncate">
-                    {isAr ? `🎉 خريطة: ${map.center}` : `🎉 Map: ${map.center}`}
-                  </span>
-
-                  {/* Regenerate */}
-                  <Button variant="outline" size="sm" onClick={() => generate()} disabled={loading} className="gap-1.5 text-xs shrink-0">
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    {isAr ? "إعادة توليد" : "Regenerate"}
-                  </Button>
-
-                  {/* Copy text */}
-                  <Button variant="outline" size="sm" onClick={handleCopyText} className="gap-1.5 text-xs shrink-0">
-                    {copied ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    {isAr ? "نسخ كنص" : "Copy text"}
-                  </Button>
-
-                  {/* Export PNG */}
-                  <Button
-                    size="sm" onClick={handleExportPng} disabled={exporting}
-                    className="gap-1.5 text-xs shrink-0 text-white"
-                    style={{ background: "#4F46E5" }}
-                  >
-                    {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageDown className="w-3.5 h-3.5" />}
-                    {isAr ? "تصدير PNG" : "Export PNG"}
-                  </Button>
-
-                  {/* Export SVG */}
-                  <Button
-                    variant="outline" size="sm" onClick={handleExportSvg}
-                    className="gap-1.5 text-xs shrink-0"
-                  >
-                    <FileImage className="w-3.5 h-3.5" />
-                    {isAr ? "تحميل SVG" : "Download SVG"}
-                  </Button>
-
-                  {/* Print */}
-                  <Button size="sm" onClick={handlePrint} className="gap-1.5 text-xs text-white shrink-0" style={{ background: BRAND_GREEN }}>
-                    <Printer className="w-3.5 h-3.5" />
-                    {isAr ? "طباعة" : "Print"}
-                  </Button>
-                </div>
-
-                {/* Export hint */}
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <ImageDown className="w-3.5 h-3.5 shrink-0" />
-                  {isAr
-                    ? "PNG دقة عالية 2× مناسبة للطباعة والعرض — SVG قابل للتحرير في أي برنامج تصميم"
-                    : "PNG is 2× high-res, great for printing and presentations — SVG is editable in any design app"}
-                </p>
-
-                {/* SVG canvas */}
-                <div
-                  className="rounded-2xl overflow-hidden shadow-2xl"
-                  style={{ background: BG_LIGHT }}
+                <button
+                  type="submit"
+                  disabled={loading || !topic.trim()}
+                  data-testid="btn-generate"
+                  className="w-full sm:w-auto h-12 px-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shrink-0"
                 >
+                  {loading ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" />{isAr ? "جارٍ التوليد..." : "Generating..."}</>
+                  ) : (
+                    <><Sparkles className="w-5 h-5" />{isAr ? "توليد الخريطة" : "Generate Map"}</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.form>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {!map && !loading ? (
+            <motion.div key="intro" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="max-w-3xl mx-auto space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {useCases.map((uc, i) => (
+                  <div key={i} className="bg-white dark:bg-[#15201B] rounded-3xl p-5 border border-emerald-50 dark:border-emerald-900/30 shadow-sm flex flex-col items-center text-center transition-all hover:shadow-md hover:border-emerald-100 dark:hover:border-emerald-800/50">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 mb-4 flex items-center justify-center shrink-0">
+                      {uc.icon}
+                    </div>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 mb-2">{uc.title}</h3>
+                    <p className="text-[12px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">{uc.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white dark:bg-[#15201B] rounded-3xl p-6 border border-emerald-50 dark:border-emerald-900/30 shadow-sm">
+                <h3 className="font-black text-slate-800 dark:text-slate-100 mb-4 text-sm flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-amber-500" />
+                  {isAr ? "جرب أحد هذه المواضيع:" : "Try one of these topics:"}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {examples.map((ex) => (
+                    <button
+                      key={ex}
+                      onClick={() => handleExample(ex)}
+                      className="px-4 py-2 rounded-xl text-sm font-bold bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 text-slate-600 dark:text-slate-300 hover:border-emerald-200 dark:hover:border-emerald-800 hover:text-emerald-700 dark:hover:text-emerald-400 transition-all"
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          ) : map ? (
+            <motion.div
+              key="map"
+              initial={{ opacity: 0, scale: 0.98, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: -16 }}
+              className="w-full"
+            >
+              <div className="bg-white dark:bg-[#15201B] rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 p-2 sm:p-4">
+                <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-[#F8FAFC]">
                   <MindMapSVG map={map} isAr={isAr} />
                 </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-                {/* Text outline */}
-                <details className="rounded-xl border border-border/60 bg-white overflow-hidden">
-                  <summary className="px-4 py-3 text-xs font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
-                    {isAr ? "📋 عرض الخريطة كنص مخطّط" : "📋 View map as text outline"}
-                  </summary>
-                  <div className="px-4 pb-4">
-                    <pre className="text-xs text-foreground font-mono leading-relaxed whitespace-pre-wrap bg-muted/40 rounded-lg p-3 mt-2" dir="auto">
-                      {[`📍 ${map.center}`, "", ...map.branches.flatMap((b) => [
-                        `${b.icon || "●"} ${b.label}`,
-                        ...b.children.map((c) => `    ├─ ${c}`),
-                        "",
-                      ])].join("\n")}
-                    </pre>
-                  </div>
-                </details>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+      </main>
+
+      {/* Floating Action Bar */}
+      <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
+        <AnimatePresence>
+          {map && !loading && (
+            <motion.div
+              initial={{ y: 50, opacity: 0, scale: 0.9 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 50, opacity: 0, scale: 0.9 }}
+              className="pointer-events-auto bg-white/95 dark:bg-[#15201B]/95 backdrop-blur-xl px-2 py-2 rounded-2xl shadow-2xl shadow-emerald-900/20 border border-emerald-100 dark:border-emerald-800/60 flex items-center gap-1 sm:gap-2"
+            >
+              <button
+                onClick={handleExportPng}
+                disabled={exporting}
+                data-testid="btn-export-png"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm transition-colors"
+              >
+                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageDown className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isAr ? "صورة PNG" : "PNG"}</span>
+              </button>
+              
+              <button
+                onClick={handleExportSvg}
+                data-testid="btn-export-svg"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm transition-colors"
+              >
+                <FileImage className="w-4 h-4" />
+                <span className="hidden sm:inline">{isAr ? "فيكتور SVG" : "SVG"}</span>
+              </button>
+
+              <div className="w-px h-6 bg-emerald-100 dark:bg-emerald-800/50 mx-1" />
+
+              <button
+                onClick={handlePrint}
+                data-testid="btn-print"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">{isAr ? "طباعة" : "Print"}</span>
+              </button>
+
+              <button
+                onClick={handleCopyText}
+                data-testid="btn-copy"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm transition-colors"
+              >
+                {copied ? <CheckCheck className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isAr ? "نسخ كنص" : "Copy"}</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </>
+
+    </div>
   );
 }

@@ -1,23 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Plus, Trash2, Save, FolderOpen, Loader2,
   Wand2, X, Eye, BookOpen, Target, Package, Library,
   Flame, Compass, Activity, ClipboardCheck, Flag, Home, Users,
-  StickyNote, Clock, Upload, FileType, ImageIcon, FileText,
-  ArrowLeft, Printer, Link2, RotateCcw,
+  StickyNote, Clock, Upload, FileType, FileText,
+  ArrowLeft, Printer, Link2, RotateCcw, ArrowRight, Settings as SettingsIcon,
+  Calendar, CheckCircle2, Youtube, Type, TextSelect
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { LessonPlanPrintView, type PlanData } from "@/pages/teacher/lesson-plan-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const BRAND_PRIMARY = "#225739";
-const BRAND_GOLD = "#D9A521";
 
 const LP_PREFS_KEY = "hasad:lessonplan:prefs";
 const LP_META_KEY = "hasad:lessonplan:meta";
@@ -93,10 +91,6 @@ function clearLpPrefs() {
 }
 
 interface Block { title?: string; durationMinutes?: number; description: string }
-/** Optional reference linking this lesson-plan activity to an existing
- *  Hasaad activity (assignment or interactive video).
- *  Stored alongside the activity so the teacher can deep-link from the
- *  printable plan back to the actual platform asset. */
 interface ActivityRef {
   kind: "assignment" | "video-lesson";
   id: number;
@@ -186,13 +180,128 @@ const blankSettings = (): Settings => ({
   includeHomework: true,
   includeDifferentiation: true,
   includeNotes: true,
-  // Font + date controls — left undefined so the print view's resolver
-  // applies the language-appropriate defaults until the teacher picks.
   fontFamily: "default",
   fontSizePt: 11.5,
   lessonDateGregorian: "",
   lessonDateHijri: "",
 });
+
+function cleanSections(s: Sections): Sections {
+  const c = { ...s };
+  if (!c.homework?.description?.trim()) delete c.homework;
+  if (c.differentiation) {
+    if (!c.differentiation.support?.trim()) delete c.differentiation.support;
+    if (!c.differentiation.extension?.trim()) delete c.differentiation.extension;
+    if (Object.keys(c.differentiation).length === 0) delete c.differentiation;
+  }
+  if (!c.notes?.trim()) delete c.notes;
+  return c;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subcomponents
+// ─────────────────────────────────────────────────────────────────────────────
+
+function InputCard({ label, icon: Icon, children, className = "" }: { label: string; icon: React.ElementType; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-3 sm:p-4 flex flex-col justify-center border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all group ${className}`}>
+      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1 sm:mb-1.5">
+        <Icon className="w-3.5 h-3.5 text-emerald-500" /> {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function SectionCard({ title, icon, children, className = "" }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-white dark:bg-[#15201B] rounded-3xl p-5 shadow-sm border border-emerald-50 dark:border-emerald-900/30 flex flex-col h-full ${className}`}>
+      <div className="flex items-center gap-2 mb-4 text-emerald-800 dark:text-emerald-300">
+        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <h3 className="font-black text-base">{title}</h3>
+      </div>
+      <div className="space-y-3 flex-1 flex flex-col">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Checkbox({ label, checked, onChange }: { label: string, checked: boolean, onChange: (c: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer group">
+      <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+        checked ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white dark:bg-[#15201B] border-slate-300 dark:border-slate-700 text-transparent"
+      }`}>
+        <CheckCircle2 className="w-3.5 h-3.5" />
+      </div>
+      <span className="text-sm font-bold text-slate-700 dark:text-slate-300 select-none group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{label}</span>
+    </label>
+  );
+}
+
+function ActivityPickerModal({ open, onClose, onPick, t }: { open: boolean; onClose: () => void; onPick: (ref: ActivityRef) => void; t: any }) {
+  const [tab, setTab] = useState<"assignments" | "videos">("assignments");
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    const endpoint = tab === "assignments" ? "/api/assignments" : "/api/video-lessons";
+    fetch(`${API_BASE}${endpoint}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setItems(Array.isArray(data) ? data : []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [open, tab]);
+
+  const filtered = items.filter(x => (x.title || "").toLowerCase().includes(search.toLowerCase()));
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#15201B] w-full max-w-lg rounded-3xl shadow-xl flex flex-col overflow-hidden max-h-[85vh]" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-[#0B100E]/50">
+          <h3 className="font-black text-slate-800 dark:text-slate-100">{t.pickActivity}</h3>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><X className="w-4 h-4"/></button>
+        </div>
+        <div className="flex border-b border-slate-100 dark:border-slate-800">
+          <button onClick={() => setTab("assignments")} className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${tab === "assignments" ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10" : "border-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}>{t.tabAssignments}</button>
+          <button onClick={() => setTab("videos")} className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${tab === "videos" ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10" : "border-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}>{t.tabVideos}</button>
+        </div>
+        <div className="p-4 flex-1 flex flex-col min-h-0">
+           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2 mb-4 border border-slate-100 dark:border-slate-800 focus-within:border-emerald-400 transition-colors shrink-0">
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.pickerSearch} className="w-full bg-transparent text-sm font-bold outline-none px-2" />
+           </div>
+           <div className="overflow-y-auto space-y-2 flex-1">
+              {loading ? (
+                <div className="flex justify-center p-6"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center p-6 text-sm font-bold text-slate-400">{t.pickerEmpty}</div>
+              ) : (
+                filtered.map(it => (
+                  <button key={it.id} onClick={() => onPick({ kind: tab === "assignments" ? "assignment" : "video-lesson", id: it.id, title: it.title })} className="w-full text-start p-3 rounded-xl hover:bg-emerald-50 dark:bg-[#0B100E] dark:hover:bg-emerald-900/20 border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-all flex items-center gap-3 group">
+                     <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#15201B] flex items-center justify-center shadow-sm group-hover:text-emerald-500 transition-colors border border-slate-50 dark:border-slate-700">
+                        {tab === "assignments" ? <ClipboardCheck className="w-4 h-4"/> : <Youtube className="w-4 h-4"/>}
+                     </div>
+                     <span className="text-sm font-bold text-slate-800 dark:text-slate-100 flex-1 truncate">{it.title}</span>
+                  </button>
+                ))
+              )}
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Page Component
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function LessonPlanCreate() {
   const { lang } = useI18n();
@@ -200,10 +309,7 @@ export default function LessonPlanCreate() {
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
 
-  // Load saved AI prefs once at mount time.
   const _lpPrefs = useMemo(() => loadLpPrefs(), []);
-
-  // Load saved meta (subject/grade/duration) only when NOT opening an existing plan for editing.
   const _isEditMode = useMemo(() => {
     const p = new URLSearchParams(window.location.search);
     const v = p.get("edit");
@@ -220,13 +326,11 @@ export default function LessonPlanCreate() {
   const [sections, setSections] = useState<Sections>(blankSections());
   const [settings, setSettings] = useState<Settings>(blankSettings());
 
-  // AI panel state
   const [aiTopic, setAiTopic] = useState("");
   const [aiPedagogy, setAiPedagogy] = useState<"direct" | "inquiry" | "project" | "flipped" | "mixed">(_lpPrefs.aiPedagogy ?? "mixed");
   const [aiNotes, setAiNotes] = useState(_lpPrefs.aiNotes ?? "");
   const [generating, setGenerating] = useState(false);
 
-  // Persist AI prefs to localStorage whenever they change (skip initial mount).
   const lpDidMountRef = useRef(false);
   const lpSkipNextSaveRef = useRef(false);
   useEffect(() => {
@@ -235,7 +339,6 @@ export default function LessonPlanCreate() {
     saveLpPrefs({ contentLang, aiPedagogy, aiNotes });
   }, [contentLang, aiPedagogy, aiNotes]);
 
-  // Persist lesson meta (subject / grade / duration) whenever they change (skip initial mount).
   const lpMetaDidMountRef = useRef(false);
   useEffect(() => {
     if (!lpMetaDidMountRef.current) { lpMetaDidMountRef.current = true; return; }
@@ -250,16 +353,44 @@ export default function LessonPlanCreate() {
     setAiNotes(LP_DEFAULT_PREFS.aiNotes);
   }, [lang]);
 
-  // File extraction (multi-file: 5 max for teachers, 25 max for admins).
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pickedFiles, setPickedFiles] = useState<File[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  
   const fileLimits = useMemo(() => ({
     maxFiles: isAdmin ? 25 : 5,
     maxBytes: isAdmin ? 200 * 1024 * 1024 : 50 * 1024 * 1024,
     maxMb: isAdmin ? 200 : 50,
   }), [isAdmin]);
+
+  /* إضافة ملفات مع تحقق الحجم ودمجها مع المختار سابقاً (بدون تكرار) */
+  const addPickedFiles = useCallback((incoming: File[]) => {
+    const valid: File[] = [];
+    for (const f of incoming) {
+      if (f.size > fileLimits.maxBytes) {
+        toast.error(ar ? `الملف "${f.name}" يتجاوز ${fileLimits.maxMb} ميجا` : `"${f.name}" exceeds ${fileLimits.maxMb} MB`);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (valid.length === 0) return;
+    setPickedFiles(prev => {
+      const seen = new Set(prev.map(p => `${p.name}:${p.size}`));
+      const merged = [...prev];
+      for (const f of valid) {
+        const key = `${f.name}:${f.size}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(f);
+      }
+      if (merged.length > fileLimits.maxFiles) {
+        toast.error(ar ? `الحد الأقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`);
+      }
+      return merged.slice(0, fileLimits.maxFiles);
+    });
+  }, [fileLimits, ar]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
@@ -268,30 +399,17 @@ export default function LessonPlanCreate() {
       .catch(() => { /* non-fatal */ });
   }, []);
 
-  // Saved templates modal
   const [showSaved, setShowSaved] = useState(false);
   const [savedRows, setSavedRows] = useState<PlanRow[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
 
   const [saving, setSaving] = useState(false);
-
-  // editingId !== null → save will PUT (update) instead of POST (create).
-  // Set when the page is opened with ?edit=<id> or via "Open" in the
-  // saved-plans modal. Wired into handleSave below.
   const [editingId, setEditingId] = useState<number | null>(null);
-
-  // Preview-without-save overlay state. Lets the teacher see the printable
-  // page in-place using the current draft and bounce back without losing
-  // their edits — fulfils requirement #5 for lesson plans.
   const [previewing, setPreviewing] = useState(false);
+  
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showPicker, setShowPicker] = useState<{ sectionIdx: number } | null>(null);
 
-  // If the URL contains ?edit=<id>, fetch that lesson plan and populate
-  // the editor on mount. Mirrors the worksheet edit flow so the teacher
-  // can land here from the print page's "Edit" button.
-  //
-  // Race-safety: if the teacher starts typing before the fetch resolves
-  // we must not overwrite their in-progress edits. The ref below is
-  // flipped by every onChange handler that mutates draft state.
   const editLoadDirtyRef = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -303,7 +421,6 @@ export default function LessonPlanCreate() {
       .then((row: PlanRow | null) => {
         if (!row) return;
         if (editLoadDirtyRef.current) {
-          // Teacher already started editing — bind id only, keep their work.
           setEditingId(row.id);
           return;
         }
@@ -316,7 +433,7 @@ export default function LessonPlanCreate() {
         setSections({ ...blankSections(), ...row.sections });
         setSettings({ ...blankSettings(), ...row.settings });
       })
-      .catch(() => { /* silent — user can re-open from the dashboard */ });
+      .catch(() => {});
   }, []);
 
   const t = useMemo(() => ({
@@ -447,11 +564,6 @@ export default function LessonPlanCreate() {
     }
   }
 
-  /* Generate the lesson plan from one or more uploaded source files.
-     Mirrors the worksheet `/ai/extract` flow — multipart POST with all
-     files under the "files" field plus the topic / pedagogy / notes
-     metadata. Per-tier limits are enforced both client-side (instant
-     feedback) and server-side (authoritative). */
   async function extractFromFiles() {
     if (pickedFiles.length === 0) {
       toast.error(ar ? "اختر ملفًا واحدًا على الأقل" : "Pick at least one file");
@@ -503,7 +615,6 @@ export default function LessonPlanCreate() {
     }
     setSaving(true);
     try {
-      // Strip empty optional sub-objects so Zod doesn't reject them.
       const payload = {
         title: title.trim(),
         language: contentLang,
@@ -558,9 +669,12 @@ export default function LessonPlanCreate() {
     setShowSaved(false);
   }
 
-  // Build a PlanData snapshot of the current draft for the in-page
-  // preview overlay. ownerName is left blank since we don't need it on
-  // the printable surface (the brand line is already gone).
+  function updateActivity(idx: number, patch: Partial<ActivityBlock>) {
+    const n = [...sections.activities];
+    n[idx] = { ...n[idx], ...patch };
+    setSections({ ...sections, activities: n });
+  }
+
   const draftPlanData: PlanData = useMemo(() => ({
     id: editingId ?? 0,
     title: title.trim() || (ar ? "خطة درس" : "Lesson Plan"),
@@ -574,973 +688,514 @@ export default function LessonPlanCreate() {
     isOwner: true,
   }), [editingId, title, contentLang, gradeLevel, subject, durationMinutes, sections, settings, ar]);
 
-  // ──────────────────────────────────────────────────── render
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <Layout>
       <div
         dir={dir}
-        className="min-h-screen pb-32"
-        style={{ background: `linear-gradient(180deg, ${BRAND_PRIMARY}06 0%, transparent 200px)` }}
+        className="min-h-[100dvh] pb-32 bg-[#f4f7f5] dark:bg-[#0B100E] font-display transition-colors"
         onInput={() => { editLoadDirtyRef.current = true; }}
         onChange={() => { editLoadDirtyRef.current = true; }}
       >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3 flex-wrap">
+        {/* Top Sticky Header */}
+        <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+          <button
+            onClick={() => setLocation("/teacher")}
+            className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+            aria-label={ar ? "رجوع" : "Back"}
+          >
+            {ar ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+          </button>
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+              <BookOpen className="w-5 h-5 text-white" />
+            </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-2" style={{ color: BRAND_PRIMARY }}>
-                <BookOpen className="w-7 h-7" style={{ color: BRAND_GOLD }} />
+              <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
                 {t.headline}
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">{t.sub}</p>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+                {t.sub}
+              </p>
             </div>
-            <button
-              onClick={() => setShowSaved(true)}
-              className="px-3 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 min-h-[44px]"
-              style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY, background: "white" }}
-            >
-              <FolderOpen className="w-4 h-4" />
-              {t.mySaved}
-            </button>
           </div>
+          <button
+            onClick={() => setShowSaved(true)}
+            className="px-4 py-2 bg-white dark:bg-[#15201B] border border-emerald-100 dark:border-emerald-800 rounded-xl text-sm font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2 shadow-sm hover:shadow-md transition-all"
+            data-testid="btn-my-saved"
+          >
+            <FolderOpen className="w-4 h-4" />
+            <span className="hidden sm:inline">{t.mySaved}</span>
+          </button>
+        </header>
 
-          {/* Meta */}
-          <Card className="p-4 sm:p-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label={t.title}>
-                <input
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  className="w-full px-3 py-2.5 border rounded-xl text-sm font-bold min-h-[44px]"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                  placeholder={ar ? "مثال: درس الكسور" : "e.g. Lesson on fractions"}
-                />
-              </Field>
-              <Field label={t.duration}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={15}
-                    max={180}
-                    value={durationMinutes}
-                    onChange={e => setDurationMinutes(Math.max(15, Math.min(180, parseInt(e.target.value, 10) || 45)))}
-                    className="w-24 px-3 py-2.5 border rounded-xl text-sm font-bold min-h-[44px]"
-                    style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                  />
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">{t.minute}</span>
-                </div>
-              </Field>
-              <Field label={t.subject}>
-                <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm min-h-[44px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              </Field>
-              <Field label={t.grade}>
-                <input value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm min-h-[44px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              </Field>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-muted-foreground">{t.contentLang}:</span>
-              <button onClick={() => setContentLang("ar")} className={`px-3 py-1.5 rounded-lg text-xs font-bold min-h-[36px] ${contentLang === "ar" ? "text-white" : ""}`} style={{ background: contentLang === "ar" ? BRAND_PRIMARY : `${BRAND_PRIMARY}11`, color: contentLang === "ar" ? "white" : BRAND_PRIMARY }}>العربية</button>
-              <button onClick={() => setContentLang("en")} className={`px-3 py-1.5 rounded-lg text-xs font-bold min-h-[36px] ${contentLang === "en" ? "text-white" : ""}`} style={{ background: contentLang === "en" ? BRAND_PRIMARY : `${BRAND_PRIMARY}11`, color: contentLang === "en" ? "white" : BRAND_PRIMARY }}>English</button>
-            </div>
-          </Card>
-
-          {/* AI panel */}
-          <Card className="p-4 sm:p-5" style={{ background: `linear-gradient(135deg, ${BRAND_GOLD}11 0%, ${BRAND_PRIMARY}08 100%)` }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-5 h-5" style={{ color: BRAND_GOLD }} />
-              <h2 className="font-extrabold text-lg" style={{ color: BRAND_PRIMARY }}>{t.aiPanel}</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label={t.aiTopic}>
-                <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.aiTopicPh} className="w-full px-3 py-2.5 border rounded-xl text-sm bg-white min-h-[44px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              </Field>
-              <Field label={t.aiPedagogy}>
-                <select value={aiPedagogy} onChange={e => setAiPedagogy(e.target.value as any)} className="w-full px-3 py-2.5 border rounded-xl text-sm bg-white min-h-[44px]" style={{ borderColor: `${BRAND_PRIMARY}33` }}>
-                  <option value="mixed">{t.pedMixed}</option>
-                  <option value="direct">{t.pedDirect}</option>
-                  <option value="inquiry">{t.pedInquiry}</option>
-                  <option value="project">{t.pedProject}</option>
-                  <option value="flipped">{t.pedFlipped}</option>
-                </select>
-              </Field>
-            </div>
-            <Field label={t.aiNotes} className="mt-3">
-              <textarea value={aiNotes} onChange={e => setAiNotes(e.target.value)} placeholder={t.aiNotesPh} rows={2} className="w-full px-3 py-2 border rounded-xl text-sm bg-white" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-            </Field>
-            <div className="mt-3 flex justify-end gap-2">
-              <button
-                onClick={handleLpRestoreDefaults}
-                title={ar ? "استعادة الإعدادات الافتراضية" : "Restore defaults"}
-                className="px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 min-h-[44px]"
-                style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                {ar ? "إعادة ضبط" : "Reset"}
-              </button>
-              <button onClick={handleGenerate} disabled={generating || extracting} className="px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 text-white shadow-md disabled:opacity-60 min-h-[44px]" style={{ background: BRAND_PRIMARY }}>
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                {t.generate}
-              </button>
-            </div>
-
-            {/* File extraction sub-panel — multi-file (up to 5 for
-                teachers, 25 for admins). Generates a complete plan from
-                the uploaded source content. */}
-            <div className="pt-3 mt-3 border-t" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-              <div className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: BRAND_PRIMARY }}>
-                <Upload className="w-3.5 h-3.5" />
-                {ar
-                  ? `أو ارفع ملفات (صور / PDF / Word) لتوليد الخطة منها — حتى ${fileLimits.maxFiles} ملفات${isAdmin ? " (مسؤول)" : ""}`
-                  : `Or upload files (images / PDF / Word) to generate the plan — up to ${fileLimits.maxFiles} files${isAdmin ? " (admin)" : ""}`}
+        <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+          {/* Metadata Card */}
+          <section className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30">
+            <div className="space-y-4">
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder={t.title}
+                className="w-full bg-transparent border-b-2 border-transparent hover:border-emerald-100 focus:border-emerald-400 dark:hover:border-emerald-900/50 dark:focus:border-emerald-500 outline-none text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-700 transition-colors pb-1.5"
+                data-testid="input-title"
+              />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <InputCard label={t.subject} icon={BookOpen}>
+                  <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" data-testid="input-subject" />
+                </InputCard>
+                <InputCard label={t.grade} icon={Users}>
+                  <input value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} className="w-full bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" data-testid="input-grade" />
+                </InputCard>
+                <InputCard label={t.duration} icon={Clock}>
+                  <div className="flex items-center gap-1">
+                    <input type="number" min={15} max={180} value={durationMinutes} onChange={e => setDurationMinutes(Math.max(15, Math.min(180, parseInt(e.target.value, 10) || 45)))} className="w-16 bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" data-testid="input-duration" />
+                    <span className="text-xs font-bold text-slate-500">{t.minute}</span>
+                  </div>
+                </InputCard>
+                <InputCard label={t.contentLang} icon={Flag}>
+                  <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <button onClick={() => setContentLang("ar")} className={`flex-1 py-1 text-xs font-bold rounded-md transition-all ${contentLang === "ar" ? "bg-white dark:bg-[#15201B] text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-slate-500"}`}>AR</button>
+                    <button onClick={() => setContentLang("en")} className={`flex-1 py-1 text-xs font-bold rounded-md transition-all ${contentLang === "en" ? "bg-white dark:bg-[#15201B] text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-slate-500"}`}>EN</button>
+                  </div>
+                </InputCard>
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                  <label
-                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer hover:bg-muted/40 transition-colors text-xs bg-white"
-                    style={{ borderColor: `${BRAND_PRIMARY}55`, color: pickedFiles.length > 0 ? BRAND_PRIMARY : "#666" }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      className="hidden"
-                      onChange={e => {
-                        const incoming = Array.from(e.target.files || []);
-                        if (incoming.length === 0) return;
-                        const merged = [...pickedFiles];
-                        for (const f of incoming) {
-                          if (f.size > fileLimits.maxBytes) {
-                            toast.error(ar ? `الملف "${f.name}" يتجاوز ${fileLimits.maxMb} ميجا` : `"${f.name}" exceeds ${fileLimits.maxMb} MB`);
-                            continue;
-                          }
-                          if (merged.some(m => m.name === f.name && m.size === f.size)) continue;
-                          merged.push(f);
-                        }
-                        if (merged.length > fileLimits.maxFiles) {
-                          toast.error(ar ? `الحد الأقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`);
-                          merged.length = fileLimits.maxFiles;
-                        }
-                        setPickedFiles(merged);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                    />
-                    <Upload className="w-4 h-4" />
-                    {pickedFiles.length > 0
-                      ? (ar ? `اضغط لإضافة المزيد (${pickedFiles.length}/${fileLimits.maxFiles})` : `Click to add more (${pickedFiles.length}/${fileLimits.maxFiles})`)
-                      : (ar ? `اضغط لاختيار الملفات — حتى ${fileLimits.maxMb} ميجا للملف` : `Click to pick files — up to ${fileLimits.maxMb} MB each`)}
-                  </label>
-                  <button
-                    onClick={extractFromFiles}
-                    disabled={pickedFiles.length === 0 || extracting || generating}
-                    className="px-4 py-2.5 rounded-xl font-bold text-white text-xs flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px]"
-                    style={{ background: BRAND_PRIMARY }}
-                  >
-                    {extracting
-                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {ar ? "جارٍ القراءة..." : "Extracting..."}</>
-                      : <><FileText className="w-3.5 h-3.5" /> {ar ? `ولّد من الملفات (${pickedFiles.length})` : `Generate from files (${pickedFiles.length})`}</>}
-                  </button>
+            </div>
+          </section>
+
+          {/* AI Generation Card */}
+          <section className="bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-100 dark:border-emerald-900/30">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-500" />
+                <h2 className="text-base font-black text-slate-800 dark:text-slate-100">{t.aiPanel}</h2>
+              </div>
+              <button onClick={handleLpRestoreDefaults} className="text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors flex items-center gap-1" title={ar ? "استعادة الافتراضي" : "Restore defaults"}>
+                <RotateCcw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{ar ? "إعادة ضبط" : "Reset"}</span>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-[#15201B] rounded-2xl p-2.5 border border-slate-200 dark:border-slate-800 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all">
+                <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.aiTopicPh} className="w-full bg-transparent px-2 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" data-testid="input-ai-topic" />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <InputCard label={t.aiPedagogy} icon={Flame} className="bg-white dark:bg-[#15201B]">
+                  <select value={aiPedagogy} onChange={e => setAiPedagogy(e.target.value as any)} className="w-full bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none appearance-none cursor-pointer">
+                    <option value="mixed">{t.pedMixed}</option>
+                    <option value="direct">{t.pedDirect}</option>
+                    <option value="inquiry">{t.pedInquiry}</option>
+                    <option value="project">{t.pedProject}</option>
+                    <option value="flipped">{t.pedFlipped}</option>
+                  </select>
+                </InputCard>
+                <InputCard label={t.aiNotes} icon={StickyNote} className="bg-white dark:bg-[#15201B]">
+                  <input value={aiNotes} onChange={e => setAiNotes(e.target.value)} placeholder={t.aiNotesPh} className="w-full bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" />
+                </InputCard>
+              </div>
+
+              <div 
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  if (e.dataTransfer.files?.length) addPickedFiles(Array.from(e.dataTransfer.files));
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${
+                  isDragging ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 scale-[1.02]" : "border-emerald-100 dark:border-emerald-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 bg-white/50 dark:bg-[#15201B]/50"
+                }`}
+              >
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={e => {
+                    if (e.target.files?.length) addPickedFiles(Array.from(e.target.files));
+                    e.target.value = "";
+                  }}
+                />
+                <Upload className="w-6 h-6 text-emerald-500 mb-2" />
+                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                  {ar ? "اسحب الملفات هنا أو اضغط للاختيار" : "Drag files here or click to pick"}
+                </span>
+                <span className="text-xs font-bold text-slate-400 mt-1">
+                  {ar ? `حد أقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`}
+                </span>
+              </div>
+              
+              {pickedFiles.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {pickedFiles.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-[#15201B] border border-emerald-100 dark:border-emerald-800 shadow-sm">
+                        <FileType className="w-4 h-4 text-emerald-500" />
+                        <span className="max-w-[140px] truncate text-xs font-bold text-slate-700 dark:text-slate-300">{f.name}</span>
+                        <button onClick={(e) => { e.stopPropagation(); setPickedFiles(pf => pf.filter((_, idx) => idx !== i)); }} className="text-slate-400 hover:text-red-500"><X className="w-3.5 h-3.5"/></button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-2">
+                <button onClick={handleGenerate} disabled={generating || extracting} className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 btn-bounce" data-testid="btn-generate">
+                  {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+                  {t.generate}
+                </button>
+                
                 {pickedFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {pickedFiles.map((f, idx) => (
-                      <span
-                        key={`${f.name}-${f.size}-${idx}`}
-                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border bg-white text-[11px]"
-                        style={{ borderColor: `${BRAND_PRIMARY}44`, color: BRAND_PRIMARY }}
-                      >
-                        {f.type.startsWith("image/") ? <ImageIcon className="w-3 h-3" /> : <FileType className="w-3 h-3" />}
-                        <span className="font-bold truncate max-w-[160px]">{f.name}</span>
-                        <span className="opacity-60">{Math.round(f.size / 1024)} KB</span>
-                        <button
-                          type="button"
-                          onClick={() => setPickedFiles(prev => prev.filter((_, i) => i !== idx))}
-                          aria-label={ar ? "إزالة" : "Remove"}
-                          className="ml-0.5 hover:text-red-600"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
+                  <button onClick={extractFromFiles} disabled={generating || extracting} className="flex-1 py-3.5 rounded-2xl bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 font-black text-sm flex items-center justify-center gap-2 shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 btn-bounce">
+                    {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                    {ar ? "استخراج من الملفات" : "Extract from files"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Sections Editor grid */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <SectionCard title={t.objectives} icon={<Target className="w-4 h-4 text-emerald-600" />}>
+                {sections.objectives.map((obj, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-2 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 transition-all">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-xs font-black text-emerald-600 shrink-0">{i + 1}</div>
+                    <input value={obj} onChange={e => { const n = [...sections.objectives]; n[i] = e.target.value; setSections({...sections, objectives: n}); }} className="flex-1 bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" />
+                    <button onClick={() => { const n=[...sections.objectives]; n.splice(i,1); setSections({...sections, objectives: n}); }} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <button onClick={() => setSections({...sections, objectives: [...sections.objectives, ""]})} className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors w-max"><Plus className="w-3.5 h-3.5" />{t.addObj}</button>
+              </SectionCard>
+            </div>
+
+            <SectionCard title={t.materials} icon={<Package className="w-4 h-4 text-emerald-600" />}>
+               {sections.materials.map((mat, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-2 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 transition-all">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 ml-1 mr-1" />
+                    <input value={mat} onChange={e => { const n = [...sections.materials]; n[i] = e.target.value; setSections({...sections, materials: n}); }} className="flex-1 bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" />
+                    <button onClick={() => { const n=[...sections.materials]; n.splice(i,1); setSections({...sections, materials: n}); }} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <button onClick={() => setSections({...sections, materials: [...sections.materials, ""]})} className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors w-max"><Plus className="w-3.5 h-3.5" />{t.addMat}</button>
+            </SectionCard>
+
+            <SectionCard title={t.vocabulary} icon={<Library className="w-4 h-4 text-emerald-600" />}>
+               {sections.vocabulary.map((v, i) => (
+                  <div key={i} className="flex flex-col gap-1.5 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 transition-all relative group">
+                    <button onClick={() => { const n = [...sections.vocabulary]; n.splice(i,1); setSections({...sections, vocabulary: n}); }} className="absolute top-2 end-2 p-1.5 text-slate-400 hover:text-red-500 bg-white dark:bg-[#15201B] rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5"/></button>
+                    <input value={v.term} onChange={e => { const n=[...sections.vocabulary]; n[i].term=e.target.value; setSections({...sections, vocabulary: n}); }} placeholder={t.term} className="w-[85%] bg-transparent text-sm font-black text-slate-800 dark:text-slate-100 outline-none border-b border-transparent focus:border-emerald-200 pb-1" />
+                    <input value={v.definition || ""} onChange={e => { const n=[...sections.vocabulary]; n[i].definition=e.target.value; setSections({...sections, vocabulary: n}); }} placeholder={t.def} className="w-full bg-transparent text-xs font-bold text-slate-600 dark:text-slate-400 outline-none mt-1" />
+                  </div>
+                ))}
+                <button onClick={() => setSections({...sections, vocabulary: [...sections.vocabulary, {term:"", definition:""}]})} className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg transition-colors w-max"><Plus className="w-3.5 h-3.5" />{t.addVocab}</button>
+            </SectionCard>
+
+            <SectionCard title={t.warmUp} icon={<Flame className="w-4 h-4 text-emerald-600" />}>
+              <div className="flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-2.5 border border-emerald-50 dark:border-emerald-900/30">
+                <Clock className="w-4 h-4 text-emerald-500" />
+                <input type="number" value={sections.warmUp.durationMinutes || ""} onChange={e => setSections({...sections, warmUp: {...sections.warmUp, durationMinutes: parseInt(e.target.value)||0}})} className="w-12 bg-transparent text-sm font-bold outline-none text-center" placeholder="5" />
+                <span className="text-xs text-slate-500 font-bold">{t.minute}</span>
+              </div>
+              <textarea value={sections.warmUp.description} onChange={e => setSections({...sections, warmUp: {...sections.warmUp, description: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[100px]" placeholder={t.description} />
+            </SectionCard>
+
+            <SectionCard title={t.introduction} icon={<Compass className="w-4 h-4 text-emerald-600" />}>
+              <div className="flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-2.5 border border-emerald-50 dark:border-emerald-900/30">
+                <Clock className="w-4 h-4 text-emerald-500" />
+                <input type="number" value={sections.introduction.durationMinutes || ""} onChange={e => setSections({...sections, introduction: {...sections.introduction, durationMinutes: parseInt(e.target.value)||0}})} className="w-12 bg-transparent text-sm font-bold outline-none text-center" placeholder="10" />
+                <span className="text-xs text-slate-500 font-bold">{t.minute}</span>
+              </div>
+              <textarea value={sections.introduction.description} onChange={e => setSections({...sections, introduction: {...sections.introduction, description: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[100px]" placeholder={t.description} />
+            </SectionCard>
+
+            <div className="md:col-span-2">
+              <SectionCard title={t.activities} icon={<Activity className="w-4 h-4 text-emerald-600" />}>
+                {sections.activities.map((act, i) => (
+                  <div key={i} className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-4 border border-emerald-50 dark:border-emerald-900/30 space-y-3 relative group transition-all">
+                    <div className="absolute top-3 end-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button onClick={() => { const n=[...sections.activities]; n.splice(i,1); setSections({...sections, activities: n}); }} className="p-1.5 text-red-500 bg-white dark:bg-[#15201B] rounded-lg shadow-sm hover:scale-105"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                    <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-sm font-black text-emerald-600 shrink-0">{i + 1}</div>
+                      <input value={act.title} onChange={e => updateActivity(i, { title: e.target.value })} className="flex-1 bg-transparent text-base font-black text-slate-800 dark:text-slate-100 outline-none border-b-2 border-transparent focus:border-emerald-400 pb-1" placeholder={t.actTitle} />
+                      <div className="flex items-center gap-1 text-slate-500">
+                         <Clock className="w-4 h-4" />
+                         <input type="number" value={act.durationMinutes || ""} onChange={e => updateActivity(i, { durationMinutes: parseInt(e.target.value)||0 })} className="w-12 bg-transparent text-sm font-bold outline-none text-center" placeholder="10" />
+                         <span className="text-xs">{t.minute}</span>
+                      </div>
+                    </div>
+                    
+                    <textarea value={act.description} onChange={e => updateActivity(i, { description: e.target.value })} className="w-full bg-white dark:bg-[#15201B] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-transparent focus:border-emerald-400 transition-all min-h-[80px]" placeholder={t.description} />
+                    
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                       {act.activityRef ? (
+                         <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl flex-1 border border-emerald-100 dark:border-emerald-800/50">
+                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                               {act.activityRef.kind === "video-lesson" ? <Youtube className="w-4 h-4"/> : <ClipboardCheck className="w-4 h-4"/>}
+                               <span className="text-xs font-bold truncate max-w-[200px]">{act.activityRef.title}</span>
+                            </div>
+                            <button onClick={() => updateActivity(i, { activityRef: undefined })} className="text-xs font-bold text-red-500 hover:underline">{t.unlink}</button>
+                         </div>
+                       ) : (
+                         <button onClick={() => setShowPicker({ sectionIdx: i })} className="text-xs font-bold text-slate-500 hover:text-emerald-600 flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+                            <Link2 className="w-3.5 h-3.5" />
+                            {t.linkActivity}
+                         </button>
+                       )}
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => setSections({...sections, activities: [...sections.activities, {title: "", description: ""}]})} className="mt-2 w-full py-3 border-2 border-dashed border-emerald-100 dark:border-emerald-900/50 rounded-xl text-emerald-600 dark:text-emerald-400 font-bold text-sm flex items-center justify-center gap-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+                  <Plus className="w-4 h-4" /> {t.addAct}
+                </button>
+              </SectionCard>
+            </div>
+
+            <SectionCard title={t.assessment} icon={<ClipboardCheck className="w-4 h-4 text-emerald-600" />}>
+              <div className="flex items-center gap-2 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-2.5 border border-emerald-50 dark:border-emerald-900/30">
+                <Target className="w-4 h-4 text-emerald-500" />
+                <input value={sections.assessment.method || ""} onChange={e => setSections({...sections, assessment: {...sections.assessment, method: e.target.value}})} placeholder={t.method} className="flex-1 bg-transparent text-sm font-bold outline-none" />
+              </div>
+              <textarea value={sections.assessment.description} onChange={e => setSections({...sections, assessment: {...sections.assessment, description: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[100px]" placeholder={t.description} />
+            </SectionCard>
+
+            <SectionCard title={t.closure} icon={<Flag className="w-4 h-4 text-emerald-600" />}>
+              <textarea value={sections.closure.description} onChange={e => setSections({...sections, closure: {...sections.closure, description: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[120px]" placeholder={t.description} />
+            </SectionCard>
+
+            <SectionCard title={t.homework} icon={<Home className="w-4 h-4 text-emerald-600" />}>
+              <textarea value={sections.homework?.description || ""} onChange={e => setSections({...sections, homework: { description: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[120px]" placeholder={t.description} />
+            </SectionCard>
+
+            <SectionCard title={t.differentiation} icon={<Users className="w-4 h-4 text-emerald-600" />}>
+              <div className="space-y-3 flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1"><Compass className="w-3.5 h-3.5"/> {t.support}</label>
+                  <textarea value={sections.differentiation?.support || ""} onChange={e => setSections({...sections, differentiation: {...(sections.differentiation||{}), support: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[80px]" placeholder={t.support} />
+                </div>
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1"><Flame className="w-3.5 h-3.5"/> {t.extension}</label>
+                  <textarea value={sections.differentiation?.extension || ""} onChange={e => setSections({...sections, differentiation: {...(sections.differentiation||{}), extension: e.target.value}})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-3 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-amber-400 transition-all min-h-[80px]" placeholder={t.extension} />
+                </div>
+              </div>
+            </SectionCard>
+
+            <div className="md:col-span-2">
+              <SectionCard title={t.notes} icon={<StickyNote className="w-4 h-4 text-emerald-600" />}>
+                <textarea value={sections.notes || ""} onChange={e => setSections({...sections, notes: e.target.value})} className="w-full flex-1 bg-[#f4f7f5] dark:bg-[#0B100E] rounded-xl p-4 text-sm font-bold outline-none resize-none border border-emerald-50 dark:border-emerald-900/30 focus:border-emerald-400 transition-all min-h-[120px]" placeholder={t.notes} />
+              </SectionCard>
+            </div>
+          </section>
+
+        </main>
+        
+        {/* Bottom Sticky Action Bar */}
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/80 dark:bg-[#111A16]/80 backdrop-blur-xl border-t border-emerald-100 dark:border-emerald-900/30 p-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors shadow-sm" data-testid="btn-print-settings">
+              <SettingsIcon className="w-5 h-5"/>
+              <span className="hidden sm:inline">{t.settingsHead}</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPreviewing(true)} className="px-5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-black text-sm transition-colors shadow-sm flex items-center gap-2" data-testid="btn-preview">
+                 <Eye className="w-5 h-5"/>
+                 <span className="hidden sm:inline">{t.preview}</span>
+              </button>
+              <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all disabled:opacity-50 btn-bounce" data-testid="btn-save">
+                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                 {t.save}
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Print Settings Modal */}
+      <AnimatePresence>
+        {showSettingsModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowSettingsModal(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-[#15201B] w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-[#0B100E]/50">
+                 <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <Printer className="w-5 h-5 text-emerald-500" />
+                    {t.settingsHead}
+                 </h2>
+                 <button onClick={() => setShowSettingsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shadow-sm transition-all hover:scale-105">
+                   <X className="w-4 h-4" />
+                 </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+                 <div>
+                    <h3 className="text-sm font-bold text-slate-500 mb-3">الأقسام المشمولة في الطباعة</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                       <Checkbox label={t.objectives} checked={settings.includeObjectives} onChange={v => setSettings({...settings, includeObjectives: v})} />
+                       <Checkbox label={t.materials} checked={settings.includeMaterials} onChange={v => setSettings({...settings, includeMaterials: v})} />
+                       <Checkbox label={t.vocabulary} checked={settings.includeVocabulary} onChange={v => setSettings({...settings, includeVocabulary: v})} />
+                       <Checkbox label={t.warmUp} checked={settings.includeWarmUp} onChange={v => setSettings({...settings, includeWarmUp: v})} />
+                       <Checkbox label={t.introduction} checked={settings.includeIntroduction} onChange={v => setSettings({...settings, includeIntroduction: v})} />
+                       <Checkbox label={t.activities} checked={settings.includeActivities} onChange={v => setSettings({...settings, includeActivities: v})} />
+                       <Checkbox label={t.assessment} checked={settings.includeAssessment} onChange={v => setSettings({...settings, includeAssessment: v})} />
+                       <Checkbox label={t.closure} checked={settings.includeClosure} onChange={v => setSettings({...settings, includeClosure: v})} />
+                       <Checkbox label={t.homework} checked={settings.includeHomework} onChange={v => setSettings({...settings, includeHomework: v})} />
+                       <Checkbox label={t.differentiation} checked={settings.includeDifferentiation} onChange={v => setSettings({...settings, includeDifferentiation: v})} />
+                       <Checkbox label={t.notes} checked={settings.includeNotes} onChange={v => setSettings({...settings, includeNotes: v})} />
+                    </div>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InputCard label={t.dateGreg} icon={Calendar}>
+                       <input value={settings.lessonDateGregorian || ""} onChange={e => setSettings({...settings, lessonDateGregorian: e.target.value})} placeholder={t.dateGregPh} className="w-full bg-transparent text-sm font-bold outline-none" />
+                    </InputCard>
+                    <InputCard label={t.dateHijri} icon={Calendar}>
+                       <input value={settings.lessonDateHijri || ""} onChange={e => setSettings({...settings, lessonDateHijri: e.target.value})} placeholder={t.dateHijriPh} className="w-full bg-transparent text-sm font-bold outline-none" />
+                    </InputCard>
+                    <InputCard label={t.headerNote} icon={FileText} className="sm:col-span-2">
+                       <input value={settings.headerNote || ""} onChange={e => setSettings({...settings, headerNote: e.target.value})} className="w-full bg-transparent text-sm font-bold outline-none" />
+                    </InputCard>
+                    <InputCard label={t.footerNote} icon={FileText} className="sm:col-span-2">
+                       <input value={settings.footerNote || ""} onChange={e => setSettings({...settings, footerNote: e.target.value})} className="w-full bg-transparent text-sm font-bold outline-none" />
+                    </InputCard>
+                    <InputCard label={t.fontFamily} icon={Type}>
+                       <select value={settings.fontFamily || "default"} onChange={e => setSettings({...settings, fontFamily: e.target.value as LpFontFamily})} className="w-full bg-transparent text-sm font-bold outline-none appearance-none cursor-pointer">
+                          <option value="default">{ar ? "الافتراضي للغة" : "Language default"}</option>
+                          <option value="cairo">Cairo</option>
+                          <option value="tajawal">Tajawal</option>
+                          <option value="amiri">Amiri</option>
+                          <option value="naskh">Noto Naskh</option>
+                          <option value="reem">Reem Kufi</option>
+                          <option value="inter">Inter</option>
+                          <option value="serif">Serif</option>
+                          <option value="mono">Monospace</option>
+                       </select>
+                    </InputCard>
+                    <InputCard label={t.fontSize} icon={TextSelect}>
+                       <input type="number" step="0.5" value={settings.fontSizePt || 11.5} onChange={e => setSettings({...settings, fontSizePt: parseFloat(e.target.value) || 11.5})} className="w-full bg-transparent text-sm font-bold outline-none" />
+                    </InputCard>
+                 </div>
+              </div>
+              
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0B100E]/50">
+                 <button onClick={() => setShowSettingsModal(false)} className="w-full py-3 rounded-xl bg-emerald-600 text-white font-black text-sm shadow-md hover:bg-emerald-700 transition-colors btn-bounce">
+                    تم
+                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Activity Picker Modal */}
+      <ActivityPickerModal
+        open={!!showPicker}
+        onClose={() => setShowPicker(null)}
+        onPick={(ref) => {
+          if (showPicker) {
+            updateActivity(showPicker.sectionIdx, { activityRef: ref });
+            setShowPicker(null);
+          }
+        }}
+        t={t}
+      />
+
+      {/* Saved Plans Modal */}
+      <AnimatePresence>
+        {showSaved && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowSaved(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-[#15201B] w-full max-w-3xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-[#0B100E]/50">
+                 <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <FolderOpen className="w-5 h-5 text-emerald-500" />
+                    {t.mySaved}
+                 </h2>
+                 <button onClick={() => setShowSaved(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shadow-sm transition-all hover:scale-105">
+                   <X className="w-4 h-4" />
+                 </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/30 dark:bg-[#0B100E]/30 custom-scrollbar">
+                {loadingSaved ? (
+                  <div className="flex flex-col items-center justify-center h-40 gap-3">
+                     <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                     <span className="text-sm font-bold text-slate-500">{ar ? "جاري التحميل..." : "Loading..."}</span>
+                  </div>
+                ) : savedRows.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-40 gap-3 opacity-60">
+                     <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"><FolderOpen className="w-8 h-8 text-slate-400" /></div>
+                     <span className="text-sm font-bold text-slate-500">{t.noSaved}</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {savedRows.map(row => (
+                      <div key={row.id} className="bg-white dark:bg-[#15201B] rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all flex flex-col group">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                           <h3 className="font-black text-slate-800 dark:text-slate-100 line-clamp-1 flex-1">{row.title}</h3>
+                           {!(row.isShared && row.ownerIsAdmin) && (
+                             <button onClick={() => { if(confirm(t.confirmDel)) handleDelete(row.id); }} className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-slate-50 dark:bg-slate-800 rounded-lg" data-testid={`btn-delete-plan-${row.id}`}><Trash2 className="w-3.5 h-3.5"/></button>
+                           )}
+                        </div>
+                        <div className="flex items-center gap-2 mb-4 text-[11px] font-bold text-slate-500">
+                           {row.subject && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[100px]">{row.subject}</span>}
+                           {row.gradeLevel && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[80px]">{row.gradeLevel}</span>}
+                        </div>
+                        {row.ownerIsAdmin && <div className="mb-3 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md inline-block w-max"><Sparkles className="inline w-3 h-3 me-1"/> {t.sharedByAdmin}</div>}
+                        
+                        <div className="mt-auto flex items-center gap-2">
+                          <button onClick={() => loadIntoEditor(row)} className="flex-1 py-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-black transition-colors flex items-center justify-center gap-1.5 border border-transparent hover:border-emerald-100 dark:hover:border-emerald-800" data-testid={`btn-open-plan-${row.id}`}>
+                             {t.open} {ar ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                          </button>
+                          <button onClick={() => setLocation(`/teacher/lesson-plans/${row.id}/print`)} className="py-2.5 px-3 rounded-xl text-white text-xs font-black transition-transform hover:scale-105 flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600" data-testid={`btn-print-plan-${row.id}`}>
+                             <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-          </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Sections editor */}
-          <h2 className="text-lg font-extrabold mt-2" style={{ color: BRAND_PRIMARY }}>{t.sectionsHead}</h2>
-
-          <ListSection
-            title={t.objectives} icon={<Target className="w-4 h-4" />}
-            items={sections.objectives} setItems={(v) => setSections(s => ({ ...s, objectives: v }))}
-            placeholder={ar ? "سيكون الطالب قادرًا على ..." : "Students will be able to ..."}
-            addLabel={t.addObj} ar={ar}
-          />
-
-          <ListSection
-            title={t.materials} icon={<Package className="w-4 h-4" />}
-            items={sections.materials} setItems={(v) => setSections(s => ({ ...s, materials: v }))}
-            placeholder={ar ? "مثال: السبورة، أوراق عمل" : "e.g. whiteboard, worksheets"}
-            addLabel={t.addMat} ar={ar}
-          />
-
-          <VocabularySection
-            title={t.vocabulary} icon={<Library className="w-4 h-4" />}
-            items={sections.vocabulary} setItems={(v) => setSections(s => ({ ...s, vocabulary: v }))}
-            ar={ar} t={t}
-          />
-
-          <BlockSection
-            title={t.warmUp} icon={<Flame className="w-4 h-4" />}
-            block={sections.warmUp} setBlock={(b) => setSections(s => ({ ...s, warmUp: b }))}
-            ar={ar} t={t}
-          />
-
-          <BlockSection
-            title={t.introduction} icon={<Compass className="w-4 h-4" />}
-            block={sections.introduction} setBlock={(b) => setSections(s => ({ ...s, introduction: b }))}
-            ar={ar} t={t}
-          />
-
-          <ActivitiesSection
-            title={t.activities} icon={<Activity className="w-4 h-4" />}
-            items={sections.activities} setItems={(v) => setSections(s => ({ ...s, activities: v }))}
-            ar={ar} t={t}
-          />
-
-          <SimpleBlockSection
-            title={t.assessment} icon={<ClipboardCheck className="w-4 h-4" />}
-            description={sections.assessment.description}
-            setDescription={(v) => setSections(s => ({ ...s, assessment: { ...s.assessment, description: v } }))}
-            extra={
-              <Field label={t.method}>
-                <input
-                  value={sections.assessment.method ?? ""}
-                  onChange={e => setSections(s => ({ ...s, assessment: { ...s.assessment, method: e.target.value } }))}
-                  placeholder={ar ? "مثال: ورقة قصيرة، أسئلة شفهية" : "e.g. exit ticket, oral questioning"}
-                  className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px]"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                />
-              </Field>
-            }
-          />
-
-          <SimpleBlockSection
-            title={t.closure} icon={<Flag className="w-4 h-4" />}
-            description={sections.closure.description}
-            setDescription={(v) => setSections(s => ({ ...s, closure: { description: v } }))}
-          />
-
-          <SimpleBlockSection
-            title={t.homework} icon={<Home className="w-4 h-4" />}
-            description={sections.homework?.description ?? ""}
-            setDescription={(v) => setSections(s => ({ ...s, homework: v ? { description: v } : undefined }))}
-          />
-
-          <Card className="p-4 sm:p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" style={{ color: BRAND_GOLD }} />
-              <h3 className="font-extrabold text-base" style={{ color: BRAND_PRIMARY }}>{t.differentiation}</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label={t.support}>
-                <textarea
-                  value={sections.differentiation?.support ?? ""}
-                  onChange={e => setSections(s => ({
-                    ...s,
-                    differentiation: cleanDiff({ ...s.differentiation, support: e.target.value }),
-                  }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border rounded-xl text-sm"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                />
-              </Field>
-              <Field label={t.extension}>
-                <textarea
-                  value={sections.differentiation?.extension ?? ""}
-                  onChange={e => setSections(s => ({
-                    ...s,
-                    differentiation: cleanDiff({ ...s.differentiation, extension: e.target.value }),
-                  }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border rounded-xl text-sm"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                />
-              </Field>
-            </div>
-          </Card>
-
-          <Card className="p-4 sm:p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <StickyNote className="w-4 h-4" style={{ color: BRAND_GOLD }} />
-              <h3 className="font-extrabold text-base" style={{ color: BRAND_PRIMARY }}>{t.notes}</h3>
-            </div>
-            <textarea
-              value={sections.notes ?? ""}
-              onChange={e => setSections(s => ({ ...s, notes: e.target.value || undefined }))}
-              rows={3}
-              className="w-full px-3 py-2 border rounded-xl text-sm"
-              style={{ borderColor: `${BRAND_PRIMARY}33` }}
-              placeholder={ar ? "ملاحظات سريعة لنفسك أثناء الحصة" : "Quick reminders for yourself during the lesson"}
-            />
-          </Card>
-
-          {/* Print settings */}
-          <Card className="p-4 sm:p-5 space-y-3">
-            <h3 className="font-extrabold text-base" style={{ color: BRAND_PRIMARY }}>{t.settingsHead}</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {([
-                ["includeObjectives", t.objectives],
-                ["includeMaterials", t.materials],
-                ["includeVocabulary", t.vocabulary],
-                ["includeWarmUp", t.warmUp],
-                ["includeIntroduction", t.introduction],
-                ["includeActivities", t.activities],
-                ["includeAssessment", t.assessment],
-                ["includeClosure", t.closure],
-                ["includeHomework", t.homework],
-                ["includeDifferentiation", t.differentiation],
-                ["includeNotes", t.notes],
-              ] as Array<[keyof Settings, string]>).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-muted/30 min-h-[40px]">
-                  <input
-                    type="checkbox"
-                    checked={!!settings[key]}
-                    onChange={e => setSettings(s => ({ ...s, [key]: e.target.checked }))}
-                    className="w-4 h-4"
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <Field label={t.headerNote}>
-                <input value={settings.headerNote ?? ""} onChange={e => setSettings(s => ({ ...s, headerNote: e.target.value }))} className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              </Field>
-              <Field label={t.footerNote}>
-                <input value={settings.footerNote ?? ""} onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))} className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              </Field>
-              {/* Date pair — Gregorian + Hijri. Both are free-text so the
-                  teacher can paste from her school calendar without us
-                  hard-coding a Hijri converter (they vary by region). */}
-              <Field label={t.dateGreg}>
-                <input
-                  value={settings.lessonDateGregorian ?? ""}
-                  onChange={e => setSettings(s => ({ ...s, lessonDateGregorian: e.target.value }))}
-                  placeholder={t.dateGregPh}
-                  className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px]"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                />
-              </Field>
-              <Field label={t.dateHijri}>
-                <input
-                  value={settings.lessonDateHijri ?? ""}
-                  onChange={e => setSettings(s => ({ ...s, lessonDateHijri: e.target.value }))}
-                  placeholder={t.dateHijriPh}
-                  className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px]"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                />
-              </Field>
-              {/* Font family + size — applies to the printable plan only.
-                  Mirrors the worksheet font controls; "default" means the
-                  print view picks the language-appropriate stack. */}
-              <Field label={t.fontFamily}>
-                <select
-                  value={settings.fontFamily ?? "default"}
-                  onChange={e => setSettings(s => ({ ...s, fontFamily: e.target.value as LpFontFamily }))}
-                  className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px] bg-white"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                >
-                  <option value="default">{ar ? "افتراضي" : "Default"}</option>
-                  <option value="cairo">Cairo</option>
-                  <option value="tajawal">Tajawal</option>
-                  <option value="amiri">Amiri</option>
-                  <option value="naskh">Noto Naskh Arabic</option>
-                  <option value="reem">Reem Kufi</option>
-                  <option value="inter">Inter</option>
-                  <option value="serif">{ar ? "خط مذيّل" : "Serif"}</option>
-                  <option value="mono">{ar ? "خط ثابت العرض" : "Monospace"}</option>
-                </select>
-              </Field>
-              <Field label={`${t.fontSize}: ${(settings.fontSizePt ?? 11.5).toFixed(1)} pt`}>
-                <input
-                  type="range"
-                  min={9}
-                  max={18}
-                  step={0.5}
-                  value={settings.fontSizePt ?? 11.5}
-                  onChange={e => setSettings(s => ({ ...s, fontSizePt: parseFloat(e.target.value) }))}
-                  className="w-full accent-[#225739]"
-                />
-              </Field>
-            </div>
-          </Card>
-        </div>
-
-        {/* Sticky action bar — Preview-without-save (gold, secondary) +
-            Save (green, primary). Save now respects editingId so editing
-            an existing plan updates in place rather than creating a copy. */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t p-3 z-40 lg:pb-3 pb-24" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-          <div className="max-w-5xl mx-auto flex flex-wrap justify-end gap-2">
-            <button
-              onClick={() => setPreviewing(true)}
-              className="px-4 py-3 rounded-xl font-extrabold text-sm flex items-center gap-2 shadow-md min-h-[48px] border-2"
-              style={{ borderColor: BRAND_GOLD, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
-            >
-              <Eye className="w-4 h-4" />
-              {t.preview}
-            </button>
-            <button onClick={handleSave} disabled={saving} className="px-5 py-3 rounded-xl font-extrabold text-sm flex items-center gap-2 text-white shadow-lg disabled:opacity-60 min-h-[48px]" style={{ background: BRAND_PRIMARY }}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {t.save}
-            </button>
-          </div>
-        </div>
-
-        {/* Preview-without-save overlay. Renders the same printable view
-            used by the dedicated print page, so the teacher can see
-            exactly what they'll get before committing. The toolbar offers
-            Back-to-edit, Word download, and PDF/print. */}
-        <AnimatePresence>
-          {previewing && (
-            <motion.div
-              key="lp-preview"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-white z-[60] overflow-auto"
-            >
-              <div
-                dir={dir}
-                className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-2.5 border-b shadow-sm bg-white"
-              >
-                <button
-                  onClick={() => setPreviewing(false)}
-                  className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5 min-h-[40px]"
-                  style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  {t.backToEdit}
-                </button>
-                <div className="flex items-center gap-2 flex-wrap justify-end">
-                  <button
-                    onClick={() => {
-                      const root = document.getElementById("lp-printable-root");
-                      if (!root) {
-                        toast.error(ar ? "تعذّر إعداد الملف" : "Could not prepare file");
-                        return;
-                      }
-                      downloadAsWord({ element: root, title: draftPlanData.title, lang: draftPlanData.language });
-                    }}
-                    className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5 min-h-[40px]"
-                    style={{ borderColor: `${BRAND_GOLD}88`, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
-                  >
-                    <FileType className="w-3.5 h-3.5" />
-                    {t.word}
-                  </button>
-                  <button
-                    onClick={() => printToPdf()}
-                    className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 text-white shadow min-h-[40px]"
-                    style={{ background: BRAND_PRIMARY }}
-                  >
-                    <Printer className="w-4 h-4" />
-                    {t.pdf}
-                  </button>
-                </div>
+      {/* Preview Overlay */}
+      <AnimatePresence>
+        {previewing && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex flex-col p-4 sm:p-6" onClick={() => setPreviewing(false)}>
+            <div className="w-full max-w-4xl mx-auto flex items-center justify-between mb-4 bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/20 shadow-xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                 <button onClick={() => setPreviewing(false)} className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-xl transition-colors">
+                    {ar ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+                 </button>
+                 <h2 className="text-white font-black">{t.preview}</h2>
               </div>
-              <LessonPlanPrintView data={draftPlanData} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div className="flex items-center gap-2">
+                 <button onClick={() => { const root = document.getElementById("lesson-plan-preview-container"); if (root) downloadAsWord({ element: root, title: draftPlanData.title, lang: draftPlanData.language }); }} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl shadow-sm transition-colors flex items-center gap-2 btn-bounce">
+                    <FileText className="w-4 h-4" /> <span className="hidden sm:inline">{t.word}</span>
+                 </button>
+                 <button onClick={() => { printToPdf(); }} className="px-4 py-2 bg-white text-slate-900 hover:bg-slate-100 text-sm font-black rounded-xl shadow-sm transition-colors flex items-center gap-2 btn-bounce">
+                    <Printer className="w-4 h-4" /> <span className="hidden sm:inline">{t.pdf}</span>
+                 </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 w-full max-w-4xl mx-auto bg-white rounded-2xl overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <div id="lesson-plan-preview-container" className="h-full overflow-y-auto custom-scrollbar p-6 sm:p-10 bg-white text-black">
+                <LessonPlanPrintView data={draftPlanData} />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Saved templates modal */}
-        <AnimatePresence>
-          {showSaved && (
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-              onClick={() => setShowSaved(false)}
-            >
-              <motion.div
-                initial={{ y: 50 }} animate={{ y: 0 }} exit={{ y: 50 }}
-                onClick={e => e.stopPropagation()}
-                dir={dir}
-                className="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl p-5 max-h-[80vh] overflow-y-auto"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-extrabold text-lg" style={{ color: BRAND_PRIMARY }}>{t.mySaved}</h3>
-                  <button onClick={() => setShowSaved(false)} className="p-2 rounded-lg hover:bg-muted min-h-[44px] min-w-[44px]"><X className="w-5 h-5" /></button>
-                </div>
-                {loadingSaved ? (
-                  <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" style={{ color: BRAND_PRIMARY }} /></div>
-                ) : savedRows.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">{t.noSaved}</div>
-                ) : (
-                  <div className="space-y-2">
-                    {savedRows.map(row => {
-                      const isAdminShared = row.isShared && row.ownerIsAdmin;
-                      return (
-                        <div key={row.id} className="p-3 border rounded-xl flex items-start gap-3" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="font-bold text-sm truncate" style={{ color: BRAND_PRIMARY }}>{row.title}</div>
-                              {isAdminShared && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${BRAND_GOLD}22`, color: BRAND_GOLD }}>{t.sharedByAdmin}</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              {[row.subject, row.gradeLevel, row.durationMinutes ? `${row.durationMinutes} ${t.minute}` : ""].filter(Boolean).join(" · ")}
-                            </div>
-                          </div>
-                          <button onClick={() => loadIntoEditor(row)} className="px-3 py-2 rounded-lg text-xs font-bold border min-h-[36px]" style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}>
-                            {t.open}
-                          </button>
-                          <button onClick={() => setLocation(`/teacher/lesson-plans/${row.id}/print`)} className="px-3 py-2 rounded-lg text-xs font-bold text-white min-h-[36px]" style={{ background: BRAND_PRIMARY }}>
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          {!isAdminShared && (
-                            <button onClick={() => { if (confirm(t.confirmDel)) handleDelete(row.id); }} className="px-2 py-2 rounded-lg text-xs text-red-600 hover:bg-red-50 min-h-[36px] min-w-[36px]">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
     </Layout>
-  );
-}
-
-// ────────────────────────────────────────────────── helpers + sub-components
-
-function cleanDiff(d: { support?: string; extension?: string } | undefined) {
-  if (!d) return undefined;
-  const support = (d.support ?? "").trim();
-  const extension = (d.extension ?? "").trim();
-  if (!support && !extension) return undefined;
-  return { support: support || undefined, extension: extension || undefined };
-}
-
-function cleanSections(s: Sections): Sections {
-  const out: Sections = {
-    objectives: s.objectives.map(o => o.trim()).filter(Boolean),
-    materials: s.materials.map(o => o.trim()).filter(Boolean),
-    vocabulary: s.vocabulary
-      .map(v => ({ term: (v.term ?? "").trim(), definition: (v.definition ?? "").trim() || undefined }))
-      .filter(v => v.term),
-    warmUp: { ...s.warmUp, description: s.warmUp.description.trim() || "—" },
-    introduction: { ...s.introduction, description: s.introduction.description.trim() || "—" },
-    activities: s.activities
-      .map(a => ({ ...a, title: a.title.trim(), description: a.description.trim() }))
-      .filter(a => a.title && a.description),
-    assessment: { description: s.assessment.description.trim() || "—", method: (s.assessment.method ?? "").trim() || undefined },
-    closure: { description: s.closure.description.trim() || "—" },
-  };
-  if (s.homework?.description?.trim()) out.homework = { description: s.homework.description.trim() };
-  if (s.differentiation) out.differentiation = cleanDiff(s.differentiation);
-  if (s.notes?.trim()) out.notes = s.notes.trim();
-  return out;
-}
-
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <label className={`block ${className ?? ""}`}>
-      <span className="text-xs font-bold mb-1 block" style={{ color: BRAND_PRIMARY }}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function SectionHeader({ title, icon, right }: { title: string; icon: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3 mb-3">
-      <div className="flex items-center gap-2">
-        <span style={{ color: BRAND_GOLD }}>{icon}</span>
-        <h3 className="font-extrabold text-base" style={{ color: BRAND_PRIMARY }}>{title}</h3>
-      </div>
-      {right}
-    </div>
-  );
-}
-
-function ListSection({
-  title, icon, items, setItems, placeholder, addLabel, ar,
-}: {
-  title: string; icon: React.ReactNode;
-  items: string[]; setItems: (v: string[]) => void;
-  placeholder: string; addLabel: string; ar: boolean;
-}) {
-  return (
-    <Card className="p-4 sm:p-5">
-      <SectionHeader title={title} icon={icon} right={
-        <button onClick={() => setItems([...items, ""])} className="px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 min-h-[36px]" style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}>
-          <Plus className="w-3.5 h-3.5" /> {addLabel}
-        </button>
-      } />
-      {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">{ar ? "لا يوجد عناصر بعد." : "No items yet."}</p>
-      ) : (
-        <ul className="space-y-2">
-          {items.map((item, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className="text-xs font-bold mt-2.5" style={{ color: BRAND_GOLD }}>{i + 1}.</span>
-              <input
-                value={item}
-                onChange={e => { const next = [...items]; next[i] = e.target.value; setItems(next); }}
-                placeholder={placeholder}
-                className="flex-1 px-3 py-2 border rounded-xl text-sm min-h-[40px]"
-                style={{ borderColor: `${BRAND_PRIMARY}33` }}
-              />
-              <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="p-2 text-red-600 hover:bg-red-50 rounded-lg min-h-[40px] min-w-[40px]">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function VocabularySection({
-  title, icon, items, setItems, ar, t,
-}: {
-  title: string; icon: React.ReactNode;
-  items: VocabTerm[]; setItems: (v: VocabTerm[]) => void;
-  ar: boolean; t: any;
-}) {
-  return (
-    <Card className="p-4 sm:p-5">
-      <SectionHeader title={title} icon={icon} right={
-        <button onClick={() => setItems([...items, { term: "", definition: "" }])} className="px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 min-h-[36px]" style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}>
-          <Plus className="w-3.5 h-3.5" /> {t.addVocab}
-        </button>
-      } />
-      {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">{ar ? "لا توجد مفردات بعد." : "No vocabulary yet."}</p>
-      ) : (
-        <div className="space-y-2">
-          {items.map((v, i) => (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_2fr_auto] gap-2 items-center">
-              <input value={v.term} onChange={e => { const next = [...items]; next[i] = { ...v, term: e.target.value }; setItems(next); }} placeholder={t.term} className="px-3 py-2 border rounded-xl text-sm font-bold min-h-[40px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              <input value={v.definition ?? ""} onChange={e => { const next = [...items]; next[i] = { ...v, definition: e.target.value }; setItems(next); }} placeholder={t.def} className="px-3 py-2 border rounded-xl text-sm min-h-[40px]" style={{ borderColor: `${BRAND_PRIMARY}33` }} />
-              <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="p-2 text-red-600 hover:bg-red-50 rounded-lg justify-self-end min-h-[40px] min-w-[40px]">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function BlockSection({
-  title, icon, block, setBlock, ar, t,
-}: {
-  title: string; icon: React.ReactNode;
-  block: Block; setBlock: (b: Block) => void;
-  ar: boolean; t: any;
-}) {
-  return (
-    <Card className="p-4 sm:p-5">
-      <SectionHeader title={title} icon={icon} right={
-        <div className="flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-          <input
-            type="number"
-            min={0}
-            max={120}
-            value={block.durationMinutes ?? 0}
-            onChange={e => setBlock({ ...block, durationMinutes: Math.max(0, Math.min(120, parseInt(e.target.value, 10) || 0)) })}
-            className="w-16 px-2 py-1 border rounded text-xs"
-            style={{ borderColor: `${BRAND_PRIMARY}33` }}
-          />
-          <span className="text-xs text-muted-foreground">{t.minute}</span>
-        </div>
-      } />
-      <textarea
-        value={block.description}
-        onChange={e => setBlock({ ...block, description: e.target.value })}
-        rows={3}
-        className="w-full px-3 py-2 border rounded-xl text-sm"
-        style={{ borderColor: `${BRAND_PRIMARY}33` }}
-        placeholder={ar ? "صف ما سيقوم به المعلم والطلاب" : "Describe what the teacher and students will do"}
-      />
-    </Card>
-  );
-}
-
-function SimpleBlockSection({
-  title, icon, description, setDescription, extra,
-}: {
-  title: string; icon: React.ReactNode;
-  description: string; setDescription: (v: string) => void;
-  extra?: React.ReactNode;
-}) {
-  return (
-    <Card className="p-4 sm:p-5 space-y-3">
-      <div className="flex items-center gap-2">
-        <span style={{ color: BRAND_GOLD }}>{icon}</span>
-        <h3 className="font-extrabold text-base" style={{ color: BRAND_PRIMARY }}>{title}</h3>
-      </div>
-      {extra}
-      <textarea
-        value={description}
-        onChange={e => setDescription(e.target.value)}
-        rows={3}
-        className="w-full px-3 py-2 border rounded-xl text-sm"
-        style={{ borderColor: `${BRAND_PRIMARY}33` }}
-      />
-    </Card>
-  );
-}
-
-function ActivitiesSection({
-  title, icon, items, setItems, ar, t,
-}: {
-  title: string; icon: React.ReactNode;
-  items: ActivityBlock[]; setItems: (v: ActivityBlock[]) => void;
-  ar: boolean; t: any;
-}) {
-  // Index of the activity that currently has the link-picker modal open,
-  // or null when no picker is open. Lifted to the section so we can reuse
-  // a single picker UI rather than render one per activity.
-  const [pickerIndex, setPickerIndex] = useState<number | null>(null);
-
-  return (
-    <Card className="p-4 sm:p-5">
-      <SectionHeader title={title} icon={icon} right={
-        <button onClick={() => setItems([...items, { title: "", description: "", durationMinutes: 10 }])} className="px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 min-h-[36px]" style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}>
-          <Plus className="w-3.5 h-3.5" /> {t.addAct}
-        </button>
-      } />
-      {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">{ar ? "لا توجد أنشطة بعد." : "No activities yet."}</p>
-      ) : (
-        <div className="space-y-3">
-          {items.map((a, i) => (
-            <div key={i} className="p-3 border rounded-xl space-y-2" style={{ borderColor: `${BRAND_PRIMARY}22`, background: `${BRAND_PRIMARY}05` }}>
-              <div className="flex items-start gap-2">
-                <span className="text-sm font-extrabold mt-1.5" style={{ color: BRAND_GOLD }}>{i + 1}.</span>
-                <input
-                  value={a.title}
-                  onChange={e => { const next = [...items]; next[i] = { ...a, title: e.target.value }; setItems(next); }}
-                  placeholder={t.actTitle}
-                  className="flex-1 px-3 py-2 border rounded-xl text-sm font-bold min-h-[40px] bg-white"
-                  style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                />
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                  <input
-                    type="number"
-                    min={0}
-                    max={120}
-                    value={a.durationMinutes ?? 0}
-                    onChange={e => { const next = [...items]; next[i] = { ...a, durationMinutes: Math.max(0, Math.min(120, parseInt(e.target.value, 10) || 0)) }; setItems(next); }}
-                    className="w-16 px-2 py-1 border rounded text-xs bg-white"
-                    style={{ borderColor: `${BRAND_PRIMARY}33` }}
-                  />
-                  <span className="text-xs text-muted-foreground">{t.minute}</span>
-                </div>
-                <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="p-2 text-red-600 hover:bg-red-50 rounded-lg min-h-[40px] min-w-[40px]">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              <textarea
-                value={a.description}
-                onChange={e => { const next = [...items]; next[i] = { ...a, description: e.target.value }; setItems(next); }}
-                rows={3}
-                placeholder={t.description}
-                className="w-full px-3 py-2 border rounded-xl text-sm bg-white"
-                style={{ borderColor: `${BRAND_PRIMARY}33` }}
-              />
-              {/* Linked-Hasaad-activity row. Either shows the current ref
-                  with an unlink button, or a "Link" button that opens the
-                  picker modal scoped to this activity index. */}
-              {a.activityRef ? (
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-dashed text-xs flex-wrap"
-                  style={{ borderColor: `${BRAND_GOLD}88`, background: `${BRAND_GOLD}10` }}
-                >
-                  <Link2 className="w-3.5 h-3.5" style={{ color: BRAND_GOLD }} />
-                  <span className="font-extrabold" style={{ color: BRAND_GOLD }}>
-                    {a.activityRef.kind === "assignment" ? (ar ? "واجب" : "Assignment")
-                      : (ar ? "درس فيديو" : "Video lesson")}:
-                  </span>
-                  <span className="flex-1 truncate font-bold" style={{ color: BRAND_PRIMARY }}>
-                    {a.activityRef.title}
-                  </span>
-                  <button
-                    onClick={() => { const next = [...items]; next[i] = { ...a, activityRef: undefined }; setItems(next); }}
-                    className="px-2 py-1 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50"
-                  >
-                    {t.unlink}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setPickerIndex(i)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold border-2 border-dashed flex items-center gap-1.5 min-h-[36px]"
-                  style={{ borderColor: `${BRAND_GOLD}77`, color: BRAND_GOLD, background: `${BRAND_GOLD}08` }}
-                >
-                  <Link2 className="w-3.5 h-3.5" /> {t.linkActivity}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {pickerIndex !== null && (
-        <ActivityRefPicker
-          ar={ar}
-          t={t}
-          onClose={() => setPickerIndex(null)}
-          onPick={(ref) => {
-            const next = [...items];
-            const idx = pickerIndex;
-            if (idx !== null && next[idx]) {
-              next[idx] = { ...next[idx], activityRef: ref };
-              setItems(next);
-            }
-            setPickerIndex(null);
-          }}
-        />
-      )}
-    </Card>
-  );
-}
-
-/** Modal that lets the teacher pick an existing Hasaad activity to link
- *  to a lesson-plan step. Loads from three list endpoints lazily — only
- *  the active tab's data is fetched. The selected ref is returned via
- *  onPick as a compact { kind, id, title } shape that survives JSON
- *  round-trips through the lesson-plans API. */
-function ActivityRefPicker({
-  ar, t, onClose, onPick,
-}: {
-  ar: boolean;
-  t: any;
-  onClose: () => void;
-  onPick: (ref: ActivityRef) => void;
-}) {
-  type Tab = "assignment" | "video-lesson";
-  const [tab, setTab] = useState<Tab>("assignment");
-  const [search, setSearch] = useState("");
-  const [items, setItems] = useState<Record<Tab, Array<{ id: number; title: string }> | null>>({
-    "assignment": null, "video-lesson": null,
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (items[tab] !== null) return; // cached
-    let cancelled = false;
-    setLoading(true);
-    const url =
-      tab === "assignment" ? `${API_BASE}/api/assignments`
-      : `${API_BASE}/api/video-lessons`;
-    fetch(url, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then((data) => {
-        if (cancelled) return;
-        // Each endpoint returns a slightly different shape; normalize to
-        // { id, title }. assignments → array, video-lessons → { lessons: [] }.
-        let list: Array<{ id: number; title: string }> = [];
-        if (Array.isArray(data)) {
-          list = data
-            .filter((r: any) => r && typeof r.id === "number" && typeof r.title === "string")
-            .map((r: any) => ({ id: r.id, title: r.title }));
-        } else if (data && Array.isArray(data.lessons)) {
-          list = data.lessons
-            .filter((r: any) => r && typeof r.id === "number" && typeof r.title === "string")
-            .map((r: any) => ({ id: r.id, title: r.title }));
-        }
-        setItems(prev => ({ ...prev, [tab]: list }));
-      })
-      .catch(() => {
-        if (!cancelled) setItems(prev => ({ ...prev, [tab]: [] }));
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [tab]);
-
-  const list = items[tab];
-  const filtered = (list ?? []).filter(r =>
-    !search.trim() || r.title.toLowerCase().includes(search.toLowerCase().trim())
-  );
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-          <h3 className="font-extrabold text-base" style={{ color: BRAND_PRIMARY }}>{t.pickActivity}</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted/30 text-muted-foreground">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        {/* Source tabs */}
-        <div className="flex gap-1 px-3 pt-3" role="tablist">
-          {([
-            ["assignment", t.tabAssignments],
-            ["video-lesson", t.tabVideos],
-          ] as Array<[Tab, string]>).map(([k, label]) => (
-            <button
-              key={k}
-              role="tab"
-              aria-selected={tab === k}
-              onClick={() => setTab(k)}
-              className="px-3 py-1.5 rounded-t-lg text-xs font-bold border-b-2"
-              style={{
-                borderColor: tab === k ? BRAND_PRIMARY : "transparent",
-                color: tab === k ? BRAND_PRIMARY : "#6a7370",
-                background: tab === k ? `${BRAND_PRIMARY}0c` : "transparent",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="px-3 pt-2">
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t.pickerSearch}
-            className="w-full px-3 py-2 border rounded-xl text-sm min-h-[40px]"
-            style={{ borderColor: `${BRAND_PRIMARY}33` }}
-          />
-        </div>
-        <div className="flex-1 overflow-auto p-3 space-y-1.5">
-          {loading ? (
-            <p className="text-center text-sm text-muted-foreground py-6">{t.pickerLoading}</p>
-          ) : filtered.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-6 italic">{t.pickerEmpty}</p>
-          ) : (
-            filtered.map(r => (
-              <button
-                key={`${tab}-${r.id}`}
-                onClick={() => onPick({ kind: tab, id: r.id, title: r.title })}
-                className="w-full text-start px-3 py-2 rounded-xl border text-sm hover:shadow-md transition min-h-[44px]"
-                style={{ borderColor: `${BRAND_PRIMARY}22`, background: "white" }}
-                dir={ar ? "rtl" : "ltr"}
-              >
-                <span className="font-bold" style={{ color: BRAND_PRIMARY }}>{r.title}</span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

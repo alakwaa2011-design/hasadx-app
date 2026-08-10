@@ -688,7 +688,7 @@ export default function SharedContentPage({
             style={{
               background: isCompetitionLibrary
                 ? "linear-gradient(135deg,#f59e0b,#ea580c)"
-                : "linear-gradient(135deg,#06b6d4,#0d9488)",
+                : "linear-gradient(135deg,#6ba184,#2f684d)",
             }}
           >
             <Globe className={cn("text-white", isActivitiesLibrary ? "w-5 h-5 sm:w-[22px] sm:h-[22px]" : "w-6 h-6")} />
@@ -853,7 +853,7 @@ export default function SharedContentPage({
                   a.type === "mcq"        ? "#3b82f6" :
                   a.type === "true_false" ? "#f59e0b" :
                   a.type === "fill_blank" ? "#8b5cf6" :
-                                           "#14b8a6";
+                                           "#468064";
                 const isOwn = a.teacherId === currentTeacherId;
                 const libBadge = isActivitiesLibrary ? activitiesAssignmentBadge(a) : null;
                 return (

@@ -312,7 +312,7 @@ function SummaryCard({ summary }: { summary: Summary }) {
         "المشاركون",
         String(summary.participantsCount),
         summary.classSize != null ? `من أصل ${summary.classSize}` : "وضع الضيوف",
-        "#34d399",
+        "#6ba184",
       )}
       {tile(
         <Target className="w-5 h-5" />,
@@ -326,7 +326,7 @@ function SummaryCard({ summary }: { summary: Summary }) {
         "متوسط الصحة",
         summary.avgScorePct != null ? `${summary.avgScorePct}%` : "—",
         `${summary.scorableActivities} نشاط مُقَيَّم`,
-        "#34d399",
+        "#6ba184",
       )}
       {tile(
         <BarChart3 className="w-5 h-5" />,
@@ -411,7 +411,7 @@ function InsightsSection({
               </div>
             </div>
           ) : <div className="text-white/50 text-[12px]">لا يوجد</div>,
-          "#34d399",
+          "#6ba184",
         )}
 
         {tile(
@@ -432,12 +432,12 @@ function InsightsSection({
           <Trophy className="w-4 h-4" />,
           "نسبة النجاح",
           <div>
-            <div className="font-black text-2xl tabular-nums" style={{ color: "#6ee7b7" }}>
+            <div className="font-black text-2xl tabular-nums" style={{ color: "#99c1ab" }}>
               {insights.successPct != null ? `${insights.successPct}%` : "—"}
             </div>
             <div className="text-[11px] text-white/55 mt-1">متوسط الإجابات الصحيحة</div>
           </div>,
-          "#34d399",
+          "#6ba184",
         )}
 
         {tile(
@@ -615,7 +615,7 @@ function StudentsCard({ students, onSelect }: { students: StudentRow[]; onSelect
                       className="inline-block px-2 py-0.5 rounded font-black tabular-nums text-xs"
                       style={
                         s.pct >= 70
-                          ? { background: "rgba(52,211,153,0.15)", color: "#6ee7b7" }
+                          ? { background: "rgba(52,211,153,0.15)", color: "#99c1ab" }
                           : s.pct >= 40
                           ? { background: "rgba(217,165,33,0.18)", color: BRAND_GOLD }
                           : { background: "rgba(244,63,94,0.15)", color: "#fda4af" }
@@ -885,7 +885,7 @@ export function StudentDetailModal({
       n == null ? "—" : n < 60 ? `${n} ث` : `${Math.floor(n / 60)} د ${n % 60} ث`;
     const statusCell = (r: StudentActivityRow) => {
       if (r.studentAnswer == null) return '<span style="color:#94a3b8">لم يُجِب</span>';
-      if (r.isCorrect === true) return '<span style="color:#047857;font-weight:bold">صحيح ✓</span>';
+      if (r.isCorrect === true) return '<span style="color:#225739;font-weight:bold">صحيح ✓</span>';
       if (r.isCorrect === false) return '<span style="color:#b91c1c;font-weight:bold">خطأ ✗</span>';
       return "—";
     };
@@ -1047,7 +1047,7 @@ export function StudentDetailModal({
                     className="inline-block px-2 py-0.5 rounded font-black tabular-nums text-[11px]"
                     style={
                       pct >= 70
-                        ? { background: "rgba(52,211,153,0.15)", color: "#6ee7b7" }
+                        ? { background: "rgba(52,211,153,0.15)", color: "#99c1ab" }
                         : pct >= 40
                         ? { background: "rgba(217,165,33,0.18)", color: BRAND_GOLD }
                         : { background: "rgba(244,63,94,0.15)", color: "#fda4af" }

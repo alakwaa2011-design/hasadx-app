@@ -3217,8 +3217,8 @@ function StatsTab({
   ];
 
   const GRADE_COLORS = [
-    "#10b981",
-    "#22c55e",
+    "#468064",
+    "#468064",
     "#84cc16",
     "#f59e0b",
     "#f97316",

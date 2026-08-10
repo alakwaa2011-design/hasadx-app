@@ -790,19 +790,27 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       return;
     }
 
-    if (assignment.submissionMode === "electronic") {
-      res.status(400).json({ message: "هذا الواجب يقبل فقط الإجابات الإلكترونية" });
-      return;
-    }
+    // المعلم مالك الواجب يستطيع تصحيح أوراق طلابه بالتصوير من صفحة
+    // التصحيح الورقي لأي واجب يملكه — بلا قيود وضع التسليم أو الموعد
+    // (هو من يصحح، لا الطالب الذي يسلّم).
+    const isOwnerTeacher =
+      !!req.session.teacherId && req.session.teacherId === assignment.teacherId;
 
-    if (assignment.examMode) {
-      res.status(400).json({ message: "الاختبارات الرسمية لا تقبل إرسال الصور، يجب الإجابة إلكترونياً" });
-      return;
-    }
+    if (!isOwnerTeacher) {
+      if (assignment.submissionMode === "electronic") {
+        res.status(400).json({ message: "هذا الواجب يقبل فقط الإجابات الإلكترونية" });
+        return;
+      }
 
-    if (assignment.deadline && new Date() > new Date(assignment.deadline)) {
-      res.status(403).json({ message: "انتهى موعد تسليم هذا الواجب" });
-      return;
+      if (assignment.examMode) {
+        res.status(400).json({ message: "الاختبارات الرسمية لا تقبل إرسال الصور، يجب الإجابة إلكترونياً" });
+        return;
+      }
+
+      if (assignment.deadline && new Date() > new Date(assignment.deadline)) {
+        res.status(403).json({ message: "انتهى موعد تسليم هذا الواجب" });
+        return;
+      }
     }
 
     const isWorksheetSource = (assignment as any).source === "worksheet";
@@ -853,7 +861,7 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
     const MAX_TOTAL_B64 = 20 * 1024 * 1024; // ضمن سقف 25mb لجسم الطلب
     const rawPages = (req.body as any)?.imagesBase64;
     let pageImages: string[] = [imageData];
-    if (isWorksheetSource && Array.isArray(rawPages) && rawPages.length > 1) {
+    if ((isWorksheetSource || isOwnerTeacher) && Array.isArray(rawPages) && rawPages.length > 1) {
       if (rawPages.length > MAX_PAGES) {
         res.status(400).json({ message: `الحد الأقصى ${MAX_PAGES} صفحات لكل ورقة` });
         return;

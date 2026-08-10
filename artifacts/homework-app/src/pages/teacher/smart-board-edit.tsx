@@ -1,19 +1,17 @@
-/**
- * Smart Whiteboard — Edit Saved Lesson
- * Loads an existing lesson plan and lets the teacher edit all content:
- *   - step titles · voiceText · board action text · colors · add/delete actions
- */
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import {
   ChevronRight, Loader2, Save, PlayCircle,
-  Trash2, Plus, GripVertical, AlertCircle,
+  Trash2, Plus, GripVertical, AlertCircle, Edit2, X, Check,
+  ArrowRight, ArrowLeft, Volume2, Sparkles
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { motion, AnimatePresence } from "framer-motion";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface BoardAction {
   type: string;
@@ -23,40 +21,25 @@ interface BoardAction {
   color?: string;
   imageQuery?: string;
 }
+
 interface LessonStep {
   id: string;
   title: string;
   voiceText: string;
   boardActions: BoardAction[];
 }
+
 interface LessonPlan {
   title: string;
   topic: string;
   subject?: string;
   gradeLevel?: string;
-  intro:   { voiceText: string; boardActions: BoardAction[] };
-  steps:   LessonStep[];
+  intro: { voiceText: string; boardActions: BoardAction[] };
+  steps: LessonStep[];
   summary: { voiceText: string; boardActions: BoardAction[] };
   keyPoints?: string[];
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TEXT_TYPES = ["bullet", "writeText", "highlight", "underline", "writeMath"];
-const VISUAL_TYPES = ["drawArrow", "drawCircle", "showDiagram", "showImage", "clearBoard", "pause", "erase"];
-
-const TYPE_LABELS: Record<string, string> = {
-  bullet:"نقطة", writeText:"نص", highlight:"مُميَّز",
-  underline:"مُسطَّر", writeMath:"معادلة",
-  drawArrow:"سهم", drawCircle:"دائرة", showDiagram:"مخطط",
-  showImage:"صورة", clearBoard:"مسح", pause:"توقف", erase:"حذف",
-};
-const TYPE_COLORS: Record<string, string> = {
-  bullet:"#c4b5fd", writeText:"#4ade80", highlight:"#fbbf24",
-  underline:"#f9a8d4", writeMath:"#60a5fa",
-  drawArrow:"#fb923c", drawCircle:"#34d399", showDiagram:"#a78bfa",
-  showImage:"#38bdf8", clearBoard:"#6b7280", pause:"#fbbf24", erase:"#ef4444",
-};
 const CHALK_COLORS = [
   { value:"white",  label:"أبيض",   dot:"#f2ede0" },
   { value:"yellow", label:"أصفر",   dot:"#f5d76e" },
@@ -67,228 +50,349 @@ const CHALK_COLORS = [
   { value:"purple", label:"بنفسجي", dot:"#c4a8f0" },
 ];
 
-// ─── Shared input style ───────────────────────────────────────────────────────
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", border: "1px solid var(--border)",
-  borderRadius: 8, padding: "9px 12px", fontSize: 13,
-  background: "var(--background)", color: "var(--foreground)",
-  fontFamily: "inherit", lineHeight: 1.65, resize: "none",
-  outline: "none", boxSizing: "border-box",
+const ACTION_COLOR: Record<string, string> = {
+  writeText: "#2f684d", writeMath: "#60a5fa", bullet: "#c4b5fd",
+  highlight: "#fbbf24", underline: "#f9a8d4", drawArrow: "#fb923c",
+  drawCircle: "#468064", showDiagram: "#a78bfa", clearBoard: "#6b7280",
+  erase: "#ef4444", pause: "#fbbf24", bullet2: "#c4b5fd", writeTitle: "#f97316",
+  showImage: "#0ea5e9", drawConnector: "#f59e0b", showChart: "#a855f7",
 };
 
-// ─── Action editor row ────────────────────────────────────────────────────────
+const ACTION_LABEL: Record<string, string> = {
+  writeText: "نص", writeMath: "معادلة", bullet: "نقطة",
+  highlight: "تظليل", underline: "تسطير", drawArrow: "سهم",
+  drawCircle: "دائرة", showDiagram: "مخطط", clearBoard: "مسح",
+  erase: "حذف", pause: "إيقاف مؤقت", bullet2: "نقطة٢", writeTitle: "عنوان",
+  showImage: "صورة", drawConnector: "ربط", showChart: "مخطط بياني",
+};
+
+function getActionText(a: BoardAction): string {
+  return a.content ?? a.label ?? a.description ?? "";
+}
+
+function setActionText(a: BoardAction, text: string): BoardAction {
+  if (a.content !== undefined) return { ...a, content: text };
+  if (a.label !== undefined) return { ...a, label: text };
+  if (a.description !== undefined) return { ...a, description: text };
+  return { ...a, content: text };
+}
+
+function MathPreview({ src }: { src: string }) {
+  if (!src.trim()) return null;
+  let html = "";
+  try {
+    html = katex.renderToString(src, { throwOnError: false, displayMode: true, strict: false });
+  } catch { return null; }
+  return (
+    <div
+      className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-3 py-2 mt-2 text-blue-600 dark:text-blue-400 overflow-x-auto text-lg"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
 
 function ActionRow({
-  action, onChange, onDelete,
+  action, onUpdate, onDelete, onDragStart, onDragOver, onDrop, isDragOver,
 }: {
   action: BoardAction;
-  onChange: (a: BoardAction) => void;
+  onUpdate: (a: BoardAction) => void;
   onDelete: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  isDragOver: boolean;
 }) {
-  const isText   = TEXT_TYPES.includes(action.type);
-  const isVisual = VISUAL_TYPES.includes(action.type);
-  const tc = TYPE_COLORS[action.type] ?? "#9ca3af";
-  const tl = TYPE_LABELS[action.type]  ?? action.type;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const color = ACTION_COLOR[action.type] ?? "#9ca3af";
+  const text = getActionText(action);
+  const isNonText = ["clearBoard", "erase", "pause"].includes(action.type);
+  const isText = ["bullet", "writeText", "highlight", "underline", "writeMath"].includes(action.type);
+
+  function startEdit() {
+    if (isNonText) return;
+    setDraft(text);
+    setEditing(true);
+  }
+
+  function save() {
+    onUpdate(setActionText(action, draft));
+    setEditing(false);
+  }
+
+  function cancel() { setEditing(false); }
 
   return (
-    <div style={{
-      display: "flex", alignItems: "flex-start", gap: 8,
-      padding: "8px 10px", background: "var(--background)",
-      border: "1px solid var(--border)", borderRadius: 8,
-      marginBottom: 6,
-    }}>
-      {/* Type badge */}
-      <span style={{
-        flexShrink: 0, background: `${tc}18`, color: tc,
-        border: `1px solid ${tc}40`, borderRadius: 6,
-        padding: "2px 7px", fontSize: 11, fontWeight: 700, marginTop: 1,
-        whiteSpace: "nowrap",
-      }}>{tl}</span>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {isText ? (
-          action.type === "writeMath" ? (
-            // Math: monospace input
-            <input
-              value={action.content ?? ""}
-              onChange={e => onChange({ ...action, content: e.target.value })}
-              style={{ ...inputStyle, fontFamily: "'Courier New',monospace", fontSize: 12, padding: "6px 10px" }}
-              placeholder="مثال: \frac{1}{2} + \frac{1}{3}"
-              dir="ltr"
-            />
-          ) : (
-            <textarea
-              value={action.content ?? ""}
-              onChange={e => onChange({ ...action, content: e.target.value })}
-              rows={2}
-              style={inputStyle}
-              dir="rtl"
-            />
-          )
-        ) : isVisual ? (
-          <span style={{ fontSize: 12, color: "var(--muted-foreground)", display: "block", paddingTop: 3 }}>
-            {action.imageQuery
-              ? `🔍 ${action.imageQuery}`
-              : action.description ?? action.label ?? "(عنصر مرئي لا يُعدَّل)"}
-          </span>
-        ) : null}
-
-        {/* Color picker for text actions */}
-        {isText && (
-          <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
-            {CHALK_COLORS.map(c => (
-              <button
-                key={c.value}
-                onClick={() => onChange({ ...action, color: c.value })}
-                title={c.label}
-                style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  background: c.dot, border: "none", cursor: "pointer", padding: 0,
-                  outline: action.color === c.value ? `2px solid ${c.dot}` : "none",
-                  outlineOffset: 2, opacity: action.color === c.value ? 1 : 0.55,
-                  transition: "opacity .15s",
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={e => { e.preventDefault(); onDragOver(e); }}
+      onDrop={e => { e.preventDefault(); onDrop(); }}
+      className={`group relative rounded-2xl p-2 mb-2 border transition-all ${
+        isDragOver 
+          ? "border-emerald-400 bg-emerald-50/50 dark:border-emerald-600 dark:bg-emerald-900/20" 
+          : "border-emerald-50 dark:border-emerald-900/30 bg-[#f4f7f5] dark:bg-[#0B100E]"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div 
+          className="cursor-grab text-slate-300 hover:text-emerald-500 dark:text-slate-600 dark:hover:text-emerald-400 pt-1 shrink-0 transition-colors"
+          title="اسحب لإعادة الترتيب"
+        >
+          <GripVertical size={16} />
+        </div>
+        <div 
+          className="shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-black mt-1 whitespace-nowrap"
+          style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}
+        >
+          {ACTION_LABEL[action.type] ?? action.type}
+        </div>
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <div className="animate-in fade-in zoom-in-95 duration-200">
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                rows={2}
+                className="w-full resize-y rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#15201B] p-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all leading-relaxed"
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); }
+                  if (e.key === "Escape") cancel();
                 }}
               />
-            ))}
-          </div>
-        )}
-      </div>
+              {action.type === "writeMath" && <MathPreview src={draft} />}
+              <div className="flex gap-2 mt-2">
+                <button onClick={save} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-1.5 text-xs font-black transition-colors">
+                  <Check size={14} /> حفظ
+                </button>
+                <button onClick={cancel} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-1.5 text-xs font-bold transition-colors">
+                  <X size={14} /> إلغاء
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              onClick={isNonText ? undefined : startEdit}
+              className={`text-sm font-bold leading-relaxed break-words rounded-xl p-1.5 -ml-1.5 border border-transparent transition-colors ${
+                isNonText 
+                  ? "text-slate-400 italic cursor-default" 
+                  : "text-slate-700 dark:text-slate-200 cursor-text hover:bg-white dark:hover:bg-[#15201B] hover:border-emerald-100 dark:hover:border-emerald-800/50"
+              }`}
+              title={isNonText ? undefined : "انقر للتعديل"}
+            >
+              {text || <span className="opacity-40">(فارغ)</span>}
+              {!isNonText && <Edit2 size={12} className="inline-block ms-2 opacity-0 group-hover:opacity-40 transition-opacity" />}
+            </div>
+          )}
 
-      {/* Delete */}
-      <button
-        onClick={onDelete}
-        style={{
-          flexShrink: 0, background: "none", border: "none",
-          color: "var(--muted-foreground)", cursor: "pointer",
-          padding: "4px 4px", borderRadius: 5,
-          transition: "color .15s",
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = ""; }}
-      >
-        <Trash2 size={13}/>
-      </button>
+          {isText && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {CHALK_COLORS.map(c => (
+                <button
+                  key={c.value}
+                  onClick={() => onUpdate({ ...action, color: c.value })}
+                  title={c.label}
+                  className="w-5 h-5 rounded-full border-none cursor-pointer transition-all"
+                  style={{
+                    backgroundColor: c.dot,
+                    outline: action.color === c.value ? `2px solid ${c.dot}` : 'none',
+                    outlineOffset: '2px',
+                    opacity: action.color === c.value ? 1 : 0.55
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        <button 
+          onClick={onDelete} 
+          className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-1.5 shrink-0 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" 
+          title="حذف"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
     </div>
   );
 }
 
-// ─── Phase editor card ────────────────────────────────────────────────────────
+function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (actions: BoardAction[]) => void }) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
 
-function PhaseCard({
-  label, color, voiceText, boardActions,
-  onVoiceChange, onActionsChange, onTitleChange, title,
-}: {
-  label: string; color: string;
-  voiceText: string; boardActions: BoardAction[];
-  onVoiceChange: (v: string) => void;
-  onActionsChange: (a: BoardAction[]) => void;
-  onTitleChange?: (t: string) => void;
-  title?: string;
-}) {
-  function updateAction(idx: number, a: BoardAction) {
-    const next = [...boardActions];
-    next[idx] = a;
-    onActionsChange(next);
-  }
-  function deleteAction(idx: number) {
-    onActionsChange(boardActions.filter((_, i) => i !== idx));
-  }
-  function addBullet() {
-    onActionsChange([...boardActions, { type: "bullet", content: "", color: "white" }]);
-  }
-  function addHighlight() {
-    onActionsChange([...boardActions, { type: "highlight", content: "", color: "yellow" }]);
-  }
-  function addText() {
-    onActionsChange([...boardActions, { type: "writeText", content: "", color: "white" }]);
+  function handleDrop(targetIdx: number) {
+    if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setOverIdx(null); return; }
+    const next = [...actions];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(targetIdx, 0, moved);
+    onChange(next);
+    setDragIdx(null); setOverIdx(null);
   }
 
   return (
-    <div style={{
-      background: "var(--card)", border: "1px solid var(--border)",
-      borderRadius: 14, padding: "16px 18px", marginBottom: 12,
-    }}>
-      {/* Phase header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        {onTitleChange && <GripVertical size={16} color="var(--muted-foreground)" style={{ flexShrink: 0 }}/>}
-        <span style={{
-          background: `${color}20`, color,
-          borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 700, flexShrink: 0,
-        }}>{label}</span>
-
-        {onTitleChange ? (
-          <input
-            value={title ?? ""}
-            onChange={e => onTitleChange(e.target.value)}
-            style={{ ...inputStyle, fontSize: 14, fontWeight: 700, padding: "5px 10px" }}
-            placeholder="عنوان الخطوة"
-          />
-        ) : (
-          <span style={{ fontWeight: 700, fontSize: 14, color: "var(--foreground)" }}>{title}</span>
-        )}
+    <div className="mt-4 pt-4 border-t border-emerald-50 dark:border-emerald-900/30">
+      <div className="text-xs font-black text-slate-500 mb-3 flex items-center justify-between">
+        <span>عناصر السبورة <span className="font-bold font-sans text-[10px] text-slate-400 ms-1">— اسحب للترتيب · انقر للتعديل</span></span>
       </div>
-
-      {/* voiceText */}
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", display: "block", marginBottom: 5, letterSpacing: .5 }}>
-          🔊 النص الصوتي (يُقرأ بصوت عالٍ)
-        </label>
-        <textarea
-          value={voiceText}
-          onChange={e => onVoiceChange(e.target.value)}
-          rows={3}
-          style={{ ...inputStyle, fontSize: 14, lineHeight: 1.75 }}
-          dir="rtl"
-          placeholder="اكتب ما سيقوله المعلم بصوت عالٍ…"
-        />
-      </div>
-
-      {/* Board actions */}
-      <div>
-        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", display: "block", marginBottom: 8, letterSpacing: .5 }}>
-          📋 محتوى السبورة
-        </label>
-        {boardActions.map((a, i) => (
+      {actions.length === 0 && (
+        <div className="text-xs font-bold text-slate-400 italic mb-3 px-2">لا توجد عناصر</div>
+      )}
+      <div className="space-y-1">
+        {actions.map((a, i) => (
           <ActionRow
             key={i}
             action={a}
-            onChange={updated => updateAction(i, updated)}
-            onDelete={() => deleteAction(i)}
+            onUpdate={updated => { const next = [...actions]; next[i] = updated; onChange(next); }}
+            onDelete={() => onChange(actions.filter((_, idx) => idx !== i))}
+            onDragStart={() => setDragIdx(i)}
+            onDragOver={() => setOverIdx(i)}
+            onDrop={() => handleDrop(i)}
+            isDragOver={overIdx === i && dragIdx !== i}
           />
         ))}
-
-        {/* Add buttons */}
-        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-          {[
-            { label: "+ نقطة",   fn: addBullet,    c: "#c4b5fd" },
-            { label: "+ نص",     fn: addText,      c: "#4ade80" },
-            { label: "+ مُميَّز", fn: addHighlight, c: "#fbbf24" },
-          ].map(btn => (
-            <button
-              key={btn.label}
-              onClick={btn.fn}
-              style={{
-                background: `${btn.c}10`, border: `1px dashed ${btn.c}60`,
-                color: btn.c, borderRadius: 8, padding: "5px 12px",
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 4,
-              }}
-            >
-              {btn.label}
-            </button>
-          ))}
-        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-2">
+        <button
+          onClick={() => onChange([...actions, { type: "bullet", content: "", color: "white" }])}
+          className="flex-1 flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl py-2.5 text-xs font-black transition-colors"
+        >
+          <Plus size={14} /> إضافة نقطة
+        </button>
+        <button
+          onClick={() => onChange([...actions, { type: "writeText", content: "", color: "white" }])}
+          className="flex-1 flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl py-2.5 text-xs font-black transition-colors"
+        >
+          <Plus size={14} /> إضافة نص
+        </button>
+        <button
+          onClick={() => onChange([...actions, { type: "highlight", content: "", color: "yellow" }])}
+          className="flex-1 flex items-center justify-center gap-2 bg-amber-50/50 hover:bg-amber-50 dark:bg-amber-900/10 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-dashed border-amber-200 dark:border-amber-800 rounded-xl py-2.5 text-xs font-black transition-colors"
+        >
+          <Plus size={14} /> إضافة تظليل
+        </button>
       </div>
     </div>
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+function StepCard({
+  step, index, onEditTitle, onEditVoice, onEditActions, onDelete, isIntro, isSummary,
+}: {
+  step: LessonStep | { voiceText: string; boardActions: BoardAction[] };
+  index: number;
+  onEditTitle?: (val: string) => void;
+  onEditVoice: (val: string) => void;
+  onEditActions: (actions: BoardAction[]) => void;
+  onDelete?: () => void;
+  isIntro?: boolean;
+  isSummary?: boolean;
+}) {
+  const [editingVoice, setEditingVoice] = useState(false);
+  const [voiceDraft, setVoiceDraft] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [expanded, setExpanded] = useState(true);
+
+  const titleText = isIntro ? "المقدمة" : isSummary ? "الخلاصة"
+    : ("title" in step ? step.title : "");
+
+  return (
+    <div className="bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 rounded-3xl overflow-hidden shadow-sm transition-all hover:border-emerald-100 dark:hover:border-emerald-800/60">
+      <div
+        className={`flex items-center gap-3 p-4 sm:p-5 select-none cursor-pointer transition-colors hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 ${expanded ? 'border-b border-emerald-50 dark:border-emerald-900/30' : ''}`}
+        onClick={() => setExpanded(e => !e)}
+      >
+        {!isIntro && !isSummary && <GripVertical size={18} className="text-slate-300 dark:text-slate-600 shrink-0" />}
+        <span className={`shrink-0 rounded-xl px-2.5 py-1 text-[10px] font-black ${
+          isIntro ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+          isSummary ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+          'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+        }`}>
+          {isIntro ? "مقدمة" : isSummary ? "خلاصة" : `خطوة ${index}`}
+        </span>
+
+        {!isIntro && !isSummary && onEditTitle ? (
+          editingTitle ? (
+            <div className="flex-1 flex gap-2" onClick={e => e.stopPropagation()}>
+              <input
+                autoFocus value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
+                className="flex-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-[#0B100E] px-2 py-1 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-400/20"
+                onKeyDown={e => {
+                  if (e.key === "Enter") { onEditTitle(titleDraft); setEditingTitle(false); }
+                  if (e.key === "Escape") setEditingTitle(false);
+                }}
+              />
+              <button onClick={() => { onEditTitle(titleDraft); setEditingTitle(false); }} className="bg-emerald-600 text-white rounded-lg px-2"><Check size={14} /></button>
+              <button onClick={() => setEditingTitle(false)} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg px-2"><X size={14} /></button>
+            </div>
+          ) : (
+            <div
+              className="flex-1 text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 group"
+              onClick={e => { e.stopPropagation(); setTitleDraft(titleText); setEditingTitle(true); }}
+              title="انقر لتعديل العنوان"
+            >
+              {titleText}
+              <Edit2 size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+            </div>
+          )
+        ) : (
+          <span className="flex-1 text-sm font-black text-slate-800 dark:text-slate-100">{titleText}</span>
+        )}
+
+        <div className="flex items-center gap-3 ms-auto shrink-0">
+          {onDelete && (
+            <button onClick={e => { e.stopPropagation(); onDelete(); }} className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-1.5 transition-colors">
+              <Trash2 size={16} />
+            </button>
+          )}
+          <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${expanded ? '-rotate-90' : 'rotate-180'}`} />
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+            <div className="p-4 sm:p-5">
+              <div>
+                <div className="text-xs font-black text-slate-500 mb-2 flex items-center gap-1.5">
+                  <Volume2 size={16} className="text-emerald-500" /> النص الصوتي
+                </div>
+                {editingVoice ? (
+                  <div className="animate-in fade-in zoom-in-95 duration-200">
+                    <textarea
+                      autoFocus value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)}
+                      className="w-full min-h-[80px] resize-y rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#15201B] p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all leading-relaxed"
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-xs font-black transition-colors">حفظ</button>
+                      <button onClick={() => setEditingVoice(false)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-xs font-bold transition-colors">إلغاء</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="text-sm font-bold leading-relaxed text-slate-600 dark:text-slate-300 bg-[#f4f7f5] dark:bg-[#0B100E] border border-slate-100 dark:border-slate-800/60 rounded-xl p-3 cursor-text hover:border-emerald-200 dark:hover:border-emerald-800/60 transition-colors flex items-start gap-2 group"
+                    onClick={() => { setVoiceDraft(step.voiceText); setEditingVoice(true); }}
+                    title="انقر للتعديل"
+                  >
+                    <span className="flex-1">{step.voiceText}</span>
+                    <Edit2 size={14} className="shrink-0 text-slate-400 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                )}
+              </div>
+
+              <ActionList actions={step.boardActions} onChange={onEditActions} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function SmartBoardEdit() {
   const params = useParams<{ id: string }>();
+  const { lang } = useI18n();
   const [, navigate] = useLocation();
   const lessonId = params?.id ? parseInt(params.id) : NaN;
 
@@ -298,7 +402,6 @@ export default function SmartBoardEdit() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Load existing lesson
   useEffect(() => {
     if (isNaN(lessonId)) { setLoadError("معرّف غير صالح"); setLoading(false); return; }
     fetch(`${API_BASE}/api/whiteboard/lessons/${lessonId}`, { credentials: "include" })
@@ -312,8 +415,6 @@ export default function SmartBoardEdit() {
       .catch(() => setLoadError("تعذّر تحميل الدرس"))
       .finally(() => setLoading(false));
   }, [lessonId]);
-
-  // ── Helpers ──
 
   function updateStepVoice(idx: number, v: string) {
     if (!plan) return;
@@ -349,7 +450,10 @@ export default function SmartBoardEdit() {
     setPlan({ ...plan, steps: [...plan.steps, newStep] });
   }
 
-  // ── Save ──
+  const updateIntroVoice = (v: string) => plan && setPlan({ ...plan, intro: { ...plan.intro, voiceText: v } });
+  const updateIntroActions = (a: BoardAction[]) => plan && setPlan({ ...plan, intro: { ...plan.intro, boardActions: a } });
+  const updateSummaryVoice = (v: string) => plan && setPlan({ ...plan, summary: { ...plan.summary, voiceText: v } });
+  const updateSummaryActions = (a: BoardAction[]) => plan && setPlan({ ...plan, summary: { ...plan.summary, boardActions: a } });
 
   async function saveChanges(andPresent = false) {
     if (!plan) return;
@@ -376,217 +480,156 @@ export default function SmartBoardEdit() {
     }
   }
 
-  // ── Loading / error ──
-
-  if (loading) return (
-    <Layout>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 320, gap: 14 }} dir="rtl">
-        <Loader2 size={28} style={{ animation: "spin 1s linear infinite", color: "#16a34a" }}/>
-        <span style={{ color: "var(--muted-foreground)" }}>جارٍ تحميل الدرس…</span>
-      </div>
-    </Layout>
-  );
-  if (loadError || !plan) return (
-    <Layout>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, gap: 14, color: "var(--destructive)" }} dir="rtl">
-        <AlertCircle size={32}/>
-        <p>{loadError || "الدرس غير موجود"}</p>
-        <button onClick={() => navigate("/teacher/smart-board")}
-          style={{ background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 20px", cursor: "pointer", color: "var(--foreground)", fontFamily: "inherit" }}>
-          العودة
-        </button>
-      </div>
-    </Layout>
-  );
-
-  // ── Render ──
-
   return (
     <Layout>
-      <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 16px" }} dir="rtl">
-
+      <div className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] font-display pb-32" dir={lang === "ar" ? "rtl" : "ltr"}>
+        
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted-foreground)", fontSize: 13 }}>
-            <button onClick={() => navigate("/teacher/smart-board")}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0 }}>
-              السبورة الذكية
-            </button>
-            <ChevronRight size={14}/>
-            <span style={{ color: "var(--foreground)", fontWeight: 600 }}>تعديل: {plan.title}</span>
-          </div>
-
-          {/* Action buttons */}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => saveChanges(false)}
-              disabled={saving}
-              style={{
-                background: saved ? "rgba(74,222,128,.15)" : "var(--card)",
-                border: `1px solid ${saved ? "rgba(74,222,128,.5)" : "var(--border)"}`,
-                color: saved ? "#4ade80" : "var(--foreground)",
-                borderRadius: 10, padding: "9px 18px", cursor: saving ? "not-allowed" : "pointer",
-                fontWeight: 700, fontSize: 13, fontFamily: "inherit",
-                display: "flex", alignItems: "center", gap: 7, transition: "all .2s",
-              }}
-            >
-              {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }}/> : <Save size={14}/>}
-              {saved ? "تم الحفظ ✓" : "حفظ التغييرات"}
-            </button>
-            <button
-              onClick={() => saveChanges(true)}
-              disabled={saving}
-              style={{
-                background: "linear-gradient(135deg,#1a4731,#16a34a)",
-                color: "white", border: "none", borderRadius: 10,
-                padding: "9px 18px", cursor: saving ? "not-allowed" : "pointer",
-                fontWeight: 700, fontSize: 13, fontFamily: "inherit",
-                display: "flex", alignItems: "center", gap: 7,
-                boxShadow: "0 2px 12px rgba(22,163,74,.3)",
-              }}
-            >
-              <PlayCircle size={14}/>
-              حفظ وعرض
-            </button>
-          </div>
-        </div>
-
-        {/* Lesson title */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-foreground)", display: "block", marginBottom: 5, letterSpacing: .5 }}>
-            عنوان الدرس
-          </label>
-          <input
-            value={plan.title}
-            onChange={e => setPlan({ ...plan, title: e.target.value })}
-            style={{ ...inputStyle, fontSize: 16, fontWeight: 800, padding: "10px 14px" }}
-            placeholder="عنوان الدرس"
-          />
-        </div>
-
-        {/* Key points */}
-        {plan.keyPoints && plan.keyPoints.length > 0 && (
-          <div style={{ background: "rgba(74,222,128,.07)", border: "1px solid rgba(74,222,128,.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", marginBottom: 8, letterSpacing: .5 }}>
-              النقاط الرئيسية
+        <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+          <button
+            onClick={() => navigate("/teacher/smart-board")}
+            className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+            title="رجوع"
+          >
+            {lang === "ar" ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+          </button>
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+              <Edit2 className="w-5 h-5 text-white" />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {plan.keyPoints.map((kp, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    value={kp}
-                    onChange={e => {
-                      const kps = [...(plan.keyPoints ?? [])];
-                      kps[i] = e.target.value;
-                      setPlan({ ...plan, keyPoints: kps });
-                    }}
-                    style={{ ...inputStyle, fontSize: 13, padding: "6px 10px" }}
-                    dir="rtl"
-                  />
-                  <button onClick={() => setPlan({ ...plan, keyPoints: plan.keyPoints!.filter((_, j) => j !== i) })}
-                    style={{ background: "none", border: "none", color: "var(--muted-foreground)", cursor: "pointer", flexShrink: 0 }}>
-                    <Trash2 size={13}/>
-                  </button>
+            <div>
+              <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
+                تعديل خطة الدرس
+              </h1>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+                تعديل محتوى السبورة والنص الصوتي
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-32 text-emerald-600/50">
+              <Loader2 className="w-12 h-12 animate-spin mb-4" />
+              <p className="font-bold text-sm">جارٍ تحميل الدرس…</p>
+            </div>
+          ) : loadError || !plan ? (
+            <div className="flex flex-col items-center justify-center py-32 text-red-500/50 gap-4">
+              <AlertCircle className="w-12 h-12" />
+              <p className="font-bold text-sm text-red-600 dark:text-red-400">{loadError || "الدرس غير موجود"}</p>
+              <button onClick={() => navigate("/teacher/smart-board")} className="px-6 py-2 bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors mt-4">
+                العودة
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              <div className="mb-6">
+                <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1 mb-2">
+                  عنوان الدرس
+                </label>
+                <input
+                  value={plan.title}
+                  onChange={e => setPlan({ ...plan, title: e.target.value })}
+                  className="w-full bg-white dark:bg-[#15201B] border border-emerald-100 dark:border-emerald-800/50 rounded-2xl px-4 py-3 text-lg font-black text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all shadow-sm"
+                  placeholder="عنوان الدرس"
+                />
+              </div>
+
+              {plan.keyPoints && plan.keyPoints.length > 0 && (
+                <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-3xl p-5 mb-6">
+                  <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-1.5">
+                    <Sparkles size={14} /> النقاط الرئيسية
+                  </div>
+                  <div className="space-y-2">
+                    {plan.keyPoints.map((kp, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input
+                          value={kp}
+                          onChange={e => {
+                            const kps = [...(plan.keyPoints ?? [])];
+                            kps[i] = e.target.value;
+                            setPlan({ ...plan, keyPoints: kps });
+                          }}
+                          className="flex-1 bg-white dark:bg-[#15201B] border border-emerald-100 dark:border-emerald-800/50 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all"
+                          dir="rtl"
+                        />
+                        <button onClick={() => setPlan({ ...plan, keyPoints: plan.keyPoints!.filter((_, j) => j !== i) })}
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-2 transition-colors shrink-0">
+                          <Trash2 size={16}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              <StepCard
+                isIntro
+                step={plan.intro}
+                index={0}
+                onEditVoice={updateIntroVoice}
+                onEditActions={updateIntroActions}
+              />
+
+              {plan.steps.map((step, i) => (
+                <StepCard
+                  key={step.id}
+                  step={step}
+                  index={i + 1}
+                  onEditTitle={t => updateStepTitle(i, t)}
+                  onEditVoice={v => updateStepVoice(i, v)}
+                  onEditActions={a => updateStepActions(i, a)}
+                  onDelete={() => deleteStep(i)}
+                />
               ))}
+
+              <button
+                onClick={addStep}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-2xl py-4 font-black transition-colors"
+              >
+                <Plus size={18}/> إضافة خطوة جديدة
+              </button>
+
+              <StepCard
+                isSummary
+                step={plan.summary}
+                index={0}
+                onEditVoice={updateSummaryVoice}
+                onEditActions={updateSummaryActions}
+              />
+
+            </div>
+          )}
+        </main>
+
+        {/* Bottom bar */}
+        {plan && !loading && !loadError && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-[#0B100E]/90 backdrop-blur-xl border-t border-emerald-100/50 dark:border-emerald-900/30 p-4 pb-safe shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+            <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+              <button
+                onClick={() => saveChanges(false)}
+                disabled={saving}
+                className={`flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-black transition-all flex-1 sm:flex-none ${
+                  saved ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50' :
+                  'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <Check size={18} /> : <Save size={18} />}
+                {saved ? 'تم الحفظ' : 'حفظ التغييرات'}
+              </button>
+              <button
+                onClick={() => saveChanges(true)}
+                disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl py-3.5 font-black shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5"
+              >
+                <PlayCircle size={18} /> حفظ وعرض
+              </button>
             </div>
           </div>
         )}
 
-        {/* Intro */}
-        <PhaseCard
-          label="مقدمة" color="#7dd3fc"
-          voiceText={plan.intro.voiceText}
-          boardActions={plan.intro.boardActions}
-          onVoiceChange={v => setPlan({ ...plan, intro: { ...plan.intro, voiceText: v } })}
-          onActionsChange={a => setPlan({ ...plan, intro: { ...plan.intro, boardActions: a } })}
-        />
-
-        {/* Steps */}
-        {plan.steps.map((step, i) => (
-          <div key={step.id} style={{ position: "relative" }}>
-            <PhaseCard
-              label={`خطوة ${i + 1}`} color="#4ade80"
-              title={step.title}
-              voiceText={step.voiceText}
-              boardActions={step.boardActions}
-              onTitleChange={t => updateStepTitle(i, t)}
-              onVoiceChange={v => updateStepVoice(i, v)}
-              onActionsChange={a => updateStepActions(i, a)}
-            />
-            {/* Delete step */}
-            <button
-              onClick={() => deleteStep(i)}
-              style={{
-                position: "absolute", top: 14, left: 14,
-                background: "none", border: "none",
-                color: "var(--muted-foreground)", cursor: "pointer", padding: 4,
-                borderRadius: 5, transition: "color .15s",
-              }}
-              title="حذف الخطوة"
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = ""; }}
-            >
-              <Trash2 size={14}/>
-            </button>
-          </div>
-        ))}
-
-        {/* Add step button */}
-        <button
-          onClick={addStep}
-          style={{
-            width: "100%", background: "rgba(74,222,128,.06)",
-            border: "1.5px dashed rgba(74,222,128,.35)",
-            borderRadius: 12, padding: "12px", cursor: "pointer",
-            color: "#4ade80", fontWeight: 700, fontSize: 14, fontFamily: "inherit",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            marginBottom: 12, transition: "background .2s",
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(74,222,128,.12)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(74,222,128,.06)"; }}
-        >
-          <Plus size={16}/> إضافة خطوة جديدة
-        </button>
-
-        {/* Summary */}
-        <PhaseCard
-          label="خلاصة" color="#c4b5fd"
-          voiceText={plan.summary.voiceText}
-          boardActions={plan.summary.boardActions}
-          onVoiceChange={v => setPlan({ ...plan, summary: { ...plan.summary, voiceText: v } })}
-          onActionsChange={a => setPlan({ ...plan, summary: { ...plan.summary, boardActions: a } })}
-        />
-
-        {/* Bottom save buttons */}
-        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-          <button onClick={() => saveChanges(false)} disabled={saving}
-            style={{
-              flex: 1, background: "var(--card)", border: "1px solid var(--border)",
-              color: "var(--foreground)", borderRadius: 12, padding: "13px",
-              cursor: saving ? "not-allowed" : "pointer",
-              fontWeight: 700, fontSize: 15, fontFamily: "inherit",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}>
-            {saving ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }}/> : <Save size={18}/>}
-            حفظ التغييرات
-          </button>
-          <button onClick={() => saveChanges(true)} disabled={saving}
-            style={{
-              flex: 1, background: "linear-gradient(135deg,#1a4731,#16a34a)",
-              color: "white", border: "none", borderRadius: 12, padding: "13px",
-              cursor: saving ? "not-allowed" : "pointer",
-              fontWeight: 700, fontSize: 15, fontFamily: "inherit",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              boxShadow: "0 4px 20px rgba(22,163,74,.3)",
-            }}>
-            <PlayCircle size={18}/> حفظ وابدأ العرض
-          </button>
-        </div>
-
-        <style>{`
-          @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
-        `}</style>
       </div>
     </Layout>
   );

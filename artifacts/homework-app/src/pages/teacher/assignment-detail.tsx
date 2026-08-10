@@ -727,7 +727,7 @@ export default function TeacherAssignmentDetail() {
   .pass-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px 20px; margin-bottom: 24px; }
   .pass-bar .row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #374151; }
   .pass-bar .track { height: 10px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
-  .pass-bar .fill { height: 100%; background: linear-gradient(90deg, #22c55e, #14b8a6); border-radius: 999px; }
+  .pass-bar .fill { height: 100%; background: linear-gradient(90deg, #468064, #468064); border-radius: 999px; }
   h2.section { font-size: 16px; font-weight: 800; color: #111827; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px; }
   h2.section::before { content: ""; display: inline-block; width: 4px; height: 18px; background: #4f46e5; border-radius: 2px; }
   table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -738,7 +738,7 @@ export default function TeacherAssignmentDetail() {
   td.rank { font-weight: 900; color: #4f46e5; width: 40px; }
   td.name { font-weight: 700; color: #111827; }
   .score-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-weight: 800; font-size: 12px; }
-  .score-good { background: #dcfce7; color: #15803d; }
+  .score-good { background: #dcfce7; color: #225739; }
   .score-mid { background: #fef3c7; color: #b45309; }
   .score-low { background: #fee2e2; color: #b91c1c; }
   .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-weight: 800; font-size: 12px; }
@@ -1531,7 +1531,7 @@ export default function TeacherAssignmentDetail() {
                       { label: "0-49", min: 0, max: 49, color: "#ef4444" },
                       { label: "50-69", min: 50, max: 69, color: "#f97316" },
                       { label: "70-84", min: 70, max: 84, color: "#eab308" },
-                      { label: "85-100", min: 85, max: 100, color: "#22c55e" },
+                      { label: "85-100", min: 85, max: 100, color: "#468064" },
                     ];
                     const chartData = buckets.map(b => ({
                       label: b.label,

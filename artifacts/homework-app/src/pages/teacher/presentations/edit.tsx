@@ -402,7 +402,7 @@ export default function PresentationEditPage() {
     if (!pres) return;
     setShowExportMenu(false);
     const themeGrad: Record<string, string> = {
-      harvest: "linear-gradient(135deg,#10b981,#15803d 50%,#d97706)",
+      harvest: "linear-gradient(135deg,#468064,#225739 50%,#d97706)",
       ocean: "linear-gradient(135deg,#0ea5e9,#1d4ed8 50%,#3730a3)",
       sunset: "linear-gradient(135deg,#fbbf24,#f97316 50%,#e11d48)",
       midnight: "linear-gradient(135deg,#1e293b,#312e81 50%,#581c87)",

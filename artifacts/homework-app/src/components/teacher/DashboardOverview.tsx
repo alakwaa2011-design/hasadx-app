@@ -2138,7 +2138,7 @@ function AssignmentRow({
         background: isExpired
           ? "rgba(239,68,68,0.09)"
           : "rgba(16,185,129,0.1)",
-        color: isExpired ? "#B91C1C" : "#047857",
+        color: isExpired ? "#B91C1C" : "#225739",
         whiteSpace: "nowrap",
       }}
     >
@@ -2981,7 +2981,7 @@ function PulsePanel({
   }, [assignments]);
 
   const rateColor =
-    rate >= 70 ? "#059669" : rate >= 40 ? C.goldBright : "#DC2626";
+    rate >= 70 ? "#2f684d" : rate >= 40 ? C.goldBright : "#DC2626";
 
   return (
     <div

@@ -748,7 +748,7 @@ export default function WorksheetPrint() {
             <button
               onClick={() => setLocation(`/teacher/worksheets/${data.id}/grade`)}
               className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
-              style={{ background: "#059669" }}
+              style={{ background: "#2f684d" }}
               title={uiLang === "ar" ? "تصحيح الأوراق بالكاميرا" : "Grade papers with camera"}
               data-testid="btn-open-grading"
             >

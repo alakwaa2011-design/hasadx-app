@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useCreateAssignment } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
-import { Card, Input, Button, Label } from "@/components/ui-elements";
+import { Input, Button, Label } from "@/components/ui-elements";
 import {
   Plus, Trash2, Save, ArrowRight, ArrowLeft, Image, CheckCircle2, X,
   Monitor, FileText, Layers, Globe, Lock, GraduationCap, Copy, Star,
@@ -140,8 +140,8 @@ const TEMPLATES: AssignmentTemplate[] = [
     titleEn: "True & False",
     desc: "10 أسئلة صح/خطأ بسيطة وسريعة",
     descEn: "10 simple true/false questions",
-    color: "#059669",
-    bgColor: "#d1fae5",
+    color: "#2f684d",
+    bgColor: "#e0ede5",
     tags: ["10 أسئلة", "صح/خطأ"],
     tagsEn: ["10 questions", "True/False"],
     defaults: { submissionMode: "electronic", questionCount: 10, pointsPerQuestion: 1, questionType: "true_false", hasDeadline: false, examMode: false, examDurationMinutes: 15 },
@@ -877,7 +877,7 @@ export default function CreateAssignment() {
       }
     };
     return (
-      <div className="bg-primary/8 dark:bg-primary/15 border border-primary/25 rounded-xl p-3 space-y-3">
+      <div className="bg-[#f4f7f5] dark:bg-[#0B100E] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-2 mb-1">
           <Volume2 className="w-4 h-4 text-primary" />
           <span className="text-xs font-bold text-primary">
@@ -890,15 +890,14 @@ export default function CreateAssignment() {
           placeholder={l === "ar" ? "اكتب الجملة أو الفقرة التي سيسمعها الطالب..." : "Write the sentence or paragraph the student will hear..."}
           rows={3}
           dir="auto"
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary transition-colors"
+          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#15201B] text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all resize-none"
         />
         <div className="flex flex-wrap gap-3 items-center">
           <button
             type="button"
             onClick={previewTts}
             disabled={!text.trim()}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 ${speaking ? "bg-red-100 text-red-700 border border-red-300" : "text-white hover:opacity-92"}`}
-            style={!speaking ? { backgroundColor: HASAD_GREEN } : undefined}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 disabled:opacity-40 shadow-sm ${speaking ? "bg-red-100 text-red-700 border border-red-300" : "bg-emerald-500 text-white hover:bg-emerald-600"}`}
           >
             {speaking ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
             {speaking ? (l === "ar" ? "إيقاف" : "Stop") : (l === "ar" ? "استمع للمعاينة" : "Preview Audio")}
@@ -908,7 +907,7 @@ export default function CreateAssignment() {
             <select
               value={maxListens}
               onChange={e => onMaxListensChange(parseInt(e.target.value))}
-              className="px-2 py-1 rounded-md bg-background border border-border text-xs font-bold focus:outline-none"
+              className="px-3 py-1.5 rounded-lg bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-800 text-xs font-black focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
             >
               {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -917,8 +916,7 @@ export default function CreateAssignment() {
             <button
               type="button"
               onClick={() => onAllowErrorsChange(!allowErrors)}
-              className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${allowErrors ? "" : "bg-gray-300 dark:bg-gray-600"}`}
-              style={allowErrors ? { backgroundColor: HASAD_GREEN } : undefined}
+              className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${allowErrors ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${allowErrors ? (l === "ar" ? "right-0.5" : "left-[18px]") : (l === "ar" ? "left-0.5" : "left-0.5")}`} />
             </button>
@@ -935,275 +933,258 @@ export default function CreateAssignment() {
   // ── Toggle helper ──
   const Toggle = ({ on, onChange, color = "green" }: { on: boolean; onChange: () => void; color?: string }) => (
     <button type="button" onClick={onChange}
-      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${on ? "" : "bg-gray-300 dark:bg-gray-600"}`}
-      style={
-        on
-          ? {
-              backgroundColor:
-                color === "orange" ? "#f97316" : HASAD_GREEN,
-            }
-          : undefined
-      }>
+      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${on ? (color === "orange" ? "bg-amber-500" : "bg-emerald-500") : "bg-slate-300 dark:bg-slate-700"}`}>
       <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${on ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
     </button>
   );
 
   return (
     <Layout>
-      <div
-        className="min-h-screen bg-gradient-to-br from-[#eef5f0]/95 via-background to-amber-50/35 dark:from-[#0c1814]/50 dark:via-background dark:to-amber-950/20"
-        style={
-          {
-            ["--primary" as string]: "154 43% 21%",
-            ["--ring" as string]: "154 35% 32%",
-          } as CSSProperties
-        }
-      >
-      <div className="container mx-auto px-4 py-6 max-w-3xl">
-
-        {/* ══ Hero Header ══ */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="relative overflow-hidden rounded-2xl text-white p-5 sm:p-7 shadow-lg mb-6 shadow-black/20"
-          style={{ background: HASAD_HEADER_GRADIENT }}
+    <div dir={lang === "ar" ? "rtl" : "ltr"} className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] pb-24 font-display">
+      {/* ══ Sticky Header ══ */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+        <button
+          type="button"
+          onClick={() => setLocation("/teacher")}
+          className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+          aria-label={lang === "ar" ? "رجوع" : "Back"}
         >
-          <div className="absolute -top-16 -end-16 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-12 -start-12 w-48 h-48 rounded-full bg-amber-300/15 blur-2xl pointer-events-none" />
-          <div className="relative">
-            <button
-              onClick={() => setLocation("/teacher")}
-              className="inline-flex items-center gap-1 text-white/85 hover:text-white mb-4 text-sm font-semibold transition-colors"
-            >
-              <BackArrowIcon className="w-4 h-4" />
-              {t.createAssignment.backToDashboard}
-            </button>
-            <div className="flex items-start gap-3">
-              <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                <Plus className="w-5 h-5 text-white" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-black leading-tight">
-                  {isContestMode
-                    ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
-                    : t.createAssignment.wizardHeroTitle}
-                </h1>
-                <p className="text-white/85 text-xs sm:text-sm mt-1">
-                  {isContestMode
-                    ? (lang === "ar"
-                        ? "اكتب أسئلتك يدويًا أو ولِّدها بالذكاء الاصطناعي، ثم استخدمها في أي لعبة."
-                        : "Write questions yourself or generate them with AI, then use them in any game.")
-                    : t.createAssignment.wizardStepProgress
-                        .replace("{current}", String(wizardStep))
-                        .replace("{total}", String(STEPS.length))
-                        .replace("{label}", STEPS[wizardStep - 1].label)}
-                </p>
-              </div>
-            </div>
-
-            {/* ══ Progress Bar (inside hero) ══ */}
-            <div className="mt-5">
-              <div className="flex items-center">
-                {STEPS.map((step, idx) => (
-                  <div key={step.num} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center">
-                      <button
-                        type="button"
-                        onClick={() => { if (step.num < wizardStep) setWizardStep(step.num as 1|2|3); }}
-                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-black transition-all border-2 ${
-                          wizardStep === step.num
-                            ? "bg-white text-primary border-white shadow-lg shadow-black/10 scale-110"
-                            : wizardStep > step.num
-                            ? "bg-amber-300 text-[#0d281c] border-amber-300 cursor-pointer hover:scale-105"
-                            : "bg-white/10 text-white/70 border-white/30 cursor-not-allowed backdrop-blur-sm"
-                        }`}
-                      >
-                        {wizardStep > step.num ? <CheckCircle2 className="w-5 h-5" /> : step.icon}
-                      </button>
-                      <span className={`text-[10px] font-bold mt-1 whitespace-nowrap ${wizardStep === step.num ? "text-white" : "text-white/75"}`}>
-                        {step.label}
-                      </span>
-                    </div>
-                    {idx < STEPS.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-1 mb-4 rounded-full transition-colors ${wizardStep > step.num ? "bg-amber-300" : "bg-white/20"}`} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+          <BackArrowIcon className="w-5 h-5" />
+        </button>
+        <div className="flex-1 min-w-0 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+            <Plus className="w-5 h-5 text-white" />
           </div>
-        </motion.div>
+          <div>
+            <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
+              {isContestMode
+                ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
+                : t.createAssignment.wizardHeroTitle}
+            </h1>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+              {isContestMode
+                ? (lang === "ar"
+                    ? "اكتب أسئلتك يدويًا أو ولِّدها بالذكاء الاصطناعي، ثم استخدمها في أي لعبة."
+                    : "Write questions yourself or generate them with AI, then use them in any game.")
+                : t.createAssignment.wizardStepProgress
+                    .replace("{current}", String(wizardStep))
+                    .replace("{total}", String(STEPS.length))
+                    .replace("{label}", STEPS[wizardStep - 1].label)}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
+        {/* ══ Progress Bar ══ */}
+        <div className="flex items-center px-2">
+          {STEPS.map((step, idx) => (
+            <div key={step.num} className="flex items-center flex-1">
+              <div className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => { if (step.num < wizardStep) setWizardStep(step.num as 1|2|3); }}
+                  className={`w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-black transition-all ${
+                    wizardStep === step.num
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25 scale-110"
+                      : wizardStep > step.num
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 cursor-pointer hover:scale-105"
+                      : "bg-[#f4f7f5] text-slate-400 border border-slate-200 dark:bg-[#0B100E] dark:border-slate-800 dark:text-slate-600 cursor-not-allowed"
+                  }`}
+                >
+                  {wizardStep > step.num ? <CheckCircle2 className="w-5 h-5" /> : step.icon}
+                </button>
+                <span className={`text-[10px] font-bold mt-1.5 whitespace-nowrap ${wizardStep === step.num ? "text-slate-800 dark:text-slate-200" : "text-slate-400"}`}>
+                  {step.label}
+                </span>
+              </div>
+              {idx < STEPS.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-2 -mt-4 rounded-full transition-colors ${wizardStep > step.num ? "bg-emerald-200 dark:bg-emerald-800/60" : "bg-slate-100 dark:bg-slate-800"}`} />
+              )}
+            </div>
+          ))}
+        </div>
 
         {/* ══════════════════════════════════ STEP 1 — الأساسيات ══════════════════════════════════ */}
         <AnimatePresence mode="wait">
-              {wizardStep === 1 && (
-                <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-5">
-                  <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "معلومات الواجب" : "Assignment Details"}</h2>
+          {wizardStep === 1 && (
+            <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-6">
+              
+              {/* Basic Info Form */}
+              <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-5">
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                    {t.createAssignment.assignmentTitle} <span className="text-red-500">*</span>
+                  </Label>
+                  <input
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    placeholder={t.createAssignment.titlePlaceholder}
+                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all"
+                  />
+                </div>
 
-                  <Card className="p-5 space-y-4">
-                    {/* ── Content-kind chooser (task #595) ──
-                        Decides which public library this lands in once
-                        shared: مكتبة الأنشطة vs مكتبة المسابقات الجاهزة. */}
-                    <div>
-                      <Label className="text-sm font-bold mb-1.5 block">
-                        {lang === "ar" ? "نوع المحتوى" : "Content type"}
-                      </Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsContestMode(false)}
-                          className={`flex items-center gap-2 p-3 rounded-xl border-2 text-start transition-all ${!isContestMode ? "border-primary bg-primary/10 dark:bg-primary/15" : "border-border hover:border-primary/45"}`}
-                        >
-                          <span className="text-xl">📘</span>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "واجب أو اختبار" : "Homework"}</div>
-                            <div className="text-[11px] text-muted-foreground">{lang === "ar" ? "يظهر في مكتبة الأنشطة" : "Lands in Activities Library"}</div>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsContestMode(true)}
-                          className={`flex items-center gap-2 p-3 rounded-xl border-2 text-start transition-all ${isContestMode ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20" : "border-border hover:border-amber-300"}`}
-                        >
-                          <span className="text-xl">🏆</span>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "أسئة  لمسابقة" : "Competition question"}</div>
-                            <div className="text-[11px] text-muted-foreground">{lang === "ar" ? "يظهر في مكتبة المسابقات" : "Lands in Competitions Library"}</div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-bold mb-1.5 block">{t.createAssignment.assignmentTitle} <span className="text-destructive">*</span></Label>
-                      <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t.createAssignment.titlePlaceholder} className="text-base" />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-bold mb-1.5 block">{t.createAssignment.subjectLabel}</Label>
-                        <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder={t.createAssignment.subjectPlaceholder} list="subject-suggestions" />
-                        <datalist id="subject-suggestions">{getSuggestions("subjects").map((s, i) => <option key={i} value={s} />)}</datalist>
-                        {isMathSubject && <p className="text-[10px] text-purple-600 mt-1 font-bold">Σ {lang === "ar" ? "سيتم تفعيل شريط الرياضيات تلقائياً" : "Math toolbar will activate automatically"}</p>}
-                      </div>
-                      <div>
-                        <Label className="text-sm font-bold mb-1.5 block flex items-center gap-1.5">
-                          <GraduationCap className="w-3.5 h-3.5" />{t.createAssignment.targetClass}
-                        </Label>
-                        {targetClasses.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {targetClasses.map(c => (
-                              <span key={c} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
-                                {c}
-                                <button type="button" onClick={() => setTargetClasses(prev => prev.filter(x => x !== c))}><X className="w-3 h-3" /></button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {gradeLevels.length > 0 ? (
-                          <select value="" onChange={e => { const v = e.target.value; if (v && !targetClasses.includes(v)) setTargetClasses(prev => [...prev, v]); }}
-                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                            <option value="">{lang === "ar" ? "+ أضف فصل" : "+ Add a class"}</option>
-                            {gradeLevels.filter(g => !targetClasses.includes(g.gradeLevel)).map(g => <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel} ({g.count})</option>)}
-                          </select>
-                        ) : (
-                          <div className="flex gap-1.5">
-                            <Input value={classInput} onChange={e => setClassInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === "Enter" && classInput.trim()) { e.preventDefault(); const v = classInput.trim(); if (!targetClasses.includes(v)) setTargetClasses(prev => [...prev, v]); setClassInput(""); } }}
-                              placeholder={t.createAssignment.targetClassPlaceholder} className="text-sm flex-1" list="class-suggestions" />
-                            <button type="button" onClick={() => { const v = classInput.trim(); if (v && !targetClasses.includes(v)) setTargetClasses(prev => [...prev, v]); setClassInput(""); }}
-                              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90"><Plus className="w-4 h-4" /></button>
-                            <datalist id="class-suggestions">{getSuggestions("classes").map((c, i) => <option key={i} value={c} />)}</datalist>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Templates */}
-                  <div className="space-y-3">
-                    {/* Primary CTA — Start from scratch */}
-                    {(() => {
-                      const scratch = TEMPLATES.find(t => t.id === "scratch")!;
-                      return (
-                        <button type="button" onClick={() => applyTemplate(scratch)}
-                          className={`w-full relative text-start p-4 rounded-xl border-2 transition-all hover:shadow-lg active:scale-[0.98] overflow-hidden bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20 ${selectedTemplateId === "scratch" ? "ring-2 ring-primary/60 ring-offset-2" : ""}`}>
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{scratch.emoji}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-base font-black text-primary-foreground">{lang === "ar" ? scratch.title : scratch.titleEn}</p>
-                              <p className="text-xs mt-0.5 text-primary-foreground/70">{lang === "ar" ? scratch.desc : scratch.descEn}</p>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-primary-foreground/70 shrink-0" />
-                          </div>
-                        </button>
-                      );
-                    })()}
-
-                    {/* Collapsible template picker */}
-                    <div>
-                      <button type="button" onClick={() => setShowTemplates(v => !v)}
-                        className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors w-full group">
-                        {showTemplates
-                          ? <ChevronUp className="w-4 h-4 group-hover:text-primary transition-colors" />
-                          : <ChevronDown className="w-4 h-4 group-hover:text-primary transition-colors" />}
-                        {lang === "ar" ? "تصفح القوالب الجاهزة" : "Browse ready-made templates"}
-                        {!showTemplates && (
-                          <span className="ms-1 text-[11px] bg-muted px-1.5 py-0.5 rounded-full">{TEMPLATES.length - 1}</span>
-                        )}
-                      </button>
-
-                      <AnimatePresence initial={false}>
-                        {showTemplates && (
-                          <motion.div
-                            key="templates-grid"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.22 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3">
-                              {TEMPLATES.filter(tmpl => tmpl.id !== "scratch").map((tmpl) => (
-                                <button key={tmpl.id} type="button" onClick={() => applyTemplate(tmpl)}
-                                  className={`relative text-start p-3.5 rounded-xl border-2 bg-background transition-all hover:shadow-md active:scale-[0.97] overflow-hidden ${selectedTemplateId === tmpl.id ? "border-primary shadow-md" : "border-border hover:border-primary/40"}`}>
-                                  <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg" style={{ backgroundColor: tmpl.color }} />
-                                  <div className="flex items-center gap-2.5 mt-0.5">
-                                    <span className="text-xl">{tmpl.emoji}</span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-bold truncate text-foreground">{lang === "ar" ? tmpl.title : tmpl.titleEn}</p>
-                                      <p className="text-[11px] mt-0.5 line-clamp-1 text-muted-foreground">{lang === "ar" ? tmpl.desc : tmpl.descEn}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    {(lang === "ar" ? tmpl.tags : tmpl.tagsEn).map(tag => (
-                                      <span key={tag} className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: tmpl.bgColor, color: tmpl.color }}>{tag}</span>
-                                    ))}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-emerald-500" />
+                      {t.createAssignment.subjectLabel}
+                    </Label>
+                    <input
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      placeholder={t.createAssignment.subjectPlaceholder}
+                      list="subject-suggestions"
+                      className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all"
+                    />
+                    <datalist id="subject-suggestions">{getSuggestions("subjects").map((s, i) => <option key={i} value={s} />)}</datalist>
+                    {isMathSubject && <p className="text-[10px] text-amber-600 mt-1.5 font-bold flex items-center gap-1"><Sparkles className="w-3 h-3"/> {lang === "ar" ? "سيتم تفعيل شريط الرياضيات تلقائياً" : "Math toolbar will activate automatically"}</p>}
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
+                      <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
+                      {t.createAssignment.targetClass}
+                    </Label>
+                    <div className="bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl p-1.5 min-h-[50px] focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all flex flex-wrap items-center gap-1.5">
+                      {targetClasses.map(c => (
+                        <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-black border border-emerald-200/50 dark:border-emerald-800/50">
+                          {c}
+                          <button type="button" onClick={() => setTargetClasses(prev => prev.filter(x => x !== c))} className="hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>
+                        </span>
+                      ))}
+                      {gradeLevels.length > 0 ? (
+                        <select onChange={e => { if (e.target.value && !targetClasses.includes(e.target.value)) setTargetClasses([...targetClasses, e.target.value]); e.target.value = ""; }} className="flex-1 min-w-[120px] bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5 cursor-pointer">
+                          <option value="">{lang === "ar" ? "اختر من صفوفك..." : "Select class..."}</option>
+                          {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel}</option>)}
+                        </select>
+                      ) : (
+                        <input value={classInput} onChange={e => setClassInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && classInput.trim()) { e.preventDefault(); if (!targetClasses.includes(classInput.trim())) setTargetClasses([...targetClasses, classInput.trim()]); setClassInput(""); } }} placeholder={lang === "ar" ? "اضغط Enter للإضافة" : "Press Enter to add"} className="flex-1 min-w-[120px] bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5" />
+                      )}
                     </div>
                   </div>
-                </motion.div>
-              )}
+                </div>
 
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    {lang === "ar" ? "الوصف" : "Description"}
+                  </Label>
+                  <textarea
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder={lang === "ar" ? "وصف الواجب أو التعليمات (اختياري)" : "Assignment description or instructions (optional)"}
+                    rows={2}
+                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Templates Section */}
+              <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                    <Copy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "قوالب جاهزة" : "Ready Templates"}</h3>
+                    <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "ابدأ بسرعة أو أنشئ من الصفر" : "Start quickly or build from scratch"}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {(() => {
+                    const scratch = TEMPLATES.find(t => t.id === "scratch")!;
+                    return (
+                      <button type="button" onClick={() => applyTemplate(scratch)}
+                        className={`w-full relative text-start p-5 rounded-2xl border-2 transition-all hover:shadow-md active:scale-[0.99] overflow-hidden bg-gradient-to-r from-emerald-500 to-emerald-600 border-transparent shadow-emerald-500/20 shadow-lg ${selectedTemplateId === "scratch" ? "ring-4 ring-emerald-500/30 ring-offset-2 dark:ring-offset-[#15201B]" : ""}`}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0 backdrop-blur-sm">
+                            {scratch.emoji}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base sm:text-lg font-black text-white leading-tight">{lang === "ar" ? scratch.title : scratch.titleEn}</p>
+                            <p className="text-xs font-bold mt-1 text-emerald-100 truncate">{lang === "ar" ? scratch.desc : scratch.descEn}</p>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-emerald-200 shrink-0 rtl:rotate-180" />
+                        </div>
+                      </button>
+                    );
+                  })()}
+
+                  <div>
+                    <button type="button" onClick={() => setShowTemplates(v => !v)}
+                      className="flex items-center justify-between w-full p-4 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-colors group">
+                      <span className="text-sm font-black text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {lang === "ar" ? "تصفح القوالب الجاهزة المتبقية" : "Browse other ready-made templates"}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {!showTemplates && <span className="text-[11px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2.5 py-1 rounded-full">{TEMPLATES.length - 1}</span>}
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${showTemplates ? "rotate-180" : ""}`} />
+                      </div>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {showTemplates && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                            {TEMPLATES.filter(tmpl => tmpl.id !== "scratch").map((tmpl) => (
+                              <button key={tmpl.id} type="button" onClick={() => applyTemplate(tmpl)}
+                                className={`group flex flex-col text-start p-4 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] border-2 transition-all hover:shadow-md active:scale-[0.98] ${selectedTemplateId === tmpl.id ? "border-emerald-500 shadow-sm" : "border-transparent hover:border-emerald-200 dark:hover:border-emerald-800/50"}`}>
+                                <div className="flex items-start justify-between gap-2 mb-2 w-full">
+                                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-110" style={{ backgroundColor: tmpl.bgColor }}>
+                                    {tmpl.emoji}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1 justify-end">
+                                    {(lang === "ar" ? tmpl.tags : tmpl.tagsEn).map(tag => (
+                                      <span key={tag} className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-500 shadow-sm border border-slate-100 dark:border-slate-700">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <p className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? tmpl.title : tmpl.titleEn}</p>
+                                <p className="text-[11px] font-bold text-slate-500 mt-1 line-clamp-2">{lang === "ar" ? tmpl.desc : tmpl.descEn}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
               {/* ══════════════════════════════════ STEP 2 — الأسئلة ══════════════════════════════════ */}
               {wizardStep === 2 && (
-                <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "الأسئلة" : "Questions"}</h2>
+                <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-6">
+                  
+                  <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 shadow-sm border border-emerald-50 dark:border-emerald-900/30 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                        <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">{lang === "ar" ? "إعداد الأسئلة" : "Questions"}</h2>
+                        <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "أضف أسئلة أو استخدم الذكاء الاصطناعي" : "Add questions or generate with AI"}</p>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span className="bg-secondary/10 text-secondary px-2 py-0.5 rounded-full text-xs font-bold">{totalPoints} {t.createAssignment.gradeUnit}</span>
-                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-bold">{questions.length} {t.createAssignment.aiQuestions}</span>
+                      <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-3 py-1 rounded-xl text-xs font-black shadow-sm border border-amber-200/50 dark:border-amber-800/50">{totalPoints} {t.createAssignment.gradeUnit}</span>
+                      <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1 rounded-xl text-xs font-black shadow-sm border border-emerald-200/50 dark:border-emerald-800/50">{questions.length} {t.createAssignment.aiQuestions}</span>
                     </div>
                   </div>
 
                   {/* AI Generate */}
                   {!isPaper && (
-                    <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-100 dark:border-emerald-800/50">
                       {!showAiPanel ? (
                         <button type="button" onClick={() => setShowAiPanel(true)} className="w-full flex items-center justify-center gap-3 py-2 text-primary hover:text-primary/80 transition-colors">
                           <div className="p-2 rounded-lg bg-primary text-primary-foreground shadow"><Sparkles className="w-4 h-4" /></div>
@@ -1218,7 +1199,7 @@ export default function CreateAssignment() {
                             <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Wand2 className="w-4 h-4" />{t.createAssignment.aiGenerate}</h3>
                             <button type="button" onClick={() => { setShowAiPanel(false); setAiError(""); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                           </div>
-                          <Input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.createAssignment.aiTopicPlaceholder} className="bg-background border-primary/20 focus-visible:border-primary text-sm" />
+                          <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.createAssignment.aiTopicPlaceholder} className="bg-background border-primary/20 focus-visible:border-primary text-sm" />
                           <div className="flex gap-2">
                             <select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value))} className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-primary/20 text-sm focus:outline-none focus:border-primary">
                               {(aiWithImages ? [5, 10, 15, 20] : [5, 10, 15, 20, 25, 30]).map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}
@@ -1262,12 +1243,12 @@ export default function CreateAssignment() {
                           </button>
                         </motion.div>
                       )}
-                    </Card>
+                    </div>
                   )}
 
                   {/* Image Extract (admin) */}
                   {!isPaper && (
-                    <Card className={`p-4 border-2 border-primary/20 bg-primary/5 ${!isAdmin ? "opacity-50" : ""}`}>
+                    <div className={`p-4 border-2 border-primary/20 bg-primary/5 ${!isAdmin ? "opacity-50" : ""}`}>
                       {!showImageExtract ? (
                         <button type="button" onClick={() => isAdmin && setShowImageExtract(true)} disabled={!isAdmin}
                           className="w-full flex items-center justify-center gap-3 py-2 text-primary hover:text-primary/80 transition-colors disabled:cursor-not-allowed">
@@ -1316,12 +1297,12 @@ export default function CreateAssignment() {
                           </button>
                         </motion.div>
                       )}
-                    </Card>
+                    </div>
                   )}
 
                   {/* Paper mode */}
                   {isPaper ? (
-                    <Card className="p-5 space-y-4">
+                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-5">
                       <h2 className="text-base font-bold border-b border-border pb-3 flex items-center gap-2"><Star className="w-5 h-5 text-secondary" />{t.createAssignment.paperGrade}</h2>
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-xs text-blue-800 dark:text-blue-300"><strong>{t.createAssignment.note}</strong> {t.createAssignment.paperNote}</div>
                       <div className="flex items-center gap-3">
@@ -1330,7 +1311,7 @@ export default function CreateAssignment() {
                           className="w-24 px-3 py-2 rounded-lg bg-secondary/10 border-2 border-secondary/30 text-center font-black text-xl text-secondary focus:outline-none focus:border-secondary transition-all" />
                         <span className="text-sm font-bold text-muted-foreground">{t.createAssignment.gradeUnit}</span>
                       </div>
-                    </Card>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
@@ -1340,7 +1321,7 @@ export default function CreateAssignment() {
                           <SortableQuestionWrapper key={q._clientId} id={q._clientId!}>
                             {({ attributes, listeners, isDragging }) => (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                            <Card className={`p-4 ${lang === "ar" ? "border-l-4 border-l-secondary" : "border-r-4 border-r-secondary"} relative group ${isDragging ? "ring-2 ring-primary/40 shadow-xl" : ""}`}>
+                            <div className={`bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 relative group transition-all ${isDragging ? "ring-4 ring-emerald-400/20 shadow-xl scale-[1.02]" : "hover:border-emerald-200 dark:hover:border-emerald-800/50"}`}>
                               {/* Question header controls */}
                               <div className={`absolute top-3 ${lang === "ar" ? "left-3" : "right-3"} flex items-center gap-0.5`}>
                                 {questions.length > 1 && (
@@ -1364,14 +1345,14 @@ export default function CreateAssignment() {
 
                               <div className="mb-3">
                                 {/* Type + Points */}
-                                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                  <span className="text-xs font-bold text-muted-foreground">{t.createAssignment.questionLabel} {qIndex + 1}</span>
+                                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                  <span className="text-[11px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-1 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50">{t.createAssignment.questionLabel} {qIndex + 1}</span>
                                   <select value={q.questionType === "whiteboard" ? (q.optionA === "lined" ? "whiteboard" : "whiteboard_blank") : (q.questionType || "mcq")}
                                     onChange={e => {
                                     const v = e.target.value;
                                     if (v === "mcq" || v === "true_false" || v === "fill_blank" || v === "whiteboard" || v === "whiteboard_blank" || v === "dictation") handleQuestionTypeChange(qIndex, v);
                                   }}
-                                    className="px-2 py-1 rounded-md bg-muted/50 border border-border text-[11px] font-bold focus:outline-none focus:border-primary transition-all">
+                                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-800 text-[11px] font-bold focus:outline-none focus:border-emerald-400 transition-all text-slate-700 dark:text-slate-300 cursor-pointer shadow-sm">
                                     <option value="mcq">{t.createAssignment.questionTypeMcq}</option>
                                     <option value="true_false">{t.createAssignment.questionTypeTrueFalse}</option>
                                     <option value="fill_blank">{t.createAssignment.questionTypeFillBlank}</option>
@@ -1379,15 +1360,16 @@ export default function CreateAssignment() {
                                     <option value="whiteboard_blank">{t.createAssignment.questionTypeWhiteboardBlank}</option>
                                     <option value="whiteboard">{t.createAssignment.questionTypeWhiteboard}</option>
                                   </select>
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1.5 ml-auto rtl:mr-auto rtl:ml-0">
+                                    <span className="text-[11px] font-bold text-slate-500">{t.createAssignment.gradeLabel}</span>
                                     <input type="number" min="0.5" step="0.5" value={q.points || 1} onChange={e => handleQuestionChange(qIndex, 'points', parseFloat(e.target.value) || 1)}
-                                      className="w-14 px-2 py-1 rounded-md bg-secondary/10 border border-secondary/30 text-center text-xs font-bold text-secondary focus:outline-none focus:border-secondary transition-all" />
-                                    <span className="text-[11px] text-muted-foreground">{t.createAssignment.gradeLabel}</span>
+                                      className="w-16 px-2 py-1 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 text-center text-[11px] font-black text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-400 transition-all shadow-sm" />
                                   </div>
                                 </div>
 
                                 {/* Question text */}
-                                <Input required value={q.text} onChange={e => handleQuestionChange(qIndex, 'text', e.target.value)} placeholder={t.createAssignment.questionPlaceholder} className="text-sm" />
+                                <input required value={q.text} onChange={e => handleQuestionChange(qIndex, 'text', e.target.value)} placeholder={t.createAssignment.questionPlaceholder} 
+                                  className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all mb-2" />
 
                                 {/* Math toolbar (auto-open if math subject, or manually toggled) */}
                                 {(isMathSubject || mathToolbarFor === qIndex) && (
@@ -1475,7 +1457,7 @@ export default function CreateAssignment() {
 
                               {/* MCQ options */}
                               {(q.questionType || "mcq") === "mcq" && (
-                                <div className="bg-muted/30 p-3 rounded-lg space-y-2">
+                                <div className="bg-[#f4f7f5] dark:bg-[#0B100E] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                                   {(["A", "B", "C", "D"] as const).map(opt => {
                                     const isCorrect = q.allowMultipleAnswers
                                       ? (q.correctAnswers || []).includes(opt)
@@ -1500,7 +1482,7 @@ export default function CreateAssignment() {
                                           {opt}
                                         </button>
                                         <div className="flex-1 relative">
-                                          <Input value={q[MCQ_OPT[opt]] || ""} onChange={e => handleQuestionChange(qIndex, MCQ_OPT[opt], e.target.value)}
+                                          <input value={q[MCQ_OPT[opt]] || ""} onChange={e => handleQuestionChange(qIndex, MCQ_OPT[opt], e.target.value)}
                                             placeholder={`${t.createAssignment.option} ${opt}`} className="text-sm pe-8" />
                                           {/* Math for option if math subject */}
                                           {isMathSubject && (
@@ -1530,7 +1512,7 @@ export default function CreateAssignment() {
                                 <div className="flex gap-2">
                                   {[["true", lang === "ar" ? "✅ صح" : "✅ True"], ["false", lang === "ar" ? "❌ خطأ" : "❌ False"]].map(([val, label]) => (
                                     <button key={val} type="button" onClick={() => handleQuestionChange(qIndex, 'correctAnswer', val)}
-                                      className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${q.correctAnswer === val ? "border-green-500 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" : "border-border bg-muted/30 text-muted-foreground hover:border-green-400"}`}>
+                                      className={`flex-1 py-4 rounded-2xl text-base font-black border-2 transition-all active:scale-[0.98] ${q.correctAnswer === val ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200 shadow-sm" : "border-slate-200 dark:border-slate-800 bg-[#f4f7f5] dark:bg-[#0B100E] text-slate-500 hover:border-emerald-300 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10"}`}>
                                       {label}
                                     </button>
                                   ))}
@@ -1539,17 +1521,17 @@ export default function CreateAssignment() {
 
                               {/* Fill blank */}
                               {q.questionType === "fill_blank" && (
-                                <div className="bg-muted/30 p-3 rounded-lg space-y-2">
+                                <div className="bg-[#f4f7f5] dark:bg-[#0B100E] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                                   <Label className="text-xs mb-1 block">{t.createAssignment.fillBlankAnswer}</Label>
                                   <div className="flex gap-2">
-                                    <Input required value={q.correctAnswer?.split("|")[0] || ""}
+                                    <input required value={q.correctAnswer?.split("|")[0] || ""}
                                       onChange={e => { const parts = (q.correctAnswer || "").split("|"); parts[0] = e.target.value; handleQuestionChange(qIndex, 'correctAnswer', parts.filter(Boolean).join("|")); }}
                                       placeholder={t.createAssignment.fillBlankPlaceholder} className="text-sm flex-1" />
                                   </div>
                                   {(q.correctAnswer || "").split("|").slice(1).map((alt: string, altIdx: number) => (
                                     <div key={altIdx} className="flex gap-2 items-center">
                                       <span className="text-xs text-muted-foreground shrink-0">{lang === "ar" ? "أو:" : "or:"}</span>
-                                      <Input value={alt}
+                                      <input value={alt}
                                         onChange={e => { const parts = (q.correctAnswer || "").split("|"); parts[altIdx + 1] = e.target.value; handleQuestionChange(qIndex, 'correctAnswer', parts.filter((_, i) => i === 0 || Boolean(parts[i])).join("|")); }}
                                         placeholder={lang === "ar" ? "إجابة بديلة مقبولة" : "Alternative accepted answer"} className="text-sm flex-1" />
                                       <button type="button" onClick={() => { const parts = (q.correctAnswer || "").split("|"); parts.splice(altIdx + 1, 1); handleQuestionChange(qIndex, 'correctAnswer', parts.join("|")); }}
@@ -1588,7 +1570,7 @@ export default function CreateAssignment() {
                                   <span className="text-[11px] text-muted-foreground">{q.optionA === "lined" ? `📝 ${t.createAssignment.whiteboardLined}` : `🎨 ${t.createAssignment.whiteboardBlank}`}</span>
                                 </div>
                               )}
-                            </Card>
+                            </div>
                           </motion.div>
                             )}
                           </SortableQuestionWrapper>
@@ -1598,24 +1580,24 @@ export default function CreateAssignment() {
                       </DndContext>
 
                       <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={handleAddQuestion} className="flex-1 py-3 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary text-sm">
-                          <Plus className={`w-4 h-4 ${lang === "ar" ? "ml-1.5" : "mr-1.5"}`} />{t.createAssignment.addQuestion}
-                        </Button>
-                        <Button type="button" variant="outline" onClick={openBankModal} className="flex-1 py-3 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary text-sm">
-                          <Database className={`w-4 h-4 ${lang === "ar" ? "ml-1.5" : "mr-1.5"}`} />{t.questionBank.selectQuestions}
-                        </Button>
+                        <button type="button" onClick={handleAddQuestion} className="flex-1 flex justify-center items-center gap-2 py-4 rounded-2xl border-2 border-dashed border-emerald-200 dark:border-emerald-800/50 bg-[#f4f7f5] dark:bg-[#0B100E] hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-black text-sm transition-all active:scale-[0.98]">
+                          <Plus className="w-5 h-5" />{t.createAssignment.addQuestion}
+                        </button>
+                        <button type="button" onClick={openBankModal} className="flex-1 flex justify-center items-center gap-2 py-4 rounded-2xl border-2 border-dashed border-amber-200 dark:border-amber-800/50 bg-[#f4f7f5] dark:bg-[#0B100E] hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-black text-sm transition-all active:scale-[0.98]">
+                          <Database className="w-5 h-5" />{t.questionBank.selectQuestions}
+                        </button>
                       </div>
                     </div>
                   )}
 
                   {/* AI Grading Instructions — only when paper submission OR fill_blank/whiteboard questions exist */}
                   {(submissionMode === "paper" || submissionMode === "both" || questions.some(q => q.questionType === "fill_blank" || q.questionType === "whiteboard")) && (
-                    <Card className="p-4 border-2 border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
+                    <div className="rounded-3xl p-5 sm:p-6 shadow-sm border border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
                       <div className="flex items-center gap-2 mb-1"><Brain className="w-4 h-4 text-amber-600" /><h2 className="text-sm font-bold text-amber-800 dark:text-amber-200">{t.createAssignment.aiGradingInstructions}</h2></div>
                       <p className="text-xs text-amber-700/70 dark:text-amber-300/70 mb-2">{t.createAssignment.aiGradingInstructionsDesc}</p>
                       <textarea value={aiGradingInstructions} onChange={e => setAiGradingInstructions(e.target.value)} placeholder={t.createAssignment.aiGradingInstructionsPlaceholder}
-                        className="w-full px-3 py-2 rounded-lg border-2 border-amber-200 dark:border-amber-700 bg-background text-sm resize-none focus:outline-none focus:border-amber-400 transition-colors" rows={2} />
-                    </Card>
+                        className="w-full px-4 py-3 rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-white/50 dark:bg-black/20 text-sm font-bold resize-none focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-colors placeholder:text-amber-700/40 dark:placeholder:text-amber-300/40" rows={2} />
+                    </div>
                   )}
                 </motion.div>
               )}
@@ -1626,7 +1608,7 @@ export default function CreateAssignment() {
                   <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "معاينة ونشر" : "Preview & Publish"}</h2>
 
                   {/* Summary card */}
-                  <Card className="p-5 bg-primary/5 border-2 border-primary/20">
+                  <div className="p-5 bg-primary/5 border-2 border-primary/20">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm shrink-0"
                         style={{ backgroundColor: COLOR_THEMES.find(c => c.id === colorTheme)?.light, color: COLOR_THEMES.find(c => c.id === colorTheme)?.bg }}>
@@ -1647,10 +1629,10 @@ export default function CreateAssignment() {
                         </div>
                       </div>
                     </div>
-                  </Card>
+                  </div>
 
                   {/* Access code */}
-                  <Card className="p-5 space-y-3">
+                  <div className="p-5 space-y-3">
                     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{lang === "ar" ? "كود الدخول" : "Access Code"}</h3>
                     <div className="flex items-center justify-center gap-3">
                       <div className="flex gap-1.5">
@@ -1666,7 +1648,7 @@ export default function CreateAssignment() {
                       </button>
                     </div>
                     <p className="text-center text-xs text-muted-foreground">{lang === "ar" ? "يستخدمه الطلاب للوصول للواجب" : "Students use this to access the assignment"}</p>
-                  </Card>
+                  </div>
 
                   {/* Questions preview */}
                   <div>
@@ -1715,7 +1697,7 @@ export default function CreateAssignment() {
                   </div>
 
                   {/* Advanced settings (collapsible) */}
-                  <Card className="p-0 overflow-hidden">
+                  <div className="p-0 overflow-hidden">
                     <button type="button" onClick={() => setShowAdvancedSettings(v => !v)}
                       className="w-full px-5 py-4 flex items-center justify-between text-start hover:bg-muted/40 transition-colors">
                       <div className="flex items-center gap-2.5">
@@ -1732,7 +1714,7 @@ export default function CreateAssignment() {
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                           <div className="px-5 pb-5 pt-2 space-y-4 border-t border-border">
                   {/* Submission mode */}
-                  <Card className="p-5 space-y-4">
+                  <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-5">
                     <h3 className="text-sm font-bold flex items-center gap-2"><Layers className="w-4 h-4 text-primary" />{t.createAssignment.submissionMethod}</h3>
                     <div className="flex flex-wrap gap-2">
                       {[
@@ -1746,10 +1728,10 @@ export default function CreateAssignment() {
                         </button>
                       ))}
                     </div>
-                  </Card>
+                  </div>
 
                   {/* Toggles */}
-                  <Card className="p-5 divide-y divide-border space-y-0">
+                  <div className="p-5 divide-y divide-border space-y-0">
                     {/* Show results */}
                     <div className="flex items-center justify-between py-3 first:pt-0">
                       <div className="flex items-center gap-2.5">
@@ -1866,7 +1848,7 @@ export default function CreateAssignment() {
                                 ))}
                               </div>
                               <div className="flex gap-2">
-                                <Input value={adaptiveSkillInput} onChange={e => setAdaptiveSkillInput(e.target.value)}
+                                <input value={adaptiveSkillInput} onChange={e => setAdaptiveSkillInput(e.target.value)}
                                   placeholder={lang === "ar" ? "أضف مهارة" : "Add a skill"} className="text-sm flex-1"
                                   onKeyDown={e => { if (e.key === "Enter" && adaptiveSkillInput.trim()) { e.preventDefault(); if (!adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); } }} />
                                 <button type="button" onClick={() => { if (adaptiveSkillInput.trim() && !adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); }}
@@ -1874,17 +1856,17 @@ export default function CreateAssignment() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Label className="text-xs font-bold text-violet-700">{lang === "ar" ? "أسئلة لكل طالب:" : "Questions per student:"}</Label>
-                                <Input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(parseInt(e.target.value) || 10)} className="w-24 text-sm" />
+                                <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(parseInt(e.target.value) || 10)} className="w-24 text-sm" />
                               </div>
                             </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
-                  </Card>
+                  </div>
 
                   {/* Access mode */}
-                  <Card className="p-5 space-y-3">
+                  <div className="p-5 space-y-3">
                     <h3 className="text-sm font-bold flex items-center gap-2"><Lock className="w-4 h-4 text-primary" />{t.createAssignment.accessMode}</h3>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => setAccessMode("public")}
@@ -1901,17 +1883,17 @@ export default function CreateAssignment() {
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                           <Label className="text-sm">{t.createAssignment.accessCodeLabel}</Label>
                           <div className="flex items-center gap-2 mt-1">
-                            <Input value={accessCode} onChange={e => setAccessCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} className="font-mono tracking-widest text-center" dir="ltr" />
+                            <input value={accessCode} onChange={e => setAccessCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} className="font-mono tracking-widest text-center" dir="ltr" />
                             <button type="button" onClick={() => navigator.clipboard.writeText(accessCode)} className="p-2 rounded-lg border border-border hover:bg-primary/10 transition-all" title={t.createAssignment.copyCode}><Copy className="w-4 h-4" /></button>
                             <button type="button" onClick={() => setAccessCode(generateAccessCode())} className="p-2 rounded-lg border border-border hover:bg-primary/10 transition-all text-xs whitespace-nowrap">{t.createAssignment.newCode}</button>
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </Card>
+                  </div>
 
                   {/* Deadline */}
-                  <Card className="p-5 space-y-3">
+                  <div className="p-5 space-y-3">
                     <h3 className="text-sm font-bold flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground" />{t.createAssignment.deadlineLabel}</h3>
                     {deadline ? (
                       <div className="flex items-center gap-2">
@@ -1939,10 +1921,10 @@ export default function CreateAssignment() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </Card>
+                  </div>
 
                   {/* Color theme */}
-                  <Card className="p-5 space-y-3">
+                  <div className="p-5 space-y-3">
                     <h3 className="text-sm font-bold flex items-center gap-2">🎨 {lang === "ar" ? "لون الواجب" : "Assignment Color"}</h3>
                     <div className="flex gap-3 flex-wrap">
                       {COLOR_THEMES.map(ct => (
@@ -1954,11 +1936,11 @@ export default function CreateAssignment() {
                         </button>
                       ))}
                     </div>
-                  </Card>
+                  </div>
 
                   {/* Categories */}
                   {availableCategories.length > 0 && (
-                    <Card className="p-5 space-y-3">
+                    <div className="p-5 space-y-3">
                       <h3 className="text-sm font-bold flex items-center gap-2"><Tag className="w-4 h-4 text-muted-foreground" />{lang === "ar" ? "التصنيف" : "Category"}</h3>
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => setCategoryId(null)}
@@ -1975,12 +1957,12 @@ export default function CreateAssignment() {
                           );
                         })}
                       </div>
-                    </Card>
+                    </div>
                   )}
 
                   {/* Paper model answer */}
                   {(submissionMode === "paper" || submissionMode === "both") && (
-                    <Card className="p-5 space-y-3">
+                    <div className="p-5 space-y-3">
                       <h3 className="text-sm font-bold flex items-center gap-2"><Image className="w-4 h-4 text-primary" />{t.createAssignment.modelAnswer}</h3>
                       <p className="text-muted-foreground text-xs">{t.createAssignment.modelAnswerDesc}</p>
                       <input type="file" accept="image/*" className="hidden" ref={modelImageRef} onChange={handleModelImageUpload} />
@@ -2002,63 +1984,106 @@ export default function CreateAssignment() {
                           <span className="text-[10px] opacity-70">{t.createAssignment.imageFormats}</span>
                         </button>
                       )}
-                    </Card>
+                    </div>
                   )}
 
                   {/* Description */}
-                  <Card className="p-5 space-y-2">
+                  <div className="p-5 space-y-2">
                     <h3 className="text-sm font-bold flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />{t.createAssignment.descriptionLabel}</h3>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t.createAssignment.descriptionPlaceholder}
                       className="w-full px-3 py-2 rounded-lg bg-background border-2 border-border text-sm resize-none focus:outline-none focus:border-primary transition-all min-h-[70px]" />
-                  </Card>
+                  </div>
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </Card>
+                  </div>
 
 
-                  {/* Sharing banner — sits next to the Save/Publish action
-                      so teachers can flip an assignment to private with one
-                      click without opening Advanced Settings. Hidden when
-                      the assignment is access-private (cannot be shared). */}
+                  {/* «بصمتك في مكتبة حصاد» — combined optional card: sharing toggle
+                      + library destination (moved here from step 1). Last option
+                      before publish; nothing here is required. Hidden when the
+                      assignment is access-private (cannot be shared). */}
                   {accessMode !== "private" && (
-                    <Card className={`p-4 border-2 ${isShared ? "border-primary/50 bg-primary/6 dark:bg-primary/12" : "border-border bg-muted/30"}`}>
+                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-4" data-testid="card-library-sharing">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          <span className="text-2xl shrink-0">{isShared ? "🌍" : "🔒"}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                            {isShared ? <Globe className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" /> : <Lock className="w-4.5 h-4.5 text-slate-400" />}
+                          </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-extrabold">
+                            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight">
+                              {lang === "ar" ? "بصمتك في مكتبة حصاد" : "Your mark in the Hasaad library"}
+                            </h3>
+                            <p className="text-[11px] font-bold text-slate-500 mt-0.5">
                               {isShared
-                                ? (isContestMode
-                                    ? (lang === "ar" ? "سيُشارك تلقائيًا في مكتبة المسابقات" : "Will be auto-shared to the Competitions Library")
-                                    : (lang === "ar" ? "سيُشارك تلقائيًا في مكتبة الأنشطة" : "Will be auto-shared to the Activities Library"))
-                                : (lang === "ar" ? "خاص بك فقط" : "Private to you only")}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {isShared
-                                ? (lang === "ar" ? "زملاؤك المعلمون يستطيعون استيراده مباشرة." : "Other teachers can import it directly.")
-                                : (lang === "ar" ? "لن يظهر لأي معلم آخر." : "Won't appear to any other teacher.")}
-                            </div>
+                                ? (lang === "ar" ? "زملاؤك المعلمون يستطيعون استيراده مباشرة (اختياري)" : "Other teachers can import it directly (optional)")
+                                : (lang === "ar" ? "خاص بك فقط — لن يظهر لأي معلم آخر" : "Private to you only")}
+                            </p>
                           </div>
                         </div>
                         <button
                           type="button"
+                          data-testid="btn-toggle-shared"
                           onClick={() => {
                             const next = !isShared;
                             setIsShared(next);
                             toast.success(next
-                              ? (lang === "ar" ? "🌍 سيُشارك مع المعلمين" : "🌍 Will be shared")
-                              : (lang === "ar" ? "🔒 تم جعله خاصًا" : "🔒 Made private"));
+                              ? (lang === "ar" ? "سيُشارك مع المعلمين" : "Will be shared with teachers")
+                              : (lang === "ar" ? "تم جعله خاصًا" : "Made private"));
                           }}
-                          className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-primary/55 text-primary hover:bg-primary/10 dark:hover:bg-primary/15"}`}
+                          className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-emerald-500/60 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"}`}
                         >
                           {isShared
-                            ? (lang === "ar" ? "اجعله خاصًا 🔒" : "Make Private 🔒")
-                            : (lang === "ar" ? "شاركه مع المعلمين 🌍" : "Share with teachers 🌍")}
+                            ? (lang === "ar" ? "اجعله خاصًا" : "Make private")
+                            : (lang === "ar" ? "شاركه مع المعلمين" : "Share with teachers")}
                         </button>
                       </div>
-                    </Card>
+
+                      <AnimatePresence initial={false}>
+                        {isShared && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pt-1">
+                              <p className="text-[11px] font-bold text-slate-500 mb-2">
+                                {lang === "ar" ? "أين يستقر في المكتبة العامة؟" : "Where does it land in the public library?"}
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <button
+                                  type="button"
+                                  data-testid="btn-library-activities"
+                                  onClick={() => setIsContestMode(false)}
+                                  className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-start transition-all ${!isContestMode ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20" : "border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800/50"}`}
+                                >
+                                  <FileText className={`w-5 h-5 shrink-0 ${!isContestMode ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
+                                  <div className="min-w-0">
+                                    <div className={`text-[13px] font-black leading-tight ${!isContestMode ? "text-emerald-800 dark:text-emerald-300" : "text-slate-700 dark:text-slate-300"}`}>{lang === "ar" ? "مكتبة الأنشطة" : "Activities Library"}</div>
+                                    <div className="text-[10px] font-bold mt-0.5 text-slate-500 truncate">{lang === "ar" ? "واجب أو اختبار" : "Homework or exam"}</div>
+                                  </div>
+                                </button>
+                                <button
+                                  type="button"
+                                  data-testid="btn-library-competitions"
+                                  onClick={() => setIsContestMode(true)}
+                                  className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-start transition-all ${isContestMode ? "border-amber-500 bg-amber-50/50 dark:bg-amber-900/20" : "border-slate-100 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-800/50"}`}
+                                >
+                                  <Star className={`w-5 h-5 shrink-0 ${isContestMode ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
+                                  <div className="min-w-0">
+                                    <div className={`text-[13px] font-black leading-tight ${isContestMode ? "text-amber-800 dark:text-amber-300" : "text-slate-700 dark:text-slate-300"}`}>{lang === "ar" ? "مكتبة المسابقات" : "Competitions Library"}</div>
+                                    <div className="text-[10px] font-bold mt-0.5 text-slate-500 truncate">{lang === "ar" ? "أسئلة مسابقة جاهزة" : "Ready contest questions"}</div>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   )}
 
                   {/* Publish button */}
@@ -2075,44 +2100,43 @@ export default function CreateAssignment() {
             </AnimatePresence>
 
             {/* ══ Sticky Navigation ══ */}
-            <div className="sticky bottom-4 z-20 mt-6">
-              <div className="bg-background/90 backdrop-blur-xl border border-border rounded-2xl shadow-xl shadow-black/10 p-3 flex items-center justify-between gap-3">
+            <div className="sticky bottom-4 z-20 mt-6 px-2">
+              <div className="bg-white/90 dark:bg-[#15201B]/90 backdrop-blur-xl border border-emerald-100/50 dark:border-emerald-900/30 rounded-3xl shadow-lg shadow-emerald-900/5 p-3 flex items-center justify-between gap-3">
                 <button type="button" onClick={goPrev} disabled={wizardStep === 1}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-                  <BackArrowIcon className="w-4 h-4" />
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                  <BackArrowIcon className="w-5 h-5" />
                   {lang === "ar" ? "السابق" : "Previous"}
                 </button>
 
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1.5">
                   {STEPS.map(step => (
-                    <div key={step.num} className={`h-1.5 rounded-full transition-all ${wizardStep === step.num ? "w-6 bg-primary" : wizardStep > step.num ? "w-3 bg-primary/55" : "w-3 bg-muted-foreground/30"}`} />
+                    <div key={step.num} className={`h-1.5 rounded-full transition-all duration-300 ${wizardStep === step.num ? "w-8 bg-emerald-500" : wizardStep > step.num ? "w-4 bg-emerald-200 dark:bg-emerald-800" : "w-4 bg-slate-100 dark:bg-slate-800"}`} />
                   ))}
                 </div>
 
                 {wizardStep < 3 ? (
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={goToPreview}
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-primary/40 text-primary text-xs font-bold hover:bg-primary/10 transition-all">
+                      className="hidden sm:flex items-center gap-2 px-4 py-3 rounded-2xl text-emerald-600 dark:text-emerald-400 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
                       <Eye className="w-4 h-4" />
                       {lang === "ar" ? "معاينة" : "Preview"}
                     </button>
                     <button type="button" onClick={goNext}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.97]">
+                      className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.97]">
                       {lang === "ar" ? "التالي" : "Next"}
-                      {lang === "ar" ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                      {lang === "ar" ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
                     </button>
                   </div>
                 ) : (
                   <button type="button" onClick={handlePublish} disabled={createMutation.isPending}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-primary/25 disabled:opacity-60"
-                    style={{ background: HASAD_CTA_GRADIENT }}>
-                    {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {lang === "ar" ? "نشر" : "Publish"}
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-60 active:scale-[0.97]">
+                    {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    {lang === "ar" ? "نشر الواجب" : "Publish"}
                   </button>
                 )}
               </div>
             </div>
-      </div>
+      </main>
 
       {/* ══ Draft Prompt Modal ══ */}
       <AnimatePresence>
@@ -2212,7 +2236,7 @@ export default function CreateAssignment() {
           </motion.div>
         )}
       </AnimatePresence>
-      </div>
+    </div>
     </Layout>
   );
 }

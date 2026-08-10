@@ -3,12 +3,13 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   Sparkles, Plus, Trash2, Save, FolderOpen, Loader2, Camera,
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
-  ArrowLeft, Printer, RotateCcw, Palette, LayoutTemplate, ChevronDown, Layers,
+  ArrowLeft, Printer, RotateCcw, LayoutTemplate, ChevronDown, Layers, ArrowUp, ArrowDown
 } from "lucide-react";
 import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
@@ -21,8 +22,6 @@ import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const BRAND_PRIMARY = "#225739";
-const BRAND_GOLD = "#D9A521";
 
 const WS_PREFS_KEY = "hasad:worksheet:prefs";
 
@@ -81,7 +80,6 @@ function clearWsPrefs() {
   try { localStorage.removeItem(WS_PREFS_KEY); } catch { }
 }
 
-// ── Teacher header profile (persists across worksheets) ───────────────────
 const TEACHER_PROFILE_KEY = "hasad:worksheet:teacher-profile";
 
 interface TeacherHeaderProfile {
@@ -101,7 +99,6 @@ function loadTeacherProfile(): TeacherHeaderProfile {
     if (typeof p.schoolName === "string") profile.schoolName = p.schoolName.slice(0, 200);
     if (typeof p.section === "string") profile.section = p.section.slice(0, 100);
     if (typeof p.teacherName === "string") profile.teacherName = p.teacherName.slice(0, 100);
-    // logoUrl is a base64 data URI — validate prefix to avoid garbage
     if (typeof p.logoUrl === "string" && p.logoUrl.startsWith("data:image/")) {
       profile.logoUrl = p.logoUrl;
     }
@@ -141,53 +138,25 @@ interface CustomField { label: string; value: string }
 
 interface Settings {
   instructions?: string;
-
   includeName: boolean;
-
   includeDate: boolean;
-
   includeClass: boolean;
-
   includeAnswerKey: boolean;
-
   columns: 1 | 2;
-
   headerNote?: string;
-
   footerNote?: string;
-  /** Custom closing line shown at the bottom of the last page (e.g. "نتمنى لك التوفيق"). Empty string = use default. */
   goodLuck?: string;
-  // Header identity fields, typography, and Hasaad watermark control.
-
   schoolName?: string;
-
   section?: string;
-
   teacherName?: string;
-  // Teacher-defined extra header fields (label + value pairs). These render
-  // alongside school/section/teacher in the printable header.
-
   customFields?: CustomField[];
-
   fontFamily: FontFamily;
-
   fontSizePt: number;
-
   showWatermark: boolean;
-  /** Custom accent color (hex). Defaults to Hasaad green. */
-
   themeColor?: string;
-  /** Base64 school logo shown in the header. */
-
   logoUrl?: string;
-  /** Design template ID — auto-selected by AI, overrideable by teacher. */
-  /** Question IDs that have a forced page break inserted before them. */
-
   template?: ThemeId;
-  /** Free-form canvas overlay elements (text, shapes). */
-
   layout?: CanvasLayout;
-
   pageBreaks?: string[];
 }
 
@@ -252,9 +221,6 @@ function makeBlank(type: QType, ar: boolean): Question {
     case "fill_blank":
       return { id, type, prompt: ar ? "اكتب الجملة هنا واستخدم ____ مكان الفراغ" : "Type the sentence and use ____ for the blank", answer: "" };
     case "matching":
-      // `prompt` is intentionally included (even though the matching UI
-      // doesn't currently surface it) so changeQuestionType can carry the
-      // prompt across when converting to/from this type without data loss.
       return { id, type, prompt: "", pairs: [{ left: "", right: "" }, { left: "", right: "" }, { left: "", right: "" }] };
   }
 }
@@ -296,7 +262,6 @@ export default function WorksheetCreate() {
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
 
-  // Load saved AI prefs once at mount time.
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
   const _teacherProfile = useMemo(() => loadTeacherProfile(), []);
 
@@ -307,9 +272,6 @@ export default function WorksheetCreate() {
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  // Pre-fill header identity fields from saved teacher profile on NEW worksheets.
-  // When loading an existing worksheet, the setSettings call in the edit-load
-  // effect (below) will overwrite these with the worksheet's own values.
   const [settings, setSettings] = useState<Settings>({
     ...DEFAULT_SETTINGS,
     schoolName: _teacherProfile.schoolName ?? DEFAULT_SETTINGS.schoolName,
@@ -319,11 +281,9 @@ export default function WorksheetCreate() {
     customFields: _teacherProfile.customFields ?? DEFAULT_SETTINGS.customFields,
   });
 
-  // AI panel state
-  const [aiOpen, setAiOpen] = useState(true);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [designOpen, setDesignOpen] = useState(false);
-  const [layoutOpen, setLayoutOpen] = useState(false);
+  
   const [aiTopic, setAiTopic] = useState("");
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
   const [aiPages, setAiPages] = useState<1 | 2 | 3>(_wsPrefs.aiPages ?? 1);
@@ -332,7 +292,6 @@ export default function WorksheetCreate() {
   );
   const [generating, setGenerating] = useState(false);
 
-  // Persist AI prefs to localStorage whenever they change (skip initial mount).
   const wsDidMountRef = useRef(false);
   const wsSkipNextSaveRef = useRef(false);
   useEffect(() => {
@@ -341,8 +300,6 @@ export default function WorksheetCreate() {
     saveWsPrefs({ contentLang, aiDifficulty, aiPages, aiCounts });
   }, [contentLang, aiDifficulty, aiPages, aiCounts]);
 
-  // Auto-save teacher header profile whenever identity fields change.
-  // This fills new worksheets automatically so the teacher doesn't re-type.
   const profileDidMountRef = useRef(false);
   useEffect(() => {
     if (!profileDidMountRef.current) { profileDidMountRef.current = true; return; }
@@ -365,7 +322,6 @@ export default function WorksheetCreate() {
     setAiCounts({ ...WS_DEFAULT_PREFS.aiCounts });
   }, [lang]);
 
-  // File extraction (multi-file: 5 max for teachers, 25 max for admins).
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [extracting, setExtracting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -376,23 +332,14 @@ export default function WorksheetCreate() {
   }), [isAdmin]);
   const [pickedFiles, setPickedFiles] = useState<File[]>([]);
 
-  // Saved worksheets modal
   const [savedOpen, setSavedOpen] = useState(false);
   const [savedRows, setSavedRows] = useState<WorksheetRow[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [saving, setSaving] = useState(false);
-  // التصحيح الورقي الذكي: عند التفعيل يُنشأ خلف الكواليس واجب داخلي مرتبط
-  // يشغّل محرك التصحيح بالصور — بدون أي كود يظهر للمعلم.
   const [smartGrading, setSmartGrading] = useState(false);
-
-  // Preview-without-save: when true, renders a full-screen overlay using
-  // <WorksheetPrintView /> with the current draft. The teacher can return
-  // to editing or export to Word/PDF without persisting anything.
   const [previewing, setPreviewing] = useState(false);
-
-  // Canvas editor overlay — free-form text/shape placement.
   const [canvasEditorOpen, setCanvasEditorOpen] = useState(false);
 
   useEffect(() => {
@@ -402,14 +349,6 @@ export default function WorksheetCreate() {
       .catch(() => {});
   }, []);
 
-  // If the URL contains ?edit=<id>, fetch that worksheet and populate the
-  // form so the teacher can edit it (change question types, prompts,
-  // correct answers, settings, etc.). The print page links here.
-  //
-  // Race-safety: if the teacher starts typing/clicking before the fetch
-  // resolves, we must NOT overwrite their in-progress edits. We track
-  // whether any local mutation has happened since mount in a ref, and
-  // bail out of the population step if so.
   const editLoadDirtyRef = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -421,7 +360,6 @@ export default function WorksheetCreate() {
       .then((row: WorksheetRow | null) => {
         if (!row) return;
         if (editLoadDirtyRef.current) {
-          // Teacher already started editing — bind the id only, keep their work.
           setEditingId(row.id);
           return;
         }
@@ -435,18 +373,15 @@ export default function WorksheetCreate() {
         setEditingId(row.id);
         toast.success(lang === "ar" ? "تم تحميل الورقة للتعديل" : "Worksheet loaded for editing");
       })
-      .catch(() => { /* silent — teacher can still create a new one */ });
-    // Run only on first mount; intentionally omit deps.
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch admin flag so the file picker can show the right limits and
-  // accept up to 25 files / 200 MB per file for admins.
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(p => { if (p) setIsAdmin(!!p.isAdmin); })
-      .catch(() => { /* non-fatal */ });
+      .catch(() => {});
   }, []);
 
   const totalQs = questions.length;
@@ -458,20 +393,11 @@ export default function WorksheetCreate() {
     setQuestions(prev => prev.map(q => (q.id === id ? ({ ...q, ...patch } as Question) : q)));
   };
 
-  // Replace a question with a fresh blank of a different type, preserving
-  // its id (so list ordering and React keys stay stable). Carries over the
-  // prompt + points so the teacher doesn't lose what they already wrote
-  // when only the type was wrong.
   const changeQuestionType = (id: string, newType: QType) => {
     setQuestions(prev => prev.map(q => {
       if (q.id !== id) return q;
       if (q.type === newType) return q;
       const blank = makeBlank(newType, contentLang === "ar");
-      // Preserve id, prompt, and points across the type swap. We must NOT
-      // gate on truthiness — an empty-string prompt is still a deliberate
-      // choice the teacher may have made (e.g. they're about to write
-      // it). All current blanks include a `prompt` slot, so the
-      // assignment is always safe.
       const carriedPrompt = "prompt" in q && typeof (q as { prompt?: unknown }).prompt === "string"
         ? (q as { prompt: string }).prompt
         : undefined;
@@ -489,9 +415,6 @@ export default function WorksheetCreate() {
     setQuestions(prev => prev.filter(q => q.id !== id));
   };
 
-  // New questions go to the TOP of the list per the teacher's request —
-  // they tend to add a few quick items and want them visible without
-  // scrolling past a long pre-existing list.
   const addQuestion = (type: QType) => {
     setQuestions(prev => [makeBlank(type, contentLang === "ar"), ...prev]);
   };
@@ -548,11 +471,8 @@ export default function WorksheetCreate() {
         toast.error(ar ? "لم يُرجع المولّد أي أسئلة" : "Generator returned no questions");
         return;
       }
-      // Prepend AI questions to the top so the teacher sees the result
-      // immediately without scrolling.
       setQuestions(prev => [...generated, ...prev]);
       if (!title.trim()) setTitle(aiTopic.trim().slice(0, 80));
-      // Auto-select an appropriate design template based on subject/grade
       const lastTheme = getLastTheme();
       const chosenTheme = selectTheme(
         subject.trim() || null,
@@ -564,7 +484,6 @@ export default function WorksheetCreate() {
       setLastTheme(chosenTheme);
       setSettings(s => ({ ...s, template: chosenTheme }));
       toast.success(ar ? `تمت إضافة ${generated.length} سؤال` : `Added ${generated.length} questions`);
-      setAiOpen(false);
     } catch {
       toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
     } finally {
@@ -588,8 +507,6 @@ export default function WorksheetCreate() {
     setExtracting(true);
     try {
       const fd = new FormData();
-      // Send each file under the same field name "files" — the server's
-      // multer is configured with .array("files", N).
       for (const f of pickedFiles) fd.append("files", f);
       fd.append("language", contentLang);
       if (subject.trim()) fd.append("subject", subject.trim());
@@ -620,7 +537,6 @@ export default function WorksheetCreate() {
         const baseName = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
         setTitle(baseName);
       }
-      // Auto-select design template for file-extracted worksheets too
       const lastThemeF = getLastTheme();
       const chosenThemeF = selectTheme(
         subject.trim() || null,
@@ -634,7 +550,6 @@ export default function WorksheetCreate() {
       toast.success(ar ? `تمت إضافة ${generated.length} سؤال من ${pickedFiles.length} ملف` : `Added ${generated.length} questions from ${pickedFiles.length} file(s)`);
       setPickedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      setAiOpen(false);
     } catch {
       toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
     } finally {
@@ -741,7 +656,6 @@ export default function WorksheetCreate() {
         ? row.questions.map(q => ({ ...q, id: newId() }))
         : row.questions,
     );
-    // Merge with defaults so older saves (missing new fields) still load.
     setSettings({ ...DEFAULT_SETTINGS, ...row.settings, customFields: row.settings?.customFields ?? [] });
     setEditingId(asNew ? null : row.id);
     setSavedOpen(false);
@@ -761,751 +675,515 @@ export default function WorksheetCreate() {
     }
   };
 
-  const blankCount = useMemo(
-    () => ({
-      mcq: questions.filter(q => q.type === "mcq").length,
-      true_false: questions.filter(q => q.type === "true_false").length,
-      short_answer: questions.filter(q => q.type === "short_answer").length,
-      fill_blank: questions.filter(q => q.type === "fill_blank").length,
-      matching: questions.filter(q => q.type === "matching").length,
-    }),
-    [questions],
-  );
-
-  // Mark the form dirty as soon as the teacher interacts. Used by the
-  // ?edit=<id> useEffect above to avoid clobbering in-progress edits if
-  // the fetch for the existing worksheet resolves late. React event
-  // delegation catches input/change events from any descendant control
-  // (text fields, selects, checkboxes, file pickers).
   const markEditDirty = () => { editLoadDirtyRef.current = true; };
 
   return (
     <Layout>
       <div
         dir={dir}
-        className="max-w-5xl mx-auto px-4 py-6 space-y-5"
+        className="max-w-4xl mx-auto px-4 py-8 pb-56 space-y-6"
         onInput={markEditDirty}
         onChange={markEditDirty}
       >
-        {/* Header */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: `${BRAND_PRIMARY}1a`, color: BRAND_PRIMARY }}
-          >
-            <FileText className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <h1 className="text-xl font-extrabold" style={{ color: BRAND_PRIMARY }}>
-              {ar ? "مولّد ورقة العمل" : "Worksheet Generator"}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {ar
-                ? "صمّم ورقة عمل احترافية للطباعة، يدويًا أو بمساعدة الذكاء الاصطناعي."
-                : "Design a print-ready worksheet, manually or with AI help."}
-            </p>
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-sm">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-foreground">{ar ? "بناء ورقة عمل" : "Worksheet Builder"}</h1>
+              <p className="text-sm text-muted-foreground">{ar ? "أنشئ ورقة عمل احترافية للطباعة، يدويًا أو بالذكاء الاصطناعي." : "Design a print-ready worksheet, manually or with AI."}</p>
+            </div>
           </div>
           <button
             onClick={loadSaved}
-            className="px-3 py-2 rounded-xl text-sm font-bold border flex items-center gap-2"
-            style={{ borderColor: `${BRAND_PRIMARY}33`, color: BRAND_PRIMARY }}
+            className="px-4 py-2.5 rounded-xl font-bold border border-border bg-background hover:bg-muted transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap text-primary"
           >
             <FolderOpen className="w-4 h-4" />
-            {ar ? "أوراقي" : "My Worksheets"}
+            {ar ? "أوراقي المحفوظة" : "My Worksheets"}
           </button>
         </div>
 
-        {/* ── Main meta card — title always visible ── */}
-        <Card className="p-4 space-y-4">
-          {/* Title — prominent */}
-          <Field label={ar ? "عنوان الورقة" : "Worksheet Title"}>
-            <input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={ar ? "مثال: مراجعة الكسور" : "e.g., Fractions Review"}
-              className="w-full px-3 py-2.5 rounded-lg border bg-background text-base font-semibold"
-            />
-          </Field>
+        {/* Smart Generator Hero */}
+        <Card className="p-6 sm:p-8 border-2 border-primary/20 shadow-lg relative overflow-hidden bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="absolute top-0 left-0 p-8 opacity-5 pointer-events-none transform -scale-x-100">
+            <Wand2 className="w-64 h-64" />
+          </div>
 
-          {/* Subject + Grade — smaller row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="relative z-10 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/15 text-primary shadow-inner">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-primary">{ar ? "المولد الذكي" : "Smart Generator"}</h2>
+                <p className="text-sm text-muted-foreground">{ar ? "اكتب موضوعاً وسيقوم الذكاء الاصطناعي ببناء الورقة بالكامل" : "Enter a topic and AI will build the entire worksheet"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <input 
+                  value={aiTopic}
+                  onChange={e => setAiTopic(e.target.value)}
+                  placeholder={ar ? "عن ماذا تتحدث الورقة؟ (مثال: أركان الصلاة، ضرب الكسور...)" : "What is this worksheet about?"}
+                  className="w-full text-lg px-4 py-4 rounded-xl border-2 border-border bg-background font-medium focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm outline-none"
+                />
+              </div>
+
+              {/* The One Row Requirement: Language, Difficulty, Pages */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <Field label={ar ? "لغة المحتوى" : "Language"}>
+                    <SegmentedControl 
+                       value={contentLang} 
+                       onChange={setContentLang as any}
+                       options={[{label: ar?"العربية":"Arabic", value:"ar"}, {label: ar?"English":"English", value:"en"}]}
+                    />
+                 </Field>
+                 <Field label={ar ? "مستوى الصعوبة" : "Difficulty"}>
+                    <SegmentedControl 
+                       value={aiDifficulty} 
+                       onChange={setAiDifficulty as any}
+                       options={[
+                         {label: ar?"سهل":"Easy", value:"easy"}, 
+                         {label: ar?"متوسط":"Med", value:"medium"}, 
+                         {label: ar?"صعب":"Hard", value:"hard"},
+                         {label: ar?"متنوّع":"Mixed", value:"mixed"}
+                       ]}
+                    />
+                 </Field>
+                 <Field label={ar ? "عدد الصفحات المستهدف" : "Pages"}>
+                    <SegmentedControl 
+                       value={aiPages} 
+                       onChange={setAiPages as any}
+                       options={[
+                         {label: ar?"١ صفحة":"1 Page", value: 1}, 
+                         {label: ar?"٢ صفحة":"2 Pages", value: 2}, 
+                         {label: ar?"٣ صفحات":"3 Pages", value: 3}
+                       ]}
+                    />
+                 </Field>
+              </div>
+
+              {/* Counts row - compact */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
+                <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                  <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
+                </div>
+                {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
+                  <CompactStepper
+                    key={k}
+                    label={typeLabel(k, ar)}
+                    value={aiCounts[k]}
+                    max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                    onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
+                  />
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button 
+                   onClick={generateWithAI}
+                   disabled={generating || extracting}
+                   className="flex-1 h-14 text-lg font-black rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
+                >
+                   {generating ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar?"جارٍ التوليد...":"Generating..."}</> : <><Sparkles className="w-5 h-5"/> {ar?"توليد الأسئلة":"Generate Questions"}</>}
+                </button>
+
+                <label className={cn(
+                   "h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all border-2",
+                   pickedFiles.length > 0 ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted text-muted-foreground bg-background"
+                )}>
+                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" 
+                     onChange={e => {
+                       const incoming = Array.from(e.target.files || []);
+                       if (incoming.length === 0) return;
+                       const merged = [...pickedFiles];
+                       for (const f of incoming) {
+                         if (f.size > fileLimits.maxBytes) {
+                           toast.error(ar ? `الملف "${f.name}" يتجاوز ${fileLimits.maxMb} ميجا` : `"${f.name}" exceeds ${fileLimits.maxMb} MB`);
+                           continue;
+                         }
+                         if (merged.some(m => m.name === f.name && m.size === f.size)) continue;
+                         merged.push(f);
+                       }
+                       if (merged.length > fileLimits.maxFiles) {
+                         toast.error(ar ? `الحد الأقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`);
+                         merged.length = fileLimits.maxFiles;
+                       }
+                       setPickedFiles(merged);
+                       if (fileInputRef.current) fileInputRef.current.value = "";
+                     }} 
+                   />
+                   <Upload className="w-5 h-5" />
+                   <span className="hidden sm:inline whitespace-nowrap">
+                     {pickedFiles.length > 0 ? (ar ? `تم اختيار ${pickedFiles.length}` : `${pickedFiles.length} selected`) : (ar ? "رفع ملف" : "Upload File")}
+                   </span>
+                </label>
+                
+                {pickedFiles.length > 0 && (
+                   <button onClick={extractFromFile} disabled={extracting || generating} className="h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-md">
+                     {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {ar ? "استخراج" : "Extract"}</>}
+                   </button>
+                )}
+
+                <button
+                  onClick={handleWsRestoreDefaults}
+                  title={ar ? "استعادة الإعدادات الافتراضية" : "Restore defaults"}
+                  className="h-14 w-14 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors flex-shrink-0"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+              </div>
+
+              {pickedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {pickedFiles.map((f, idx) => (
+                    <span
+                      key={`${f.name}-${f.size}-${idx}`}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-primary text-[11px]"
+                    >
+                      {f.type.startsWith("image/") ? <ImageIcon className="w-3 h-3" /> : <FileType className="w-3 h-3" />}
+                      <span className="font-bold truncate max-w-[160px]">{f.name}</span>
+                      <span className="opacity-60">{Math.round(f.size / 1024)} KB</span>
+                      <button
+                        type="button"
+                        onClick={() => setPickedFiles(prev => prev.filter((_, i) => i !== idx))}
+                        className="ml-1 hover:text-destructive transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Worksheet Details */}
+        <Card className="p-5 border border-border/60 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label={ar ? "عنوان الورقة" : "Worksheet Title"} className="md:col-span-1">
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder={ar ? "مثال: مراجعة عامة" : "e.g., General Review"}
+                className="w-full h-11 px-3 rounded-xl border bg-background font-semibold text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
+              />
+            </Field>
             <Field label={ar ? "المادة" : "Subject"}>
               <input
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
-                placeholder={ar ? "رياضيات، علوم، عربي…" : "Math, Science…"}
-                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                placeholder={ar ? "رياضيات، علوم..." : "Math, Science..."}
+                className="w-full h-11 px-3 rounded-xl border bg-background font-medium text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
               />
             </Field>
-            <Field label={ar ? "المرحلة" : "Grade"}>
+            <Field label={ar ? "المرحلة الدراسية" : "Grade"}>
               <input
                 value={gradeLevel}
                 onChange={e => setGradeLevel(e.target.value)}
-                placeholder={ar ? "الصف الخامس…" : "Grade 5…"}
+                placeholder={ar ? "الصف الخامس..." : "Grade 5..."}
                 list="ws-grade-levels"
-                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                className="w-full h-11 px-3 rounded-xl border bg-background font-medium text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
               />
               <datalist id="ws-grade-levels">
                 {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel} />)}
               </datalist>
             </Field>
           </div>
-
-          {/* ── Collapsible: Header identity ── */}
-          <div className="border-t" style={{ borderColor: `${BRAND_PRIMARY}18` }}>
-            <button
-              onClick={() => setHeaderOpen(o => !o)}
-              className="w-full flex items-center justify-between pt-3 pb-1 gap-2 text-start"
-            >
-              <div className="flex items-center gap-2">
-                <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
-                <span className="text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "بيانات الترويسة" : "Header info"}
-                </span>
-                {/* Summary pill when closed */}
-                {!headerOpen && (settings.schoolName || settings.teacherName || (settings.customFields ?? []).length > 0) && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}>
-                    {[settings.schoolName, settings.teacherName].filter(Boolean).join(" · ")}
-                    {(settings.customFields ?? []).length > 0 && ` +${(settings.customFields ?? []).length}`}
-                  </span>
-                )}
-              </div>
-              <ChevronDown
-                className="w-4 h-4 transition-transform flex-shrink-0"
-                style={{ color: BRAND_PRIMARY, transform: headerOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-              />
-            </button>
-            <AnimatePresence initial={false}>
-              {headerOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="overflow-hidden"
-                >
-                  <div className="pt-3 space-y-3 pb-1">
-                    {/* Profile auto-save notice */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                        <Save className="w-3 h-3" />
-                        {ar
-                          ? "تُحفظ هذه البيانات تلقائياً وتُملأ في كل ورقة جديدة"
-                          : "Saved automatically and pre-filled on every new worksheet"}
-                      </p>
-                      {(settings.schoolName || settings.section || settings.teacherName || settings.logoUrl || (settings.customFields ?? []).length > 0) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            clearTeacherProfile();
-                            setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
-                          }}
-                          className="text-[11px] text-red-500 hover:underline flex-shrink-0"
-                        >
-                          {ar ? "مسح المحفوظ" : "Clear saved"}
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <Field label={ar ? "اسم المدرسة" : "School name"}>
-                        <input
-                          value={settings.schoolName ?? ""}
-                          onChange={e => setSettings(s => ({ ...s, schoolName: e.target.value }))}
-                          placeholder={ar ? "مدرسة الأمل" : "Al-Amal School"}
-                          maxLength={200}
-                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                        />
-                      </Field>
-                      <Field label={ar ? "القسم" : "Department"}>
-                        <input
-                          value={settings.section ?? ""}
-                          onChange={e => setSettings(s => ({ ...s, section: e.target.value }))}
-                          placeholder={ar ? "قسم اللغة العربية" : "English Dept"}
-                          maxLength={100}
-                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                        />
-                      </Field>
-                      <Field label={ar ? "اسم المعلم" : "Teacher"}>
-                        <input
-                          value={settings.teacherName ?? ""}
-                          onChange={e => setSettings(s => ({ ...s, teacherName: e.target.value }))}
-                          placeholder={ar ? "أ. محمد" : "Mr. Ahmed"}
-                          maxLength={100}
-                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                        />
-                      </Field>
-                    </div>
-                    {/* Custom fields */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold" style={{ color: BRAND_PRIMARY }}>
-                          {ar ? "حقول إضافية (اختياري)" : "Extra fields (optional)"}
-                        </span>
-                        <button
-                          onClick={() => {
-                            const cur = settings.customFields ?? [];
-                            if (cur.length >= MAX_CUSTOM_FIELDS) {
-                              toast.error(ar ? `الحد الأقصى ${MAX_CUSTOM_FIELDS} حقول` : `Max ${MAX_CUSTOM_FIELDS} fields`);
-                              return;
-                            }
-                            setSettings(s => ({ ...s, customFields: [...(s.customFields ?? []), { label: "", value: "" }] }));
-                          }}
-                          className="text-[11px] font-bold px-2 py-1 rounded border flex items-center gap-1"
-                          style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-                        >
-                          <Plus className="w-3 h-3" />
-                          {ar ? "أضف" : "Add"}
-                        </button>
-                      </div>
-                      {(settings.customFields ?? []).length === 0 ? (
-                        <p className="text-[11px] text-muted-foreground">{ar ? "مثال: العام الدراسي، الدرجة، الفصل…" : "e.g., Academic Year, Marks, Term…"}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {(settings.customFields ?? []).map((f, i) => (
-                            <div key={i} className="flex gap-2 items-center">
-                              <input
-                                value={f.label}
-                                onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], label: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
-                                placeholder={ar ? "اسم الحقل" : "Label"}
-                                maxLength={40}
-                                className="w-1/3 px-2 py-1.5 rounded border bg-background text-sm"
-                              />
-                              <input
-                                value={f.value}
-                                onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], value: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
-                                placeholder={ar ? "القيمة" : "Value"}
-                                maxLength={120}
-                                className="flex-1 px-2 py-1.5 rounded border bg-background text-sm"
-                              />
-                              <button onClick={() => { const next = (settings.customFields ?? []).filter((_, j) => j !== i); setSettings(s => ({ ...s, customFields: next })); }} className="p-1.5 rounded text-red-500 hover:bg-red-50" title={ar ? "حذف" : "Remove"}>
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ── Collapsible: Design ── */}
-          <div className="border-t" style={{ borderColor: `${BRAND_PRIMARY}18` }}>
-            <button
-              onClick={() => setDesignOpen(o => !o)}
-              className="w-full flex items-center justify-between pt-3 pb-1 gap-2 text-start"
-            >
-              <div className="flex items-center gap-2">
-                <LayoutTemplate className="w-3.5 h-3.5 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
-                <span className="text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "تصميم الورقة" : "Worksheet Design"}
-                </span>
-                {!designOpen && settings.template && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${THEMES[settings.template].swatchColors[0]}20`, color: THEMES[settings.template].swatchColors[0] }}>
-                    {ar ? THEMES[settings.template].nameAr : THEMES[settings.template].nameEn}
-                  </span>
-                )}
-                {!designOpen && settings.themeColor && (
-                  <span className="w-4 h-4 rounded-full border border-white shadow-sm inline-block" style={{ background: settings.themeColor }} />
-                )}
-              </div>
-              <ChevronDown
-                className="w-4 h-4 transition-transform flex-shrink-0"
-                style={{ color: BRAND_PRIMARY, transform: designOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-              />
-            </button>
-            <AnimatePresence initial={false}>
-              {designOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="overflow-hidden"
-                >
-                  <div className="pt-3 space-y-5 pb-1">
-                    {/* Template picker */}
-                    <div>
-                      <div className="text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
-                        {ar ? "قالب التصميم" : "Design Template"}
-                        <span className="ms-2 font-normal text-muted-foreground text-[10px]">
-                          {ar ? "يُختار تلقائيًا عند التوليد بالذكاء الاصطناعي" : "auto-selected on AI generation"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-8 gap-2 mb-2">
-                        {/* No template */}
-                        <button
-                          onClick={() => setSettings(s => ({ ...s, template: undefined }))}
-                          className="flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all"
-                          style={{
-                            borderColor: !settings.template ? BRAND_PRIMARY : "transparent",
-                            background: !settings.template ? `${BRAND_PRIMARY}0d` : "var(--muted)",
-                          }}
-                        >
-                          <div className="w-full h-8 rounded flex items-center justify-center border border-dashed" style={{ borderColor: `${BRAND_PRIMARY}44` }}>
-                            <span className="text-[8px] font-bold" style={{ color: BRAND_PRIMARY }}>{ar ? "افتراضي" : "Default"}</span>
-                          </div>
-                          <span className="text-[9px] text-muted-foreground truncate w-full text-center">{ar ? "كلاسيك" : "Classic"}</span>
-                        </button>
-                        {/* Theme cards */}
-                        {(Object.values(THEMES) as typeof THEMES[ThemeId][]).map(t => {
-                          const isActive = settings.template === t.id;
-                          const [c1, c2] = t.swatchColors;
-                          return (
-                            <button
-                              key={t.id}
-                              onClick={() => setSettings(s => ({ ...s, template: s.template === t.id ? undefined : t.id }))}
-                              title={t.description}
-                              className="flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all"
-                              style={{
-                                borderColor: isActive ? c1 : "transparent",
-                                background: isActive ? `${c1}0d` : "var(--muted)",
-                              }}
-                            >
-                              <div className="w-full h-8 rounded overflow-hidden" style={{ background: c1 }}>
-                                <div className="h-[40%]" style={{ background: c1 }} />
-                                <div className="h-[60%]" style={{ background: "white" }}>
-                                  <div className="mx-1 mt-0.5 h-px rounded" style={{ background: `${c1}44` }} />
-                                </div>
-                              </div>
-                              <span className="text-[9px] font-semibold truncate w-full text-center" style={{ color: isActive ? c1 : undefined }}>
-                                {ar ? t.nameAr : t.nameEn}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Accent color */}
-                      <div>
-                        <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
-                          {ar ? "لون الورقة" : "Accent color"}
-                        </label>
-                        <div className="flex flex-wrap gap-2 mb-1">
-                          {THEME_PRESETS.map(p => (
-                            <button
-                              key={p.color}
-                              title={p.label}
-                              onClick={() => setSettings(s => ({ ...s, themeColor: s.themeColor === p.color ? undefined : p.color }))}
-                              className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
-                              style={{
-                                background: p.color,
-                                borderColor: settings.themeColor === p.color ? "#fff" : "transparent",
-                                boxShadow: settings.themeColor === p.color ? `0 0 0 2px ${p.color}` : "none",
-                              }}
-                            />
-                          ))}
-                          <label className="w-7 h-7 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer hover:scale-110 transition-transform" style={{ borderColor: `${BRAND_PRIMARY}55` }} title={ar ? "لون مخصص" : "Custom"}>
-                            <input type="color" className="sr-only" value={settings.themeColor ?? BRAND_PRIMARY} onChange={e => setSettings(s => ({ ...s, themeColor: e.target.value }))} />
-                            <span className="text-[10px] font-bold" style={{ color: BRAND_PRIMARY }}>+</span>
-                          </label>
-                        </div>
-                        {settings.themeColor && (
-                          <button onClick={() => setSettings(s => ({ ...s, themeColor: undefined }))} className="text-[11px] text-muted-foreground hover:text-destructive">
-                            {ar ? "إعادة الافتراضي" : "Reset"}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Logo upload */}
-                      <div>
-                        <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
-                          {ar ? "شعار المدرسة (اختياري)" : "School logo (optional)"}
-                        </label>
-                        {settings.logoUrl ? (
-                          <div className="flex items-center gap-3">
-                            <img src={settings.logoUrl} alt="logo" className="h-10 w-auto rounded border object-contain" />
-                            <button onClick={() => setSettings(s => ({ ...s, logoUrl: undefined }))} className="text-[11px] text-red-500 hover:underline">{ar ? "حذف" : "Remove"}</button>
-                          </div>
-                        ) : (
-                          <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/30 transition-colors" style={{ borderColor: `${BRAND_PRIMARY}44` }}>
-                            <ImageIcon className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
-                            <span className="text-xs">{ar ? "رفع الشعار (PNG/JPG)" : "Upload logo (PNG/JPG)"}</span>
-                            <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" className="sr-only"
-                              onChange={e => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                if (file.size > 500 * 1024) { toast.error(ar ? "حجم الشعار يجب أن يكون أقل من 500 كيلوبايت" : "Logo must be under 500 KB"); return; }
-                                const reader = new FileReader();
-                                reader.onload = ev => setSettings(s => ({ ...s, logoUrl: ev.target?.result as string }));
-                                reader.readAsDataURL(file);
-                              }}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ── Collapsible: Layout & Formatting ── */}
-          <div className="border-t" style={{ borderColor: `${BRAND_PRIMARY}18` }}>
-            <button
-              onClick={() => setLayoutOpen(o => !o)}
-              className="w-full flex items-center justify-between pt-3 pb-1 gap-2 text-start"
-            >
-              <div className="flex items-center gap-2">
-                <SettingsIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
-                <span className="text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "إعدادات التنسيق" : "Formatting"}
-                </span>
-                {!layoutOpen && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {ar
-                      ? `${settings.columns === 2 ? "عمودان" : "عمود واحد"} · ${settings.fontSizePt}pt${settings.includeAnswerKey ? " · نموذج الإجابات" : ""}`
-                      : `${settings.columns === 2 ? "2 cols" : "1 col"} · ${settings.fontSizePt}pt${settings.includeAnswerKey ? " · Answer key" : ""}`}
-                  </span>
-                )}
-              </div>
-              <ChevronDown
-                className="w-4 h-4 transition-transform flex-shrink-0"
-                style={{ color: BRAND_PRIMARY, transform: layoutOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-              />
-            </button>
-            <AnimatePresence initial={false}>
-              {layoutOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="overflow-hidden"
-                >
-                  <div className="pt-3 space-y-3 pb-1">
-                    <Field label={ar ? "تعليمات الطالب (اختياري)" : "Student instructions (optional)"}>
-                      <textarea
-                        value={settings.instructions ?? ""}
-                        onChange={e => setSettings(s => ({ ...s, instructions: e.target.value }))}
-                        rows={2}
-                        placeholder={ar ? "اقرأ كل سؤال بعناية قبل الإجابة." : "Read each question carefully before answering."}
-                        className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                      />
-                    </Field>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <Toggle label={ar ? "خانة الاسم" : "Name field"} value={settings.includeName} onChange={v => setSettings(s => ({ ...s, includeName: v }))} icon={<User className="w-3 h-3" />} />
-                      <Toggle label={ar ? "خانة التاريخ" : "Date field"} value={settings.includeDate} onChange={v => setSettings(s => ({ ...s, includeDate: v }))} />
-                      <Toggle label={ar ? "خانة الصف" : "Class field"} value={settings.includeClass} onChange={v => setSettings(s => ({ ...s, includeClass: v }))} icon={<GraduationCap className="w-3 h-3" />} />
-                      <Toggle label={ar ? "نموذج الإجابات" : "Answer key"} value={settings.includeAnswerKey} onChange={v => setSettings(s => ({ ...s, includeAnswerKey: v }))} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <Field label={ar ? "عدد الأعمدة" : "Columns"}>
-                        <div className="flex gap-2">
-                          {([1, 2] as const).map(c => (
-                            <button key={c} onClick={() => setSettings(s => ({ ...s, columns: c }))}
-                              className="flex-1 px-3 py-2 rounded-lg border text-sm font-bold"
-                              style={{ background: settings.columns === c ? BRAND_PRIMARY : "transparent", color: settings.columns === c ? "#fff" : BRAND_PRIMARY, borderColor: `${BRAND_PRIMARY}55` }}>
-                              {c === 1 ? (ar ? "عمود" : "1 col") : (ar ? "عمودان" : "2 cols")}
-                            </button>
-                          ))}
-                        </div>
-                      </Field>
-                      <Field label={ar ? "نوع الخط" : "Font"}>
-                        <select value={settings.fontFamily} onChange={e => setSettings(s => ({ ...s, fontFamily: e.target.value as FontFamily }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
-                          <option value="default">{ar ? "افتراضي" : "Default"}</option>
-                          <option value="cairo">Cairo</option>
-                          <option value="tajawal">Tajawal</option>
-                          <option value="amiri">Amiri</option>
-                          <option value="noto-naskh">Noto Naskh</option>
-                          <option value="inter">Inter</option>
-                          <option value="georgia">Georgia</option>
-                        </select>
-                      </Field>
-                      <Field label={ar ? `حجم الخط (${settings.fontSizePt}pt)` : `Font size (${settings.fontSizePt}pt)`}>
-                        <input type="range" min={9} max={18} step={1} value={settings.fontSizePt}
-                          onChange={e => setSettings(s => ({ ...s, fontSizePt: parseInt(e.target.value, 10) }))}
-                          className="w-full" style={{ accentColor: BRAND_PRIMARY }} />
-                      </Field>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Field label={ar ? "ملاحظة في الترويسة" : "Header note"}>
-                        <input value={settings.headerNote ?? ""} onChange={e => setSettings(s => ({ ...s, headerNote: e.target.value }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" maxLength={300} />
-                      </Field>
-                      <Field label={ar ? "ملاحظة في التذييل" : "Footer note"}>
-                        <input value={settings.footerNote ?? ""} onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" maxLength={300} />
-                      </Field>
-                    </div>
-                    <Field label={ar ? "جملة التشجيع في نهاية الورقة" : "Closing encouragement line"}>
-                      <input
-                        value={settings.goodLuck ?? ""}
-                        onChange={e => setSettings(s => ({ ...s, goodLuck: e.target.value }))}
-                        placeholder={ar ? "نتمنى لك التوفيق ✦  (الافتراضي)" : "✦ Good luck!  (default)"}
-                        className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                        maxLength={200}
-                      />
-                    </Field>
-                    <div className="rounded-lg p-3 border flex items-center gap-3 flex-wrap" style={{ borderColor: `${BRAND_GOLD}55`, background: `${BRAND_GOLD}0c` }}>
-                      <div className="flex-1 min-w-[160px]">
-                        <div className="text-xs font-bold mb-0.5" style={{ color: BRAND_PRIMARY }}>{ar ? "علامة حصاد المائية" : "Hasaad watermark"}</div>
-                        <div className="text-[11px] text-muted-foreground">{ar ? "كلمة «حصاد» بخط كبير وخافت خلف الأسئلة" : "Faded «Hasaad» word behind the questions"}</div>
-                      </div>
-                      <Toggle label={settings.showWatermark ? (ar ? "تظهر" : "On") : (ar ? "مخفية" : "Off")} value={settings.showWatermark} onChange={v => setSettings(s => ({ ...s, showWatermark: v }))} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </Card>
 
-        {/* AI panel */}
-        <Card className="p-4">
-          <button
-            onClick={() => setAiOpen(o => !o)}
-            className="w-full flex items-center justify-between gap-2"
+        {/* Advanced Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CollapsibleCard 
+            title={ar ? "بيانات الترويسة" : "Header Info"}
+            icon={Building2}
+            isOpen={headerOpen}
+            onToggle={() => setHeaderOpen(!headerOpen)}
+            summary={(settings.schoolName || settings.teacherName) ? [settings.schoolName, settings.teacherName].filter(Boolean).join(" · ") : undefined}
           >
-            <div className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: `${BRAND_GOLD}22`, color: BRAND_GOLD }}
-              >
-                <Wand2 className="w-4 h-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <Save className="w-3.5 h-3.5" />
+                  {ar ? "تُحفظ تلقائياً لكل أوراقك القادمة" : "Saved automatically for future sheets"}
+                </p>
+                {(settings.schoolName || settings.section || settings.teacherName || settings.logoUrl || (settings.customFields ?? []).length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearTeacherProfile();
+                      setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
+                    }}
+                    className="text-[11px] font-bold text-destructive hover:underline"
+                  >
+                    {ar ? "مسح المحفوظ" : "Clear saved"}
+                  </button>
+                )}
               </div>
-              <div className="text-start">
-                <div className="text-sm font-bold" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {ar ? "اكتب موضوعًا أو ارفع صورة/PDF/Word ليستخرج الذكاء الاصطناعي الأسئلة" : "Pick a topic, or upload an image/PDF/Word and let AI extract questions"}
-                </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label={ar ? "اسم المدرسة" : "School name"}>
+                  <input
+                    value={settings.schoolName ?? ""}
+                    onChange={e => setSettings(s => ({ ...s, schoolName: e.target.value }))}
+                    placeholder={ar ? "مدرسة الأمل" : "Al-Amal School"}
+                    maxLength={200}
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
+                  />
+                </Field>
+                <Field label={ar ? "اسم المعلم" : "Teacher"}>
+                  <input
+                    value={settings.teacherName ?? ""}
+                    onChange={e => setSettings(s => ({ ...s, teacherName: e.target.value }))}
+                    placeholder={ar ? "أ. محمد" : "Mr. Ahmed"}
+                    maxLength={100}
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
+                  />
+                </Field>
+                <Field label={ar ? "القسم" : "Department"} className="sm:col-span-2">
+                  <input
+                    value={settings.section ?? ""}
+                    onChange={e => setSettings(s => ({ ...s, section: e.target.value }))}
+                    placeholder={ar ? "قسم اللغة العربية" : "English Dept"}
+                    maxLength={100}
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
+                  />
+                </Field>
               </div>
-            </div>
-            <span className="text-xs text-muted-foreground">{aiOpen ? (ar ? "إخفاء" : "Hide") : (ar ? "إظهار" : "Show")}</span>
-          </button>
-          <AnimatePresence initial={false}>
-            {aiOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-              >
-                <div className="pt-4 space-y-3">
-                  <Field label={ar ? "موضوع الأسئلة (أو ملاحظة عند رفع ملف)" : "Topic (or note when uploading a file)"}>
-                    <input
-                      value={aiTopic}
-                      onChange={e => setAiTopic(e.target.value)}
-                      placeholder={ar ? "مثال: جمع وطرح الكسور" : "e.g., Adding and subtracting fractions"}
-                      className="w-full px-3 py-2 rounded-lg border bg-background"
-                    />
-                  </Field>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Field label={ar ? "الصعوبة" : "Difficulty"}>
-                      <div className="flex gap-2 flex-wrap">
-                        {(["easy", "medium", "hard", "mixed"] as const).map(d => {
-                          const labels = ar
-                            ? { easy: "سهل", medium: "متوسط", hard: "صعب", mixed: "متنوّع" }
-                            : { easy: "Easy", medium: "Medium", hard: "Hard", mixed: "Mixed" };
-                          const active = aiDifficulty === d;
-                          return (
-                            <button
-                              key={d}
-                              onClick={() => setAiDifficulty(d)}
-                              className="px-3 py-1.5 rounded-lg border text-xs font-bold"
-                              style={{
-                                background: active ? BRAND_PRIMARY : "transparent",
-                                color: active ? "#fff" : BRAND_PRIMARY,
-                                borderColor: `${BRAND_PRIMARY}55`,
-                              }}
-                            >
-                              {labels[d]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </Field>
-                    <Field label={ar ? "حجم الورقة (عدد الصفحات المستهدف)" : "Worksheet size (target pages)"}>
-                      <div className="flex gap-2">
-                        {([1, 2, 3] as const).map(p => {
-                          const active = aiPages === p;
-                          return (
-                            <button
-                              key={p}
-                              onClick={() => setAiPages(p)}
-                              className="flex-1 px-3 py-1.5 rounded-lg border text-xs font-bold"
-                              style={{
-                                background: active ? BRAND_PRIMARY : "transparent",
-                                color: active ? "#fff" : BRAND_PRIMARY,
-                                borderColor: `${BRAND_PRIMARY}55`,
-                              }}
-                            >
-                              {ar ? `${p} ${p === 1 ? "صفحة" : "صفحات"}` : `${p} page${p > 1 ? "s" : ""}`}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </Field>
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
-                      {ar ? "عدد الأسئلة لكل نوع" : "Counts per type"}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                      {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
-                        <CountStepper
-                          key={k}
-                          label={typeLabel(k, ar)}
-                          value={aiCounts[k]}
-                          max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
-                          onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
-                        />
-                      ))}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-2">
-                      {ar ? "الإجمالي" : "Total"}: {aiTotal} / {aiMaxTotal}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={generateWithAI}
-                      disabled={generating || extracting}
-                      className="flex-1 py-2.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
-                      style={{ background: BRAND_GOLD }}
-                    >
-                      {generating
-                        ? <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جارٍ التوليد..." : "Generating..."}</>
-                        : <><Sparkles className="w-4 h-4" /> {ar ? "توليد الأسئلة من النص" : "Generate Questions from Topic"}</>}
-                    </button>
-                    <button
-                      onClick={handleWsRestoreDefaults}
-                      title={ar ? "استعادة الإعدادات الافتراضية" : "Restore defaults"}
-                      className="px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 min-h-[44px]"
-                      style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      {ar ? "إعادة ضبط" : "Reset"}
-                    </button>
-                  </div>
 
-                  {/* File extraction sub-panel — multi-file (up to 5 for
-                      teachers, 25 for admins). Each file ≤ 50 MB (teacher)
-                      or ≤ 200 MB (admin). Selected files appear as chips
-                      with a remove button. */}
-                  <div className="pt-3 mt-2 border-t" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-                    <div className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: BRAND_PRIMARY }}>
-                      <Upload className="w-3.5 h-3.5" />
-                      {ar
-                        ? `أو ارفع ملفات (صور / PDF / Word) لاستخراج الأسئلة — حتى ${fileLimits.maxFiles} ملفات${isAdmin ? " (مسؤول)" : ""}`
-                        : `Or upload files (images / PDF / Word) to extract questions — up to ${fileLimits.maxFiles} files${isAdmin ? " (admin)" : ""}`}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                        <label
-                          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer hover:bg-muted/40 transition-colors text-xs"
-                          style={{ borderColor: `${BRAND_PRIMARY}55`, color: pickedFiles.length > 0 ? BRAND_PRIMARY : "#666" }}
-                        >
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            multiple
-                            accept="image/*,.pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            className="hidden"
-                            onChange={e => {
-                              const incoming = Array.from(e.target.files || []);
-                              if (incoming.length === 0) return;
-                              // Merge with anything already selected, dedupe by
-                              // (name + size) so re-picking the same file doesn't
-                              // double up. Enforce the per-tier caps client-side
-                              // for instant feedback; the server is authoritative.
-                              const merged = [...pickedFiles];
-                              for (const f of incoming) {
-                                if (f.size > fileLimits.maxBytes) {
-                                  toast.error(ar ? `الملف "${f.name}" يتجاوز ${fileLimits.maxMb} ميجا` : `"${f.name}" exceeds ${fileLimits.maxMb} MB`);
-                                  continue;
-                                }
-                                if (merged.some(m => m.name === f.name && m.size === f.size)) continue;
-                                merged.push(f);
-                              }
-                              if (merged.length > fileLimits.maxFiles) {
-                                toast.error(ar ? `الحد الأقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`);
-                                merged.length = fileLimits.maxFiles;
-                              }
-                              setPickedFiles(merged);
-                              if (fileInputRef.current) fileInputRef.current.value = "";
-                            }}
-                          />
-                          <Upload className="w-4 h-4" />
-                          {pickedFiles.length > 0
-                            ? (ar
-                                ? `اضغط لإضافة المزيد (${pickedFiles.length}/${fileLimits.maxFiles})`
-                                : `Click to add more (${pickedFiles.length}/${fileLimits.maxFiles})`)
-                            : (ar
-                                ? `اضغط لاختيار الملفات — حتى ${fileLimits.maxMb} ميجا للملف`
-                                : `Click to pick files — up to ${fileLimits.maxMb} MB each`)}
-                        </label>
-                        <button
-                          onClick={extractFromFile}
-                          disabled={pickedFiles.length === 0 || extracting || generating}
-                          className="px-4 py-2 rounded-lg font-bold text-white text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                          style={{ background: BRAND_PRIMARY }}
-                        >
-                          {extracting
-                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {ar ? "جارٍ القراءة..." : "Extracting..."}</>
-                            : <><Sparkles className="w-3.5 h-3.5" /> {ar ? `استخرج الأسئلة (${pickedFiles.length})` : `Extract Questions (${pickedFiles.length})`}</>}
+              <div className="pt-2 border-t border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-foreground">
+                    {ar ? "حقول إضافية (اختياري)" : "Extra fields"}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const cur = settings.customFields ?? [];
+                      if (cur.length >= MAX_CUSTOM_FIELDS) {
+                        toast.error(ar ? `الحد الأقصى ${MAX_CUSTOM_FIELDS} حقول` : `Max ${MAX_CUSTOM_FIELDS} fields`);
+                        return;
+                      }
+                      setSettings(s => ({ ...s, customFields: [...(s.customFields ?? []), { label: "", value: "" }] }));
+                    }}
+                    className="text-[10px] font-bold px-2 py-1 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                  >
+                    <Plus className="w-3 h-3 inline-block" /> {ar ? "إضافة" : "Add"}
+                  </button>
+                </div>
+                {(settings.customFields ?? []).length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">{ar ? "مثال: العام الدراسي، الدرجة، الفصل…" : "e.g., Academic Year, Marks, Term…"}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(settings.customFields ?? []).map((f, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input
+                          value={f.label}
+                          onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], label: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
+                          placeholder={ar ? "اسم الحقل" : "Label"}
+                          maxLength={40}
+                          className="w-1/3 h-8 px-2 rounded border bg-background text-xs outline-none focus:border-primary"
+                        />
+                        <input
+                          value={f.value}
+                          onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], value: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
+                          placeholder={ar ? "القيمة" : "Value"}
+                          maxLength={120}
+                          className="flex-1 h-8 px-2 rounded border bg-background text-xs outline-none focus:border-primary"
+                        />
+                        <button onClick={() => { const next = (settings.customFields ?? []).filter((_, j) => j !== i); setSettings(s => ({ ...s, customFields: next })); }} className="p-1 rounded text-destructive hover:bg-destructive/10 transition-colors">
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
-                      {pickedFiles.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {pickedFiles.map((f, idx) => (
-                            <span
-                              key={`${f.name}-${f.size}-${idx}`}
-                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border bg-white text-[11px]"
-                              style={{ borderColor: `${BRAND_PRIMARY}44`, color: BRAND_PRIMARY }}
-                            >
-                              {f.type.startsWith("image/") ? <ImageIcon className="w-3 h-3" /> : <FileType className="w-3 h-3" />}
-                              <span className="font-bold truncate max-w-[160px]">{f.name}</span>
-                              <span className="opacity-60">{Math.round(f.size / 1024)} KB</span>
-                              <button
-                                type="button"
-                                onClick={() => setPickedFiles(prev => prev.filter((_, i) => i !== idx))}
-                                aria-label={ar ? "إزالة" : "Remove"}
-                                className="ml-0.5 hover:text-red-600"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title={ar ? "تصميم وتنسيق الورقة" : "Design & Formatting"}
+            icon={LayoutTemplate}
+            isOpen={designOpen}
+            onToggle={() => setDesignOpen(!designOpen)}
+            summary={settings.template ? (ar ? THEMES[settings.template].nameAr : THEMES[settings.template].nameEn) : undefined}
+          >
+            <div className="space-y-5">
+              {/* Template Picker */}
+              <div>
+                <div className="text-[11px] font-bold mb-2 text-muted-foreground flex justify-between items-center">
+                  <span>{ar ? "القالب المرئي" : "Visual Template"}</span>
+                  <span className="font-normal text-[10px]">{ar ? "(يُختار تلقائياً أحياناً)" : "(auto-selected)"}</span>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                  <button
+                    onClick={() => setSettings(s => ({ ...s, template: undefined }))}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 p-1.5 rounded-lg border-2 transition-all",
+                      !settings.template ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted"
+                    )}
+                  >
+                    <div className="w-full h-8 rounded flex items-center justify-center border border-dashed border-primary/40 bg-background">
+                      <span className="text-[9px] font-bold text-primary">{ar ? "كلاسيك" : "Classic"}</span>
                     </div>
+                  </button>
+                  {(Object.values(THEMES) as typeof THEMES[ThemeId][]).map(t => {
+                    const isActive = settings.template === t.id;
+                    const [c1, c2] = t.swatchColors;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setSettings(s => ({ ...s, template: s.template === t.id ? undefined : t.id }))}
+                        title={t.description}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 p-1.5 rounded-lg border-2 transition-all",
+                          isActive ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted"
+                        )}
+                        style={{ borderColor: isActive ? c1 : "transparent", background: isActive ? `${c1}10` : undefined }}
+                      >
+                        <div className="w-full h-8 rounded overflow-hidden shadow-sm" style={{ background: c1 }}>
+                          <div className="h-[40%]" style={{ background: c1 }} />
+                          <div className="h-[60%]" style={{ background: "white" }}>
+                            <div className="mx-1 mt-0.5 h-px rounded" style={{ background: `${c1}44` }} />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label={ar ? "الأعمدة" : "Columns"}>
+                  <SegmentedControl value={settings.columns} onChange={v => setSettings(s => ({...s, columns: v}))} options={[{label: ar?"1":"1", value:1}, {label:ar?"2":"2", value:2}]} />
+                </Field>
+                <Field label={ar ? "نوع الخط" : "Font"}>
+                  <select value={settings.fontFamily} onChange={e => setSettings(s => ({ ...s, fontFamily: e.target.value as FontFamily }))} className="w-full h-11 px-2 rounded-lg border bg-background text-xs outline-none focus:border-primary">
+                    <option value="default">{ar ? "افتراضي" : "Default"}</option>
+                    <option value="cairo">Cairo</option>
+                    <option value="tajawal">Tajawal</option>
+                    <option value="amiri">Amiri</option>
+                    <option value="noto-naskh">Noto Naskh</option>
+                    <option value="inter">Inter</option>
+                    <option value="georgia">Georgia</option>
+                  </select>
+                </Field>
+                <Field label={ar ? `حجم الخط (${settings.fontSizePt}pt)` : `Font size (${settings.fontSizePt}pt)`}>
+                  <input type="range" min={9} max={18} step={1} value={settings.fontSizePt}
+                    onChange={e => setSettings(s => ({ ...s, fontSizePt: parseInt(e.target.value, 10) }))}
+                    className="w-full mt-3" />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[11px] font-bold mb-1.5 text-muted-foreground">{ar ? "لون الورقة" : "Accent color"}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {THEME_PRESETS.map(p => (
+                      <button
+                        key={p.color}
+                        title={p.label}
+                        onClick={() => setSettings(s => ({ ...s, themeColor: s.themeColor === p.color ? undefined : p.color }))}
+                        className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 shadow-sm"
+                        style={{
+                          background: p.color,
+                          borderColor: settings.themeColor === p.color ? "#fff" : "transparent",
+                          boxShadow: settings.themeColor === p.color ? `0 0 0 2px ${p.color}` : "none",
+                        }}
+                      />
+                    ))}
+                    <label className="w-6 h-6 rounded-full border-2 border-dashed border-border hover:border-primary flex items-center justify-center cursor-pointer hover:scale-110 transition-all bg-background shadow-sm" title={ar ? "لون مخصص" : "Custom"}>
+                      <input type="color" className="sr-only" value={settings.themeColor ?? "#225739"} onChange={e => setSettings(s => ({ ...s, themeColor: e.target.value }))} />
+                      <Plus className="w-3 h-3 text-muted-foreground" />
+                    </label>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Card>
 
-        {/* Questions list */}
-        <Card className="p-4 space-y-3">
-          <div className="text-sm font-bold flex items-center gap-2" style={{ color: BRAND_PRIMARY }}>
-            {ar ? "الأسئلة" : "Questions"} <span className="text-muted-foreground">({totalQs})</span>
-          </div>
+                <div>
+                  <div className="text-[11px] font-bold mb-1.5 text-muted-foreground">{ar ? "الشعار (اختياري)" : "Logo"}</div>
+                  {settings.logoUrl ? (
+                    <div className="flex items-center gap-3">
+                      <img src={settings.logoUrl} alt="logo" className="h-8 w-auto rounded border object-contain bg-white" />
+                      <button onClick={() => setSettings(s => ({ ...s, logoUrl: undefined }))} className="text-[11px] text-destructive hover:underline">{ar ? "إزالة" : "Remove"}</button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 cursor-pointer h-8 rounded-lg border border-dashed border-border bg-background hover:bg-muted transition-colors text-xs text-muted-foreground">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>{ar ? "رفع صورة (PNG/JPG)" : "Upload (PNG/JPG)"}</span>
+                      <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" className="sr-only"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 500 * 1024) { toast.error(ar ? "الحجم يجب أن يكون أقل من 500KB" : "Under 500KB"); return; }
+                          const reader = new FileReader();
+                          reader.onload = ev => setSettings(s => ({ ...s, logoUrl: ev.target?.result as string }));
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
 
-          {/* Add-question toolbar — moved to top with text labels and a
-              hint so teachers know they can keep adding. New items are
-              prepended to the top of the list (per teacher request). */}
-          <div className="rounded-xl p-3 border-2 border-dashed" style={{ borderColor: `${BRAND_GOLD}66`, background: `${BRAND_GOLD}0a` }}>
-            <div className="flex items-center gap-2 mb-2 text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
-              <Plus className="w-3.5 h-3.5" />
-              {ar ? "أضف سؤالًا يدويًا — اختر النوع، وستظهر الإضافة في الأعلى:" : "Add a question manually — pick a type and it appears at the top:"}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label={ar ? "ملاحظة الترويسة" : "Header note"}>
+                  <input value={settings.headerNote ?? ""} onChange={e => setSettings(s => ({ ...s, headerNote: e.target.value }))} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={300} />
+                </Field>
+                <Field label={ar ? "ملاحظة التذييل" : "Footer note"}>
+                  <input value={settings.footerNote ?? ""} onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={300} />
+                </Field>
+              </div>
+
+              <Field label={ar ? "تعليمات الطالب" : "Instructions"}>
+                <textarea
+                  value={settings.instructions ?? ""}
+                  onChange={e => setSettings(s => ({ ...s, instructions: e.target.value }))}
+                  rows={2}
+                  className="w-full p-2 rounded-lg border bg-background text-sm outline-none focus:border-primary"
+                />
+              </Field>
+              
+              <Field label={ar ? "جملة الختام" : "Closing line"}>
+                 <input value={settings.goodLuck ?? ""} onChange={e => setSettings(s => ({ ...s, goodLuck: e.target.value }))} placeholder={ar ? "نتمنى لك التوفيق (الافتراضي)" : "Good luck! (default)"} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={200} />
+              </Field>
+
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                <Toggle label={ar ? "الاسم" : "Name"} value={settings.includeName} onChange={v => setSettings(s => ({ ...s, includeName: v }))} icon={<User className="w-3.5 h-3.5" />} />
+                <Toggle label={ar ? "التاريخ" : "Date"} value={settings.includeDate} onChange={v => setSettings(s => ({ ...s, includeDate: v }))} />
+                <Toggle label={ar ? "الصف" : "Class"} value={settings.includeClass} onChange={v => setSettings(s => ({ ...s, includeClass: v }))} icon={<GraduationCap className="w-3.5 h-3.5" />} />
+                <Toggle label={ar ? "الإجابات" : "Answers"} value={settings.includeAnswerKey} onChange={v => setSettings(s => ({ ...s, includeAnswerKey: v }))} />
+                <Toggle label={ar ? "علامة مائية" : "Watermark"} value={settings.showWatermark} onChange={v => setSettings(s => ({ ...s, showWatermark: v }))} />
+              </div>
             </div>
-            <div className="flex gap-1.5 flex-wrap">
+          </CollapsibleCard>
+        </div>
+
+        {/* Questions List & Manual Adder */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/40 p-4 rounded-2xl border border-border/50 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+                <ListChecks className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-foreground">{ar ? "الأسئلة" : "Questions"} ({totalQs})</h3>
+                <p className="text-[11px] text-muted-foreground">{ar ? "أضف أسئلة يدوياً أو رتب القائمة" : "Add questions manually or reorder"}</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
               {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => addQuestion(t)}
-                  className="px-3 py-2 rounded-lg border text-xs font-bold flex items-center gap-1.5 hover:bg-white transition-colors"
-                  style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY, background: "rgba(255,255,255,0.7)" }}
+                  className="px-3 py-1.5 rounded-lg border bg-background hover:bg-primary/5 hover:border-primary/30 transition-all text-xs font-bold flex items-center gap-1.5 text-foreground shadow-sm"
                   title={typeLabel(t, ar)}
                 >
-                  {typeIcon(t)}
+                  <span className="text-primary">{typeIcon(t)}</span>
                   <span>{typeLabel(t, ar)}</span>
                 </button>
               ))}
@@ -1513,11 +1191,19 @@ export default function WorksheetCreate() {
           </div>
 
           {questions.length === 0 ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              {ar ? "لا توجد أسئلة بعد. ولّد بالذكاء الاصطناعي أو ارفع ملفًا أو أضف يدويًا." : "No questions yet. Generate with AI, upload a file, or add manually."}
+            <div className="text-center py-16 px-4 bg-muted/10 border-2 border-dashed border-border rounded-2xl">
+              <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                <ListChecks className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-bold text-foreground">
+                {ar ? "لا توجد أسئلة بعد" : "No questions yet"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                {ar ? "استخدم المولد الذكي بالأعلى لبناء أسئلة فورية، أو أضف أسئلة يدوياً من الشريط." : "Use the Smart Generator above to build questions instantly, or add them manually."}
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {questions.map((q, i) => (
                 <QuestionEditor
                   key={q.id}
@@ -1533,122 +1219,100 @@ export default function WorksheetCreate() {
               ))}
             </div>
           )}
+        </div>
 
-          {totalQs > 0 && (
-            <div className="text-[11px] text-muted-foreground pt-2 border-t">
-              {ar
-                ? `${blankCount.mcq} اختيار من متعدد · ${blankCount.true_false} صح/خطأ · ${blankCount.short_answer} إجابة قصيرة · ${blankCount.fill_blank} فراغ · ${blankCount.matching} توصيل`
-                : `${blankCount.mcq} MCQ · ${blankCount.true_false} T/F · ${blankCount.short_answer} short · ${blankCount.fill_blank} fill · ${blankCount.matching} matching`}
-            </div>
-          )}
-        </Card>
+      </div>
 
-
-        {/* Action bar */}
-        <div className="sticky bottom-3 flex flex-wrap gap-2 justify-end p-3 rounded-2xl border shadow-lg backdrop-blur"
-          style={{ background: "rgba(255,255,255,0.92)", borderColor: `${BRAND_PRIMARY}22` }}>
-
-          {/* Canvas editor button — opens the free-form overlay editor */}
-          <button
-            onClick={() => {
-              if (!canSave) {
-                toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
-                return;
-              }
-              setCanvasEditorOpen(true);
-            }}
-            disabled={!canSave}
-            className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 disabled:opacity-50"
-            style={{
-              borderColor: settings.layout?.elements?.length
-                ? `${BRAND_PRIMARY}88`
-                : `${BRAND_PRIMARY}44`,
-              color: BRAND_PRIMARY,
-              background: settings.layout?.elements?.length ? `${BRAND_PRIMARY}12` : "transparent",
-            }}
-            title={ar ? "محرر التصميم الحر (نصوص وأشكال)" : "Canvas editor (text & shapes)"}
-          >
-            <Layers className="w-4 h-4" />
-            {ar ? "تصميم حر" : "Canvas"}
-            {(settings.layout?.elements?.length ?? 0) > 0 && (
-              <span
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: BRAND_PRIMARY, color: "white" }}
-              >
-                {settings.layout!.elements.length}
+      {/* Sticky Bottom Bar - PRIMARY ACTION */}
+      <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-background/80 backdrop-blur-xl border-t border-border shadow-[0_-10px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
+        <div className="max-w-5xl mx-auto flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-2">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-2">
+              <input
+                type="checkbox"
+                checked={smartGrading}
+                onChange={(e) => setSmartGrading(e.target.checked)}
+                className="w-5 h-5 accent-emerald-600 rounded"
+              />
+              <span className="font-bold text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-1.5">
+                <Camera className="w-4 h-4" />
+                {ar ? "تفعيل التصحيح الورقي الذكي" : "Enable smart paper grading"}
               </span>
+            </label>
+            <span className="text-[11px] text-muted-foreground max-w-md">
+              {ar
+                ? "بعد الحفظ: صوّر أوراق الطلاب وسيقوم الذكاء الاصطناعي بتصحيحها تلقائياً"
+                : "After saving: photograph student papers and AI grades them automatically"}
+            </span>
+            {smartGrading && editingId && (
+              <button
+                onClick={() => setLocation(`/teacher/worksheets/${editingId}/grade`)}
+                className="px-4 py-2 rounded-xl font-bold text-white flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-md transition-colors text-sm"
+              >
+                <Camera className="w-4 h-4" />
+                {ar ? "فتح صفحة التصحيح" : "Open grading page"}
+              </button>
             )}
-          </button>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => {
+                if (!canSave) {
+                  toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
+                  return;
+                }
+                setCanvasEditorOpen(true);
+              }}
+              disabled={!canSave}
+              className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors"
+            >
+              <Layers className="w-4 h-4 text-primary" />
+              {ar ? "تصميم حر" : "Canvas"}
+              {(settings.layout?.elements?.length ?? 0) > 0 && (
+                <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                  {settings.layout!.elements.length}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => {
-              if (!canSave) {
-                toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
-                return;
-              }
-              setPreviewing(true);
-            }}
-            disabled={!canSave}
-            className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 disabled:opacity-50"
-            style={{ borderColor: `${BRAND_GOLD}88`, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
-            title={ar ? "معاينة بدون حفظ" : "Preview without saving"}
-          >
-            <Eye className="w-4 h-4" />
-            {ar ? "معاينة بدون حفظ" : "Preview"}
-          </button>
-          <button
-            onClick={() => saveWorksheet()}
-            disabled={!canSave || saving}
-            className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 disabled:opacity-50"
-            style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {ar ? "حفظ" : "Save"}
-          </button>
+            <button
+              onClick={() => {
+                if (!canSave) {
+                  toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
+                  return;
+                }
+                setPreviewing(true);
+              }}
+              disabled={!canSave}
+              className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-amber-600 border-amber-600/30"
+            >
+              <Eye className="w-4 h-4" />
+              {ar ? "معاينة بدون حفظ" : "Preview"}
+            </button>
+
+            <button
+              onClick={() => saveWorksheet()}
+              disabled={!canSave || saving}
+              className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-primary border-primary/30"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {ar ? "حفظ كمسودة" : "Save Draft"}
+            </button>
+          </div>
+
           <button
             onClick={saveAndPreview}
             disabled={!canSave || saving}
-            className="px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 disabled:opacity-50"
-            style={{ background: BRAND_PRIMARY }}
+            className="w-full sm:w-auto flex-shrink-0 h-14 px-8 md:px-14 text-lg font-black rounded-2xl bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 text-primary-foreground transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:translate-y-0"
           >
-            <Save className="w-4 h-4" />
-            {ar ? "حفظ وفتح صفحة الطباعة" : "Save & Open Print Page"}
+            {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Printer className="w-6 h-6" />}
+            {ar ? "توليد الورقة" : "Generate Worksheet"}
           </button>
-        </div>
-
-        {/* التصحيح الورقي الذكي */}
-        <div className="mt-4 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 p-4 flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-3 cursor-pointer select-none flex-1 min-w-[240px]">
-            <input
-              type="checkbox"
-              checked={smartGrading}
-              onChange={(e) => setSmartGrading(e.target.checked)}
-              className="w-5 h-5 accent-emerald-600"
-            />
-            <span>
-              <span className="block font-bold text-emerald-800 dark:text-emerald-300">
-                {ar ? "تفعيل التصحيح الورقي الذكي" : "Enable smart paper grading"}
-              </span>
-              <span className="block text-xs text-emerald-700/80 dark:text-emerald-400/80">
-                {ar
-                  ? "بعد الحفظ: صوّر أوراق الطلاب من صفحة التصحيح ويقوم الذكاء الاصطناعي بتصحيحها تلقائياً"
-                  : "After saving: photograph student papers on the grading page and AI grades them automatically"}
-              </span>
-            </span>
-          </label>
-          {smartGrading && editingId && (
-            <button
-              onClick={() => setLocation(`/teacher/worksheets/${editingId}/grade`)}
-              className="px-4 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Camera className="w-4 h-4" />
-              {ar ? "فتح صفحة التصحيح" : "Open grading page"}
-            </button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Canvas editor overlay — free-form text and shapes */}
       <AnimatePresence>
         {canvasEditorOpen && (
           <WorksheetCanvasEditor
@@ -1669,10 +1333,6 @@ export default function WorksheetCreate() {
         )}
       </AnimatePresence>
 
-      {/* Preview-without-save overlay. Renders the same WorksheetPrintView
-          the print page uses, fed by the in-memory draft, so the teacher
-          sees exactly what will print. The "back" button returns to the
-          editor; PDF + Word buttons let them export without saving. */}
       <AnimatePresence>
         {previewing && (
           <PreviewOverlay
@@ -1691,90 +1351,88 @@ export default function WorksheetCreate() {
         )}
       </AnimatePresence>
 
-      {/* Saved templates modal */}
       <AnimatePresence>
         {savedOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSavedOpen(false)}
           >
             <motion.div
-              className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+              className="bg-background rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col border border-border"
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               dir={dir}
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-4 flex items-center justify-between border-b" style={{ background: `${BRAND_PRIMARY}0a` }}>
-                <div className="text-sm font-bold" style={{ color: BRAND_PRIMARY }}>
+              <div className="p-5 flex items-center justify-between border-b bg-muted/20">
+                <div className="text-base font-bold text-foreground flex items-center gap-2">
+                  <FolderOpen className="w-5 h-5 text-primary" />
                   {ar ? "أوراق العمل المحفوظة" : "Saved Worksheets"}
                 </div>
-                <button onClick={() => setSavedOpen(false)} className="p-1 rounded hover:bg-muted">
+                <button onClick={() => setSavedOpen(false)} className="p-2 rounded-xl hover:bg-muted transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="flex-1 overflow-auto p-3">
+              <div className="flex-1 overflow-auto p-4">
                 {savedLoading ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جارٍ التحميل..." : "Loading..."}
+                  <div className="py-16 text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" /> 
+                    <span>{ar ? "جارٍ التحميل..." : "Loading..."}</span>
                   </div>
                 ) : savedRows.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">
+                  <div className="py-16 text-center text-sm text-muted-foreground">
                     {ar ? "لا توجد أوراق محفوظة بعد." : "No saved worksheets yet."}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {savedRows.map(row => {
                       const isAdminShared = row.isShared && row.ownerIsAdmin;
                       return (
-                        <div key={row.id} className="p-3 border rounded-xl flex items-start gap-3" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
+                        <div key={row.id} className="p-4 border rounded-2xl flex items-start gap-4 hover:border-primary/40 transition-colors bg-card shadow-sm">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="font-bold text-sm truncate" style={{ color: BRAND_PRIMARY }}>{row.title}</div>
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <div className="font-bold text-sm truncate text-foreground">{row.title}</div>
                               {isAdminShared && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: `${BRAND_GOLD}22`, color: BRAND_GOLD }}>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-bold">
                                   {ar ? "مشترك" : "Shared"}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-muted-foreground mt-0.5">
+                            <div className="text-[11px] text-muted-foreground">
                               {row.questions.length} {ar ? "سؤال" : "questions"}
                               {row.subject && ` · ${row.subject}`}
                               {row.gradeLevel && ` · ${row.gradeLevel}`}
                               {isAdminShared && row.ownerName && ` · ${row.ownerName}`}
                             </div>
                           </div>
-                          <div className="flex flex-col gap-1 flex-shrink-0">
+                          <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
                             {!isAdminShared && (
                               <button
                                 onClick={() => openTemplate(row, false)}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1"
-                                style={{ background: BRAND_PRIMARY, color: "#fff" }}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                               >
-                                <Edit3 className="w-3 h-3" /> {ar ? "تحرير" : "Edit"}
+                                <Edit3 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{ar ? "تحرير" : "Edit"}</span>
                               </button>
                             )}
                             <button
                               onClick={() => openTemplate(row, true)}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold border"
-                              style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
                             >
                               {ar ? "نسخة" : "Copy"}
                             </button>
                             <button
                               onClick={() => setLocation(`/teacher/worksheets/${row.id}/print`)}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold border flex items-center gap-1"
-                              style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-1.5"
                             >
-                              <Eye className="w-3 h-3" /> {ar ? "طباعة" : "Print"}
+                              <Eye className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{ar ? "طباعة" : "Print"}</span>
                             </button>
                             {!isAdminShared && (
                               <button
                                 onClick={() => deleteTemplate(row.id)}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold border"
-                                style={{ borderColor: "#dc262655", color: "#dc2626" }}
+                                className="p-1.5 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+                                title={ar ? "حذف" : "Delete"}
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             )}
                           </div>
@@ -1792,10 +1450,10 @@ export default function WorksheetCreate() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className="block">
-      <div className="text-[11px] font-bold mb-1" style={{ color: BRAND_PRIMARY }}>{label}</div>
+    <label className={cn("block", className)}>
+      <div className="text-[11px] font-bold mb-1.5 text-muted-foreground px-1">{label}</div>
       {children}
     </label>
   );
@@ -1805,37 +1463,81 @@ function Toggle({ label, value, onChange, icon }: { label: string; value: boolea
   return (
     <button
       onClick={() => onChange(!value)}
-      className="px-3 py-2 rounded-lg border text-xs font-bold flex items-center gap-1.5 justify-center"
-      style={{
-        background: value ? `${BRAND_PRIMARY}11` : "transparent",
-        color: value ? BRAND_PRIMARY : "#666",
-        borderColor: value ? `${BRAND_PRIMARY}55` : "#ddd",
-      }}
+      className={cn(
+        "px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 justify-center transition-colors border",
+        value ? "bg-primary/10 text-primary border-primary/30 shadow-sm" : "bg-background text-muted-foreground border-border hover:bg-muted"
+      )}
     >
-      {value ? <Check className="w-3 h-3" /> : null}
+      {value && <Check className="w-3.5 h-3.5" />}
       {icon}
       {label}
     </button>
   );
 }
 
-function CountStepper({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (v: number) => void }) {
+function CompactStepper({ label, value, max, onChange }: { label: string, value: number, max: number, onChange: (v: number) => void }) {
   return (
-    <div className="border rounded-lg p-2" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-      <div className="text-[10px] font-bold mb-1 truncate" style={{ color: BRAND_PRIMARY }}>{label}</div>
-      <div className="flex items-center gap-1">
-        <button
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">{label}</span>
+      <div className="flex items-center bg-background border border-border rounded-md overflow-hidden shadow-sm h-7">
+        <button 
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="w-6 h-6 rounded border text-sm flex items-center justify-center"
-          style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+          className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
         >−</button>
-        <div className="flex-1 text-center text-sm font-bold">{value}</div>
-        <button
+        <span className="text-[11px] font-bold w-5 text-center">{value}</span>
+        <button 
           onClick={() => onChange(Math.min(max, value + 1))}
-          className="w-6 h-6 rounded border text-sm flex items-center justify-center"
-          style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+          className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
         >+</button>
       </div>
+    </div>
+  );
+}
+
+function SegmentedControl<T extends string | number>({ options, value, onChange }: { options: { label: string, value: T }[], value: T, onChange: (v: T) => void }) {
+  return (
+    <div className="flex bg-muted/60 p-1 rounded-xl w-full border border-border/50 h-11">
+      {options.map(o => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "flex-1 text-[11px] font-bold rounded-lg transition-all truncate px-1",
+            value === o.value ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CollapsibleCard({ title, icon: Icon, isOpen, onToggle, summary, children }: { title: string, icon: any, isOpen: boolean, onToggle: () => void, summary?: string, children: React.ReactNode }) {
+  return (
+    <div className={cn("border rounded-2xl overflow-hidden transition-all bg-card", isOpen ? "border-primary/30 shadow-md" : "border-border/60 shadow-sm hover:border-primary/20")}>
+      <button onClick={onToggle} className="w-full p-4 flex items-center justify-between bg-transparent transition-colors text-start">
+        <div className="flex items-center gap-3">
+           <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors shadow-inner", isOpen ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")}>
+             <Icon className="w-4 h-4" />
+           </div>
+           <div>
+             <h3 className="font-bold text-sm text-foreground">{title}</h3>
+             {summary && !isOpen && <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[200px] truncate">{summary}</p>}
+           </div>
+        </div>
+        <ChevronDown className={cn("w-5 h-5 transition-transform text-muted-foreground", isOpen && "rotate-180")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+             <div className="p-4 pt-0 border-t border-border/40 mt-2">
+               {children}
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1850,21 +1552,18 @@ function QuestionEditor({
   onChangeType: (newType: QType) => void;
 }) {
   return (
-    <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style={{ background: BRAND_PRIMARY }}>
+    <div className="border border-border/60 rounded-2xl p-4 space-y-4 bg-card shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between gap-2 flex-wrap pb-3 border-b border-border/40">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground flex-shrink-0 shadow-sm">
             {index + 1}
           </span>
-          {/* Change-type dropdown — converts this question to a fresh
-              blank of the chosen type (preserving prompt + points). */}
-          <label className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: BRAND_PRIMARY }}>
+          <label className="text-xs font-bold flex items-center gap-1.5 text-primary">
             {typeIcon(question.type)}
             <select
               value={question.type}
               onChange={e => onChangeType(e.target.value as QType)}
-              className="text-[11px] font-bold rounded border bg-white px-1.5 py-0.5"
-              style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+              className="text-xs font-bold rounded-lg border border-primary/20 bg-primary/5 px-2 py-1 text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all outline-none"
               title={ar ? "تغيير نوع السؤال" : "Change question type"}
             >
               <option value="mcq">{typeLabel("mcq", ar)}</option>
@@ -1875,10 +1574,11 @@ function QuestionEditor({
             </select>
           </label>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => onMove(-1)} disabled={index === 0} className="px-1.5 text-xs disabled:opacity-30" title={ar ? "أعلى" : "Up"}>↑</button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} className="px-1.5 text-xs disabled:opacity-30" title={ar ? "أسفل" : "Down"}>↓</button>
-          <button onClick={onRemove} className="p-1 rounded hover:bg-red-50 text-red-500" title={ar ? "حذف" : "Delete"}>
+        <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 border border-border/50">
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="w-7 h-7 flex items-center justify-center rounded hover:bg-background disabled:opacity-30 transition-colors" title={ar ? "أعلى" : "Up"}><ArrowUp className="w-3.5 h-3.5"/></button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="w-7 h-7 flex items-center justify-center rounded hover:bg-background disabled:opacity-30 transition-colors" title={ar ? "أسفل" : "Down"}><ArrowDown className="w-3.5 h-3.5"/></button>
+          <div className="w-px h-4 bg-border mx-1"></div>
+          <button onClick={onRemove} className="w-7 h-7 flex items-center justify-center rounded hover:bg-destructive/10 text-destructive transition-colors" title={ar ? "حذف" : "Delete"}>
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -1890,25 +1590,23 @@ function QuestionEditor({
           onChange={e => onUpdate({ prompt: e.target.value } as any)}
           placeholder={ar ? "نص السؤال" : "Question text"}
           rows={2}
-          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+          className="w-full px-4 py-3 rounded-xl border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all resize-y min-h-[80px]"
         />
       )}
 
       {question.type === "mcq" && (
-        <div className="space-y-1.5">
+        <div className="space-y-2 mt-2">
           {question.options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-2 group">
               <button
                 onClick={() => onUpdate({ correctIndex: i } as any)}
-                className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                style={{
-                  borderColor: question.correctIndex === i ? BRAND_PRIMARY : "#ccc",
-                  background: question.correctIndex === i ? BRAND_PRIMARY : "transparent",
-                  color: question.correctIndex === i ? "#fff" : "#888",
-                }}
+                className={cn(
+                  "w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all",
+                  question.correctIndex === i ? "border-emerald-500 bg-emerald-500 text-white shadow-sm" : "border-muted-foreground/30 bg-background text-transparent hover:border-emerald-500/50"
+                )}
                 title={ar ? "حدّد الإجابة الصحيحة" : "Mark correct"}
               >
-                {question.correctIndex === i ? "✓" : ""}
+                <Check className="w-3.5 h-3.5" />
               </button>
               <input
                 value={opt}
@@ -1918,7 +1616,7 @@ function QuestionEditor({
                   onUpdate({ options: next } as any);
                 }}
                 placeholder={`${ar ? "خيار" : "Option"} ${i + 1}`}
-                className="flex-1 px-2 py-1.5 rounded border bg-background text-sm"
+                className="flex-1 h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
               />
               <button
                 onClick={() => {
@@ -1928,128 +1626,128 @@ function QuestionEditor({
                   onUpdate({ options: next, correctIndex: ci } as any);
                 }}
                 disabled={question.options.length <= 2}
-                className="text-red-400 disabled:opacity-30"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           ))}
           {question.options.length < 6 && (
             <button
               onClick={() => onUpdate({ options: [...question.options, ""] } as any)}
-              className="text-[11px] font-bold flex items-center gap-1"
-              style={{ color: BRAND_PRIMARY }}
+              className="text-xs font-bold flex items-center gap-1 text-primary hover:text-primary/80 transition-colors mt-1 px-1"
             >
-              <Plus className="w-3 h-3" /> {ar ? "أضف خيارًا" : "Add option"}
+              <Plus className="w-3.5 h-3.5" /> {ar ? "أضف خيارًا" : "Add option"}
             </button>
           )}
         </div>
       )}
 
       {question.type === "true_false" && (
-        <div className="flex gap-2">
+        <div className="flex gap-3 mt-2">
           {([true, false] as const).map(v => (
             <button
               key={String(v)}
               onClick={() => onUpdate({ correct: v } as any)}
-              className="flex-1 py-2 rounded-lg border text-sm font-bold"
-              style={{
-                background: question.correct === v ? BRAND_PRIMARY : "transparent",
-                color: question.correct === v ? "#fff" : BRAND_PRIMARY,
-                borderColor: `${BRAND_PRIMARY}55`,
-              }}
+              className={cn(
+                "flex-1 py-2.5 rounded-xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2",
+                question.correct === v ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 shadow-sm" : "border-border bg-background hover:bg-muted text-muted-foreground"
+              )}
             >
-              {v ? (ar ? "صح ✓" : "True ✓") : (ar ? "خطأ ✗" : "False ✗")}
+              {v ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False")}
+              {question.correct === v && <Check className="w-4 h-4" />}
             </button>
           ))}
         </div>
       )}
 
       {question.type === "short_answer" && (
-        <div className="grid grid-cols-2 gap-2">
-          <Field label={ar ? "عدد الأسطر" : "Lines"}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+          <Field label={ar ? "عدد الأسطر للطباعة" : "Lines for printing"}>
             <input
               type="number" min={1} max={20}
               value={question.lines ?? 2}
               onChange={e => onUpdate({ lines: Math.max(1, Math.min(20, parseInt(e.target.value || "2", 10))) } as any)}
-              className="w-full px-2 py-1.5 rounded border bg-background text-sm"
+              className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
             />
           </Field>
-          <Field label={ar ? "إجابة نموذجية (اختياري)" : "Model answer (optional)"}>
+          <Field label={ar ? "إجابة نموذجية (تظهر في المفتاح)" : "Model answer (key)"}>
             <input
               value={question.answer ?? ""}
               onChange={e => onUpdate({ answer: e.target.value } as any)}
-              className="w-full px-2 py-1.5 rounded border bg-background text-sm"
+              className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
             />
           </Field>
         </div>
       )}
 
       {question.type === "fill_blank" && (
-        <Field label={ar ? "الإجابة الصحيحة (تظهر في صفحة الإجابات)" : "Answer (shown in answer key)"}>
+        <Field label={ar ? "الإجابة الصحيحة (تظهر في صفحة الإجابات)" : "Answer (shown in answer key)"} className="mt-2">
           <input
             value={question.answer}
             onChange={e => onUpdate({ answer: e.target.value } as any)}
             placeholder={ar ? "الكلمة الصحيحة" : "Correct word/phrase"}
-            className="w-full px-3 py-2 rounded border bg-background text-sm"
+            className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
           />
-          <div className="text-[10px] text-muted-foreground mt-1">
-            {ar ? 'تأكد من وجود "____" في نص السؤال مكان الفراغ.' : 'Make sure "____" appears in the prompt where the blank goes.'}
+          <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5 px-1">
+            <span className="bg-muted px-1.5 py-0.5 rounded font-mono font-bold tracking-widest text-foreground">____</span>
+            {ar ? 'تأكد من كتابة الفراغ بهذا الشكل في نص السؤال.' : 'Make sure to use this for the blank in the prompt.'}
           </div>
         </Field>
       )}
 
       {question.type === "matching" && (
-        <div className="space-y-2">
+        <div className="space-y-3 mt-2">
           <input
             value={question.prompt ?? ""}
             onChange={e => onUpdate({ prompt: e.target.value } as any)}
             placeholder={ar ? "تعليمات (اختياري)، مثل: صل بين العمودين" : "Instruction (optional), e.g., Match the columns"}
-            className="w-full px-3 py-2 rounded border bg-background text-sm"
+            className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
           />
-          {question.pairs.map((pair, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <input
-                value={pair.left}
-                onChange={e => {
-                  const next = question.pairs.slice();
-                  next[i] = { ...next[i], left: e.target.value };
-                  onUpdate({ pairs: next } as any);
-                }}
-                placeholder={`${ar ? "العمود الأول" : "Left"} ${i + 1}`}
-                className="flex-1 px-2 py-1.5 rounded border bg-background text-sm"
-              />
-              <span className="text-muted-foreground">↔</span>
-              <input
-                value={pair.right}
-                onChange={e => {
-                  const next = question.pairs.slice();
-                  next[i] = { ...next[i], right: e.target.value };
-                  onUpdate({ pairs: next } as any);
-                }}
-                placeholder={`${ar ? "العمود الثاني" : "Right"} ${i + 1}`}
-                className="flex-1 px-2 py-1.5 rounded border bg-background text-sm"
-              />
-              <button
-                onClick={() => {
-                  const next = question.pairs.filter((_, j) => j !== i);
-                  if (next.length < 2) return;
-                  onUpdate({ pairs: next } as any);
-                }}
-                disabled={question.pairs.length <= 2}
-                className="text-red-400 disabled:opacity-30"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+          <div className="space-y-2 bg-muted/20 p-2 rounded-xl border border-border/50">
+            {question.pairs.map((pair, i) => (
+              <div key={i} className="flex gap-2 items-center group">
+                <input
+                  value={pair.left}
+                  onChange={e => {
+                    const next = question.pairs.slice();
+                    next[i] = { ...next[i], left: e.target.value };
+                    onUpdate({ pairs: next } as any);
+                  }}
+                  placeholder={`${ar ? "العمود الأول" : "Left"} ${i + 1}`}
+                  className="flex-1 h-9 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
+                />
+                <span className="text-muted-foreground/50 font-bold">↔</span>
+                <input
+                  value={pair.right}
+                  onChange={e => {
+                    const next = question.pairs.slice();
+                    next[i] = { ...next[i], right: e.target.value };
+                    onUpdate({ pairs: next } as any);
+                  }}
+                  placeholder={`${ar ? "العمود الثاني" : "Right"} ${i + 1}`}
+                  className="flex-1 h-9 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
+                />
+                <button
+                  onClick={() => {
+                    const next = question.pairs.filter((_, j) => j !== i);
+                    if (next.length < 2) return;
+                    onUpdate({ pairs: next } as any);
+                  }}
+                  disabled={question.pairs.length <= 2}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
           {question.pairs.length < 10 && (
             <button
               onClick={() => onUpdate({ pairs: [...question.pairs, { left: "", right: "" }] } as any)}
-              className="text-[11px] font-bold flex items-center gap-1"
-              style={{ color: BRAND_PRIMARY }}
+              className="text-xs font-bold flex items-center gap-1 text-primary hover:text-primary/80 transition-colors px-1"
             >
-              <Plus className="w-3 h-3" /> {ar ? "أضف زوجًا" : "Add pair"}
+              <Plus className="w-3.5 h-3.5" /> {ar ? "إضافة زوج" : "Add pair"}
             </button>
           )}
         </div>
@@ -2058,22 +1756,9 @@ function QuestionEditor({
   );
 }
 
-/**
- * Full-screen preview overlay used by the "معاينة بدون حفظ" / Preview
- * button. Renders the canonical `<WorksheetPrintView />` against an
- * in-memory draft (no save, no fetch) so the teacher can see exactly
- * what the printable looks like, then either return to editing, print
- * to PDF, or download as Word — all without persisting anything.
- *
- * The page layout panel is also available here: all changes stay
- * in-memory (they are not saved until the teacher explicitly clicks
- * "Save & Open Print Page" from the editor).
- */
 function PreviewOverlay({
   ar, data: initialData, onClose,
 }: { ar: boolean; data: WorksheetData; onClose: () => void }) {
-  // Local data state so the page-layout panel can reorder questions
-  // and set manual breaks without touching the saved worksheet.
   const [data, setData] = useState<WorksheetData>(initialData);
 
   const handleWord = () => {
@@ -2099,44 +1784,43 @@ function PreviewOverlay({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
-      className="fixed inset-0 z-50 bg-neutral-200 overflow-auto"
+      className="fixed inset-0 z-[100] bg-neutral-200 overflow-auto"
       dir={data.language === "ar" ? "rtl" : "ltr"}
     >
       <div
-        className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-2.5 border-b shadow-sm bg-white"
+        className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 border-b shadow-sm bg-white"
       >
         <button
           onClick={onClose}
-          className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
-          style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+          className="px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 hover:bg-muted transition-colors text-primary border-primary/30"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-4 h-4" />
           {ar ? "رجوع للتعديل" : "Back to edit"}
         </button>
-        <div className="text-xs font-bold truncate flex-1 text-center" style={{ color: BRAND_PRIMARY }}>
+        <div className="text-sm font-bold truncate flex-1 text-center text-primary hidden sm:block">
           {ar ? "معاينة بدون حفظ" : "Preview (not saved)"} · {data.title}
         </div>
-        <div className="flex gap-1.5 flex-wrap justify-end">
+        <div className="flex gap-2 flex-wrap justify-end">
           <button
             onClick={handleWord}
-            className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
-            style={{ borderColor: `${BRAND_GOLD}88`, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
-            title={ar ? "تنزيل كملف وورد" : "Download as Word"}
+            className="px-4 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
           >
-            <FileType className="w-3.5 h-3.5" />
-            {ar ? "وورد" : "Word"}
+            <FileType className="w-4 h-4" /> {ar ? "وورد (Word)" : "Word"}
           </button>
           <button
             onClick={() => printToPdf()}
-            className="px-4 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
-            style={{ background: BRAND_PRIMARY }}
+            className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
           >
-            <Printer className="w-3.5 h-3.5" />
-            {ar ? "PDF / طباعة" : "PDF / Print"}
+            <Printer className="w-4 h-4" /> {ar ? "طباعة / PDF" : "Print / PDF"}
           </button>
         </div>
       </div>
-      <WorksheetPrintView data={data} onLayoutChange={handleLayoutChange} />
+
+      <div className="p-4 sm:p-8 flex justify-center pb-32">
+        <div className="max-w-[210mm] w-full bg-white shadow-2xl relative" style={{ minHeight: "297mm" }}>
+          <WorksheetPrintView data={data} onLayoutChange={handleLayoutChange} />
+        </div>
+      </div>
     </motion.div>
   );
 }

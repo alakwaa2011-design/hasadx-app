@@ -348,7 +348,7 @@ function CompareBody({ data, isAr, onOpen }: { data: ComparePayload; isAr: boole
                         className="inline-block px-2 py-0.5 rounded font-bold text-[12px]"
                         style={
                           s.avgScorePct >= 70
-                            ? { background: "#d1fae5", color: "#047857" }
+                            ? { background: "#e0ede5", color: "#225739" }
                             : s.avgScorePct >= 40
                             ? { background: "#fef3c7", color: "#7a5a00" }
                             : { background: "#fee2e2", color: "#b91c1c" }

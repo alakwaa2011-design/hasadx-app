@@ -469,6 +469,7 @@ function Router() {
         <Route path="/teacher/worksheets/create" component={WorksheetCreate} />
         <Route path="/teacher/worksheets/:id/print" component={WorksheetPrint} />
         <Route path="/teacher/worksheets/:id/grade" component={WorksheetGrade} />
+        <Route path="/teacher/assignments/:id/grade" component={WorksheetGrade} />
         <Route path="/teacher/worksheets/:id/report" component={WorksheetReport} />
         <Route path="/teacher/mindmap/create" component={MindMapCreate} />
         <Route path="/teacher/lesson-plans/create" component={LessonPlanCreate} />

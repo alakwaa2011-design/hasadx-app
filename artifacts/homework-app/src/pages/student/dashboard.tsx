@@ -533,7 +533,7 @@ export default function StudentDashboard() {
                       <Users className="w-6 h-6" style={{ color: "#E8A80E" }} />
                       <span
                         className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse"
-                        style={{ background: "#22c55e", boxShadow: "0 0 0 3px rgba(34,197,94,0.25)" }}
+                        style={{ background: "#468064", boxShadow: "0 0 0 3px rgba(34,197,94,0.25)" }}
                       />
                     </div>
                     <div className="min-w-0">
@@ -560,7 +560,7 @@ export default function StudentDashboard() {
                 <Card
                   className="p-5 cursor-pointer group h-full relative overflow-hidden border-0 text-white transition-all hover:-translate-y-0.5"
                   style={{
-                    background: "linear-gradient(135deg,#064e3b 0%,#059669 100%)",
+                    background: "linear-gradient(135deg,#173a28 0%,#2f684d 100%)",
                     boxShadow: "0 10px 30px -10px rgba(5,150,105,0.5)",
                   }}
                 >

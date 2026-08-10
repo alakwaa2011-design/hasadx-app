@@ -46,14 +46,14 @@ const STATUS_BADGE_AR: Record<string, { label: string; bg: string; fg: string }>
   draft:          { label: "مسودة", bg: "#9ca3af20", fg: "#525252" },
   outline_ready:  { label: "جاهز للبناء", bg: "#22573920", fg: BRAND_GREEN },
   building:       { label: "قيد البناء", bg: "#d9a52120", fg: BRAND_GOLD },
-  built:          { label: "مكتمل", bg: "#10b98120", fg: "#047857" },
+  built:          { label: "مكتمل", bg: "#46806420", fg: "#225739" },
   failed:         { label: "فشل", bg: "#ef444420", fg: "#b91c1c" },
 };
 const STATUS_BADGE_EN: Record<string, { label: string; bg: string; fg: string }> = {
   draft:          { label: "Draft", bg: "#9ca3af20", fg: "#525252" },
   outline_ready:  { label: "Ready", bg: "#22573920", fg: BRAND_GREEN },
   building:       { label: "Building", bg: "#d9a52120", fg: BRAND_GOLD },
-  built:          { label: "Built", bg: "#10b98120", fg: "#047857" },
+  built:          { label: "Built", bg: "#46806420", fg: "#225739" },
   failed:         { label: "Failed", bg: "#ef444420", fg: "#b91c1c" },
 };
 

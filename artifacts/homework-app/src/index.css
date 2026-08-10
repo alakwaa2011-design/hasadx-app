@@ -47,6 +47,48 @@
   --radius-xl: 1.5rem;
 }
 
+/* ═══ نظام الألوان الموحّد لحصاد ═══
+   تدرّج مشتق من أخضر حصاد الداكن #225739 (زر «توليد الأسئلة» في بناء ورقة العمل).
+   يعيد تعريف درجات emerald/teal/green على مستوى المنصة فتتوحّد كل الأدوات تلقائياً
+   دون تعديل التصاميم. الذهبي (amber/yellow) يبقى لون الإبراز كما هو. */
+@theme {
+  --color-emerald-50:  #f2f7f4;
+  --color-emerald-100: #e0ede5;
+  --color-emerald-200: #c2dbcd;
+  --color-emerald-300: #99c1ab;
+  --color-emerald-400: #6ba184;
+  --color-emerald-500: #468064;
+  --color-emerald-600: #2f684d;
+  --color-emerald-700: #225739;
+  --color-emerald-800: #1c4630;
+  --color-emerald-900: #173a28;
+  --color-emerald-950: #0c2117;
+
+  --color-teal-50:  #f2f7f4;
+  --color-teal-100: #e0ede5;
+  --color-teal-200: #c2dbcd;
+  --color-teal-300: #99c1ab;
+  --color-teal-400: #6ba184;
+  --color-teal-500: #468064;
+  --color-teal-600: #2f684d;
+  --color-teal-700: #225739;
+  --color-teal-800: #1c4630;
+  --color-teal-900: #173a28;
+  --color-teal-950: #0c2117;
+
+  --color-green-50:  #f2f7f4;
+  --color-green-100: #e0ede5;
+  --color-green-200: #c2dbcd;
+  --color-green-300: #99c1ab;
+  --color-green-400: #6ba184;
+  --color-green-500: #468064;
+  --color-green-600: #2f684d;
+  --color-green-700: #225739;
+  --color-green-800: #1c4630;
+  --color-green-900: #173a28;
+  --color-green-950: #0c2117;
+}
+
 :root {
   /* HasadX Harvest Green & Gold Palette */
   --background: 40 33% 98%;      /* Creamy off-white */

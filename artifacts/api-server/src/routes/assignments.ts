@@ -533,6 +533,52 @@ router.post("/shared/dismiss", async (req, res) => {
   }
 });
 
+/* ── معلومات التصحيح الورقي لواجب عادي — للمالك فقط. تغذي صفحة التصحيح
+   بالتصوير (/teacher/assignments/:id/grade) بنفس عقد ورقة العمل. */
+router.get("/assignments/:id/grading-info", async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number | undefined;
+    if (!teacherId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [assignment] = await db
+      .select({
+        id: assignmentsTable.id,
+        title: assignmentsTable.title,
+        teacherId: assignmentsTable.teacherId,
+        totalPoints: assignmentsTable.totalPoints,
+        submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions WHERE submissions.assignment_id = ${assignmentsTable.id})`,
+      })
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, id))
+      .limit(1);
+    if (!assignment) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    if (assignment.teacherId !== teacherId) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    res.json({
+      worksheetId: null,
+      worksheetTitle: assignment.title,
+      assignmentId: assignment.id,
+      totalPoints: assignment.totalPoints,
+      submissionCount: Number(assignment.submissionCount) || 0,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Assignment grading info failed");
+    res.status(500).json({ message: "Failed to load grading info" });
+  }
+});
+
 router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
   try {
     const { id } = GetAssignmentParams.parse(req.params);

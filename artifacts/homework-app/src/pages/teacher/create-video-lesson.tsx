@@ -44,6 +44,7 @@ import {
   Eye,
   MoreHorizontal,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -67,12 +68,6 @@ const ytWindow = window as unknown as YTWindow;
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-/** هوية المنصة — أخضر حصاد */
-const BRAND = "#1E4D35";
-const PAGE_BG = "linear-gradient(to bottom, #f8faf8, #f3f7f4)";
-const CARD_BORDER = "rgba(30, 77, 53, 0.08)";
-const CARD_SHADOW = "0 1px 2px rgba(15, 40, 28, 0.04), 0 10px 28px rgba(15, 40, 28, 0.07)";
-const TRANSITION = "transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]";
 const VIDEO_LESSON_DRAFT_KEY = "hasad-video-lesson-builder-draft-v1";
 
 const FIELD_RTL =
@@ -80,7 +75,6 @@ const FIELD_RTL =
 
 type AccessMode = "public" | "private";
 type VideoSource = "youtube" | "upload" | "external";
-/** واجهة الوصول: عام | خاص بكود فقط */
 type AccessUi = "public" | "code";
 
 interface SkipSegment {
@@ -401,17 +395,16 @@ function TeacherStudentPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-h-[92vh] overflow-y-auto rounded-[22px] border sm:max-w-[920px]",
-          isAr && "[&>button]:start-4 [&>button]:end-auto",
+          "max-h-[92vh] overflow-y-auto rounded-3xl border border-emerald-50 dark:border-emerald-900/30 sm:max-w-[920px] bg-white dark:bg-[#15201B]",
+          isAr && "[&>button]:start-4 [&>button]:end-auto rtl:text-right"
         )}
-        style={{ borderColor: CARD_BORDER }}
         dir={isAr ? "rtl" : "ltr"}
       >
         <DialogHeader className="space-y-1 text-right sm:text-right">
-          <DialogTitle className="text-lg font-black text-[#0f2918]">
+          <DialogTitle className="text-lg font-black text-slate-800 dark:text-slate-100">
             {isAr ? "معاينة كما يراها الطالب" : "Preview as student"}
           </DialogTitle>
-          <DialogDescription className="text-[13px] leading-relaxed text-[#64748B]">
+          <DialogDescription className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
             {titleHint || (isAr ? "بدون عنوان" : "Untitled")} ·{" "}
             {isAr
               ? "يتوقف الفيديو عند الأسئلة كما في واجهة الطالب — للمعاينة فقط."
@@ -420,12 +413,12 @@ function TeacherStudentPreviewDialog({
         </DialogHeader>
 
         {!hasMedia ? (
-          <p className="py-8 text-center text-sm font-bold text-[#64748B]">
+          <p className="py-8 text-center text-sm font-bold text-slate-500">
             {isAr ? "أضف فيديوً أولاً." : "Add a video first."}
           </p>
         ) : (
           <>
-            <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-inner">
               {isYt && youtubeId ? (
                 <div className="absolute inset-0 z-0 h-full w-full">
                   <div ref={prevYtMountRef} className="h-full w-full min-h-0" />
@@ -441,7 +434,7 @@ function TeacherStudentPreviewDialog({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 z-10 bg-black/45 backdrop-blur-[1px]"
+                      className="absolute inset-0 z-10 bg-slate-900/60 backdrop-blur-[2px]"
                       aria-hidden
                     />
                     <motion.div
@@ -452,19 +445,16 @@ function TeacherStudentPreviewDialog({
                       transition={{ duration: 0.22 }}
                       className="absolute inset-0 z-20 flex items-center justify-center p-3 sm:p-4"
                     >
-                      <div
-                        className="max-h-[82%] w-full max-w-md overflow-y-auto rounded-2xl border bg-white/97 p-4 shadow-2xl ring-1 ring-black/10"
-                        style={{ borderColor: CARD_BORDER }}
-                      >
-                        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-black text-[#94a3ab]">
-                          <span className="rounded-full bg-[#eef5f0] px-2 py-0.5 text-[#1E4D35]">
+                      <div className="max-h-[82%] w-full max-w-md overflow-y-auto rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-5 shadow-2xl">
+                        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] font-black text-slate-500">
+                          <span className="rounded-full bg-emerald-50 dark:bg-emerald-900/40 px-2 py-0.5 text-emerald-700 dark:text-emerald-400">
                             {isAr ? "سؤال" : "Q"} {activeRow._ord + 1}/{sorted.length}
                           </span>
                           <span dir="ltr" className="font-mono tabular-nums">
                             {formatTimestamp(activeRow.timestampSeconds)}
                           </span>
                         </div>
-                        <p className="mb-3 text-right text-base font-black leading-relaxed text-[#0f2918]">{activeRow.text}</p>
+                        <p className="mb-4 text-right text-base font-black leading-relaxed text-slate-800 dark:text-slate-100">{activeRow.text}</p>
 
                         {activeRow.questionType === "mcq" && (
                           <div className="mb-4 grid gap-2">
@@ -474,9 +464,9 @@ function TeacherStudentPreviewDialog({
                               return (
                                 <div
                                   key={opt}
-                                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[#eef2ef] bg-[#fafdfb] px-3 py-2 text-right text-sm font-bold text-[#374151]"
+                                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 px-3 py-2 text-right text-sm font-bold text-slate-700 dark:text-slate-300"
                                 >
-                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-black text-[#1E4D35] ring-1 ring-[#e8ece9]">
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-[#111A16] text-xs font-black text-emerald-600 dark:text-emerald-400 border border-slate-100 dark:border-slate-800">
                                     {opt}
                                   </span>
                                   <span className="flex-1">{lab}</span>
@@ -488,17 +478,17 @@ function TeacherStudentPreviewDialog({
 
                         {activeRow.questionType === "true_false" && (
                           <div className="mb-4 grid grid-cols-2 gap-2">
-                            <div className="flex min-h-[44px] items-center justify-center rounded-xl border border-[#eef2ef] bg-[#fafdfb] text-sm font-black text-[#64748B]">
+                            <div className="flex min-h-[44px] items-center justify-center rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-sm font-black text-slate-500 dark:text-slate-400">
                               {isAr ? "صح" : "True"}
                             </div>
-                            <div className="flex min-h-[44px] items-center justify-center rounded-xl border border-[#eef2ef] bg-[#fafdfb] text-sm font-black text-[#64748B]">
+                            <div className="flex min-h-[44px] items-center justify-center rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-sm font-black text-slate-500 dark:text-slate-400">
                               {isAr ? "خطأ" : "False"}
                             </div>
                           </div>
                         )}
 
                         {activeRow.questionType === "fill_blank" && (
-                          <div className="mb-4 min-h-[44px] rounded-xl border border-dashed border-[#dce8e0] bg-[#fcfdfc] px-3 py-3 text-right text-sm text-[#94a3ab]">
+                          <div className="mb-4 min-h-[44px] rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 px-3 py-3 text-right text-sm text-slate-400 dark:text-slate-500">
                             {isAr ? "حقل إجابة قصيرة…" : "Short answer field…"}
                           </div>
                         )}
@@ -506,8 +496,7 @@ function TeacherStudentPreviewDialog({
                         <button
                           type="button"
                           onClick={continuePreview}
-                          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md"
-                          style={{ background: BRAND }}
+                          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl font-black text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 shadow-md transition-colors"
                         >
                           <Play className="h-4 w-4" fill="currentColor" />
                           {isAr ? "متابعة الفيديو" : "Continue video"}
@@ -520,7 +509,7 @@ function TeacherStudentPreviewDialog({
             </div>
 
             {!activeRow && sorted.length === 0 && (
-              <p className="mt-3 text-center text-xs font-bold text-[#94a3ab]">
+              <p className="mt-3 text-center text-xs font-bold text-slate-400">
                 {isAr ? "لا أسئلة لعرضها في المعاينة." : "No questions to preview."}
               </p>
             )}
@@ -584,7 +573,6 @@ export default function CreateVideoLesson() {
 
   const youtubeId = videoSource === "youtube" ? extractYouTubeId(videoUrl) : null;
   const playerRef = useRef<YTPlayer | null>(null);
-  /** حاوية فارغة يحقن فيها YT.Player فقط — تجنّب تعارض React مع الـ iframe عند إعادة الترتيب */
   const ytPlayerMountRef = useRef<HTMLDivElement>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -639,7 +627,7 @@ export default function CreateVideoLesson() {
           setLoadingEdit(false);
         });
     }
-  }, []);
+  }, [isAr]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/classes`, { credentials: "include" })
@@ -1024,7 +1012,7 @@ export default function CreateVideoLesson() {
     return (
       <Layout>
         <div className="flex justify-center p-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
         </div>
       </Layout>
     );
@@ -1033,66 +1021,51 @@ export default function CreateVideoLesson() {
   return (
     <Layout>
       <div
-        className="min-h-[100dvh] overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom))]"
-        style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+        className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] font-display pb-[calc(5rem+env(safe-area-inset-bottom))]"
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="mx-auto max-w-[1060px] px-4 py-4 sm:py-6">
-          {/* العودة */}
+        {/* Header */}
+        <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
           <button
             type="button"
             onClick={() => setLocation(editId ? `/teacher/video-lesson/${editId}` : "/teacher")}
-            className={cn(
-              "mb-4 flex min-h-[44px] items-center gap-2 text-sm font-bold text-[#64748B] transition-colors hover:text-[#0f2918]",
-              TRANSITION,
-            )}
+            className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+            aria-label={isAr ? "رجوع" : "Back"}
           >
-            <BackArrowIcon className="h-5 w-5 shrink-0 opacity-70" />
-            {editId ? (isAr ? "العودة للدرس" : "Back to lesson") : isAr ? "العودة للوحة التحكم" : "Back to dashboard"}
+            <BackArrowIcon className="w-5 h-5" />
           </button>
-
-          <header className="mb-5 space-y-2 text-right">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Video className="h-6 w-6 shrink-0 text-red-600" aria-hidden />
-              <h1 className="text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">
-                {editId
-                  ? isAr
-                    ? "تعديل درس فيديو تفاعلي"
-                    : "Edit interactive video"
-                  : isAr
-                    ? "درس فيديو تفاعلي"
-                    : "Interactive video lesson"}
-              </h1>
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+              <Video className="w-5 h-5 text-white" />
             </div>
-            <p className="text-[13px] font-semibold leading-relaxed text-[#64748B]">
-              {isAr
-                ? "أضف أسئلة على الفيديو ليتوقف تلقائياً عندها."
-                : "Add questions so the video pauses automatically at each cue."}
-            </p>
-          </header>
+            <div>
+              <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
+                {editId
+                  ? isAr ? "تعديل درس فيديو تفاعلي" : "Edit interactive video"
+                  : isAr ? "درس فيديو تفاعلي" : "Interactive video lesson"}
+              </h1>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+                {isAr
+                  ? "أضف أسئلة على الفيديو ليتوقف تلقائياً عندها."
+                  : "Add questions so the video pauses automatically at each cue."}
+              </p>
+            </div>
+          </div>
+        </header>
 
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6" dir="ltr">
-            {/* عمود الفيديو — العرض الأساسي */}
-            <div className="min-w-0 flex-1 space-y-4" dir="rtl">
-              <div
-                dir="ltr"
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-white px-2.5 py-2 shadow-sm"
-                style={{ borderColor: CARD_BORDER }}
-              >
-                <div className="flex flex-wrap items-center gap-1.5">
+        <main className="max-w-6xl mx-auto px-4 pt-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+            
+            {/* Video Column */}
+            <div className="min-w-0 flex-1 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] px-4 py-3 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={openAddQuestionModal}
-                    className={cn(
-                      "flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-black text-white shadow-sm hover:brightness-[1.05] active:scale-[0.99]",
-                      TRANSITION,
-                    )}
-                    style={{
-                      background: `linear-gradient(135deg, ${BRAND} 0%, #174030 100%)`,
-                      boxShadow: "0 4px 14px rgba(30, 77, 53, 0.22)",
-                    }}
+                    className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 px-3 text-[11px] font-black text-white shadow-sm transition-all"
                   >
-                    <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                    <Plus className="h-4 w-4 shrink-0" strokeWidth={2.5} />
                     {isAr ? "إضافة سؤال" : "Add question"}
                   </button>
                   <button
@@ -1100,23 +1073,20 @@ export default function CreateVideoLesson() {
                     onClick={() => setPreviewOpen(true)}
                     disabled={!isVideoValid() || questions.length === 0}
                     title={isAr ? "معاينة كما يراها الطالب" : "Preview as student"}
-                    className="flex min-h-[34px] items-center gap-1 rounded-lg border border-[#dce8e0] bg-[#fafdfb] px-2 text-[10px] font-black text-[#1E4D35] hover:bg-[#f3f7f4] disabled:pointer-events-none disabled:opacity-40"
+                    className="flex min-h-[36px] items-center gap-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3 text-[11px] font-black text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 disabled:pointer-events-none disabled:opacity-40 transition-colors"
                   >
-                    <Eye className="h-3.5 w-3.5 shrink-0" />
+                    <Eye className="h-4 w-4 shrink-0" />
                     {isAr ? "معاينة" : "Preview"}
                   </button>
                 </div>
-                <div dir="rtl" className="min-w-0 text-right">
-                  <p className="text-[12px] font-black text-[#0f2918]">{isAr ? "فيديو الدرس" : "Lesson video"}</p>
-                  <p className="text-[10px] text-[#64748B]">{isAr ? "شغّل ثم أضِف أسئلتك" : "Play, then add questions"}</p>
+                <div className="min-w-0 text-right">
+                  <p className="text-[12px] font-black text-slate-800 dark:text-slate-100">{isAr ? "فيديو الدرس" : "Lesson video"}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">{isAr ? "شغّل ثم أضِف أسئلتك" : "Play, then add questions"}</p>
                 </div>
               </div>
 
-              {/* بطل الفيديو */}
-              <section
-                className={cn("overflow-hidden rounded-[24px] border bg-white", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
+              {/* Video Player */}
+              <section className="rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-emerald-100 dark:hover:border-emerald-800/50">
                 <div className="relative aspect-video w-full bg-black">
                   {videoSource === "youtube" && youtubeId ? (
                     <div className="absolute inset-0 z-0 h-full w-full">
@@ -1125,8 +1095,8 @@ export default function CreateVideoLesson() {
                   ) : (videoSource === "upload" || videoSource === "external") && videoUrl.trim() ? (
                     <video ref={html5VideoRef} src={videoUrl} controls className="h-full w-full object-contain" />
                   ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0f2918] to-[#1a2e24] px-6 text-center">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-slate-800 to-slate-900 px-6 text-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
                         <Play className="h-10 w-10 text-white opacity-90" fill="currentColor" />
                       </div>
                       <p className="max-w-sm text-sm font-bold leading-relaxed text-white/85">
@@ -1135,7 +1105,7 @@ export default function CreateVideoLesson() {
                       <button
                         type="button"
                         onClick={scrollToVideoSource}
-                        className="min-h-[44px] rounded-2xl bg-white px-6 text-sm font-black text-[#0f2918] shadow-lg hover:bg-[#eef5f0]"
+                        className="min-h-[44px] rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-6 text-sm font-black text-white shadow-lg transition-colors"
                       >
                         {isAr ? "إضافة فيديو" : "Add video"}
                       </button>
@@ -1143,11 +1113,11 @@ export default function CreateVideoLesson() {
                   )}
                   {sortedQuestionIndices.length > 0 && (
                     <div className="pointer-events-auto absolute left-3 top-3 z-20 max-w-[min(46%,13.5rem)]">
-                      <div className="rounded-lg bg-white/95 px-2 py-1.5 shadow-lg ring-1 ring-black/10 backdrop-blur-sm">
-                        <p className="text-[10px] font-black text-[#1E4D35]">
+                      <div className="rounded-2xl bg-white/95 dark:bg-[#111A16]/95 px-3 py-2 shadow-lg border border-slate-100 dark:border-slate-800 backdrop-blur-sm">
+                        <p className="text-[11px] font-black text-emerald-700 dark:text-emerald-400">
                           {isAr ? `الأسئلة التفاعلية (${questions.length})` : `Interactive (${questions.length})`}
                         </p>
-                        <div className="mt-1 flex flex-col gap-0.5">
+                        <div className="mt-2 flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
                           {sortedQuestionIndices.map((realIdx, order) => {
                             const q = questions[realIdx];
                             return (
@@ -1155,12 +1125,12 @@ export default function CreateVideoLesson() {
                                 key={`cue-${realIdx}`}
                                 type="button"
                                 onClick={() => seekTo(q.timestampSeconds)}
-                                className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-[#374151] transition-colors hover:bg-[#eef5f0]"
+                                className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                               >
                                 <span dir="ltr" className="font-mono tabular-nums">
                                   {formatTimestamp(q.timestampSeconds)}
                                 </span>
-                                <span className="shrink-0 rounded bg-[#eef5f0] px-1 text-[9px] font-black text-[#1E4D35]">
+                                <span className="shrink-0 rounded-md bg-emerald-50 dark:bg-emerald-900/40 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-400">
                                   ({order + 1})
                                 </span>
                               </button>
@@ -1173,29 +1143,28 @@ export default function CreateVideoLesson() {
                 </div>
 
                 {hasVideoPreview && isPlayerReady && (
-                  <div className="border-t border-[#eef2ef] bg-[#fafdfb]" style={{ borderColor: CARD_BORDER }}>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs font-black tabular-nums text-[#64748B]" dir="ltr">
-                        <Clock className="h-3.5 w-3.5 shrink-0 text-[#1E4D35]" />
+                  <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                      <div className="flex items-center gap-2 text-xs font-black tabular-nums text-slate-500 dark:text-slate-400" dir="ltr">
+                        <Clock className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                         <span>{formatTimestamp(currentTime)}</span>
-                        <span className="text-[#94a3ab]">/</span>
+                        <span className="text-slate-300 dark:text-slate-600">/</span>
                         <span>{formatTimestamp(videoDuration || currentTime)}</span>
                       </div>
                     </div>
 
-                    {/* قطع / تخطّي مقاطع — ظاهر دائماً تحت المشغّل */}
-                    <div className="border-t border-amber-200/40 bg-gradient-to-b from-amber-50/80 to-[#fafdfb] px-3 py-2.5">
-                      <div className="mb-2 flex flex-wrap items-center gap-2 text-right">
-                        <div className="flex items-center gap-1.5 rounded-lg bg-white/80 px-2 py-1 ring-1 ring-amber-200/60">
-                          <SkipForward className="h-3.5 w-3.5 text-amber-600" />
-                          <span className="text-[11px] font-black text-amber-950">
+                    <div className="border-t border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-3">
+                      <div className="mb-3 flex flex-wrap items-center gap-2 text-right">
+                        <div className="flex items-center gap-1.5 rounded-xl bg-white dark:bg-[#15201B] border border-amber-200 dark:border-amber-800 px-2 py-1 shadow-sm">
+                          <SkipForward className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          <span className="text-[11px] font-black text-amber-900 dark:text-amber-300">
                             {isAr ? "تخطّي جزء من الفيديو" : "Skip part of the video"}
                           </span>
                         </div>
-                        <span className="text-[10px] font-semibold leading-snug text-amber-900/75">
+                        <span className="text-[11px] font-bold leading-snug text-amber-800/70 dark:text-amber-400/70">
                           {isAr
-                            ? "حدّد بداية ونهاية المقطع لتعدّيه أثناء التشغيل أو المعاينة."
-                            : "Set start and end to jump over it during playback or preview."}
+                            ? "حدّد بداية ونهاية المقطع لتعدّيه أثناء التشغيل."
+                            : "Set start and end to jump over it during playback."}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -1206,31 +1175,31 @@ export default function CreateVideoLesson() {
                               setPendingSegmentStart(currentTime);
                               setSegmentEndInput("");
                             }}
-                            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-amber-400/55 bg-white px-3 text-[11px] font-black text-amber-950 shadow-sm hover:bg-amber-50"
+                            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-amber-300/50 dark:border-amber-700 bg-white dark:bg-[#15201B] px-4 text-xs font-black text-amber-900 dark:text-amber-300 shadow-sm hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors"
                           >
-                            <SkipForward className="h-3.5 w-3.5" />
+                            <SkipForward className="h-4 w-4" />
                             {isAr ? "قطع مقطع من هنا" : "Cut segment from here"}
                           </button>
                         ) : (
-                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/55 bg-white px-2 py-1.5 shadow-sm">
-                            <span className="text-[11px] font-bold text-amber-950">
+                          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-300/50 dark:border-amber-700 bg-white dark:bg-[#15201B] px-3 py-2 shadow-sm">
+                            <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300">
                               {isAr ? "من" : "From"}{" "}
-                              <span dir="ltr" className="tabular-nums">
+                              <span dir="ltr" className="tabular-nums bg-amber-50 dark:bg-amber-900/40 px-2 py-1 rounded-lg">
                                 {formatTimestamp(pendingSegmentStart)}
                               </span>
                             </span>
-                            <span className="text-[11px] text-amber-800/80">{isAr ? "إلى" : "To"}</span>
+                            <span className="text-[11px] text-amber-800/80 dark:text-amber-400/80">{isAr ? "إلى" : "To"}</span>
                             <Input
                               value={segmentEndInput}
                               onChange={(e) => setSegmentEndInput(e.target.value)}
                               placeholder="00:45"
                               dir="ltr"
-                              className="h-9 w-[4.5rem] rounded-lg border text-center text-xs font-mono"
+                              className="h-10 w-[5rem] rounded-xl border-amber-200 dark:border-amber-800 text-center text-xs font-mono focus:border-amber-500"
                             />
                             <button
                               type="button"
                               onClick={() => setSegmentEndInput(formatTimestamp(currentTime))}
-                              className="text-[11px] font-black text-amber-700 underline-offset-2 hover:underline"
+                              className="text-[11px] font-black text-amber-700 dark:text-amber-400 underline-offset-2 hover:underline"
                             >
                               {isAr ? "الحالي" : "Now"}
                             </button>
@@ -1257,9 +1226,9 @@ export default function CreateVideoLesson() {
                                 setPendingSegmentStart(null);
                                 setSegmentEndInput("");
                               }}
-                              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-amber-600 px-2.5 text-[11px] font-black text-white hover:bg-amber-700"
+                              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 px-3 text-[11px] font-black text-white shadow-sm transition-colors"
                             >
-                              <Plus className="h-3 w-3" />
+                              <Plus className="h-4 w-4" />
                               {isAr ? "تأكيد" : "Confirm"}
                             </button>
                             <button
@@ -1268,19 +1237,19 @@ export default function CreateVideoLesson() {
                                 setPendingSegmentStart(null);
                                 setSegmentEndInput("");
                               }}
-                              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-amber-800/70 hover:bg-amber-100 hover:text-amber-950"
+                              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl text-amber-800/70 dark:text-amber-400/70 hover:bg-amber-100 dark:hover:bg-amber-900/60 hover:text-amber-950 dark:hover:text-amber-300 transition-colors"
                             >
-                              <X className="h-4 w-4" />
+                              <X className="h-5 w-5" />
                             </button>
                           </div>
                         )}
                       </div>
                       {skipSegments.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2 border-t border-amber-200/40 pt-2">
+                        <div className="mt-3 flex flex-wrap gap-2 border-t border-amber-200/40 dark:border-amber-800/40 pt-3">
                           {skipSegments.map((seg, i) => (
                             <div
                               key={i}
-                              className="flex items-center gap-2 rounded-lg border border-amber-300/45 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-950 shadow-sm"
+                              className="flex items-center gap-2 rounded-xl border border-amber-300/45 dark:border-amber-700 bg-white dark:bg-[#15201B] px-3 py-1.5 text-[11px] font-bold text-amber-950 dark:text-amber-300 shadow-sm"
                             >
                               <span dir="ltr" className="font-mono tabular-nums">
                                 {formatTimestamp(seg.start)} → {formatTimestamp(seg.end)}
@@ -1288,7 +1257,7 @@ export default function CreateVideoLesson() {
                               <button
                                 type="button"
                                 onClick={() => setSkipSegments((prev) => prev.filter((_, j) => j !== i))}
-                                className="rounded p-1 text-red-600 hover:bg-red-50"
+                                className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -1300,20 +1269,22 @@ export default function CreateVideoLesson() {
                   </div>
                 )}
               </section>
-              <section className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eef2ef] pb-2">
-                  <h3 className="text-right text-[13px] font-black text-[#0f2918]">
+
+              <section className="space-y-4 pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-50 dark:border-emerald-900/30 pb-3">
+                  <h3 className="text-right text-sm font-black text-slate-800 dark:text-slate-100">
                     {isAr ? `الأسئلة (${questions.length})` : `Questions (${questions.length})`}
                   </h3>
                   <button
                     type="button"
                     onClick={openAddQuestionModal}
-                    className="text-[10px] font-black text-[#1E4D35] underline-offset-4 hover:underline"
+                    className="text-xs font-black text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-4 flex items-center gap-1"
                   >
-                    {isAr ? "+ إضافة" : "+ Add"}
+                    <Plus className="w-3.5 h-3.5" />
+                    {isAr ? "إضافة سؤال" : "Add question"}
                   </button>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {sortedQuestionIndices.map((realIdx, order) => {
                     const q = questions[realIdx];
                     return (
@@ -1322,48 +1293,44 @@ export default function CreateVideoLesson() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                       >
-                        <Card
-                          className={cn(
-                            "border border-[#eef2ef] p-3 shadow-sm transition-colors hover:border-[#1E4D35]/20",
-                            TRANSITION,
-                          )}
-                          style={{ borderRadius: "14px", boxShadow: "0 1px 2px rgba(15, 40, 28, 0.04)" }}
+                        <div
+                          className="rounded-2xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-4 shadow-sm transition-all hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800"
                         >
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1 space-y-1.5 text-right">
-                              <div className="flex flex-wrap items-center justify-end gap-1.5">
-                                <span className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-[#eef5f0] px-1.5 text-[11px] font-black text-[#1E4D35]">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-2 text-right">
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <span className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/40 px-2 text-[11px] font-black text-emerald-700 dark:text-emerald-400">
                                   {order + 1}
                                 </span>
                                 <button
                                   type="button"
                                   dir="ltr"
                                   onClick={() => seekTo(q.timestampSeconds)}
-                                  className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[#f3f7f4] px-2 py-1 text-[11px] font-black tabular-nums text-[#374151] sm:min-h-0"
+                                  className="inline-flex min-h-[32px] items-center gap-1.5 rounded-full bg-slate-50 dark:bg-slate-800 px-3 py-1 text-[11px] font-black tabular-nums text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                                 >
-                                  <Clock className="h-3 w-3 text-[#94a3ab]" />
+                                  <Clock className="h-3.5 w-3.5 text-slate-400" />
                                   {formatTimestamp(q.timestampSeconds)}
                                 </button>
-                                <span className="rounded-full bg-[#f8faf8] px-2 py-0.5 text-[10px] font-bold text-[#64748B]">
+                                <span className="rounded-full border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                                   {questionTypeLabel(q.questionType)}
                                 </span>
                               </div>
-                              <p className="text-[13px] font-bold leading-snug text-[#0f2918]">
+                              <p className="text-sm font-bold leading-relaxed text-slate-800 dark:text-slate-100 mt-2">
                                 {q.text || (
-                                  <span className="italic text-[#94a3ab]">
+                                  <span className="italic text-slate-400">
                                     {isAr ? "لا يوجد نص بعد" : "No text yet"}
                                   </span>
                                 )}
                               </p>
-                              <p className="text-[10px] font-bold text-[#94a3ab]">
+                              <p className="text-[11px] font-bold text-slate-400">
                                 {q.points} {isAr ? "درجة" : "pts"}
                               </p>
                             </div>
-                            <div className="flex shrink-0 items-center gap-1">
+                            <div className="flex shrink-0 items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl">
                               <button
                                 type="button"
                                 onClick={() => openEditQuestionModal(realIdx)}
-                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[#e5e7eb] bg-white text-[#1E4D35] hover:bg-[#f3f7f4]"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#15201B] text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 shadow-sm transition-colors border border-slate-100 dark:border-slate-700"
                                 title={isAr ? "تعديل" : "Edit"}
                               >
                                 <Pencil className="h-4 w-4" />
@@ -1371,7 +1338,7 @@ export default function CreateVideoLesson() {
                               <button
                                 type="button"
                                 onClick={() => removeQuestion(realIdx)}
-                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-red-100 bg-white text-red-600 hover:bg-red-50"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#15201B] text-slate-600 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 shadow-sm transition-colors border border-slate-100 dark:border-slate-700"
                                 title={isAr ? "حذف" : "Delete"}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1380,24 +1347,24 @@ export default function CreateVideoLesson() {
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
-                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[#e5e7eb] bg-white text-[#64748B] hover:bg-[#f9faf9]"
+                                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#15201B] text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors border border-slate-100 dark:border-slate-700"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className={cn("rounded-xl border shadow-lg", isAr ? "[direction:rtl]" : "[direction:ltr]")}>
+                                <DropdownMenuContent align="end" className={cn("rounded-2xl border-emerald-100 dark:border-emerald-900 shadow-xl p-2", isAr ? "[direction:rtl]" : "[direction:ltr]")}>
                                   <DropdownMenuItem
-                                    className="font-bold"
+                                    className="font-bold rounded-xl cursor-pointer"
                                     onClick={() => seekTo(q.timestampSeconds)}
                                   >
-                                    <Play className="h-4 w-4 opacity-60" />
+                                    <Play className="h-4 w-4 mr-2 ml-2 opacity-60 text-emerald-600" />
                                     {isAr ? "انتقل لهذا التوقيت" : "Jump to time"}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
                           </div>
-                        </Card>
+                        </div>
                       </motion.div>
                     );
                   })}
@@ -1406,18 +1373,16 @@ export default function CreateVideoLesson() {
 
             </div>
 
-            <aside className="w-full shrink-0 space-y-3 lg:w-[300px]" dir="rtl">
-              <section
-                className={cn("rounded-2xl border bg-white p-3", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <Label className="mb-1 block text-[10px] font-bold text-[#64748B]">{isAr ? "عنوان الدرس" : "Lesson title"} *</Label>
+            {/* Sidebar / Settings */}
+            <aside className="w-full lg:w-[320px] shrink-0 space-y-4">
+              <section className="rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-5 shadow-sm">
+                <Label className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Pencil className="w-3.5 h-3.5 text-emerald-500" />{isAr ? "عنوان الدرس" : "Lesson title"} *</Label>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={isAr ? "مثال: الدوال الخطية — مقدمة" : "e.g. Linear functions — intro"}
                   className={cn(
-                    "min-h-[44px] rounded-xl border-2 py-2 text-sm font-bold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
+                    "min-h-[44px] rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] py-2 text-sm font-bold focus:border-emerald-400",
                     isAr && FIELD_RTL,
                   )}
                   dir={isAr ? "rtl" : undefined}
@@ -1428,408 +1393,367 @@ export default function CreateVideoLesson() {
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-right text-[11px] font-black text-[#0f2918] shadow-sm hover:bg-[#fafdfb]",
-                      TRANSITION,
-                    )}
-                    style={{ borderColor: CARD_BORDER }}
+                    className="flex w-full items-center justify-between rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] px-5 py-4 text-right text-[13px] font-black text-slate-800 dark:text-slate-100 shadow-sm hover:shadow-md transition-all"
                   >
-                    <span>{isAr ? "إعدادات إضافية" : "Additional settings"}</span>
+                    <span className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-emerald-500" />{isAr ? "إعدادات إضافية" : "Additional settings"}</span>
                     <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-70 transition-transform", extraSettingsOpen && "rotate-180")} />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div
-                    className="space-y-3 rounded-xl border border-t-0 bg-white px-3 pb-3 pt-0 shadow-sm"
-                    style={{ borderColor: CARD_BORDER }}
-                  >
-                    <div className="border-t border-[#eef2ef] pt-3">
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="mb-1 block text-[10px] font-bold text-[#64748B]">{isAr ? "المادة" : "Subject"}</Label>
-                          <Input
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            placeholder={isAr ? "رياضيات، علوم…" : "Math, Science…"}
-                            className={cn(
-                              "min-h-[40px] rounded-xl border-2 text-sm focus:border-[#1E4D35]/35",
-                              isAr && FIELD_RTL,
-                            )}
-                            dir={isAr ? "rtl" : undefined}
-                          />
-                        </div>
-                        <div>
-                          <Label className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-[#64748B]">
-                            <GraduationCap className="h-3 w-3 text-[#1E4D35]" />
-                            {isAr ? "الصف / الفصل" : "Target class"}
-                          </Label>
-                          {teacherClasses.length > 0 ? (
-                            <select
-                              value={teacherClassId === "" ? "" : String(teacherClassId)}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (!v) {
-                                  setTeacherClassId("");
-                                  setTargetClass("");
-                                  return;
-                                }
-                                const tid = parseInt(v, 10);
-                                const tc = teacherClasses.find((x) => x.id === tid);
-                                setTeacherClassId(tid);
-                                setTargetClass(tc?.name || "");
-                              }}
-                              className={cn(
-                                "min-h-[40px] w-full rounded-xl border-2 border-border bg-background px-3 text-sm font-bold focus:border-[#1E4D35]/35 focus:outline-none",
-                                isAr && FIELD_RTL,
-                              )}
-                              dir={isAr ? "rtl" : undefined}
-                            >
-                              <option value="">{isAr ? "— بدون صف محدد —" : "— No class —"}</option>
-                              {teacherClasses.map((tc) => (
-                                <option key={tc.id} value={String(tc.id)}>
-                                  {tc.groupName ? `${tc.groupName} · ${tc.name}` : tc.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <Input
-                              value={targetClass}
-                              onChange={(e) => {
-                                setTargetClass(e.target.value);
-                                setTeacherClassId("");
-                              }}
-                              placeholder={isAr ? "أضف صفوفك من صفحة الطلاب، أو اكتب اسم الفصل يدوياً" : "Add classes under Students, or type a class name"}
-                              className={cn(
-                                "min-h-[40px] rounded-xl border-2 text-sm focus:border-[#1E4D35]/35",
-                                isAr && FIELD_RTL,
-                              )}
-                              dir={isAr ? "rtl" : undefined}
-                            />
+                  <div className="mt-3 space-y-4 rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-5 shadow-sm">
+                    <div>
+                      <Label className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400">{isAr ? "المادة" : "Subject"}</Label>
+                      <Input
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        placeholder={isAr ? "رياضيات، علوم…" : "Math, Science…"}
+                        className={cn(
+                          "min-h-[44px] rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] text-sm focus:border-emerald-400",
+                          isAr && FIELD_RTL,
+                        )}
+                        dir={isAr ? "rtl" : undefined}
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+                        <GraduationCap className="h-3.5 w-3.5 text-emerald-500" />
+                        {isAr ? "الصف / الفصل" : "Target class"}
+                      </Label>
+                      {teacherClasses.length > 0 ? (
+                        <select
+                          value={teacherClassId === "" ? "" : String(teacherClassId)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (!v) {
+                              setTeacherClassId("");
+                              setTargetClass("");
+                              return;
+                            }
+                            const tid = parseInt(v, 10);
+                            const tc = teacherClasses.find((x) => x.id === tid);
+                            setTeacherClassId(tid);
+                            setTargetClass(tc?.name || "");
+                          }}
+                          className={cn(
+                            "min-h-[44px] w-full rounded-xl border border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] px-3 text-sm font-bold focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 focus:outline-none transition-all outline-none",
+                            isAr && FIELD_RTL,
                           )}
-                        </div>
-                        <div>
-                          <Label className="mb-1 block text-[10px] font-bold text-[#64748B]">{isAr ? "الوصف" : "Description"}</Label>
-                          <Textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder={isAr ? "اختياري — وصف مختصر…" : "Optional short description…"}
-                            rows={4}
-                            className={cn(
-                              "rounded-xl border-2 bg-background text-sm font-semibold focus-visible:border-[#1E4D35]/35",
-                              isAr && FIELD_RTL,
-                            )}
-                            dir={isAr ? "rtl" : undefined}
-                          />
-                        </div>
-                      </div>
+                          dir={isAr ? "rtl" : undefined}
+                        >
+                          <option value="">{isAr ? "— بدون صف محدد —" : "— No class —"}</option>
+                          {teacherClasses.map((tc) => (
+                            <option key={tc.id} value={String(tc.id)}>
+                              {tc.groupName ? `${tc.groupName} · ${tc.name}` : tc.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          value={targetClass}
+                          onChange={(e) => {
+                            setTargetClass(e.target.value);
+                            setTeacherClassId("");
+                          }}
+                          placeholder={isAr ? "أضف صفوفك من صفحة الطلاب" : "Add classes under Students"}
+                          className={cn(
+                            "min-h-[44px] rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] text-sm focus:border-emerald-400",
+                            isAr && FIELD_RTL,
+                          )}
+                          dir={isAr ? "rtl" : undefined}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <Label className="mb-2 block text-xs font-bold text-slate-500 dark:text-slate-400">{isAr ? "الوصف" : "Description"}</Label>
+                      <Textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder={isAr ? "اختياري — وصف مختصر…" : "Optional short description…"}
+                        rows={4}
+                        className={cn(
+                          "rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] text-sm font-semibold focus-visible:border-emerald-400 resize-none",
+                          isAr && FIELD_RTL,
+                        )}
+                        dir={isAr ? "rtl" : undefined}
+                      />
                     </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
 
-            {/* مصدر الفيديو والوصول */}
-            <div ref={sourceCardRef} className="scroll-mt-24 space-y-3">
-              <section
-                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <h2 className="mb-2 text-right text-xs font-black text-[#0f2918]">
-                  {isAr ? "مصدر الفيديو" : "Video source"} *
-                </h2>
-                {editId && (
-                  <p className="mb-2 text-[10px] leading-relaxed text-[#94a3ab]">
-                    {isAr ? "لا يمكن تغيير نوع المصدر بعد الإنشاء." : "Source type is fixed after creation."}
-                  </p>
-                )}
-                <div
-                  className={cn("mb-3 grid gap-0.5 rounded-xl bg-[#f3f7f4] p-0.5", isAdmin ? "grid-cols-3" : "grid-cols-2")}
-                >
-                  {(
-                    [
-                      { key: "youtube" as VideoSource, short: isAr ? "يوتيوب" : "YT", full: isAr ? "يوتيوب" : "YouTube", Icon: Play },
-                      ...(isAdmin
-                        ? [
-                            {
-                              key: "upload" as VideoSource,
-                              short: isAr ? "رفع" : "Up",
-                              full: isAr ? "رفع فيديو" : "Upload",
-                              Icon: Upload,
-                            },
-                          ]
-                        : []),
-                      {
-                        key: "external" as VideoSource,
-                        short: isAr ? "رابط" : "URL",
-                        full: isAr ? "رابط خارجي" : "External",
-                        Icon: Link2,
-                      },
-                    ] as const
-                  ).map(({ key, short, full, Icon }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      disabled={!!editId && key !== videoSource}
-                      onClick={() => {
-                        if (!editId) {
-                          setVideoSource(key);
-                          if (key !== videoSource) {
-                            setVideoUrl("");
-                            setPlayerReady(false);
-                          }
-                        }
-                      }}
-                      className={cn(
-                        "flex min-h-[34px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-black transition-colors sm:flex-row sm:gap-1 sm:px-1.5 sm:text-[10px]",
-                        videoSource === key
-                          ? "bg-white text-[#1E4D35] shadow-sm"
-                          : "text-[#64748B] hover:text-[#0f2918]",
-                        editId && key !== videoSource && "cursor-not-allowed opacity-40",
-                      )}
-                    >
-                      <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                      <span className="sm:hidden">{short}</span>
-                      <span className="hidden sm:inline">{full}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {videoSource === "youtube" && (
-                  <div className="space-y-2">
-                    <Input
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      dir="ltr"
-                      className="min-h-[44px] rounded-xl border-2 font-mono text-xs focus:border-[#1E4D35]/35"
-                    />
-                    {videoUrl && !youtubeId && (
-                      <p className="text-[11px] font-bold text-destructive">{isAr ? "رابط يوتيوب غير صالح" : "Invalid URL"}</p>
-                    )}
-                    {youtubeId && (
-                      <div
-                        className="overflow-hidden rounded-lg border bg-black shadow-inner"
-                        style={{ borderColor: CARD_BORDER }}
-                      >
-                        <img
-                          src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`}
-                          alt=""
-                          className="max-h-24 w-full object-cover opacity-90"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {videoSource === "upload" && (
-                  <div className="space-y-3">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="video/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
-                      }}
-                    />
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
-                      }}
-                      onDragEnter={(e) => {
-                        e.preventDefault();
-                        setDragUpload(true);
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault();
-                        setDragUpload(false);
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragUpload(false);
-                        const f = e.dataTransfer.files?.[0];
-                        if (f) handleFileUpload(f);
-                      }}
-                      onClick={() => !uploading && fileInputRef.current?.click()}
-                      className={cn(
-                        "cursor-pointer rounded-xl border-2 border-dashed px-3 py-6 text-center transition-colors",
-                        dragUpload ? "border-[#1E4D35] bg-[#eef5f0]" : "border-[#dce8e0] bg-[#fafdfb] hover:border-[#1E4D35]/35",
-                      )}
-                    >
-                      {uploading ? (
-                        <div className="space-y-2">
-                          <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#1E4D35]" />
-                          <p className="text-sm font-black text-[#1E4D35]">
-                            {isAr ? `جاري الرفع… ${uploadProgress}%` : `Uploading… ${uploadProgress}%`}
-                          </p>
-                          <div className="mx-auto h-2 max-w-xs overflow-hidden rounded-full bg-[#e8ece9]">
-                            <div
-                              className="h-full rounded-full bg-[#1E4D35] transition-all"
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Upload className="mx-auto h-6 w-6 text-[#1E4D35]/70" />
-                          <p className="text-xs font-black text-[#0f2918]">
-                            {isAr ? "اسحب الفيديو أو اختر ملفاً" : "Drag or choose a video"}
-                          </p>
-                          <p className="text-[11px] font-semibold text-[#94a3ab]">MP4, WebM, MOV · max 500MB</p>
-                        </div>
-                      )}
-                    </div>
-                    {videoUrl && (
-                      <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2">
-                        <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-                        <span className="flex-1 text-xs font-bold text-green-800">
-                          {isAr ? "تم الرفع" : "Uploaded"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setVideoUrl("");
-                            if (fileInputRef.current) fileInputRef.current.value = "";
-                          }}
-                          className="text-xs font-black text-red-600 hover:underline"
-                        >
-                          {isAr ? "تغيير" : "Change"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {videoSource === "external" && (
-                  <div>
-                    <Input
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://example.com/video.mp4"
-                      dir="ltr"
-                      className="min-h-[44px] rounded-xl border-2 font-mono text-xs focus:border-[#1E4D35]/35"
-                    />
-                    <p className="mt-2 text-[11px] leading-relaxed text-[#94a3ab]">
-                      {isAr ? "رابط مباشر لملف فيديو (MP4 أو WebM)." : "Direct link to a video file (MP4 or WebM)."}
+              {/* Video Source Selection */}
+              <div ref={sourceCardRef} className="scroll-mt-24 space-y-4">
+                <section className="rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-5 shadow-sm">
+                  <h2 className="mb-2 text-right text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2"><Video className="w-4 h-4 text-emerald-500" />{isAr ? "مصدر الفيديو" : "Video source"} *</h2>
+                  {editId && (
+                    <p className="mb-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      {isAr ? "لا يمكن تغيير نوع المصدر بعد الإنشاء." : "Source type is fixed after creation."}
                     </p>
+                  )}
+                  
+                  <div className={cn("mb-4 grid gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/30 p-1", isAdmin ? "grid-cols-3" : "grid-cols-2")}>
+                    {(
+                      [
+                        { key: "youtube" as VideoSource, short: isAr ? "يوتيوب" : "YT", full: isAr ? "يوتيوب" : "YouTube", Icon: Play },
+                        ...(isAdmin
+                          ? [
+                              {
+                                key: "upload" as VideoSource,
+                                short: isAr ? "رفع" : "Up",
+                                full: isAr ? "رفع فيديو" : "Upload",
+                                Icon: Upload,
+                              },
+                            ]
+                          : []),
+                        {
+                          key: "external" as VideoSource,
+                          short: isAr ? "رابط" : "URL",
+                          full: isAr ? "رابط خارجي" : "External",
+                          Icon: Link2,
+                        },
+                      ] as const
+                    ).map(({ key, short, full, Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        disabled={!!editId && key !== videoSource}
+                        onClick={() => {
+                          if (!editId) {
+                            setVideoSource(key);
+                            if (key !== videoSource) {
+                              setVideoUrl("");
+                              setPlayerReady(false);
+                            }
+                          }
+                        }}
+                        className={cn(
+                          "flex min-h-[40px] flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[11px] font-black transition-colors sm:flex-row sm:px-2",
+                          videoSource === key
+                            ? "bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-100/50 dark:border-emerald-800"
+                            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
+                          editId && key !== videoSource && "cursor-not-allowed opacity-40",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                        <span className="sm:hidden">{short}</span>
+                        <span className="hidden sm:inline">{full}</span>
+                      </button>
+                    ))}
                   </div>
-                )}
-              </section>
 
-              <section
-                className={cn(
-                  "rounded-2xl border-2 bg-gradient-to-br from-[#f8faf8] to-white p-3 sm:p-4",
-                  TRANSITION,
-                )}
-                style={{ borderColor: "rgba(30, 77, 53, 0.14)", boxShadow: "0 2px 14px rgba(30, 77, 53, 0.06)" }}
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 flex-1 items-start gap-2.5 text-right">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E4D35]/10 text-[#1E4D35]"
-                      aria-hidden
-                    >
-                      <Users className="h-5 w-5" />
+                  {videoSource === "youtube" && (
+                    <div className="space-y-3">
+                      <Input
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        dir="ltr"
+                        className="min-h-[44px] rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] font-mono text-xs focus:border-emerald-400"
+                      />
+                      {videoUrl && !youtubeId && (
+                        <p className="text-[11px] font-bold text-red-500">{isAr ? "رابط يوتيوب غير صالح" : "Invalid URL"}</p>
+                      )}
+                      {youtubeId && (
+                        <div className="overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800 bg-black shadow-inner">
+                          <img
+                            src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`}
+                            alt=""
+                            className="max-h-28 w-full object-cover opacity-90"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="text-sm font-black text-[#0f2918]">{isAr ? "مشاركة مع المعلمين" : "Share with teachers"}</p>
-                      <p className="text-[11px] leading-relaxed text-[#64748B]">
-                        {isAr
-                          ? "فعّلها إذا أردت أن يطلع زملاؤك على الدرس ويعيدوا استخدامه."
-                          : "Enable so colleagues can discover and reuse this lesson."}
+                  )}
+
+                  {videoSource === "upload" && (
+                    <div className="space-y-4">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
+                        }}
+                      />
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+                        }}
+                        onDragEnter={(e) => {
+                          e.preventDefault();
+                          setDragUpload(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          setDragUpload(false);
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragUpload(false);
+                          const f = e.dataTransfer.files?.[0];
+                          if (f) handleFileUpload(f);
+                        }}
+                        onClick={() => !uploading && fileInputRef.current?.click()}
+                        className={cn(
+                          "cursor-pointer rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors",
+                          dragUpload ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" : "border-emerald-100 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] hover:border-emerald-400",
+                        )}
+                      >
+                        {uploading ? (
+                          <div className="space-y-3">
+                            <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
+                            <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                              {isAr ? `جاري الرفع… ${uploadProgress}%` : `Uploading… ${uploadProgress}%`}
+                            </p>
+                            <div className="mx-auto h-2.5 max-w-xs overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                              <div
+                                className="h-full rounded-full bg-emerald-500 transition-all"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="mx-auto w-12 h-12 bg-white dark:bg-[#15201B] rounded-full flex items-center justify-center shadow-sm mb-3">
+                              <Upload className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <p className="text-xs font-black text-slate-800 dark:text-slate-100">
+                              {isAr ? "اسحب الفيديو أو اختر ملفاً" : "Drag or choose a video"}
+                            </p>
+                            <p className="text-[11px] font-semibold text-slate-500">MP4, WebM, MOV · max 500MB</p>
+                          </div>
+                        )}
+                      </div>
+                      {videoUrl && (
+                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <span className="flex-1 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                            {isAr ? "تم الرفع" : "Uploaded"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVideoUrl("");
+                              if (fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                            className="text-xs font-black text-red-500 hover:underline bg-white dark:bg-[#15201B] px-3 py-1.5 rounded-lg border border-red-100 dark:border-red-900 shadow-sm"
+                          >
+                            {isAr ? "تغيير" : "Change"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {videoSource === "external" && (
+                    <div>
+                      <Input
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        placeholder="https://example.com/video.mp4"
+                        dir="ltr"
+                        className="min-h-[44px] rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] font-mono text-xs focus:border-emerald-400"
+                      />
+                      <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                        {isAr ? "رابط مباشر لملف فيديو (MP4 أو WebM)." : "Direct link to a video file (MP4 or WebM)."}
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[#e8ece9] bg-white px-3 py-2 sm:justify-end sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
-                    <span className="text-[11px] font-bold text-[#64748B] sm:hidden">
-                      {isShared ? (isAr ? "مفعّل" : "On") : isAr ? "معطّل" : "Off"}
-                    </span>
-                    <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
-                  </div>
-                </div>
-              </section>
+                  )}
+                </section>
 
-              <section
-                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <h2 className="mb-2 text-right text-xs font-black text-[#0f2918]">{isAr ? "وضع الوصول" : "Access"}</h2>
-                <div
-                  className="flex rounded-xl border border-[#e5e7eb] bg-[#f3f7f4] p-0.5"
-                  role="tablist"
-                  aria-label={isAr ? "وضع الوصول" : "Access mode"}
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={accessUi === "public"}
-                    onClick={() => setAccessUi("public")}
-                    className={cn(
-                      "flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 text-[10px] font-black transition-colors",
-                      accessUi === "public" ? "bg-white text-[#1E4D35] shadow-sm" : "text-[#64748B] hover:text-[#0f2918]",
-                    )}
-                  >
-                    <Globe className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                    {isAr ? "عام" : "Public"}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={accessUi === "code"}
-                    onClick={() => {
-                      setAccessUi("code");
-                      if (!accessCode.trim()) setAccessCode(generateAccessCode());
-                    }}
-                    className={cn(
-                      "flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 text-[10px] font-black transition-colors",
-                      accessUi === "code" ? "bg-white text-[#1E4D35] shadow-sm" : "text-[#64748B] hover:text-[#0f2918]",
-                    )}
-                  >
-                    <KeyRound className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                    {isAr ? "خاص بكود" : "Code"}
-                  </button>
-                </div>
-                {accessUi === "code" && (
-                  <div className="mt-3">
-                    <Label className="mb-1 text-[10px] font-bold text-[#64748B]">{isAr ? "رمز الوصول" : "Access code"}</Label>
-                    <Input
-                      value={accessCode}
-                      onChange={(e) => setAccessCode(e.target.value)}
-                      dir="ltr"
-                      className="mt-1 min-h-[44px] rounded-xl border-2 text-center font-mono text-sm tracking-[0.15em]"
-                    />
+                <section className="rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-5 shadow-sm">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-1 items-start gap-3 text-right">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400" aria-hidden>
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-sm font-black text-slate-800 dark:text-slate-100">{isAr ? "مشاركة مع المعلمين" : "Share with teachers"}</p>
+                        <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                          {isAr
+                            ? "فعّلها إذا أردت أن يطلع زملاؤك على الدرس ويعيدوا استخدامه."
+                            : "Enable so colleagues can discover and reuse this lesson."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                      <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-emerald-600" />
+                    </div>
                   </div>
-                )}
-              </section>
-            </div>
+                </section>
+
+                <section className="rounded-3xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] p-5 shadow-sm">
+                  <h2 className="mb-3 text-right text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-2"><KeyRound className="w-4 h-4 text-emerald-500" />{isAr ? "وضع الوصول" : "Access"}</h2>
+                  <div className="flex rounded-xl border border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] p-1" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={accessUi === "public"}
+                      onClick={() => setAccessUi("public")}
+                      className={cn(
+                        "flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-lg px-2 text-xs font-black transition-colors",
+                        accessUi === "public" ? "bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-100/50 dark:border-emerald-800" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
+                      )}
+                    >
+                      <Globe className="h-4 w-4 shrink-0 opacity-80" />
+                      {isAr ? "عام" : "Public"}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={accessUi === "code"}
+                      onClick={() => {
+                        setAccessUi("code");
+                        if (!accessCode.trim()) setAccessCode(generateAccessCode());
+                      }}
+                      className={cn(
+                        "flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-lg px-2 text-xs font-black transition-colors",
+                        accessUi === "code" ? "bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-100/50 dark:border-emerald-800" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200",
+                      )}
+                    >
+                      <KeyRound className="h-4 w-4 shrink-0 opacity-80" />
+                      {isAr ? "خاص بكود" : "Code"}
+                    </button>
+                  </div>
+                  {accessUi === "code" && (
+                    <div className="mt-4">
+                      <Label className="mb-2 block text-xs font-bold text-slate-500">{isAr ? "رمز الوصول" : "Access code"}</Label>
+                      <Input
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.target.value)}
+                        dir="ltr"
+                        className="min-h-[44px] rounded-xl border-emerald-50 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] text-center font-mono text-sm tracking-[0.2em] focus:border-emerald-400 uppercase"
+                      />
+                    </div>
+                  )}
+                </section>
+              </div>
             </aside>
           </div>
-        </div>
+        </main>
 
         {/* Bottom Action Bar */}
         <footer
-          className={cn(
-            "fixed bottom-0 inset-x-0 z-40 border-t border-[#eef2ef] bg-[#fcfdfc]/95 backdrop-blur-md",
-            TRANSITION,
-          )}
-          style={{ borderColor: CARD_BORDER }}
+          className="fixed bottom-0 inset-x-0 z-40 border-t border-emerald-100/50 dark:border-emerald-900/30 bg-white/80 dark:bg-[#111A16]/80 backdrop-blur-xl transition-all"
           dir={isAr ? "rtl" : "ltr"}
         >
-          <div className="mx-auto flex w-full max-w-[1060px] flex-wrap items-center justify-center gap-1 px-3 py-1.5 sm:justify-between">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-2 px-4 py-3 sm:justify-between">
             <button
               type="button"
               onClick={() => setLocation(editId ? `/teacher/video-lesson/${editId}` : "/teacher")}
-              className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[11px] font-black text-[#374151] hover:bg-[#f9faf9] sm:flex-none"
+              className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#15201B] px-4 text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors sm:flex-none shadow-sm"
             >
-              <BackArrowIcon className="h-3.5 w-3.5" />
+              <BackArrowIcon className="h-4 w-4" />
               {isAr ? "رجوع" : "Back"}
             </button>
             <button
               type="button"
               onClick={saveDraftLocal}
-              className="flex min-h-[36px] flex-1 items-center justify-center rounded-lg border border-dashed border-[#dce8e0] px-3 text-[11px] font-bold text-[#64748B] hover:border-[#1E4D35]/25 hover:text-[#1E4D35] sm:flex-none"
+              className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-emerald-400 dark:hover:border-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors sm:flex-none"
             >
               {isAr ? "حفظ كمسودة" : "Save draft"}
             </button>
@@ -1837,23 +1761,16 @@ export default function CreateVideoLesson() {
               type="button"
               onClick={() => setPreviewOpen(true)}
               disabled={!isVideoValid() || questions.length === 0}
-              className="flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[11px] font-black text-[#1E4D35] hover:bg-[#f3f7f4] disabled:pointer-events-none disabled:opacity-40 sm:flex-none"
+              className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-100 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 text-xs font-black text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 disabled:pointer-events-none disabled:opacity-40 transition-colors sm:flex-none"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" />
               {isAr ? "معاينة الدرس" : "Preview"}
             </button>
             <button
               type="button"
               onClick={handlePublishClick}
               disabled={saving || !title.trim() || !isVideoValid() || questions.length === 0}
-              className={cn(
-                "flex min-h-[36px] flex-[1_1_140px] items-center justify-center gap-1.5 rounded-lg px-4 text-[11px] font-black text-white shadow-md disabled:pointer-events-none disabled:opacity-45 sm:min-w-[140px] sm:flex-none",
-                TRANSITION,
-              )}
-              style={{
-                background: `linear-gradient(90deg, ${BRAND} 0%, #225739 100%)`,
-                boxShadow: "0 4px 14px rgba(30, 77, 53, 0.18)",
-              }}
+              className="flex min-h-[44px] flex-[1_1_140px] items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 px-6 text-xs font-black text-white shadow-md disabled:pointer-events-none disabled:opacity-50 transition-all sm:min-w-[160px] sm:flex-none"
             >
               {saving ? (
                 <>
@@ -1874,26 +1791,25 @@ export default function CreateVideoLesson() {
         <Dialog open={qModalOpen} onOpenChange={(o) => { if (!o) { setQModalOpen(false); setDraftQ(null); setQModalIdx(null); } }}>
           <DialogContent
             className={cn(
-              "max-h-[min(90vh,720px)] overflow-y-auto rounded-[24px] border p-6 sm:max-w-xl",
-              isAr && "[&>button]:start-4 [&>button]:end-auto rtl:text-right",
+              "max-h-[min(90vh,720px)] overflow-y-auto rounded-[24px] border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-[#15201B] p-6 sm:max-w-xl",
+              isAr && "[&>button]:start-4 [&>button]:end-auto rtl:text-right"
             )}
-            style={{ borderColor: CARD_BORDER }}
             dir={isAr ? "rtl" : "ltr"}
           >
             <DialogHeader className={cn("space-y-2 text-right sm:text-right")}>
-              <DialogTitle className="text-xl font-black text-[#0f2918]">
+              <DialogTitle className="text-xl font-black text-slate-800 dark:text-slate-100">
                 {qModalIdx === null
                   ? isAr ? "سؤال جديد" : "New question"
                   : isAr ? "تعديل السؤال" : "Edit question"}
               </DialogTitle>
-              <DialogDescription className="text-[13px] leading-relaxed text-[#64748B]">
+              <DialogDescription className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
                 {isAr ? "اضبط التوقيت والنوع والدرجة ثم احفظ." : "Set time, type, and points, then save."}
               </DialogDescription>
             </DialogHeader>
             {draftQ && (
-              <div className="space-y-4 pt-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Label className="text-xs font-bold text-[#64748B]">{isAr ? "التوقيت" : "Timestamp"}</Label>
+              <div className="space-y-5 pt-2">
+                <div className="flex flex-wrap items-center gap-3 bg-[#f4f7f5] dark:bg-[#0B100E] p-4 rounded-2xl border border-emerald-50 dark:border-emerald-900/30">
+                  <Label className="text-xs font-bold text-slate-600 dark:text-slate-400">{isAr ? "التوقيت" : "Timestamp"}</Label>
                   <Input
                     value={formatTimestamp(draftQ.timestampSeconds)}
                     onChange={(e) => {
@@ -1901,20 +1817,21 @@ export default function CreateVideoLesson() {
                       if (p !== null) setDraftQ({ ...draftQ, timestampSeconds: p });
                     }}
                     dir="ltr"
-                    className="h-10 w-[5.5rem] rounded-xl border-2 text-center font-mono text-sm"
+                    className="h-10 w-[5.5rem] rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-[#15201B] text-center font-mono text-sm shadow-sm"
                   />
                   {isPlayerReady && (
                     <>
                       <button
                         type="button"
                         onClick={() => setDraftQ({ ...draftQ, timestampSeconds: getVideoTimestamp() })}
-                        className="text-xs font-black text-[#1E4D35] underline-offset-2 hover:underline"
+                        className="text-xs font-black text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-4 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/50 transition-colors"
                       >
+                        <Clock className="w-3.5 h-3.5" />
                         {isAr ? "استخدم موضع التشغيل" : "Use playhead"}
                       </button>
-                      <span className="w-full text-[11px] font-bold text-[#94a3ab] sm:w-auto">
+                      <span className="w-full text-[11px] font-bold text-slate-400 sm:w-auto">
                         {isAr ? "التشغيل الآن:" : "Now at:"}{" "}
-                        <span dir="ltr" className="font-mono tabular-nums text-[#1E4D35]">
+                        <span dir="ltr" className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-black">
                           {formatTimestamp(getVideoTimestamp())}
                         </span>
                       </span>
@@ -1922,35 +1839,37 @@ export default function CreateVideoLesson() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs font-bold text-[#64748B]">{isAr ? "نص السؤال" : "Question"} *</Label>
+                  <Label className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-400">{isAr ? "نص السؤال" : "Question"} *</Label>
                   <Textarea
                     value={draftQ.text}
                     onChange={(e) => setDraftQ({ ...draftQ, text: e.target.value })}
                     placeholder={isAr ? "اكتب السؤال…" : "Write the question…"}
                     rows={3}
-                    className={cn("mt-1 rounded-2xl border-2", isAr && FIELD_RTL)}
+                    className={cn("rounded-2xl border border-emerald-50 dark:border-emerald-900/30 bg-[#f4f7f5] dark:bg-[#0B100E] text-sm focus-visible:border-emerald-400 resize-none shadow-sm", isAr && FIELD_RTL)}
                     dir={isAr ? "rtl" : undefined}
                   />
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Label className="text-xs font-bold text-[#64748B]">{isAr ? "النوع" : "Type"}</Label>
-                  <select
-                    value={draftQ.questionType}
-                    onChange={(e) =>
-                      handleQuestionTypeDraft(e.target.value as VideoQuestion["questionType"])
-                    }
-                    className={cn(
-                      "min-h-10 flex-1 rounded-xl border-2 border-border bg-background px-3 text-sm font-bold focus:border-[#1E4D35]/35 focus:outline-none",
-                      isAr && FIELD_RTL,
-                    )}
-                    dir={isAr ? "rtl" : undefined}
-                  >
-                    <option value="mcq">{isAr ? "اختيار متعدد" : "Multiple choice"}</option>
-                    <option value="true_false">{isAr ? "صح أو خطأ" : "True / False"}</option>
-                    <option value="fill_blank">{isAr ? "إجابة قصيرة" : "Short answer"}</option>
-                  </select>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs font-bold text-[#64748B]">{isAr ? "درجة" : "Pts"}</Label>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex-1 min-w-[150px]">
+                    <Label className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-400">{isAr ? "النوع" : "Type"}</Label>
+                    <select
+                      value={draftQ.questionType}
+                      onChange={(e) =>
+                        handleQuestionTypeDraft(e.target.value as VideoQuestion["questionType"])
+                      }
+                      className={cn(
+                        "min-h-[44px] w-full rounded-xl border border-emerald-50 dark:border-emerald-900/30 bg-[#f4f7f5] dark:bg-[#0B100E] px-3 text-sm font-bold focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-400/10 outline-none transition-all shadow-sm",
+                        isAr && FIELD_RTL,
+                      )}
+                      dir={isAr ? "rtl" : undefined}
+                    >
+                      <option value="mcq">{isAr ? "اختيار متعدد" : "Multiple choice"}</option>
+                      <option value="true_false">{isAr ? "صح أو خطأ" : "True / False"}</option>
+                      <option value="fill_blank">{isAr ? "إجابة قصيرة" : "Short answer"}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-400">{isAr ? "درجة" : "Pts"}</Label>
                     <Input
                       type="number"
                       min={0}
@@ -1962,23 +1881,23 @@ export default function CreateVideoLesson() {
                           points: Math.max(0, parseFloat(e.target.value) || 0),
                         })
                       }
-                      className="h-10 w-20 rounded-xl border-2 text-center text-sm font-black tabular-nums"
+                      className="min-h-[44px] w-24 rounded-xl border border-emerald-50 dark:border-emerald-900/30 bg-[#f4f7f5] dark:bg-[#0B100E] text-center text-sm font-black tabular-nums shadow-sm focus:border-emerald-400"
                     />
                   </div>
                 </div>
 
                 {draftQ.questionType === "mcq" && (
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 bg-[#f4f7f5] dark:bg-[#0B100E] p-4 rounded-2xl border border-emerald-50 dark:border-emerald-900/30 mt-4">
                     {(["A", "B", "C", "D"] as const).map((opt) => (
                       <div key={opt} className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => setDraftQ({ ...draftQ, correctAnswer: opt })}
                           className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 text-xs font-black transition-colors",
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-black transition-colors shadow-sm",
                             draftQ.correctAnswer === opt
-                              ? "border-green-600 bg-green-600 text-white"
-                              : "border-[#e5e7eb] text-[#64748B]",
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#15201B] text-slate-400 hover:border-emerald-300 dark:hover:border-emerald-600",
                           )}
                         >
                           {opt}
@@ -1987,7 +1906,7 @@ export default function CreateVideoLesson() {
                           value={(draftQ[`option${opt}` as keyof VideoQuestion] as string) || ""}
                           onChange={(e) => setDraftQ({ ...draftQ, [`option${opt}`]: e.target.value })}
                           placeholder={`${isAr ? "خيار" : "Option"} ${opt}`}
-                          className={cn("rounded-xl border-2 text-sm", isAr && FIELD_RTL)}
+                          className={cn("min-h-[44px] rounded-xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] text-sm shadow-sm focus:border-emerald-400", isAr && FIELD_RTL)}
                           dir={isAr ? "rtl" : undefined}
                         />
                       </div>
@@ -1996,55 +1915,55 @@ export default function CreateVideoLesson() {
                 )}
 
                 {draftQ.questionType === "true_false" && (
-                  <div className="flex gap-3">
+                  <div className="flex gap-4 mt-4">
                     <button
                       type="button"
                       onClick={() => setDraftQ({ ...draftQ, correctAnswer: "true" })}
                       className={cn(
-                        "flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl border-2 py-3 text-sm font-black transition-colors",
+                        "flex min-h-[56px] flex-1 flex-col items-center justify-center rounded-2xl border-2 py-4 text-sm font-black transition-all shadow-sm",
                         draftQ.correctAnswer === "true"
-                          ? "border-green-600 bg-green-50 text-green-800"
-                          : "border-[#e5e7eb] text-[#64748B]",
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#15201B] text-slate-500 hover:border-emerald-300",
                       )}
                     >
-                      <CheckCircle2 className="mb-1 h-5 w-5" />
+                      <CheckCircle2 className={cn("mb-1.5 h-6 w-6", draftQ.correctAnswer === "true" ? "text-emerald-600 dark:text-emerald-400" : "")} />
                       {isAr ? "صح" : "True"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setDraftQ({ ...draftQ, correctAnswer: "false" })}
                       className={cn(
-                        "flex min-h-[44px] flex-1 flex-col items-center justify-center rounded-2xl border-2 py-3 text-sm font-black transition-colors",
+                        "flex min-h-[56px] flex-1 flex-col items-center justify-center rounded-2xl border-2 py-4 text-sm font-black transition-all shadow-sm",
                         draftQ.correctAnswer === "false"
-                          ? "border-red-500 bg-red-50 text-red-800"
-                          : "border-[#e5e7eb] text-[#64748B]",
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#15201B] text-slate-500 hover:border-red-300",
                       )}
                     >
-                      <X className="mb-1 h-5 w-5" />
+                      <X className={cn("mb-1.5 h-6 w-6", draftQ.correctAnswer === "false" ? "text-red-600 dark:text-red-400" : "")} />
                       {isAr ? "خطأ" : "False"}
                     </button>
                   </div>
                 )}
 
                 {draftQ.questionType === "fill_blank" && (
-                  <div>
-                    <Label className="text-xs font-bold text-[#64748B]">{isAr ? "الإجابة الصحيحة" : "Correct answer"}</Label>
+                  <div className="bg-[#f4f7f5] dark:bg-[#0B100E] p-4 rounded-2xl border border-emerald-50 dark:border-emerald-900/30 mt-4">
+                    <Label className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-400">{isAr ? "الإجابة الصحيحة" : "Correct answer"}</Label>
                     <Input
                       value={draftQ.correctAnswer}
                       onChange={(e) => setDraftQ({ ...draftQ, correctAnswer: e.target.value })}
                       placeholder={isAr ? "الإجابة المتوقعة" : "Expected answer"}
-                      className={cn("mt-1 rounded-xl border-2", isAr && FIELD_RTL)}
+                      className={cn("min-h-[44px] rounded-xl border border-emerald-50 dark:border-emerald-900/30 bg-white dark:bg-[#15201B] shadow-sm focus:border-emerald-400", isAr && FIELD_RTL)}
                       dir={isAr ? "rtl" : undefined}
                     />
                   </div>
                 )}
               </div>
             )}
-            <DialogFooter className="gap-2 sm:justify-start">
+            <DialogFooter className="gap-3 sm:justify-start pt-4 mt-6 border-t border-emerald-50 dark:border-emerald-900/30">
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-[44px] rounded-2xl border-2 font-bold"
+                className="min-h-[44px] rounded-xl border border-slate-200 dark:border-slate-800 font-bold bg-white dark:bg-[#15201B] hover:bg-slate-50 dark:hover:bg-slate-900/50 shadow-sm"
                 onClick={() => {
                   setQModalOpen(false);
                   setDraftQ(null);
@@ -2053,7 +1972,7 @@ export default function CreateVideoLesson() {
               >
                 {isAr ? "إلغاء" : "Cancel"}
               </Button>
-              <Button type="button" className="min-h-[44px] rounded-2xl font-black" onClick={commitQuestionModal}>
+              <Button type="button" className="min-h-[44px] rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 shadow-md text-white px-6" onClick={commitQuestionModal}>
                 {isAr ? "حفظ السؤال" : "Save question"}
               </Button>
             </DialogFooter>

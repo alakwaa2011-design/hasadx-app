@@ -1,21 +1,23 @@
 import { useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { Camera, ImagePlus, Keyboard, Zap, Loader2, X, BookOpen, ArrowLeft, History } from "lucide-react";
+import {
+  Camera, ImagePlus, Keyboard, Zap, Loader2, X, BookOpen, ArrowRight, ArrowLeft, History,
+  PenTool, Plane, Dna, Calculator, Moon, BookText, Tornado
+} from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { motion } from "framer-motion";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const SUGGESTED = [
-  { q: "كيف تعمل المحركات النفاثة؟",          color: "#f97316", icon: "✈️" },
-  { q: "ما الفرق بين DNA و RNA؟",              color: "#22c55e", icon: "🧬" },
-  { q: "حل: 3س² − 5س + 2 = 0",               color: "#6366f1", icon: "📐" },
-  { q: "لماذا يبدو القمر أكبر عند الأفق؟",    color: "#a855f7", icon: "🌕" },
-  { q: "ما الفرق بين الاستعارة والتشبيه؟",    color: "#0ea5e9", icon: "📖" },
-  { q: "كيف تتشكل الأعاصير؟",                 color: "#ec4899", icon: "🌪️" },
+  { q: "كيف تعمل المحركات النفاثة؟",          icon: Plane, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "ما الفرق بين DNA و RNA؟",              icon: Dna, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "حل: 3س² − 5س + 2 = 0",               icon: Calculator, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
+  { q: "لماذا يبدو القمر أكبر عند الأفق؟",    icon: Moon, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "ما الفرق بين الاستعارة والتشبيه؟",    icon: BookText, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "كيف تتشكل الأعاصير؟",                 icon: Tornado, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
 ];
-
-const ACCENT = "#7c3aed";
-const GLOW   = "rgba(124,58,237,.35)";
 
 type Tab = "text" | "image" | "camera";
 
@@ -26,6 +28,7 @@ const TAB_CFG = [
 ];
 
 export default function SmartBoardAsk() {
+  const { lang } = useI18n();
   const [, navigate] = useLocation();
   const [tab, setTab]           = useState<Tab>("text");
   const [question, setQuestion] = useState("");
@@ -100,246 +103,183 @@ export default function SmartBoardAsk() {
 
   return (
     <Layout>
-      {/* ── Global styles injected inline ── */}
-      <style>{`
-        @keyframes boardGlow { 0%,100% { box-shadow: 0 0 28px ${GLOW}; } 50% { box-shadow: 0 0 48px ${GLOW}, 0 0 80px rgba(124,58,237,.15); } }
-        @keyframes floatIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes spin { from { transform:rotate(0); } to { transform:rotate(360deg); } }
-        .sb-card { animation: floatIn .45s ease both; }
-        .sb-chip:hover { transform: translateY(-2px); }
-        .sb-submit:not(:disabled):hover { opacity:.92; transform:translateY(-1px); }
-        .sb-tab-active { background: ${ACCENT} !important; color: #fff !important; }
-      `}</style>
+      <div className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] font-display pb-32" dir={lang === "ar" ? "rtl" : "ltr"}>
+        
+        {/* Header */}
+        <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+          <button
+            onClick={() => navigate("/teacher/smart-board")}
+            className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+            title="رجوع"
+          >
+            {lang === "ar" ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+          </button>
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+              <PenTool className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
+                السبورة الذكية السريعة
+              </h1>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
+                اكتب سؤالك أو صوّر مسألة — والسبورة تشرح بصوت ورسم
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/teacher/smart-board/history")}
+              className="hidden sm:flex items-center gap-2 bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-xs font-black text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+            >
+              <History size={16} /> السجل
+            </button>
+            <button
+              onClick={() => navigate("/teacher/smart-board/lessons")}
+              className="hidden sm:flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/50 rounded-xl px-4 py-2 text-xs font-black text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+            >
+              <BookOpen size={16} /> الدروس المحفوظة
+            </button>
+          </div>
+        </header>
 
-      <div dir="rtl" style={{ maxWidth: 660, margin: "0 auto", padding: "28px 16px 56px" }}>
-
-        {/* ── Header ── */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          {/* Icon badge */}
-          <div style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 64, height: 64, borderRadius: 20, marginBottom: 16,
-            background: `linear-gradient(135deg, ${ACCENT}, #4f46e5)`,
-            boxShadow: `0 8px 32px ${GLOW}`,
-            fontSize: 28,
-          }}>🖊️</div>
-
-          <h1 style={{
-            fontSize: 36, fontWeight: 900, margin: "0 0 8px",
-            background: "linear-gradient(135deg, var(--foreground) 40%, #a78bfa)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}>
-            السبورة الذكية
-          </h1>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 15, margin: 0 }}>
-            اكتب سؤالك أو صوّر مسألة — والسبورة تشرح بصوت ورسم
-          </p>
-        </div>
-
-        {/* ── Main card ── */}
-        <div className="sb-card" style={{
-          background: "var(--card)",
-          border: `1.5px solid rgba(124,58,237,.25)`,
-          borderRadius: 24,
-          padding: "6px",
-          boxShadow: `0 4px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(124,58,237,.08)`,
-        }}>
-          <div style={{ background: "var(--background)", borderRadius: 20, padding: "20px 20px 22px", position: "relative" }}>
-
-            {/* Tab switcher — pill style */}
-            <div style={{
-              display: "inline-flex", background: "var(--muted)", borderRadius: 12,
-              padding: 4, gap: 2, marginBottom: 22,
-            }}>
-              {TAB_CFG.map(({ key, Icon, label }) => (
-                <button key={key} onClick={() => switchTab(key)}
-                  className={tab === key ? "sb-tab-active" : ""}
-                  style={{
-                    padding: "8px 18px", border: "none", borderRadius: 9, cursor: "pointer",
-                    fontFamily: "'Tajawal',sans-serif", fontSize: 13, fontWeight: 600,
-                    background: "transparent", color: "var(--muted-foreground)",
-                    display: "flex", alignItems: "center", gap: 6, transition: "all .18s",
-                  }}>
-                  <Icon size={15} />
-                  {label}
-                </button>
-              ))}
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+          <div className="bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 rounded-3xl p-5 sm:p-8 shadow-sm">
+            
+            <div className="flex bg-[#f4f7f5] dark:bg-[#0B100E] p-1.5 rounded-2xl mb-6 border border-emerald-50 dark:border-emerald-900/30">
+              {TAB_CFG.map(({ key, Icon, label }) => {
+                const active = tab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => switchTab(key)}
+                    className={`flex-1 relative flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-black transition-colors z-10 ${
+                      active ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute inset-0 bg-white dark:bg-[#15201B] shadow-sm rounded-xl border border-emerald-100 dark:border-emerald-900/30"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-20 flex items-center gap-2">
+                      <Icon size={16} />
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* ── Text tab ── */}
-            {tab === "text" && (
-              <textarea
-                autoFocus
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) ask(); }}
-                placeholder={"اكتب سؤالك هنا…\nمثل: كيف تعمل الخلية الشمسية؟  أو  حل: س² + 4س − 12 = 0"}
-                rows={5}
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  background: "var(--muted)", border: "1.5px solid transparent",
-                  borderRadius: 14, padding: "14px 16px", resize: "none",
-                  fontFamily: "'Tajawal',sans-serif", fontSize: 16, lineHeight: 1.7,
-                  color: "var(--foreground)", outline: "none", transition: "border-color .15s",
-                }}
-                onFocus={e => e.target.style.borderColor = ACCENT}
-                onBlur={e => e.target.style.borderColor = "transparent"}
-              />
-            )}
+            <div className="min-h-[220px]">
+              {tab === "text" && (
+                <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-1 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all">
+                  <textarea
+                    autoFocus
+                    value={question}
+                    onChange={e => setQuestion(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) ask(); }}
+                    placeholder={"اكتب سؤالك هنا…\nمثال: كيف تعمل الخلية الشمسية؟\nأو حل: س² + 4س − 12 = 0"}
+                    rows={6}
+                    className="w-full bg-transparent border-none p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none resize-none leading-relaxed"
+                  />
+                </div>
+              )}
 
-            {/* ── Image tab ── */}
-            {tab === "image" && (
-              imgPrev ? (
-                <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
-                  <img src={imgPrev} style={{ width: "100%", maxHeight: 280, objectFit: "contain", background: "#000", display: "block" }} />
-                  <button onClick={clearImage} style={{
-                    position: "absolute", top: 10, left: 10,
-                    background: "rgba(0,0,0,.7)", border: "none", borderRadius: "50%",
-                    width: 32, height: 32, cursor: "pointer", color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}><X size={15} /></button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    border: `2px dashed rgba(124,58,237,.35)`, borderRadius: 14,
-                    padding: "44px 20px", cursor: "pointer", textAlign: "center",
-                    transition: "border-color .15s, background .15s",
-                    background: "rgba(124,58,237,.04)",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.background = "rgba(124,58,237,.08)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(124,58,237,.35)"; e.currentTarget.style.background = "rgba(124,58,237,.04)"; }}
-                >
-                  <ImagePlus size={36} color={ACCENT} style={{ opacity: .6, marginBottom: 10 }} />
-                  <p style={{ color: "var(--foreground)", fontWeight: 700, margin: "0 0 4px", fontSize: 15 }}>اضغط لرفع صورة المسألة</p>
-                  <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 13 }}>PNG · JPG · WEBP</p>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
-                </div>
-              )
-            )}
-
-            {/* ── Camera tab ── */}
-            {tab === "camera" && (
-              imgPrev ? (
-                <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
-                  <img src={imgPrev} style={{ width: "100%", maxHeight: 280, objectFit: "contain", display: "block" }} />
-                  <button onClick={() => { clearImage(); startCamera(); }} style={{
-                    position: "absolute", top: 10, left: 10,
-                    background: "rgba(0,0,0,.7)", border: "none", borderRadius: "50%",
-                    width: 32, height: 32, cursor: "pointer", color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}><X size={15} /></button>
-                </div>
-              ) : (
-                <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", background: "#050505", minHeight: 240 }}>
-                  <video ref={videoRef} style={{ width: "100%", display: "block", maxHeight: 300 }} playsInline muted />
-                  {camReady ? (
-                    <button onClick={capturePhoto} style={{
-                      position: "absolute", bottom: 18, left: "50%", transform: "translateX(-50%)",
-                      background: "white", border: "5px solid rgba(255,255,255,.3)",
-                      borderRadius: "50%", width: 64, height: 64, cursor: "pointer",
-                      boxShadow: "0 4px 20px rgba(0,0,0,.5)",
-                    }} title="التقط صورة" />
-                  ) : (
-                    <div style={{
-                      position: "absolute", inset: 0, display: "flex", alignItems: "center",
-                      justifyContent: "center", gap: 8, color: "rgba(255,255,255,.4)", fontSize: 14,
-                    }}>
-                      <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-                      جارٍ تشغيل الكاميرا…
+              {tab === "image" && (
+                imgPrev ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-emerald-100 dark:border-emerald-800/50 bg-[#f4f7f5] dark:bg-[#0B100E]">
+                    <img src={imgPrev} className="w-full max-h-[300px] object-contain block" />
+                    <button onClick={clearImage} className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 backdrop-blur text-slate-700 dark:text-slate-200 rounded-full p-2 hover:bg-red-50 hover:text-red-500 transition-colors shadow-sm">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileRef.current?.click()}
+                    className="border-2 border-dashed border-emerald-200 dark:border-emerald-800/50 rounded-2xl p-12 cursor-pointer text-center hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all flex flex-col items-center justify-center gap-4"
+                  >
+                    <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <ImagePlus size={28} />
                     </div>
-                  )}
-                </div>
-              )
+                    <div>
+                      <p className="text-slate-700 dark:text-slate-200 font-black mb-1">اضغط لرفع صورة المسألة</p>
+                      <p className="text-slate-400 dark:text-slate-500 text-xs font-bold">PNG · JPG · WEBP</p>
+                    </div>
+                    <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+                  </div>
+                )
+              )}
+
+              {tab === "camera" && (
+                imgPrev ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-emerald-100 dark:border-emerald-800/50 bg-[#f4f7f5] dark:bg-[#0B100E]">
+                    <img src={imgPrev} className="w-full max-h-[300px] object-contain block" />
+                    <button onClick={() => { clearImage(); startCamera(); }} className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 backdrop-blur text-slate-700 dark:text-slate-200 rounded-full p-2 hover:bg-red-50 hover:text-red-500 transition-colors shadow-sm">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative rounded-2xl overflow-hidden bg-black min-h-[300px] flex items-center justify-center border border-slate-800">
+                    <video ref={videoRef} className="w-full max-h-[400px] object-contain block" playsInline muted />
+                    {camReady ? (
+                      <button onClick={capturePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white border-4 border-white/30 rounded-full w-16 h-16 cursor-pointer hover:scale-105 transition-transform shadow-lg shadow-black/50" title="التقط صورة" />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/50 text-sm font-bold">
+                        <Loader2 size={24} className="animate-spin" />
+                        جارٍ تشغيل الكاميرا…
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+
+            {error && (
+              <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl p-3 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2">
+                <X size={16} /> {error}
+              </div>
             )}
 
-            {error && <p style={{ color: "#f87171", fontSize: 13, marginTop: 10, marginBottom: 0 }}>{error}</p>}
-
-            {/* ── Submit ── */}
             <button
-              className="sb-submit"
               onClick={() => ask()}
               disabled={!ready}
-              style={{
-                width: "100%", marginTop: 16,
-                background: ready ? `linear-gradient(135deg, ${ACCENT}, #4f46e5)` : "var(--muted)",
-                color: ready ? "#fff" : "var(--muted-foreground)",
-                border: "none", borderRadius: 14, padding: "16px",
-                fontFamily: "'Tajawal',sans-serif", fontSize: 17, fontWeight: 800,
-                cursor: ready ? "pointer" : "not-allowed",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                transition: "all .18s",
-                boxShadow: ready ? `0 4px 20px ${GLOW}` : "none",
-                animation: ready ? "boardGlow 2.5s ease-in-out infinite" : "none",
-              }}>
-              {loading
-                ? <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
-                : <Zap size={19} style={{ fill: "currentColor" }} />}
-              {loading ? "جارٍ التحليل والشرح…" : "اعرض على السبورة"}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 text-white rounded-xl py-4 font-black shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5 mt-6"
+            >
+              {loading ? (
+                <><Loader2 size={18} className="animate-spin" /> <span>جارٍ التحليل والشرح…</span></>
+              ) : (
+                <><Zap size={18} /> <span>اعرض على السبورة</span></>
+              )}
             </button>
           </div>
-        </div>
 
-        {/* ── Saved lessons + suggestion header ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 32, marginBottom: 14 }}>
-          <span style={{ color: "var(--muted-foreground)", fontSize: 13, display: "flex", alignItems: "center", gap: 5 }}>
-            <Zap size={13} color={ACCENT} />
-            جرّب سؤالاً:
-          </span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => navigate("/teacher/smart-board/history")}
-              style={{
-                background: "transparent", border: `1px solid var(--border)`, borderRadius: 8,
-                color: "var(--muted-foreground)", cursor: "pointer", padding: "5px 12px",
-                fontFamily: "'Tajawal',sans-serif", fontSize: 12,
-                display: "flex", alignItems: "center", gap: 5, transition: "color .15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--foreground)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--muted-foreground)"}>
-              <History size={13} />
-              السجل
-            </button>
-            <button onClick={() => navigate("/teacher/smart-board/lessons")}
-              style={{
-                background: "transparent", border: `1px solid var(--border)`, borderRadius: 8,
-                color: "var(--muted-foreground)", cursor: "pointer", padding: "5px 12px",
-                fontFamily: "'Tajawal',sans-serif", fontSize: 12,
-                display: "flex", alignItems: "center", gap: 5, transition: "color .15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--foreground)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--muted-foreground)"}>
-              <BookOpen size={13} />
-              الدروس المحفوظة
-              <ArrowLeft size={11} />
-            </button>
+          <div className="flex items-center gap-4 mt-12 mb-6">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent" />
+            <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 px-2 flex items-center gap-1.5">
+              <Zap size={16} className="text-amber-500" /> جرّب سؤالاً
+            </h3>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent" />
           </div>
-        </div>
 
-        {/* ── Suggested questions ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {SUGGESTED.map(({ q, color, icon }) => (
-            <button key={q} className="sb-chip"
-              onClick={() => { setTab("text"); setQuestion(q); ask(q); }}
-              style={{
-                background: "var(--card)", border: `1px solid var(--border)`,
-                borderRight: `3.5px solid ${color}`,
-                borderRadius: 12, padding: "11px 14px", cursor: "pointer",
-                fontFamily: "'Tajawal',sans-serif", fontSize: 13, fontWeight: 500,
-                color: "var(--foreground)", textAlign: "right",
-                display: "flex", alignItems: "center", gap: 8,
-                transition: "transform .15s, box-shadow .15s, border-color .15s",
-                boxShadow: "0 1px 4px rgba(0,0,0,.04)",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,.08), inset 0 0 0 1000px ${color}08`; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,.04)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
-              <span style={{ lineHeight: 1.4 }}>{q}</span>
-            </button>
-          ))}
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {SUGGESTED.map(({ q, color, bg, border, icon: Icon }) => (
+              <button
+                key={q}
+                onClick={() => { setTab("text"); setQuestion(q); ask(q); }}
+                className={`group flex items-center gap-4 bg-white dark:bg-[#15201B] border border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-start transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 hover:-translate-y-0.5`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${bg} ${color}`}>
+                  <Icon size={20} />
+                </div>
+                <span className="text-sm font-black text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{q}</span>
+              </button>
+            ))}
+          </div>
 
+        </main>
       </div>
     </Layout>
   );
