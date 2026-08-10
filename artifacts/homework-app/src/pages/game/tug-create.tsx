@@ -98,13 +98,13 @@ export default function TugCreate() {
         const r = await fetch(`${API_BASE}/api/assignments/${parsedId}`, { credentials: "include" });
         if (!r.ok) return;
         const data = await r.json();
-        type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string };
+        type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; imageUrl?: string | null };
         const qs = ((data.questions || []) as RawQ[])
           .filter(q => q.questionType === "mcq" && !!q.optionA && !!q.optionB && !!q.optionC && !!q.optionD && !!q.correctAnswer)
           .map(q => bankToTug({
             id: 0, subject: data.subject || "", text: q.text || "",
             optionA: q.optionA || "", optionB: q.optionB || "", optionC: q.optionC || "", optionD: q.optionD || "",
-            correctAnswer: q.correctAnswer || "A", points: 1, tags: null,
+            correctAnswer: q.correctAnswer || "A", points: 1, tags: null, imageUrl: q.imageUrl || null,
           } as BankQuestion))
           .slice(0, 20);
         if (qs.length > 0) {

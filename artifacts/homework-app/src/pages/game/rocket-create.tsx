@@ -27,6 +27,7 @@ interface RocketQuestion {
   options: string[];
   correct: number;
   correctText?: string;
+  imageUrl?: string | null;
 }
 
 interface BankQuestion {
@@ -40,6 +41,7 @@ interface BankQuestion {
   correctAnswer: string | null;
   points: number;
   tags: string | null;
+  imageUrl?: string | null;
 }
 
 const correctAnswerToIndex = (ca: string | null): number => {
@@ -52,6 +54,7 @@ const bankToRocket = (bq: BankQuestion): RocketQuestion => ({
   type: "mcq",
   options: [bq.optionA || "", bq.optionB || "", bq.optionC || "", bq.optionD || ""],
   correct: correctAnswerToIndex(bq.correctAnswer),
+  imageUrl: bq.imageUrl || null,
 });
 
 function StarField() {
@@ -136,13 +139,13 @@ export default function RocketCreate() {
         const r = await fetch(`${API_BASE}/api/assignments/${parsedId}`, { credentials: "include" });
         if (!r.ok) return;
         const data = await r.json();
-        type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string };
+        type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; imageUrl?: string | null };
         const qs = ((data.questions || []) as RawQ[])
           .filter(q => q.questionType === "mcq" && !!q.optionA && !!q.optionB && !!q.optionC && !!q.optionD && !!q.correctAnswer)
           .map(q => bankToRocket({
             id: 0, subject: data.subject || "", text: q.text || "",
             optionA: q.optionA || "", optionB: q.optionB || "", optionC: q.optionC || "", optionD: q.optionD || "",
-            correctAnswer: q.correctAnswer || "A", points: 1, tags: null,
+            correctAnswer: q.correctAnswer || "A", points: 1, tags: null, imageUrl: q.imageUrl || null,
           } as BankQuestion))
           .slice(0, 30);
         if (qs.length > 0) {
@@ -249,10 +252,10 @@ export default function RocketCreate() {
       const qs = (data.questions || [])
         .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
           q.questionType === "mcq" && q.optionA && q.correctAnswer)
-        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => bankToRocket({
+        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; imageUrl?: string | null }) => bankToRocket({
           id: q.id, subject: data.subject || "", text: q.text,
           optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-          correctAnswer: q.correctAnswer, points: 1, tags: null,
+          correctAnswer: q.correctAnswer, points: 1, tags: null, imageUrl: q.imageUrl || null,
         } as BankQuestion));
       if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد" : "No MCQ questions found"); return; }
       setQuestions(qs.slice(0, 30));

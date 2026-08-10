@@ -13,6 +13,7 @@ export interface RocketQuestion {
   correct: number;            // index for mcq/tf; -1 for fill_blank (uses correctText)
   correctText?: string;       // for fill_blank: the canonical answer
   duration: number;           // seconds
+  imageUrl?: string | null;   // optional question image
 }
 
 export interface RocketPlayer {
@@ -396,6 +397,7 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
         type: q.type,
         options: q.options,
         duration: q.duration,
+        imageUrl: q.imageUrl || null,
       },
     });
 
@@ -486,6 +488,7 @@ export function setupRocketSocket(io: Server) {
             correct: q.correct,
             correctText: q.correctText,
             duration,
+            imageUrl: typeof q.imageUrl === "string" && q.imageUrl ? q.imageUrl.slice(0, 2000) : null,
           }));
 
           const advanceMode: "per_player" | "host_sync" =
@@ -551,7 +554,7 @@ export function setupRocketSocket(io: Server) {
           syncQuestionIdx: game.syncQuestionIdx,
           currentQuestionPreview:
             syncQ !== undefined
-              ? { index: game.syncQuestionIdx, text: syncQ.text }
+              ? { index: game.syncQuestionIdx, text: syncQ.text, imageUrl: syncQ.imageUrl || null }
               : undefined,
         });
       },
@@ -633,6 +636,7 @@ export function setupRocketSocket(io: Server) {
                       type: firstQ.type,
                       options: firstQ.options,
                       duration: firstQ.duration,
+                      imageUrl: firstQ.imageUrl || null,
                     }
                   : undefined,
               });
@@ -697,6 +701,7 @@ export function setupRocketSocket(io: Server) {
                   type: q.type,
                   options: q.options,
                   duration: q.duration,
+                  imageUrl: q.imageUrl || null,
                 }
               : null,
             finished: false,
@@ -786,6 +791,7 @@ export function setupRocketSocket(io: Server) {
                   type: freshQ.type,
                   options: freshQ.options,
                   duration: freshQ.duration,
+                  imageUrl: freshQ.imageUrl || null,
                 }
               : null,
         });
@@ -977,6 +983,7 @@ export function setupRocketSocket(io: Server) {
               type: nextQ.type,
               options: nextQ.options,
               duration: nextQ.duration,
+              imageUrl: nextQ.imageUrl || null,
             });
           }
         }, delay);
@@ -1010,6 +1017,7 @@ export function setupRocketSocket(io: Server) {
         type: nq.type,
         options: nq.options,
         duration: nq.duration,
+        imageUrl: nq.imageUrl || null,
       });
       rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
         players: getPlayerList(game),

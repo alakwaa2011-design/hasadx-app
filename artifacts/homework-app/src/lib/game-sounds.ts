@@ -371,50 +371,52 @@ export function playVictoryFanfare() {
       } catch {}
     }
 
-    // ── PHASE 1: Joyful 4-note fanfare stab (0 – 0.9s) ──────────────────
-    // C5 → E5 → G5 → C6  (classic "ta-ta-ta-TAAA!" shape)
-    note(523,  0.00, 0.20, 0.30, "sine"); // C5
-    note(659,  0.22, 0.20, 0.30, "sine"); // E5
-    note(784,  0.44, 0.20, 0.32, "sine"); // G5
-    note(1047, 0.66, 0.60, 0.34, "sine"); // C6 — held with warmth
+    // ── Warm "results reveal" chime (~3s total) ─────────────────────────
+    // Design goals: celebratory but gentle — a soft rising phrase that
+    // settles into a warm major-chord swell, finished with two quiet bells.
+    // No drums, no long cascades, everything fades naturally.
 
-    // Soft harmony under the held C6
-    chord([659, 784], 0.66, 0.60, 0.10, "triangle");
+    // Phase 1 (0 – 0.75s): gentle 3-note pickup — G4 → C5 → E5
+    note(392, 0.00, 0.24, 0.16, "sine");   // G4
+    note(523, 0.24, 0.24, 0.18, "sine");   // C5
+    note(659, 0.48, 0.30, 0.20, "sine");   // E5
+    // soft octave glow under the pickup
+    note(196, 0.00, 0.78, 0.06, "triangle");
 
-    tick(0.00, 0.09); tick(0.22, 0.08); tick(0.44, 0.08); tick(0.66, 0.11);
+    tick(0.24, 0.05); tick(0.48, 0.06);
 
-    // ── PHASE 2: Happy rising cascade (1.35 – 2.55s) ─────────────────────
-    // Duolingo/Kahoot-style: quick bright arpeggio up the scale
-    const cascade = [523, 587, 659, 784, 880, 988, 1047, 1175, 1319, 1568];
-    cascade.forEach((f, i) => {
-      note(f, 1.35 + i * 0.11, 0.20, 0.24 + i * 0.004, "sine");
-    });
-    // Subtle octave shimmer alongside each note
-    cascade.forEach((f, i) => {
-      note(f * 2, 1.35 + i * 0.11, 0.12, 0.05, "sine");
-    });
+    // Phase 2 (0.78 – 2.6s): warm C-major swell — slow attack, long release
+    function swell(freq: number, t: number, dur: number, vol: number, type: OscillatorType) {
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass"; lp.frequency.value = 2400; // round off any edge
+        osc.connect(lp); lp.connect(gain); gain.connect(master);
+        osc.type = type;
+        osc.frequency.value = freq;
+        const at = now + t;
+        gain.gain.setValueAtTime(0, at);
+        gain.gain.linearRampToValueAtTime(vol, at + 0.28);        // slow, soft attack
+        gain.gain.setValueAtTime(vol, at + dur * 0.45);
+        gain.gain.exponentialRampToValueAtTime(0.001, at + dur);  // long natural fade
+        osc.start(at); osc.stop(at + dur + 0.05);
+      } catch {}
+    }
+    swell(262, 0.78, 1.9, 0.09, "triangle"); // C4
+    swell(330, 0.78, 1.9, 0.08, "triangle"); // E4
+    swell(392, 0.78, 1.9, 0.08, "triangle"); // G4
+    swell(523, 0.78, 1.9, 0.10, "sine");     // C5
+    swell(784, 0.82, 1.7, 0.05, "sine");     // G5 shimmer, slightly delayed
 
-    tick(1.35, 0.09); tick(1.80, 0.09); tick(2.25, 0.10);
+    // Melody resolution riding softly on the swell: E5 → G5 → C6 (held)
+    note(659,  0.86, 0.24, 0.16, "sine");
+    note(784,  1.12, 0.24, 0.16, "sine");
+    note(1047, 1.38, 1.10, 0.17, "sine"); // C6 — gentle held finish
 
-    // ── PHASE 3: Warm victory chord + heroic melody (2.65 – 4.5s) ────────
-    // Full warm C-major chord — triangle for softness, no harsh square waves
-    chord([330, 392, 523, 659], 2.65, 1.75, 0.13, "triangle");
-    chord([523, 659, 784],      2.65, 1.75, 0.11, "sine");
-
-    // Heroic 5-note melody riding over the chord
-    note(1047, 2.65, 0.22, 0.30, "sine"); // C6
-    note(880,  2.90, 0.20, 0.27, "sine"); // A5
-    note(988,  3.13, 0.20, 0.27, "sine"); // B5
-    note(1047, 3.36, 0.28, 0.31, "sine"); // C6
-    note(1319, 3.67, 1.05, 0.29, "sine"); // E6 — long bright final note, fades naturally
-
-    tick(2.65, 0.10); tick(3.10, 0.09); tick(3.67, 0.11);
-
-    // ── BELLS / SPARKLE sprinkled throughout ─────────────────────────────
-    [0.66, 1.35, 2.25, 2.65, 3.36, 3.67].forEach(t => {
-      note(2093 + Math.random() * 350, t,        0.22, 0.06, "sine");
-      note(2637 + Math.random() * 250, t + 0.07, 0.16, 0.04, "sine");
-    });
+    // Phase 3: two quiet celebratory bells, well-spaced, low volume
+    note(1568, 1.42, 0.35, 0.045, "sine"); // G6
+    note(2093, 1.75, 0.45, 0.035, "sine"); // C7
   } catch {}
 }
 
