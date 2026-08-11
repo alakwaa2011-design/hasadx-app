@@ -93,7 +93,7 @@ async function requireAdmin(req: any, res: any): Promise<boolean> {
   return true;
 }
 
-const ALLOWED_QUESTION_TYPES = ["mcq", "true_false"] as const;
+const ALLOWED_QUESTION_TYPES = ["mcq", "true_false", "fill_blank"] as const;
 type SoloQuestionType = typeof ALLOWED_QUESTION_TYPES[number];
 
 type SoloQuestion = {
@@ -103,7 +103,8 @@ type SoloQuestion = {
   optionB: string;
   optionC: string;
   optionD: string;
-  correctAnswer: "A" | "B" | "C" | "D";
+  /** For mcq/true_false: "A"|"B"|"C"|"D". For fill_blank: answer text (alternatives separated by "|"). */
+  correctAnswer: string;
   /** 1=easy, 2=medium, 3=hard — matches questions.difficulty column */
   difficulty?: number | null;
   /** Audio source: object-storage path or "yt:VIDEO_ID" */
@@ -117,27 +118,45 @@ function validateQuestions(raw: unknown): SoloQuestion[] | null {
     if (!q || typeof q !== "object") continue;
     const obj = q as Record<string, unknown>;
     if (typeof obj.text !== "string" || !obj.text.trim()) continue;
-    if (!["A","B","C","D"].includes(obj.correctAnswer as string)) continue;
     const rawDiff = Number(obj.difficulty);
     const rawType = obj.questionType as string;
     const questionType: SoloQuestionType = ALLOWED_QUESTION_TYPES.includes(rawType as SoloQuestionType)
       ? rawType as SoloQuestionType
       : "mcq";
-    // For true_false questions auto-fill options so they're never blank
-    const isTF = questionType === "true_false";
     const rawAudio = obj.audioUrl;
     const audioUrl: string | null = (typeof rawAudio === "string" && rawAudio.trim()) ? rawAudio.trim() : null;
-    valid.push({
-      text: (obj.text as string).trim(),
-      questionType,
-      optionA: isTF ? "صح"  : (typeof obj.optionA === "string" ? obj.optionA.trim() : ""),
-      optionB: isTF ? "خطأ" : (typeof obj.optionB === "string" ? obj.optionB.trim() : ""),
-      optionC: isTF ? ""    : (typeof obj.optionC === "string" ? obj.optionC.trim() : ""),
-      optionD: isTF ? ""    : (typeof obj.optionD === "string" ? obj.optionD.trim() : ""),
-      correctAnswer: obj.correctAnswer as "A"|"B"|"C"|"D",
-      difficulty: [1, 2, 3].includes(rawDiff) ? rawDiff : null,
-      audioUrl,
-    });
+
+    if (questionType === "fill_blank") {
+      // correctAnswer holds the full pipe-separated accepted-answers string
+      const fillText = typeof obj.correctAnswer === "string" ? obj.correctAnswer.trim() : "";
+      if (!fillText) continue; // must have at least one accepted answer
+      valid.push({
+        text: (obj.text as string).trim(),
+        questionType: "fill_blank",
+        optionA: "",
+        optionB: "",
+        optionC: "",
+        optionD: "",
+        correctAnswer: fillText,
+        difficulty: [1, 2, 3].includes(rawDiff) ? rawDiff : null,
+        audioUrl,
+      });
+    } else {
+      if (!["A","B","C","D"].includes(obj.correctAnswer as string)) continue;
+      // For true_false questions auto-fill options so they're never blank
+      const isTF = questionType === "true_false";
+      valid.push({
+        text: (obj.text as string).trim(),
+        questionType,
+        optionA: isTF ? "صح"  : (typeof obj.optionA === "string" ? obj.optionA.trim() : ""),
+        optionB: isTF ? "خطأ" : (typeof obj.optionB === "string" ? obj.optionB.trim() : ""),
+        optionC: isTF ? ""    : (typeof obj.optionC === "string" ? obj.optionC.trim() : ""),
+        optionD: isTF ? ""    : (typeof obj.optionD === "string" ? obj.optionD.trim() : ""),
+        correctAnswer: obj.correctAnswer as "A"|"B"|"C"|"D",
+        difficulty: [1, 2, 3].includes(rawDiff) ? rawDiff : null,
+        audioUrl,
+      });
+    }
   }
   return valid.length > 0 ? valid : null;
 }
@@ -329,8 +348,8 @@ router.post("/solo-challenges", async (req, res) => {
   }
 });
 
-// ── GET /api/solo-challenges/by-assignment/:assignmentId  (teacher) ─────────
-router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
+// ── POST /api/solo-challenges/standalone  (teacher: create with custom questions) ──
+router.post("/solo-challenges/standalone", async (req, res) => {
   try {
     const teacherId = requireTeacher(req, res);
     if (!teacherId) return;
