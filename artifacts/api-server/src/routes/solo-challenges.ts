@@ -707,8 +707,8 @@ router.delete("/solo-challenges/:slug", async (req, res) => {
   }
 });
 
-// ── GET /api/solo-challenges/:slug/leaderboard  (public: top scores) ─────────
-router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
+// ── GET /api/solo-challenges/:slug  (public: challenge details) ──────────────
+router.get("/solo-challenges/:slug", async (req, res) => {
   try {
     const slug = req.params.slug;
     const [challenge] = await db

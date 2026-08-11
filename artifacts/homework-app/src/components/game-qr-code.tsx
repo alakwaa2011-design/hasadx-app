@@ -47,7 +47,7 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
       ctx.fillRect(0, 0, 300, 300);
       ctx.drawImage(img, 0, 0, 300, 300);
       const a = document.createElement("a");
-      a.download = `game-qr-${pin}.png`;
+      a.download = `game-qr-${pin || 'challenge'}.png`;
       a.href = canvas.toDataURL("image/png");
       a.click();
     };
@@ -61,7 +61,7 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-sm transition-all ${
           variant === "dark"
             ? "bg-white/15 hover:bg-white/25 text-white border border-white/20"
-            : "bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-800/40 text-purple-700 dark:text-purple-300"
+            : "bg-primary/10 hover:bg-primary/20 text-primary"
         }`}
       >
         <QrCode className="w-4 h-4" />
@@ -82,15 +82,15 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.85, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-5 max-w-xs w-full"
+              className="bg-card rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-5 max-w-xs w-full border border-border"
             >
               <div className="flex items-center justify-between w-full">
-                <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                  <QrCode className="w-5 h-5 text-purple-500" />
+                <h3 className="text-lg font-black text-foreground flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-primary" />
                   باركود اللعبة
                 </h3>
-                <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <X className="w-5 h-5 text-gray-500" />
+                <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-muted transition-colors">
+                  <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
 
@@ -99,15 +99,17 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
               </div>
 
               <div className="text-center">
-                <p className="text-3xl font-black tracking-[0.3em] text-purple-700 dark:text-purple-300 font-mono" dir="ltr">
-                  {pin}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all max-w-[240px]">{url}</p>
+                {pin && (
+                  <p className="text-3xl font-black tracking-[0.3em] text-primary font-mono mb-1" dir="ltr">
+                    {pin}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground break-all max-w-[240px]">{url}</p>
               </div>
 
               <button
                 onClick={downloadQR}
-                className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex items-center justify-center gap-2 transition-colors"
               >
                 <Download className="w-4 h-4" />
                 تحميل الباركود

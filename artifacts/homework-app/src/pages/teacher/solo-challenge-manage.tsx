@@ -6,11 +6,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Zap, ChevronLeft, Copy, Share2, ExternalLink, Users, Clock,
+  Target, ChevronLeft, Copy, Share2, ExternalLink, Users, Clock,
   Trophy, FileText, Calendar, CheckCircle, XCircle, Trash2,
-  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw, Volume2, VolumeX, Music,
+  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw, Volume2, VolumeX, Music, AlertCircle, Settings
 } from "lucide-react";
 import AudioPicker from "@/components/AudioPicker";
+import { QRModalButton } from "@/components/game-qr-code";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -238,7 +239,7 @@ export default function SoloChallengeManagePage() {
   const shareWA = () => {
     if (!challenge) return;
     const url = `${window.location.origin}/solo/${slug}`;
-    const text = `🎯 شاركوا في مسابقة "${challenge.assignmentTitle}" وتنافسوا على المراكز الأولى!\n${url}`;
+    const text = `شاركوا في مسابقة "${challenge.assignmentTitle}" وتنافسوا على المراكز الأولى!\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 
@@ -273,8 +274,8 @@ export default function SoloChallengeManagePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
@@ -282,84 +283,107 @@ export default function SoloChallengeManagePage() {
   if (!challenge) return null;
 
   const challengeUrl = `${window.location.origin}/solo/${slug}`;
+  // Use percent-encoded slug for QR so all scanners handle Arabic correctly
+  const challengeQrUrl = `${window.location.origin}/solo/${encodeURIComponent(slug!)}`;
   const top3 = participants.slice(0, 3);
-  const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       {/* Header */}
-      <div className="border-b border-border/60 bg-card sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Link href="/teacher/solo-challenges" className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-            <ChevronLeft className="w-5 h-5" />
+      <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+          <Link href="/teacher/solo-challenges" className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground group shrink-0">
+            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="font-black text-foreground text-base truncate">{challenge.assignmentTitle}</h1>
-            <div className="flex items-center gap-2 mt-0.5">
+            <h1 className="font-black text-foreground text-lg truncate tracking-tight">{challenge.assignmentTitle}</h1>
+            <div className="flex items-center gap-2 mt-1">
               <span className={cn(
-                "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                challenge.isExpired ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-600"
+                "inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                challenge.isExpired ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
               )}>
                 {challenge.isExpired ? <XCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
                 {challenge.isExpired ? "منتهية" : "نشطة"}
               </span>
               {challenge.isStandalone && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600">
-                  <Zap className="w-3 h-3" />مستقلة
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                  <Target className="w-3 h-3" />مستقلة
                 </span>
               )}
             </div>
           </div>
+          {settingsDirty && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+              onClick={saveSettings}
+              disabled={saving}
+              className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md active:scale-95 disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              حفظ الإعدادات
+            </motion.button>
+          )}
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6">
 
         {/* Link card */}
-        <div className="bg-card border border-border/60 rounded-2xl p-4">
-          <p className="text-xs font-bold text-muted-foreground mb-2">رابط المسابقة</p>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0 bg-muted rounded-xl px-3 py-2.5 text-sm font-mono text-muted-foreground truncate">
+        <div className="bg-card border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent rounded-3xl p-5 shadow-sm">
+          <p className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <Share2 className="w-4 h-4 text-primary" />
+            رابط المسابقة
+          </p>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 min-w-0 bg-background rounded-xl px-4 py-3.5 text-sm font-mono font-medium text-muted-foreground truncate border border-border/60 shadow-inner">
               {challengeUrl}
             </div>
-            <button onClick={copyLink} className="p-2.5 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary transition-colors" title="نسخ">
-              <Copy className="w-4 h-4" />
-            </button>
-            <button onClick={shareWA} className="p-2.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-600 transition-colors" title="واتساب">
-              <Share2 className="w-4 h-4" />
-            </button>
-            <a href={challengeUrl} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground transition-colors" title="فتح">
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={copyLink} className="flex-1 sm:flex-none p-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground transition-colors flex items-center justify-center gap-2 font-bold text-sm shadow-md" title="نسخ">
+                <Copy className="w-4 h-4" />
+                <span className="sm:hidden">نسخ</span>
+              </button>
+              <button onClick={shareWA} className="flex-1 sm:flex-none p-3.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] transition-colors flex items-center justify-center gap-2 font-bold text-sm" title="واتساب">
+                <Share2 className="w-4 h-4" />
+                <span className="sm:hidden">مشاركة</span>
+              </button>
+              <QRModalButton url={challengeQrUrl} pin="" label="" />
+              <a href={challengeUrl} target="_blank" rel="noopener noreferrer" className="p-3.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground transition-colors flex items-center justify-center gap-2" title="فتح">
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
           </div>
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {[
-            { icon: Users, label: "إجمالي اللعبات", value: challenge.playCount, color: "text-blue-600 bg-blue-500/10" },
+            { icon: Users, label: "إجمالي اللعبات", value: challenge.playCount, color: "text-primary bg-primary/10" },
             { icon: BarChart2, label: "الأسئلة", value: challenge.questionCount, color: "text-amber-600 bg-amber-500/10" },
-            { icon: Trophy, label: "المتصدر", value: participants[0]?.playerName ?? "—", color: "text-yellow-600 bg-yellow-500/10", small: true },
+            { icon: Trophy, label: "المتصدر", value: participants[0]?.playerName ?? "—", color: "text-emerald-600 bg-emerald-500/10", small: true },
           ].map(s => (
-            <div key={s.label} className="bg-card border border-border/60 rounded-2xl p-3 text-center">
-              <div className={`w-8 h-8 rounded-xl ${s.color} flex items-center justify-center mx-auto mb-2`}>
-                <s.icon className="w-4 h-4" />
+            <div key={s.label} className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 text-center flex flex-col items-center hover:border-primary/20 transition-colors">
+              <div className={`w-10 h-10 rounded-xl ${s.color} flex items-center justify-center mb-3 shadow-sm`}>
+                <s.icon className="w-5 h-5" />
               </div>
-              <p className={cn("font-black text-foreground", s.small ? "text-sm truncate" : "text-xl")}>{s.value}</p>
-              <p className="text-[10px] text-muted-foreground">{s.label}</p>
+              <p className={cn("font-black text-foreground", s.small ? "text-sm truncate w-full px-2" : "text-2xl")}>{s.value}</p>
+              <p className="text-[11px] sm:text-xs font-medium text-muted-foreground mt-1">{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Settings panel */}
-        <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3.5 border-b border-border/40 flex items-center justify-between">
-            <h2 className="font-bold text-sm text-foreground">إعدادات المسابقة</h2>
+        <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between bg-muted/20">
+            <h2 className="font-black text-base text-foreground flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              إعدادات المسابقة
+            </h2>
             {settingsDirty && (
               <button
                 onClick={saveSettings}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                className="sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
               >
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 حفظ
@@ -368,71 +392,89 @@ export default function SoloChallengeManagePage() {
           </div>
           <div className="divide-y divide-border/30">
 
+             {/* ── Participant instructions ── */}
+             <div className="px-5 py-4 hover:bg-muted/10 transition-colors">
+               <label className="flex items-center gap-2 text-sm font-bold text-foreground mb-3">
+                 <FileText className="w-4 h-4 text-emerald-600" />
+                 تعليمات أو ملاحظات للمشاركين
+               </label>
+               <textarea value={editNotes} onChange={e => { setEditNotes(e.target.value); mark(); }}
+                 placeholder="تعليمات أو رسالة ترحيب تظهر قبل بدء المسابقة..."
+                 rows={2} maxLength={1000}
+                 className="w-full px-4 py-3 rounded-xl bg-card border border-border/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm resize-none text-foreground placeholder:text-muted-foreground shadow-sm transition-all"
+               />
+             </div>
+
             {/* ── Time per question ── */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 hover:bg-muted/10 transition-colors">
+              <label className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Clock className="w-4 h-4 text-amber-500" />
                 وقت كل سؤال
               </label>
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => { setEditTime(t => Math.max(5, t - 5)); mark(); }} className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors">−</button>
-                <span className="w-14 text-center text-sm font-bold tabular-nums text-foreground">{editTime} ث</span>
-                <button onClick={() => { setEditTime(t => Math.min(120, t + 5)); mark(); }} className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors">+</button>
+              <div className="flex items-center gap-2 self-start sm:self-auto bg-muted/50 p-1 rounded-xl border border-border/50">
+                <button onClick={() => { setEditTime(t => Math.max(5, t - 5)); mark(); }} className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors border border-border/50 shadow-sm">−</button>
+                <span className="w-12 text-center text-sm font-black tabular-nums text-foreground">{editTime} ث</span>
+                <button onClick={() => { setEditTime(t => Math.min(120, t + 5)); mark(); }} className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors border border-border/50 shadow-sm">+</button>
               </div>
             </div>
 
             {/* ── Difficulty distribution ── */}
-            <>
-              <div className="flex items-center justify-between px-4 py-3">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <div className="hover:bg-muted/10 transition-colors">
+              <div className="flex items-center justify-between px-5 py-4">
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Target className="w-4 h-4 text-primary" />
                   توزيع الصعوبة
                 </label>
                 <button
                   onClick={() => { setEditDiffDistribution(editDiffDistribution ? null : { easy: 4, medium: 4, hard: 2 }); mark(); }}
-                  className={cn("relative w-9 h-5 rounded-full transition-colors flex-shrink-0", editDiffDistribution ? "bg-amber-500" : "bg-muted")}
+                  className={cn("relative w-11 h-6 rounded-full transition-colors flex-shrink-0 border-2", editDiffDistribution ? "bg-primary border-primary" : "bg-muted border-transparent")}
                 >
-                  <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all", editDiffDistribution ? "start-4" : "start-0.5")} />
+                  <span className={cn("absolute top-[2px] w-4 h-4 bg-white rounded-full shadow-sm transition-all", editDiffDistribution ? "start-[22px]" : "start-[2px]")} />
                 </button>
               </div>
               {editDiffDistribution && (
-                <div className="px-4 pt-1 pb-3 bg-muted/20 space-y-2">
-                  <p className="text-[11px] text-muted-foreground pt-1">حدّد عدد أسئلة كل مستوى — صنّف الأسئلة أولاً.</p>
-                  {([
-                    { key: "easy" as const, label: "سهل", color: "bg-green-500" },
-                    { key: "medium" as const, label: "متوسط", color: "bg-yellow-500" },
-                    { key: "hard" as const, label: "صعب", color: "bg-red-500" },
-                  ]).map(({ key, label, color }) => (
-                    <div key={key} className="flex items-center justify-between">
-                      <span className={cn("text-xs font-bold px-2.5 py-0.5 rounded-full text-white", color)}>{label}</span>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [key]: Math.max(0, d[key] - 1) } : null); mark(); }} className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/70 font-black text-sm flex items-center justify-center">−</button>
-                        <span className="w-7 text-center font-bold text-sm">{editDiffDistribution[key]}</span>
-                        <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [key]: d[key] + 1 } : null); mark(); }} className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/70 font-black text-sm flex items-center justify-center">+</button>
+                <div className="px-5 pt-1 pb-4 bg-primary/5 space-y-3 mx-4 mb-4 rounded-xl border border-primary/10">
+                  <p className="text-[11px] font-bold text-primary/70">حدّد عدد أسئلة كل مستوى (يجب تصنيف الأسئلة أولاً)</p>
+                  <div className="grid gap-3">
+                    {([
+                      { key: "easy" as const, label: "سهل", color: "bg-emerald-500" },
+                      { key: "medium" as const, label: "متوسط", color: "bg-amber-500" },
+                      { key: "hard" as const, label: "صعب", color: "bg-red-500" },
+                    ]).map(({ key, label, color }) => (
+                      <div key={key} className="flex items-center justify-between bg-card px-3 py-2 rounded-lg border border-border/50 shadow-sm">
+                        <span className={cn("text-xs font-black px-2.5 py-1 rounded-md text-white w-16 text-center", color)}>{label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [key]: Math.max(0, d[key] - 1) } : null); mark(); }} className="w-7 h-7 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center transition-colors">−</button>
+                          <span className="w-8 text-center font-black text-sm">{editDiffDistribution[key]}</span>
+                          <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [key]: d[key] + 1 } : null); mark(); }} className="w-7 h-7 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center transition-colors">+</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  <p className="text-[11px] text-muted-foreground border-t border-border/30 pt-1.5">المجموع: <span className="font-bold text-foreground">{editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard} سؤال</span></p>
+                    ))}
+                  </div>
+                  <div className="border-t border-primary/10 pt-2 flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-primary">إجمالي الأسئلة المستهدفة:</span>
+                    <span className="text-sm font-black text-primary">{editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard}</span>
+                  </div>
                 </div>
               )}
-            </>
+            </div>
 
             {/* ── Questions per participant ── */}
             {!editDiffDistribution && (
-              <div className="flex items-center justify-between px-4 py-3">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Zap className="w-3.5 h-3.5" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 hover:bg-muted/10 transition-colors">
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Target className="w-4 h-4 text-emerald-500" />
                   أسئلة لكل متسابق
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2 self-start sm:self-auto bg-muted/50 p-1 rounded-xl border border-border/50">
                   <button
                     onClick={() => {
                       if (editQpp === "" || (editQpp as number) <= 1) { setEditQpp(""); mark(); }
                       else { setEditQpp((editQpp as number) - 1); mark(); }
                     }}
-                    className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors"
+                    className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors border border-border/50 shadow-sm"
                   >−</button>
-                  <span className="w-14 text-center text-sm font-bold text-foreground">
+                  <span className="w-12 text-center text-sm font-black text-foreground">
                     {editQpp === "" ? "الكل" : String(editQpp)}
                   </span>
                   <button
@@ -442,139 +484,151 @@ export default function SoloChallengeManagePage() {
                       if (challenge.questionCount > 0 && next > challenge.questionCount) return;
                       setEditQpp(next); mark();
                     }}
-                    className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors"
+                    className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors border border-border/50 shadow-sm"
                   >+</button>
                 </div>
               </div>
             )}
 
             {/* ── Leaderboard ── */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Trophy className="w-3.5 h-3.5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 hover:bg-muted/10 transition-colors">
+              <label className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Trophy className="w-4 h-4 text-amber-500" />
                 لوحة المتصدرين
               </label>
-              <div className="flex rounded-lg overflow-hidden border border-border">
+              <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50 self-start sm:self-auto">
                 {([
                   { value: "top3" as const, label: "أفضل 3" },
                   { value: "top20" as const, label: "أفضل 20" },
                   { value: "all" as const, label: "الكل" },
-                ]).map((o, idx) => (
-                  <button key={o.value} onClick={() => { setEditLd(o.value); mark(); }}
-                    className={cn("px-2.5 py-1.5 text-xs font-bold transition-colors", idx < 2 && "border-s border-border",
-                      editLd === o.value ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-muted")}
-                  >{o.label}</button>
-                ))}
+                ]).map((o, idx) => {
+                  const active = editLd === o.value;
+                  return (
+                    <button key={o.value} onClick={() => { setEditLd(o.value); mark(); }}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-bold transition-all rounded-lg relative",
+                         active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span className="relative z-10">{o.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* ── Attempts ── */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <RotateCw className="w-3.5 h-3.5" />
-                المحاولات المسموحة
-              </label>
-              <div className="flex rounded-lg overflow-hidden border border-border">
-                {([1, 2, 3] as const).map((v, idx) => (
-                  <button key={v} onClick={() => { setEditMaxAttempts(v); mark(); }}
-                    className={cn("px-3 py-1.5 text-xs font-bold transition-colors", idx < 2 && "border-s border-border",
-                      editMaxAttempts === v ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-muted")}
-                  >{v === 1 ? "مرة" : v === 2 ? "مرتان" : "3 أفضل"}</button>
-                ))}
+            <div className="hover:bg-muted/10 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3">
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <RotateCw className="w-4 h-4 text-primary" />
+                  المحاولات المسموحة
+                </label>
+                <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50 self-start sm:self-auto">
+                  {([1, 2, 3] as const).map((v, idx) => {
+                    const active = editMaxAttempts === v;
+                    return (
+                      <button key={v} onClick={() => { setEditMaxAttempts(v); mark(); }}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-bold transition-all rounded-lg relative",
+                           active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <span className="relative z-10">{v === 1 ? "مرة" : v === 2 ? "مرتان" : "3 أفضل"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            {editMaxAttempts > 1 && (
-              <div className="flex items-center justify-between px-4 py-2.5 bg-muted/20">
-                <span className="text-[11px] text-muted-foreground">
-                  {editMaxAttempts === 2 ? "يختار اللاعب بعد المحاولتين" : `يُحتسب أفضل نتيجة من ${editMaxAttempts}`}
-                </span>
-                <input type="number" min={2} max={10} value={editMaxAttempts}
-                  onChange={e => { let n = Math.max(2, Math.min(10, Number(e.target.value) || 2)); setEditMaxAttempts(n); mark(); }}
-                  className="w-14 px-2 py-1 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm text-center"
-                />
-              </div>
-            )}
-
-            {/* ── Notes ── */}
-            <div className="px-4 py-3">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                <FileText className="w-3.5 h-3.5" />
-                ملاحظات للاعبين
-              </label>
-              <textarea value={editNotes} onChange={e => { setEditNotes(e.target.value); mark(); }}
-                placeholder="تعليمات أو رسالة قبل المسابقة..."
-                rows={2} maxLength={1000}
-                className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-xs resize-none text-foreground placeholder:text-muted-foreground"
-              />
+              {editMaxAttempts > 1 && (
+                <div className="flex items-center justify-between px-5 py-3 bg-primary/5 border-t border-border/30">
+                  <span className="text-xs font-bold text-primary/80">
+                    {editMaxAttempts === 2 ? "يختار اللاعب بعد المحاولتين" : `يُحتسب أفضل نتيجة من ${editMaxAttempts}`}
+                  </span>
+                  <input type="number" min={2} max={10} value={editMaxAttempts}
+                    onChange={e => { let n = Math.max(2, Math.min(10, Number(e.target.value) || 2)); setEditMaxAttempts(n); mark(); }}
+                    className="w-16 px-2 py-1.5 rounded-lg bg-card border border-primary/20 focus:outline-none focus:border-primary text-sm font-black text-center shadow-sm"
+                  />
+                </div>
+              )}
             </div>
 
             {/* ── Expiry ── */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground shrink-0 me-3">
-                <Calendar className="w-3.5 h-3.5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 hover:bg-muted/10 transition-colors">
+              <label className="flex items-center gap-2 text-sm font-bold text-foreground shrink-0">
+                <Calendar className="w-4 h-4 text-amber-600" />
                 موعد انتهاء المسابقة
               </label>
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 self-start sm:self-auto">
                 <span dir="ltr">
                   <input type="datetime-local" lang="en" value={editExpires} onChange={e => { setEditExpires(e.target.value); mark(); }}
-                    className="text-xs px-2 py-1.5 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-foreground min-w-0" />
+                    className="text-xs font-bold px-3 py-2 rounded-xl bg-card border border-border/60 focus:outline-none focus:border-primary text-foreground min-w-0 shadow-sm" />
                 </span>
                 {editExpires && (
-                  <button onClick={() => { setEditExpires(""); mark(); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">إزالة</button>
+                  <button onClick={() => { setEditExpires(""); mark(); }} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors" title="إزالة">
+                    <XCircle className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             </div>
 
             {/* ── Class restriction ── */}
-            <div className="px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Users className="w-3.5 h-3.5" />
-                  تقييد المشاركة بالصف
+            <div className="px-5 py-4 hover:bg-muted/10 transition-colors">
+              <div className="flex items-center justify-between mb-3">
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Users className="w-4 h-4 text-primary" />
+                  تقييد المشاركة بصفوف محددة
                 </label>
                 {editAllowedClasses.length > 0 && (
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    {editAllowedClasses.length} صف
+                  <span className="text-[10px] font-black text-primary-foreground bg-primary px-2 py-0.5 rounded-md shadow-sm">
+                    {editAllowedClasses.length} صف محدد
                   </span>
                 )}
               </div>
               {teacherClasses.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground">لا توجد صفوف مضافة — أضف صفوفاً من إعدادات الطلاب أولاً.</p>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-amber-700 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  لا توجد صفوف مضافة في حسابك. أضف صفوفاً من إعدادات الطلاب أولاً لتمكين التقييد.
+                </div>
               ) : (
                 <>
-                  <p className="text-[11px] text-muted-foreground mb-2">
-                    اختر الصفوف المسموح لها. إذا تركت هذا فارغاً يمكن للجميع الدخول.
+                  <p className="text-xs font-medium text-muted-foreground mb-3">
+                    اختر الصفوف المسموح لها بالمشاركة. إذا لم تحدد أي صف، يمكن لأي شخص لديه الرابط الدخول.
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {teacherClasses.map(cls => (
-                      <button
-                        key={cls}
-                        onClick={() => {
-                          setEditAllowedClasses(prev => prev.includes(cls) ? prev.filter(c => c !== cls) : [...prev, cls]);
-                          mark();
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors",
-                          editAllowedClasses.includes(cls)
-                            ? "bg-amber-500 border-amber-500 text-white"
-                            : "border-border text-muted-foreground hover:bg-muted/40",
-                        )}
-                      >
-                        {cls}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap gap-2">
+                    {teacherClasses.map(cls => {
+                      const selected = editAllowedClasses.includes(cls);
+                      return (
+                        <button
+                          key={cls}
+                          onClick={() => {
+                            setEditAllowedClasses(prev => selected ? prev.filter(c => c !== cls) : [...prev, cls]);
+                            mark();
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5",
+                            selected
+                              ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                              : "bg-card border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                          )}
+                        >
+                          {selected && <Check className="w-3 h-3" />}
+                          {cls}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}
             </div>
 
-            {/* ── Save ── */}
+            {/* ── Save (Mobile) ── */}
             {settingsDirty && (
-              <div className="px-4 py-3">
+              <div className="px-5 py-4 sm:hidden bg-primary/5">
                 <button onClick={saveSettings} disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md active:scale-95 disabled:opacity-60"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                   {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
                 </button>
               </div>
@@ -584,12 +638,12 @@ export default function SoloChallengeManagePage() {
 
         {/* Questions editor — standalone only */}
         {challenge.isStandalone && editQuestions.length > 0 && (
-          <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-            <div className="px-4 py-3.5 border-b border-border/40 flex items-center justify-between">
+          <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between bg-muted/20">
               <div className="flex items-center gap-2">
-                <Music className="w-4 h-4 text-muted-foreground" />
-                <h2 className="font-bold text-sm text-foreground">تعديل صوت الأسئلة</h2>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                <Music className="w-5 h-5 text-primary" />
+                <h2 className="font-black text-base text-foreground">تعديل صوت الأسئلة</h2>
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
                   {editQuestions.filter(q => q.audioUrl).length}/{editQuestions.length} صوتي
                 </span>
               </div>
@@ -597,29 +651,29 @@ export default function SoloChallengeManagePage() {
                 <button
                   onClick={saveQuestions}
                   disabled={savingQuestions}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-sm disabled:opacity-60"
                 >
-                  {savingQuestions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                  حفظ
+                  {savingQuestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  حفظ الأصوات
                 </button>
               )}
             </div>
             <div className="divide-y divide-border/30">
               {editQuestions.map((q, idx) => (
-                <div key={idx}>
+                <div key={idx} className="hover:bg-muted/10 transition-colors">
                   <button
                     onClick={() => setExpandedAudio(expandedAudio === idx ? null : idx)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-start"
+                    className="w-full flex items-center gap-3 px-5 py-3 text-start"
                   >
-                    <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[11px] font-black text-muted-foreground shrink-0">
+                    <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-black text-primary shrink-0 border border-primary/20">
                       {idx + 1}
                     </span>
-                    <p className="flex-1 text-xs text-foreground line-clamp-2 text-right">{q.text}</p>
+                    <p className="flex-1 text-sm font-bold text-foreground line-clamp-2 text-right">{q.text}</p>
                     <span className={cn(
-                      "shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full",
+                      "shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border",
                       q.audioUrl
-                        ? "bg-green-500/10 text-green-600"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                        : "bg-muted text-muted-foreground border-border/50"
                     )}>
                       {q.audioUrl
                         ? <><Volume2 className="w-3 h-3" /> صوتي</>
@@ -627,26 +681,35 @@ export default function SoloChallengeManagePage() {
                       }
                     </span>
                   </button>
-                  {expandedAudio === idx && (
-                    <div className="px-4 pb-4">
-                      <AudioPicker
-                        value={q.audioUrl ?? null}
-                        onChange={(url) => updateQuestionAudio(idx, url)}
-                        uploadEndpoint="/api/islamic/teacher/uploads/audio-url"
-                      />
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {expandedAudio === idx && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-5 pt-1 ml-10">
+                          <AudioPicker
+                            value={q.audioUrl ?? null}
+                            onChange={(url) => updateQuestionAudio(idx, url)}
+                            uploadEndpoint="/api/solo-challenges/uploads/audio-url"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ))}
               {questionsDirty && (
-                <div className="px-4 py-3">
+                <div className="px-5 py-4 bg-primary/5 border-t border-primary/10">
                   <button
                     onClick={saveQuestions}
                     disabled={savingQuestions}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md active:scale-95 disabled:opacity-60"
                   >
-                    {savingQuestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {savingQuestions ? "جاري الحفظ..." : "حفظ تعديلات الصوت"}
+                    {savingQuestions ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    {savingQuestions ? "جاري الحفظ..." : "حفظ التعديلات"}
                   </button>
                 </div>
               )}
@@ -655,44 +718,49 @@ export default function SoloChallengeManagePage() {
         )}
 
         {/* Participants */}
-        <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3.5 border-b border-border/40 flex items-center justify-between">
+        <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between bg-muted/20">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <h2 className="font-bold text-sm text-foreground">كشف اللاعبين</h2>
+              <Users className="w-5 h-5 text-primary" />
+              <h2 className="font-black text-base text-foreground">كشف اللاعبين</h2>
             </div>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
               {participants.length} مشارك
             </span>
           </div>
 
           {participants.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">لا يوجد مشاركون بعد</p>
+            <div className="px-5 py-12 text-center">
+              <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-4 border border-border">
+                <Users className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+              <p className="text-sm font-bold text-foreground">لا يوجد مشاركون بعد</p>
+              <p className="text-xs text-muted-foreground mt-1">شارك الرابط مع طلابك لتبدأ النتائج بالظهور هنا</p>
             </div>
           ) : (
             <div className="divide-y divide-border/40">
               {participants.map((p, i) => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={p.id} className="flex items-center gap-3 sm:gap-4 px-5 py-4 hover:bg-muted/5 transition-colors">
                   <div className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-sm font-black shrink-0",
-                    i === 0 ? "bg-yellow-400/20 text-yellow-600"
-                    : i === 1 ? "bg-slate-400/20 text-slate-600"
-                    : i === 2 ? "bg-amber-700/20 text-amber-700"
-                    : "bg-muted text-muted-foreground text-xs"
+                    "w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black shrink-0 border shadow-sm",
+                    i === 0 ? "bg-amber-100 border-amber-300 text-amber-600 dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-500"
+                    : i === 1 ? "bg-slate-100 border-slate-300 text-slate-600 dark:bg-slate-400/20 dark:border-slate-400/30 dark:text-slate-400"
+                    : i === 2 ? "bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-700/20 dark:border-orange-700/30 dark:text-orange-600"
+                    : "bg-muted border-border/60 text-muted-foreground text-base"
                   )}>
-                    {i < 3 ? medals[i] : i + 1}
+                    {i === 0 ? <Trophy className="w-5 h-5" /> : i < 3 ? <Medal className="w-5 h-5" /> : i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{p.playerName}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-black text-foreground truncate">{p.playerName}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
                       {new Date(p.playedAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
-                  <div className="text-right shrink-0 space-y-0.5">
-                    <p className="text-sm font-black text-foreground">{p.score.toLocaleString("ar")} نقطة</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                    <span className="text-sm font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                      {p.score.toLocaleString("ar")} نقطة
+                    </span>
+                    <p className="text-[10px] font-bold text-muted-foreground">
                       {p.correctCount}/{challenge.questionCount} صحيح • {fmtTime(p.timeTaken)}
                     </p>
                   </div>
@@ -701,7 +769,7 @@ export default function SoloChallengeManagePage() {
                       onClick={() => deleteParticipant(p)}
                       disabled={deletingParticipantId === p.id}
                       title="حذف المشارك (المسؤول فقط)"
-                      className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 shrink-0"
+                      className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 hover:text-red-600 transition-colors disabled:opacity-50 shrink-0 ml-1"
                     >
                       {deletingParticipantId === p.id
                         ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -715,20 +783,25 @@ export default function SoloChallengeManagePage() {
         </div>
 
         {/* Danger zone */}
-        <div className="bg-card border border-red-500/20 rounded-2xl p-4">
-          <h3 className="font-bold text-sm text-red-500 mb-3">منطقة الخطر</h3>
-          <div className="flex items-center justify-between">
+        <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-5 sm:p-6 shadow-sm">
+          <h3 className="font-black text-base text-red-600 flex items-center gap-2 mb-4">
+            <AlertCircle className="w-5 h-5" />
+            منطقة الخطر
+          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-foreground">حذف المسابقة</p>
-              <p className="text-xs text-muted-foreground">سيُحذف الرابط وجميع نتائج اللاعبين نهائياً</p>
+              <p className="text-sm font-bold text-foreground">حذف المسابقة نهائياً</p>
+              <p className="text-xs font-medium text-muted-foreground mt-1 max-w-sm">
+                سيؤدي هذا إلى حذف الرابط وجميع نتائج اللاعبين بشكل دائم. هذا الإجراء لا يمكن التراجع عنه.
+              </p>
             </div>
             <button
               onClick={deleteChallenge}
               disabled={deleting}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border-2 border-red-500/40 text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black bg-red-500 text-white hover:bg-red-600 transition-all shadow-md hover:shadow-red-500/20 active:scale-95 disabled:opacity-50 shrink-0"
             >
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              حذف
+              حذف المسابقة
             </button>
           </div>
         </div>

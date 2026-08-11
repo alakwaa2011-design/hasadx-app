@@ -2017,7 +2017,7 @@ export default function GamePlay() {
 
   const MuteButton = () => (
     <div
-      className={`fixed top-4 ${lang === "ar" ? "left-4" : "right-4"} z-50 flex items-center gap-2`}
+      className={`fixed top-4 ${lang === "ar" ? "right-4" : "left-4"} z-50 flex items-center gap-2`}
     >
       <button
         onClick={handleToggleMute}

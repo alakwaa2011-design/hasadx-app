@@ -8,7 +8,7 @@ import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import {
-  Trophy, Users, Zap, Play, Loader2, AlertCircle, FileText, Lock, Clock,
+  Trophy, Users, Target, Play, Loader2, AlertCircle, FileText, Lock, Clock, Medal
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -31,7 +31,6 @@ interface ChallengeInfo {
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
 
-const medals = ["🥇", "🥈", "🥉"];
 
 export default function SoloPlayPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -232,7 +231,7 @@ export default function SoloPlayPage() {
         <div className="flex justify-center mb-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide"
             style={{ background: "rgba(232,184,75,0.18)", border: "1px solid rgba(232,184,75,0.45)", color: "#E8B84B" }}>
-            <Zap className="w-3.5 h-3.5" />
+            <Target className="w-3.5 h-3.5" />
             {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
           </span>
         </div>
@@ -252,8 +251,8 @@ export default function SoloPlayPage() {
             </h1>
             <div className="flex items-center justify-center gap-3 mt-3 flex-wrap">
               <span className="flex items-center gap-1 text-sm font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>
-                <Zap className="w-4 h-4 text-amber-400" />
-                {info!.questionCount} {lang === "ar" ? "سؤال" : "questions"}
+                <Target className="w-4 h-4 text-amber-400" />
+                 {info!.questionCount} {lang === "ar" ? "أسئلة" : "questions"}
               </span>
               {info!.isMultiLevel && info!.levels && info!.levels.length > 0 && (
                 <span className="flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full"
@@ -268,13 +267,13 @@ export default function SoloPlayPage() {
                 return (
                   <span className="flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full"
                     style={{ background: "rgba(232,184,75,0.15)", color: "rgba(232,184,75,0.9)", border: "1px solid rgba(232,184,75,0.3)" }}>
-                    {total} {lang === "ar" ? "سؤال (توزيع)" : "q (mixed)"}
+                     {total} {lang === "ar" ? "أسئلة (توزيع)" : "q (mixed)"}
                   </span>
                 );
               })()}
               <span className="flex items-center gap-1 text-sm font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>
                 <Users className="w-4 h-4 text-green-400" />
-                {info!.playCount} {lang === "ar" ? "لاعب" : "players"}
+                 {info!.playCount} {lang === "ar" ? "مشاركون" : "players"}
               </span>
             </div>
           </div>
@@ -341,11 +340,12 @@ export default function SoloPlayPage() {
                 maxLength={40}
                 autoFocus
                 className="w-full rounded-2xl px-4 py-3.5 text-base font-bold outline-none transition-all"
+                 dir={lang === "ar" ? "rtl" : "ltr"}
                 style={{
                   background: "rgba(255,255,255,0.08)",
                   border: nameError ? "2px solid rgba(239,68,68,0.7)" : "2px solid rgba(255,255,255,0.15)",
                   color: "white",
-                  direction: "auto",
+                   textAlign: lang === "ar" ? "right" : "left",
                 }}
                 onFocus={e => { if (!nameError) e.target.style.borderColor = "rgba(232,184,75,0.7)"; }}
                 onBlur={e => { if (!nameError) e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
@@ -398,7 +398,7 @@ export default function SoloPlayPage() {
                         ? "المتصدرون الثلاثة"
                         : info?.leaderboardDisplay === "all"
                           ? "جدول المتصدرين"
-                          : "أفضل 20 لاعب"
+                         : "أفضل 20 مشارك"
                       : info?.leaderboardDisplay === "top3"
                         ? "Top 3 Players"
                         : info?.leaderboardDisplay === "all"
@@ -422,9 +422,9 @@ export default function SoloPlayPage() {
                   ) : (
                     leaderboard.slice(0, 20).map((entry, i) => (
                       <div key={i} className="flex items-center gap-2 px-2.5 py-1 rounded-lg">
-                        <span className="w-6 text-center text-xs font-black shrink-0"
-                          style={{ color: i < 3 ? "#E8B84B" : "rgba(255,255,255,0.4)" }}>
-                          {i < 3 ? medals[i] : i + 1}
+                        <span className="w-6 flex justify-center text-xs font-black shrink-0"
+                          style={{ color: i === 0 ? "#E8B84B" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "rgba(255,255,255,0.4)" }}>
+                          {i === 0 ? <Trophy className="w-3.5 h-3.5" /> : i < 3 ? <Medal className="w-3.5 h-3.5" /> : i + 1}
                         </span>
                         <span className="flex-1 text-xs font-bold truncate text-white/75">
                           {entry.playerName}
