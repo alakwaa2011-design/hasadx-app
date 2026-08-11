@@ -1,12 +1,12 @@
 /**
  * مكتبة الأنشطة — واجهة Marketplace (عرض فقط، المنطق من shared-content)
+ * تصميم جديد: سايدبار يمين + تخطيط editorial
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   Search,
-  FolderOpen,
   Plus,
   BookText,
   HelpCircle,
@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   X,
   EyeOff,
-  MoreVertical,
   User,
   Bookmark,
   Presentation,
@@ -29,6 +28,10 @@ import {
   TrendingUp,
   Radio,
   Layers,
+  Globe,
+  LayoutGrid,
+  List,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -37,9 +40,6 @@ import {
   resolveCoverKind,
   resolveSubjectTheme,
 } from "@/lib/activity-cover";
-
-const FILTER_INPUT =
-  "h-10 rounded-xl border border-[#e8e1d8] bg-[#fcfbfa] text-sm text-[#1f2d24] shadow-[inset_0_1px_2px_rgba(31,45,36,0.04)] outline-none transition-shadow placeholder:text-[#9aa89f] focus:border-[#0a4d26]/35 focus:ring-2 focus:ring-[#0a4d26]/10";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -55,14 +55,16 @@ interface ActivityLibraryStats {
 }
 
 const C = {
-  bg: "#faf8f3",
-  card: "#ffffff",
-  primary: "#0a4d26",
-  soft: "#e8f4ec",
-  gold: "#d4a63a",
-  border: "#e8e1d8",
-  text: "#1f2d24",
-  muted: "#6f8176",
+  bg:       "#faf8f3",
+  card:     "#ffffff",
+  primary:  "#225739",
+  primary2: "#1c4630",
+  soft:     "#e8f4ec",
+  gold:     "#E8B84B",
+  border:   "#e8e1d8",
+  text:     "#1f2d24",
+  muted:    "#6f8176",
+  sidebar:  "#ffffff",
 } as const;
 
 type Tab = "assignments" | "questions" | "videos";
@@ -173,70 +175,44 @@ function activityBadge(
   type: string | undefined,
   isAr: boolean,
 ) {
-  if (kind === "video") return { label: isAr ? "فيديو" : "Video", cls: "bg-blue-600/90" };
-  if (kind === "question") return { label: isAr ? "تفاعلي" : "Interactive", cls: "bg-violet-600/90" };
-  if (type === "mcq") return { label: isAr ? "مسابقة مباشرة" : "Live quiz", cls: "bg-emerald-700/90" };
-  if (type === "true_false") return { label: isAr ? "اختبار" : "Quiz", cls: "bg-amber-600/90" };
-  return { label: isAr ? "واجب" : "Assignment", cls: "bg-[#0a4d26]/90" };
+  if (kind === "video")    return { label: isAr ? "فيديو" : "Video",           cls: "bg-blue-600/90"    };
+  if (kind === "question") return { label: isAr ? "تفاعلي" : "Interactive",    cls: "bg-violet-600/90" };
+  if (type === "mcq")      return { label: isAr ? "مسابقة مباشرة" : "Live quiz", cls: "bg-emerald-700/90" };
+  if (type === "true_false") return { label: isAr ? "اختبار" : "Quiz",         cls: "bg-amber-600/90"   };
+  return                          { label: isAr ? "واجب" : "Assignment",        cls: "bg-[#225739]/90"   };
 }
 
 export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplaceProps) {
   const {
-    embedded,
-    lang,
-    dir,
-    assignments,
-    questions,
-    videoLessons,
-    filteredAssignments,
-    filteredQuestions,
-    filteredVideos,
-    popularIds,
-    newIds,
-    currentTeacherId,
-    isAdmin,
-    showHidden,
-    onShowHiddenChange,
-    search,
-    onSearchChange,
-    subjectFilter,
-    onSubjectFilterChange,
-    gradeFilter,
-    onGradeFilterChange,
-    sortBy,
-    onSortByChange,
-    allSubjects,
-    allGrades,
-    activeTab,
-    onActiveTabChange,
-    onClearFilters,
-    onPresentations,
-    launchAsGame,
-    importAssignment,
-    copyLink,
-    dismissAssignment,
-    importQuestion,
-    dismissQuestion,
-    importVideo,
-    launchingIds,
-    importingIds,
-    importedIds,
-    importingQIds,
-    importedQIds,
-    importingVIds,
-    importedVIds,
-    dismissingIds,
-    t,
+    embedded, lang, dir,
+    assignments, questions, videoLessons,
+    filteredAssignments, filteredQuestions, filteredVideos,
+    popularIds, newIds,
+    currentTeacherId, isAdmin, showHidden, onShowHiddenChange,
+    search, onSearchChange,
+    subjectFilter, onSubjectFilterChange,
+    gradeFilter, onGradeFilterChange,
+    sortBy, onSortByChange,
+    allSubjects, allGrades,
+    activeTab, onActiveTabChange,
+    onClearFilters, onPresentations,
+    launchAsGame, importAssignment, copyLink, dismissAssignment,
+    importQuestion, dismissQuestion, importVideo,
+    launchingIds, importingIds, importedIds,
+    importingQIds, importedQIds,
+    importingVIds, importedVIds,
+    dismissingIds, t,
   } = props;
 
   const isAr = lang === "ar";
-  const [categoryTab, setCategoryTab] = useState<CategoryTab>("all");
-  const [typeChip, setTypeChip] = useState<TypeChip>("all");
-  const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
-  const [libraryStats, setLibraryStats] = useState<ActivityLibraryStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [statsError, setStatsError] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [categoryTab,   setCategoryTab]   = useState<CategoryTab>("all");
+  const [typeChip,      setTypeChip]      = useState<TypeChip>("all");
+  const [bookmarks,     setBookmarks]     = useState<Set<number>>(new Set());
+  const [libraryStats,  setLibraryStats]  = useState<ActivityLibraryStats | null>(null);
+  const [statsLoading,  setStatsLoading]  = useState(true);
+  const [statsError,    setStatsError]    = useState(false);
+  const [openMenuId,    setOpenMenuId]    = useState<string | null>(null);
+  const [viewMode,      setViewMode]      = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -254,275 +230,131 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         const statsUrl = API_BASE
           ? `${API_BASE}/api/teacher/activity-library/stats`
           : "/api/teacher/activity-library/stats";
-        const res = await fetch(statsUrl, {
-          credentials: "include",
-        });
+        const res = await fetch(statsUrl, { credentials: "include" });
         if (!res.ok) throw new Error("stats failed");
         const data = (await res.json()) as ActivityLibraryStats;
         if (!cancelled) setLibraryStats(data);
       } catch {
-        if (!cancelled) {
-          setStatsError(true);
-          setLibraryStats(null);
-        }
+        if (!cancelled) { setStatsError(true); setLibraryStats(null); }
       } finally {
         if (!cancelled) setStatsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const assignmentUseCount = (id: number) => libraryStats?.assignmentUses[String(id)] ?? 0;
-  const videoUseCount = (id: number) => libraryStats?.videoUses[String(id)] ?? 0;
-
-  const toggleBookmark = (id: number) => {
-    setBookmarks((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  };
-
-  const isRecent = (createdAt: string) =>
-    Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+  const videoUseCount      = (id: number) => libraryStats?.videoUses[String(id)] ?? 0;
+  const toggleBookmark     = (id: number) => setBookmarks(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const isRecent           = (createdAt: string) => Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 
   const filterByCategory = <T extends { id: number; isAdminContent?: boolean; teacherId: number; createdAt: string }>(
     list: T[],
     opts?: { popularCheck?: (item: T) => boolean },
   ): T[] => {
-    if (categoryTab === "all") return list;
-    if (categoryTab === "popular") {
-      return list.filter((item) =>
-        popularIds.has(item.id) || opts?.popularCheck?.(item),
-      );
-    }
-    if (categoryTab === "new") {
-      return list.filter((item) => newIds.has(item.id) || isRecent(item.createdAt));
-    }
-    if (categoryTab === "featured") return list.filter((item) => item.isAdminContent);
-    if (categoryTab === "peers") {
-      return list.filter((item) => item.teacherId !== currentTeacherId && !item.isAdminContent);
-    }
+    if (categoryTab === "all")      return list;
+    if (categoryTab === "popular")  return list.filter(item => popularIds.has(item.id) || opts?.popularCheck?.(item));
+    if (categoryTab === "new")      return list.filter(item => newIds.has(item.id) || isRecent(item.createdAt));
+    if (categoryTab === "featured") return list.filter(item => item.isAdminContent);
+    if (categoryTab === "peers")    return list.filter(item => item.teacherId !== currentTeacherId && !item.isAdminContent);
     return list;
   };
 
   const displayAssignments = useMemo(() => {
     let list = filterByCategory(filteredAssignments);
-    if (typeChip === "quiz") list = list.filter((a) => a.type === "mcq" || a.type === "mixed");
-    if (typeChip === "live") list = list.filter((a) => a.type === "mcq" && a.questionCount > 0);
-    if (typeChip === "homework") list = list.filter((a) => a.type !== "mcq" || a.questionCount < 15);
+    if (typeChip === "quiz")     list = list.filter(a => a.type === "mcq" || a.type === "mixed");
+    if (typeChip === "live")     list = list.filter(a => a.type === "mcq" && a.questionCount > 0);
+    if (typeChip === "homework") list = list.filter(a => a.type !== "mcq" || a.questionCount < 15);
     return list;
   }, [filteredAssignments, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
   const displayVideos = useMemo(() => {
     if (typeChip !== "all" && typeChip !== "video") return [];
-    return filterByCategory(filteredVideos, {
-      popularCheck: (v) => v.questionCount >= 5,
-    });
+    return filterByCategory(filteredVideos, { popularCheck: v => v.questionCount >= 5 });
   }, [filteredVideos, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
   const displayQuestions = useMemo(() => {
     if (typeChip !== "all" && typeChip !== "interactive") return [];
-    return filterByCategory(filteredQuestions, {
-      popularCheck: (q) => q.points >= 2,
-    });
+    return filterByCategory(filteredQuestions, { popularCheck: q => q.points >= 2 });
   }, [filteredQuestions, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
   const wameethPick = useMemo(() => {
-    const mcq = assignments.filter((a) => a.type === "mcq" && a.questionCount > 0 && !a.hiddenByAdmin);
-    return (
-      mcq.find((a) => a.title.includes("وميض") || a.title.toLowerCase().includes("wameeth")) ||
-      [...mcq].sort((a, b) => b.questionCount - a.questionCount)[0]
-    );
+    const mcq = assignments.filter(a => a.type === "mcq" && a.questionCount > 0 && !a.hiddenByAdmin);
+    return mcq.find(a => a.title.includes("وميض") || a.title.toLowerCase().includes("wameeth"))
+      || [...mcq].sort((a, b) => b.questionCount - a.questionCount)[0];
   }, [assignments]);
-
-  const newWeekItems = useMemo(() => {
-    const items: { key: string; kind: "assignment" | "video" | "question"; id: number; title: string; subject?: string | null; grade?: string | null; meta: string; teacher?: string | null; type?: string }[] = [];
-    for (const a of displayAssignments.filter((x) => newIds.has(x.id)).slice(0, 8)) {
-      items.push({
-        key: `a-${a.id}`,
-        kind: "assignment",
-        id: a.id,
-        title: a.title,
-        subject: a.subject,
-        grade: a.targetClass,
-        meta: `${a.questionCount} ${isAr ? "سؤال" : "questions"}`,
-        teacher: a.teacherName,
-        type: a.type,
-      });
-    }
-    for (const v of displayVideos.filter((x) => newIds.has(x.id)).slice(0, 4)) {
-      items.push({
-        key: `v-${v.id}`,
-        kind: "video",
-        id: v.id,
-        title: v.title,
-        subject: v.subject,
-        grade: v.targetClass,
-        meta: `${v.questionCount} ${isAr ? "سؤال" : "Q"}`,
-        teacher: v.teacherName,
-      });
-    }
-    if (items.length < 6) {
-      for (const a of displayAssignments.slice(0, 6 - items.length)) {
-        if (!items.some((i) => i.key === `a-${a.id}`)) {
-          items.push({
-            key: `a-${a.id}`,
-            kind: "assignment",
-            id: a.id,
-            title: a.title,
-            subject: a.subject,
-            grade: a.targetClass,
-            meta: `${a.questionCount} ${isAr ? "سؤال" : "questions"}`,
-            teacher: a.teacherName,
-            type: a.type,
-          });
-        }
-      }
-    }
-    return items.slice(0, 10);
-  }, [displayAssignments, displayVideos, newIds, isAr]);
-
-  const categoryTabs: { id: CategoryTab; ar: string; en: string }[] = [
-    { id: "all", ar: "الكل", en: "All" },
-    { id: "popular", ar: "الأكثر استخداماً", en: "Most used" },
-    { id: "new", ar: "جديد هذا الأسبوع", en: "New this week" },
-    { id: "featured", ar: "أنشطة مميزة", en: "Featured" },
-    { id: "peers", ar: "أنشطة من معلميني", en: "From teachers" },
-  ];
-
-  const typeChips: { id: TypeChip; ar: string; en: string; icon: React.ReactNode }[] = [
-    { id: "all", ar: "كل الأنواع", en: "All types", icon: <Layers className="w-3.5 h-3.5" /> },
-    { id: "homework", ar: "واجبات", en: "Homework", icon: <BookText className="w-3.5 h-3.5" /> },
-    { id: "quiz", ar: "اختبارات", en: "Quizzes", icon: <ClipboardList className="w-3.5 h-3.5" /> },
-    { id: "presentation", ar: "عروض تفاعلية", en: "Presentations", icon: <Presentation className="w-3.5 h-3.5" /> },
-    { id: "video", ar: "فيديوهات", en: "Videos", icon: <Video className="w-3.5 h-3.5" /> },
-    { id: "live", ar: "مسابقات مباشرة", en: "Live quizzes", icon: <Zap className="w-3.5 h-3.5" /> },
-    { id: "interactive", ar: "أنشطة تفاعلية", en: "Interactive", icon: <Sparkles className="w-3.5 h-3.5" /> },
-  ];
-
-  const statsLabels = [
-    { icon: <BookText className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "نشاط جاهز" : "Ready activities", value: formatUseCount(libraryStats?.totalActivities) },
-    { icon: <Users className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "معلم مشارك" : "Contributing teachers", value: formatUseCount(libraryStats?.contributingTeachers) },
-    { icon: <TrendingUp className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "مرات الاستخدام" : "Total uses", value: formatUseCount(libraryStats?.totalUses) },
-    { icon: <Zap className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "جديد هذا الأسبوع" : "New this week", value: formatUseCount(libraryStats?.newThisWeek) },
-  ];
 
   const topVideoByUses = useMemo(() => {
     if (!libraryStats?.videoUses) return videoLessons[0];
-    let best = videoLessons[0];
-    let max = -1;
+    let best = videoLessons[0]; let max = -1;
     for (const v of videoLessons) {
       const u = libraryStats.videoUses[String(v.id)] ?? 0;
-      if (u > max) {
-        max = u;
-        best = v;
-      }
+      if (u > max) { max = u; best = v; }
     }
     return best;
   }, [videoLessons, libraryStats]);
 
   const trendingNow = useMemo(() => {
-    type Trend = {
-      key: string;
-      title: string;
-      kind: "assignment" | "video";
-      id: number;
-      type?: string;
-      subject?: string | null;
-      uses: number;
-      typeLabel: string;
-      activeLabel: string;
-    };
+    type Trend = { key: string; title: string; kind: "assignment" | "video"; id: number; type?: string; subject?: string | null; uses: number; typeLabel: string; activeLabel: string };
     const out: Trend[] = [];
-
     if (wameethPick) {
       const u = libraryStats?.assignmentUses[String(wameethPick.id)] ?? 0;
-      out.push({
-        key: `w-${wameethPick.id}`,
-        title: wameethPick.title,
-        kind: "assignment",
-        id: wameethPick.id,
-        type: wameethPick.type,
-        subject: wameethPick.subject,
-        uses: u,
-        typeLabel: isAr ? "مسابقة مباشرة" : "Live quiz",
-        activeLabel: isAr
-          ? (u > 0 ? `${formatUseCount(u)} استخدام حديث` : "جاهز للتشغيل")
-          : (u > 0 ? `${formatUseCount(u)} recent uses` : "Ready to launch"),
-      });
+      out.push({ key: `w-${wameethPick.id}`, title: wameethPick.title, kind: "assignment", id: wameethPick.id, type: wameethPick.type, subject: wameethPick.subject, uses: u, typeLabel: isAr ? "مسابقة مباشرة" : "Live quiz", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : "جاهز للتشغيل") : (u > 0 ? `${formatUseCount(u)} uses` : "Ready") });
     }
-
-    const sciencePick = [...assignments]
-      .filter((a) => resolveSubjectTheme(a.subject) === "science" && a.id !== wameethPick?.id)
-      .sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))[0];
+    const sciencePick = [...assignments].filter(a => resolveSubjectTheme(a.subject) === "science" && a.id !== wameethPick?.id).sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))[0];
     if (sciencePick) {
       const u = libraryStats?.assignmentUses[String(sciencePick.id)] ?? 0;
-      out.push({
-        key: `a-${sciencePick.id}`,
-        title: sciencePick.title,
-        kind: "assignment",
-        id: sciencePick.id,
-        type: sciencePick.type,
-        subject: sciencePick.subject,
-        uses: u,
-        typeLabel: isAr ? "واجب / اختبار" : "Assignment",
-        activeLabel: isAr
-          ? (u > 0 ? `${formatUseCount(u)} استخدام` : `${sciencePick.questionCount} سؤال`)
-          : (u > 0 ? `${formatUseCount(u)} uses` : `${sciencePick.questionCount} Q`),
-      });
+      out.push({ key: `a-${sciencePick.id}`, title: sciencePick.title, kind: "assignment", id: sciencePick.id, type: sciencePick.type, subject: sciencePick.subject, uses: u, typeLabel: isAr ? "واجب / اختبار" : "Assignment", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : `${sciencePick.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} uses` : `${sciencePick.questionCount} Q`) });
     }
-
-    if (topVideoByUses) {
+    if (topVideoByUses && !out.some(t => t.kind === "video" && t.id === topVideoByUses.id)) {
       const u = libraryStats?.videoUses[String(topVideoByUses.id)] ?? 0;
-      if (!out.some((t) => t.kind === "video" && t.id === topVideoByUses.id)) {
-        out.push({
-          key: `v-${topVideoByUses.id}`,
-          title: topVideoByUses.title,
-          kind: "video",
-          id: topVideoByUses.id,
-          subject: topVideoByUses.subject,
-          uses: u,
-          typeLabel: isAr ? "فيديو" : "Video",
-          activeLabel: isAr
-            ? (u > 0 ? `${formatUseCount(u)} مشاهدة` : `${topVideoByUses.questionCount} سؤال`)
-            : (u > 0 ? `${formatUseCount(u)} views` : `${topVideoByUses.questionCount} Q`),
-        });
-      }
+      out.push({ key: `v-${topVideoByUses.id}`, title: topVideoByUses.title, kind: "video", id: topVideoByUses.id, subject: topVideoByUses.subject, uses: u, typeLabel: isAr ? "فيديو" : "Video", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} مشاهدة` : `${topVideoByUses.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} views` : `${topVideoByUses.questionCount} Q`) });
     }
-
     if (out.length < 3) {
-      const extra = [...assignments]
-        .filter((a) => !out.some((t) => t.kind === "assignment" && t.id === a.id))
-        .sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))
-        .slice(0, 3 - out.length);
+      const extra = [...assignments].filter(a => !out.some(t => t.kind === "assignment" && t.id === a.id)).sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id)).slice(0, 3 - out.length);
       for (const a of extra) {
         const u = libraryStats?.assignmentUses[String(a.id)] ?? 0;
-        out.push({
-          key: `a-${a.id}`,
-          title: a.title,
-          kind: "assignment",
-          id: a.id,
-          type: a.type,
-          subject: a.subject,
-          uses: u,
-          typeLabel: activityBadge("assignment", a.type, isAr).label,
-          activeLabel: isAr ? `${formatUseCount(u) || "0"} استخدام` : `${formatUseCount(u) || "0"} uses`,
-        });
+        out.push({ key: `a-${a.id}`, title: a.title, kind: "assignment", id: a.id, type: a.type, subject: a.subject, uses: u, typeLabel: activityBadge("assignment", a.type, isAr).label, activeLabel: isAr ? `${formatUseCount(u) || "0"} استخدام` : `${formatUseCount(u) || "0"} uses` });
       }
     }
-
     return out.slice(0, 4);
   }, [assignments, wameethPick, topVideoByUses, libraryStats, isAr]);
 
-  const renderAssignmentCard = (a: MarketplaceAssignment, i: number, compact?: boolean) => {
-    const badge = activityBadge("assignment", a.type, isAr);
-    const isOwn = a.teacherId === currentTeacherId;
-    const uses = statsError ? undefined : assignmentUseCount(a.id);
+  const statsLabels = [
+    { icon: <BookText  className="w-4 h-4" />, label: isAr ? "نشاط جاهز"          : "Ready activities",        value: formatUseCount(libraryStats?.totalActivities)     },
+    { icon: <Users     className="w-4 h-4" />, label: isAr ? "معلم مشارك"          : "Contributing teachers",   value: formatUseCount(libraryStats?.contributingTeachers) },
+    { icon: <TrendingUp className="w-4 h-4"/>, label: isAr ? "مرة استُخدم"         : "Total uses",              value: formatUseCount(libraryStats?.totalUses)            },
+    { icon: <Zap       className="w-4 h-4" />, label: isAr ? "جديد هذا الأسبوع"   : "New this week",           value: formatUseCount(libraryStats?.newThisWeek)          },
+  ];
+
+  const categoryTabs: { id: CategoryTab; ar: string; en: string }[] = [
+    { id: "all",      ar: "الكل",              en: "All"          },
+    { id: "popular",  ar: "الأكثر استخداماً",  en: "Most used"    },
+    { id: "new",      ar: "جديد هذا الأسبوع",  en: "New this week"},
+    { id: "featured", ar: "أنشطة مميزة",       en: "Featured"     },
+    { id: "peers",    ar: "أنشطة من معلميني",   en: "From teachers"},
+  ];
+
+  const typeFilters: { id: TypeChip; ar: string; en: string; icon: React.ReactNode }[] = [
+    { id: "all",         ar: "كل الأنواع",       en: "All types",    icon: <Globe       className="w-3.5 h-3.5" /> },
+    { id: "live",        ar: "مسابقة مباشرة",    en: "Live quiz",    icon: <Zap         className="w-3.5 h-3.5" /> },
+    { id: "quiz",        ar: "اختبارات",         en: "Quizzes",      icon: <ClipboardList className="w-3.5 h-3.5"/> },
+    { id: "homework",    ar: "واجبات",           en: "Homework",     icon: <BookText    className="w-3.5 h-3.5" /> },
+    { id: "video",       ar: "فيديو",            en: "Videos",       icon: <Video       className="w-3.5 h-3.5" /> },
+    { id: "interactive", ar: "أنشطة تفاعلية",    en: "Interactive",  icon: <Sparkles    className="w-3.5 h-3.5" /> },
+    { id: "presentation",ar: "عروض تفاعلية",     en: "Presentations",icon: <Presentation className="w-3.5 h-3.5"/> },
+  ];
+
+  const hasFilters = !!(search || subjectFilter || gradeFilter || typeChip !== "all" || categoryTab !== "all");
+
+  /* ──────────────────────────────────── render helpers ──────────────────────── */
+
+  const renderAssignmentCard = (a: MarketplaceAssignment, i: number) => {
+    const badge  = activityBadge("assignment", a.type, isAr);
+    const isOwn  = a.teacherId === currentTeacherId;
+    const uses   = statsError ? undefined : assignmentUseCount(a.id);
     const coverKind = resolveCoverKind("assignment", a.type);
+
     return (
       <motion.article
         key={a.id}
@@ -542,51 +374,37 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             </span>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleBookmark(a.id);
-              }}
-              className={cn("absolute top-2.5 z-10 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors", dir === "rtl" ? "left-2.5" : "right-2.5", bookmarks.has(a.id) && "text-[#d4a63a]")}
-              aria-label={isAr ? "حفظ" : "Bookmark"}
+              onClick={e => { e.stopPropagation(); toggleBookmark(a.id); }}
+              className={cn("absolute top-2.5 z-10 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors", dir === "rtl" ? "left-2.5" : "right-2.5")}
+              style={{ color: bookmarks.has(a.id) ? C.gold : C.muted }}
             >
               <Bookmark className={cn("w-3.5 h-3.5", bookmarks.has(a.id) && "fill-current")} />
             </button>
           </ActivityCover>
         </div>
-        <div className={cn("flex flex-1 flex-col px-3 pb-3 pt-2.5", compact && "px-2.5 pb-2.5")}>
+
+        <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
           <h3 className="line-clamp-2 text-[13px] font-extrabold leading-snug tracking-tight" style={{ color: C.text }}>
             {a.title}
           </h3>
-          {a.description ? (
-            <p className="mt-0.5 line-clamp-1 text-[11px] leading-relaxed" style={{ color: "#9aa89f" }}>
-              {a.description}
-            </p>
-          ) : null}
-          <p className="mt-1 text-[10px] font-medium tracking-wide" style={{ color: C.muted }}>
+          {a.description && (
+            <p className="mt-0.5 line-clamp-1 text-[11px] leading-relaxed" style={{ color: C.muted }}>{a.description}</p>
+          )}
+          <p className="mt-1 text-[10px] font-medium" style={{ color: C.muted }}>
             {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>
           <div className="mt-2 flex items-center justify-between gap-2 text-[10px]" style={{ color: C.muted }}>
-            {!statsError && (
-              <span>
-                {formatUseCount(uses)} {isAr ? "استخدام" : "uses"}
-              </span>
-            )}
-            {a.teacherName && !a.isAdminContent ? (
-              <span className="flex min-w-0 items-center gap-1 truncate">
-                <User className="w-3 h-3 shrink-0" />
-                {a.teacherName}
-              </span>
-            ) : a.isAdminContent ? (
-              <span className="truncate font-semibold" style={{ color: C.primary }}>
-                {isAr ? "حصاد" : "Hasaad"}
-              </span>
-            ) : null}
+            {!statsError && <span>{formatUseCount(uses)} {isAr ? "استخدام" : "uses"}</span>}
+            {a.teacherName && !a.isAdminContent
+              ? <span className="flex min-w-0 items-center gap-1 truncate"><User className="w-3 h-3 shrink-0" />{a.teacherName}</span>
+              : a.isAdminContent ? <span className="truncate font-semibold" style={{ color: C.primary }}>{isAr ? "حصاد" : "Hasaad"}</span>
+              : null}
           </div>
+
           <div className="mt-3 flex items-center gap-1.5 border-t pt-3" style={{ borderColor: C.border }}>
             {isOwn ? (
               <span className="flex w-full items-center justify-center gap-1 rounded-xl border py-2 text-xs font-bold" style={{ borderColor: C.border, color: C.primary, background: C.soft }}>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {isAr ? "محتواك" : "Yours"}
+                <CheckCircle2 className="w-3.5 h-3.5" />{isAr ? "محتواك" : "Yours"}
               </span>
             ) : (
               <>
@@ -599,32 +417,25 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 >
                   {launchingIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Play className="w-3.5 h-3.5 fill-current" />{isAr ? "ابدأ" : "Start"}</>}
                 </button>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === `a-${a.id}` ? null : `a-${a.id}`); }}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec]"
-                    style={{ borderColor: C.border }}
-                  >
-                    <MoreVertical className="w-4 h-4" style={{ color: C.muted }} />
-                  </button>
-                  {openMenuId === `a-${a.id}` && (
-                    <div className={cn("absolute z-50 top-full mt-1 flex min-w-[180px] flex-col rounded-xl border bg-white py-1 shadow-xl", dir === "rtl" ? "left-0" : "right-0")} style={{ borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
-                      <button type="button" onClick={() => { importAssignment(a.id); setOpenMenuId(null); }} disabled={importingIds.has(a.id) || importedIds.has(a.id)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[#f5f2ec] disabled:opacity-50">
-                        {importedIds.has(a.id) ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Download className="w-3.5 h-3.5" />}
-                        {t.sharedContent.importAssignment}
-                      </button>
-                      <button type="button" onClick={() => { copyLink(a.id); setOpenMenuId(null); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[#f5f2ec]">
-                        <Copy className="w-3.5 h-3.5" />
-                        {t.sharedContent.copyLink}
-                      </button>
-                      <button type="button" onClick={() => { dismissAssignment(a.id); setOpenMenuId(null); }} disabled={dismissingIds.has(`assignment-${a.id}`)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40">
-                        <X className="w-3.5 h-3.5" />
-                        {isAr ? "إخفاء" : "Hide"}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => importAssignment(a.id)}
+                  disabled={importingIds.has(a.id) || importedIds.has(a.id)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec] disabled:opacity-40"
+                  style={{ borderColor: C.border }}
+                  title={t.sharedContent.importAssignment}
+                >
+                  {importedIds.has(a.id) ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : importingIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: C.muted }} /> : <Download className="w-3.5 h-3.5" style={{ color: C.muted }} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => copyLink(a.id)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec]"
+                  style={{ borderColor: C.border }}
+                  title={t.sharedContent.copyLink}
+                >
+                  <Copy className="w-3.5 h-3.5" style={{ color: C.muted }} />
+                </button>
               </>
             )}
           </div>
@@ -633,387 +444,408 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     );
   };
 
-  return (
-    <div
-      className={cn(!embedded && "min-h-full")}
-      style={{ background: C.bg, color: C.text }}
-      dir={dir}
-    >
-      <div className={cn(embedded ? "py-2" : "container mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:py-6")}>
-        {/* Header */}
-        <div
-          className="mb-5 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-          style={{
-            borderColor: C.border,
-            background: "linear-gradient(135deg, #f0f7f2 0%, #faf8f3 55%, #ffffff 100%)",
-          }}
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-sm" style={{ background: C.soft }}>
-              <FolderOpen className="h-5 w-5" style={{ color: C.primary }} />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-lg font-black sm:text-xl" style={{ color: C.text }}>
-                {isAr ? "مكتبة الأنشطة" : "Activities Library"}
-              </h1>
-              <p className="mt-0.5 max-w-xl text-xs leading-relaxed sm:text-sm" style={{ color: C.muted }}>
-                {isAr
-                  ? "اكتشف آلاف الأنشطة الجاهزة التي شاركها المعلمون واستخدمها مع طلابك بسهولة."
-                  : "Discover ready-made activities shared by teachers and use them with your students easily."}
-              </p>
-            </div>
-          </div>
-          <Link href="/teacher/new">
-            <button
-              type="button"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors hover:bg-white"
-              style={{ borderColor: C.border, color: C.primary, background: "rgba(255,255,255,0.85)" }}
-            >
-              <Plus className="w-4 h-4" />
-              {isAr ? "شارك نشاطاً" : "Share activity"}
+  const renderListRow = (a: MarketplaceAssignment, i: number) => {
+    const badge  = activityBadge("assignment", a.type, isAr);
+    const isOwn  = a.teacherId === currentTeacherId;
+    const uses   = statsError ? undefined : assignmentUseCount(a.id);
+
+    return (
+      <motion.div
+        key={a.id}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: Math.min(i * 0.025, 0.18) }}
+        className={cn("flex items-center gap-4 rounded-2xl border bg-white px-4 py-3.5 transition-shadow hover:shadow-md", a.hiddenByAdmin && "opacity-55 border-dashed border-amber-300")}
+        style={{ borderColor: C.border }}
+      >
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+          <ActivityCover kind={resolveCoverKind("assignment", a.type)} subject={a.subject} title={a.title} type={a.type} aspect="thumb" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-extrabold" style={{ color: C.text }}>{a.title}</p>
+          <p className="mt-0.5 text-[11px]" style={{ color: C.muted }}>
+            {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
+            {!statsError && <> · {formatUseCount(uses)} {isAr ? "استخدام" : "uses"}</>}
+          </p>
+        </div>
+        <span className={cn("shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", badge.cls)}>{badge.label}</span>
+        {!isOwn && (
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => launchAsGame(a.id, "classic")} disabled={launchingIds.has(a.id) || a.questionCount === 0} className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-40" style={{ background: C.primary }}>
+              {launchingIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Play className="w-3.5 h-3.5 fill-current" />{isAr ? "ابدأ" : "Start"}</>}
             </button>
-          </Link>
+            <button type="button" onClick={() => importAssignment(a.id)} disabled={importingIds.has(a.id) || importedIds.has(a.id)} className="flex h-9 w-9 items-center justify-center rounded-xl border hover:bg-[#f5f2ec] disabled:opacity-40" style={{ borderColor: C.border }}>
+              {importedIds.has(a.id) ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Download className="w-3.5 h-3.5" style={{ color: C.muted }} />}
+            </button>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
+  /* ──────────────────────────────────── sidebar ──────────────────────────────── */
+  const sidebar = (
+    <aside
+      className="shrink-0 border-s flex flex-col"
+      style={{
+        width: 260,
+        background: C.sidebar,
+        borderColor: C.border,
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+        overflowY: "auto",
+      }}
+    >
+      {/* Logo */}
+      <div className="border-b px-5 py-5" style={{ borderColor: C.border }}>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: C.primary }}>
+            <BookText className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <p className="text-[15px] font-black" style={{ color: C.text }}>{isAr ? "مكتبة الأنشطة" : "Activities Library"}</p>
+            <p className="text-[10px]" style={{ color: C.muted }}>{isAr ? "اكتشف وابدأ فوراً" : "Discover & launch"}</p>
+          </div>
         </div>
 
-        {/* Stats — GET /api/teacher/activity-library/stats */}
-        <div className="mb-5">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {statsLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="overflow-hidden rounded-xl border bg-white p-3.5 sm:p-4"
-                    style={{ borderColor: C.border }}
-                  >
-                    <div className="mb-3 flex h-9 w-9 animate-pulse items-center justify-center rounded-lg bg-gradient-to-br from-[#e8f4ec] to-[#f0ebe3]" />
-                    <div className="mb-2 h-8 w-20 animate-pulse rounded-md bg-gradient-to-r from-[#f0ebe3] via-[#e8e1d8] to-[#f0ebe3] bg-[length:200%_100%]" style={{ animation: "shimmer 1.8s ease-in-out infinite" }} />
-                    <div className="h-3 w-28 animate-pulse rounded bg-[#f0ebe3]" />
-                  </div>
-                ))
-              : statsError
-                ? statsLabels.map((s, i) => (
-                    <div key={i} className="rounded-xl border bg-white px-3.5 py-4 sm:px-4" style={{ borderColor: C.border }}>
-                      <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
-                        {s.icon}
-                      </div>
-                      <p className="text-[11px] font-semibold sm:text-xs" style={{ color: C.muted }}>{s.label}</p>
-                    </div>
-                  ))
-                : statsLabels.map((s, i) => (
-                    <div key={i} className="rounded-xl border bg-white p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
-                      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
-                        {s.icon}
-                      </div>
-                      <p className="text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: C.text }}>{s.value}</p>
-                      <p className="text-[10px] font-medium sm:text-[11px]" style={{ color: C.muted }}>{s.label}</p>
-                    </div>
-                  ))}
-          </div>
-          {statsError && !statsLoading && (
-            <p className="mt-2.5 text-center text-[11px] font-medium" style={{ color: "#9aa89f" }} role="status">
-              {isAr ? "سيتم تحديث الإحصائيات قريباً" : "Stats will update shortly"}
-            </p>
+        {/* Search */}
+        <div className="relative">
+          <Search className={cn("absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "right-3" : "left-3")} style={{ color: C.muted }} />
+          <input
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder={isAr ? "ابحث عن نشاط..." : "Search..."}
+            className={cn("w-full rounded-2xl border py-2.5 text-[13px] outline-none transition-all", isAr ? "pr-9 pl-9" : "pl-9 pr-9")}
+            style={{ background: C.bg, borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
+          />
+          {search && (
+            <button onClick={() => onSearchChange("")} className={cn("absolute top-1/2 -translate-y-1/2", isAr ? "left-3" : "right-3")} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}>
+              <X className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
+      </div>
 
-        {/* Category tabs */}
-        <div className="mb-4 flex gap-1 overflow-x-auto border-b pb-0 scrollbar-thin" style={{ borderColor: C.border }}>
-          {categoryTabs.map((tab) => (
+      {/* Type filters */}
+      <div className="px-5 py-4">
+        <p className="mb-2.5 text-[10px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "نوع النشاط" : "Activity type"}</p>
+        <div className="flex flex-col gap-1">
+          {typeFilters.map(f => (
             <button
-              key={tab.id}
+              key={f.id}
               type="button"
-              onClick={() => setCategoryTab(tab.id)}
-              className={cn(
-                "shrink-0 border-b-2 px-3 py-2.5 text-sm font-bold transition-colors -mb-px",
-                categoryTab === tab.id ? "border-[#0a4d26] text-[#0a4d26]" : "border-transparent text-[#6f8176] hover:text-[#1f2d24]",
-              )}
+              onClick={() => {
+                setTypeChip(f.id);
+                if (f.id === "video")        onActiveTabChange("videos");
+                else if (f.id === "interactive") onActiveTabChange("questions");
+                else if (f.id === "presentation") onPresentations();
+                else onActiveTabChange("assignments");
+              }}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] transition-all"
+              style={{
+                fontFamily: "inherit",
+                fontWeight: typeChip === f.id ? 800 : 600,
+                background: typeChip === f.id ? C.soft : "transparent",
+                color: typeChip === f.id ? C.primary : C.muted,
+                border: "none",
+                cursor: "pointer",
+              }}
             >
-              {isAr ? tab.ar : tab.en}
+              <span style={{ color: typeChip === f.id ? C.primary : C.muted }}>{f.icon}</span>
+              {isAr ? f.ar : f.en}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="mb-4 space-y-3 rounded-2xl border bg-white/90 p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
-          <div className="flex flex-wrap items-stretch gap-2.5">
-            <div className="relative min-w-[min(100%,220px)] flex-1">
-              <Search className={cn("absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa89f]", isAr ? "right-3" : "left-3")} />
-              <input
-                value={search}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={isAr ? "ابحث عن نشاط أو موضوع..." : "Search activity or topic..."}
-                className={cn("w-full", FILTER_INPUT, isAr ? "pr-10 pl-3" : "pl-10 pr-3")}
-              />
-            </div>
-            <input
-              value={subjectFilter}
-              onChange={(e) => onSubjectFilterChange(e.target.value)}
-              list="lib-subjects"
-              placeholder={isAr ? "المادة" : "Subject"}
-              className={cn("min-w-[108px] flex-1 sm:flex-none sm:w-[128px]", FILTER_INPUT, "px-3")}
-            />
-            <datalist id="lib-subjects">{allSubjects.map((s) => <option key={s} value={s} />)}</datalist>
-            <input
-              value={gradeFilter}
-              onChange={(e) => onGradeFilterChange(e.target.value)}
-              list="lib-grades"
-              placeholder={isAr ? "الصف" : "Grade"}
-              className={cn("min-w-[96px] flex-1 sm:flex-none sm:w-[112px]", FILTER_INPUT, "px-3")}
-            />
-            <datalist id="lib-grades">{allGrades.map((g) => <option key={g} value={g} />)}</datalist>
-            <select
-              value={sortBy}
-              onChange={(e) => onSortByChange(e.target.value as "newest" | "questions")}
-              className={cn("min-w-[120px] flex-1 sm:flex-none", FILTER_INPUT, "px-3")}
-            >
-              <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
-              <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
-            </select>
-            {(search || subjectFilter || gradeFilter) && (
-              <button type="button" onClick={onClearFilters} className="text-xs font-bold underline" style={{ color: C.primary }}>
-                {isAr ? "مسح الفلاتر" : "Clear filters"}
-              </button>
-            )}
-            {isAdmin && (
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-bold" style={{ borderColor: C.border }}>
-                <input type="checkbox" checked={showHidden} onChange={(e) => onShowHiddenChange(e.target.checked)} className="accent-[#0a4d26]" />
-                <EyeOff className="w-3.5 h-3.5" />
-                {isAr ? "عرض المخفي" : "Show hidden"}
-              </label>
-            )}
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-            {typeChips.map((chip) => (
+      {/* Subject pills */}
+      <div className="border-t px-5 py-4" style={{ borderColor: C.border }}>
+        <p className="mb-2.5 text-[10px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "المادة الدراسية" : "Subject"}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {[isAr ? "الكل" : "All", ...allSubjects].slice(0, 12).map(s => {
+            const active = subjectFilter === s || (!subjectFilter && (s === "الكل" || s === "All"));
+            return (
               <button
-                key={chip.id}
+                key={s}
                 type="button"
-                onClick={() => {
-                  setTypeChip(chip.id);
-                  if (chip.id === "video") onActiveTabChange("videos");
-                  else if (chip.id === "interactive") onActiveTabChange("questions");
-                  else if (chip.id === "presentation") onPresentations();
-                  else onActiveTabChange("assignments");
-                }}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                  typeChip === chip.id ? "border-[#0a4d26] bg-[#0a4d26] text-white" : "border-[#e8e1d8] bg-[#faf8f3] text-[#6f8176] hover:border-[#0a4d26]/30",
-                )}
+                onClick={() => onSubjectFilterChange(active ? "" : s === "الكل" || s === "All" ? "" : s)}
+                className="rounded-lg border px-2 py-1 text-[11px] transition-all"
+                style={{ fontFamily: "inherit", fontWeight: active ? 700 : 500, borderColor: active ? C.primary : C.border, background: active ? C.soft : "transparent", color: active ? C.primary : C.muted, cursor: "pointer" }}
               >
-                {chip.icon}
-                {isAr ? chip.ar : chip.en}
+                {s}
               </button>
-            ))}
-          </div>
-          <div className="flex gap-1 border-t pt-3" style={{ borderColor: C.border }}>
-            {[
-              { key: "assignments" as Tab, label: t.sharedContent.tabAssignments, icon: BookText, count: assignments.length },
-              { key: "questions" as Tab, label: t.sharedContent.tabQuestions, icon: HelpCircle, count: questions.length },
-              { key: "videos" as Tab, label: isAr ? "دروس فيديو" : "Video lessons", icon: Video, count: videoLessons.length },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => onActiveTabChange(tab.key)}
-                className={cn(
-                  "flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-bold -mb-px transition-colors",
-                  activeTab === tab.key ? "border-[#0a4d26] text-[#0a4d26]" : "border-transparent text-[#6f8176]",
-                )}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-                <span className="rounded-full bg-[#e8f4ec] px-1.5 py-0.5 text-[10px]">{tab.count}</span>
-              </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </div>
 
+      {/* Grade + Sort (compact) */}
+      <div className="border-t px-5 py-4" style={{ borderColor: C.border }}>
+        <p className="mb-2 text-[10px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "الصف والترتيب" : "Grade & sort"}</p>
+        <div className="flex flex-col gap-2">
+          <input
+            value={gradeFilter}
+            onChange={e => onGradeFilterChange(e.target.value)}
+            list="lib-grades-sb"
+            placeholder={isAr ? "الصف..." : "Grade..."}
+            className="w-full rounded-xl border px-3 py-2 text-[12px] outline-none"
+            style={{ background: C.bg, borderColor: C.border, color: C.text, fontFamily: "inherit" }}
+          />
+          <datalist id="lib-grades-sb">{allGrades.map(g => <option key={g} value={g} />)}</datalist>
+          <select value={sortBy} onChange={e => onSortByChange(e.target.value as "newest" | "questions")} className="w-full rounded-xl border px-3 py-2 text-[12px] outline-none" style={{ background: C.bg, borderColor: C.border, color: C.text, fontFamily: "inherit" }}>
+            <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
+            <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
+          </select>
+        </div>
+      </div>
 
-        {/* Trending now */}
-        {trendingNow.length > 0 && (
-          <section className="mb-6">
-            <div className="mb-2.5 flex items-center gap-2">
-              <Radio className="h-4 w-4 text-[#0a4d26]" />
-              <h2 className="text-sm font-extrabold tracking-tight" style={{ color: C.text }}>
-                {isAr ? "رائج الآن" : "Trending now"}
-              </h2>
-            </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
-              {trendingNow.map((item, idx) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => {
-                    if (item.kind === "assignment") launchAsGame(item.id);
-                    else onActiveTabChange("videos");
-                  }}
-                  className="group flex w-[min(100%,260px)] shrink-0 items-center gap-2.5 rounded-xl border bg-white p-2 text-start shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:w-[240px]"
-                  style={{ borderColor: C.border }}
-                >
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                    <ActivityCover
-                      kind={resolveCoverKind(item.kind, item.type)}
-                      subject={item.subject}
-                      title={item.title}
-                      type={item.type}
-                      aspect="thumb"
-                    />
+      {/* Admin toggle */}
+      {isAdmin && (
+        <div className="border-t px-5 py-3" style={{ borderColor: C.border }}>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold" style={{ color: C.muted }}>
+            <input type="checkbox" checked={showHidden} onChange={e => onShowHiddenChange(e.target.checked)} className="accent-[#225739]" />
+            <EyeOff className="w-3.5 h-3.5" />
+            {isAr ? "عرض المخفي" : "Show hidden"}
+          </label>
+        </div>
+      )}
+
+      {/* Share CTA */}
+      <div className="mt-auto px-5 py-5">
+        <Link href="/teacher/new">
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-black text-white transition-all hover:brightness-110"
+            style={{ background: `linear-gradient(135deg,${C.primary},${C.primary2})`, boxShadow: "0 4px 16px rgba(34,87,57,0.28)", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            <Plus className="h-4 w-4" />{isAr ? "شارك نشاطاً" : "Share activity"}
+          </button>
+        </Link>
+      </div>
+    </aside>
+  );
+
+  /* ──────────────────────────────────── main content ──────────────────────────── */
+  const totalShown = (activeTab === "assignments" ? displayAssignments.length : 0)
+    + (activeTab === "videos" ? displayVideos.length : 0)
+    + (activeTab === "questions" ? displayQuestions.length : 0);
+
+  return (
+    <div
+      className={cn(!embedded && "min-h-screen")}
+      style={{ background: C.bg, color: C.text }}
+      dir={dir}
+    >
+      <div style={{ display: "flex", minHeight: "100vh" }}>
+        {/* Sidebar */}
+        {sidebar}
+
+        {/* Main */}
+        <main style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "28px 32px" }}>
+
+          {/* Stats bar */}
+          <div
+            className="mb-6 grid grid-cols-2 gap-3 rounded-2xl border bg-white p-4 shadow-sm lg:grid-cols-4"
+            style={{ borderColor: C.border }}
+          >
+            {statsLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="h-10 w-10 animate-pulse rounded-xl" style={{ background: C.soft }} />
+                    <div>
+                      <div className="mb-1.5 h-6 w-16 animate-pulse rounded-md" style={{ background: C.border }} />
+                      <div className="h-3 w-24 animate-pulse rounded" style={{ background: C.border }} />
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-1">
-                      {idx === 0 && (
-                        <span className="inline-flex items-center gap-0.5 rounded-md bg-[#0a4d26] px-1.5 py-0.5 text-[9px] font-bold text-white">
-                          <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-300" />
-                          {isAr ? "نشط الآن" : "Active"}
+                ))
+              : statsLabels.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: C.soft, color: C.primary }}>
+                      {s.icon}
+                    </div>
+                    <div>
+                      <p className="text-xl font-black leading-none" style={{ color: C.text }}>{s.value || "—"}</p>
+                      <p className="mt-1 text-[10px]" style={{ color: C.muted }}>{s.label}</p>
+                    </div>
+                    {i < 3 && <div className="ms-auto h-9 w-px" style={{ background: C.border }} />}
+                  </div>
+                ))
+            }
+          </div>
+
+          {/* Trending now */}
+          {trendingNow.length > 0 && (
+            <section className="mb-7">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-5 w-0.5 rounded-full" style={{ background: `linear-gradient(to bottom,${C.gold},${C.primary})` }} />
+                  <Radio className="h-4 w-4" style={{ color: C.primary }} />
+                  <h2 className="text-[17px] font-black" style={{ color: C.text }}>{isAr ? "رائج الآن" : "Trending now"}</h2>
+                </div>
+                <button type="button" className="flex items-center gap-1 text-xs font-bold" style={{ background: "none", border: "none", cursor: "pointer", color: C.primary, fontFamily: "inherit" }}>
+                  {isAr ? "عرض الكل" : "See all"} <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
+                {trendingNow.map((item, idx) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => item.kind === "assignment" ? launchAsGame(item.id) : onActiveTabChange("videos")}
+                    className="group flex shrink-0 flex-col gap-3 overflow-hidden rounded-2xl p-4 text-start transition-all hover:-translate-y-1"
+                    style={{ width: 280, background: C.primary, boxShadow: "0 4px 20px rgba(34,87,57,0.28)", border: "none", cursor: "pointer", position: "relative" }}
+                  >
+                    {/* Decorative circle */}
+                    <div style={{ position: "absolute", top: -28, left: -28, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+                    <div className="flex items-start gap-2.5">
+                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl">
+                        <ActivityCover kind={resolveCoverKind(item.kind, item.type)} subject={item.subject} title={item.title} type={item.type} aspect="thumb" />
+                      </div>
+                      <div>
+                        <span className="mb-1 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[9px] font-bold text-white" style={{ background: "rgba(255,255,255,0.18)" }}>
+                          {idx === 0 && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
+                          {idx === 0 ? (isAr ? "نشط الآن" : "Active") : item.typeLabel}
                         </span>
-                      )}
-                      <span className="rounded-md bg-[#f5f2ec] px-1.5 py-0.5 text-[9px] font-semibold" style={{ color: C.muted }}>
-                        {item.typeLabel}
+                        <p className="line-clamp-2 text-[13px] font-extrabold leading-snug text-white">{item.title}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-medium text-white/70">{item.activeLabel}</span>
+                      <span className="rounded-xl px-3 py-1.5 text-[11px] font-black" style={{ background: C.gold, color: C.primary2 }}>
+                        {isAr ? "ابدأ ▶" : "Start ▶"}
                       </span>
                     </div>
-                    <p className="line-clamp-1 text-xs font-extrabold" style={{ color: C.text }}>{item.title}</p>
-                    <p className="mt-0.5 text-[10px] font-medium" style={{ color: C.muted }}>{item.activeLabel}</p>
-                  </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Category tabs + view toggle */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex gap-1 rounded-2xl border bg-white p-1" style={{ borderColor: C.border }}>
+              {categoryTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setCategoryTab(tab.id)}
+                  className="rounded-xl px-3 py-2 text-xs transition-all"
+                  style={{ fontFamily: "inherit", fontWeight: categoryTab === tab.id ? 800 : 600, background: categoryTab === tab.id ? C.primary : "transparent", color: categoryTab === tab.id ? "#fff" : C.muted, border: "none", cursor: "pointer" }}
+                >
+                  {isAr ? tab.ar : tab.en}
                 </button>
               ))}
             </div>
-          </section>
-        )}
-
-        {/* New this week */}
-        <section className="mb-6">
-          <h2 className="mb-3 text-base font-black" style={{ color: C.text }}>{isAr ? "جديد هذا الأسبوع" : "New this week"}</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {newWeekItems.map((item, i) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => {
-                  if (item.kind === "assignment") launchAsGame(item.id);
-                  else if (item.kind === "video") onActiveTabChange("videos");
-                }}
-                className="group overflow-hidden rounded-2xl border bg-white text-start transition-all hover:-translate-y-0.5 hover:shadow-md"
-                style={{ borderColor: C.border }}
-              >
-                <ActivityCover
-                  kind={resolveCoverKind(item.kind, item.type)}
-                  subject={item.subject}
-                  title={item.title}
-                  type={item.type}
-                  aspect="photo"
-                >
-                  <span className={cn("absolute top-2 z-10 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", activityBadge(item.kind, item.type, isAr).cls)}>
-                    {activityBadge(item.kind, item.type, isAr).label}
-                  </span>
-                </ActivityCover>
-                <div className="p-2.5">
-                  <p className="line-clamp-2 text-xs font-black leading-snug" style={{ color: C.text }}>{item.title}</p>
-                  <p className="mt-1 truncate text-[10px]" style={{ color: C.muted }}>{[item.subject, item.grade].filter(Boolean).join(" • ")}</p>
-                  <p className="mt-1 text-[10px] font-semibold" style={{ color: C.muted }}>{item.meta}</p>
-                </div>
-              </button>
-            ))}
+            <div className="flex items-center gap-2">
+              {hasFilters && (
+                <button type="button" onClick={onClearFilters} className="text-xs font-bold underline" style={{ background: "none", border: "none", cursor: "pointer", color: C.primary, fontFamily: "inherit" }}>
+                  {isAr ? "× مسح الفلاتر" : "× Clear filters"}
+                </button>
+              )}
+              <div className="flex gap-1">
+                {(["grid", "list"] as const).map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setViewMode(v)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border transition-all"
+                    style={{ borderColor: viewMode === v ? C.primary : C.border, background: viewMode === v ? C.soft : C.card, color: viewMode === v ? C.primary : C.muted, cursor: "pointer" }}
+                  >
+                    {v === "grid" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </section>
 
-        {/* Main grid */}
-        <section>
-          <h2 className="mb-3 text-base font-black" style={{ color: C.text }}>
-            {activeTab === "assignments" && (isAr ? "الواجبات والمسابقات" : "Assignments & quizzes")}
-            {activeTab === "videos" && (isAr ? "دروس الفيديو" : "Video lessons")}
-            {activeTab === "questions" && (isAr ? "بنك الأسئلة" : "Question bank")}
-          </h2>
+          {/* Results count */}
+          <p className="mb-4 text-xs font-semibold" style={{ color: C.muted }}>{totalShown} {isAr ? "نشاط" : "activities"}</p>
+
+          {/* Content — Assignments */}
           {activeTab === "assignments" && (
-            displayAssignments.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {displayAssignments.map((a, i) => renderAssignmentCard(a, i))}
-              </div>
-            ) : (
-              <EmptyState isAr={isAr} icon={<BookText className="w-8 h-8" />} title={isAr ? "لا توجد أنشطة" : "No activities"} />
-            )
+            displayAssignments.length > 0
+              ? viewMode === "grid"
+                ? <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
+                    {displayAssignments.map((a, i) => renderAssignmentCard(a, i))}
+                  </div>
+                : <div className="flex flex-col gap-2.5">
+                    {displayAssignments.map((a, i) => renderListRow(a, i))}
+                  </div>
+              : <EmptyState isAr={isAr} icon={<BookText className="w-8 h-8" />} title={isAr ? "لا توجد أنشطة" : "No activities"} />
           )}
+
+          {/* Content — Videos */}
           {activeTab === "videos" && (
-            displayVideos.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {displayVideos.map((v, i) => (
-                  <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="group flex flex-col overflow-hidden rounded-2xl border bg-white hover:-translate-y-1 hover:shadow-md" style={{ borderColor: C.border }}>
-                    <ActivityCover kind="video" subject={v.subject} title={v.title} aspect="video">
-                      <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-blue-600/90")}>{isAr ? "فيديو" : "Video"}</span>
-                    </ActivityCover>
-                    <div className="flex flex-1 flex-col p-3">
-                      <p className="line-clamp-2 text-sm font-black">{v.title}</p>
-                      {v.description ? <p className="mt-1 line-clamp-2 text-xs text-[#6f8176]">{v.description}</p> : null}
-                      <p className="mt-1 text-[11px] text-[#6f8176]">
-                        {[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" • ")}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[10px] text-[#6f8176]">
-                        {!statsError && (
-                          <span>{formatUseCount(videoUseCount(v.id))} {isAr ? "استخدام" : "uses"}</span>
-                        )}
-                        {v.teacherName ? (
-                          <span className="flex items-center gap-1 truncate">
-                            <User className="w-3 h-3" />
-                            {v.teacherName}
-                          </span>
-                        ) : null}
+            displayVideos.length > 0
+              ? <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
+                  {displayVideos.map((v, i) => (
+                    <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      className="group flex flex-col overflow-hidden rounded-2xl border bg-white hover:-translate-y-1 hover:shadow-md transition-all"
+                      style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+                    >
+                      <ActivityCover kind="video" subject={v.subject} title={v.title} aspect="video">
+                        <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-blue-600/90")}>
+                          {isAr ? "فيديو" : "Video"}
+                        </span>
+                      </ActivityCover>
+                      <div className="flex flex-1 flex-col p-3">
+                        <p className="line-clamp-2 text-[13px] font-black" style={{ color: C.text }}>{v.title}</p>
+                        {v.description && <p className="mt-1 line-clamp-1 text-xs" style={{ color: C.muted }}>{v.description}</p>}
+                        <p className="mt-1 text-[11px]" style={{ color: C.muted }}>{[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}</p>
+                        <div className="mt-2 flex items-center justify-between text-[10px]" style={{ color: C.muted }}>
+                          {!statsError && <span>{formatUseCount(videoUseCount(v.id))} {isAr ? "استخدام" : "uses"}</span>}
+                          {v.teacherName && <span className="flex items-center gap-1 truncate"><User className="w-3 h-3" />{v.teacherName}</span>}
+                        </div>
+                        <div className="mt-3 flex gap-1.5 border-t pt-3" style={{ borderColor: C.border }}>
+                          <button type="button" onClick={() => importVideo(v.id)} disabled={importingVIds.has(v.id) || v.teacherId === currentTeacherId} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-white disabled:opacity-40" style={{ background: C.primary }}>
+                            {importingVIds.has(v.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : importedVIds.has(v.id) ? <><CheckCircle2 className="w-3.5 h-3.5" />{isAr ? "تم الاستيراد" : "Imported"}</> : <><Download className="w-3.5 h-3.5" />{isAr ? "استيراد" : "Import"}</>}
+                          </button>
+                        </div>
                       </div>
-                      <button type="button" onClick={() => importVideo(v.id)} disabled={importingVIds.has(v.id) || v.teacherId === currentTeacherId} className="mt-2 w-full rounded-xl py-2 text-xs font-bold text-white disabled:opacity-40" style={{ background: C.primary }}>
-                        {importingVIds.has(v.id) ? <Loader2 className="mx-auto w-4 h-4 animate-spin" /> : isAr ? "استيراد" : "Import"}
-                      </button>
-                    </div>
-                  </motion.article>
-                ))}
-              </div>
-            ) : (
-              <EmptyState isAr={isAr} icon={<Video className="w-8 h-8" />} title={isAr ? "لا توجد دروس فيديو" : "No video lessons"} />
-            )
+                    </motion.article>
+                  ))}
+                </div>
+              : <EmptyState isAr={isAr} icon={<Video className="w-8 h-8" />} title={isAr ? "لا توجد دروس فيديو" : "No video lessons"} />
           )}
+
+          {/* Content — Questions */}
           {activeTab === "questions" && (
-            displayQuestions.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {displayQuestions.map((q, i) => (
-                  <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col overflow-hidden rounded-2xl border bg-white hover:shadow-md" style={{ borderColor: C.border }}>
-                    <ActivityCover kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} tags={q.tags ?? undefined} imageUrl={q.imageUrl} aspect="video">
-                      <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-violet-600/90")}>
-                        {isAr ? "تفاعلي" : "Interactive"}
-                      </span>
-                    </ActivityCover>
-                    <div className="p-4">
-                      <p className="line-clamp-3 text-sm font-bold">{q.text}</p>
-                      <p className="mt-2 text-xs text-[#6f8176]">{[q.subject, `${q.points} ${isAr ? "نقطة" : "pts"}`].filter(Boolean).join(" • ")}</p>
-                      <div className="mt-2 text-[11px] text-[#6f8176]">
-                        {/* questionUsesTracked=false: no per-question usage in DB yet */}
-                        {formatUseCount(0)} {isAr ? "استخدام" : "uses"}
+            displayQuestions.length > 0
+              ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {displayQuestions.map((q, i) => (
+                    <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                      className="flex flex-col overflow-hidden rounded-2xl border bg-white hover:shadow-md transition-shadow"
+                      style={{ borderColor: C.border }}
+                    >
+                      <ActivityCover kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} tags={q.tags ?? undefined} imageUrl={q.imageUrl} aspect="video">
+                        <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-violet-600/90")}>{isAr ? "تفاعلي" : "Interactive"}</span>
+                      </ActivityCover>
+                      <div className="p-4">
+                        <p className="line-clamp-3 text-sm font-bold" style={{ color: C.text }}>{q.text}</p>
+                        <p className="mt-2 text-xs" style={{ color: C.muted }}>{[q.subject, `${q.points} ${isAr ? "نقطة" : "pts"}`].filter(Boolean).join(" · ")}</p>
+                        {q.teacherName && <p className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: C.muted }}><User className="w-3 h-3" />{q.teacherName}</p>}
+                        <button type="button" onClick={() => importQuestion(q.id)} disabled={importingQIds.has(q.id)} className="mt-3 w-full rounded-xl px-4 py-2 text-xs font-bold text-white" style={{ background: C.primary }}>
+                          {importingQIds.has(q.id) ? <Loader2 className="mx-auto w-4 h-4 animate-spin" /> : isAr ? "استيراد" : "Import"}
+                        </button>
                       </div>
-                      {q.teacherName ? (
-                        <p className="mt-1 flex items-center gap-1 text-[11px] text-[#6f8176]">
-                          <User className="w-3 h-3" />
-                          {q.teacherName}
-                        </p>
-                      ) : null}
-                      <button type="button" onClick={() => importQuestion(q.id)} disabled={importingQIds.has(q.id)} className="mt-3 w-full rounded-xl px-4 py-2 text-xs font-bold text-white" style={{ background: C.primary }}>
-                        {isAr ? "استيراد" : "Import"}
-                      </button>
-                    </div>
-                  </motion.article>
-                ))}
-              </div>
-            ) : (
-              <EmptyState isAr={isAr} icon={<HelpCircle className="w-8 h-8" />} title={isAr ? "لا توجد أسئلة" : "No questions"} />
-            )
+                    </motion.article>
+                  ))}
+                </div>
+              : <EmptyState isAr={isAr} icon={<HelpCircle className="w-8 h-8" />} title={isAr ? "لا توجد أسئلة" : "No questions"} />
           )}
-        </section>
+        </main>
       </div>
     </div>
   );
 }
 
-
 function EmptyState({ isAr, icon, title }: { isAr: boolean; icon: React.ReactNode; title: string }) {
   return (
     <div className="rounded-2xl border bg-white py-16 text-center" style={{ borderColor: C.border }}>
-      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e8f4ec] text-[#0a4d26]/40">{icon}</div>
-      <p className="font-bold text-[#1f2d24]">{title}</p>
-      <p className="mt-1 text-sm text-[#6f8176]">{isAr ? "جرّب تغيير الفلاتر" : "Try changing filters"}</p>
+      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: C.soft, color: `${C.primary}66` }}>{icon}</div>
+      <p className="font-bold" style={{ color: C.text }}>{title}</p>
+      <p className="mt-1 text-sm" style={{ color: C.muted }}>{isAr ? "جرّب تغيير الفلاتر" : "Try changing filters"}</p>
     </div>
   );
 }

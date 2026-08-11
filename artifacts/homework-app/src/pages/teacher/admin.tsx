@@ -1347,89 +1347,104 @@ export default function AdminPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-6xl" dir={dir}>
-        <Link href="/teacher" className="text-primary hover:underline font-bold flex items-center gap-1 mb-6 w-fit">
-          <BackArrow className="w-4 h-4" />
-          {t.admin.backToDashboard}
-        </Link>
+      {/* ═══════════════ Admin shell: sidebar + content ═══════════════ */}
+      <div className="flex min-h-[calc(100vh-64px)]" dir={dir}>
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
-            <Crown className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              {t.admin.title}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {t.admin.subtitle}
-            </p>
-          </div>
-        </div>
+        {/* ── Right Sidebar (RTL: first child = right side) ── */}
+        <aside className="w-56 shrink-0 sticky top-0 h-[calc(100vh-64px)] overflow-y-auto flex flex-col border-s border-border/60 bg-card shadow-sm">
 
-        <div className="mb-6 border-b border-border overflow-x-auto scrollbar-none">
-          <div className="flex items-stretch gap-0 min-w-max">
+          {/* Sidebar header */}
+          <div className="px-4 pt-5 pb-4 border-b border-border/50 bg-gradient-to-b from-amber-500/8 to-transparent">
+            <Link href="/teacher" className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-primary transition-colors mb-4">
+              <BackArrow className="w-3 h-3" />
+              {t.admin.backToDashboard}
+            </Link>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shrink-0">
+                <Crown className="w-[18px] h-[18px] text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-foreground leading-tight truncate">{t.admin.title}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t.admin.subtitle}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation groups */}
+          <nav className="flex-1 py-3 overflow-y-auto">
             {([
               {
                 title: lang === "ar" ? "نظرة عامة" : "Overview",
+                color: "text-sky-500",
+                icon: BarChart3,
                 tabs: [
-                  { key: "online" as Tab, label: lang === "ar" ? "المتصلون" : "Online", icon: Zap },
-                  { key: "stats" as Tab, label: t.admin.tabStats, icon: BarChart3 },
-                  { key: "activities" as Tab, label: lang === "ar" ? "الأنشطة" : "Activities", icon: BookText },
+                  { key: "online"     as Tab, label: lang === "ar" ? "المتصلون"    : "Online",      icon: Zap       },
+                  { key: "stats"      as Tab, label: t.admin.tabStats,              icon: BarChart3  },
+                  { key: "activities" as Tab, label: lang === "ar" ? "الأنشطة"     : "Activities",  icon: BookText  },
                 ],
               },
               {
                 title: lang === "ar" ? "المستخدمون" : "Users",
+                color: "text-blue-500",
+                icon: Users,
                 tabs: [
-                  { key: "teachers" as Tab, label: t.admin.tabTeachers, icon: Users },
-                  { key: "students" as Tab, label: t.admin.tabStudents, icon: GraduationCap },
+                  { key: "teachers" as Tab, label: t.admin.tabTeachers,             icon: Users          },
+                  { key: "students" as Tab, label: t.admin.tabStudents,             icon: GraduationCap  },
                 ],
               },
               {
-                title: lang === "ar" ? "الاشتراكات" : "Billing",
+                title: lang === "ar" ? "الاشتراكات والرصيد" : "Billing & Credits",
+                color: "text-violet-500",
+                icon: CreditCard,
                 tabs: [
                   { key: "billing" as Tab, label: lang === "ar" ? "الباقات والإيرادات" : "Plans & Revenue", icon: CreditCard },
+                  { key: "credits" as Tab, label: lang === "ar" ? "إدارة الرصيد"       : "Credits",         icon: Coins      },
                 ],
               },
               {
                 title: lang === "ar" ? "المحتوى" : "Content",
+                color: "text-emerald-600",
+                icon: Globe,
                 tabs: [
-                  { key: "content" as Tab, label: t.admin.tabPublicContent, icon: Globe },
-                  { key: "organize" as Tab, label: lang === "ar" ? "تنظيم" : "Organize", icon: FolderTree },
-                  { key: "maraqui" as Tab, label: lang === "ar" ? "مَراقي" : "Maraqui", icon: Gamepad2 },
-                  { key: "letrly" as Tab, label: lang === "ar" ? "تحدي الكلمة" : "Word Challenge", icon: Type },
+                  { key: "content"  as Tab, label: t.admin.tabPublicContent,                     icon: Globe      },
+                  { key: "organize" as Tab, label: lang === "ar" ? "تنظيم"        : "Organize",   icon: FolderTree },
+                  { key: "maraqui"  as Tab, label: lang === "ar" ? "مَراقي"       : "Maraqui",    icon: Gamepad2   },
+                  { key: "letrly"   as Tab, label: lang === "ar" ? "تحدي الكلمة"  : "Word Chal.", icon: Type       },
                 ],
               },
               {
-                title: lang === "ar" ? "التحفيز والمكافآت" : "Rewards",
+                title: lang === "ar" ? "التحفيز" : "Rewards",
+                color: "text-amber-500",
+                icon: Trophy,
                 tabs: [
-                  { key: "rewards" as Tab, label: lang === "ar" ? "التحفيز والمكافآت" : "Rewards", icon: Trophy },
-                ],
-              },
-              {
-                title: lang === "ar" ? "الرصيد" : "Credits",
-                tabs: [
-                  { key: "credits" as Tab, label: lang === "ar" ? "إدارة الرصيد" : "Credits", icon: Coins },
+                  { key: "rewards" as Tab, label: lang === "ar" ? "المكافآت والتحفيز" : "Rewards", icon: Trophy },
                 ],
               },
               {
                 title: lang === "ar" ? "النظام" : "System",
+                color: "text-slate-500",
+                icon: Settings2,
                 tabs: [
-                  { key: "messages" as Tab, label: lang === "ar" ? "الرسائل" : "Messages", icon: MessageSquare },
-                  { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: Reply },
-                  { key: "ai-chat" as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats", icon: Sparkles },
-                  { key: "realtime" as Tab, label: lang === "ar" ? "اللحظي" : "Realtime", icon: Activity },
-                  { key: "activity-log" as Tab, label: lang === "ar" ? "سجل النشاط" : "Activity Log", icon: Activity },
-                  { key: "appearance" as Tab, label: t.admin.tabAppearance, icon: Palette },
-                  { key: "__hidden__" as Tab, label: lang === "ar" ? "المخفي بواسطة المسؤول" : "Hidden by admin", icon: Eye, href: "/admin/hidden" },
+                  { key: "messages"      as Tab, label: lang === "ar" ? "الرسائل"           : "Messages",     icon: MessageSquare },
+                  { key: "feedback"      as Tab, label: lang === "ar" ? "الملاحظات"         : "Feedback",     icon: Reply         },
+                  { key: "ai-chat"       as Tab, label: lang === "ar" ? "محادثات المساعد"   : "AI Chats",     icon: Sparkles      },
+                  { key: "realtime"      as Tab, label: lang === "ar" ? "اللحظي"            : "Realtime",     icon: Activity      },
+                  { key: "activity-log"  as Tab, label: lang === "ar" ? "سجل النشاط"        : "Activity Log", icon: FileCheck     },
+                  { key: "appearance"    as Tab, label: t.admin.tabAppearance,                                icon: Palette       },
+                  { key: "__hidden__"    as Tab, label: lang === "ar" ? "المخفي"            : "Hidden",       icon: Eye, href: "/admin/hidden" },
                 ],
               },
-            ]).map((group, gi, arr) => (
-              <div key={group.title} className={`flex flex-col ${gi > 0 ? "border-s border-border ps-2 ms-2" : ""}`}>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-2 mb-0.5">
-                  {group.title}
-                </span>
-                <div className="flex items-center">
+            ]).map((group) => (
+              <div key={group.title} className="mb-1 px-2">
+                {/* Group label */}
+                <div className="flex items-center gap-1.5 px-2 pt-3 pb-1">
+                  <group.icon className={`w-3 h-3 ${group.color}`} />
+                  <span className="text-[10px] font-black uppercase tracking-wide text-muted-foreground/55">
+                    {group.title}
+                  </span>
+                </div>
+                {/* Group items */}
+                <div className="space-y-0.5">
                   {group.tabs.map((tab) => {
                     const t2 = tab as typeof tab & { href?: string };
                     if (t2.href) {
@@ -1437,33 +1452,37 @@ export default function AdminPage() {
                         <Link
                           key={tab.key}
                           href={t2.href}
-                          className="px-3 py-2 text-sm font-bold flex items-center gap-1.5 border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-all -mb-px whitespace-nowrap"
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all border border-transparent"
                         >
-                          <tab.icon className="w-4 h-4" />
-                          {tab.label}
+                          <tab.icon className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{tab.label}</span>
                         </Link>
                       );
                     }
+                    const isActive = activeTab === tab.key;
                     return (
                       <button
                         key={tab.key}
                         onClick={() => { setActiveTab(tab.key); setSearch(""); }}
-                        className={`px-3 py-2 text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all -mb-px whitespace-nowrap ${
-                          activeTab === tab.key
-                            ? "border-primary text-primary"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all text-start border ${
+                          isActive
+                            ? "bg-primary/10 text-primary border-primary/20 shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border-transparent"
                         }`}
                       >
-                        <tab.icon className="w-4 h-4" />
-                        {tab.label}
+                        <tab.icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                        <span className="truncate">{tab.label}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
             ))}
-          </div>
-        </div>
+          </nav>
+        </aside>
+
+        {/* ── Main Content ── */}
+        <div className="flex-1 min-w-0 py-6 px-5 sm:px-8 overflow-y-auto" dir={dir}>
 
         {activeTab === "billing" && <BillingTab />}
 
@@ -3785,7 +3804,8 @@ export default function AdminPage() {
 
         {activeTab === "letrly" && <AdminLetrlyTab lang={lang} />}
 
-      </div>
+      </div>{/* end main content */}
+    </div>{/* end flex shell */}
     </Layout>
   );
 }
