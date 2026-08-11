@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import shortenRouter from "./shorten";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import assignmentsRouter from "./assignments";
@@ -137,4 +138,5 @@ router.use(secretGameRouter);
 router.use(directMessagesRouter);
 router.use(parentMessagesRouter);
 router.use(whiteboardRouter);
+router.use(shortenRouter);
 export default router;

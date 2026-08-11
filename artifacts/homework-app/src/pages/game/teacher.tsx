@@ -7,11 +7,16 @@ import { Card } from "@/components/ui-elements";
 import { Gamepad2, Trophy, Users, Play, SkipForward, StopCircle, Crown, Medal, Award, BarChart3, Copy, CheckCircle, XCircle, Clock, Zap, Gift, Link2, User, UsersRound, Ban, ToggleLeft, ToggleRight, Pause, Save, Loader2, Activity, Share2, Home, Languages, DoorOpen, PlayCircle, Mic, Lock, Unlock, ArrowRightLeft, GraduationCap } from "lucide-react";
 import { ClassSelector } from "@/components/teacher/class-selector";
 import RaceTrack from "@/components/race-track";
-import { playVictoryFanfare, playClapSound, playFireworkSound, playGameStartSound, playTimeUpSound, playHackMarathonLoop, stopHackMarathonLoop, toggleHackMusicMuted, getIsHackMusicMuted, getIsMuted } from "@/lib/game-sounds";
+import { toggleMute, playVictoryFanfare, playClapSound, playFireworkSound, playGameStartSound, playTimeUpSound, playHackMarathonLoop, stopHackMarathonLoop, toggleHackMusicMuted, getIsHackMusicMuted, getIsMuted } from "@/lib/game-sounds";
 import { useI18n } from "@/lib/i18n";
-import { InlineQR } from "@/components/game-qr-code";
+import { InlineQR, GameQRCode } from "@/components/game-qr-code";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { WameethWaitingRoomUI } from "./wameeth-waiting-room-ui";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Music2, Settings2, Power, Volume2, VolumeX, MoreVertical, QrCode, RotateCcw, Sparkles } from "lucide-react";
+
 
 interface GiftEvent {
   id: number;
@@ -71,6 +76,230 @@ interface Question {
 type Phase = "lobby" | "question" | "leaderboard" | "gift-round" | "finished";
 type GameMode = "solo" | "teams";
 
+
+/* Professional metallic rank badge — replaces emoji medals on the podium */
+const RankBadge = ({ rank, size = 64 }: { rank: 1 | 2 | 3; size?: number }) => {
+  const styles = {
+    1: {
+      ring: "linear-gradient(135deg, #FFF3C4 0%, #E8B84B 35%, #B8860B 70%, #FFE9A0 100%)",
+      inner: "linear-gradient(160deg, #F5D061 0%, #D4A017 60%, #A67C00 100%)",
+      glow: "0 0 24px rgba(232,184,75,0.55), inset 0 2px 4px rgba(255,255,255,0.5)",
+      icon: <Trophy style={{ width: size * 0.42, height: size * 0.42, color: "#5C3D00" }} strokeWidth={2.2} />,
+    },
+    2: {
+      ring: "linear-gradient(135deg, #F8FAFC 0%, #C0C7D1 35%, #7E8794 70%, #E2E8F0 100%)",
+      inner: "linear-gradient(160deg, #D8DEE6 0%, #A8B2BE 60%, #7E8794 100%)",
+      glow: "0 0 18px rgba(180,190,200,0.4), inset 0 2px 4px rgba(255,255,255,0.5)",
+      icon: <Medal style={{ width: size * 0.42, height: size * 0.42, color: "#3A4350" }} strokeWidth={2.2} />,
+    },
+    3: {
+      ring: "linear-gradient(135deg, #F0C9A0 0%, #C08552 35%, #8B5A2B 70%, #E3B080 100%)",
+      inner: "linear-gradient(160deg, #D89A62 0%, #B0703A 60%, #8B5A2B 100%)",
+      glow: "0 0 18px rgba(192,133,82,0.4), inset 0 2px 4px rgba(255,255,255,0.4)",
+      icon: <Award style={{ width: size * 0.42, height: size * 0.42, color: "#4A2E12" }} strokeWidth={2.2} />,
+    },
+  }[rank];
+  return (
+    <div
+      className="rounded-full flex items-center justify-center shrink-0"
+      style={{ width: size, height: size, background: styles.ring, padding: size * 0.07, boxShadow: styles.glow }}
+    >
+      <div
+        className="w-full h-full rounded-full flex flex-col items-center justify-center"
+        style={{ background: styles.inner, boxShadow: "inset 0 -3px 6px rgba(0,0,0,0.25)" }}
+      >
+        {styles.icon}
+        <span className="font-black leading-none" style={{ fontSize: size * 0.2, color: "rgba(0,0,0,0.55)", marginTop: 1 }}>{rank}</span>
+      </div>
+    </div>
+  );
+};
+
+const TeacherControlHeader = ({
+  phase, pin, totalPlayers, answeredCount, isPaused, autoAdvance, musicMuted, hackMode, hackMusicMuted,
+  onPauseResume, onEndGame, onSkip, onAdvance, onCopyLink, onToggleMusic, onToggleHackMusic, t, lang, question
+}: any) => {
+  const isQuestion = phase === "question";
+  return (
+    <header className="sticky top-2 sm:top-4 z-40 bg-[#0A120E]/90 backdrop-blur-xl border border-emerald-900/50 shadow-2xl rounded-2xl mb-6 mx-auto max-w-5xl flex items-center justify-between p-2 sm:px-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-col items-center justify-center bg-emerald-950/40 border border-emerald-900/40 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[4.5rem]">
+          <span className="text-[9px] sm:text-[10px] text-emerald-500/80 uppercase font-black tracking-wider leading-none mb-0.5">{lang === "ar" ? "كود اللعبة" : "CODE"}</span>
+          <span className="font-mono font-black text-base sm:text-lg text-emerald-50 leading-none">{pin}</span>
+        </div>
+        
+        {isQuestion && (
+          <>
+            <div className="h-6 w-px bg-emerald-900/50 hidden sm:block" />
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 hidden sm:flex">
+              <span className="text-emerald-100 font-bold text-xs sm:text-sm">
+                {t.teacherGame.questionOf} {(question?.index ?? 0) + 1} {t.teacherGame.from} {question?.total}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-emerald-900/30 rounded-xl px-2 sm:px-3 py-1.5 border border-emerald-800/30 text-emerald-100">
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <span className="font-mono font-bold text-xs sm:text-sm tracking-widest">{answeredCount}<span className="text-emerald-600 mx-0.5">/</span>{totalPlayers}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1.5 sm:gap-2">
+         {phase === "question" && (
+           <Button onClick={onSkip} variant="outline" size="sm" className="h-8 sm:h-9 gap-1 sm:gap-1.5 bg-transparent border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 hover:text-emerald-200 px-2 sm:px-3">
+              <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline text-xs font-bold">{lang === "ar" ? "تخطي" : "Skip"}</span>
+           </Button>
+         )}
+
+         {phase === "leaderboard" && (
+           <>
+             {autoAdvance && !isPaused && (
+               <div className="hidden md:flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/50 border border-emerald-900/50 px-3 h-9 rounded-xl">
+                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+                    <Clock className="w-3.5 h-3.5" />
+                 </motion.div>
+                 <span>{lang === "ar" ? "السؤال التالي ينتقل تلقائياً..." : "Auto-advancing..."}</span>
+               </div>
+             )}
+             
+             <Button onClick={onAdvance} size="sm" className="h-8 sm:h-9 gap-1 sm:gap-1.5 bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 border border-amber-400/50 shadow-lg shadow-amber-900/20 px-2 sm:px-3">
+                <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="font-bold text-xs">{lang === "ar" ? "تقدم الآن" : "Advance"}</span>
+             </Button>
+           </>
+         )}
+
+         <div className="h-5 w-px bg-emerald-900/50 mx-0.5" />
+
+         <TooltipProvider>
+           {autoAdvance && (
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <Button onClick={onPauseResume} variant={isPaused ? "default" : "outline"} size="icon" className={`h-9 w-9 rounded-xl ${isPaused ? "bg-amber-500 hover:bg-amber-600 text-amber-950 shadow-lg shadow-amber-900/20" : "bg-transparent border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40"}`}>
+                   {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4 fill-current" />}
+                 </Button>
+               </TooltipTrigger>
+               <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
+                  {isPaused ? (lang === "ar" ? "استئناف" : "Resume") : (lang === "ar" ? "إيقاف مؤقت" : "Pause")}
+               </TooltipContent>
+             </Tooltip>
+           )}
+
+           {/* Copy Link */}
+           <Tooltip>
+             <TooltipTrigger asChild>
+               <Button onClick={onCopyLink} variant="outline" size="icon" className="h-9 w-9 rounded-xl bg-transparent border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40">
+                 <Copy className="w-4 h-4" />
+               </Button>
+             </TooltipTrigger>
+             <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
+               {lang === "ar" ? "نسخ الرابط" : "Copy Link"}
+             </TooltipContent>
+           </Tooltip>
+
+           {/* QR Code */}
+           <Dialog>
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <DialogTrigger asChild>
+                   <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl bg-transparent border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40">
+                     <QrCode className="w-4 h-4" />
+                   </Button>
+                 </DialogTrigger>
+               </TooltipTrigger>
+               <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
+                 {lang === "ar" ? "باركود الانضمام" : "Join QR Code"}
+               </TooltipContent>
+             </Tooltip>
+             <DialogContent className="sm:max-w-sm bg-[#0c2117] border-emerald-800 text-center">
+               <DialogHeader>
+                 <DialogTitle className="text-emerald-100">{lang === "ar" ? "امسح الباركود للانضمام" : "Scan to Join"}</DialogTitle>
+               </DialogHeader>
+               <div className="flex justify-center p-6 bg-white rounded-xl mx-auto my-4">
+                 <GameQRCode url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`} pin={pin} size={200} />
+               </div>
+               <DialogFooter>
+                 <DialogClose asChild>
+                   <Button variant="outline" className="w-full bg-transparent border-emerald-800 text-emerald-100 hover:bg-emerald-900/50">{lang === "ar" ? "إغلاق" : "Close"}</Button>
+                 </DialogClose>
+               </DialogFooter>
+             </DialogContent>
+           </Dialog>
+
+           {/* Sound mute toggle — mutes game music & sound effects */}
+           <Tooltip>
+             <TooltipTrigger asChild>
+               <Button
+                 onClick={onToggleMusic}
+                 variant="outline"
+                 size="icon"
+                 className={`h-9 w-9 rounded-xl bg-transparent transition-colors ${
+                   musicMuted
+                     ? "border-rose-900/60 text-rose-400 hover:bg-rose-950/60"
+                     : "border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40"
+                 }`}
+               >
+                 {musicMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+               </Button>
+             </TooltipTrigger>
+             <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
+               {musicMuted
+                 ? (lang === "ar" ? "تشغيل الصوت والموسيقى" : "Unmute Sounds")
+                 : (lang === "ar" ? "كتم الصوت والموسيقى" : "Mute Sounds")}
+             </TooltipContent>
+           </Tooltip>
+
+           {/* Hack music (only in hack mode) */}
+           {hackMode && (
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <Button onClick={onToggleHackMusic} variant="outline" size="icon" className={`h-9 w-9 rounded-xl bg-transparent ${hackMusicMuted ? "border-rose-900/60 text-rose-400 hover:bg-rose-950/60" : "border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40"}`}>
+                   {hackMusicMuted ? <VolumeX className="w-4 h-4" /> : <Music2 className="w-4 h-4" />}
+                 </Button>
+               </TooltipTrigger>
+               <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
+                 {hackMusicMuted ? (lang === "ar" ? "تشغيل موسيقى الاختراق" : "Unmute Hack Music") : (lang === "ar" ? "كتم موسيقى الاختراق" : "Mute Hack Music")}
+               </TooltipContent>
+             </Tooltip>
+           )}
+
+           {/* End game */}
+           <Dialog>
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <DialogTrigger asChild>
+                   <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl bg-transparent border-rose-900/60 text-rose-400 hover:bg-rose-950/60 hover:text-rose-300">
+                     <Power className="w-4 h-4" />
+                   </Button>
+                 </DialogTrigger>
+               </TooltipTrigger>
+               <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
+                 {lang === "ar" ? "إنهاء اللعبة" : "End Game"}
+               </TooltipContent>
+             </Tooltip>
+             <DialogContent className="sm:max-w-sm bg-[#0c2117] border-emerald-800">
+               <DialogHeader>
+                 <DialogTitle className="text-emerald-100">{lang === "ar" ? "هل أنت متأكد من إنهاء اللعبة؟" : "End the game?"}</DialogTitle>
+                 <DialogDescription className="text-emerald-400/80">
+                   {lang === "ar" ? "سيتم إنهاء اللعبة لجميع الطلاب وعرض النتائج النهائية." : "This will end the game for all students."}
+                 </DialogDescription>
+               </DialogHeader>
+               <DialogFooter className="mt-4 gap-2 sm:gap-0">
+                 <DialogClose asChild>
+                   <Button variant="outline" className="bg-transparent border-emerald-800 text-emerald-100 hover:bg-emerald-900/50">{lang === "ar" ? "إلغاء" : "Cancel"}</Button>
+                 </DialogClose>
+                 <Button variant="destructive" onClick={onEndGame} className="bg-rose-600 hover:bg-rose-700 text-white font-bold">{lang === "ar" ? "إنهاء اللعبة" : "End Game"}</Button>
+               </DialogFooter>
+             </DialogContent>
+           </Dialog>
+         </TooltipProvider>
+      </div>
+    </header>
+  );
+};
+
 export default function TeacherGame() {
   const [, params] = useRoute("/teacher/game/:pin");
   const pin = params?.pin || "";
@@ -109,6 +338,7 @@ export default function TeacherGame() {
   const hackModeRef = useRef(false);
   useEffect(() => { hackModeRef.current = hackMode; }, [hackMode]);
   const [hackMusicMuted, setHackMusicMuted] = useState<boolean>(() => getIsHackMusicMuted());
+  const [musicMuted, setMusicMuted] = useState<boolean>(() => getIsMuted());
   const [hackDurationMin, setHackDurationMin] = useState<number>(7);
   const [hackCustomMin, setHackCustomMin] = useState<string>("");
   const [hackMarathonActive, setHackMarathonActive] = useState(false);
@@ -462,6 +692,10 @@ export default function TeacherGame() {
     setSaveStatus("idle");
   };
 
+  const handleToggleMusic = () => {
+    setMusicMuted(toggleMute());
+  };
+
   const handleToggleHackMusic = () => {
     const newMuted = toggleHackMusicMuted();
     setHackMusicMuted(newMuted);
@@ -620,19 +854,21 @@ export default function TeacherGame() {
     setTimeout(() => setBroadcastSent(false), 2500);
   };
 
-  const copyLink = () => {
-    const baseUrl = window.location.origin + import.meta.env.BASE_URL;
-    const link = `${baseUrl}game/join/${pin}`;
-    navigator.clipboard.writeText(link).then(() => {
+  const copyLink = async () => {
+    const { toast } = await import("@/components/ui/sonner");
+
+    // /api/g/:pin is a server endpoint that:
+    //  1. Serves HTML with OG meta tags (game title, Hasad branding) so
+    //     WhatsApp / Telegram previews look right.
+    //  2. Immediately redirects the student's browser to /game/join/:pin.
+    const shareLink = `${window.location.origin}/api/g/${pin}`;
+
+    navigator.clipboard.writeText(shareLink).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-      import("@/components/ui/sonner").then(({ toast }) =>
-        toast.success(lang === "ar" ? "تم نسخ رابط الانضمام!" : "Join link copied!")
-      );
+      toast.success(lang === "ar" ? "تم نسخ رابط الانضمام!" : "Join link copied!");
     }).catch(() => {
-      import("@/components/ui/sonner").then(({ toast }) =>
-        toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link")
-      );
+      toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link");
     });
   };
 
@@ -868,86 +1104,33 @@ export default function TeacherGame() {
     const isDouble = question?.isDoublePoints;
 
     return (
-      <div className="min-h-screen p-3 sm:p-6 overflow-x-hidden" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
-        <div className="max-w-4xl mx-auto">
-          <div className="rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col gap-3" style={{ background: "rgba(13,33,24,0.55)", border: "1px solid rgba(232,184,75,0.18)" }}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-white font-bold text-sm sm:text-base order-1 mr-auto">
-                {t.teacherGame.questionOf} {(question?.index ?? 0) + 1} {t.teacherGame.from} {question?.total}
-              </span>
-              <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 px-3 h-9 rounded-xl order-2">
-                <span className="text-white/60 text-xs">{t.teacherGame.gameCode}:</span>
-                <span className="text-white font-mono font-black text-sm tracking-wider">{pin}</span>
-              </div>
-              <div className="order-3"><InlineQR url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`} pin={pin} /></div>
-              <button
-                onClick={copyLink}
-                className="flex items-center justify-center gap-1.5 px-3 h-9 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-bold transition-colors order-4"
-              >
-                {linkCopied ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : <Link2 className="w-3.5 h-3.5" />}
-                <span>{linkCopied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-              <div className={`flex items-center justify-center gap-2 h-10 rounded-xl ${isPaused ? "bg-orange-500/25 border border-orange-400/40" : isUrgent ? "bg-red-500/25 border border-red-400/40" : "bg-white/10 border border-white/20"}`}>
-                <Clock className={`w-4 h-4 ${isUrgent ? "text-red-200" : "text-white"}`} />
-                <span className={`font-mono font-black text-lg ${isUrgent ? "text-red-100" : "text-white"}`}>{Math.ceil(timeLeft)}</span>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/10 border border-white/20">
-                <Users className="w-4 h-4 text-blue-300" />
-                <span className="text-white font-black text-sm">{answeredCount}/{totalPlayers}</span>
-                <span className="text-white/70 text-xs hidden sm:inline">{t.teacherGame.answered}</span>
-              </div>
-
-              <button onClick={toggleTts} className={`flex items-center justify-center gap-1.5 h-10 rounded-xl border transition-colors ${ttsEnabled ? "bg-teal-500/25 hover:bg-teal-500/35 border-teal-400/40" : "bg-white/10 hover:bg-white/20 border-white/20"}`}>
-                {ttsEnabled ? <ToggleRight className="w-4 h-4 text-teal-200" /> : <ToggleLeft className="w-4 h-4 text-white/80" />}
-                <span className={`text-xs font-bold ${ttsEnabled ? "text-teal-100" : "text-white"}`}>{t.teacherGame.ttsToggle}</span>
-              </button>
-
-              {autoAdvance ? (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={isPaused ? resumeGame : pauseGame}
-                  className={`flex items-center justify-center gap-1.5 h-10 rounded-xl font-bold text-xs border transition-colors ${isPaused ? "bg-green-500/30 hover:bg-green-500/40 text-green-100 border-green-400/50" : "bg-amber-500/25 hover:bg-amber-500/35 text-amber-100 border-amber-400/40"}`}
-                >
-                  {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  <span>{isPaused ? t.teacherGame.resume : t.teacherGame.pause}</span>
-                </motion.button>
-              ) : (
-                <div className="hidden sm:block" />
+      <div className="min-h-screen pb-6 overflow-x-hidden" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
+        <TeacherControlHeader
+          phase={phase} pin={pin} totalPlayers={totalPlayers} answeredCount={answeredCount}
+          isPaused={isPaused} autoAdvance={autoAdvance} musicMuted={musicMuted} hackMode={hackMode} hackMusicMuted={hackMusicMuted}
+          onPauseResume={isPaused ? resumeGame : pauseGame} onEndGame={endGame} onSkip={skipQuestion} onAdvance={nextQ}
+          onCopyLink={copyLink} onToggleMusic={handleToggleMusic} onToggleHackMusic={handleToggleHackMusic} t={t} lang={lang} question={question}
+        />
+        
+        <div className="max-w-4xl mx-auto px-3 sm:px-6">
+          {(isDouble || hackMode) && (
+            <div className="flex flex-wrap items-center gap-2 mb-4 justify-center">
+              {isDouble && (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}
+                  className="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-400/40 px-3 h-8 rounded-full shadow-lg shadow-yellow-900/20">
+                  <Zap className="w-3.5 h-3.5 text-yellow-300" />
+                  <span className="text-yellow-100 font-bold text-xs">{t.teacherGame.doublePoints}</span>
+                </motion.div>
               )}
-
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={skipQuestion}
-                className="flex items-center justify-center gap-1.5 h-10 rounded-xl bg-orange-500/25 hover:bg-orange-500/35 text-orange-100 border border-orange-400/40 transition-colors"
-              >
-                <SkipForward className="w-4 h-4" />
-                <span className="text-xs font-bold">{lang === "ar" ? "تخطي" : "Skip"}</span>
-              </motion.button>
+              {hackMode && (
+                <div className="flex items-center gap-1.5 px-3 h-8 rounded-full bg-green-500/20 border border-green-400/40 shadow-lg shadow-green-900/20">
+                  <span className="text-xs font-bold text-green-100"><Lock className="w-3.5 h-3.5 inline-block -mt-0.5 ml-1 rtl:ml-0 rtl:mr-1" /> {lang === "ar" ? "وضع الاختراق" : "Hack Mode"}</span>
+                </div>
+              )}
             </div>
+          )}
 
-            {(isDouble || hackMode) && (
-              <div className="flex flex-wrap items-center gap-2">
-                {isDouble && (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1 }}
-                    className="flex items-center gap-1.5 bg-yellow-500/25 border border-yellow-400/50 px-3 h-9 rounded-xl">
-                    <Zap className="w-4 h-4 text-yellow-200" />
-                    <span className="text-yellow-100 font-black text-xs">{t.teacherGame.doublePoints}</span>
-                  </motion.div>
-                )}
-                {hackMode && (
-                  <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-green-500/25 border border-green-400/50">
-                    <span className="text-xs font-black text-green-100">🔐 {lang === "ar" ? "وضع الاختراق" : "Hack Mode"}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden mb-8">
+          <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden mb-6 shadow-inner">
             <motion.div
               className={`h-full rounded-full ${isDouble ? "bg-yellow-500" : isUrgent ? "bg-red-500" : ""}`}
               style={{
@@ -960,8 +1143,15 @@ export default function TeacherGame() {
             />
           </div>
 
-          <motion.div key={question?.index} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 mb-8">
-            <h2 className="text-3xl font-black text-white text-center leading-relaxed">{question?.text}</h2>
+          <motion.div key={question?.index} initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-emerald-950/40 border border-emerald-900/40 backdrop-blur-md rounded-3xl p-6 sm:p-10 mb-8 shadow-2xl">
+            {/* The Timer has been moved inside the play/question area */}
+            <div className="absolute top-4 rtl:left-4 ltr:right-4 flex flex-col items-center">
+              <div className={`flex items-center justify-center w-14 h-14 rounded-full border-2 shadow-lg backdrop-blur-md ${isUrgent ? "bg-red-950/80 border-red-500 text-red-200 animate-pulse" : isPaused ? "bg-amber-950/80 border-amber-500 text-amber-200" : "bg-emerald-900/80 border-emerald-500 text-emerald-100"}`}>
+                <span className="font-mono font-black text-2xl leading-none tracking-tighter">{Math.ceil(timeLeft)}</span>
+              </div>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-black text-white text-center leading-relaxed mt-4 sm:mt-0 px-12">{question?.text}</h2>
             {question?.imageUrl && (
               <div className="flex justify-center mt-4">
                 <img src={question.imageUrl} alt="" className="max-h-48 rounded-xl border-2 border-white/20 object-contain" />
@@ -1039,6 +1229,12 @@ export default function TeacherGame() {
           className={`min-h-screen overflow-x-hidden ${hackMode ? "bg-black" : ""}`}
           style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
         >
+        <TeacherControlHeader
+          phase={phase} pin={pin} totalPlayers={totalPlayers} answeredCount={answeredCount}
+          isPaused={isPaused} autoAdvance={autoAdvance} musicMuted={musicMuted} hackMode={hackMode} hackMusicMuted={hackMusicMuted}
+          onPauseResume={isPaused ? resumeGame : pauseGame} onEndGame={endGame} onSkip={skipQuestion} onAdvance={nextQ}
+          onCopyLink={copyLink} onToggleMusic={handleToggleMusic} onToggleHackMusic={handleToggleHackMusic} t={t} lang={lang} question={question}
+        />
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
           {hackMode && (
             <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2 }}
@@ -1046,127 +1242,7 @@ export default function TeacherGame() {
               ══ HACK_RESULTS ══ ROUND_COMPLETE ══ SCORES_UPDATED ══
             </motion.div>
           )}
-          <div className="rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col gap-3" style={hackMode ? { background: "rgba(0,0,0,0.6)", border: "1px solid rgba(34,197,94,0.3)" } : { background: "rgba(13,33,24,0.55)", border: "1px solid rgba(232,184,75,0.18)" }}>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className={`flex items-center gap-1.5 px-3 h-9 rounded-xl border ${hackMode ? "bg-black border-green-800" : "bg-white/10 border-white/20"}`}>
-                <span className={`text-xs font-bold ${hackMode ? "text-green-700 font-mono" : "text-white/60"}`}>{hackMode ? "PIN:" : `${t.teacherGame.gameCode}:`}</span>
-                <span className={`font-mono font-black text-sm tracking-wider ${hackMode ? "text-green-400" : "text-white"}`}>{pin}</span>
-              </div>
-              <InlineQR
-                url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`}
-                pin={pin}
-              />
-              <button
-                onClick={copyLink}
-                className="flex items-center justify-center gap-1.5 px-3 h-9 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-bold transition-colors"
-              >
-                {linkCopied ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : <Link2 className="w-3.5 h-3.5" />}
-                <span>{linkCopied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}</span>
-              </button>
-              {hackMode && (
-                <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold bg-green-500/25 text-green-100 border border-green-400/40">
-                  🔐 {lang === "ar" ? "وضع الاختراق" : "Hack Mode"}
-                </div>
-              )}
-            </div>
-
-            <div className={`grid gap-2 ${autoAdvance ? "grid-cols-2 sm:grid-cols-4" : hackMode ? "grid-cols-2" : "grid-cols-2"}`}>
-              {autoAdvance ? (
-                <>
-                  {!isPaused ? (
-                    <div className="flex items-center justify-center gap-2 h-11 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs px-2">
-                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}>
-                        <Clock className="w-4 h-4" />
-                      </motion.div>
-                      <span className="truncate">{t.teacherGame.autoNext}</span>
-                    </div>
-                  ) : (
-                    <div className="hidden sm:block" />
-                  )}
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={nextQ}
-                    className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black text-xs shadow-lg active:scale-95 transition-transform px-2"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                    <span className="truncate">{lang === "ar" ? "تقدم الآن" : "Advance Now"}</span>
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={isPaused ? resumeGame : pauseGame}
-                    className={`flex items-center justify-center gap-1.5 h-11 rounded-xl font-bold text-xs px-2 transition-colors ${isPaused ? "bg-green-500/30 text-green-100 border border-green-400/50" : "bg-amber-500/25 text-amber-100 border border-amber-400/40"}`}
-                  >
-                    {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                    <span className="truncate">{isPaused ? t.teacherGame.resume : t.teacherGame.pause}</span>
-                  </motion.button>
-                  <button onClick={endGame} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-500/20 text-red-200 border border-red-400/40 hover:bg-red-500/30 font-bold text-xs px-2 transition-colors">
-                    <StopCircle className="w-4 h-4" />
-                    <span className="truncate">{t.teacherGame.endGame}</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={nextQ} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform px-2">
-                    <SkipForward className="w-4 h-4" />
-                    <span className="truncate">{t.teacherGame.nextQuestion}</span>
-                  </button>
-                  <button onClick={endGame} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-500/20 text-red-200 border border-red-400/40 hover:bg-red-500/30 font-bold text-sm px-2 transition-colors">
-                    <StopCircle className="w-4 h-4" />
-                    <span className="truncate">{t.teacherGame.endGame}</span>
-                  </button>
-                </>
-              )}
-            </div>
-
-            {hackMode && (
-              <button
-                onClick={handleToggleHackMusic}
-                className={`flex items-center justify-center gap-1.5 h-9 rounded-xl text-xs font-bold transition-colors ${hackMusicMuted ? "bg-white/10 text-white/80 border border-white/20" : "bg-green-500/25 text-green-100 border border-green-400/40"}`}
-                title={hackMusicMuted ? (lang === "ar" ? "تشغيل الموسيقى" : "Unmute music") : (lang === "ar" ? "كتم الموسيقى" : "Mute music")}
-              >
-                {hackMusicMuted ? "🔇" : "🎵"}
-                <span>{hackMusicMuted ? (lang === "ar" ? "تشغيل الموسيقى" : "Unmute music") : (lang === "ar" ? "كتم الموسيقى" : "Mute music")}</span>
-              </button>
-            )}
-          </div>
-          <div className="mb-8">
-            <h2 className={`text-2xl font-bold flex items-center gap-2 mb-4 ${hackMode ? "text-green-400 font-mono" : "text-white"}`}>
-              {hackMode ? <span className="text-green-500 text-lg">▶</span> : <Trophy className="w-6 h-6 text-yellow-400" />}
-              {hackMode ? "AGENT_RANKING" : t.teacherGame.raceTrack}
-            </h2>
-            <RaceTrack players={leaderboard} hackMode={hackMode} />
-          </div>
-
-          {currentGameMode === "teams" && teamLeaderboard.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
-                <UsersRound className="w-6 h-6 text-amber-400" />
-                {t.teacherGame.teamRanking}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teamLeaderboard.map((team, i) => (
-                  <motion.div key={team.teamName} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-                    <Card className={`p-5 ${i === 0 ? "border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10" : ""}`}>
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-2xl font-black">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</span>
-                        <span className="font-black text-lg flex-1">{team.teamName}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{team.members} {t.teacherGame.teamMembers}</span>
-                        <span className="font-black text-primary text-xl">{team.totalScore}</span>
-                      </div>
-                      {team.adjustment !== 0 && (
-                        <div className={`text-xs mt-1 font-bold ${team.adjustment > 0 ? "text-green-600" : "text-red-500"}`}>
-                          {team.adjustment > 0 ? `+${team.adjustment}` : team.adjustment} {t.teacherGame.teamBonus || "نقاط إضافية"}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-1">{t.teacherGame.teamAvgScore}: {team.avgScore}</div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
+          
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* RIGHT column in RTL: answer distribution (normal) OR hack log (hack mode) */}
@@ -1288,95 +1364,164 @@ export default function TeacherGame() {
                 </>
               ) : (
                 <>
-                  <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-white">
-                    <BarChart3 className="w-6 h-6 text-yellow-400" />
+                  <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-white">
+                    <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(232,184,75,0.12)", border: "1px solid rgba(232,184,75,0.3)" }}>
+                      <BarChart3 className="w-5 h-5" style={{ color: "#E8B84B" }} />
+                    </span>
                     {t.teacherGame.answerDistribution}
                   </h2>
-                  <div className="rounded-2xl p-6 border border-white/10" style={{ background: "rgba(13,33,24,0.55)" }}>
+                  <div
+                    className="rounded-2xl p-5 relative overflow-hidden"
+                    style={{
+                      minHeight: 400,
+                      background: "linear-gradient(160deg, #0F2A1C 0%, #1A3A28 50%, #0D2118 100%)",
+                      border: "1px solid rgba(232,184,75,0.15)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(232,184,75,0.08)",
+                    }}
+                  >
                     {correctAnswer && (
-                      <p className="text-center mb-4 font-bold text-white">
-                        {t.teacherGame.correctAnswerIs} <span className="text-green-300 text-lg">{correctAnswer}</span>
-                      </p>
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        className="flex items-center justify-center mb-5"
+                      >
+                        <span
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-black text-sm"
+                          style={{
+                            background: "rgba(232,184,75,0.12)",
+                            border: "1px solid rgba(232,184,75,0.4)",
+                            color: "#E8B84B",
+                            boxShadow: "0 0 20px rgba(232,184,75,0.15)",
+                          }}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          {t.teacherGame.correctAnswerIs}
+                          <span className="text-white text-base">{correctAnswer}</span>
+                        </span>
+                      </motion.div>
                     )}
                     <div className="space-y-3">
-                      {distKeys.map((key) => {
+                      {distKeys.map((key, idx) => {
                         const label = distKeyLabels[key] || key;
-                        const color = distColors[key] || "bg-amber-500";
                         const isCorrect = correctAnswer && key.toLowerCase() === correctAnswer.toLowerCase();
+                        const count = distribution[key] || 0;
+                        const total = distKeys.reduce((s, k) => s + (distribution[k] || 0), 0);
+                        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                        const barPct = maxDist > 0 ? (count / maxDist) * 100 : 0;
                         return (
-                          <div key={key} className="flex items-center gap-3">
-                            <span className={`min-w-8 h-8 px-2 rounded-lg flex items-center justify-center text-white font-bold text-sm ${color}`}>{label}</span>
-                            <div className="flex-1 h-8 bg-white/10 rounded-lg overflow-hidden">
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${((distribution[key] || 0) / maxDist) * 100}%` }}
-                                className={`h-full ${color} ${isCorrect ? "opacity-100" : "opacity-40"} flex items-center justify-end px-2`}>
-                                <span className="text-white font-bold text-xs">{distribution[key] || 0}</span>
-                              </motion.div>
+                          <div key={key} className="flex items-center gap-2.5">
+                            <span
+                              className="min-w-9 h-9 px-2 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
+                              style={isCorrect
+                                ? { background: "linear-gradient(135deg, #22C55E, #16A34A)", color: "#FFFFFF", boxShadow: "0 0 14px rgba(34,197,94,0.4)" }
+                                : correctAnswer
+                                  ? { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)", color: "#FCA5A5" }
+                                  : { background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}
+                            >
+                              {label}
+                            </span>
+                            <div
+                              className="flex-1 relative h-9 rounded-full overflow-hidden"
+                              style={{
+                                background: "rgba(255,255,255,0.06)",
+                                border: isCorrect
+                                  ? "1.5px solid rgba(34,197,94,0.5)"
+                                  : correctAnswer
+                                    ? "1px solid rgba(239,68,68,0.25)"
+                                    : "1px solid rgba(255,255,255,0.08)",
+                              }}
+                            >
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.max(barPct, count > 0 ? 10 : 0)}%` }}
+                                transition={{ type: "spring", stiffness: 50, damping: 15, delay: idx * 0.08 }}
+                                className={`absolute inset-y-0 ${lang === "ar" ? "right-0" : "left-0"} rounded-full`}
+                                style={{
+                                  background: isCorrect
+                                    ? "linear-gradient(90deg, #22C55E, #16A34A)"
+                                    : correctAnswer
+                                      ? "linear-gradient(90deg, rgba(239,68,68,0.85), rgba(185,28,28,0.85))"
+                                      : "linear-gradient(90deg, rgba(45,106,68,0.9), rgba(26,58,40,0.9))",
+                                  boxShadow: isCorrect ? "0 0 14px rgba(34,197,94,0.35)" : "none",
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-between px-3 z-10">
+                                <span className={`text-xs font-black ${isCorrect ? "text-[#0D2118]" : "text-white/85"}`} style={isCorrect && barPct < 30 ? { color: "#E8B84B" } : undefined}>
+                                  {count > 0 ? `${pct}%` : ""}
+                                </span>
+                                <span className="text-xs font-black text-white px-2 py-0.5 rounded-full" style={{ background: "rgba(0,0,0,0.35)" }}>
+                                  {count}
+                                </span>
+                              </div>
                             </div>
-                            {isCorrect && <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />}
+                            {isCorrect ? (
+                              <CheckCircle className="w-5 h-5 shrink-0" style={{ color: "#E8B84B" }} />
+                            ) : (
+                              <span className="w-5 shrink-0" />
+                            )}
                           </div>
                         );
                       })}
                     </div>
+                    {(() => {
+                      const total = distKeys.reduce((s, k) => s + (distribution[k] || 0), 0);
+                      return (
+                        <div className="mt-5 pt-4 flex items-center justify-center gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                          <Users className="w-4 h-4" style={{ color: "rgba(232,184,75,0.7)" }} />
+                          <span className="text-xs font-bold text-white/60">
+                            {lang === "ar" ? `${total} إجابة مسجّلة` : `${total} answers recorded`}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </>
               )}
             </div>
 
-            <div>
-              <h2 className={`text-xl font-bold flex items-center gap-2 mb-3 ${hackMode ? "text-green-400 font-mono" : "text-white"}`}>
-                {hackMode ? <span className="text-green-500">[</span> : <Trophy className="w-6 h-6 text-yellow-400" />}
-                {hackMode ? "LEADERBOARD" : t.teacherGame.playerRanking}
+            <div className="flex flex-col h-full">
+              <h2 className={`text-xl font-bold flex items-center gap-2 mb-4 ${hackMode ? "text-green-400 font-mono" : "text-white"}`}>
+                {hackMode ? <span className="text-green-500">[</span> : (
+                  <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(232,184,75,0.12)", border: "1px solid rgba(232,184,75,0.3)" }}>
+                    <Trophy className="w-5 h-5" style={{ color: "#E8B84B" }} />
+                  </span>
+                )}
+                {hackMode ? "AGENT_RANKING" : t.teacherGame.raceTrack}
                 {hackMode && <span className="text-green-500">]</span>}
               </h2>
-              {hackMode ? (
-                <div className="bg-black border border-green-900 rounded-xl p-3 font-mono space-y-1.5">
-                  {leaderboard.slice(0, 10).map((entry, i) => {
-                    const qInCycle = (entry.personalQuestionIndex ?? 0) + 1;
-                    const cycle = entry.personalCycle ?? 0;
-                    const progressLabel = entry.personalAnsweredCount !== undefined
-                      ? (cycle > 0 ? `C${cycle + 1}/Q${qInCycle}` : `Q${qInCycle}`)
-                      : "—";
-                    return (
-                    <motion.div key={entry.name} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm
-                        ${i === 0 ? "border-green-500 bg-green-950/50 text-green-200" : i < 3 ? "border-green-900 bg-green-950/20 text-green-600" : "border-transparent bg-transparent text-green-800"}`}>
-                      <span className="w-7 text-center font-black text-green-500 text-xs">{String(i + 1).padStart(2, "0")}</span>
-                      <span className="flex-1 truncate">{entry.name}</span>
-                      {entry.teamName && <span className="text-xs text-green-700">[{entry.teamName}]</span>}
-                      <span className="text-xs text-green-700 border border-green-900 rounded px-1.5 py-0.5 shrink-0">{progressLabel}</span>
-                      {entry.lastAnswer?.correct
-                        ? <span className="text-green-400 text-xs">+{entry.lastAnswer.points}</span>
-                        : entry.lastAnswer && <span className="text-red-700 text-xs">✗</span>}
-                      <span className={`font-black ${i === 0 ? "text-green-300 text-base" : "text-green-700 text-sm"}`}>{entry.score}</span>
-                    </motion.div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-2xl p-4 border border-white/10" style={{ background: "rgba(13,33,24,0.55)" }}>
-                  <div className="space-y-2">
-                    {leaderboard.slice(0, 10).map((entry, i) => (
-                      <motion.div key={entry.name} initial={{ opacity: 0, x: lang === "ar" ? 30 : -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
-                        <span className="w-8 h-8 rounded-full bg-yellow-400/15 text-yellow-200 flex items-center justify-center font-black text-sm shrink-0">
-                          {i === 0 ? <Crown className="w-5 h-5 text-yellow-400" /> : i === 1 ? <Medal className="w-5 h-5 text-gray-300" /> : i === 2 ? <Award className="w-5 h-5 text-amber-500" /> : i + 1}
-                        </span>
-                        <AvatarDisplay avatar={entry.avatar} size="xl" />
-                        <span className="font-bold flex-1 truncate text-white">{entry.name}</span>
-                        {entry.teamName && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 font-bold shrink-0">{entry.teamName}</span>}
-                        {entry.lastAnswer && (
-                          entry.lastAnswer.correct
-                            ? <span className="text-green-300 text-sm font-bold">+{entry.lastAnswer.points}</span>
-                            : <XCircle className="w-4 h-4 text-red-300" />
-                        )}
-                        <span className="font-black text-yellow-300 text-lg">{entry.score}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="flex-1 min-h-[300px]">
+                <RaceTrack players={leaderboard} hackMode={hackMode} />
+              </div>
             </div>
           </div>
+          
+          {currentGameMode === "teams" && teamLeaderboard.length > 0 && !hackMode && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-white">
+                <UsersRound className="w-6 h-6 text-amber-400" />
+                {t.teacherGame.teamRanking}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teamLeaderboard.map((team, i) => (
+                  <motion.div key={team.teamName} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+                    <Card className={`p-5 ${i === 0 ? "border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10" : "bg-white/5 border-white/10 text-white"}`}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-2xl font-black">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</span>
+                        <span className="font-black text-lg flex-1">{team.teamName}</span>
+                        <span className="text-2xl font-black text-yellow-500">{team.totalScore}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-white/60">
+                        <span>{team.members} {lang === "ar" ? "أعضاء" : "members"}</span>
+                        <span>{lang === "ar" ? "المتوسط:" : "Avg:"} {Math.round(team.avgScore)}</span>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Answer distribution moved to bottom in hack mode, with hacker styling */}
           {hackMode && (
@@ -1517,7 +1662,7 @@ export default function TeacherGame() {
               <>
                 <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, type: "spring" }}
                   className="bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-2 border-yellow-400/50 rounded-2xl p-6 mb-6 text-center">
-                  <h2 className="text-2xl font-black text-yellow-400 mb-2">🏆 {t.teacherGame.winningTeam}</h2>
+                  <h2 className="text-2xl font-black text-yellow-400 mb-2 flex items-center justify-center gap-2"><Trophy className="w-7 h-7" /> {t.teacherGame.winningTeam}</h2>
                   <p className="text-4xl sm:text-5xl font-black text-white mb-1">{winningTeam.teamName}</p>
                   <p className="text-yellow-300 font-bold">{winningTeam.totalScore} {t.teacherGame.pointsLabel} • {winningTeam.members} {t.teacherGame.teamMembers}</p>
                 </motion.div>
@@ -1528,8 +1673,8 @@ export default function TeacherGame() {
                       <span className="text-white font-black text-base sm:text-lg mb-1 max-w-full truncate text-center" title={teamSecond.teamName}>{teamSecond.teamName}</span>
                       <span className="text-gray-300 font-black text-2xl mb-2">{teamSecond.totalScore}</span>
                       <div className="w-full h-32 bg-gradient-to-t from-gray-600 to-gray-400 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-gray-500/20 border-t-4 border-gray-300">
-                        <span className="text-5xl">🥈</span>
-                        <span className="text-white/80 font-black text-sm mt-1">{t.teacherGame.secondPlace}</span>
+                        <RankBadge rank={2} size={56} />
+                        <span className="text-white/80 font-black text-sm mt-2">{t.teacherGame.secondPlace}</span>
                       </div>
                     </motion.div>
                   )}
@@ -1542,8 +1687,8 @@ export default function TeacherGame() {
                       <span className="text-yellow-400 font-black text-3xl mb-2 drop-shadow-[0_0_10px_rgba(250,204,21,0.4)]">{teamFirst.totalScore}</span>
                       <div className="w-full h-44 bg-gradient-to-t from-yellow-600 via-yellow-500 to-yellow-400 rounded-t-2xl flex flex-col items-center justify-center shadow-xl shadow-yellow-500/30 border-t-4 border-yellow-300 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
-                        <span className="text-7xl relative z-10">🥇</span>
-                        <span className="text-white font-black text-base mt-1 relative z-10">{t.teacherGame.champion}</span>
+                        <div className="relative z-10"><RankBadge rank={1} size={76} /></div>
+                        <span className="text-white font-black text-base mt-2 relative z-10">{t.teacherGame.champion}</span>
                       </div>
                     </motion.div>
                   )}
@@ -1552,8 +1697,8 @@ export default function TeacherGame() {
                       <span className="text-white font-black text-base sm:text-lg mb-1 max-w-full truncate text-center" title={teamThird.teamName}>{teamThird.teamName}</span>
                       <span className="text-amber-400 font-black text-2xl mb-2">{teamThird.totalScore}</span>
                       <div className="w-full h-24 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-amber-700/20 border-t-4 border-amber-500">
-                        <span className="text-5xl">🥉</span>
-                        <span className="text-white/80 font-black text-xs mt-0.5">{t.teacherGame.thirdPlace}</span>
+                        <RankBadge rank={3} size={48} />
+                        <span className="text-white/80 font-black text-xs mt-1.5">{t.teacherGame.thirdPlace}</span>
                       </div>
                     </motion.div>
                   )}
@@ -1584,8 +1729,8 @@ export default function TeacherGame() {
                   <span className="text-white font-bold text-sm mb-1 max-w-[100px] truncate">{second.name}</span>
                   <span className="text-gray-300 font-black text-xl mb-2">{second.score}</span>
                   <div className="w-full h-32 bg-gradient-to-t from-gray-600 to-gray-400 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-gray-500/20 border-t-4 border-gray-300">
-                    <span className="text-5xl">🥈</span>
-                    <span className="text-white/70 font-black text-sm mt-1">{t.teacherGame.secondPlace}</span>
+                    <RankBadge rank={2} size={56} />
+                    <span className="text-white/70 font-black text-sm mt-2">{t.teacherGame.secondPlace}</span>
                   </div>
                 </motion.div>
               )}
@@ -1593,16 +1738,16 @@ export default function TeacherGame() {
                 <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5, type: "spring", bounce: 0.4 }} className="flex flex-col items-center flex-1 -mt-6">
                   <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="relative">
                     <AvatarDisplay avatar={winner.avatar} size="4xl" className="drop-shadow-[0_0_20px_rgba(250,204,21,0.6)]" />
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className={`absolute -top-4 ${lang === "ar" ? "-left-3" : "-right-3"}`}>
-                      <span className="text-3xl">👑</span>
+                    <motion.div animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }} className={`absolute -top-5 ${lang === "ar" ? "-left-2" : "-right-2"}`}>
+                      <Crown className="w-8 h-8 text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.7)]" fill="rgba(250,204,21,0.35)" />
                     </motion.div>
                   </motion.div>
                   <span className="text-white font-black text-lg mt-1 mb-0.5 max-w-[120px] truncate">{winner.name}</span>
                   <span className="text-yellow-400 font-black text-3xl mb-2 drop-shadow-[0_0_10px_rgba(250,204,21,0.4)]">{winner.score}</span>
                   <div className="w-full h-44 bg-gradient-to-t from-yellow-600 via-yellow-500 to-yellow-400 rounded-t-2xl flex flex-col items-center justify-center shadow-xl shadow-yellow-500/30 border-t-4 border-yellow-300 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
-                    <span className="text-7xl relative z-10">🥇</span>
-                    <span className="text-white font-black text-base mt-1 relative z-10">{t.teacherGame.champion}</span>
+                    <div className="relative z-10"><RankBadge rank={1} size={76} /></div>
+                    <span className="text-white font-black text-base mt-2 relative z-10">{t.teacherGame.champion}</span>
                   </div>
                 </motion.div>
               )}
@@ -1612,8 +1757,8 @@ export default function TeacherGame() {
                   <span className="text-white font-bold text-sm mb-1 max-w-[100px] truncate">{third.name}</span>
                   <span className="text-amber-400 font-black text-xl mb-2">{third.score}</span>
                   <div className="w-full h-24 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-amber-700/20 border-t-4 border-amber-500">
-                    <span className="text-5xl">🥉</span>
-                    <span className="text-white/70 font-black text-xs mt-0.5">{t.teacherGame.thirdPlace}</span>
+                    <RankBadge rank={3} size={48} />
+                    <span className="text-white/70 font-black text-xs mt-1.5">{t.teacherGame.thirdPlace}</span>
                   </div>
                 </motion.div>
               )}
@@ -1672,7 +1817,7 @@ export default function TeacherGame() {
             </button>
             <button onClick={replayGame}
               className="px-8 py-3 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-xl font-black hover:from-teal-600 hover:to-green-600 transition-colors shadow-lg">
-              🔄 {lang === "ar" ? "العب مرة أخرى" : "Play Again"}
+              <span className="flex items-center gap-2"><RotateCcw className="w-5 h-5" /> {lang === "ar" ? "العب مرة أخرى" : "Play Again"}</span>
             </button>
             <button onClick={() => setLocation("/teacher")} className="px-8 py-3 bg-white/10 backdrop-blur-sm text-white rounded-xl font-bold hover:bg-white/20 transition-colors border border-white/20">
               {t.teacherGame.backToDashboard}

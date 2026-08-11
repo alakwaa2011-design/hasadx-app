@@ -1,0 +1,1 @@
+import{aa as t}from"./index-ip_DZNO0.js";const a=[["path",{d:"M21 5H3",key:"1fi0y6"}],["path",{d:"M15 12H3",key:"6jk70r"}],["path",{d:"M17 19H3",key:"z6ezky"}]],o=t("text-align-start",a);export{o as T};

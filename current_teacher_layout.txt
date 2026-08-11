@@ -1,0 +1,256 @@
+      />
+    );
+  }
+
+
+  if (phase === "question") {
+    const timerPercent = question ? (timeLeft / question.duration) * 100 : 0;
+    const isUrgent = timeLeft <= 5;
+    const isDouble = question?.isDoublePoints;
+
+    return (
+      <div className="min-h-screen p-3 sm:p-6 overflow-x-hidden" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
+        <div className="max-w-4xl mx-auto">
+          <div className="rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col gap-3" style={{ background: "rgba(13,33,24,0.55)", border: "1px solid rgba(232,184,75,0.18)" }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-white font-bold text-sm sm:text-base order-1 mr-auto">
+                {t.teacherGame.questionOf} {(question?.index ?? 0) + 1} {t.teacherGame.from} {question?.total}
+              </span>
+              <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 px-3 h-9 rounded-xl order-2">
+                <span className="text-white/60 text-xs">{t.teacherGame.gameCode}:</span>
+                <span className="text-white font-mono font-black text-sm tracking-wider">{pin}</span>
+              </div>
+              <div className="order-3"><InlineQR url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`} pin={pin} /></div>
+              <button
+                onClick={copyLink}
+                className="flex items-center justify-center gap-1.5 px-3 h-9 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-bold transition-colors order-4"
+              >
+                {linkCopied ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : <Link2 className="w-3.5 h-3.5" />}
+                <span>{linkCopied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              <div className={`flex items-center justify-center gap-2 h-10 rounded-xl ${isPaused ? "bg-orange-500/25 border border-orange-400/40" : isUrgent ? "bg-red-500/25 border border-red-400/40" : "bg-white/10 border border-white/20"}`}>
+                <Clock className={`w-4 h-4 ${isUrgent ? "text-red-200" : "text-white"}`} />
+                <span className={`font-mono font-black text-lg ${isUrgent ? "text-red-100" : "text-white"}`}>{Math.ceil(timeLeft)}</span>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 h-10 rounded-xl bg-white/10 border border-white/20">
+                <Users className="w-4 h-4 text-blue-300" />
+                <span className="text-white font-black text-sm">{answeredCount}/{totalPlayers}</span>
+                <span className="text-white/70 text-xs hidden sm:inline">{t.teacherGame.answered}</span>
+              </div>
+
+              <button onClick={toggleTts} className={`flex items-center justify-center gap-1.5 h-10 rounded-xl border transition-colors ${ttsEnabled ? "bg-teal-500/25 hover:bg-teal-500/35 border-teal-400/40" : "bg-white/10 hover:bg-white/20 border-white/20"}`}>
+                {ttsEnabled ? <ToggleRight className="w-4 h-4 text-teal-200" /> : <ToggleLeft className="w-4 h-4 text-white/80" />}
+                <span className={`text-xs font-bold ${ttsEnabled ? "text-teal-100" : "text-white"}`}>{t.teacherGame.ttsToggle}</span>
+              </button>
+
+              {autoAdvance ? (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={isPaused ? resumeGame : pauseGame}
+                  className={`flex items-center justify-center gap-1.5 h-10 rounded-xl font-bold text-xs border transition-colors ${isPaused ? "bg-green-500/30 hover:bg-green-500/40 text-green-100 border-green-400/50" : "bg-amber-500/25 hover:bg-amber-500/35 text-amber-100 border-amber-400/40"}`}
+                >
+                  {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                  <span>{isPaused ? t.teacherGame.resume : t.teacherGame.pause}</span>
+                </motion.button>
+              ) : (
+                <div className="hidden sm:block" />
+              )}
+
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={skipQuestion}
+                className="flex items-center justify-center gap-1.5 h-10 rounded-xl bg-orange-500/25 hover:bg-orange-500/35 text-orange-100 border border-orange-400/40 transition-colors"
+              >
+                <SkipForward className="w-4 h-4" />
+                <span className="text-xs font-bold">{lang === "ar" ? "تخطي" : "Skip"}</span>
+              </motion.button>
+            </div>
+
+            {(isDouble || hackMode) && (
+              <div className="flex flex-wrap items-center gap-2">
+                {isDouble && (
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1 }}
+                    className="flex items-center gap-1.5 bg-yellow-500/25 border border-yellow-400/50 px-3 h-9 rounded-xl">
+                    <Zap className="w-4 h-4 text-yellow-200" />
+                    <span className="text-yellow-100 font-black text-xs">{t.teacherGame.doublePoints}</span>
+                  </motion.div>
+                )}
+                {hackMode && (
+                  <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-green-500/25 border border-green-400/50">
+                    <span className="text-xs font-black text-green-100">🔐 {lang === "ar" ? "وضع الاختراق" : "Hack Mode"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden mb-8">
+            <motion.div
+              className={`h-full rounded-full ${isDouble ? "bg-yellow-500" : isUrgent ? "bg-red-500" : ""}`}
+              style={{
+                width: `${timerPercent}%`,
+                ...(isDouble || isUrgent
+                  ? {}
+                  : { background: "linear-gradient(90deg, #E8B84B 0%, #C9960C 100%)" }),
+              }}
+              transition={{ duration: 0.1 }}
+            />
+          </div>
+
+          <motion.div key={question?.index} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 mb-8">
+            <h2 className="text-3xl font-black text-white text-center leading-relaxed">{question?.text}</h2>
+            {question?.imageUrl && (
+              <div className="flex justify-center mt-4">
+                <img src={question.imageUrl} alt="" className="max-h-48 rounded-xl border-2 border-white/20 object-contain" />
+              </div>
+            )}
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <span className="text-yellow-300 font-bold">{isDouble ? `${(question?.points || 0)} × 2` : question?.points} {t.teacherGame.pointsLabel}</span>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {(question?.questionType === "true_false") ? (
+              <>
+                <div className="bg-green-500 rounded-2xl p-5 text-white font-bold text-lg text-center">
+                  {lang === "ar" ? "صح ✓" : "True ✓"}
+                </div>
+                <div className="bg-red-500 rounded-2xl p-5 text-white font-bold text-lg text-center">
+                  {lang === "ar" ? "خطأ ✗" : "False ✗"}
+                </div>
+              </>
+            ) : (question?.questionType === "fill_blank") ? (
+              <div className="col-span-2 bg-gray-700 rounded-2xl p-5 text-white font-bold text-lg text-center">
+                {lang === "ar" ? "✏️ إجابة كتابية" : "✏️ Text Answer"}
+              </div>
+            ) : (
+              [
+                { key: "A", text: question?.optionA, style: { background: "linear-gradient(160deg, #7A0A0A, #B01414)", boxShadow: "0 6px 24px rgba(176,20,20,0.45)" } },
+                { key: "B", text: question?.optionB, style: { background: "linear-gradient(160deg, #08386E, #1260A8)", boxShadow: "0 6px 24px rgba(18,96,168,0.45)" } },
+                { key: "C", text: question?.optionC, style: { background: "linear-gradient(160deg, #B8860B, #DAA520)", boxShadow: "0 6px 24px rgba(218,165,32,0.45)" } },
+                { key: "D", text: question?.optionD, style: { background: "linear-gradient(160deg, #5A1A8A, #8B35C8)", boxShadow: "0 6px 24px rgba(139,53,200,0.45)" } },
+              ].filter((o) => o.text).map((opt) => (
+                <div key={opt.key} style={opt.style as React.CSSProperties} className="rounded-2xl p-5 text-white font-bold text-lg text-center">
+                  <span className={`opacity-60 ${lang === "ar" ? "ml-2" : "mr-2"}`}>{opt.key})</span>
+                  {opt.text}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "gift-round") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
+          <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-8xl mb-4">🎁</motion.div>
+          <h2 className="text-4xl font-black text-white mb-3">جولة المفاجآت!</h2>
+          <p className="text-white/60 font-bold text-xl">الطلاب يختارون قواهم الخاصة...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (phase === "leaderboard") {
+    const maxDist = Math.max(...Object.values(distribution), 1);
+    const qType = question?.questionType || "mcq";
+    const distColors: Record<string, string> = qType === "true_false"
+      ? { true: "bg-green-500", false: "bg-red-500" }
+      : { A: "bg-red-500", B: "bg-blue-500", C: "bg-yellow-500", D: "bg-green-500" };
+    const distKeys = qType === "true_false"
+      ? ["true", "false"]
+      : qType === "fill_blank"
+        ? Object.keys(distribution)
+        : ["A", "B", "C", "D"];
+    const distKeyLabels: Record<string, string> = qType === "true_false"
+      ? { true: lang === "ar" ? "صح" : "True", false: lang === "ar" ? "خطأ" : "False" }
+      : {};
+
+    return (
+      <Layout noHeader>
+        <div
+          className={`min-h-screen overflow-x-hidden ${hackMode ? "bg-black" : ""}`}
+          style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+        >
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
+          {hackMode && (
+            <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2 }}
+              className="text-center font-mono text-green-500 text-xs mb-4 tracking-widest">
+              ══ HACK_RESULTS ══ ROUND_COMPLETE ══ SCORES_UPDATED ══
+            </motion.div>
+          )}
+          <div className="rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col gap-3" style={hackMode ? { background: "rgba(0,0,0,0.6)", border: "1px solid rgba(34,197,94,0.3)" } : { background: "rgba(13,33,24,0.55)", border: "1px solid rgba(232,184,75,0.18)" }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className={`flex items-center gap-1.5 px-3 h-9 rounded-xl border ${hackMode ? "bg-black border-green-800" : "bg-white/10 border-white/20"}`}>
+                <span className={`text-xs font-bold ${hackMode ? "text-green-700 font-mono" : "text-white/60"}`}>{hackMode ? "PIN:" : `${t.teacherGame.gameCode}:`}</span>
+                <span className={`font-mono font-black text-sm tracking-wider ${hackMode ? "text-green-400" : "text-white"}`}>{pin}</span>
+              </div>
+              <InlineQR
+                url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`}
+                pin={pin}
+              />
+              <button
+                onClick={copyLink}
+                className="flex items-center justify-center gap-1.5 px-3 h-9 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-bold transition-colors"
+              >
+                {linkCopied ? <CheckCircle className="w-3.5 h-3.5 text-green-300" /> : <Link2 className="w-3.5 h-3.5" />}
+                <span>{linkCopied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}</span>
+              </button>
+              {hackMode && (
+                <div className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold bg-green-500/25 text-green-100 border border-green-400/40">
+                  🔐 {lang === "ar" ? "وضع الاختراق" : "Hack Mode"}
+                </div>
+              )}
+            </div>
+
+            <div className={`grid gap-2 ${autoAdvance ? "grid-cols-2 sm:grid-cols-4" : hackMode ? "grid-cols-2" : "grid-cols-2"}`}>
+              {autoAdvance ? (
+                <>
+                  {!isPaused ? (
+                    <div className="flex items-center justify-center gap-2 h-11 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs px-2">
+                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}>
+                        <Clock className="w-4 h-4" />
+                      </motion.div>
+                      <span className="truncate">{t.teacherGame.autoNext}</span>
+                    </div>
+                  ) : (
+                    <div className="hidden sm:block" />
+                  )}
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={nextQ}
+                    className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black text-xs shadow-lg active:scale-95 transition-transform px-2"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                    <span className="truncate">{lang === "ar" ? "تقدم الآن" : "Advance Now"}</span>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={isPaused ? resumeGame : pauseGame}
+                    className={`flex items-center justify-center gap-1.5 h-11 rounded-xl font-bold text-xs px-2 transition-colors ${isPaused ? "bg-green-500/30 text-green-100 border border-green-400/50" : "bg-amber-500/25 text-amber-100 border border-amber-400/40"}`}
+                  >
+                    {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                    <span className="truncate">{isPaused ? t.teacherGame.resume : t.teacherGame.pause}</span>
+                  </motion.button>
+                  <button onClick={endGame} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-500/20 text-red-200 border border-red-400/40 hover:bg-red-500/30 font-bold text-xs px-2 transition-colors">
+                    <StopCircle className="w-4 h-4" />
+                    <span className="truncate">{t.teacherGame.endGame}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={nextQ} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform px-2">
+                    <SkipForward className="w-4 h-4" />
+                    <span className="truncate">{t.teacherGame.nextQuestion}</span>
+                  </button>
+                  <button onClick={endGame} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-red-500/20 text-red-200 border border-red-400/40 hover:bg-red-500/30 font-bold text-sm px-2 transition-colors">
+                    <StopCircle className="w-4 h-4" />
+                    <span className="truncate">{t.teacherGame.endGame}</span>

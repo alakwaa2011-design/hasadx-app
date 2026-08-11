@@ -903,7 +903,7 @@ export const en: typeof ar = {
     autoNext: "Next question advances automatically...",
     nextQuestion: "Next Question",
     endGame: "End Game",
-    finalResults: "Final Results 🎉",
+    finalResults: "Final Results",
     playersParticipated: "players participated in the game",
     secondPlace: "2nd Place",
     champion: "Champion!",

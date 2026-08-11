@@ -901,7 +901,7 @@ export const ar = {
     autoNext: "السؤال التالي ينتقل تلقائياً...",
     nextQuestion: "السؤال التالي",
     endGame: "إنهاء اللعبة",
-    finalResults: "النتائج النهائية 🎉",
+    finalResults: "النتائج النهائية",
     playersParticipated: "لاعب شاركوا في اللعبة",
     secondPlace: "المركز الثاني",
     champion: "البطل!",

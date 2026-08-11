@@ -1,0 +1,251 @@
+                    >
+                      {openedBoxIndex === i ? "✨" : "?"}
+                    </motion.button>
+                  ))}
+                </div>
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+      </>
+    );
+  }
+
+  if (phase === "leaderboard") {
+    if (hackMode) {
+      return (
+        <>
+          {reconnectBanner}
+        <div
+          className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden"
+          dir={dir}
+        >
+          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden opacity-5">
+            {Array.from({ length: 10 }).map((_, col) => (
+              <motion.div
+                key={col}
+                initial={{ y: -200 }}
+                animate={{ y: "110vh" }}
+                transition={{
+                  duration: 5 + col * 0.7,
+                  repeat: Infinity,
+                  delay: col * 0.4,
+                  ease: "linear",
+                }}
+                className="absolute top-0 text-green-500 font-mono text-xs leading-5"
+                style={{ left: `${(col / 10) * 100}%` }}
+              >
+                {"10XH4K!#NETT0".split("").map((c, i) => (
+                  <div key={i}>{c}</div>
+                ))}
+              </motion.div>
+            ))}
+          </div>
+          <MuteButton />
+          <SoundPickerButton />
+          <AnimatePresence>
+            {giftNotification && (
+              <motion.div
+                initial={{ y: -100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -100, opacity: 0 }}
+                className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-red-900 border border-red-500 text-red-200 px-6 py-4 rounded-xl font-bold text-center font-mono"
+              >
+                <p>{giftNotification.message}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 text-center font-mono"
+          >
+            <p className="text-green-500 text-xs">{">"} SYSTEM_LEADERBOARD</p>
+            {correctAnswer && (
+              <p className="text-green-400 font-bold text-sm mt-1">
+                CORRECT: <span className="text-green-200">{correctAnswer}</span>
+              </p>
+            )}
+          </motion.div>
+
+          <div className="w-full max-w-sm space-y-2 relative z-10">
+            {leaderboard.slice(0, 8).map((entry, i) => (
+              <motion.div
+                key={entry.name}
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border font-mono text-sm
+                  ${
+                    entry.name === myName
+                      ? "bg-green-950/70 border-green-500 text-green-200"
+                      : "bg-black border-green-900/50 text-green-600"
+                  }`}
+              >
+                <span className="w-6 text-center font-black text-green-500">
+                  {i === 0
+                    ? "01"
+                    : i === 1
+                      ? "02"
+                      : i === 2
+                        ? "03"
+                        : `${String(i + 1).padStart(2, "0")}`}
+                </span>
+                <span className="flex-1 truncate">{entry.name}</span>
+                {entry.lastAnswer?.correct && (
+                  <span className="text-green-400 text-xs">
+                    +{entry.lastAnswer.points}
+                  </span>
+                )}
+                <span
+                  className={`font-black text-base ${entry.name === myName ? "text-green-300" : "text-green-700"}`}
+                >
+                  {entry.score}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+
+          {myRank > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-4 font-mono text-center"
+            >
+              <span className="text-green-700 text-xs">YOUR_RANK: </span>
+              <span className="text-green-300 font-black text-xl">
+                {String(myRank).padStart(2, "0")}
+              </span>
+              <span className="text-green-700 text-xs">
+                {" "}
+                / {leaderboard.length}
+              </span>
+            </motion.div>
+          )}
+
+          <motion.p
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            className="mt-4 text-green-700 text-xs font-mono"
+          >
+            {">"} AWAITING_NEXT_ROUND...
+          </motion.p>
+        </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {reconnectBanner}
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-4"
+        style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+        dir={dir}
+      >
+        <MuteButton />
+        <SoundPickerButton />
+        <AnimatePresence>
+          {giftNotification && (
+            <motion.div
+              initial={{ y: -100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -100, opacity: 0 }}
+              className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-4 rounded-2xl shadow-2xl font-bold text-center"
+            >
+              <p>{giftNotification.message}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {correctAnswer && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-4"
+          >
+            <p className="font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>
+              {t.gamePlay.correctAnswerIs}{" "}
+              <span className="text-lg" style={{ color: "#E8B84B" }}>
+                {correctAnswer}
+              </span>
+            </p>
+          </motion.div>
+        )}
+
+        <div className="w-full max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <RaceTrack players={leaderboard} myName={myName} />
+          </motion.div>
+        </div>
+
+        {myRank > 0 && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-4 text-white font-bold"
+          >
+            {t.gamePlay.yourRank}{" "}
+            <span className="text-white font-black text-2xl">
+              {myRank}
+            </span>{" "}
+            {t.gamePlay.of} {leaderboard.length}
+          </motion.p>
+        )}
+
+        {gameMode === "teams" && teamLeaderboard.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="w-full max-w-lg mt-5 bg-white/10 backdrop-blur-sm rounded-2xl p-4"
+          >
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <UsersRound className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              <h3 className="text-white font-black">
+                {t.teacherGame.teamRanking}
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {teamLeaderboard.map((team, i) => (
+                <div
+                  key={team.teamName}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl ${team.teamName === myTeam ? "bg-yellow-500/20 border border-yellow-500/40" : "bg-black/5 dark:bg-white/5"}`}
+                >
+                  <span className="text-xl font-black text-white/70 w-6 text-center">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 font-black text-white">
+                    {team.teamName}
+                  </span>
+                  <span className="text-yellow-600 dark:text-yellow-400 font-black">
+                    {team.totalScore}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        <p className="mt-3 text-white/90 text-sm animate-pulse">
+          {t.gamePlay.waitingNextQuestion}
+        </p>
+      </div>
+      </>
+    );
+  }
+
+  if (phase === "finished") {
+    // Solo challenge: render only the simplified solo results page.
+    // No podium, no "all players", no PIN-share, no "wait for teacher".
+    if (isSoloRef.current) {
+      return (
+        <SoloChallengeResults
+          myScore={myScore}
