@@ -12,6 +12,7 @@ import {
   Volume2, VolumeX, X as XIcon, Zap, Flame,
   CheckCircle, XCircle, Snowflake, School, Trophy, Crown,
   Gift, EyeOff, Eye, Clock3, Timer, Pause, Play, LogOut,
+  Users, SlidersHorizontal, Sparkles,
 } from "lucide-react";
 import {
   playCorrectSound, playWrongSound, playVictoryFanfare,
@@ -263,21 +264,78 @@ function CountdownOverlay({ count, ar }: { count: number; ar: boolean }) {
   );
 }
 
-// ─── Small toggle pill ────────────────────────────────────────────────────────
-function TogglePill({ on, onChange, labelOn, labelOff, icon }: {
-  on: boolean; onChange: (v: boolean) => void;
-  labelOn: string; labelOff: string; icon: React.ReactNode;
+// ─── Modern switch — knob slides via flex justify + framer layout anim ────────
+function Switch({ on, onChange, accent = "#f4c95d" }: {
+  on: boolean; onChange: (v: boolean) => void; accent?: string;
 }) {
   return (
-    <button onClick={()=>onChange(!on)}
-      className="flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all"
+    <button
+      onClick={() => onChange(!on)}
+      aria-pressed={on}
+      className="relative w-12 h-7 rounded-full shrink-0 transition-colors duration-200"
       style={{
-        background: on ? "rgba(244,201,93,0.18)" : "rgba(255,255,255,0.06)",
-        border: `1.5px solid ${on ? "rgba(244,201,93,0.55)" : "rgba(255,255,255,0.12)"}`,
-        color: on ? "#f4c95d" : "rgba(255,255,255,0.45)",
+        background: on ? accent : "rgba(255,255,255,0.14)",
+        boxShadow: on ? `0 0 14px ${accent}55` : "none",
       }}>
-      {icon}{on ? labelOn : labelOff}
+      <div className="absolute inset-0.5 flex" style={{ justifyContent: on ? "flex-end" : "flex-start" }}>
+        <motion.span layout transition={{ type: "spring", stiffness: 500, damping: 32 }}
+          className="w-6 h-6 rounded-full bg-white shadow-md" />
+      </div>
     </button>
+  );
+}
+
+// ─── Segmented control — pill row with a sliding active background ───────────
+function SegmentedControl<T extends string | number>({ options, value, onChange, render, accent, layoutId }: {
+  options: T[]; value: T; onChange: (v: T) => void;
+  render: (opt: T, active: boolean) => React.ReactNode; accent: string; layoutId: string;
+}) {
+  return (
+    <div className="flex gap-1 p-1 rounded-2xl flex-wrap"
+      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      {options.map((opt) => {
+        const active = opt === value;
+        return (
+          <button
+            key={String(opt)}
+            onClick={() => onChange(opt)}
+            className="relative flex-1 min-w-[3.4rem] px-3 py-2 rounded-xl text-sm font-black transition-colors"
+            style={{ color: active ? "#1a0e00" : "rgba(255,255,255,0.55)" }}>
+            {active && (
+              <motion.div layoutId={layoutId} className="absolute inset-0 rounded-xl"
+                style={{ background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, boxShadow: `0 4px 16px ${accent}55` }}
+                transition={{ type: "spring", stiffness: 420, damping: 32 }} />
+            )}
+            <span className="relative">{render(opt, active)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── One row inside the settings card: icon + label (+ description) + trailing control ─
+function SettingRow({ icon, label, description, trailing, children }: {
+  icon: React.ReactNode; label: string; description?: string;
+  trailing?: React.ReactNode; children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white/70"
+            style={{ background: "rgba(255,255,255,0.06)" }}>
+            {icon}
+          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[13px] font-bold text-white/85 truncate">{label}</span>
+            {description && <span className="text-white/35 text-[10.5px] font-medium leading-snug">{description}</span>}
+          </div>
+        </div>
+        {trailing}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -295,137 +353,157 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
   const rightSet   = blueOnRight ? onBlueName : onRedName;
 
   return (
-    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 px-5 py-8 overflow-y-auto"
-      style={{ background:[
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: [
         "radial-gradient(ellipse 80% 50% at 50% 0%,rgba(244,201,93,0.13) 0%,transparent 65%)",
-        "linear-gradient(160deg,#060e0a 0%,#0d2118 50%,#060e0a 100%)"
+        "linear-gradient(160deg,#060e0a 0%,#0d2118 50%,#060e0a 100%)",
       ].join(",") }}>
 
-      {/* Logo */}
-      <div className="flex flex-col items-center gap-1.5">
-        <div className="flex items-center gap-2.5">
-          <School className="w-8 h-8 text-yellow-300"/>
-          <span className="text-yellow-300 font-black text-3xl" style={{ letterSpacing:"0.06em" }}>وميض الصف</span>
-        </div>
-        {setup.title && <span className="text-white/50 text-sm font-bold">{setup.title}</span>}
-      </div>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-6 sm:py-8">
+        <div className="w-full max-w-md mx-auto flex flex-col gap-5">
 
-      {/* Team names */}
-      <div className="flex gap-4 w-full max-w-md" style={{ direction: ar ? "rtl" : "ltr" }}>
-        {[
-          { label: ar?"الفريق الأيسر":"Left team",   color: leftColor,  val: leftName,  set: leftSet  },
-          { label: ar?"الفريق الأيمن":"Right team",  color: rightColor, val: rightName, set: rightSet },
-        ].map(({ label, color, val, set }) => (
-          <div key={label} className="flex-1 flex flex-col gap-1.5">
-            <label className="text-xs font-bold" style={{ color }}>{label}</label>
-            <input value={val} onChange={(e)=>set(e.target.value)}
-              className="rounded-xl px-3 py-2.5 font-bold text-sm text-white focus:outline-none transition-all"
-              style={{ background:"rgba(255,255,255,0.08)", border:`1.5px solid ${color}40` }}/>
-          </div>
-        ))}
-      </div>
-
-      {/* Settings panel */}
-      <div className="w-full max-w-md rounded-2xl p-4 flex flex-col gap-4"
-        style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)" }}
-        dir={ar?"rtl":"ltr"}>
-
-        <p className="text-white/50 text-xs font-black uppercase tracking-widest">
-          {ar?"إعدادات اللعبة":"Game settings"}
-        </p>
-
-        {/* Question duration */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-1.5 text-white/70 text-xs font-bold">
-            <Clock3 className="w-3.5 h-3.5"/>
-            {ar?"مدة السؤال":"Duration per question"}
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {DURATION_OPTIONS.map((d)=>(
-              <button key={d} onClick={()=>onSettings({...settings,duration:d})}
-                className="px-3 py-1.5 rounded-lg text-sm font-black transition-all"
-                style={{
-                  background: settings.duration===d ? "linear-gradient(135deg,#f4c95d,#d4a63a)" : "rgba(255,255,255,0.07)",
-                  color: settings.duration===d ? "#1a0e00" : "rgba(255,255,255,0.50)",
-                  border: `1.5px solid ${settings.duration===d ? "#d4a63a" : "rgba(255,255,255,0.10)"}`,
-                }}>
-                {d}{ar?"ث":"s"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Gifts toggle */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 text-white/70 text-xs font-bold">
-            <Gift className="w-3.5 h-3.5"/>
-            {ar?"صناديق الهدايا":"Gift boxes"}
-          </div>
-          <TogglePill on={settings.giftsEnabled} onChange={(v)=>onSettings({...settings,giftsEnabled:v})}
-            labelOn={ar?"مفعّلة":"On"} labelOff={ar?"مُعطَّلة":"Off"}
-            icon={<span className="text-base leading-none">🎁</span>}/>
-        </div>
-
-        {/* Freeze duration — only shown when gifts are on */}
-        {settings.giftsEnabled && (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-1.5 text-white/70 text-xs font-bold">
-              <Timer className="w-3.5 h-3.5"/>
-              {ar?"مدة التجميد":"Freeze duration"}
+          {/* Logo */}
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="w-14 h-14 rounded-3xl flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg,rgba(244,201,93,0.22),rgba(212,166,58,0.06))",
+                border: "1.5px solid rgba(244,201,93,0.4)",
+                boxShadow: "0 8px 28px rgba(244,201,93,0.18)",
+              }}>
+              <School className="w-7 h-7 text-yellow-300" />
             </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {FREEZE_DURATION_OPTIONS.map((d)=>(
-                <button key={d} onClick={()=>onSettings({...settings,freezeDuration:d})}
-                  className="px-3 py-1.5 rounded-lg text-sm font-black transition-all"
-                  style={{
-                    background: settings.freezeDuration===d ? "linear-gradient(135deg,#3b82f6,#1d4ed8)" : "rgba(255,255,255,0.07)",
-                    color: settings.freezeDuration===d ? "#fff" : "rgba(255,255,255,0.50)",
-                    border: `1.5px solid ${settings.freezeDuration===d ? "#3b82f6" : "rgba(255,255,255,0.10)"}`,
-                  }}>
-                  🥶 {d}{ar?"ث":"s"}
-                </button>
+            <div>
+              <h1 className="text-yellow-300 font-black text-2xl sm:text-[26px] tracking-tight leading-tight">
+                {ar ? "وميض الصف" : "Wameeth Class"}
+              </h1>
+              {setup.title && <p className="text-white/45 text-sm font-bold mt-0.5">{setup.title}</p>}
+            </div>
+          </div>
+
+          {/* Team names card */}
+          <div className="rounded-3xl p-4 sm:p-5" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" }}
+            dir={ar ? "rtl" : "ltr"}>
+            <div className="flex items-center gap-2 mb-3.5 text-white/40 text-[11px] font-black uppercase tracking-widest">
+              <Users className="w-3.5 h-3.5" />
+              {ar ? "أسماء الفريقين" : "Team names"}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: ar ? "الفريق الأيسر" : "Left team",  color: leftColor,  val: leftName,  set: leftSet  },
+                { label: ar ? "الفريق الأيمن" : "Right team", color: rightColor, val: rightName, set: rightSet },
+              ].map(({ label, color, val, set }) => (
+                <div key={label} className="flex flex-col gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+                    <label className="text-[11px] font-bold truncate" style={{ color }}>{label}</label>
+                  </div>
+                  <input value={val} onChange={(e) => set(e.target.value)} maxLength={20}
+                    className="rounded-xl px-3 py-2.5 font-black text-sm text-white focus:outline-none focus:ring-2 transition-all"
+                    style={{ background: "rgba(255,255,255,0.07)", border: `1.5px solid ${color}40`, ["--tw-ring-color" as any]: `${color}55` }} />
+                </div>
               ))}
             </div>
           </div>
-        )}
 
-        {/* Show correct answer toggle */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5 text-white/70 text-xs font-bold">
-              {settings.showCorrect ? <Eye className="w-3.5 h-3.5"/> : <EyeOff className="w-3.5 h-3.5"/>}
-              {ar?"إظهار الإجابة الصحيحة":"Show correct answer"}
+          {/* Settings card */}
+          <div className="rounded-3xl p-4 sm:p-5 flex flex-col gap-4"
+            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" }}
+            dir={ar ? "rtl" : "ltr"}>
+
+            <div className="flex items-center gap-2 text-white/40 text-[11px] font-black uppercase tracking-widest">
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {ar ? "إعدادات اللعبة" : "Game settings"}
             </div>
-            <p className="text-white/35 text-[10px] leading-snug" style={{ maxWidth:200 }}>
-              {settings.showCorrect
-                ? (ar?"تظهر للفريق فور الخطأ":"Revealed immediately after wrong guess")
-                : (ar?"لا تُكشف الإجابة — تمنع الغش":"Hidden — prevents the other team from copying")}
-            </p>
+
+            {/* Question duration */}
+            <SettingRow icon={<Clock3 className="w-4 h-4" />} label={ar ? "مدة السؤال" : "Duration per question"}>
+              <SegmentedControl
+                layoutId="duration-pill"
+                options={DURATION_OPTIONS}
+                value={settings.duration}
+                onChange={(d) => onSettings({ ...settings, duration: d })}
+                accent="#f4c95d"
+                render={(d) => `${d}${ar ? "ث" : "s"}`}
+              />
+            </SettingRow>
+
+            <div className="h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+            {/* Gifts toggle + freeze duration */}
+            <SettingRow
+              icon={<Gift className="w-4 h-4" />}
+              label={ar ? "صناديق الهدايا" : "Gift boxes"}
+              trailing={<Switch on={settings.giftsEnabled} onChange={(v) => onSettings({ ...settings, giftsEnabled: v })} accent="#f4c95d" />}
+            >
+              <AnimatePresence initial={false}>
+                {settings.giftsEnabled && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }} className="overflow-hidden">
+                    <div className="flex items-center gap-2 mb-2 text-white/50 text-[11px] font-bold">
+                      <Timer className="w-3.5 h-3.5" />
+                      {ar ? "مدة التجميد" : "Freeze duration"}
+                    </div>
+                    <SegmentedControl
+                      layoutId="freeze-pill"
+                      options={FREEZE_DURATION_OPTIONS}
+                      value={settings.freezeDuration}
+                      onChange={(d) => onSettings({ ...settings, freezeDuration: d })}
+                      accent="#3b82f6"
+                      render={(d) => `🥶 ${d}${ar ? "ث" : "s"}`}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </SettingRow>
+
+            <div className="h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+            {/* Show correct answer toggle */}
+            <SettingRow
+              icon={settings.showCorrect ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              label={ar ? "إظهار الإجابة الصحيحة" : "Show correct answer"}
+              description={settings.showCorrect
+                ? (ar ? "تظهر للفريق فور الخطأ" : "Revealed immediately after a wrong guess")
+                : (ar ? "لا تُكشف الإجابة — تمنع الغش" : "Hidden — prevents the other team from copying")}
+              trailing={<Switch on={settings.showCorrect} onChange={(v) => onSettings({ ...settings, showCorrect: v })} accent="#f4c95d" />}
+            />
           </div>
-          <TogglePill on={settings.showCorrect} onChange={(v)=>onSettings({...settings,showCorrect:v})}
-            labelOn={ar?"ظاهرة":"Shown"} labelOff={ar?"مخفية":"Hidden"}
-            icon={settings.showCorrect ? <Eye className="w-3.5 h-3.5"/> : <EyeOff className="w-3.5 h-3.5"/>}/>
+
+          {/* Summary chips */}
+          <div className="flex gap-1.5 flex-wrap justify-center">
+            {[
+              { icon: <Zap className="w-3 h-3 text-yellow-300" />, text: `${setup.questions.length} ${ar ? "سؤال" : "questions"}` },
+              { icon: <Clock3 className="w-3 h-3 text-white/50" />, text: `${settings.duration}${ar ? "ث" : "s"}/${ar ? "سؤال" : "q"}` },
+              settings.giftsEnabled
+                ? { icon: <Gift className="w-3 h-3 text-amber-300" />, text: `${ar ? "هدايا" : "Gifts"} · 🥶${settings.freezeDuration}${ar ? "ث" : "s"}` }
+                : { icon: <Gift className="w-3 h-3 text-white/30" />, text: ar ? "بلا هدايا" : "No gifts" },
+              settings.showCorrect
+                ? { icon: <Eye className="w-3 h-3 text-white/50" />, text: ar ? "الإجابة ظاهرة" : "Answer shown" }
+                : { icon: <EyeOff className="w-3 h-3 text-white/50" />, text: ar ? "الإجابة مخفية" : "Answer hidden" },
+            ].map((c, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5 bg-white/[0.05] border border-white/10 text-white/55 px-3 py-1.5 rounded-full text-[11px] font-bold">
+                {c.icon}{c.text}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Info chips */}
-      <div className="flex gap-2 flex-wrap justify-center">
-        {[
-          `⚡ ${setup.questions.length} ${ar?"سؤال":"questions"}`,
-          `⏱ ${settings.duration}${ar?"ث":"s"}/${ar?"سؤال":"q"}`,
-          settings.giftsEnabled ? `🎁 ${ar?"هدايا مُفعَّلة":"Gifts on"} · 🥶${settings.freezeDuration}${ar?"ث":"s"}` : `🚫 ${ar?"بلا هدايا":"No gifts"}`,
-          settings.showCorrect  ? `👁 ${ar?"الإجابة ظاهرة":"Answer shown"}` : `🙈 ${ar?"الإجابة مخفية":"Answer hidden"}`,
-        ].map((t)=>(
-          <span key={t} className="bg-white/6 border border-white/12 text-white/55 px-3 py-1 rounded-full text-xs font-bold">{t}</span>
-        ))}
+      {/* Sticky start button */}
+      <div className="shrink-0 px-4 sm:px-5 pb-5 sm:pb-6 pt-3"
+        style={{ background: "linear-gradient(180deg,rgba(6,14,9,0) 0%,rgba(6,14,9,0.85) 35%,rgba(6,14,9,0.85) 100%)" }}>
+        <div className="w-full max-w-md mx-auto">
+          <motion.button whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.015 }} onClick={onStart}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-lg sm:text-xl"
+            style={{ background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color: "#1a0e00", boxShadow: "0 10px 36px rgba(244,201,93,0.4)" }}>
+            <Sparkles className="w-5 h-5" />
+            {ar ? "ابدأ اللعبة" : "Start Game"}
+          </motion.button>
+        </div>
       </div>
-
-      <motion.button whileTap={{ scale:0.96 }} whileHover={{ scale:1.02 }} onClick={onStart}
-        className="px-12 py-4 rounded-2xl font-black text-xl"
-        style={{ background:"linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color:"#1a0e00", boxShadow:"0 8px 32px rgba(244,201,93,0.45)" }}>
-        {ar?"ابدأ اللعبة ⚡":"Start Game ⚡"}
-      </motion.button>
     </motion.div>
   );
 }
