@@ -415,13 +415,13 @@ export default function TeacherDashboard() {
       window.history.replaceState({}, "", newUrl);
     }
     if (params.get("liveGame") !== "1") return;
-    setActiveTab("competitive");
-    setOpenWameethDeepLink(true);
     params.delete("liveGame");
     const qs = params.toString();
     const path = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
     window.history.replaceState({}, "", path);
-  }, [user]);
+    // Wameedh now always starts from its own question-prep flow.
+    setLocation("/game/wameeth/create");
+  }, [user, setLocation]);
 
   /* ── XP socket: real-time reward toasts ─────────────────────────────── */
   useEffect(() => {
@@ -1990,7 +1990,10 @@ function CompetitiveTab({
     if (game.available === false) return;
     const { type } = game;
     if (type === "knowledge_race") {
-      setShowWameethModal(true);
+      // وميض now always starts from its own question-prep flow (choose
+      // assignment / AI / manual, then pick a play mode) instead of the
+      // legacy "pick an assignment" modal below.
+      setLocation("/game/wameeth/create");
       return;
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
