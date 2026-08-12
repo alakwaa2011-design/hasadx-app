@@ -237,64 +237,64 @@ export default function SoloChallengeCreatePage() {
     <div className="min-h-screen bg-background" dir="rtl">
       {/* Header */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/teacher/solo-challenges" className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground group">
-            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+        <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
+          <Link href="/teacher/solo-challenges" className="p-2 lg:p-2.5 rounded-xl hover:bg-muted transition-colors text-muted-foreground group">
+            <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 group-hover:-translate-x-1 transition-transform" />
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
-              <Target className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-3 lg:gap-3.5">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
+              <Target className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
             </div>
-            <h1 className="text-lg font-black text-foreground tracking-tight">مسابقة ذاتية جديدة</h1>
+            <h1 className="text-lg lg:text-xl font-black text-foreground tracking-tight">مسابقة ذاتية جديدة</h1>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6">
+      <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-6 sm:py-8 lg:py-10 space-y-6 lg:space-y-8">
 
         {/* Step 1: Source selection */}
         <AnimatePresence mode="popLayout">
           {!source && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-6 max-w-3xl mx-auto mt-4">
-              <div className="text-center space-y-2 mb-8">
-                <h2 className="text-2xl font-black text-foreground">كيف تريد إنشاء المسابقة؟</h2>
-                <p className="text-sm text-muted-foreground font-medium">اختر الطريقة الأنسب لبدء التحدي</p>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-6 lg:space-y-8 max-w-3xl lg:max-w-5xl mx-auto mt-4 lg:mt-6">
+              <div className="text-center space-y-2 lg:space-y-3 mb-8 lg:mb-10">
+                <h2 className="text-2xl lg:text-3xl font-black text-foreground">كيف تريد إنشاء المسابقة؟</h2>
+                <p className="text-sm lg:text-base text-muted-foreground font-medium">اختر الطريقة الأنسب لبدء التحدي</p>
               </div>
-              <div className="grid sm:grid-cols-3 gap-4">
+              <div className="grid sm:grid-cols-3 gap-4 lg:gap-6">
                 <button
                   onClick={() => setSource("assignment")}
-                  className="group p-6 bg-card border-2 border-border/60 hover:border-primary/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
+                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-primary/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
                 >
-                  <div className="absolute top-0 end-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-primary/10 transition-colors" />
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center mb-5 transition-colors border border-primary/10 shadow-sm relative z-10">
-                    <BookOpen className="w-6 h-6 text-primary" />
+                  <div className="absolute top-0 end-0 w-24 h-24 lg:w-32 lg:h-32 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-primary/10 transition-colors" />
+                  <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center mb-5 lg:mb-6 transition-colors border border-primary/10 shadow-sm relative z-10">
+                    <BookOpen className="w-6 h-6 lg:w-7 lg:h-7 text-primary" />
                   </div>
-                  <h3 className="font-black text-foreground text-lg mb-2 relative z-10">من واجب موجود</h3>
-                  <p className="text-xs text-muted-foreground font-medium leading-relaxed relative z-10">اختر واجباً من مكتبتك وانشر رابط مسابقة فردية مباشرةً بمحتواه</p>
+                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">من واجب موجود</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">اختر واجباً من مكتبتك وانشر رابط مسابقة فردية مباشرةً بمحتواه</p>
                 </button>
 
                 <button
                   onClick={() => setSource("ai")}
-                  className="group p-6 bg-card border-2 border-border/60 hover:border-amber-500/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
+                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-amber-500/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
                 >
-                  <div className="absolute top-0 end-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-amber-500/10 transition-colors" />
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 group-hover:bg-amber-500/20 flex items-center justify-center mb-5 transition-colors border border-amber-500/10 shadow-sm relative z-10">
-                    <Sparkles className="w-6 h-6 text-amber-500" />
+                  <div className="absolute top-0 end-0 w-24 h-24 lg:w-32 lg:h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-amber-500/10 transition-colors" />
+                  <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-amber-500/10 group-hover:bg-amber-500/20 flex items-center justify-center mb-5 lg:mb-6 transition-colors border border-amber-500/10 shadow-sm relative z-10">
+                    <Sparkles className="w-6 h-6 lg:w-7 lg:h-7 text-amber-500" />
                   </div>
-                  <h3 className="font-black text-foreground text-lg mb-2 relative z-10">بالذكاء الاصطناعي</h3>
-                  <p className="text-xs text-muted-foreground font-medium leading-relaxed relative z-10">أنشئ أسئلة جديدة تلقائياً في أي موضوع، عدّل عليها، وانشرها</p>
+                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">بالذكاء الاصطناعي</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">أنشئ أسئلة جديدة تلقائياً في أي موضوع، عدّل عليها، وانشرها</p>
                 </button>
 
                 <button
                   onClick={() => setSource("manual")}
-                  className="group p-6 bg-card border-2 border-border/60 hover:border-emerald-500/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
+                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-emerald-500/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
                 >
-                  <div className="absolute top-0 end-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-emerald-500/10 transition-colors" />
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 group-hover:bg-emerald-500/20 flex items-center justify-center mb-5 transition-colors border border-emerald-500/10 shadow-sm relative z-10">
-                    <PenLine className="w-6 h-6 text-emerald-600" />
+                  <div className="absolute top-0 end-0 w-24 h-24 lg:w-32 lg:h-32 bg-emerald-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-emerald-500/10 transition-colors" />
+                  <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-emerald-500/10 group-hover:bg-emerald-500/20 flex items-center justify-center mb-5 lg:mb-6 transition-colors border border-emerald-500/10 shadow-sm relative z-10">
+                    <PenLine className="w-6 h-6 lg:w-7 lg:h-7 text-emerald-600" />
                   </div>
-                  <h3 className="font-black text-foreground text-lg mb-2 relative z-10">إضافة يدوية</h3>
-                  <p className="text-xs text-muted-foreground font-medium leading-relaxed relative z-10">اكتب أسئلتك من الصفر — اختيار متعدد أو صح وخطأ بنفسك</p>
+                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">إضافة يدوية</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">اكتب أسئلتك من الصفر — اختيار متعدد أو صح وخطأ بنفسك</p>
                 </button>
               </div>
             </motion.div>
@@ -303,26 +303,26 @@ export default function SoloChallengeCreatePage() {
 
         {/* ═══════════════ ASSIGNMENT MODE ═══════════════ */}
         {source === "assignment" && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => { setSource(null); setSelectedAssignment(null); }} className="p-2 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                <X className="w-5 h-5" />
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8 max-w-3xl lg:max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 lg:gap-4 mb-2">
+              <button onClick={() => { setSource(null); setSelectedAssignment(null); }} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
-                <h2 className="font-black text-xl text-foreground">اختيار واجب</h2>
-                <p className="text-xs text-muted-foreground font-medium">سيتم تحويل أسئلة الواجب إلى مسابقة ذاتية</p>
+                <h2 className="font-black text-xl lg:text-2xl text-foreground">اختيار واجب</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">سيتم تحويل أسئلة الواجب إلى مسابقة ذاتية</p>
               </div>
             </div>
 
             <div className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden p-1">
-              <div className="p-4 border-b border-border/40">
+              <div className="p-4 lg:p-5 border-b border-border/40">
                 <div className="relative">
-                  <Search className="absolute top-1/2 -translate-y-1/2 end-4 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <Search className="absolute top-1/2 -translate-y-1/2 end-4 w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground pointer-events-none" />
                   <input
                     value={assignSearch}
                     onChange={e => setAssignSearch(e.target.value)}
                     placeholder="ابحث في واجباتك المحفوظة..."
-                    className="w-full pe-12 ps-4 py-3.5 rounded-2xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20 text-sm font-bold transition-all"
+                    className="w-full pe-12 ps-4 py-3.5 lg:py-4 rounded-2xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20 text-sm lg:text-base font-bold transition-all"
                   />
                 </div>
               </div>
@@ -330,22 +330,22 @@ export default function SoloChallengeCreatePage() {
               {loadingAssignments ? (
                 <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
               ) : filteredAssignments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-16 text-sm font-medium">لا توجد واجبات مطابقة</p>
+                <p className="text-center text-muted-foreground py-16 text-sm lg:text-base font-medium">لا توجد واجبات مطابقة</p>
               ) : (
-                <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
+                <div className="p-3 lg:p-4 space-y-2 lg:space-y-2.5 max-h-[400px] lg:max-h-[460px] overflow-y-auto">
                   {filteredAssignments.map(a => (
                     <button
                       key={a.id}
                       onClick={() => setSelectedAssignment(a)}
                       className={cn(
-                        "w-full text-right px-5 py-4 rounded-2xl border-2 transition-all group",
+                        "w-full text-right px-5 lg:px-6 py-4 lg:py-5 rounded-2xl border-2 transition-all group",
                         selectedAssignment?.id === a.id
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-transparent bg-background hover:bg-muted/50 hover:border-border",
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <p className={cn("font-bold text-sm", selectedAssignment?.id === a.id ? "text-primary" : "text-foreground group-hover:text-primary")}>{a.title}</p>
+                        <p className={cn("font-bold text-sm lg:text-base", selectedAssignment?.id === a.id ? "text-primary" : "text-foreground group-hover:text-primary")}>{a.title}</p>
                         {selectedAssignment?.id === a.id && <Check className="w-5 h-5 text-primary" />}
                       </div>
                     </button>
@@ -375,7 +375,7 @@ export default function SoloChallengeCreatePage() {
                     <button
                       onClick={createFromAssignment}
                       disabled={saving}
-                      className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-base bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 py-4 lg:py-5 rounded-2xl font-black text-base lg:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
                     >
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Target className="w-5 h-5" />}
                       {saving ? "جاري الإنشاء..." : "إنشاء المسابقة وبدء النشر"}
@@ -389,67 +389,67 @@ export default function SoloChallengeCreatePage() {
 
         {/* ═══════════════ AI MODE ═══════════════ */}
         {source === "ai" && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="flex items-center gap-3 mb-2 max-w-3xl mx-auto">
-              <button onClick={() => { setSource(null); setQuestions([]); }} className="p-2 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                <X className="w-5 h-5" />
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
+            <div className="flex items-center gap-3 lg:gap-4 mb-2 max-w-3xl lg:max-w-none mx-auto">
+              <button onClick={() => { setSource(null); setQuestions([]); }} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
-                <h2 className="font-black text-xl text-foreground">ذكاء اصطناعي</h2>
-                <p className="text-xs text-muted-foreground font-medium">ولّد أسئلة جديدة تلقائياً ثم عدّلها كما تشاء</p>
+                <h2 className="font-black text-xl lg:text-2xl text-foreground">ذكاء اصطناعي</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">ولّد أسئلة جديدة تلقائياً ثم عدّلها كما تشاء</p>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+            <div className="grid md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
               {/* Main Content Area */}
-              <div className="space-y-6 order-2 md:order-1">
+              <div className="space-y-6 lg:space-y-7 order-2 md:order-1">
                 {/* AI Generator Box */}
-                <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 rounded-3xl p-5 sm:p-6 shadow-sm">
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-amber-600" />
+                <div className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 rounded-3xl p-5 sm:p-6 lg:p-8 shadow-sm">
+                  <div className="flex items-center gap-2 lg:gap-3 mb-5 lg:mb-6">
+                    <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-amber-600" />
                     </div>
-                    <h3 className="font-black text-base text-amber-900 dark:text-amber-400">توليد الأسئلة</h3>
+                    <h3 className="font-black text-base lg:text-lg text-amber-900 dark:text-amber-400">توليد الأسئلة</h3>
                   </div>
 
-                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                  <div className="grid sm:grid-cols-2 gap-4 lg:gap-5 mb-4 lg:mb-5">
                     <div>
-                      <label className="block text-xs font-bold text-foreground mb-1.5">الموضوع *</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">الموضوع *</label>
                       <input
                         value={topic}
                         onChange={e => setTopic(e.target.value)}
                         placeholder="مثال: الجهاز الهضمي"
-                        className="w-full px-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm font-bold shadow-sm"
+                        className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm lg:text-base font-bold shadow-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-foreground mb-1.5">المادة (اختياري)</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">المادة (اختياري)</label>
                       <input
                         value={subject}
                         onChange={e => setSubject(e.target.value)}
                         placeholder="مثال: علوم"
-                        className="w-full px-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm font-bold shadow-sm"
+                        className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm lg:text-base font-bold shadow-sm"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-5">
+                  <div className="grid grid-cols-2 gap-4 lg:gap-5 mb-5 lg:mb-6">
                     <div>
-                      <label className="block text-xs font-bold text-foreground mb-1.5">العدد</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">العدد</label>
                       <select
                         value={count}
                         onChange={e => setCount(Number(e.target.value))}
-                        className="w-full px-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none text-sm font-bold shadow-sm"
+                        className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none text-sm lg:text-base font-bold shadow-sm"
                       >
                         {[5,10,15,20,25,30].map(n => <option key={n} value={n}>{n} أسئلة</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-foreground mb-1.5">المستوى</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">المستوى</label>
                       <select
                         value={difficulty}
                         onChange={e => setDifficulty(e.target.value as Difficulty)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none text-sm font-bold shadow-sm"
+                        className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none text-sm lg:text-base font-bold shadow-sm"
                       >
                         <option value="easy">سهل</option>
                         <option value="medium">متوسط</option>
@@ -461,7 +461,7 @@ export default function SoloChallengeCreatePage() {
                   <button
                     onClick={generateWithAI}
                     disabled={generating || !topic.trim()}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm bg-gradient-to-l from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-amber-500/25 active:scale-95"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 lg:py-4 rounded-xl font-black text-sm lg:text-base bg-gradient-to-l from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-amber-500/25 active:scale-95"
                   >
                     {generating ? (
                       <><Loader2 className="w-5 h-5 animate-spin" />جاري التوليد...</>
@@ -473,21 +473,21 @@ export default function SoloChallengeCreatePage() {
 
                 {/* Questions list */}
                 {questions.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t border-border/50">
+                  <div className="space-y-4 lg:space-y-5 pt-4 border-t border-border/50">
                     <div className="flex items-center justify-between px-2">
-                      <h3 className="font-black text-lg text-foreground flex items-center gap-2">
+                      <h3 className="font-black text-lg lg:text-xl text-foreground flex items-center gap-2">
                         أسئلة المسابقة
                         <span className="bg-muted px-2.5 py-0.5 rounded-md text-sm">{questions.length}</span>
                       </h3>
                       <button
                         onClick={() => setQuestions(prev => [...prev, emptyQuestion()])}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        className="flex items-center gap-1.5 px-3.5 lg:px-4 py-2 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                         سؤال جديد
                       </button>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-3 lg:space-y-4">
                       {questions.map((q, i) => (
                         <QuestionCard
                           key={i}
@@ -504,14 +504,14 @@ export default function SoloChallengeCreatePage() {
 
               {/* Sidebar Area */}
               <div className="order-1 md:order-2 space-y-5 md:sticky md:top-24">
-                <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 space-y-5">
+                <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-5 lg:space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2">عنوان المسابقة النهائي *</label>
+                    <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">عنوان المسابقة النهائي *</label>
                     <input
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="يظهر للطلاب..."
-                      className="w-full px-4 py-2.5 rounded-xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background text-sm font-bold transition-all shadow-inner"
+                      className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background text-sm lg:text-base font-bold transition-all shadow-inner"
                     />
                   </div>
                   
@@ -532,13 +532,13 @@ export default function SoloChallengeCreatePage() {
                   <button
                     onClick={createStandalone}
                     disabled={saving || !title.trim() || questions.filter(isValidQ).length === 0}
-                    className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-base bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 py-4 lg:py-5 rounded-2xl font-black text-base lg:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Target className="w-5 h-5" />}
                     إنشاء المسابقة
                   </button>
                   {questions.length === 0 && (
-                    <p className="text-[10px] text-center text-muted-foreground font-medium px-2">يجب توليد أو إضافة سؤال واحد على الأقل قبل الإنشاء</p>
+                    <p className="text-[10px] lg:text-xs text-center text-muted-foreground font-medium px-2">يجب توليد أو إضافة سؤال واحد على الأقل قبل الإنشاء</p>
                   )}
                 </div>
               </div>
@@ -548,31 +548,31 @@ export default function SoloChallengeCreatePage() {
 
         {/* ═══════════════ MANUAL MODE ═══════════════ */}
         {source === "manual" && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="flex items-center gap-3 mb-2 max-w-3xl mx-auto">
-              <button onClick={() => { setSource(null); setQuestions([]); }} className="p-2 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                <X className="w-5 h-5" />
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
+            <div className="flex items-center gap-3 lg:gap-4 mb-2 max-w-3xl lg:max-w-none mx-auto">
+              <button onClick={() => { setSource(null); setQuestions([]); }} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
-                <h2 className="font-black text-xl text-foreground">إضافة يدوية</h2>
-                <p className="text-xs text-muted-foreground font-medium">اكتب الأسئلة والخيارات بنفسك خطوة بخطوة</p>
+                <h2 className="font-black text-xl lg:text-2xl text-foreground">إضافة يدوية</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">اكتب الأسئلة والخيارات بنفسك خطوة بخطوة</p>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+            <div className="grid md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
               {/* Main Content Area */}
-              <div className="space-y-6 order-2 md:order-1">
+              <div className="space-y-6 lg:space-y-7 order-2 md:order-1">
                 {/* Questions list */}
-                <div className="space-y-4">
+                <div className="space-y-4 lg:space-y-5">
                   <div className="flex items-center justify-between px-2">
-                    <h3 className="font-black text-lg text-foreground flex items-center gap-2">
+                    <h3 className="font-black text-lg lg:text-xl text-foreground flex items-center gap-2">
                       أسئلة المسابقة
                       <span className="bg-muted px-2.5 py-0.5 rounded-md text-sm">{questions.length}</span>
                     </h3>
                     {questions.length > 0 && (
                       <button
                         onClick={() => setQuestions(prev => [...prev, emptyQuestion()])}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        className="flex items-center gap-1.5 px-3.5 lg:px-4 py-2 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                         سؤال جديد
@@ -581,16 +581,16 @@ export default function SoloChallengeCreatePage() {
                   </div>
                   
                   {questions.length === 0 ? (
-                    <div className="bg-card border-2 border-dashed border-border/60 rounded-3xl p-10 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group cursor-pointer"
+                    <div className="bg-card border-2 border-dashed border-border/60 rounded-3xl p-10 lg:p-14 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group cursor-pointer"
                          onClick={() => setQuestions([emptyQuestion()])}>
-                      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/10 transition-colors">
-                        <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
+                      <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4 lg:mb-5 group-hover:bg-primary/10 transition-colors">
+                        <Plus className="w-6 h-6 lg:w-7 lg:h-7 text-muted-foreground group-hover:text-primary" />
                       </div>
-                      <p className="font-bold text-foreground text-lg mb-1 group-hover:text-primary">أضف سؤالك الأول</p>
-                      <p className="text-xs text-muted-foreground">اضغط هنا للبدء في إضافة الأسئلة يدوياً</p>
+                      <p className="font-bold text-foreground text-lg lg:text-xl mb-1 lg:mb-1.5 group-hover:text-primary">أضف سؤالك الأول</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">اضغط هنا للبدء في إضافة الأسئلة يدوياً</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-4 lg:space-y-5">
                       {questions.map((q, i) => (
                         <QuestionCard
                           key={i}
@@ -604,7 +604,7 @@ export default function SoloChallengeCreatePage() {
                       {questions.length > 2 && (
                          <button
                           onClick={() => setQuestions(prev => [...prev, emptyQuestion()])}
-                          className="w-full py-5 rounded-2xl border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 transition-colors font-bold flex items-center justify-center gap-2"
+                          className="w-full py-5 lg:py-6 rounded-2xl border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 transition-colors font-bold lg:text-base flex items-center justify-center gap-2"
                         >
                           <Plus className="w-5 h-5" /> أضف سؤالاً آخر
                         </button>
@@ -616,14 +616,14 @@ export default function SoloChallengeCreatePage() {
 
               {/* Sidebar Area */}
               <div className="order-1 md:order-2 space-y-5 md:sticky md:top-24">
-                <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 space-y-5">
+                <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-5 lg:space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2">عنوان المسابقة *</label>
+                    <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">عنوان المسابقة *</label>
                     <input
                       value={title}
                       onChange={e => setTitle(e.target.value)}
                       placeholder="مثال: اختبار الوحدة الأولى"
-                      className="w-full px-4 py-2.5 rounded-xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background text-sm font-bold transition-all shadow-inner"
+                      className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background text-sm lg:text-base font-bold transition-all shadow-inner"
                     />
                   </div>
                   
@@ -644,13 +644,13 @@ export default function SoloChallengeCreatePage() {
                   <button
                     onClick={createStandalone}
                     disabled={saving || !title.trim() || questions.filter(isValidQ).length === 0}
-                    className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-base bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 py-4 lg:py-5 rounded-2xl font-black text-base lg:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Target className="w-5 h-5" />}
                     إنشاء المسابقة
                   </button>
                   {questions.length === 0 && (
-                    <p className="text-[10px] text-center text-muted-foreground font-medium px-2">يجب إضافة سؤال واحد على الأقل قبل الإنشاء</p>
+                    <p className="text-[10px] lg:text-xs text-center text-muted-foreground font-medium px-2">يجب إضافة سؤال واحد على الأقل قبل الإنشاء</p>
                   )}
                 </div>
               </div>
@@ -716,7 +716,7 @@ function SettingsPanel({
     <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+        className="w-full flex items-center justify-between px-4 lg:px-5 py-3.5 lg:py-4 text-sm lg:text-base font-bold text-foreground hover:bg-muted/40 transition-colors"
       >
         <div className="flex items-center gap-2">
           <Settings className="w-5 h-5 text-primary" />
