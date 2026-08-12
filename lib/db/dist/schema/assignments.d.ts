@@ -662,6 +662,7 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
     dialect: "pg";
 }>;
 export declare const insertAssignmentSchema: z.ZodObject<{
+    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -670,7 +671,6 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClasses: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
-    teacherId: z.ZodInt;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     showResults: z.ZodOptional<z.ZodBoolean>;
     modelImageBase64: z.ZodOptional<z.ZodNullable<z.ZodString>>;

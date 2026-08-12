@@ -13,6 +13,14 @@ export const creditTransactionsTable = pgTable("credit_transactions", {
   /** pending | completed | refunded */
   status:    text("status").notNull().default("completed"),
   adminId:   integer("admin_id"),
+  /** paid | promo | earned — مصدر نوع الرصيد */
+  creditType: text("credit_type").notNull().default("promo"),
+  /** package_purchase | referral | profile_completion | admin_adjustment | refund_adjustment | tool_usage | welcome */
+  source:     text("source"),
+  /** الرصيد المدفوع لا ينتهي: NULL دائماً للمدفوع */
+  expiresAt:  timestamp("expires_at"),
+  /** ربط الحركة بعملية شراء */
+  purchaseId: integer("purchase_id"),
   createdAt: timestamp("created_at").notNull().default(sql`NOW()`),
 });
 

@@ -230,6 +230,7 @@ router.get("/public/settings", async (req, res) => {
         showMaraqui: platformSettingsTable.showMaraqui,
         showSecretGame: platformSettingsTable.showSecretGame,
         classroomEnabled: platformSettingsTable.classroomEnabled,
+        socialLinks: platformSettingsTable.socialLinks,
       })
       .from(platformSettingsTable)
       .limit(1);
@@ -240,6 +241,7 @@ router.get("/public/settings", async (req, res) => {
       fontFamily: row?.fontFamily ?? null,
       platformName: row?.platformName ?? null,
       logoUrl: row?.logoUrl ?? null,
+      socialLinks: row?.socialLinks ?? [],
       showAdventureGamesHome: row?.showAdventureGamesHome ?? false,
       showSpaceRaceGamesHome: row?.showSpaceRaceGamesHome ?? false,
       showFlagsGame: row?.showFlagsGame ?? true,

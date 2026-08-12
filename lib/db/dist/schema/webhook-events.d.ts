@@ -1,10 +1,13 @@
-export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "credit_packages";
+/**
+ * سجل أحداث Webhook (Lemon Squeezy وغيرها) مع منع التكرار عبر idempotency_key.
+ */
+export declare const webhookEventsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "webhook_events";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "credit_packages";
+            tableName: "webhook_events";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -19,9 +22,9 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        name: import("drizzle-orm/pg-core").PgColumn<{
-            name: "name";
-            tableName: "credit_packages";
+        provider: import("drizzle-orm/pg-core").PgColumn<{
+            name: "provider";
+            tableName: "webhook_events";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -36,94 +39,94 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        slug: import("drizzle-orm/pg-core").PgColumn<{
-            name: "slug";
-            tableName: "credit_packages";
+        eventName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "event_name";
+            tableName: "webhook_events";
             dataType: "string";
             columnType: "PgText";
             data: string;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        description: import("drizzle-orm/pg-core").PgColumn<{
-            name: "description";
-            tableName: "credit_packages";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        lemonProductId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "lemon_product_id";
-            tableName: "credit_packages";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        lemonVariantId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "lemon_variant_id";
-            tableName: "credit_packages";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        priceUsdCents: import("drizzle-orm/pg-core").PgColumn<{
-            name: "price_usd_cents";
-            tableName: "credit_packages";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
             notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        currency: import("drizzle-orm/pg-core").PgColumn<{
-            name: "currency";
-            tableName: "credit_packages";
+        providerObjectType: import("drizzle-orm/pg-core").PgColumn<{
+            name: "provider_object_type";
+            tableName: "webhook_events";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        providerObjectId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "provider_object_id";
+            tableName: "webhook_events";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        providerEventId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "provider_event_id";
+            tableName: "webhook_events";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        idempotencyKey: import("drizzle-orm/pg-core").PgColumn<{
+            name: "idempotency_key";
+            tableName: "webhook_events";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        status: import("drizzle-orm/pg-core").PgColumn<{
+            name: "status";
+            tableName: "webhook_events";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -138,26 +141,9 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        credits: import("drizzle-orm/pg-core").PgColumn<{
-            name: "credits";
-            tableName: "credit_packages";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        sortOrder: import("drizzle-orm/pg-core").PgColumn<{
-            name: "sort_order";
-            tableName: "credit_packages";
+        attempts: import("drizzle-orm/pg-core").PgColumn<{
+            name: "attempts";
+            tableName: "webhook_events";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -172,15 +158,49 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        isVisible: import("drizzle-orm/pg-core").PgColumn<{
-            name: "is_visible";
-            tableName: "credit_packages";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
-            notNull: true;
-            hasDefault: true;
+        rawPayload: import("drizzle-orm/pg-core").PgColumn<{
+            name: "raw_payload";
+            tableName: "webhook_events";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        errorMessage: import("drizzle-orm/pg-core").PgColumn<{
+            name: "error_message";
+            tableName: "webhook_events";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        processedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "processed_at";
+            tableName: "webhook_events";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -189,26 +209,9 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        isFeatured: import("drizzle-orm/pg-core").PgColumn<{
-            name: "is_featured";
-            tableName: "credit_packages";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        archivedAt: import("drizzle-orm/pg-core").PgColumn<{
-            name: "archived_at";
-            tableName: "credit_packages";
+        failedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "failed_at";
+            tableName: "webhook_events";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -225,7 +228,7 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "credit_packages";
+            tableName: "webhook_events";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -242,7 +245,7 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
         }, {}, {}>;
         updatedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "updated_at";
-            tableName: "credit_packages";
+            tableName: "webhook_events";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -260,6 +263,6 @@ export declare const creditPackagesTable: import("drizzle-orm/pg-core").PgTableW
     };
     dialect: "pg";
 }>;
-export type CreditPackage = typeof creditPackagesTable.$inferSelect;
-export type NewCreditPackage = typeof creditPackagesTable.$inferInsert;
-//# sourceMappingURL=credit-packages.d.ts.map
+export type WebhookEvent = typeof webhookEventsTable.$inferSelect;
+export type NewWebhookEvent = typeof webhookEventsTable.$inferInsert;
+//# sourceMappingURL=webhook-events.d.ts.map

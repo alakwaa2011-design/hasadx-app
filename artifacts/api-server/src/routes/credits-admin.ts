@@ -88,6 +88,7 @@ router.get("/teachers", async (req, res) => {
         id: teachersTable.id,
         name: teachersTable.name,
         email: teachersTable.email,
+        unlimitedCredits: teachersTable.unlimitedCredits,
         balance: sql<number>`COALESCE(ca.balance, 0)`,
         totalEarned: sql<number>`COALESCE(ca.total_earned, 0)`,
         totalSpent: sql<number>`COALESCE(ca.total_spent, 0)`,
@@ -127,6 +128,55 @@ const AdjustSchema = z.object({
   reason: z.string().min(1),
   mode:   z.enum(["add", "deduct", "set"]).default("add"),
 }).strict();
+
+// ─── Toggle unlimited credits ──────────────────────────────────────────────────
+
+const ToggleUnlimitedSchema = z.object({
+  reason: z.string().min(1, "السبب مطلوب"),
+}).strict();
+
+router.post("/teachers/:id/toggle-unlimited", requireAdmin, async (req, res) => {
+  try {
+    const teacherId = parseInt(req.params.id as string);
+    if (Number.isNaN(teacherId)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    const { reason } = ToggleUnlimitedSchema.parse(req.body);
+    const adminId = req.session!.teacherId!;
+
+    // Fetch current state
+    const [teacher] = await db
+      .select({ id: teachersTable.id, name: teachersTable.name, unlimitedCredits: teachersTable.unlimitedCredits })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, teacherId))
+      .limit(1);
+    if (!teacher) { res.status(404).json({ message: "المعلم غير موجود" }); return; }
+
+    const newValue = !teacher.unlimitedCredits;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(teachersTable)
+        .set({ unlimitedCredits: newValue })
+        .where(eq(teachersTable.id, teacherId));
+
+      // سجّل العملية في credit_transactions للمراجعة والإحصائيات
+      await tx.insert(creditTransactionsTable).values({
+        teacherId,
+        amount: 0,
+        type: "adjust",
+        reason: `${newValue ? "تفعيل" : "تعطيل"} الاستخدام غير المحدود — ${reason}`,
+        adminId,
+        status: "completed",
+        creditType: "promo",
+        source: "admin_adjustment",
+      });
+    });
+
+    res.json({ teacherId, unlimitedCredits: newValue });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) { res.status(400).json({ message: "السبب مطلوب", issues: err.issues }); return; }
+    res.status(500).json({ message: "فشل تحديث الإعداد" });
+  }
+});
 
 router.post("/teachers/:id/adjust", async (req, res) => {
   try {
@@ -208,16 +258,31 @@ router.get("/packages", async (req, res) => {
 });
 
 const PackageSchema = z.object({
-  priceUsdCents: z.number().int().min(0),
-  credits:       z.number().int().min(1),
-  sortOrder:     z.number().int().default(0),
-  isVisible:     z.boolean().default(true),
+  name:           z.string().min(1),
+  description:    z.string().nullable().optional(),
+  priceUsdCents:  z.number().int().min(1),
+  credits:        z.number().int().min(1),
+  lemonProductId: z.string().nullable().optional(),
+  lemonVariantId: z.string().nullable().optional(),
+  sortOrder:      z.number().int().default(0),
+  isVisible:      z.boolean().default(true),
+  isFeatured:     z.boolean().default(false),
 }).strict();
+
+/** باقة موصى بها واحدة فقط */
+async function clearOtherFeatured(exceptId?: number) {
+  if (exceptId !== undefined) {
+    await db.execute(sql`UPDATE credit_packages SET is_featured = FALSE WHERE id <> ${exceptId}`);
+  } else {
+    await db.execute(sql`UPDATE credit_packages SET is_featured = FALSE`);
+  }
+}
 
 router.post("/packages", async (req, res) => {
   try {
     const body = PackageSchema.parse(req.body);
-    const [row] = await db.insert(creditPackagesTable).values(body).returning();
+    if (body.isFeatured) await clearOtherFeatured();
+    const [row] = await db.insert(creditPackagesTable).values({ ...body, updatedAt: new Date() }).returning();
     res.status(201).json(row);
   } catch (err) {
     if (err instanceof z.ZodError) { res.status(400).json({ message: "بيانات غير صحيحة", issues: err.issues }); return; }
@@ -229,7 +294,8 @@ router.patch("/packages/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const body = PackageSchema.partial().parse(req.body);
-    const [row] = await db.update(creditPackagesTable).set(body).where(eq(creditPackagesTable.id, id)).returning();
+    if (body.isFeatured) await clearOtherFeatured(id);
+    const [row] = await db.update(creditPackagesTable).set({ ...body, updatedAt: new Date() }).where(eq(creditPackagesTable.id, id)).returning();
     if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
     res.json(row);
   } catch (err) {
@@ -238,13 +304,83 @@ router.patch("/packages/:id", async (req, res) => {
   }
 });
 
+router.post("/packages/:id/archive", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [row] = await db.update(creditPackagesTable)
+      .set({ archivedAt: new Date(), isVisible: false, isFeatured: false, updatedAt: new Date() })
+      .where(eq(creditPackagesTable.id, id)).returning();
+    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
+    res.json(row);
+  } catch {
+    res.status(500).json({ message: "فشل أرشفة الباقة" });
+  }
+});
+
+router.post("/packages/:id/unarchive", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [row] = await db.update(creditPackagesTable)
+      .set({ archivedAt: null, updatedAt: new Date() })
+      .where(eq(creditPackagesTable.id, id)).returning();
+    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
+    res.json(row);
+  } catch {
+    res.status(500).json({ message: "فشل إلغاء الأرشفة" });
+  }
+});
+
 router.delete("/packages/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    // منع الحذف الحقيقي لباقة مرتبطة بعمليات شراء — الأرشفة فقط
+    const linked = await db.execute(sql`SELECT 1 FROM credit_purchases WHERE package_id = ${id} LIMIT 1`);
+    if (linked.rows.length > 0) {
+      res.status(409).json({ message: "لا يمكن حذف باقة مرتبطة بعمليات شراء — استخدم الأرشفة" });
+      return;
+    }
     await db.delete(creditPackagesTable).where(eq(creditPackagesTable.id, id));
     res.json({ message: "تم حذف الباقة" });
   } catch (err) {
     res.status(500).json({ message: "فشل حذف الباقة" });
+  }
+});
+
+// ─── Purchases & Webhook events (مراجعة) ─────────────────────────────────────
+
+router.get("/purchases", async (req, res) => {
+  try {
+    const { page = "1", pageSize = "50", status } = req.query as Record<string, string>;
+    const pg = Math.max(1, parseInt(page));
+    const size = Math.min(200, Math.max(1, parseInt(pageSize)));
+    const where = status ? sql`WHERE cp.payment_status = ${status}` : sql``;
+    const rows = await db.execute(sql`
+      SELECT cp.*, t.name AS teacher_name, t.email AS teacher_email
+      FROM credit_purchases cp
+      LEFT JOIN teachers t ON t.id = cp.teacher_id
+      ${where}
+      ORDER BY cp.created_at DESC
+      LIMIT ${size} OFFSET ${(pg - 1) * size}
+    `);
+    const [{ total }] = (await db.execute(sql`SELECT COUNT(*)::int AS total FROM credit_purchases cp ${where}`)).rows as any[];
+    res.json({ rows: rows.rows, total, page: pg, pageSize: size });
+  } catch {
+    res.status(500).json({ message: "فشل تحميل المشتريات" });
+  }
+});
+
+router.get("/webhook-events", async (req, res) => {
+  try {
+    const { page = "1", pageSize = "50" } = req.query as Record<string, string>;
+    const pg = Math.max(1, parseInt(page));
+    const size = Math.min(200, Math.max(1, parseInt(pageSize)));
+    const rows = await db.execute(sql`
+      SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, processed_at, failed_at, created_at
+      FROM webhook_events ORDER BY created_at DESC LIMIT ${size} OFFSET ${(pg - 1) * size}
+    `);
+    res.json(rows.rows);
+  } catch {
+    res.status(500).json({ message: "فشل تحميل سجل الأحداث" });
   }
 });
 

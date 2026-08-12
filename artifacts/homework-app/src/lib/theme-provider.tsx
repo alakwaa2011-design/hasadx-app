@@ -1,11 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
+export interface SocialLink {
+  id: string;
+  url: string;
+  enabled: boolean;
+  order: number;
+}
+
 export interface ThemeSettings {
   primaryColor: string | null;
   accentColor: string | null;
   fontFamily: string | null;
   platformName: string | null;
   logoUrl: string | null;
+  socialLinks: SocialLink[];
 }
 
 interface ThemeContextValue {
@@ -19,6 +27,7 @@ const defaultSettings: ThemeSettings = {
   fontFamily: null,
   platformName: null,
   logoUrl: null,
+  socialLinks: [],
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -112,6 +121,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           fontFamily: data.fontFamily || null,
           platformName: data.platformName || null,
           logoUrl: data.logoUrl || null,
+          socialLinks: Array.isArray(data.socialLinks) ? data.socialLinks : [],
         };
         setSettings(s);
         applyThemeSettings(s);

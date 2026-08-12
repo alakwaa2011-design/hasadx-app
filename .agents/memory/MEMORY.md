@@ -15,4 +15,5 @@
 - [Worksheet smart grading link](worksheet-grading-link.md) — hidden source='worksheet' assignments power photo grading; owner-session only, no access code, version on edit-after-results.
 - [Credits system architecture](credits-system.md) — 5 DB tables + 3 platform_settings columns; CreditService hold/capture/refund; checkCredits middleware is a no-op when creditsEnabled=OFF; @workspace/db dist/ must be rebuilt (npx tsc -p tsconfig.json) after schema changes or tsc errors on new tables; Button in ui-elements.tsx has no size prop, only variant.
 - [Hasad unified color tokens](hasad-color-tokens.md) — emerald/teal/green Tailwind scales overridden in index.css from #225739; never hardcode bright green hexes.
+- [Lemon Squeezy credit purchases](lemonsqueezy-credits.md) — paid credits granted ONLY in HMAC webhook; webhook path needs raw-body + CSRF exemptions; buckets paid/promo/earned must sum to balance.
 - [jscanify/OpenCV scanner](jscanify-opencv-scanner.md) — jscanify 1.4.x leaks cv.Mat in findPaperContour/extractPaper; call cv directly with full deletes in any per-frame loop.

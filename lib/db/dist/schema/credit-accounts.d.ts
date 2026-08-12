@@ -36,6 +36,57 @@ export declare const creditAccountsTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        paidBalance: import("drizzle-orm/pg-core").PgColumn<{
+            name: "paid_balance";
+            tableName: "credit_accounts";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        promoBalance: import("drizzle-orm/pg-core").PgColumn<{
+            name: "promo_balance";
+            tableName: "credit_accounts";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        earnedBalance: import("drizzle-orm/pg-core").PgColumn<{
+            name: "earned_balance";
+            tableName: "credit_accounts";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         totalEarned: import("drizzle-orm/pg-core").PgColumn<{
             name: "total_earned";
             tableName: "credit_accounts";

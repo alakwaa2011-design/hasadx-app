@@ -22,6 +22,27 @@ export interface HoldResult {
   newBalance: number;
 }
 
+export interface BalanceDetail {
+  balance: number;
+  paidBalance: number;
+  promoBalance: number;
+  earnedBalance: number;
+}
+
+/**
+ * ترتيب الخصم: المجاني (promo) أولاً، ثم المكتسب (earned)، ثم المدفوع (paid).
+ * يُرجع توزيع المبلغ على الأنواع الثلاثة.
+ */
+export function splitDeduction(
+  amount: number,
+  buckets: { promo: number; earned: number; paid: number }
+): { promo: number; earned: number; paid: number } {
+  const fromPromo  = Math.min(amount, Math.max(0, buckets.promo));
+  const fromEarned = Math.min(amount - fromPromo, Math.max(0, buckets.earned));
+  const fromPaid   = amount - fromPromo - fromEarned;
+  return { promo: fromPromo, earned: fromEarned, paid: fromPaid };
+}
+
 export interface TransactionFilter {
   teacherId?: number;
   type?: string;
@@ -43,6 +64,20 @@ export const CreditService = {
       .where(eq(creditAccountsTable.teacherId, teacherId))
       .limit(1);
     return row?.balance ?? 0;
+  },
+
+  async getBalanceDetail(teacherId: number): Promise<BalanceDetail> {
+    const [row] = await db
+      .select({
+        balance:       creditAccountsTable.balance,
+        paidBalance:   creditAccountsTable.paidBalance,
+        promoBalance:  creditAccountsTable.promoBalance,
+        earnedBalance: creditAccountsTable.earnedBalance,
+      })
+      .from(creditAccountsTable)
+      .where(eq(creditAccountsTable.teacherId, teacherId))
+      .limit(1);
+    return row ?? { balance: 0, paidBalance: 0, promoBalance: 0, earnedBalance: 0 };
   },
 
   // ── Hold → Capture / Refund ──────────────────────────────────────────────────
@@ -97,28 +132,38 @@ export const CreditService = {
 
       // SELECT FOR UPDATE to prevent concurrent double-spend
       const lockResult = await tx.execute(sql`
-        SELECT balance FROM credit_accounts
+        SELECT balance, promo_balance, earned_balance, paid_balance FROM credit_accounts
         WHERE teacher_id = ${teacherId}
         FOR UPDATE
       `);
-      const currentBalance = Number((lockResult.rows[0] as any)?.balance ?? 0);
+      const acct = lockResult.rows[0] as any;
+      const currentBalance = Number(acct?.balance ?? 0);
 
       if (currentBalance < creditsCost) {
         throw new Error(`رصيد غير كافٍ (${currentBalance} من ${creditsCost} رصيد مطلوب)`);
       }
 
       const newBalance = currentBalance - creditsCost;
+      // ترتيب الخصم: مجاني ← مكتسب ← مدفوع
+      const split = splitDeduction(creditsCost, {
+        promo:  Number(acct?.promo_balance  ?? 0),
+        earned: Number(acct?.earned_balance ?? 0),
+        paid:   Number(acct?.paid_balance   ?? 0),
+      });
 
       // Deduct balance
       await tx.execute(sql`
         UPDATE credit_accounts
         SET balance = ${newBalance},
+            promo_balance  = promo_balance  - ${split.promo},
+            earned_balance = earned_balance - ${split.earned},
+            paid_balance   = paid_balance   - ${split.paid},
             total_spent = total_spent + ${creditsCost},
             updated_at = NOW()
         WHERE teacher_id = ${teacherId}
       `);
 
-      // Insert hold record
+      // Insert hold record (with bucket breakdown so refunds restore correctly)
       await tx.insert(creditHoldsTable).values({
         teacherId,
         toolKey,
@@ -126,6 +171,9 @@ export const CreditService = {
         requestId,
         status: "pending",
         timeoutSeconds,
+        heldPromo:  split.promo,
+        heldEarned: split.earned,
+        heldPaid:   split.paid,
       });
 
       // Insert transaction record (pending)
@@ -167,29 +215,33 @@ export const CreditService = {
    * refunded.
    */
   async refund(requestId: string, reason?: string): Promise<void> {
-    const [hold] = await db
-      .select()
-      .from(creditHoldsTable)
-      .where(eq(creditHoldsTable.requestId, requestId))
-      .limit(1);
-
-    if (!hold || hold.status !== "pending") return;
-
     await db.transaction(async (tx) => {
-      // Restore balance atomically
+      // Atomically claim the pending hold — concurrent refund callers (e.g. the
+      // stale-hold worker racing an application failure) get zero rows and stop.
+      const claimed = await tx
+        .update(creditHoldsTable)
+        .set({ status: "refunded", refundedAt: new Date() })
+        .where(and(eq(creditHoldsTable.requestId, requestId), eq(creditHoldsTable.status, "pending")))
+        .returning();
+      const hold = claimed[0];
+      if (!hold) return;
+
+      // Restore balance atomically — back into the same buckets it was held from
+      const hp = (hold as any).heldPromo ?? 0;
+      const he = (hold as any).heldEarned ?? 0;
+      const hd = (hold as any).heldPaid ?? 0;
+      // Legacy holds (before buckets existed) restore to promo
+      const legacyPromo = hp + he + hd === hold.creditsHeld ? 0 : hold.creditsHeld;
       await tx.execute(sql`
         UPDATE credit_accounts
         SET balance = balance + ${hold.creditsHeld},
+            promo_balance  = promo_balance  + ${legacyPromo > 0 ? legacyPromo : hp},
+            earned_balance = earned_balance + ${legacyPromo > 0 ? 0 : he},
+            paid_balance   = paid_balance   + ${legacyPromo > 0 ? 0 : hd},
             total_spent = GREATEST(0, total_spent - ${hold.creditsHeld}),
             updated_at = NOW()
         WHERE teacher_id = ${hold.teacherId}
       `);
-
-      // Mark hold as refunded
-      await tx
-        .update(creditHoldsTable)
-        .set({ status: "refunded", refundedAt: new Date() })
-        .where(eq(creditHoldsTable.id, hold.id));
 
       // Insert refund transaction
       await tx.insert(creditTransactionsTable).values({
@@ -232,11 +284,12 @@ export const CreditService = {
       `);
 
       const lockResult = await tx.execute(sql`
-        SELECT balance FROM credit_accounts
+        SELECT balance, promo_balance, earned_balance, paid_balance FROM credit_accounts
         WHERE teacher_id = ${teacherId}
         FOR UPDATE
       `);
-      const current = Number((lockResult.rows[0] as any)?.balance ?? 0);
+      const acct = lockResult.rows[0] as any;
+      const current = Number(acct?.balance ?? 0);
 
       let newBalance: number;
       let actualDelta: number;
@@ -255,9 +308,27 @@ export const CreditService = {
       const earnedDelta = actualDelta > 0 ? actualDelta : 0;
       const spentDelta  = actualDelta < 0 ? -actualDelta : 0;
 
+      // Buckets: additions go to promo; deductions follow the promo→earned→paid order
+      let promoDelta = 0, earnedBucketDelta = 0, paidDelta = 0;
+      if (actualDelta >= 0) {
+        promoDelta = actualDelta;
+      } else {
+        const split = splitDeduction(-actualDelta, {
+          promo:  Number(acct?.promo_balance  ?? 0),
+          earned: Number(acct?.earned_balance ?? 0),
+          paid:   Number(acct?.paid_balance   ?? 0),
+        });
+        promoDelta = -split.promo;
+        earnedBucketDelta = -split.earned;
+        paidDelta = -split.paid;
+      }
+
       await tx.execute(sql`
         UPDATE credit_accounts
         SET balance = ${newBalance},
+            promo_balance  = promo_balance  + ${promoDelta},
+            earned_balance = earned_balance + ${earnedBucketDelta},
+            paid_balance   = paid_balance   + ${paidDelta},
             total_earned = total_earned + ${earnedDelta},
             total_spent  = total_spent  + ${spentDelta},
             updated_at   = NOW()
@@ -271,10 +342,115 @@ export const CreditService = {
         reason,
         adminId,
         status: "completed",
+        creditType: "promo",
+        source: "admin_adjustment",
       });
 
       return newBalance;
     });
+  },
+
+  // ── Paid credits (Lemon Squeezy purchases) ──────────────────────────────────
+
+  /**
+   * إضافة رصيد مدفوع بعد Webhook موثّق. تُستدعى داخل Transaction معالجة
+   * الـ Webhook (يُمرَّر لها tx). الرصيد المدفوع لا ينتهي (expires_at = NULL).
+   */
+  async addPurchasedCredits(
+    tx: any,
+    teacherId: number,
+    credits: number,
+    purchaseId: number,
+    requestId: string,
+    reason: string
+  ): Promise<void> {
+    await tx.execute(sql`
+      INSERT INTO credit_accounts (teacher_id, balance, total_earned, total_spent, updated_at)
+      VALUES (${teacherId}, 0, 0, 0, NOW())
+      ON CONFLICT (teacher_id) DO NOTHING
+    `);
+    await tx.execute(sql`
+      UPDATE credit_accounts
+      SET balance = balance + ${credits},
+          paid_balance = paid_balance + ${credits},
+          total_earned = total_earned + ${credits},
+          updated_at = NOW()
+      WHERE teacher_id = ${teacherId}
+    `);
+    await tx.insert(creditTransactionsTable).values({
+      teacherId,
+      amount: credits,
+      type: "earn",
+      reason,
+      requestId,
+      status: "completed",
+      creditType: "paid",
+      source: "package_purchase",
+      expiresAt: null,
+      purchaseId,
+    });
+  },
+
+  /**
+   * سحب رصيد بعد Refund. يخصم من المدفوع أولاً ثم المكتسب ثم المجاني،
+   * ولا ينشئ رصيداً سالباً أبداً — العجز يُعاد كـ shortfall ليُسجّل
+   * refund_adjustment_required على عملية الشراء.
+   */
+  async deductRefundedCredits(
+    tx: any,
+    teacherId: number,
+    credits: number,
+    purchaseId: number,
+    requestId: string,
+    reason: string
+  ): Promise<{ deducted: number; shortfall: number }> {
+    await tx.execute(sql`
+      INSERT INTO credit_accounts (teacher_id, balance, total_earned, total_spent, updated_at)
+      VALUES (${teacherId}, 0, 0, 0, NOW())
+      ON CONFLICT (teacher_id) DO NOTHING
+    `);
+    const lockResult = await tx.execute(sql`
+      SELECT balance, promo_balance, earned_balance, paid_balance FROM credit_accounts
+      WHERE teacher_id = ${teacherId}
+      FOR UPDATE
+    `);
+    const acct = lockResult.rows[0] as any;
+    const current = Number(acct?.balance ?? 0);
+    const deducted = Math.min(credits, Math.max(0, current));
+    const shortfall = credits - deducted;
+
+    if (deducted > 0) {
+      // للاسترجاع: نخصم من المدفوع أولاً (هو ما يُسترجع)، ثم المكتسب، ثم المجاني
+      const paidAvail   = Number(acct?.paid_balance   ?? 0);
+      const earnedAvail = Number(acct?.earned_balance ?? 0);
+      const fromPaid   = Math.min(deducted, Math.max(0, paidAvail));
+      const fromEarned = Math.min(deducted - fromPaid, Math.max(0, earnedAvail));
+      const fromPromo  = deducted - fromPaid - fromEarned;
+
+      await tx.execute(sql`
+        UPDATE credit_accounts
+        SET balance = balance - ${deducted},
+            paid_balance   = paid_balance   - ${fromPaid},
+            earned_balance = earned_balance - ${fromEarned},
+            promo_balance  = promo_balance  - ${fromPromo},
+            updated_at = NOW()
+        WHERE teacher_id = ${teacherId}
+      `);
+    }
+
+    await tx.insert(creditTransactionsTable).values({
+      teacherId,
+      amount: -deducted,
+      type: "adjust",
+      reason: shortfall > 0 ? `${reason} (عجز ${shortfall} — يتطلب مراجعة)` : reason,
+      requestId,
+      status: "completed",
+      creditType: "paid",
+      source: "order_refund",
+      purchaseId,
+    });
+
+    return { deducted, shortfall };
   },
 
   /**

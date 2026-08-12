@@ -10,6 +10,8 @@ export const teachersTable = pgTable("teachers", {
   passwordHash: text("password_hash").notNull(),
   googleId: text("google_id").unique(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  /** عند تفعيله: يستخدم الأدوات المدفوعة بلا خصم رصيد، مع تسجيل الاستخدام للإحصائيات */
+  unlimitedCredits: boolean("unlimited_credits").notNull().default(false),
   // role: "teacher" | "organizer" | "admin"
   // - teacher: classroom teacher (default)
   // - organizer: events/competitions organizer; sees vibrant /organizer dashboard with teacher tools collapsed

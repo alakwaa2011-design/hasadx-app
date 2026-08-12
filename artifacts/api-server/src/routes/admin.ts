@@ -778,6 +778,20 @@ router.patch("/admin/platform-settings", async (req, res) => {
     if (publicStatsOverride !== undefined) {
       update.publicStatsOverride = publicStatsOverride === null ? null : publicStatsOverride;
     }
+    // Social links
+    if (Object.prototype.hasOwnProperty.call(patchBody, "socialLinks")) {
+      const sl = patchBody.socialLinks;
+      if (!Array.isArray(sl)) return res.status(400).json({ message: "socialLinks يجب أن يكون مصفوفة" });
+      const cleaned = sl
+        .filter((s: any) => s && typeof s.id === "string")
+        .map((s: any, i: number) => ({
+          id: String(s.id).replace(/[^a-z0-9_]/g, "").slice(0, 64),
+          url: typeof s.url === "string" ? s.url.trim().slice(0, 500) : "",
+          enabled: Boolean(s.enabled),
+          order: typeof s.order === "number" ? s.order : i + 1,
+        }));
+      update.socialLinks = cleaned;
+    }
     /* XP toggle: must use property checks — value `false` is valid; some proxies send snake_case. */
     if (
       Object.prototype.hasOwnProperty.call(patchBody, "teacherXpRewardsEnabled") ||

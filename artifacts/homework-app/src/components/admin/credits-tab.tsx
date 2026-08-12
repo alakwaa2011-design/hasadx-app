@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Coins, Settings, Package, Users, BarChart2, Pencil, RotateCcw, X, Check,
   Download, Plus, Trash2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
-  RefreshCw, Search,
+  RefreshCw, Search, Infinity, Minus,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { Card, Button, Input } from "@/components/ui-elements";
@@ -50,6 +50,7 @@ interface TeacherBalance {
   id: number;
   name: string;
   email: string | null;
+  unlimitedCredits: boolean;
   balance: number;
   totalEarned: number;
   totalSpent: number;
@@ -359,6 +360,9 @@ function BalancesPanel() {
   const [bulkDelta, setBulkDelta] = useState("");
   const [bulkReason, setBulkReason] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [unlimitedModal, setUnlimitedModal] = useState<TeacherBalance | null>(null);
+  const [unlimitedReason, setUnlimitedReason] = useState("");
+  const [unlimitedSaving, setUnlimitedSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -409,6 +413,26 @@ function BalancesPanel() {
     }
   };
 
+  const saveToggleUnlimited = async () => {
+    if (!unlimitedModal || !unlimitedReason.trim()) return;
+    setUnlimitedSaving(true);
+    try {
+      const res = await apiFetch(`/api/admin/credits/teachers/${unlimitedModal.id}/toggle-unlimited`, {
+        method: "POST",
+        body: JSON.stringify({ reason: unlimitedReason }),
+      });
+      const d = await res.json();
+      toast(d.unlimitedCredits ? "تم تفعيل الاستخدام غير المحدود" : "تم إلغاء الاستخدام غير المحدود");
+      setUnlimitedModal(null);
+      setUnlimitedReason("");
+      load();
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+    } finally {
+      setUnlimitedSaving(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / 30);
 
   return (
@@ -434,21 +458,37 @@ function BalancesPanel() {
                   <th className="text-right py-2 px-3">الرصيد</th>
                   <th className="text-right py-2 px-3">المكتسب</th>
                   <th className="text-right py-2 px-3">المُنفَق</th>
+                  <th className="text-right py-2 px-3">غير محدود</th>
                   <th className="py-2 px-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-b hover:bg-muted/30">
+                  <tr key={row.id} className={`border-b hover:bg-muted/30 ${row.unlimitedCredits ? "bg-amber-50/40 dark:bg-amber-900/10" : ""}`}>
                     <td className="py-2 px-3">
-                      <p className="font-medium">{row.name}</p>
-                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                      <div className="flex items-center gap-1.5">
+                        {row.unlimitedCredits && <Infinity size={12} className="text-amber-500 shrink-0" />}
+                        <div>
+                          <p className="font-medium">{row.name}</p>
+                          <p className="text-xs text-muted-foreground">{row.email}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-2 px-3 font-bold text-primary">{fmt(row.balance)}</td>
                     <td className="py-2 px-3 text-green-600">{fmt(row.totalEarned)}</td>
                     <td className="py-2 px-3 text-red-500">{fmt(row.totalSpent)}</td>
                     <td className="py-2 px-3">
-                      <button onClick={() => { setAdjusting(row); setDelta(""); setReason(""); setMode("add"); }} className="text-muted-foreground hover:text-primary">
+                      <button
+                        onClick={() => { setUnlimitedModal(row); setUnlimitedReason(""); }}
+                        title={row.unlimitedCredits ? "إلغاء الاستخدام غير المحدود" : "تفعيل الاستخدام غير المحدود"}
+                      >
+                        {row.unlimitedCredits
+                          ? <ToggleRight size={20} className="text-amber-500" />
+                          : <ToggleLeft size={20} className="text-muted-foreground" />}
+                      </button>
+                    </td>
+                    <td className="py-2 px-3">
+                      <button onClick={() => { setAdjusting(row); setDelta(""); setReason(""); setMode("add"); }} className="text-muted-foreground hover:text-primary" title="تعديل رصيد يدوي">
                         <Pencil size={14} />
                       </button>
                     </td>
@@ -471,23 +511,84 @@ function BalancesPanel() {
       {adjusting && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setAdjusting(null)}>
           <div className="bg-background rounded-xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()} dir="rtl">
-            <h3 className="font-semibold mb-4">تعديل رصيد: {adjusting.name}</h3>
-            <p className="text-sm text-muted-foreground mb-3">الرصيد الحالي: <strong>{fmt(adjusting.balance)}</strong></p>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold">تعديل رصيد يدوي</h3>
+                <p className="text-sm text-muted-foreground">{adjusting.name}</p>
+              </div>
+              <button onClick={() => setAdjusting(null)}><X size={16} /></button>
+            </div>
+            <div className="bg-muted/40 rounded-lg px-4 py-2 mb-4 text-sm">
+              الرصيد الحالي: <strong className="text-primary">{fmt(adjusting.balance)}</strong> نقطة
+              {adjusting.unlimitedCredits && (
+                <span className="mr-2 text-amber-600 text-xs flex items-center gap-1 inline-flex">
+                  <Infinity size={12} /> استخدام غير محدود مفعّل
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">نوع العملية</p>
             <div className="flex gap-2 mb-3">
               {(["add", "deduct", "set"] as const).map((m) => (
                 <button key={m} onClick={() => setMode(m)}
-                  className={`text-xs px-3 py-1.5 rounded-lg border ${mode === m ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
-                  {m === "add" ? "إضافة" : m === "deduct" ? "خصم" : "تعيين"}
+                  className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition-colors ${mode === m ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
+                  {m === "add" ? <><Plus size={12} />إضافة</> : m === "deduct" ? <><Minus size={12} />خصم</> : "تعيين"}
                 </button>
               ))}
             </div>
-            <Input type="number" placeholder="المبلغ" value={delta} onChange={(e) => setDelta(e.target.value)} className="mb-2" />
-            <Input placeholder="السبب (مطلوب)" value={reason} onChange={(e) => setReason(e.target.value)} className="mb-4" />
+            <Input type="number" placeholder="المبلغ (نقطة)" value={delta} onChange={(e) => setDelta(e.target.value)} className="mb-2" />
+            <Input placeholder="السبب — يُسجَّل في السجل المالي (مطلوب)" value={reason} onChange={(e) => setReason(e.target.value)} className="mb-1" />
+            <p className="text-xs text-muted-foreground mb-4">تُسجَّل العملية باسمك ووقتها في credit_transactions (المصدر: admin_adjustment)</p>
             <div className="flex gap-2">
-              <Button variant="default" className="flex-1" onClick={saveAdjust} disabled={saving || !reason.trim()}>
-                {saving ? "جارٍ الحفظ…" : "تطبيق"}
+              <Button variant="default" className="flex-1" onClick={saveAdjust} disabled={saving || !reason.trim() || !delta}>
+                {saving ? "جارٍ الحفظ…" : "تطبيق التعديل"}
               </Button>
               <Button variant="ghost" onClick={() => setAdjusting(null)}>إلغاء</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unlimited credits toggle modal */}
+      {unlimitedModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setUnlimitedModal(null)}>
+          <div className="bg-background rounded-xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()} dir="rtl">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Infinity size={18} className="text-amber-500" />
+                  {unlimitedModal.unlimitedCredits ? "إلغاء" : "تفعيل"} الاستخدام غير المحدود
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">{unlimitedModal.name}</p>
+              </div>
+              <button onClick={() => setUnlimitedModal(null)}><X size={16} /></button>
+            </div>
+
+            {unlimitedModal.unlimitedCredits ? (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
+                هذا المعلم يستخدم جميع الأدوات حالياً بدون خصم رصيد. إلغاء التفعيل يُعيده فوراً لنظام الرصيد الطبيعي.
+              </div>
+            ) : (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 text-sm text-blue-800 dark:text-blue-200">
+                بعد التفعيل، يستطيع هذا المعلم استخدام جميع الأدوات المدفوعة دون خصم رصيده. يُسجَّل كل استخدام للإحصائيات بمبلغ 0.
+              </div>
+            )}
+
+            <Input
+              placeholder="سبب التغيير — يُسجَّل مع اسمك ووقته (مطلوب)"
+              value={unlimitedReason}
+              onChange={(e) => setUnlimitedReason(e.target.value)}
+              className="mb-4"
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                className={`flex-1 ${unlimitedModal.unlimitedCredits ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+                onClick={saveToggleUnlimited}
+                disabled={unlimitedSaving || !unlimitedReason.trim()}
+              >
+                {unlimitedSaving ? "جارٍ الحفظ…" : unlimitedModal.unlimitedCredits ? "إلغاء التفعيل" : "تفعيل"}
+              </Button>
+              <Button variant="ghost" onClick={() => setUnlimitedModal(null)}>إلغاء</Button>
             </div>
           </div>
         </div>
@@ -635,8 +736,9 @@ function TransactionsPanel() {
 function PackagesPanel() {
   const [rows, setRows] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newPkg, setNewPkg] = useState({ priceUsdCents: "", credits: "", sortOrder: "0" });
+  const [newPkg, setNewPkg] = useState({ name: "", priceUsdCents: "", credits: "", sortOrder: "0", lemonVariantId: "" });
   const [adding, setAdding] = useState(false);
+  const [editVariant, setEditVariant] = useState<{ id: number; value: string } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -649,15 +751,21 @@ function PackagesPanel() {
   useEffect(() => { load(); }, []);
 
   const addPkg = async () => {
-    if (!newPkg.priceUsdCents || !newPkg.credits) return;
+    if (!newPkg.name || !newPkg.priceUsdCents || !newPkg.credits) return;
     setAdding(true);
     try {
       await apiFetch("/api/admin/credits/packages", {
         method: "POST",
-        body: JSON.stringify({ priceUsdCents: parseInt(newPkg.priceUsdCents), credits: parseInt(newPkg.credits), sortOrder: parseInt(newPkg.sortOrder) }),
+        body: JSON.stringify({
+          name: newPkg.name,
+          priceUsdCents: parseInt(newPkg.priceUsdCents),
+          credits: parseInt(newPkg.credits),
+          sortOrder: parseInt(newPkg.sortOrder),
+          lemonVariantId: newPkg.lemonVariantId || null,
+        }),
       });
       toast("تمت الإضافة");
-      setNewPkg({ priceUsdCents: "", credits: "", sortOrder: "0" });
+      setNewPkg({ name: "", priceUsdCents: "", credits: "", sortOrder: "0", lemonVariantId: "" });
       load();
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
@@ -666,19 +774,35 @@ function PackagesPanel() {
     }
   };
 
-  const toggleVisible = async (pkg: CreditPackage) => {
-    await apiFetch(`/api/admin/credits/packages/${pkg.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ isVisible: !pkg.isVisible }),
-    });
-    setRows((prev) => prev.map((p) => (p.id === pkg.id ? { ...p, isVisible: !p.isVisible } : p)));
+  const patchPkg = async (id: number, patch: Record<string, unknown>) => {
+    try {
+      await apiFetch(`/api/admin/credits/packages/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+      load();
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+    }
+  };
+
+  const archivePkg = async (pkg: CreditPackage) => {
+    const archived = Boolean((pkg as any).archivedAt);
+    try {
+      await apiFetch(`/api/admin/credits/packages/${pkg.id}/${archived ? "unarchive" : "archive"}`, { method: "POST" });
+      toast(archived ? "أُلغيت الأرشفة" : "تمت الأرشفة");
+      load();
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+    }
   };
 
   const deletePkg = async (id: number) => {
-    if (!confirm("حذف هذه الباقة؟")) return;
-    await apiFetch(`/api/admin/credits/packages/${id}`, { method: "DELETE" });
-    setRows((prev) => prev.filter((p) => p.id !== id));
-    toast("تم الحذف");
+    if (!confirm("حذف هذه الباقة نهائياً؟ (الباقات المرتبطة بمشتريات لا تُحذف — تُؤرشف)")) return;
+    try {
+      await apiFetch(`/api/admin/credits/packages/${id}`, { method: "DELETE" });
+      setRows((prev) => prev.filter((p) => p.id !== id));
+      toast("تم الحذف");
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+    }
   };
 
   return (
@@ -686,16 +810,21 @@ function PackagesPanel() {
       <Card className="p-4">
         <p className="text-sm font-semibold mb-3">إضافة باقة جديدة</p>
         <div className="flex gap-2 flex-wrap">
+          <Input placeholder="اسم الباقة" className="w-40"
+            value={newPkg.name} onChange={(e) => setNewPkg((p) => ({ ...p, name: e.target.value }))} />
           <Input type="number" placeholder="السعر (سنت USD)" className="w-36"
             value={newPkg.priceUsdCents} onChange={(e) => setNewPkg((p) => ({ ...p, priceUsdCents: e.target.value }))} />
-          <Input type="number" placeholder="عدد النقاط" className="w-36"
+          <Input type="number" placeholder="عدد النقاط" className="w-32"
             value={newPkg.credits} onChange={(e) => setNewPkg((p) => ({ ...p, credits: e.target.value }))} />
           <Input type="number" placeholder="الترتيب" className="w-24"
             value={newPkg.sortOrder} onChange={(e) => setNewPkg((p) => ({ ...p, sortOrder: e.target.value }))} />
-          <Button variant="default" onClick={addPkg} disabled={adding || !newPkg.priceUsdCents || !newPkg.credits}>
+          <Input placeholder="Lemon Variant ID" className="w-40" dir="ltr"
+            value={newPkg.lemonVariantId} onChange={(e) => setNewPkg((p) => ({ ...p, lemonVariantId: e.target.value }))} />
+          <Button variant="default" onClick={addPkg} disabled={adding || !newPkg.name || !newPkg.priceUsdCents || !newPkg.credits}>
             <Plus size={14} className="ml-1" />{adding ? "جارٍ…" : "إضافة"}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">Variant ID من لوحة Lemon Squeezy — بدونه لا يمكن شراء الباقة.</p>
       </Card>
 
       {loading ? (
@@ -705,22 +834,53 @@ function PackagesPanel() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-muted-foreground">
-                <th className="text-right py-2 px-3">السعر (سنت)</th>
+                <th className="text-right py-2 px-3">الاسم</th>
+                <th className="text-right py-2 px-3">السعر</th>
                 <th className="text-right py-2 px-3">النقاط</th>
+                <th className="text-right py-2 px-3">Variant</th>
                 <th className="text-right py-2 px-3">الترتيب</th>
+                <th className="text-right py-2 px-3">موصى بها</th>
                 <th className="text-right py-2 px-3">مرئي</th>
+                <th className="text-right py-2 px-3">الحالة</th>
                 <th className="py-2 px-3"></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((pkg) => (
-                <tr key={pkg.id} className="border-b hover:bg-muted/30">
+              {rows.map((pkg) => {
+                const archived = Boolean((pkg as any).archivedAt);
+                return (
+                <tr key={pkg.id} className={`border-b hover:bg-muted/30 ${archived ? "opacity-50" : ""}`}>
+                  <td className="py-2 px-3 font-medium">{(pkg as any).name || "—"}</td>
                   <td className="py-2 px-3">${(pkg.priceUsdCents / 100).toFixed(2)}</td>
                   <td className="py-2 px-3 font-semibold">{fmt(pkg.credits)}</td>
+                  <td className="py-2 px-3" dir="ltr">
+                    {editVariant?.id === pkg.id ? (
+                      <span className="flex gap-1 items-center">
+                        <Input className="w-32 h-7 text-xs" dir="ltr" value={editVariant.value}
+                          onChange={(e) => setEditVariant({ id: pkg.id, value: e.target.value })} />
+                        <Button variant="ghost" onClick={async () => { await patchPkg(pkg.id, { lemonVariantId: editVariant.value || null }); setEditVariant(null); }}>حفظ</Button>
+                      </span>
+                    ) : (
+                      <button className="text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
+                        onClick={() => setEditVariant({ id: pkg.id, value: (pkg as any).lemonVariantId ?? "" })}>
+                        {(pkg as any).lemonVariantId || "ربط"}
+                      </button>
+                    )}
+                  </td>
                   <td className="py-2 px-3 text-muted-foreground">{pkg.sortOrder}</td>
                   <td className="py-2 px-3">
-                    <button onClick={() => toggleVisible(pkg)}>
+                    <button onClick={() => patchPkg(pkg.id, { isFeatured: !(pkg as any).isFeatured })} title="باقة موصى بها واحدة فقط">
+                      {(pkg as any).isFeatured ? <ToggleRight size={20} className="text-amber-500" /> : <ToggleLeft size={20} className="text-muted-foreground" />}
+                    </button>
+                  </td>
+                  <td className="py-2 px-3">
+                    <button onClick={() => patchPkg(pkg.id, { isVisible: !pkg.isVisible })}>
                       {pkg.isVisible ? <ToggleRight size={20} className="text-green-500" /> : <ToggleLeft size={20} className="text-muted-foreground" />}
+                    </button>
+                  </td>
+                  <td className="py-2 px-3 text-xs">
+                    <button onClick={() => archivePkg(pkg)} className={archived ? "text-orange-500" : "text-muted-foreground hover:text-foreground"}>
+                      {archived ? "مؤرشفة — استعادة" : "أرشفة"}
                     </button>
                   </td>
                   <td className="py-2 px-3">
@@ -729,7 +889,7 @@ function PackagesPanel() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

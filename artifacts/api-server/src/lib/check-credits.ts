@@ -8,7 +8,7 @@
  */
 import { type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
-import { platformSettingsTable } from "@workspace/db";
+import { platformSettingsTable, creditTransactionsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { CreditService } from "./credit-service";
 import { randomUUID } from "node:crypto";
@@ -79,6 +79,34 @@ export function checkCredits(toolKey: string) {
         settings.adminCreditTestMode && settings.adminId === teacherId;
 
       if (!settings.creditsEnabled && !isAdminTestMode) {
+        return next();
+      }
+
+      // ── استخدام غير محدود (per-teacher override) ──────────────────────────────
+      // يتجاوز الحجز والخصم بالكامل، لكن يسجّل الاستخدام في credit_transactions
+      // للإحصائيات حتى لا تضيع بيانات الأداء.
+      const [teacherRow] = await db
+        .select({ unlimitedCredits: teachersTable.unlimitedCredits })
+        .from(teachersTable)
+        .where(eq(teachersTable.id, teacherId))
+        .limit(1);
+
+      if (teacherRow?.unlimitedCredits) {
+        // سجّل الاستخدام بمبلغ 0 (لا خصم) — النوع unlimited_use
+        try {
+          await db.insert(creditTransactionsTable).values({
+            teacherId,
+            amount: 0,
+            type: "unlimited_use",
+            reason: `استخدام غير محدود: ${toolKey}`,
+            toolKey,
+            requestId: randomUUID(),
+            status: "completed",
+            source: "unlimited_bypass",
+          });
+        } catch {
+          // غير حرجة — لا تعطّل الطلب
+        }
         return next();
       }
 

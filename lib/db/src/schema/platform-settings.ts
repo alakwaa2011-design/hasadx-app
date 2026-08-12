@@ -88,7 +88,20 @@ export const platformSettingsTable = pgTable("platform_settings", {
   creditsEnabled:       boolean("credits_enabled").notNull().default(false),
   welcomeCredits:       integer("welcome_credits").notNull().default(120),
   adminCreditTestMode:  boolean("admin_credit_test_mode").notNull().default(false),
+  /** روابط وسائل التواصل الاجتماعي — مصفوفة منصات قابلة للتفعيل/الإخفاء */
+  socialLinks: jsonb("social_links").$type<SocialLink[]>().notNull().default([]),
 });
+
+export interface SocialLink {
+  /** معرّف ثابت: instagram | twitter | facebook | tiktok | youtube | snapchat | linkedin | whatsapp | threads | custom_* */
+  id: string;
+  /** رابط الحساب الكامل */
+  url: string;
+  /** تفعيل الظهور */
+  enabled: boolean;
+  /** ترتيب الظهور */
+  order: number;
+}
 
 export type PublicStatsOverride = {
   teacherValue?:     number | null;

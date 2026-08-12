@@ -342,6 +342,21 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS welcome_credits       INTEGER NOT NULL DEFAULT 120,
         ADD COLUMN IF NOT EXISTS admin_credit_test_mode BOOLEAN NOT NULL DEFAULT FALSE
     `);
+    // استخدام غير محدود بدون خصم — per-teacher override
+    await db.execute(sql`
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS unlimited_credits BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    // روابط وسائل التواصل الاجتماعي
+    await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS social_links JSONB NOT NULL DEFAULT '[]'::jsonb
+    `);
+    await db.execute(sql`
+      UPDATE platform_settings
+      SET social_links = '[{"id":"instagram","url":"https://www.instagram.com/hasaadxapp","enabled":true,"order":1},{"id":"twitter","url":"","enabled":false,"order":2},{"id":"facebook","url":"","enabled":false,"order":3},{"id":"tiktok","url":"","enabled":false,"order":4},{"id":"youtube","url":"","enabled":false,"order":5},{"id":"snapchat","url":"","enabled":false,"order":6},{"id":"threads","url":"","enabled":false,"order":7},{"id":"linkedin","url":"","enabled":false,"order":8},{"id":"whatsapp","url":"","enabled":false,"order":9}]'::jsonb
+      WHERE jsonb_array_length(social_links) = 0
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");
@@ -411,6 +426,103 @@ async function runSchemaMigrations() {
         sort_order     INTEGER NOT NULL DEFAULT 0,
         is_visible     BOOLEAN NOT NULL DEFAULT TRUE,
         created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    // ── Credit purchases (Lemon Squeezy) — MUST run after the base credit tables above ──
+    await db.execute(sql`
+      ALTER TABLE credit_accounts
+        ADD COLUMN IF NOT EXISTS paid_balance   INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS promo_balance  INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS earned_balance INTEGER NOT NULL DEFAULT 0
+    `);
+    // Backfill: legacy balances become promo (free) credit
+    await db.execute(sql`
+      UPDATE credit_accounts
+      SET promo_balance = balance - paid_balance - earned_balance
+      WHERE paid_balance + promo_balance + earned_balance <> balance
+    `);
+    await db.execute(sql`
+      ALTER TABLE credit_transactions
+        ADD COLUMN IF NOT EXISTS credit_type TEXT NOT NULL DEFAULT 'promo',
+        ADD COLUMN IF NOT EXISTS source      TEXT,
+        ADD COLUMN IF NOT EXISTS expires_at  TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS purchase_id INTEGER
+    `);
+    await db.execute(sql`
+      ALTER TABLE credit_holds
+        ADD COLUMN IF NOT EXISTS held_promo  INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS held_earned INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS held_paid   INTEGER NOT NULL DEFAULT 0
+    `);
+    await db.execute(sql`
+      ALTER TABLE credit_packages
+        ADD COLUMN IF NOT EXISTS name             TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS slug             TEXT,
+        ADD COLUMN IF NOT EXISTS description      TEXT,
+        ADD COLUMN IF NOT EXISTS lemon_product_id TEXT,
+        ADD COLUMN IF NOT EXISTS lemon_variant_id TEXT,
+        ADD COLUMN IF NOT EXISTS currency         TEXT NOT NULL DEFAULT 'USD',
+        ADD COLUMN IF NOT EXISTS is_featured      BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS archived_at      TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS updated_at       TIMESTAMP NOT NULL DEFAULT NOW()
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS credit_packages_slug_uniq    ON credit_packages(slug)             WHERE slug IS NOT NULL`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS credit_packages_variant_uniq ON credit_packages(lemon_variant_id) WHERE lemon_variant_id IS NOT NULL`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_purchases (
+        id                       SERIAL PRIMARY KEY,
+        purchase_intent_id       TEXT NOT NULL UNIQUE,
+        teacher_id               INTEGER NOT NULL,
+        package_id               INTEGER NOT NULL,
+        lemon_order_id           TEXT UNIQUE,
+        lemon_variant_id         TEXT NOT NULL,
+        amount_cents             INTEGER NOT NULL,
+        currency                 TEXT NOT NULL DEFAULT 'USD',
+        credits_amount           INTEGER NOT NULL,
+        package_name_snapshot    TEXT NOT NULL,
+        package_price_snapshot   INTEGER NOT NULL,
+        package_credits_snapshot INTEGER NOT NULL,
+        payment_status           TEXT NOT NULL DEFAULT 'pending_checkout',
+        refunded_amount_cents    INTEGER NOT NULL DEFAULT 0,
+        refunded_credits_amount  INTEGER NOT NULL DEFAULT 0,
+        refund_review_status     TEXT NOT NULL DEFAULT 'none',
+        refund_review_note       TEXT,
+        purchased_at             TIMESTAMP,
+        processed_at             TIMESTAMP,
+        refund_processed_at      TIMESTAMP,
+        created_at               TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at               TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_purchases_teacher_idx ON credit_purchases(teacher_id, created_at DESC)`);
+    // Seed default credit packages (once — only when the table is empty)
+    await db.execute(sql`
+      INSERT INTO credit_packages (name, price_usd_cents, credits, sort_order, is_visible, is_featured)
+      SELECT * FROM (VALUES
+        ('باقة البداية',   500, 250,  1, TRUE, FALSE),
+        ('باقة التوفير',  1000, 600,  2, TRUE, TRUE),
+        ('باقة الاحتراف', 2000, 1400, 3, TRUE, FALSE)
+      ) AS seed(name, price_usd_cents, credits, sort_order, is_visible, is_featured)
+      WHERE NOT EXISTS (SELECT 1 FROM credit_packages)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS webhook_events (
+        id                   SERIAL PRIMARY KEY,
+        provider             TEXT NOT NULL DEFAULT 'lemonsqueezy',
+        event_name           TEXT NOT NULL,
+        provider_object_type TEXT,
+        provider_object_id   TEXT,
+        provider_event_id    TEXT,
+        idempotency_key      TEXT NOT NULL UNIQUE,
+        status               TEXT NOT NULL DEFAULT 'received',
+        attempts             INTEGER NOT NULL DEFAULT 0,
+        raw_payload          TEXT,
+        error_message        TEXT,
+        processed_at         TIMESTAMP,
+        failed_at            TIMESTAMP,
+        created_at           TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at           TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
 

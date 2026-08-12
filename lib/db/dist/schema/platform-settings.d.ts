@@ -624,9 +624,38 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        socialLinks: import("drizzle-orm/pg-core").PgColumn<{
+            name: "social_links";
+            tableName: "platform_settings";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: SocialLink[];
+            driverParam: unknown;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: SocialLink[];
+        }>;
     };
     dialect: "pg";
 }>;
+export interface SocialLink {
+    /** معرّف ثابت: instagram | twitter | facebook | tiktok | youtube | snapchat | linkedin | whatsapp | threads | custom_* */
+    id: string;
+    /** رابط الحساب الكامل */
+    url: string;
+    /** تفعيل الظهور */
+    enabled: boolean;
+    /** ترتيب الظهور */
+    order: number;
+}
 export type PublicStatsOverride = {
     teacherValue?: number | null;
     assignmentValue?: number | null;

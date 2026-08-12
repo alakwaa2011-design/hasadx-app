@@ -122,6 +122,23 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        unlimitedCredits: import("drizzle-orm/pg-core").PgColumn<{
+            name: "unlimited_credits";
+            tableName: "teachers";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         role: import("drizzle-orm/pg-core").PgColumn<{
             name: "role";
             tableName: "teachers";
@@ -661,6 +678,7 @@ export declare const insertTeacherSchema: z.ZodObject<{
     passwordHash: z.ZodString;
     googleId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isAdmin: z.ZodOptional<z.ZodBoolean>;
+    unlimitedCredits: z.ZodOptional<z.ZodBoolean>;
     role: z.ZodOptional<z.ZodString>;
     isBlocked: z.ZodOptional<z.ZodBoolean>;
     aiTier: z.ZodOptional<z.ZodString>;

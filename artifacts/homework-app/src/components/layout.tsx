@@ -43,6 +43,7 @@ import { AdminUiSwitcher } from "./admin-ui-switcher";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-provider";
 import { useDarkMode } from "@/lib/dark-mode";
+import { SocialLinksBar } from "./social-links-bar";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -538,7 +539,8 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     >
                       {lang === "ar" ? "كيف تعمل؟" : "How it works?"}
                     </a>
-                    <div className="h-5 w-px bg-border mx-1.5" />
+                    <SocialLinksBar links={theme.socialLinks} variant="icon" />
+                    <div className="h-5 w-px bg-border mx-1" />
                     <div className="flex gap-2 flex-row-reverse">
                       <Link
                         href="/login"
@@ -820,6 +822,12 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         <Sparkles className="w-5 h-5" />
                         {lang === "ar" ? "كيف تعمل؟" : "How it works?"}
                       </a>
+                      {theme.socialLinks.some(l => l.enabled && l.url) && (
+                        <div className="flex items-center gap-2 px-4 py-2">
+                          <SocialLinksBar links={theme.socialLinks} variant="icon" />
+                          <span className="text-sm text-muted-foreground">{lang === "ar" ? "تابعنا" : "Follow us"}</span>
+                        </div>
+                      )}
                       <div className="border-t border-border/40 my-1" />
                       <Link
                         href="/login"
@@ -856,18 +864,29 @@ export function Layout({ children, noHeader }: LayoutProps) {
 
       <footer className="border-t border-border/40 bg-muted/30 mt-auto">
         <div className="container mx-auto px-4 py-5 sm:py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <img
-                src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-                alt="حصاد"
-                className="w-5 h-5 rounded object-cover opacity-70"
-              />
-              <span className="flex flex-col leading-none items-center" style={{ gap: 1 }}>
-                <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>حــصــاد</span>
-                <span className="block font-black text-[8px] uppercase w-full text-center" style={{ color: "#C9A050", opacity: 0.8, letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
-              </span>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+
+            {/* Brand + Social links */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <img
+                  src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
+                  alt="حصاد"
+                  className="w-5 h-5 rounded object-cover opacity-70"
+                />
+                <span className="flex flex-col leading-none items-center" style={{ gap: 1 }}>
+                  <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>حــصــاد</span>
+                  <span className="block font-black text-[8px] uppercase w-full text-center" style={{ color: "#C9A050", opacity: 0.8, letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
+                </span>
+              </div>
+              {theme.socialLinks.some(l => l.enabled && l.url) && (
+                <>
+                  <div className="w-px h-4 bg-border/60" />
+                  <SocialLinksBar links={theme.socialLinks} variant="full" />
+                </>
+              )}
             </div>
+
             <Link
               href="/feedback"
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/10 hover:bg-primary/15 text-primary border border-primary/25 hover:border-primary/40 text-xs font-bold transition-all shadow-sm hover:shadow min-h-[44px] sm:min-h-0"
@@ -877,6 +896,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
               <span>{t.footer.feedback}</span>
               <span className="hidden sm:inline text-[10px] font-medium opacity-75">· {t.footer.feedbackHint}</span>
             </Link>
+
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} {t.footer.copyright}
             </p>

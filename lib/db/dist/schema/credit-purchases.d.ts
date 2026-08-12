@@ -1,11 +1,14 @@
-import { z } from "zod/v4";
-export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "submissions";
+/**
+ * عمليات شراء الرصيد عبر Lemon Squeezy.
+ * لا يمثل رصيداً — الرصيد يُضاف في credit_accounts/credit_transactions بعد Webhook موثّق فقط.
+ */
+export declare const creditPurchasesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "credit_purchases";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "submissions";
+            tableName: "credit_purchases";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -20,9 +23,26 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        assignmentId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "assignment_id";
-            tableName: "submissions";
+        purchaseIntentId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "purchase_intent_id";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        teacherId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_id";
+            tableName: "credit_purchases";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -37,94 +57,9 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        studentName: import("drizzle-orm/pg-core").PgColumn<{
-            name: "student_name";
-            tableName: "submissions";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        studentClass: import("drizzle-orm/pg-core").PgColumn<{
-            name: "student_class";
-            tableName: "submissions";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        studentId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "student_id";
-            tableName: "submissions";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        deviceFingerprint: import("drizzle-orm/pg-core").PgColumn<{
-            name: "device_fingerprint";
-            tableName: "submissions";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        score: import("drizzle-orm/pg-core").PgColumn<{
-            name: "score";
-            tableName: "submissions";
-            dataType: "number";
-            columnType: "PgReal";
-            data: number;
-            driverParam: string | number;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        totalQuestions: import("drizzle-orm/pg-core").PgColumn<{
-            name: "total_questions";
-            tableName: "submissions";
+        packageId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "package_id";
+            tableName: "credit_purchases";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -139,9 +74,43 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        correctAnswers: import("drizzle-orm/pg-core").PgColumn<{
-            name: "correct_answers";
-            tableName: "submissions";
+        lemonOrderId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lemon_order_id";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lemonVariantId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lemon_variant_id";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        amountCents: import("drizzle-orm/pg-core").PgColumn<{
+            name: "amount_cents";
+            tableName: "credit_purchases";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -156,48 +125,31 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        earnedPoints: import("drizzle-orm/pg-core").PgColumn<{
-            name: "earned_points";
-            tableName: "submissions";
-            dataType: "number";
-            columnType: "PgReal";
-            data: number;
-            driverParam: string | number;
+        currency: import("drizzle-orm/pg-core").PgColumn<{
+            name: "currency";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
             notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        totalPoints: import("drizzle-orm/pg-core").PgColumn<{
-            name: "total_points";
-            tableName: "submissions";
+        creditsAmount: import("drizzle-orm/pg-core").PgColumn<{
+            name: "credits_amount";
+            tableName: "credit_purchases";
             dataType: "number";
-            columnType: "PgReal";
+            columnType: "PgInteger";
             data: number;
             driverParam: string | number;
             notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        teacherAdjustedPoints: import("drizzle-orm/pg-core").PgColumn<{
-            name: "teacher_adjusted_points";
-            tableName: "submissions";
-            dataType: "number";
-            columnType: "PgReal";
-            data: number;
-            driverParam: string | number;
-            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -207,9 +159,128 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        teacherNote: import("drizzle-orm/pg-core").PgColumn<{
-            name: "teacher_note";
-            tableName: "submissions";
+        packageNameSnapshot: import("drizzle-orm/pg-core").PgColumn<{
+            name: "package_name_snapshot";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        packagePriceSnapshot: import("drizzle-orm/pg-core").PgColumn<{
+            name: "package_price_snapshot";
+            tableName: "credit_purchases";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        packageCreditsSnapshot: import("drizzle-orm/pg-core").PgColumn<{
+            name: "package_credits_snapshot";
+            tableName: "credit_purchases";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        paymentStatus: import("drizzle-orm/pg-core").PgColumn<{
+            name: "payment_status";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        refundedAmountCents: import("drizzle-orm/pg-core").PgColumn<{
+            name: "refunded_amount_cents";
+            tableName: "credit_purchases";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        refundedCreditsAmount: import("drizzle-orm/pg-core").PgColumn<{
+            name: "refunded_credits_amount";
+            tableName: "credit_purchases";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        refundReviewStatus: import("drizzle-orm/pg-core").PgColumn<{
+            name: "refund_review_status";
+            tableName: "credit_purchases";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        refundReviewNote: import("drizzle-orm/pg-core").PgColumn<{
+            name: "refund_review_note";
+            tableName: "credit_purchases";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -224,43 +295,9 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        aiFeedback: import("drizzle-orm/pg-core").PgColumn<{
-            name: "ai_feedback";
-            tableName: "submissions";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        repeatAttempted: import("drizzle-orm/pg-core").PgColumn<{
-            name: "repeat_attempted";
-            tableName: "submissions";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        startedAt: import("drizzle-orm/pg-core").PgColumn<{
-            name: "started_at";
-            tableName: "submissions";
+        purchasedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "purchased_at";
+            tableName: "credit_purchases";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -275,13 +312,13 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        durationSeconds: import("drizzle-orm/pg-core").PgColumn<{
-            name: "duration_seconds";
-            tableName: "submissions";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
+        processedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "processed_at";
+            tableName: "credit_purchases";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
@@ -292,9 +329,43 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        submittedAt: import("drizzle-orm/pg-core").PgColumn<{
-            name: "submitted_at";
-            tableName: "submissions";
+        refundProcessedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "refund_processed_at";
+            tableName: "credit_purchases";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "credit_purchases";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
+            tableName: "credit_purchases";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -312,27 +383,6 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
     };
     dialect: "pg";
 }>;
-export declare const insertSubmissionSchema: z.ZodObject<{
-    totalPoints: z.ZodOptional<z.ZodNumber>;
-    assignmentId: z.ZodInt;
-    studentClass: z.ZodOptional<z.ZodString>;
-    studentName: z.ZodString;
-    studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    deviceFingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    score: z.ZodNumber;
-    totalQuestions: z.ZodInt;
-    correctAnswers: z.ZodInt;
-    earnedPoints: z.ZodOptional<z.ZodNumber>;
-    teacherAdjustedPoints: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-    teacherNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    aiFeedback: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    repeatAttempted: z.ZodOptional<z.ZodBoolean>;
-    startedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
-    durationSeconds: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-}, {
-    out: {};
-    in: {};
-}>;
-export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
-export type Submission = typeof submissionsTable.$inferSelect;
-//# sourceMappingURL=submissions.d.ts.map
+export type CreditPurchase = typeof creditPurchasesTable.$inferSelect;
+export type NewCreditPurchase = typeof creditPurchasesTable.$inferInsert;
+//# sourceMappingURL=credit-purchases.d.ts.map

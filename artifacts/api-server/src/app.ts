@@ -152,6 +152,12 @@ const ASSIGNMENT_BODY_PATTERN = /^\/api\/assignments(\/\d+)?$/;
 // but we cap at 8mb to make memory exhaustion attacks much harder. Other
 // endpoints stay at a tight 2mb — most JSON payloads are well under 100KB.
 app.use((req, res, next) => {
+  // Lemon Squeezy webhook: keep the RAW body — HMAC signature verification
+  // must run against the exact bytes received, before any JSON parsing.
+  if (req.path === "/api/webhooks/lemonsqueezy") {
+    express.raw({ type: "*/*", limit: "2mb" })(req, res, next);
+    return;
+  }
   const isImageUpload =
     IMAGE_UPLOAD_PATHS.has(req.path) ||
     IMAGE_UPLOAD_PATTERN.test(req.path) ||
@@ -163,6 +169,9 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 const STATE_MUTATING_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
 app.use((req, res, next) => {
   if (!STATE_MUTATING_METHODS.has(req.method)) return next();
+  // Lemon Squeezy webhooks carry no Origin/Referer — they are authenticated
+  // by HMAC signature (X-Signature) inside the route itself, not by CSRF origin.
+  if (req.path === "/api/webhooks/lemonsqueezy") return next();
   if (!isProduction || !allowedOrigins) return next();
 
   const rawOrigin = req.headers.origin ?? req.headers.referer;
