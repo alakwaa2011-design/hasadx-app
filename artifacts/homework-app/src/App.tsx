@@ -52,7 +52,8 @@ const AboutPage = lazy(() => import("@/pages/about"));
 const TeacherProfile = lazy(() => import("@/pages/teacher/profile"));
 const TeacherSettings = lazy(() => import("@/pages/teacher/settings"));
 const TeacherAchievements = lazy(() => import("@/pages/teacher/achievements"));
-const TeacherCreditsPage = lazy(() => import("@/pages/teacher/credits"));
+const TeacherCreditsPage  = lazy(() => import("@/pages/teacher/credits"));
+const TeacherPricingPage  = lazy(() => import("@/pages/teacher/pricing"));
 const Leaderboard = lazy(() => import("@/pages/leaderboard"));
 const TeacherPublicProfile = lazy(() => import("@/pages/teacher-public-profile"));
 const StudentPublicProfile = lazy(() => import("@/pages/student-public-profile"));
@@ -312,7 +313,8 @@ function Router() {
         <Route path="/teacher/profile" component={TeacherProfile} />
         <Route path="/teacher/settings" component={TeacherSettings} />
         <Route path="/teacher/achievements" component={TeacherAchievements} />
-        <Route path="/teacher/credits" component={TeacherCreditsPage} />
+        <Route path="/teacher/credits"  component={TeacherCreditsPage} />
+        <Route path="/teacher/pricing"  component={TeacherPricingPage} />
         <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/t/:idOrSlug" component={TeacherPublicProfile} />
         <Route path="/u/:idOrSlug" component={TeacherPublicProfile} />

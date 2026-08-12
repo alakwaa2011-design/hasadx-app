@@ -20,6 +20,7 @@ import {
   creditToolPricesTable,
   subscriptionsTable,
   plansTable,
+  subscriptionCreditGrantsTable,
 } from "@workspace/db";
 import { eq, sql, and, inArray } from "drizzle-orm";
 
@@ -400,25 +401,56 @@ export const CreditService = {
   // ── Subscription credit operations ──────────────────────────────────────────
 
   /**
-   * Called on subscription_payment_success and subscription_payment_recovered.
+   * Grant subscription credits for a single Lemon Squeezy invoice.
    *
-   * All three steps run inside ONE transaction with the account locked:
-   *   1. Check last_credited_period_end (guard against double-grant)
-   *   2. Grant credits if not already granted for this period
-   *   3. Update last_credited_period_end
+   * Called ONLY from subscription_payment_success.
    *
-   * Also extends expires_at on existing subscription batches to the new period end.
+   * Primary guard: subscription_credit_grants.subscription_invoice_id UNIQUE —
+   *   the row is inserted first (ON CONFLICT DO NOTHING). If no row is returned,
+   *   this invoice was already processed → return alreadyGranted: true immediately.
+   *   credits_granted is always recorded, even when it is 0 (rollover cap reached).
+   *
+   * Secondary guard: last_credited_period_end on subscriptions (extra safety).
+   *
+   * Each batch gets expires_at = nextPeriodEnd (end of the FOLLOWING period),
+   * allowing credits to accumulate across two periods without extending old batches.
+   *
+   * @param invoiceId     payload.data.id from LS webhook
+   * @param subscriptionId payload.data.attributes.subscription_id from LS webhook
+   * @param periodEnd     end of the current period (renews_at from LS subscription object)
+   * @param nextPeriodEnd end of the NEXT period — batch expires_at (renews_at of next cycle)
    */
   async grantSubscriptionCredits(
     teacherId: number,
     planCode: string,
+    invoiceId: string,
+    subscriptionId: string,
     periodEnd: Date,
-    referenceId: string
+    nextPeriodEnd: Date
   ): Promise<{ granted: number; alreadyGranted: boolean }> {
     return await db.transaction(async (tx) => {
+      // ── Step 1: Claim the invoice (primary guard) ────────────────────────
+      // Insert first — UNIQUE constraint on subscription_invoice_id prevents
+      // two concurrent webhooks from both proceeding.
+      const claimed = await tx.execute(sql`
+        INSERT INTO subscription_credit_grants
+          (subscription_invoice_id, subscription_id, teacher_id, plan_code, credits_granted, period_end)
+        VALUES
+          (${invoiceId}, ${subscriptionId}, ${teacherId}, ${planCode}, 0, ${periodEnd})
+        ON CONFLICT (subscription_invoice_id) DO NOTHING
+        RETURNING id
+      `);
+
+      if (claimed.rows.length === 0) {
+        // Already processed (concurrent webhook or retry)
+        return { granted: 0, alreadyGranted: true };
+      }
+
+      const grantRowId = Number((claimed.rows[0] as any).id);
+
+      // ── Step 2: Lock accounts + subscription row ─────────────────────────
       const acct = await lockAccount(tx, teacherId);
 
-      // Lock subscriptions row to serialize concurrent payment webhooks
       const subRows = await tx.execute(sql`
         SELECT s.id, s.last_credited_period_end, p.monthly_credits, p.rollover_cap
         FROM subscriptions s
@@ -427,37 +459,29 @@ export const CreditService = {
         FOR UPDATE
       `);
       const sub = subRows.rows[0] as any;
-      if (!sub) {
-        return { granted: 0, alreadyGranted: false };
-      }
 
-      // Guard: if this period's credits were already granted, skip
-      const lastCredited: Date | null = sub.last_credited_period_end
-        ? new Date(sub.last_credited_period_end)
-        : null;
-      if (lastCredited && lastCredited >= periodEnd) {
-        return { granted: 0, alreadyGranted: true };
-      }
+      const monthlyCredits = Number(sub?.monthly_credits ?? 0);
+      const rolloverCap    = sub?.rollover_cap != null ? Number(sub.rollover_cap) : null;
 
-      const monthlyCredits = Number(sub.monthly_credits ?? 0);
-      const rolloverCap    = sub.rollover_cap != null ? Number(sub.rollover_cap) : null;
-
-      // Step 1: Extend expires_at for existing subscription batches
-      await tx.execute(sql`
-        UPDATE credit_batches
-        SET expires_at = ${periodEnd}, updated_at = NOW()
+      // ── Step 3: Calculate credits to add (respecting rollover cap) ────────
+      // Sum remaining non-expired subscription batches (true current balance)
+      const remainingRows = await tx.execute(sql`
+        SELECT COALESCE(SUM(amount_remaining), 0)::int AS remaining
+        FROM credit_batches
         WHERE teacher_id = ${teacherId}
           AND source = 'subscription'
           AND amount_remaining > 0
+          AND (expires_at IS NULL OR expires_at > NOW())
       `);
+      const remainingSub = Number((remainingRows.rows[0] as any)?.remaining ?? 0);
 
-      // Step 2: Calculate how many credits to add (respecting rollover cap)
-      const currentSubBalance = Number(acct?.subscription_balance ?? 0);
       let toAdd = monthlyCredits;
       if (rolloverCap !== null) {
-        toAdd = Math.max(0, Math.min(monthlyCredits, rolloverCap - currentSubBalance));
+        toAdd = Math.max(0, Math.min(monthlyCredits, rolloverCap - remainingSub));
       }
 
+      // ── Step 4: Grant batch if > 0 ────────────────────────────────────────
+      // expires_at = nextPeriodEnd (end of FOLLOWING period) — allows 2-month rollover
       let granted = 0;
       if (toAdd > 0) {
         granted = await this._grantBatchInTx(
@@ -465,14 +489,21 @@ export const CreditService = {
           teacherId,
           "subscription",
           toAdd,
-          periodEnd,
-          referenceId,
+          nextPeriodEnd,          // NOT periodEnd — extends into next cycle
+          invoiceId,              // reference_id = invoice id for traceability
           planCode,
           `رصيد اشتراك شهري (${planCode})`
         );
       }
 
-      // Step 3: Record that this period has been credited
+      // ── Step 5: Record actual credits_granted (even if 0) ─────────────────
+      await tx.execute(sql`
+        UPDATE subscription_credit_grants
+        SET credits_granted = ${granted}
+        WHERE id = ${grantRowId}
+      `);
+
+      // ── Step 6: Update subscription metadata ─────────────────────────────
       await tx.execute(sql`
         UPDATE subscriptions
         SET last_credited_period_end = ${periodEnd},

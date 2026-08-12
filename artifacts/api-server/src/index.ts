@@ -923,6 +923,31 @@ async function runSchemaMigrations() {
     logger.error(err, "Subscriptions system column migration failed");
   }
 
+  // ── Subscription Credit Grants — invoice-level idempotency guard ──────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_credit_grants (
+        id                      SERIAL PRIMARY KEY,
+        subscription_invoice_id TEXT NOT NULL,
+        subscription_id         TEXT NOT NULL,
+        teacher_id              INTEGER NOT NULL,
+        plan_code               TEXT NOT NULL,
+        credits_granted         INTEGER NOT NULL DEFAULT 0,
+        period_end              TIMESTAMP NOT NULL,
+        created_at              TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS scg_invoice_uniq
+        ON subscription_credit_grants(subscription_invoice_id)
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_teacher_idx       ON subscription_credit_grants(teacher_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_subscription_idx  ON subscription_credit_grants(subscription_id)`);
+    logger.info("subscription_credit_grants table ready");
+  } catch (err) {
+    logger.error(err, "subscription_credit_grants migration failed");
+  }
+
   // ── Credit Batches — Source of Truth for credits ───────────────────────────
   try {
     await db.execute(sql`

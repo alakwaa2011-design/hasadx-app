@@ -81,6 +81,7 @@ export * from "./credit-transactions";
 export * from "./credit-holds";
 export * from "./credit-hold-items";
 export * from "./credit-batches";
+export * from "./subscription-credit-grants";
 export * from "./credit-packages";
 export * from "./credit-purchases";
 export * from "./webhook-events";
