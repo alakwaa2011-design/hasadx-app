@@ -22,7 +22,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Loader2,
-  FileText,
   Search,
   Plus,
   Sparkles,
@@ -34,6 +33,8 @@ import {
   BookOpen,
   Check,
   X,
+  User,
+  UsersRound,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -46,13 +47,13 @@ interface Assignment {
   targetClass?: string | null;
 }
 
-type ClassSource = "assignment" | "ai" | "manual";
+type QuestionSource = "assignment" | "ai" | "manual";
 type Difficulty = "easy" | "medium" | "hard";
+type PlayMode = "solo" | "teams" | "classroom";
 
-// Wameedh is the canonical live-quiz flow on the site: pick an assignment,
-// kick off a classic teacher game, and jump straight into the host screen.
-// This page is the standalone entry point so the organizer never has to land
-// on the teacher dashboard just to launch it.
+// Wameedh entry point: prepare a set of questions (from an assignment, AI, or
+// written manually), review it, then pick how to play — solo / teams / class
+// mode — all three consuming the exact same prepared question list.
 export default function WameethCreate() {
   const [, setLocation] = useLocation();
   const { lang } = useI18n();
@@ -66,50 +67,17 @@ export default function WameethCreate() {
     { query: { enabled: !!user } as any },
   );
 
-  const [tab, setTab] = useState<"live" | "class">("live");
-
-  const [search, setSearch] = useState("");
-  const [creating, setCreating] = useState<number | null>(null);
-  const [targetClass, setTargetClass] = useState<string>(() =>
-    getRememberedTargetClass(),
-  );
-
-  const filtered = (assignments || []).filter((a: Assignment) => {
-    if ((a.questionCount ?? 0) === 0) return false;
-    if (!search.trim()) return true;
-    return a.title.toLowerCase().includes(search.toLowerCase());
-  });
-
-  const startWameeth = (assignmentId: number) => {
-    if (creating !== null) return;
-    setCreating(assignmentId);
-    const socket = getSocket();
-    socket.emit(
-      "teacher:create-game",
-      { assignmentId, gameMode: "classic", targetClass: targetClass || undefined },
-      (res: { pin?: string; error?: string }) => {
-        setCreating(null);
-        if (res?.error || !res?.pin) {
-          toast.error(
-            res?.error ||
-              (ar ? "تعذّر بدء اللعبة" : "Failed to start the game"),
-          );
-          disconnectSocket();
-          return;
-        }
-        setLocation(`/teacher/game/${res.pin}`);
-      },
-    );
-  };
-
-  // ─── وميض الصف — build a reviewable question list, then start ───────────
-  const [classSource, setClassSource] = useState<ClassSource | null>(null);
-  const [classQuestions, setClassQuestions] = useState<Question[]>([]);
-  const [classTitle, setClassTitle] = useState("");
-  const [startingClass, setStartingClass] = useState(false);
+  // ─── Step 1: build & review the shared question set ─────────────────────
+  const [step, setStep] = useState<"prepare" | "mode">("prepare");
+  const [source, setSource] = useState<QuestionSource | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [title, setTitle] = useState("");
+  // When the whole list still matches one untouched assignment, we can reuse
+  // that assignment directly instead of persisting a new one at start time.
+  const [sourceAssignmentId, setSourceAssignmentId] = useState<number | null>(null);
 
   // From existing assignment
-  const [classAssignSearch, setClassAssignSearch] = useState("");
+  const [assignSearch, setAssignSearch] = useState("");
   const [loadingAssignmentId, setLoadingAssignmentId] = useState<number | null>(null);
 
   // AI generation
@@ -119,25 +87,34 @@ export default function WameethCreate() {
   const [aiDifficulty, setAiDifficulty] = useState<Difficulty>("medium");
   const [aiGenerating, setAiGenerating] = useState(false);
 
-  const resetClassFlow = () => {
-    setClassSource(null);
-    setClassQuestions([]);
-    setClassTitle("");
-    setClassAssignSearch("");
+  // ─── Step 2: play mode ────────────────────────────────────────────────────
+  const [mode, setMode] = useState<PlayMode | null>(null);
+  const [teamCount, setTeamCount] = useState(2);
+  const [customTeamNames, setCustomTeamNames] = useState<string[]>(["", "", "", "", "", ""]);
+  const [targetClass, setTargetClass] = useState<string>(() => getRememberedTargetClass());
+  const [starting, setStarting] = useState(false);
+
+  const resetSource = () => {
+    setSource(null);
+    setQuestions([]);
+    setTitle("");
+    setSourceAssignmentId(null);
+    setAssignSearch("");
     setAiTopic("");
     setAiSubject("");
   };
 
-  const filteredClassAssignments = (assignments || []).filter((a: Assignment) => {
+  const filteredAssignments = (assignments || []).filter((a: Assignment) => {
     if ((a.questionCount ?? 0) === 0) return false;
-    if (!classAssignSearch.trim()) return true;
-    return a.title.toLowerCase().includes(classAssignSearch.toLowerCase());
+    if (!assignSearch.trim()) return true;
+    return a.title.toLowerCase().includes(assignSearch.toLowerCase());
   });
 
   // Fetch one assignment's questions, keep MCQ-complete ones only, and append
   // them (as editable rows) to the shared review list — the existing service.
   const addQuestionsFromAssignment = async (assignmentId: number, assignmentTitle: string) => {
     if (loadingAssignmentId !== null) return;
+    const wasEmpty = questions.length === 0;
     setLoadingAssignmentId(assignmentId);
     try {
       const res = await fetch(`/api/assignments/${assignmentId}`, { credentials: "include" });
@@ -159,8 +136,9 @@ export default function WameethCreate() {
         toast.error(ar ? "لا توجد أسئلة اختيار متعدد صالحة في هذا الواجب" : "No valid MCQ questions in this assignment");
         return;
       }
-      setClassQuestions(prev => [...prev, ...added]);
-      if (!classTitle) setClassTitle(assignmentTitle);
+      setQuestions(prev => [...prev, ...added]);
+      setSourceAssignmentId(wasEmpty ? assignmentId : null);
+      if (!title) setTitle(assignmentTitle);
       toast.success(ar ? `تمت إضافة ${added.length} سؤال` : `Added ${added.length} questions`);
     } catch {
       toast.error(ar ? "حدث خطأ" : "An error occurred");
@@ -170,7 +148,7 @@ export default function WameethCreate() {
   };
 
   // Same AI endpoint used by the solo-challenge creator — always returns MCQ.
-  const generateClassAI = async () => {
+  const generateWithAI = async () => {
     if (!aiTopic.trim()) { toast.error(ar ? "أدخل الموضوع أولاً" : "Enter a topic first"); return; }
     setAiGenerating(true);
     try {
@@ -191,8 +169,9 @@ export default function WameethCreate() {
         optionD: q.optionD || "",
         correctAnswer: (["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A") as Question["correctAnswer"],
       }));
-      setClassQuestions(prev => [...prev, ...generated]);
-      if (!classTitle) setClassTitle(aiTopic.trim());
+      setQuestions(prev => [...prev, ...generated]);
+      setSourceAssignmentId(null);
+      if (!title) setTitle(aiTopic.trim());
       toast.success(ar ? `تم توليد ${generated.length} سؤال` : `Generated ${generated.length} questions`);
     } catch (err: any) {
       toast.error(err.message || (ar ? "خطأ في التوليد" : "Generation error"));
@@ -201,31 +180,109 @@ export default function WameethCreate() {
     }
   };
 
-  const validClassQuestions = classQuestions.filter(isValidQ);
+  const addManualQuestion = () => {
+    setQuestions(prev => [...prev, emptyQuestion("mcq")]);
+    setSourceAssignmentId(null);
+  };
 
-  const startClassGame = () => {
-    if (startingClass) return;
-    if (validClassQuestions.length < 2) {
-      toast.error(ar ? "يحتاج وميض الصف سؤالين اختيار متعدد على الأقل" : "Wameeth Class needs at least 2 MCQ questions");
+  const updateQuestion = (i: number, updated: Question) => {
+    setQuestions(prev => prev.map((x, j) => j === i ? updated : x));
+    setSourceAssignmentId(null);
+  };
+
+  const deleteQuestion = (i: number) => {
+    setQuestions(prev => prev.filter((_, j) => j !== i));
+    setSourceAssignmentId(null);
+  };
+
+  const validQuestions = questions.filter(isValidQ);
+
+  // Start the chosen mode using the exact same prepared question set,
+  // regardless of where the questions came from.
+  const startGame = async () => {
+    if (starting || !mode) return;
+    if (validQuestions.length < 2) {
+      toast.error(ar ? "يحتاج سؤالين اختيار متعدد صالحين على الأقل" : "Needs at least 2 valid MCQ questions");
       return;
     }
-    setStartingClass(true);
-    const qs = validClassQuestions.map(q => ({
-      text: q.text,
-      options: [q.optionA, q.optionB, q.optionC, q.optionD],
-      correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer),
-      imageUrl: null,
-    }));
-    sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({ questions: qs, duration: 20, title: classTitle || undefined }));
-    setLocation("/game/wameeth/class");
+    setStarting(true);
+
+    if (mode === "classroom") {
+      const qs = validQuestions.map(q => ({
+        text: q.text,
+        options: [q.optionA, q.optionB, q.optionC, q.optionD],
+        correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer),
+        imageUrl: null,
+      }));
+      sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({ questions: qs, duration: 20, title: title || undefined }));
+      setLocation("/game/wameeth/class");
+      return;
+    }
+
+    // Solo / teams run on the classic PIN engine, which requires a real
+    // assignmentId. Reuse the original one when untouched; otherwise persist
+    // the current (edited/AI-generated/manual) set as a private assignment
+    // first — same create-assignment API used across the app — so the
+    // unchanged game-creation flow can pick it up exactly as it always has.
+    try {
+      let assignmentId = sourceAssignmentId;
+      if (assignmentId == null) {
+        const res = await fetch(`${API}/api/assignments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: title.trim() || (ar ? "وميض" : "Wameeth"),
+            isShared: false,
+            contentKind: "competition",
+            questions: validQuestions.map(q => ({
+              text: q.text,
+              questionType: "mcq",
+              optionA: q.optionA,
+              optionB: q.optionB,
+              optionC: q.optionC,
+              optionD: q.optionD,
+              correctAnswer: q.correctAnswer,
+            })),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || (ar ? "تعذّر تجهيز الأسئلة" : "Failed to prepare questions"));
+        assignmentId = data.id;
+      }
+
+      const socket = getSocket();
+      const validCustomNames = mode === "teams" ? customTeamNames.slice(0, teamCount).map(n => n.trim()) : undefined;
+      const hasCustomNames = validCustomNames && validCustomNames.some(n => n.length > 0);
+      socket.emit(
+        "teacher:create-game",
+        {
+          assignmentId,
+          gameMode: mode,
+          teamCount: mode === "teams" ? teamCount : undefined,
+          customTeamNames: hasCustomNames ? validCustomNames : undefined,
+          targetClass: targetClass || undefined,
+        },
+        (res: { pin?: string; error?: string }) => {
+          setStarting(false);
+          if (res?.error || !res?.pin) {
+            toast.error(res?.error || (ar ? "تعذّر بدء اللعبة" : "Failed to start the game"));
+            disconnectSocket();
+            return;
+          }
+          setLocation(`/teacher/game/${res.pin}`);
+        },
+      );
+    } catch (err: any) {
+      toast.error(err.message || (ar ? "حدث خطأ" : "An error occurred"));
+      setStarting(false);
+    }
   };
 
   // If the organizer is not logged in, send them to the login page with a
   // post-login redirect back here so they don't lose their place.
   useEffect(() => {
     if (!user && !isLoading) {
-      // useGetCurrentTeacher returned undefined and finished loading → no
-      // session. Bounce to login and come back afterwards.
       const backTo = encodeURIComponent("/game/wameeth/create");
       setLocation(`/login?redirect=${backTo}`);
     }
@@ -307,8 +364,8 @@ export default function WameethCreate() {
                 </h1>
                 <p className="text-white/75 text-sm mt-2 leading-relaxed">
                   {ar
-                    ? "اختر واجبًا أو نشاطًا لتبدأ اللعبة، ويمكن للمشاركين الانضمام بثلاث طرق:"
-                    : "Pick an assignment or activity to start the game. Participants can join in three ways:"}
+                    ? "جهّز أسئلتك، ثم اختر طريقة اللعب: فردي أو فرق أو وميض الصف."
+                    : "Prepare your questions, then pick how to play: solo, teams, or class mode."}
                 </p>
                 {/* Join method badges */}
                 <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -339,165 +396,45 @@ export default function WameethCreate() {
             </div>
           </motion.div>
 
-          {/* Mode tabs: live PIN game vs. وميض الصف (class mode) */}
-          <div
-            className="flex p-1 rounded-2xl mb-5 gap-1"
-            style={{ background: "rgba(10,58,34,0.35)", border: "1px solid rgba(212,166,58,0.18)" }}
-          >
+          {/* Step progress */}
+          <div className="flex items-center gap-2 mb-5 px-1">
             {[
-              { val: "live" as const, icon: Zap, label: ar ? "ابدأ مباشرة" : "Live game" },
-              { val: "class" as const, icon: School, label: ar ? "وميض الصف" : "Class mode" },
-            ].map(t => (
-              <button
-                key={t.val}
-                type="button"
-                onClick={() => setTab(t.val)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition-all"
-                style={
-                  tab === t.val
-                    ? { background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color: "#1a1008" }
-                    : { color: "rgba(255,255,255,0.7)" }
-                }
-              >
-                <t.icon className="w-3.5 h-3.5" />
-                {t.label}
-              </button>
+              { key: "prepare", label: ar ? "١. الأسئلة" : "1. Questions" },
+              { key: "mode", label: ar ? "٢. طريقة اللعب" : "2. Play mode" },
+            ].map((s, i) => (
+              <div key={s.key} className="flex items-center gap-2">
+                {i > 0 && <div className="w-6 h-px" style={{ background: "rgba(212,166,58,0.3)" }} />}
+                <span
+                  className="text-[11px] font-extrabold px-2.5 py-1 rounded-full"
+                  style={
+                    step === s.key
+                      ? { background: "rgba(212,166,58,0.18)", color: "#f4c95d", border: "1px solid rgba(212,166,58,0.4)" }
+                      : { color: "rgba(255,255,255,0.4)" }
+                  }
+                >
+                  {s.label}
+                </span>
+              </div>
             ))}
           </div>
 
-          {tab === "live" ? (
-            <>
-              {/* Class selector */}
-              <div className="mb-4">
-                <ClassSelector
-                  value={targetClass}
-                  onChange={setTargetClass}
-                  accent="#f4c95d"
-                />
-              </div>
-
-              {/* Search */}
-              <div className="relative mb-4">
-                <Search
-                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-white/40"
-                  style={{ [dir === "rtl" ? "right" : "left"]: 14 } as React.CSSProperties}
-                />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={ar ? "ابحث في مسابقاتك…" : "Search your quizzes…"}
-                  className="w-full rounded-2xl py-3 text-sm font-medium text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-[#f4c95d]/50"
-                  style={{
-                    background: "rgba(10,58,34,0.35)",
-                    border: "1px solid rgba(212,166,58,0.18)",
-                    paddingInlineStart: 40,
-                    paddingInlineEnd: 16,
-                  }}
-                />
-              </div>
-
-              {/* Assignments list */}
-              {isLoading ? (
-                <div className="rounded-2xl p-10 flex items-center justify-center text-white/70">
-                  <Loader2 className="w-5 h-5 animate-spin me-2" />
-                  {ar ? "جاري التحميل…" : "Loading…"}
-                </div>
-              ) : filtered.length === 0 ? (
-                <div
-                  className="rounded-2xl p-8 text-center"
-                  style={{
-                    background: "rgba(10,58,34,0.2)",
-                    border: "1px dashed rgba(212,166,58,0.25)",
-                  }}
-                >
-                  <p className="text-white/75 text-sm mb-4">
-                    {assignments && assignments.length > 0
-                      ? ar
-                        ? "لا توجد نتائج مطابقة لبحثك."
-                        : "No results match your search."
-                      : ar
-                        ? "ليس لديك مسابقات بعد. أنشئ مسابقتك الأولى الآن."
-                        : "You don't have any quizzes yet. Create your first one."}
-                  </p>
-                  <Link
-                    href="/teacher/new/assignment?contest=1"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm"
-                    style={{
-                      background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)",
-                      color: "#1a1008",
-                    }}
-                  >
-                    <Plus className="w-4 h-4" />
-                    {ar ? "إنشاء مسابقة" : "Create a quiz"}
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {filtered.map((a: Assignment) => (
-                    <div
-                      key={a.id}
-                      className="rounded-2xl overflow-hidden"
-                      style={{
-                        background: "linear-gradient(135deg, rgba(10,58,34,0.55) 0%, rgba(2,14,9,0.80) 100%)",
-                        border: "1px solid rgba(212,166,58,0.22)",
-                        boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
-                      }}
-                    >
-                      {/* Assignment info row */}
-                      <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: "rgba(212,166,58,0.12)", border: "1px solid rgba(212,166,58,0.30)" }}
-                        >
-                          <FileText className="w-4 h-4" style={{ color: "#f4c95d" }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-extrabold text-sm leading-snug truncate">{a.title}</p>
-                          <p className="text-[11px] text-white/50 mt-0.5">
-                            {a.questionCount} {ar ? "سؤال" : "questions"}{a.subject ? ` · ${a.subject}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Action button */}
-                      <div className="flex gap-2 px-4 pb-3">
-                        <button
-                          type="button"
-                          disabled={creating !== null}
-                          onClick={() => startWameeth(a.id)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-extrabold transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-wait"
-                          style={{
-                            background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)",
-                            color: "#1a1008",
-                          }}
-                        >
-                          {creating === a.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Zap className="w-3.5 h-3.5" fill="currentColor" />}
-                          {ar ? "ابدأ مباشرة" : "Live game"}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
+          {step === "prepare" ? (
             <div className="pb-4">
-              {/* Step 1: choose how to build وميض الصف question list */}
+              {/* Step 1a: choose how to build the question list */}
               <AnimatePresence mode="popLayout">
-                {!classSource && (
+                {!source && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.96 }}
                   >
                     <p className="text-white/75 text-sm font-medium mb-4 text-center">
-                      {ar ? "كيف تريد إضافة أسئلة وميض الصف؟" : "How do you want to add questions?"}
+                      {ar ? "كيف تريد إضافة أسئلة وميض؟" : "How do you want to add questions?"}
                     </p>
                     <div className="grid sm:grid-cols-3 gap-3">
                       <button
                         type="button"
-                        onClick={() => setClassSource("assignment")}
+                        onClick={() => setSource("assignment")}
                         className="group p-5 rounded-2xl text-start transition-all hover:-translate-y-0.5"
                         style={{ background: "rgba(10,58,34,0.35)", border: "1px solid rgba(212,166,58,0.22)" }}
                       >
@@ -512,7 +449,7 @@ export default function WameethCreate() {
 
                       <button
                         type="button"
-                        onClick={() => setClassSource("ai")}
+                        onClick={() => setSource("ai")}
                         className="group p-5 rounded-2xl text-start transition-all hover:-translate-y-0.5"
                         style={{ background: "rgba(10,58,34,0.35)", border: "1px solid rgba(212,166,58,0.22)" }}
                       >
@@ -527,7 +464,7 @@ export default function WameethCreate() {
 
                       <button
                         type="button"
-                        onClick={() => setClassSource("manual")}
+                        onClick={() => setSource("manual")}
                         className="group p-5 rounded-2xl text-start transition-all hover:-translate-y-0.5"
                         style={{ background: "rgba(10,58,34,0.35)", border: "1px solid rgba(212,166,58,0.22)" }}
                       >
@@ -544,28 +481,28 @@ export default function WameethCreate() {
                 )}
               </AnimatePresence>
 
-              {/* Step 2: source-specific input */}
-              {classSource && (
+              {/* Step 1b: source-specific input + unified review */}
+              {source && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={resetClassFlow}
+                      onClick={resetSource}
                       className="p-2 rounded-xl transition-colors text-white/70 hover:text-white"
                       style={{ background: "rgba(255,255,255,0.06)" }}
                     >
                       <X className="w-4 h-4" />
                     </button>
                     <h2 className="font-black text-white text-base">
-                      {classSource === "assignment"
+                      {source === "assignment"
                         ? (ar ? "من واجب موجود" : "From an assignment")
-                        : classSource === "ai"
+                        : source === "ai"
                           ? (ar ? "بالذكاء الاصطناعي" : "With AI")
                           : (ar ? "إضافة يدوية" : "Add manually")}
                     </h2>
                   </div>
 
-                  {classSource === "assignment" && (
+                  {source === "assignment" && (
                     <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(10,58,34,0.25)", border: "1px solid rgba(212,166,58,0.18)" }}>
                       <div className="relative p-3">
                         <Search
@@ -573,8 +510,8 @@ export default function WameethCreate() {
                           style={{ [dir === "rtl" ? "right" : "left"]: 22 } as React.CSSProperties}
                         />
                         <input
-                          value={classAssignSearch}
-                          onChange={(e) => setClassAssignSearch(e.target.value)}
+                          value={assignSearch}
+                          onChange={(e) => setAssignSearch(e.target.value)}
                           placeholder={ar ? "ابحث في واجباتك…" : "Search your assignments…"}
                           className="w-full rounded-xl py-2.5 text-sm font-medium text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-[#f4c95d]/50"
                           style={{
@@ -590,13 +527,13 @@ export default function WameethCreate() {
                           <Loader2 className="w-5 h-5 animate-spin me-2" />
                           {ar ? "جاري التحميل…" : "Loading…"}
                         </div>
-                      ) : filteredClassAssignments.length === 0 ? (
+                      ) : filteredAssignments.length === 0 ? (
                         <p className="text-center text-white/60 py-10 text-sm font-medium">
                           {ar ? "لا توجد واجبات مطابقة" : "No matching assignments"}
                         </p>
                       ) : (
                         <div className="p-2 space-y-1.5 max-h-[340px] overflow-y-auto">
-                          {filteredClassAssignments.map((a: Assignment) => (
+                          {filteredAssignments.map((a: Assignment) => (
                             <button
                               key={a.id}
                               type="button"
@@ -618,7 +555,7 @@ export default function WameethCreate() {
                     </div>
                   )}
 
-                  {classSource === "ai" && (
+                  {source === "ai" && (
                     <div className="rounded-2xl p-4 space-y-4" style={{ background: "rgba(10,58,34,0.25)", border: "1px solid rgba(212,166,58,0.18)" }}>
                       <div className="grid sm:grid-cols-2 gap-3">
                         <div>
@@ -670,7 +607,7 @@ export default function WameethCreate() {
                       </div>
                       <button
                         type="button"
-                        onClick={generateClassAI}
+                        onClick={generateWithAI}
                         disabled={aiGenerating || !aiTopic.trim()}
                         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all disabled:opacity-50"
                         style={{ background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color: "#1a1008" }}
@@ -678,17 +615,17 @@ export default function WameethCreate() {
                         {aiGenerating ? (
                           <><Loader2 className="w-4 h-4 animate-spin" />{ar ? "جاري التوليد..." : "Generating..."}</>
                         ) : (
-                          <><Sparkles className="w-4 h-4" />{classQuestions.length > 0 ? (ar ? "توليد أسئلة إضافية" : "Generate more") : (ar ? "توليد الأسئلة الآن" : "Generate questions")}</>
+                          <><Sparkles className="w-4 h-4" />{questions.length > 0 ? (ar ? "توليد أسئلة إضافية" : "Generate more") : (ar ? "توليد الأسئلة الآن" : "Generate questions")}</>
                         )}
                       </button>
                     </div>
                   )}
 
-                  {classSource === "manual" && classQuestions.length === 0 && (
+                  {source === "manual" && questions.length === 0 && (
                     <div
                       className="rounded-2xl p-8 text-center transition-all cursor-pointer hover:brightness-110"
                       style={{ background: "rgba(10,58,34,0.25)", border: "1px dashed rgba(212,166,58,0.3)" }}
-                      onClick={() => setClassQuestions([emptyQuestion("mcq")])}
+                      onClick={addManualQuestion}
                     >
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(212,166,58,0.15)" }}>
                         <Plus className="w-6 h-6" style={{ color: "#f4c95d" }} />
@@ -698,17 +635,17 @@ export default function WameethCreate() {
                     </div>
                   )}
 
-                  {/* Unified review list — edit/delete before starting */}
-                  {classQuestions.length > 0 && (
+                  {/* Unified review list — edit/delete before choosing a play mode */}
+                  {questions.length > 0 && (
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between px-1">
                         <h3 className="font-black text-sm text-white flex items-center gap-2">
-                          {ar ? "أسئلة وميض الصف" : "Class-mode questions"}
-                          <span className="px-2 py-0.5 rounded-md text-xs" style={{ background: "rgba(212,166,58,0.18)", color: "#f4c95d" }}>{classQuestions.length}</span>
+                          {ar ? "أسئلة وميض" : "Wameeth questions"}
+                          <span className="px-2 py-0.5 rounded-md text-xs" style={{ background: "rgba(212,166,58,0.18)", color: "#f4c95d" }}>{questions.length}</span>
                         </h3>
                         <button
                           type="button"
-                          onClick={() => setClassQuestions(prev => [...prev, emptyQuestion("mcq")])}
+                          onClick={addManualQuestion}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
                           style={{ background: "rgba(212,166,58,0.15)", color: "#f4c95d" }}
                         >
@@ -717,7 +654,7 @@ export default function WameethCreate() {
                         </button>
                       </div>
                       <div className="space-y-3">
-                        {classQuestions.map((q, i) => (
+                        {questions.map((q, i) => (
                           <QuestionCard
                             key={i}
                             q={q}
@@ -725,18 +662,18 @@ export default function WameethCreate() {
                             allowedTypes={["mcq"]}
                             showDifficulty={false}
                             showAudio={false}
-                            onChange={updated => setClassQuestions(prev => prev.map((x, j) => j === i ? updated : x))}
-                            onDelete={() => setClassQuestions(prev => prev.filter((_, j) => j !== i))}
+                            onChange={updated => updateQuestion(i, updated)}
+                            onDelete={() => deleteQuestion(i)}
                           />
                         ))}
                       </div>
 
                       <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(10,58,34,0.3)", border: "1px solid rgba(212,166,58,0.22)" }}>
                         <div>
-                          <label className="block text-xs font-bold text-white/80 mb-1.5">{ar ? "عنوان التحدي (اختياري)" : "Challenge title (optional)"}</label>
+                          <label className="block text-xs font-bold text-white/80 mb-1.5">{ar ? "عنوان (اختياري)" : "Title (optional)"}</label>
                           <input
-                            value={classTitle}
-                            onChange={e => setClassTitle(e.target.value)}
+                            value={title}
+                            onChange={e => setTitle(e.target.value)}
                             placeholder={ar ? "يظهر في شاشة اللعبة..." : "Shown on the game screen..."}
                             className="w-full px-3.5 py-2.5 rounded-xl text-sm font-bold text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-[#f4c95d]/50"
                             style={{ background: "rgba(10,58,34,0.35)", border: "1px solid rgba(212,166,58,0.18)" }}
@@ -744,15 +681,15 @@ export default function WameethCreate() {
                         </div>
                         <button
                           type="button"
-                          onClick={startClassGame}
-                          disabled={startingClass || validClassQuestions.length < 2}
+                          onClick={() => setStep("mode")}
+                          disabled={validQuestions.length < 2}
                           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{ background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color: "#1a1008" }}
                         >
-                          {startingClass ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                          {ar ? "ابدأ وميض الصف" : "Start class mode"}
+                          <Check className="w-4 h-4" />
+                          {ar ? "التالي: اختر طريقة اللعب" : "Next: choose play mode"}
                         </button>
-                        {validClassQuestions.length < 2 && (
+                        {validQuestions.length < 2 && (
                           <p className="text-[10px] text-center text-white/50 font-medium">
                             {ar ? "يحتاج سؤالين اختيار متعدد صالحين على الأقل" : "Needs at least 2 valid MCQ questions"}
                           </p>
@@ -763,6 +700,138 @@ export default function WameethCreate() {
                 </motion.div>
               )}
             </div>
+          ) : (
+            /* ─── Step 2: play mode ─────────────────────────────────────── */
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pb-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep("prepare")}
+                  className="p-2 rounded-xl transition-colors text-white/70 hover:text-white"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                >
+                  <BackIcon className="w-4 h-4" />
+                </button>
+                <div>
+                  <h2 className="font-black text-white text-base">{ar ? "اختر طريقة اللعب" : "Choose play mode"}</h2>
+                  <p className="text-[11px] text-white/50">
+                    {ar ? `${validQuestions.length} سؤال جاهز` : `${validQuestions.length} questions ready`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMode("solo")}
+                  className="p-5 rounded-2xl text-center transition-all"
+                  style={
+                    mode === "solo"
+                      ? { background: "rgba(212,166,58,0.18)", border: "2px solid #f4c95d" }
+                      : { background: "rgba(10,58,34,0.35)", border: "2px solid rgba(212,166,58,0.22)" }
+                  }
+                >
+                  <User className="w-7 h-7 mx-auto mb-2" style={{ color: "#f4c95d" }} />
+                  <p className="font-black text-white text-sm">{ar ? "فردي" : "Solo"}</p>
+                  <p className="text-[11px] text-white/60 mt-0.5">{ar ? "كل طالب يتنافس بمفرده" : "Every student competes alone"}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode("teams")}
+                  className="p-5 rounded-2xl text-center transition-all"
+                  style={
+                    mode === "teams"
+                      ? { background: "rgba(212,166,58,0.18)", border: "2px solid #f4c95d" }
+                      : { background: "rgba(10,58,34,0.35)", border: "2px solid rgba(212,166,58,0.22)" }
+                  }
+                >
+                  <UsersRound className="w-7 h-7 mx-auto mb-2" style={{ color: "#f4c95d" }} />
+                  <p className="font-black text-white text-sm">{ar ? "فرق" : "Teams"}</p>
+                  <p className="text-[11px] text-white/60 mt-0.5">{ar ? "الطلاب يتوزعون على فرق" : "Students split into teams"}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode("classroom")}
+                  className="p-5 rounded-2xl text-center transition-all"
+                  style={
+                    mode === "classroom"
+                      ? { background: "rgba(212,166,58,0.18)", border: "2px solid #f4c95d" }
+                      : { background: "rgba(10,58,34,0.35)", border: "2px solid rgba(212,166,58,0.22)" }
+                  }
+                >
+                  <School className="w-7 h-7 mx-auto mb-2" style={{ color: "#f4c95d" }} />
+                  <p className="font-black text-white text-sm">{ar ? "وميض الصف" : "Class mode"}</p>
+                  <p className="text-[11px] text-white/60 mt-0.5">{ar ? "فريقان على شاشتين بالسبورة" : "Two teams, split-screen board"}</p>
+                </button>
+              </div>
+
+              {mode === "teams" && (
+                <div className="rounded-2xl p-4 space-y-4" style={{ background: "rgba(10,58,34,0.25)", border: "1px solid rgba(212,166,58,0.18)" }}>
+                  <div>
+                    <label className="block text-xs font-bold text-white/80 mb-2 text-center">{ar ? "عدد الفرق" : "Number of teams"}</label>
+                    <div className="flex justify-center gap-2">
+                      {[2, 3, 4, 5, 6].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setTeamCount(n)}
+                          className="w-10 h-10 rounded-xl font-black text-sm transition-all"
+                          style={
+                            teamCount === n
+                              ? { background: "#f4c95d", color: "#1a1008" }
+                              : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }
+                          }
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-white/80 mb-2 text-center">{ar ? "أسماء الفرق (اختياري)" : "Team names (optional)"}</label>
+                    <div className="space-y-2">
+                      {Array.from({ length: teamCount }).map((_, i) => (
+                        <input
+                          key={i}
+                          type="text"
+                          value={customTeamNames[i] || ""}
+                          onChange={(e) => {
+                            const next = [...customTeamNames];
+                            next[i] = e.target.value;
+                            setCustomTeamNames(next);
+                          }}
+                          placeholder={`${ar ? "الفريق" : "Team"} ${i + 1}`}
+                          maxLength={20}
+                          className="w-full px-3.5 py-2.5 rounded-xl text-sm font-bold text-white placeholder:text-white/40 outline-none focus:ring-2 focus:ring-[#f4c95d]/50"
+                          style={{ background: "rgba(10,58,34,0.35)", border: "1px solid rgba(212,166,58,0.18)" }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(mode === "solo" || mode === "teams") && (
+                <ClassSelector
+                  value={targetClass}
+                  onChange={setTargetClass}
+                  accent="#f4c95d"
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={startGame}
+                disabled={!mode || starting}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color: "#1a1008" }}
+              >
+                {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" fill="currentColor" />}
+                {ar ? "ابدأ اللعبة" : "Start game"}
+              </button>
+            </motion.div>
           )}
         </div>
       </div>

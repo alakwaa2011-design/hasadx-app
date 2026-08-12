@@ -99,7 +99,7 @@ export default function TeacherGamesPage() {
           icon: <Zap />,
           titleAr: "وميض",
           titleEn: "Wameeth",
-          to: "/game/wameeth/class",
+          to: "/game/wameeth/create",
           iconBg: "bg-fuchsia-500/10",
           iconColor: "text-fuchsia-600",
         },
