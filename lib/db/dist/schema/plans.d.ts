@@ -1,6 +1,6 @@
 /**
  * Plan catalog. NULL on any limit column means "unlimited".
- * Prices stored as integers in fils (1 KWD = 1000 fils) for KNET/Stripe compatibility.
+ * Prices stored as integers in cents USD for Lemon Squeezy compatibility.
  */
 export declare const plansTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "plans";
@@ -206,6 +206,74 @@ export declare const plansTable: import("drizzle-orm/pg-core").PgTableWithColumn
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        monthlyCredits: import("drizzle-orm/pg-core").PgColumn<{
+            name: "monthly_credits";
+            tableName: "plans";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        rolloverCap: import("drizzle-orm/pg-core").PgColumn<{
+            name: "rollover_cap";
+            tableName: "plans";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lemonVariantId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lemon_variant_id";
+            tableName: "plans";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lemonProductId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lemon_product_id";
+            tableName: "plans";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;

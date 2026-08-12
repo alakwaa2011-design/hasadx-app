@@ -512,6 +512,27 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     void trackLoginDevice(req, teacher, req.log);
     void runAfterCommit();
 
+    // Non-blocking: reset free credits if the current batch is expired/missing
+    void import("../lib/credit-service").then(async ({ CreditService }) => {
+      try {
+        const { db: dbInner } = await import("@workspace/db");
+        const { sql: sqlInner } = await import("drizzle-orm");
+        const res2 = await dbInner.execute(sqlInner`
+          SELECT 1 FROM credit_batches
+          WHERE teacher_id = ${teacher.id}
+            AND source = 'free'
+            AND amount_remaining > 0
+            AND expires_at > NOW()
+          LIMIT 1
+        `);
+        if (res2.rows.length === 0) {
+          await CreditService.resetFreeCredits(teacher.id);
+        }
+      } catch (e) {
+        req.log.warn({ err: e }, "free credit reset on login failed");
+      }
+    }).catch(() => {});
+
     res.json({
       teacher: {
         id: teacher.id,

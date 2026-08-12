@@ -1,32 +1,88 @@
 import { db, plansTable } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { logger } from "./lib/logger";
 
+/**
+ * Plan definitions — single source of truth for the seeder.
+ *
+ * monthlyCredits: credits granted each billing renewal
+ * rolloverCap:    max accumulated subscription credits (NULL = no cap / no rollover)
+ * currency:       USD for Lemon Squeezy subscriptions
+ * priceMinor:     cents USD (0 for free)
+ *
+ * lemonVariantId / lemonProductId are left NULL here; admins set them via
+ * the Lemon Squeezy dashboard and the admin panel after deployment.
+ */
 const PLANS = [
-  { code: "free",   nameAr: "مجاني",      nameEn: "Free",   priceMinor: 0,     billingPeriodDays: 0,  maxHomeworksPerMonth: 3,    aiUsageDailyLimit: 20, maxUsers: 1,    sortOrder: 10 },
-  { code: "basic",  nameAr: "الأساسي",   nameEn: "Basic",  priceMinor: 2500,  billingPeriodDays: 30, maxHomeworksPerMonth: 20,   aiUsageDailyLimit: 50, maxUsers: 1,    sortOrder: 20 },
-  { code: "pro",    nameAr: "الاحترافي", nameEn: "Pro",    priceMinor: 6500,  billingPeriodDays: 30, maxHomeworksPerMonth: null, aiUsageDailyLimit: null, maxUsers: 1,  sortOrder: 30 },
-  { code: "school", nameAr: "مدرسة",     nameEn: "School", priceMinor: 25000, billingPeriodDays: 30, maxHomeworksPerMonth: null, aiUsageDailyLimit: null, maxUsers: null, sortOrder: 40 },
+  {
+    code: "free",
+    nameAr: "مجاني",
+    nameEn: "Free",
+    priceMinor: 0,
+    currency: "USD",
+    billingPeriodDays: 0,
+    maxHomeworksPerMonth: 3,
+    aiUsageDailyLimit: 20,
+    maxUsers: 1,
+    monthlyCredits: 50,
+    rolloverCap: null as number | null,
+    sortOrder: 10,
+  },
+  {
+    code: "basic",
+    nameAr: "الأساسي",
+    nameEn: "Basic",
+    priceMinor: 499,
+    currency: "USD",
+    billingPeriodDays: 30,
+    maxHomeworksPerMonth: 20,
+    aiUsageDailyLimit: 50,
+    maxUsers: 1,
+    monthlyCredits: 250,
+    rolloverCap: 500,
+    sortOrder: 20,
+  },
+  {
+    code: "pro",
+    nameAr: "الاحترافي",
+    nameEn: "Pro",
+    priceMinor: 999,
+    currency: "USD",
+    billingPeriodDays: 30,
+    maxHomeworksPerMonth: null as number | null,
+    aiUsageDailyLimit: null as number | null,
+    maxUsers: 1,
+    monthlyCredits: 600,
+    rolloverCap: 1200,
+    sortOrder: 30,
+  },
 ];
 
 export async function seedPlansIfMissing(): Promise<void> {
   try {
-    const existing = await db.select({ code: plansTable.code }).from(plansTable);
-    const have = new Set(existing.map((r) => r.code));
-    const missing = PLANS.filter((p) => !have.has(p.code));
-    if (missing.length === 0) return;
-    for (const p of missing) {
+    for (const p of PLANS) {
+      // INSERT new plans; UPDATE credits/cap columns for existing ones so the
+      // numbers stay consistent even if a plan was seeded before credits existed.
       await db.execute(sql`
-        INSERT INTO plans (code, name_ar, name_en, price_minor, currency, billing_period_days,
-                           max_students, max_classes, max_homeworks_per_month, ai_usage_daily_limit,
-                           max_users, sort_order, is_active, created_at, updated_at)
-        VALUES (${p.code}, ${p.nameAr}, ${p.nameEn}, ${p.priceMinor}, 'KWD', ${p.billingPeriodDays},
-                NULL, NULL, ${p.maxHomeworksPerMonth}, ${p.aiUsageDailyLimit},
-                ${p.maxUsers}, ${p.sortOrder}, true, NOW(), NOW())
-        ON CONFLICT (code) DO NOTHING
+        INSERT INTO plans (
+          code, name_ar, name_en, price_minor, currency, billing_period_days,
+          max_students, max_classes, max_homeworks_per_month, ai_usage_daily_limit,
+          max_users, monthly_credits, rollover_cap,
+          sort_order, is_active, created_at, updated_at
+        ) VALUES (
+          ${p.code}, ${p.nameAr}, ${p.nameEn}, ${p.priceMinor}, ${p.currency},
+          ${p.billingPeriodDays}, NULL, NULL,
+          ${p.maxHomeworksPerMonth}, ${p.aiUsageDailyLimit}, ${p.maxUsers},
+          ${p.monthlyCredits}, ${p.rolloverCap},
+          ${p.sortOrder}, true, NOW(), NOW()
+        )
+        ON CONFLICT (code) DO UPDATE
+          SET monthly_credits = EXCLUDED.monthly_credits,
+              rollover_cap    = EXCLUDED.rollover_cap,
+              updated_at      = NOW()
       `);
     }
-    logger.info({ seeded: missing.map((p) => p.code) }, "[seedPlans] plans seeded");
+    logger.info("[seedPlans] plans seeded/updated");
   } catch (err) {
     logger.error({ err }, "[seedPlans] failed");
   }

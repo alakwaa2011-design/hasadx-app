@@ -1,7 +1,7 @@
 /**
  * Active subscription for a teacher. Exactly one row per teacher (UNIQUE).
- * Status: "active" | "canceled" | "expired" | "trialing".
- * expiresAt = NULL means perpetual (free plan or lifetime).
+ * Status: "active" | "canceled" | "expired" | "past_due".
+ * Free plan has no expiresAt and no external subscription.
  */
 export declare const subscriptionsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "subscriptions";
@@ -94,6 +94,74 @@ export declare const subscriptionsTable: import("drizzle-orm/pg-core").PgTableWi
         }, {}, {}>;
         expiresAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "expires_at";
+            tableName: "subscriptions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        currentPeriodEnd: import("drizzle-orm/pg-core").PgColumn<{
+            name: "current_period_end";
+            tableName: "subscriptions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        cancelledAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "cancelled_at";
+            tableName: "subscriptions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        paymentStatus: import("drizzle-orm/pg-core").PgColumn<{
+            name: "payment_status";
+            tableName: "subscriptions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lastCreditedPeriodEnd: import("drizzle-orm/pg-core").PgColumn<{
+            name: "last_credited_period_end";
             tableName: "subscriptions";
             dataType: "date";
             columnType: "PgTimestamp";

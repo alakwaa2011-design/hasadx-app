@@ -896,6 +896,145 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "solo_challenges.allowed_classes column migration failed");
   }
+
+  // ── Subscriptions system: new columns ─────────────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE plans
+        ADD COLUMN IF NOT EXISTS monthly_credits  INTEGER,
+        ADD COLUMN IF NOT EXISTS rollover_cap     INTEGER,
+        ADD COLUMN IF NOT EXISTS lemon_variant_id TEXT,
+        ADD COLUMN IF NOT EXISTS lemon_product_id TEXT
+    `);
+    await db.execute(sql`
+      ALTER TABLE subscriptions
+        ADD COLUMN IF NOT EXISTS current_period_end       TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS cancelled_at             TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS payment_status           TEXT DEFAULT 'active',
+        ADD COLUMN IF NOT EXISTS last_credited_period_end TIMESTAMP
+    `);
+    await db.execute(sql`
+      ALTER TABLE credit_accounts
+        ADD COLUMN IF NOT EXISTS subscription_balance INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS free_balance         INTEGER NOT NULL DEFAULT 0
+    `);
+    logger.info("Subscriptions system columns migrated");
+  } catch (err) {
+    logger.error(err, "Subscriptions system column migration failed");
+  }
+
+  // ── Credit Batches — Source of Truth for credits ───────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_batches (
+        id               SERIAL PRIMARY KEY,
+        teacher_id       INTEGER NOT NULL,
+        source           TEXT NOT NULL,
+        amount           INTEGER NOT NULL,
+        amount_remaining INTEGER NOT NULL,
+        expires_at       TIMESTAMP,
+        reference_id     TEXT,
+        plan_code        TEXT,
+        created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at       TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_batches_teacher_idx  ON credit_batches(teacher_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_batches_expires_idx  ON credit_batches(teacher_id, expires_at)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_batches_source_idx   ON credit_batches(teacher_id, source)`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_hold_items (
+        id       SERIAL PRIMARY KEY,
+        hold_id  INTEGER NOT NULL,
+        batch_id INTEGER NOT NULL,
+        amount   INTEGER NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_hold_items_hold_idx  ON credit_hold_items(hold_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS credit_hold_items_batch_idx ON credit_hold_items(batch_id)`);
+
+    logger.info("credit_batches and credit_hold_items tables ready");
+  } catch (err) {
+    logger.error(err, "credit_batches / credit_hold_items migration failed");
+  }
+
+  // ── Credit Batches: seed existing balances ─────────────────────────────────
+  // Converts legacy bucket balances in credit_accounts into credit_batches rows.
+  // Uses seed_completions so this runs ONCE; never re-seeds.
+  try {
+    const seedKey = "credit_batches_seed_v1";
+    const done = await db.execute(sql`SELECT 1 FROM seed_completions WHERE key = ${seedKey}`);
+    if (done.rows.length === 0) {
+      // Seed batch rows for every teacher who has any balance in the old buckets.
+      // order: promo → paid → earned (matches old bucket semantics)
+      await db.execute(sql`
+        INSERT INTO credit_batches (teacher_id, source, amount, amount_remaining, expires_at, reference_id, created_at, updated_at)
+        SELECT teacher_id, 'promo', promo_balance, promo_balance, NULL, 'legacy_seed', NOW(), NOW()
+        FROM credit_accounts
+        WHERE promo_balance > 0
+      `);
+      await db.execute(sql`
+        INSERT INTO credit_batches (teacher_id, source, amount, amount_remaining, expires_at, reference_id, created_at, updated_at)
+        SELECT teacher_id, 'purchased', paid_balance, paid_balance, NULL, 'legacy_seed', NOW(), NOW()
+        FROM credit_accounts
+        WHERE paid_balance > 0
+      `);
+      await db.execute(sql`
+        INSERT INTO credit_batches (teacher_id, source, amount, amount_remaining, expires_at, reference_id, created_at, updated_at)
+        SELECT teacher_id, 'earned', earned_balance, earned_balance, NULL, 'legacy_seed', NOW(), NOW()
+        FROM credit_accounts
+        WHERE earned_balance > 0
+      `);
+      // Grant a free batch (50 credits, 30-day TTL) for every teacher without one
+      await db.execute(sql`
+        INSERT INTO credit_batches (teacher_id, source, amount, amount_remaining, expires_at, reference_id, created_at, updated_at)
+        SELECT ca.teacher_id, 'free', 50, 50, NOW() + INTERVAL '30 days', 'initial_free', NOW(), NOW()
+        FROM credit_accounts ca
+        WHERE NOT EXISTS (
+          SELECT 1 FROM credit_batches cb WHERE cb.teacher_id = ca.teacher_id AND cb.source = 'free'
+        )
+      `);
+      // Also sync free_balance and subscription_balance caches for seeded teachers
+      await db.execute(sql`
+        UPDATE credit_accounts ca
+        SET free_balance = COALESCE((
+              SELECT SUM(amount_remaining)
+              FROM credit_batches cb
+              WHERE cb.teacher_id = ca.teacher_id AND cb.source = 'free'
+                AND (cb.expires_at IS NULL OR cb.expires_at > NOW())
+            ), 0)
+      `);
+      await db.execute(sql`INSERT INTO seed_completions (key) VALUES (${seedKey})`);
+      logger.info("[seed] credit_batches seeded from existing balances");
+    }
+  } catch (err) {
+    logger.error(err, "credit_batches seed failed");
+  }
+
+  // ── Subscriptions: seed free plan rows for every teacher without one ────────
+  try {
+    const seedKey = "subscriptions_free_seed_v1";
+    const done = await db.execute(sql`SELECT 1 FROM seed_completions WHERE key = ${seedKey}`);
+    if (done.rows.length === 0) {
+      await db.execute(sql`
+        INSERT INTO subscriptions (teacher_id, plan_id, status, started_at, created_at, updated_at)
+        SELECT t.id,
+               (SELECT id FROM plans WHERE code = 'free' LIMIT 1),
+               'active',
+               NOW(), NOW(), NOW()
+        FROM teachers t
+        WHERE NOT EXISTS (
+          SELECT 1 FROM subscriptions s WHERE s.teacher_id = t.id
+        )
+        AND (SELECT id FROM plans WHERE code = 'free' LIMIT 1) IS NOT NULL
+      `);
+      await db.execute(sql`INSERT INTO seed_completions (key) VALUES (${seedKey})`);
+      logger.info("[seed] free-plan subscriptions seeded for existing teachers");
+    }
+  } catch (err) {
+    logger.error(err, "subscriptions free-plan seed failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

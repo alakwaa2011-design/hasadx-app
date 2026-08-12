@@ -79,6 +79,8 @@ export * from "./credit-tool-prices";
 export * from "./credit-accounts";
 export * from "./credit-transactions";
 export * from "./credit-holds";
+export * from "./credit-hold-items";
+export * from "./credit-batches";
 export * from "./credit-packages";
 export * from "./credit-purchases";
 export * from "./webhook-events";

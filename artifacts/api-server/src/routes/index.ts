@@ -68,6 +68,7 @@ import secretGameRouter from "./secret-game";
 import directMessagesRouter from "./direct-messages";
 import parentMessagesRouter from "./parent-messages";
 import whiteboardRouter from "./whiteboard";
+import subscriptionsRouter from "./subscriptions";
 
 const router: IRouter = Router();
 
@@ -90,6 +91,7 @@ router.use(feedbackRouter);
 router.use(adminRouter);
 router.use("/admin/credits", creditsAdminRouter);
 router.use(creditPurchasesRouter);
+router.use(subscriptionsRouter);
 router.use(lemonWebhookRouter);
 router.use(questionBankRouter);
 router.use(gameHistoryRouter);

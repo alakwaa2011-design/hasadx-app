@@ -4,8 +4,8 @@ import { plansTable } from "./plans";
 
 /**
  * Active subscription for a teacher. Exactly one row per teacher (UNIQUE).
- * Status: "active" | "canceled" | "expired" | "trialing".
- * expiresAt = NULL means perpetual (free plan or lifetime).
+ * Status: "active" | "canceled" | "expired" | "past_due".
+ * Free plan has no expiresAt and no external subscription.
  */
 export const subscriptionsTable = pgTable(
   "subscriptions",
@@ -19,9 +19,21 @@ export const subscriptionsTable = pgTable(
       .references(() => plansTable.id, { onDelete: "restrict" }),
     status: text("status").notNull().default("active"),
     startedAt: timestamp("started_at").defaultNow().notNull(),
-    /** NULL means no expiration */
+    /** NULL means no expiration (free plan) */
     expiresAt: timestamp("expires_at"),
-    /** Future KNET/Stripe integration: provider name + external subscription/customer id */
+    /** End of current paid billing period. Used for rollover and credit expiry. */
+    currentPeriodEnd: timestamp("current_period_end"),
+    /** Set when user requests cancellation. Subscription stays active until currentPeriodEnd. */
+    cancelledAt: timestamp("cancelled_at"),
+    /** Lemon Squeezy payment status: 'active' | 'past_due' | 'unpaid' */
+    paymentStatus: text("payment_status").default("active"),
+    /**
+     * The currentPeriodEnd for which subscription credits were last granted.
+     * Guards against double-granting the same period via both
+     * subscription_payment_success AND subscription_payment_recovered.
+     * All three steps (check, grant, record) run inside one locked transaction.
+     */
+    lastCreditedPeriodEnd: timestamp("last_credited_period_end"),
     paymentProvider: text("payment_provider"),
     externalSubscriptionId: text("external_subscription_id"),
     externalCustomerId: text("external_customer_id"),
