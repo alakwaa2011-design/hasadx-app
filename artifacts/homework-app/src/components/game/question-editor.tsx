@@ -1,7 +1,8 @@
 /**
  * Shared manual/AI question editing UI.
- * Originally built for the solo-challenge creator; also reused by وميض (Wameedh)
- * class mode, which only supports "mcq" — see `allowedTypes`/`showDifficulty`/`showAudio`.
+ * Originally built for the solo-challenge creator; also reused by وميض (Wameedh)'s
+ * question-prep step for all three play modes. `allowedTypes`/`showDifficulty`/
+ * `showAudio` let a caller trim the editor down for contexts with fewer needs.
  */
 import { useState } from "react";
 import {
