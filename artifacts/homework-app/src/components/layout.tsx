@@ -539,7 +539,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     >
                       {lang === "ar" ? "كيف تعمل؟" : "How it works?"}
                     </a>
-                    <SocialLinksBar links={theme.socialLinks} variant="icon" />
+                    <SocialLinksBar
+                      links={theme.socialLinks.filter(link => link.id !== "instagram")}
+                      variant="icon"
+                    />
                     <div className="h-5 w-px bg-border mx-1" />
                     <div className="flex gap-2 flex-row-reverse">
                       <Link
