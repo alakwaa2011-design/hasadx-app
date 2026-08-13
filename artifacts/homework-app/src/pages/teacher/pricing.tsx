@@ -17,6 +17,17 @@ import {
   Zap,
   BadgeDollarSign,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -47,6 +58,7 @@ interface CurrentSub {
   status: string;
   payment_status: string;
   current_period_end: string | null;
+  cancelled_at: string | null;
 }
 
 const PLAN_ICONS: Record<string, any> = {
@@ -83,6 +95,7 @@ export default function PricingPage() {
   const [currentSub, setCurrentSub] = useState<CurrentSub | null>(null);
   const [loading, setLoading]       = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
+  const [cancelling,  setCancelling]  = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -114,6 +127,25 @@ export default function PricingPage() {
       toast(err.message, { className: "text-red-500" });
     } finally {
       setCheckingOut(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      const r = await apiFetch("/api/subscriptions/cancel", { method: "POST" });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as any).message || "تعذر إلغاء الاشتراك");
+      }
+      toast("تم إلغاء الاشتراك. ستبقى مشتركاً حتى نهاية الدورة المدفوعة الحالية.");
+      // Reload subscription state
+      const subData = await apiFetch("/api/subscriptions/me").then((r) => r.json());
+      setCurrentSub(subData.subscription ?? null);
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -236,15 +268,65 @@ export default function PricingPage() {
                   </ul>
 
                   {/* CTA */}
-                  <div className="mt-auto">
+                  <div className="mt-auto space-y-2">
                     {isCurrent ? (
-                      <Button
-                        variant={isPro ? "secondary" : "outline"}
-                        className="w-full"
-                        onClick={() => setLocation("/teacher/credits")}
-                      >
-                        إدارة الاشتراك
-                      </Button>
+                      <>
+                        <Button
+                          variant={isPro ? "secondary" : "outline"}
+                          className="w-full"
+                          onClick={() => setLocation("/teacher/credits")}
+                        >
+                          إدارة الاشتراك
+                        </Button>
+                        {/* Cancel — only for paid plans not already cancelled */}
+                        {!currentSub?.cancelled_at && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                type="button"
+                                className={[
+                                  "w-full text-xs underline underline-offset-2 transition-colors",
+                                  isPro
+                                    ? "text-white/50 hover:text-white/80"
+                                    : "text-muted-foreground hover:text-red-600",
+                                ].join(" ")}
+                              >
+                                إلغاء الاشتراك
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent dir="rtl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>تأكيد إلغاء الاشتراك</AlertDialogTitle>
+                                <AlertDialogDescription className="space-y-2 text-right">
+                                  <span className="block">
+                                    {currentSub?.current_period_end
+                                      ? `ستبقى مشتركاً حتى ${new Date(currentSub.current_period_end).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })}.`
+                                      : "ستبقى مشتركاً حتى نهاية الدورة المدفوعة الحالية."}
+                                  </span>
+                                  <span className="block">
+                                    لن تحصل على رصيد اشتراك جديد بعد هذا التاريخ. رصيدك الحالي ورصيد الشراء لن يتأثرا.
+                                  </span>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>رجوع</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={handleCancel}
+                                  disabled={cancelling}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  {cancelling ? (
+                                    <span className="flex items-center gap-2">
+                                      <Loader2 size={14} className="animate-spin" />
+                                      جارٍ الإلغاء…
+                                    </span>
+                                  ) : "تأكيد الإلغاء"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </>
                     ) : isFree ? (
                       <Button
                         variant="outline"

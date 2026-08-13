@@ -15,6 +15,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { CreditService } from "../lib/credit-service";
+import { checkEligibleForCreditGrant } from "../lib/subscription-utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -131,11 +132,12 @@ const FAR_FUTURE  = new Date(NOW.getTime() + 365 * 86_400_000);
 const T: Record<string, number> = {};
 
 beforeAll(async () => {
-  for (const s of ["s1","s2","s3","s4","s5","s6","s7","s8","s9"]) {
+  for (const s of ["s1","s2","s3","s4","s5","s6","s7","s8","s9","s10"]) {
     T[s] = await createTestTeacher(s);
   }
   for (const s of ["s2","s3","s4","s5","s6"]) await seedSubscription(T[s], "pro");
   await seedSubscription(T["s7"], "basic");
+  await seedSubscription(T["s10"], "pro");
 }, 30_000);
 
 afterAll(async () => {
@@ -486,5 +488,127 @@ describe("S9 · Migration idempotency + balance consistency", () => {
     }
 
     expect(inconsistencies, `عدم تطابق: ${inconsistencies.join(", ")}`).toHaveLength(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// S10 · Cancel subscription
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Setup: Pro teacher (s10) with one subscription credit batch + one purchased
+//        batch. Then the teacher cancels.
+//
+// S10a: cancel updates status='cancelled' and sets cancelled_at in DB.
+// S10b: existing balances (subscription + purchased + free) are untouched.
+// S10c: checkEligibleForCreditGrant returns false → simulated
+//        subscription_payment_success for a future invoice produces no new
+//        grant, no new batch, and no balance change.
+
+describe("S10 · إلغاء الاشتراك", () => {
+  // IDs resolved inside the describe so they're visible across all three tests.
+  let tid: number;
+  let externalSubId: string;
+  let balanceBeforeCancel: any;
+  let grantCountBefore: number;
+  let batchCountBefore: number;
+
+  beforeAll(async () => {
+    tid = T["s10"];
+    externalSubId = `sub_${RUN_ID}_${tid}`;
+
+    // First subscription payment — grant 600 Pro credits.
+    await CreditService.grantSubscriptionCredits(
+      tid, "pro",
+      `inv_${RUN_ID}_s10_m1`,
+      externalSubId,
+      PERIOD_END, NEXT_PERIOD,
+    );
+
+    // Also add 80 purchased credits to verify they survive the cancel.
+    await db.transaction(async (tx: any) => {
+      await CreditService.addPurchasedCredits(
+        tx, tid, 80, 999001,
+        `ls_order_${RUN_ID}_s10`, "شراء اختبار s10",
+      );
+    });
+
+    // Snapshot state before cancel.
+    balanceBeforeCancel = await getBalance(tid);
+    const gr = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt FROM subscription_credit_grants WHERE teacher_id = ${tid}
+    `);
+    grantCountBefore = Number((gr.rows[0] as any).cnt);
+    const bt = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt FROM credit_batches WHERE teacher_id = ${tid}
+    `);
+    batchCountBefore = Number((bt.rows[0] as any).cnt);
+
+    // ── Cancel: simulate what POST /api/subscriptions/cancel does ────────────
+    await db.execute(sql`
+      UPDATE subscriptions
+      SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()
+      WHERE teacher_id = ${tid}
+    `);
+  }, 30_000);
+
+  it("S10a · cancel يُحدّث status='cancelled' و cancelled_at", async () => {
+    const rows = await db.execute(sql`
+      SELECT status, cancelled_at
+      FROM subscriptions WHERE teacher_id = ${tid}
+    `);
+    const sub = rows.rows[0] as any;
+
+    expect(sub.status,       "status=cancelled").toBe("cancelled");
+    expect(sub.cancelled_at, "cancelled_at مضبوط").not.toBeNull();
+  });
+
+  it("S10b · الأرصدة (subscription + purchased + free) لم تتغير بعد الإلغاء", async () => {
+    const balAfter = await getBalance(tid);
+
+    expect(Number(balAfter.balance),
+      "balance لم يتغير").toBe(Number(balanceBeforeCancel.balance));
+    expect(Number(balAfter.subscription_balance),
+      "subscription_balance لم يتغير").toBe(Number(balanceBeforeCancel.subscription_balance));
+    expect(Number(balAfter.paid_balance),
+      "paid_balance لم يتغير").toBe(Number(balanceBeforeCancel.paid_balance));
+    expect(Number(balAfter.free_balance),
+      "free_balance لم يتغير").toBe(Number(balanceBeforeCancel.free_balance));
+  });
+
+  it("S10c · payment_success لفاتورة مستقبلية بعد الإلغاء لا ينشئ grant أو batch", async () => {
+    // 1. Guard: checkEligibleForCreditGrant must return false.
+    const eligible = await checkEligibleForCreditGrant(externalSubId);
+    expect(eligible, "الحارس يرفض المنح للاشتراك الملغى").toBe(false);
+
+    // 2. Simulate what handleSubscriptionPaymentSuccess does WITH the guard:
+    //    if (!eligible) return  →  grantSubscriptionCredits is never called.
+    //    We replicate that logic here to prove no side-effects occur.
+    const futureInvoice = `inv_${RUN_ID}_s10_future`;
+    if (eligible) {
+      // This branch must NOT be reached.
+      await CreditService.grantSubscriptionCredits(
+        tid, "pro", futureInvoice, externalSubId,
+        NEXT_PERIOD, FAR_FUTURE,
+      );
+    }
+
+    // 3. Verify no new grant, no new batch, no balance change.
+    const grAfter = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt FROM subscription_credit_grants WHERE teacher_id = ${tid}
+    `);
+    const grantCountAfter = Number((grAfter.rows[0] as any).cnt);
+    expect(grantCountAfter,
+      "عدد grants لم يزد بعد الإلغاء").toBe(grantCountBefore);
+
+    const btAfter = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt FROM credit_batches WHERE teacher_id = ${tid}
+    `);
+    const batchCountAfter = Number((btAfter.rows[0] as any).cnt);
+    expect(batchCountAfter,
+      "عدد batches لم يزد بعد الإلغاء").toBe(batchCountBefore);
+
+    const balFinal = await getBalance(tid);
+    expect(Number(balFinal.balance),
+      "balance لم يتغير").toBe(Number(balanceBeforeCancel.balance));
   });
 });

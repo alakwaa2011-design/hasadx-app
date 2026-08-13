@@ -18,6 +18,7 @@ import {
 import { eq, and, sql } from "drizzle-orm";
 import { verifySignature } from "../lib/lemonsqueezy";
 import { CreditService } from "../lib/credit-service";
+import { checkEligibleForCreditGrant } from "../lib/subscription-utils";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -434,6 +435,18 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
   const teacherId = await resolveTeacherFromSubscription(subscriptionId);
   if (!teacherId) {
     logger.warn({ subscriptionId }, "subscription_payment_success: subscription not found");
+    return;
+  }
+
+  // Guard: do not grant credits for locally-cancelled subscriptions.
+  // Lemon Squeezy may still fire payment events during the grace period after
+  // a user-initiated cancel; this ensures no new credit batch is created.
+  const eligible = await checkEligibleForCreditGrant(subscriptionId);
+  if (!eligible) {
+    logger.info(
+      { invoiceId, subscriptionId, teacherId },
+      "subscription_payment_success: skipped — subscription is cancelled locally",
+    );
     return;
   }
 

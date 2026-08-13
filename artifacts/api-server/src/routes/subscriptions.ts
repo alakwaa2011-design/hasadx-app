@@ -4,6 +4,7 @@
  * GET  /api/subscriptions/plans     — list available plans
  * GET  /api/subscriptions/me        — current teacher subscription + balance
  * POST /api/subscriptions/checkout  — create Lemon Squeezy checkout URL
+ * POST /api/subscriptions/cancel    — cancel active subscription (end of period)
  */
 import { Router, type IRouter } from "express";
 import { db, plansTable, subscriptionsTable } from "@workspace/db";
@@ -170,6 +171,100 @@ router.post("/subscriptions/checkout", async (req, res) => {
     res.json({ checkoutUrl });
   } catch (err) {
     logger.error(err, "POST /subscriptions/checkout failed");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
+// ─── Cancel subscription ──────────────────────────────────────────────────────
+// Cancels at end of current billing period (not immediately).
+// If Lemon Squeezy is configured: calls PATCH /v1/subscriptions/:id {cancelled:true}.
+// If not configured (dev/test): cancels locally only.
+
+router.post("/subscriptions/cancel", async (req, res) => {
+  const teacherId = req.session?.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "غير مصرح" });
+    return;
+  }
+  try {
+    // Load current subscription
+    const rows = await db.execute(sql`
+      SELECT s.id, s.status, s.external_subscription_id, s.current_period_end,
+             p.code AS plan_code
+      FROM subscriptions s
+      JOIN plans p ON s.plan_id = p.id
+      WHERE s.teacher_id = ${teacherId}
+      LIMIT 1
+    `);
+    const sub = rows.rows[0] as any;
+
+    if (!sub) {
+      res.status(404).json({ message: "لا يوجد اشتراك" });
+      return;
+    }
+    if (sub.plan_code === "free") {
+      res.status(400).json({ message: "لا يمكن إلغاء الباقة المجانية" });
+      return;
+    }
+    // Accept both spellings used across the codebase ('cancelled' / 'canceled')
+    if (sub.status === "cancelled" || sub.status === "canceled") {
+      res.status(400).json({ message: "الاشتراك ملغى بالفعل" });
+      return;
+    }
+
+    // ── Call Lemon Squeezy API if configured ───────────────────────────────
+    const LS_API_KEY = process.env["LEMON_SQUEEZY_API_KEY"];
+    const lsSubId   = sub.external_subscription_id as string | null;
+
+    if (LS_API_KEY && lsSubId) {
+      const lsRes = await fetch(
+        `https://api.lemonsqueezy.com/v1/subscriptions/${lsSubId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization:  `Bearer ${LS_API_KEY}`,
+            "Content-Type": "application/vnd.api+json",
+            Accept:         "application/vnd.api+json",
+          },
+          body: JSON.stringify({
+            data: {
+              type:       "subscriptions",
+              id:         String(lsSubId),
+              attributes: { cancelled: true },
+            },
+          }),
+        },
+      );
+      if (!lsRes.ok) {
+        const errBody = await lsRes.text().catch(() => "");
+        logger.error(
+          { status: lsRes.status, body: errBody },
+          "LS cancel subscription failed",
+        );
+        res.status(502).json({ message: "فشل إلغاء الاشتراك عبر خدمة الدفع" });
+        return;
+      }
+      logger.info({ teacherId, lsSubId }, "LS subscription cancel request sent");
+    } else {
+      // Dev / test mode — cancel locally only
+      logger.info(
+        { teacherId },
+        "cancel: Lemon Squeezy not configured — local cancel only",
+      );
+    }
+
+    // ── Update DB ──────────────────────────────────────────────────────────
+    await db.execute(sql`
+      UPDATE subscriptions
+      SET status       = 'cancelled',
+          cancelled_at = NOW(),
+          updated_at   = NOW()
+      WHERE teacher_id = ${teacherId}
+    `);
+
+    res.json({ success: true, currentPeriodEnd: sub.current_period_end ?? null });
+  } catch (err) {
+    logger.error(err, "POST /subscriptions/cancel failed");
     res.status(500).json({ message: "حدث خطأ" });
   }
 });
