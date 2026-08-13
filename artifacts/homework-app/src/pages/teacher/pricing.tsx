@@ -82,7 +82,7 @@ export default function PricingPage() {
   const PLAN_FEATURES: Record<string, string[]> = {
     free:  [p.freeAiNote],
     basic: [p.basicAiTools, p.basicReports, p.basicParents],
-    pro:   [p.proBasicAll, p.proParents, p.proPriority, p.proSupport],
+    pro:   [p.proBasicAll, p.basicParents],
   };
 
   useEffect(() => {
@@ -244,10 +244,11 @@ export default function PricingPage() {
                       </div>
                     )}
                     <p className={["text-sm mt-0.5", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
-                      {plan.monthlyCredits} {p.pointsMonthly}
-                      {plan.rolloverCap
-                        ? ` · ${p.rolloverUntil} ${plan.rolloverCap}`
-                        : ` (${p.noRollover})`}
+                      {isFree
+                        ? `${plan.monthlyCredits} ${p.freeWelcomePoints}`
+                        : plan.rolloverCap
+                          ? `${plan.monthlyCredits} ${p.pointsMonthly} · ${p.rolloverUntil} ${plan.rolloverCap}`
+                          : `${plan.monthlyCredits} ${p.pointsMonthly} (${p.noRollover})`}
                     </p>
                   </div>
 
@@ -266,7 +267,13 @@ export default function PricingPage() {
 
                   {/* CTA */}
                   <div className="mt-auto space-y-2">
-                    {isCurrent ? (
+                    {isCurrent && isFree ? (
+                      /* Free is current plan — just show a label, no manage/cancel */
+                      <Button variant="outline" className="w-full" disabled>
+                        {p.currentPlan}
+                      </Button>
+                    ) : isCurrent ? (
+                      /* Paid plan is current */
                       <>
                         <Button
                           variant={isPro ? "secondary" : "outline"}
@@ -325,6 +332,7 @@ export default function PricingPage() {
                         )}
                       </>
                     ) : isFree ? (
+                      /* Non-current free plan slot (shouldn't normally appear, but guard it) */
                       <Button variant="outline" className="w-full" disabled>
                         {p.starterPlan}
                       </Button>
