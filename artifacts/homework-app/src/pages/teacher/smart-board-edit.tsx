@@ -40,14 +40,23 @@ interface LessonPlan {
   keyPoints?: string[];
 }
 
-const CHALK_COLORS = [
-  { value:"white",  label:"أبيض",   dot:"#f2ede0" },
-  { value:"yellow", label:"أصفر",   dot:"#f5d76e" },
-  { value:"green",  label:"أخضر",   dot:"#a8e6b0" },
-  { value:"pink",   label:"وردي",   dot:"#f4a0a8" },
-  { value:"blue",   label:"أزرق",   dot:"#9fc8f5" },
-  { value:"orange", label:"برتقالي",dot:"#f5b87a" },
-  { value:"purple", label:"بنفسجي", dot:"#c4a8f0" },
+const CHALK_COLORS_AR = [
+  { value:"white",  label:"أبيض",    dot:"#f2ede0" },
+  { value:"yellow", label:"أصفر",    dot:"#f5d76e" },
+  { value:"green",  label:"أخضر",    dot:"#a8e6b0" },
+  { value:"pink",   label:"وردي",    dot:"#f4a0a8" },
+  { value:"blue",   label:"أزرق",    dot:"#9fc8f5" },
+  { value:"orange", label:"برتقالي", dot:"#f5b87a" },
+  { value:"purple", label:"بنفسجي",  dot:"#c4a8f0" },
+];
+const CHALK_COLORS_EN = [
+  { value:"white",  label:"White",   dot:"#f2ede0" },
+  { value:"yellow", label:"Yellow",  dot:"#f5d76e" },
+  { value:"green",  label:"Green",   dot:"#a8e6b0" },
+  { value:"pink",   label:"Pink",    dot:"#f4a0a8" },
+  { value:"blue",   label:"Blue",    dot:"#9fc8f5" },
+  { value:"orange", label:"Orange",  dot:"#f5b87a" },
+  { value:"purple", label:"Purple",  dot:"#c4a8f0" },
 ];
 
 const ACTION_COLOR: Record<string, string> = {
@@ -58,13 +67,17 @@ const ACTION_COLOR: Record<string, string> = {
   showImage: "#0ea5e9", drawConnector: "#f59e0b", showChart: "#a855f7",
 };
 
-const ACTION_LABEL: Record<string, string> = {
-  writeText: "نص", writeMath: "معادلة", bullet: "نقطة",
-  highlight: "تظليل", underline: "تسطير", drawArrow: "سهم",
-  drawCircle: "دائرة", showDiagram: "مخطط", clearBoard: "مسح",
-  erase: "حذف", pause: "إيقاف مؤقت", bullet2: "نقطة٢", writeTitle: "عنوان",
-  showImage: "صورة", drawConnector: "ربط", showChart: "مخطط بياني",
-};
+function getActionLabel(type: string, isAr: boolean): string {
+  const m: Record<string, [string, string]> = {
+    writeText: ["نص","Text"], writeMath: ["معادلة","Math"], bullet: ["نقطة","Bullet"],
+    highlight: ["تظليل","Highlight"], underline: ["تسطير","Underline"], drawArrow: ["سهم","Arrow"],
+    drawCircle: ["دائرة","Circle"], showDiagram: ["مخطط","Diagram"], clearBoard: ["مسح","Clear"],
+    erase: ["حذف","Erase"], pause: ["إيقاف مؤقت","Pause"], bullet2: ["نقطة٢","Bullet 2"],
+    writeTitle: ["عنوان","Title"], showImage: ["صورة","Image"],
+    drawConnector: ["ربط","Connect"], showChart: ["مخطط بياني","Chart"],
+  };
+  return isAr ? (m[type]?.[0] ?? type) : (m[type]?.[1] ?? type);
+}
 
 function getActionText(a: BoardAction): string {
   return a.content ?? a.label ?? a.description ?? "";
@@ -102,6 +115,9 @@ function ActionRow({
   onDrop: () => void;
   isDragOver: boolean;
 }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const CHALK_COLORS = isAr ? CHALK_COLORS_AR : CHALK_COLORS_EN;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const color = ACTION_COLOR[action.type] ?? "#9ca3af";
@@ -137,7 +153,7 @@ function ActionRow({
       <div className="flex items-start gap-3">
         <div 
           className="cursor-grab text-slate-300 hover:text-emerald-500 dark:text-slate-600 dark:hover:text-emerald-400 pt-1 shrink-0 transition-colors"
-          title="اسحب لإعادة الترتيب"
+          title={isAr ? "اسحب لإعادة الترتيب" : "Drag to reorder"}
         >
           <GripVertical size={16} />
         </div>
@@ -145,7 +161,7 @@ function ActionRow({
           className="shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-black mt-1 whitespace-nowrap"
           style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}
         >
-          {ACTION_LABEL[action.type] ?? action.type}
+          {getActionLabel(action.type, isAr)}
         </div>
         <div className="flex-1 min-w-0">
           {editing ? (
@@ -164,10 +180,10 @@ function ActionRow({
               {action.type === "writeMath" && <MathPreview src={draft} />}
               <div className="flex gap-2 mt-2">
                 <button onClick={save} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-1.5 text-xs font-black transition-colors">
-                  <Check size={14} /> حفظ
+                  <Check size={14} /> {isAr ? "حفظ" : "Save"}
                 </button>
                 <button onClick={cancel} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-1.5 text-xs font-bold transition-colors">
-                  <X size={14} /> إلغاء
+                  <X size={14} /> {isAr ? "إلغاء" : "Cancel"}
                 </button>
               </div>
             </div>
@@ -179,9 +195,9 @@ function ActionRow({
                   ? "text-slate-400 italic cursor-default" 
                   : "text-slate-700 dark:text-slate-200 cursor-text hover:bg-white dark:hover:bg-[#15201B] hover:border-emerald-100 dark:hover:border-emerald-800/50"
               }`}
-              title={isNonText ? undefined : "انقر للتعديل"}
+              title={isNonText ? undefined : (isAr ? "انقر للتعديل" : "Click to edit")}
             >
-              {text || <span className="opacity-40">(فارغ)</span>}
+              {text || <span className="opacity-40">{isAr ? "(فارغ)" : "(empty)"}</span>}
               {!isNonText && <Edit2 size={12} className="inline-block ms-2 opacity-0 group-hover:opacity-40 transition-opacity" />}
             </div>
           )}
@@ -208,7 +224,7 @@ function ActionRow({
         <button 
           onClick={onDelete} 
           className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-1.5 shrink-0 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" 
-          title="حذف"
+          title={isAr ? "حذف" : "Delete"}
         >
           <Trash2 size={16} />
         </button>
@@ -218,6 +234,8 @@ function ActionRow({
 }
 
 function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (actions: BoardAction[]) => void }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
@@ -233,10 +251,10 @@ function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (
   return (
     <div className="mt-4 pt-4 border-t border-emerald-50 dark:border-emerald-900/30">
       <div className="text-xs font-black text-slate-500 mb-3 flex items-center justify-between">
-        <span>عناصر السبورة <span className="font-bold font-sans text-[10px] text-slate-400 ms-1">— اسحب للترتيب · انقر للتعديل</span></span>
+        <span>{isAr ? "عناصر السبورة" : "Board elements"} <span className="font-bold font-sans text-[10px] text-slate-400 ms-1">— {isAr ? "اسحب للترتيب · انقر للتعديل" : "drag to reorder · click to edit"}</span></span>
       </div>
       {actions.length === 0 && (
-        <div className="text-xs font-bold text-slate-400 italic mb-3 px-2">لا توجد عناصر</div>
+        <div className="text-xs font-bold text-slate-400 italic mb-3 px-2">{isAr ? "لا توجد عناصر" : "No elements"}</div>
       )}
       <div className="space-y-1">
         {actions.map((a, i) => (
@@ -257,19 +275,19 @@ function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (
           onClick={() => onChange([...actions, { type: "bullet", content: "", color: "white" }])}
           className="flex-1 flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl py-2.5 text-xs font-black transition-colors"
         >
-          <Plus size={14} /> إضافة نقطة
+          <Plus size={14} /> {isAr ? "إضافة نقطة" : "Add bullet"}
         </button>
         <button
           onClick={() => onChange([...actions, { type: "writeText", content: "", color: "white" }])}
           className="flex-1 flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl py-2.5 text-xs font-black transition-colors"
         >
-          <Plus size={14} /> إضافة نص
+          <Plus size={14} /> {isAr ? "إضافة نص" : "Add text"}
         </button>
         <button
           onClick={() => onChange([...actions, { type: "highlight", content: "", color: "yellow" }])}
           className="flex-1 flex items-center justify-center gap-2 bg-amber-50/50 hover:bg-amber-50 dark:bg-amber-900/10 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-dashed border-amber-200 dark:border-amber-800 rounded-xl py-2.5 text-xs font-black transition-colors"
         >
-          <Plus size={14} /> إضافة تظليل
+          <Plus size={14} /> {isAr ? "إضافة تظليل" : "Add highlight"}
         </button>
       </div>
     </div>
@@ -288,13 +306,16 @@ function StepCard({
   isIntro?: boolean;
   isSummary?: boolean;
 }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [editingVoice, setEditingVoice] = useState(false);
   const [voiceDraft, setVoiceDraft] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [expanded, setExpanded] = useState(true);
 
-  const titleText = isIntro ? "المقدمة" : isSummary ? "الخلاصة"
+  const titleText = isIntro ? (isAr ? "المقدمة" : "Introduction")
+    : isSummary ? (isAr ? "الخلاصة" : "Summary")
     : ("title" in step ? step.title : "");
 
   return (
@@ -309,7 +330,7 @@ function StepCard({
           isSummary ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
           'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
         }`}>
-          {isIntro ? "مقدمة" : isSummary ? "خلاصة" : `خطوة ${index}`}
+          {isIntro ? (isAr ? "مقدمة" : "Intro") : isSummary ? (isAr ? "خلاصة" : "Summary") : (isAr ? `خطوة ${index}` : `Step ${index}`)}
         </span>
 
         {!isIntro && !isSummary && onEditTitle ? (
@@ -330,7 +351,7 @@ function StepCard({
             <div
               className="flex-1 text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 group"
               onClick={e => { e.stopPropagation(); setTitleDraft(titleText); setEditingTitle(true); }}
-              title="انقر لتعديل العنوان"
+              title={isAr ? "انقر لتعديل العنوان" : "Click to edit title"}
             >
               {titleText}
               <Edit2 size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
@@ -356,7 +377,7 @@ function StepCard({
             <div className="p-4 sm:p-5">
               <div>
                 <div className="text-xs font-black text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Volume2 size={16} className="text-emerald-500" /> النص الصوتي
+                  <Volume2 size={16} className="text-emerald-500" /> {isAr ? "النص الصوتي" : "Voice text"}
                 </div>
                 {editingVoice ? (
                   <div className="animate-in fade-in zoom-in-95 duration-200">
@@ -365,15 +386,15 @@ function StepCard({
                       className="w-full min-h-[80px] resize-y rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#15201B] p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all leading-relaxed"
                     />
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-xs font-black transition-colors">حفظ</button>
-                      <button onClick={() => setEditingVoice(false)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-xs font-bold transition-colors">إلغاء</button>
+                      <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-xs font-black transition-colors">{isAr ? "حفظ" : "Save"}</button>
+                      <button onClick={() => setEditingVoice(false)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-xs font-bold transition-colors">{isAr ? "إلغاء" : "Cancel"}</button>
                     </div>
                   </div>
                 ) : (
                   <div
                     className="text-sm font-bold leading-relaxed text-slate-600 dark:text-slate-300 bg-[#f4f7f5] dark:bg-[#0B100E] border border-slate-100 dark:border-slate-800/60 rounded-xl p-3 cursor-text hover:border-emerald-200 dark:hover:border-emerald-800/60 transition-colors flex items-start gap-2 group"
                     onClick={() => { setVoiceDraft(step.voiceText); setEditingVoice(true); }}
-                    title="انقر للتعديل"
+                    title={isAr ? "انقر للتعديل" : "Click to edit"}
                   >
                     <span className="flex-1">{step.voiceText}</span>
                     <Edit2 size={14} className="shrink-0 text-slate-400 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -393,6 +414,7 @@ function StepCard({
 export default function SmartBoardEdit() {
   const params = useParams<{ id: string }>();
   const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [, navigate] = useLocation();
   const lessonId = params?.id ? parseInt(params.id) : NaN;
 
@@ -403,16 +425,16 @@ export default function SmartBoardEdit() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (isNaN(lessonId)) { setLoadError("معرّف غير صالح"); setLoading(false); return; }
+    if (isNaN(lessonId)) { setLoadError(isAr ? "معرّف غير صالح" : "Invalid ID"); setLoading(false); return; }
     fetch(`${API_BASE}/api/whiteboard/lessons/${lessonId}`, { credentials: "include" })
       .then(r => r.json())
       .then(d => {
-        if (!d.lesson?.plan) { setLoadError("الدرس غير موجود"); return; }
+        if (!d.lesson?.plan) { setLoadError(isAr ? "الدرس غير موجود" : "Lesson not found"); return; }
         const p: LessonPlan = typeof d.lesson.plan === "string"
           ? JSON.parse(d.lesson.plan) : d.lesson.plan;
         setPlan(p);
       })
-      .catch(() => setLoadError("تعذّر تحميل الدرس"))
+      .catch(() => setLoadError(isAr ? "تعذّر تحميل الدرس" : "Could not load lesson"))
       .finally(() => setLoading(false));
   }, [lessonId]);
 
@@ -436,14 +458,14 @@ export default function SmartBoardEdit() {
   }
   function deleteStep(idx: number) {
     if (!plan) return;
-    if (!confirm("حذف هذه الخطوة؟")) return;
+    if (!confirm(isAr ? "حذف هذه الخطوة؟" : "Delete this step?")) return;
     setPlan({ ...plan, steps: plan.steps.filter((_, i) => i !== idx) });
   }
   function addStep() {
     if (!plan) return;
     const newStep: LessonStep = {
       id: `step-${Date.now()}`,
-      title: "خطوة جديدة",
+      title: isAr ? "خطوة جديدة" : "New step",
       voiceText: "",
       boardActions: [{ type: "bullet", content: "", color: "white" }],
     };
@@ -466,7 +488,7 @@ export default function SmartBoardEdit() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: plan.topic, plan }),
       });
-      if (!r.ok) { const d = await r.json(); alert(d.message ?? "خطأ في الحفظ"); return; }
+      if (!r.ok) { const d = await r.json(); alert(d.message ?? (isAr ? "خطأ في الحفظ" : "Save error")); return; }
       if (andPresent) {
         navigate(`/teacher/smart-board/present/${lessonId}`);
       } else {
@@ -474,7 +496,7 @@ export default function SmartBoardEdit() {
         setTimeout(() => setSaved(false), 3000);
       }
     } catch {
-      alert("تعذّر حفظ التغييرات");
+      alert(isAr ? "تعذّر حفظ التغييرات" : "Could not save changes");
     } finally {
       setSaving(false);
     }
@@ -489,9 +511,9 @@ export default function SmartBoardEdit() {
           <button
             onClick={() => navigate("/teacher/smart-board")}
             className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
-            title="رجوع"
+            title={isAr ? "رجوع" : "Back"}
           >
-            {lang === "ar" ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+            {isAr ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </button>
           <div className="flex-1 min-w-0 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
@@ -499,10 +521,10 @@ export default function SmartBoardEdit() {
             </div>
             <div>
               <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
-                تعديل خطة الدرس
+                {isAr ? "تعديل خطة الدرس" : "Edit Lesson Plan"}
               </h1>
               <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
-                تعديل محتوى السبورة والنص الصوتي
+                {isAr ? "تعديل محتوى السبورة والنص الصوتي" : "Edit board content and voice text"}
               </p>
             </div>
           </div>
@@ -512,14 +534,14 @@ export default function SmartBoardEdit() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 text-emerald-600/50">
               <Loader2 className="w-12 h-12 animate-spin mb-4" />
-              <p className="font-bold text-sm">جارٍ تحميل الدرس…</p>
+              <p className="font-bold text-sm">{isAr ? "جارٍ تحميل الدرس…" : "Loading lesson…"}</p>
             </div>
           ) : loadError || !plan ? (
             <div className="flex flex-col items-center justify-center py-32 text-red-500/50 gap-4">
               <AlertCircle className="w-12 h-12" />
-              <p className="font-bold text-sm text-red-600 dark:text-red-400">{loadError || "الدرس غير موجود"}</p>
+              <p className="font-bold text-sm text-red-600 dark:text-red-400">{loadError || (isAr ? "الدرس غير موجود" : "Lesson not found")}</p>
               <button onClick={() => navigate("/teacher/smart-board")} className="px-6 py-2 bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors mt-4">
-                العودة
+                {isAr ? "العودة" : "Go back"}
               </button>
             </div>
           ) : (
@@ -527,20 +549,20 @@ export default function SmartBoardEdit() {
               
               <div className="mb-6">
                 <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1 mb-2">
-                  عنوان الدرس
+                  {isAr ? "عنوان الدرس" : "Lesson title"}
                 </label>
                 <input
                   value={plan.title}
                   onChange={e => setPlan({ ...plan, title: e.target.value })}
                   className="w-full bg-white dark:bg-[#15201B] border border-emerald-100 dark:border-emerald-800/50 rounded-2xl px-4 py-3 text-lg font-black text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all shadow-sm"
-                  placeholder="عنوان الدرس"
+                  placeholder={isAr ? "عنوان الدرس" : "Lesson title"}
                 />
               </div>
 
               {plan.keyPoints && plan.keyPoints.length > 0 && (
                 <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-3xl p-5 mb-6">
                   <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-1.5">
-                    <Sparkles size={14} /> النقاط الرئيسية
+                    <Sparkles size={14} /> {isAr ? "النقاط الرئيسية" : "Key Points"}
                   </div>
                   <div className="space-y-2">
                     {plan.keyPoints.map((kp, i) => (
@@ -589,7 +611,7 @@ export default function SmartBoardEdit() {
                 onClick={addStep}
                 className="w-full flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-2xl py-4 font-black transition-colors"
               >
-                <Plus size={18}/> إضافة خطوة جديدة
+                <Plus size={18}/> {isAr ? "إضافة خطوة جديدة" : "Add new step"}
               </button>
 
               <StepCard
@@ -617,14 +639,14 @@ export default function SmartBoardEdit() {
                 }`}
               >
                 {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <Check size={18} /> : <Save size={18} />}
-                {saved ? 'تم الحفظ' : 'حفظ التغييرات'}
+                {saved ? (isAr ? 'تم الحفظ' : 'Saved') : (isAr ? 'حفظ التغييرات' : 'Save changes')}
               </button>
               <button
                 onClick={() => saveChanges(true)}
                 disabled={saving}
                 className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl py-3.5 font-black shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5"
               >
-                <PlayCircle size={18} /> حفظ وعرض
+                <PlayCircle size={18} /> {isAr ? "حفظ وعرض" : "Save & present"}
               </button>
             </div>
           </div>

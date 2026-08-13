@@ -72,9 +72,9 @@ export default function SmartBoardPage() {
                 <Monitor className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="font-black text-2xl sm:text-3xl text-slate-800 dark:text-slate-100 leading-tight">السبورة الذكية</h1>
+                <h1 className="font-black text-2xl sm:text-3xl text-slate-800 dark:text-slate-100 leading-tight">{lang === "ar" ? "السبورة الذكية" : "Smart Board"}</h1>
                 <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 mt-1">
-                  أنشئ درسًا، راجع الخطوات، واعرضه على السبورة أمام طلابك
+                  {lang === "ar" ? "أنشئ درسًا، راجع الخطوات، واعرضه على السبورة أمام طلابك" : "Create a lesson, review the steps, and present it on the board"}
                 </p>
               </div>
             </div>
@@ -83,7 +83,7 @@ export default function SmartBoardPage() {
               className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-3 rounded-2xl shadow-md shadow-emerald-600/10 hover:-translate-y-0.5 transition-all w-full sm:w-auto"
             >
               <Plus size={18} />
-              <span>درس جديد</span>
+              <span>{lang === "ar" ? "درس جديد" : "New Lesson"}</span>
             </button>
           </header>
 
@@ -91,7 +91,7 @@ export default function SmartBoardPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 text-emerald-600/50">
               <Loader2 className="w-12 h-12 animate-spin mb-4" />
-              <p className="font-bold text-sm">جارٍ التحميل…</p>
+              <p className="font-bold text-sm">{lang === "ar" ? "جارٍ التحميل…" : "Loading…"}</p>
             </div>
           ) : lessons.length === 0 ? (
             <motion.div 
@@ -101,15 +101,15 @@ export default function SmartBoardPage() {
               <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                 <MonitorPlay className="w-12 h-12 text-emerald-500" />
               </div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-3">لا توجد دروس محفوظة بعد</h2>
+              <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-3">{lang === "ar" ? "لا توجد دروس محفوظة بعد" : "No saved lessons yet"}</h2>
               <p className="text-sm font-bold text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
-                اكتب موضوع درس وسيُنشئ الذكاء الاصطناعي خطة شرح كاملة لعرضها على السبورة ومناقشتها مع الطلاب.
+                {lang === "ar" ? "اكتب موضوع درس وسيُنشئ الذكاء الاصطناعي خطة شرح كاملة لعرضها على السبورة ومناقشتها مع الطلاب." : "Enter a lesson topic and AI will generate a full explanation plan to present on the board and discuss with students."}
               </p>
               <button
                 onClick={() => navigate("/teacher/smart-board/new")}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 py-4 rounded-2xl shadow-lg shadow-emerald-600/20 hover:-translate-y-1 transition-all"
               >
-                ابدأ درسك الأول
+                {lang === "ar" ? "ابدأ درسك الأول" : "Start your first lesson"}
               </button>
             </motion.div>
           ) : (
@@ -142,7 +142,10 @@ export default function SmartBoardPage() {
                       {lesson.level && (
                         <div className="flex items-center gap-1.5 before:content-['•'] before:text-slate-300 dark:before:text-slate-600 before:me-2">
                           <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-md text-[10px]">
-                            {{ brief: "موجز", standard: "عادي", detailed: "تفصيلي" }[lesson.level as string] ?? lesson.level}
+                            {(lang === "ar"
+                            ? { brief: "موجز", standard: "عادي", detailed: "تفصيلي" }
+                            : { brief: "Brief", standard: "Standard", detailed: "Detailed" }
+                          )[lesson.level as string] ?? lesson.level}
                           </span>
                         </div>
                       )}
@@ -152,24 +155,24 @@ export default function SmartBoardPage() {
                   <div className="flex items-center gap-2 sm:shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/60 mt-3 sm:mt-0">
                     <button
                       onClick={() => navigate(`/teacher/smart-board/present/${lesson.id}`)}
-                      title="عرض الدرس"
+                      title={lang === "ar" ? "عرض الدرس" : "Present lesson"}
                       className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2.5 text-xs font-black transition-colors"
                     >
                       <PlayCircle size={16} />
-                      <span>عرض</span>
+                      <span>{lang === "ar" ? "عرض" : "Present"}</span>
                     </button>
                     <button
                       onClick={() => navigate(`/teacher/smart-board/edit/${lesson.id}`)}
-                      title="تعديل الدرس"
+                      title={lang === "ar" ? "تعديل الدرس" : "Edit lesson"}
                       className="flex items-center gap-2 bg-[#f4f7f5] hover:bg-emerald-50 dark:bg-[#0B100E] dark:hover:bg-emerald-900/30 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200 hover:border-emerald-200 dark:border-slate-800 dark:hover:border-emerald-800 rounded-xl px-4 py-2.5 text-xs font-black transition-colors"
                     >
                       <GraduationCap size={16} />
-                      <span className="hidden sm:inline">تعديل</span>
+                      <span className="hidden sm:inline">{lang === "ar" ? "تعديل" : "Edit"}</span>
                     </button>
                     <button
                       onClick={() => deleteLesson(lesson.id)}
                       disabled={deleting === lesson.id}
-                      title="حذف"
+                      title={lang === "ar" ? "حذف" : "Delete"}
                       className="flex items-center justify-center w-10 h-10 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-500 rounded-xl transition-colors disabled:opacity-50"
                     >
                       {deleting === lesson.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -185,17 +188,22 @@ export default function SmartBoardPage() {
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center gap-4 mb-8">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-100 dark:via-emerald-900/50 to-transparent" />
-                <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 px-2">كيف تعمل السبورة الذكية؟</h3>
+                <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 px-2">{lang === "ar" ? "كيف تعمل السبورة الذكية؟" : "How does Smart Board work?"}</h3>
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-emerald-100 dark:via-emerald-900/50 to-transparent" />
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                {[
+                {(lang === "ar" ? [
                   { icon: <PenLine size={24} className="text-emerald-500" />, title: "اكتب موضوع الدرس", desc: "حدد المادة والصف وعمق الشرح" },
                   { icon: <Sparkles size={24} className="text-emerald-500" />, title: "يُنشئ الذكاء الاصطناعي", desc: "خطة درس كاملة بخطوات وشرح صوتي" },
                   { icon: <Edit3 size={24} className="text-emerald-500" />, title: "راجع وعدّل", desc: "تحكم في كل خطوة قبل البدء" },
                   { icon: <MonitorPlay size={24} className="text-emerald-500" />, title: "اعرض على الفصل", desc: "كتابة تدريجية مع إمكانية الرسم" },
-                ].map((item, i) => (
+              ] : [
+                  { icon: <PenLine size={24} className="text-emerald-500" />, title: "Write a topic", desc: "Choose subject, grade, and depth" },
+                  { icon: <Sparkles size={24} className="text-emerald-500" />, title: "AI generates", desc: "A full lesson plan with steps and voice" },
+                  { icon: <Edit3 size={24} className="text-emerald-500" />, title: "Review & edit", desc: "Control every step before you start" },
+                  { icon: <MonitorPlay size={24} className="text-emerald-500" />, title: "Present to class", desc: "Progressive writing with drawing" },
+                ]).map((item, i) => (
                   <div key={i} className="bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 rounded-3xl p-5 text-center shadow-sm">
                     <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       {item.icon}

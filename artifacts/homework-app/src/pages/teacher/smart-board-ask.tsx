@@ -10,25 +10,34 @@ import { motion } from "framer-motion";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-const SUGGESTED = [
-  { q: "كيف تعمل المحركات النفاثة؟",          icon: Plane, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
-  { q: "ما الفرق بين DNA و RNA؟",              icon: Dna, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
-  { q: "حل: 3س² − 5س + 2 = 0",               icon: Calculator, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
-  { q: "لماذا يبدو القمر أكبر عند الأفق؟",    icon: Moon, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
-  { q: "ما الفرق بين الاستعارة والتشبيه؟",    icon: BookText, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
-  { q: "كيف تتشكل الأعاصير؟",                 icon: Tornado, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
+const SUGGESTED_AR = [
+  { q: "كيف تعمل المحركات النفاثة؟",          icon: Plane,       color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "ما الفرق بين DNA و RNA؟",              icon: Dna,         color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "حل: 3س² − 5س + 2 = 0",               icon: Calculator,  color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
+  { q: "لماذا يبدو القمر أكبر عند الأفق؟",    icon: Moon,        color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "ما الفرق بين الاستعارة والتشبيه؟",    icon: BookText,    color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "كيف تتشكل الأعاصير؟",                 icon: Tornado,     color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
+];
+const SUGGESTED_EN = [
+  { q: "How do jet engines work?",             icon: Plane,       color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "What is the difference between DNA and RNA?", icon: Dna,  color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "Solve: 3x² − 5x + 2 = 0",            icon: Calculator,  color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
+  { q: "Why does the moon look bigger on the horizon?", icon: Moon, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "What is the difference between metaphor and simile?", icon: BookText, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-800/50" },
+  { q: "How do hurricanes form?",              icon: Tornado,     color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800/50" },
 ];
 
 type Tab = "text" | "image" | "camera";
 
-const TAB_CFG = [
-  { key: "text"   as Tab, Icon: Keyboard,  label: "نص"    },
-  { key: "image"  as Tab, Icon: ImagePlus, label: "صورة"  },
-  { key: "camera" as Tab, Icon: Camera,    label: "كاميرا" },
-];
-
 export default function SmartBoardAsk() {
   const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const TAB_CFG = [
+    { key: "text"   as Tab, Icon: Keyboard,  label: isAr ? "نص"     : "Text"   },
+    { key: "image"  as Tab, Icon: ImagePlus, label: isAr ? "صورة"   : "Image"  },
+    { key: "camera" as Tab, Icon: Camera,    label: isAr ? "كاميرا" : "Camera" },
+  ];
+  const SUGGESTED = isAr ? SUGGESTED_AR : SUGGESTED_EN;
   const [, navigate] = useLocation();
   const [tab, setTab]           = useState<Tab>("text");
   const [question, setQuestion] = useState("");
@@ -53,7 +62,7 @@ export default function SmartBoardAsk() {
       streamRef.current = s;
       if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play().catch(() => {}); }
       setCamReady(true);
-    } catch { setError("تعذّر الوصول للكاميرا"); }
+    } catch { setError(isAr ? "تعذّر الوصول للكاميرا" : "Could not access camera"); }
   }, []);
 
   const switchTab = (t: Tab) => {
@@ -95,7 +104,7 @@ export default function SmartBoardAsk() {
       const plan = await res.json();
       sessionStorage.setItem("whiteboard_ask_plan", JSON.stringify(plan));
       navigate("/teacher/smart-board/present/ask");
-    } catch { setError("حدث خطأ — حاول مجدداً"); }
+    } catch { setError(isAr ? "حدث خطأ — حاول مجدداً" : "An error occurred — please try again"); }
     finally { setLoading(false); }
   };
 
@@ -110,9 +119,9 @@ export default function SmartBoardAsk() {
           <button
             onClick={() => navigate("/teacher/smart-board")}
             className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
-            title="رجوع"
+            title={isAr ? "رجوع" : "Back"}
           >
-            {lang === "ar" ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+            {isAr ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </button>
           <div className="flex-1 min-w-0 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
@@ -120,10 +129,10 @@ export default function SmartBoardAsk() {
             </div>
             <div>
               <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
-                السبورة الذكية السريعة
+                {isAr ? "السبورة الذكية السريعة" : "Quick Smart Board"}
               </h1>
               <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
-                اكتب سؤالك أو صوّر مسألة — والسبورة تشرح بصوت ورسم
+                {isAr ? "اكتب سؤالك أو صوّر مسألة — والسبورة تشرح بصوت ورسم" : "Type a question or photograph a problem — the board explains with voice and drawing"}
               </p>
             </div>
           </div>
@@ -132,13 +141,13 @@ export default function SmartBoardAsk() {
               onClick={() => navigate("/teacher/smart-board/history")}
               className="hidden sm:flex items-center gap-2 bg-white dark:bg-[#15201B] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-xs font-black text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
-              <History size={16} /> السجل
+              <History size={16} /> {isAr ? "السجل" : "History"}
             </button>
             <button
               onClick={() => navigate("/teacher/smart-board/lessons")}
               className="hidden sm:flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/50 rounded-xl px-4 py-2 text-xs font-black text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
             >
-              <BookOpen size={16} /> الدروس المحفوظة
+              <BookOpen size={16} /> {isAr ? "الدروس المحفوظة" : "Saved Lessons"}
             </button>
           </div>
         </header>
@@ -181,7 +190,7 @@ export default function SmartBoardAsk() {
                     value={question}
                     onChange={e => setQuestion(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) ask(); }}
-                    placeholder={"اكتب سؤالك هنا…\nمثال: كيف تعمل الخلية الشمسية؟\nأو حل: س² + 4س − 12 = 0"}
+                    placeholder={isAr ? "اكتب سؤالك هنا…\nمثال: كيف تعمل الخلية الشمسية؟\nأو حل: س² + 4س − 12 = 0" : "Type your question here…\nExample: How does a solar cell work?\nOr solve: x² + 4x − 12 = 0"}
                     rows={6}
                     className="w-full bg-transparent border-none p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none resize-none leading-relaxed"
                   />
@@ -205,7 +214,7 @@ export default function SmartBoardAsk() {
                       <ImagePlus size={28} />
                     </div>
                     <div>
-                      <p className="text-slate-700 dark:text-slate-200 font-black mb-1">اضغط لرفع صورة المسألة</p>
+                      <p className="text-slate-700 dark:text-slate-200 font-black mb-1">{isAr ? "اضغط لرفع صورة المسألة" : "Click to upload an image"}</p>
                       <p className="text-slate-400 dark:text-slate-500 text-xs font-bold">PNG · JPG · WEBP</p>
                     </div>
                     <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
@@ -229,7 +238,7 @@ export default function SmartBoardAsk() {
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/50 text-sm font-bold">
                         <Loader2 size={24} className="animate-spin" />
-                        جارٍ تشغيل الكاميرا…
+                        {isAr ? "جارٍ تشغيل الكاميرا…" : "Starting camera…"}
                       </div>
                     )}
                   </div>
@@ -249,9 +258,9 @@ export default function SmartBoardAsk() {
               className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 text-white rounded-xl py-4 font-black shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5 mt-6"
             >
               {loading ? (
-                <><Loader2 size={18} className="animate-spin" /> <span>جارٍ التحليل والشرح…</span></>
+                <><Loader2 size={18} className="animate-spin" /> <span>{isAr ? "جارٍ التحليل والشرح…" : "Analyzing…"}</span></>
               ) : (
-                <><Zap size={18} /> <span>اعرض على السبورة</span></>
+                <><Zap size={18} /> <span>{isAr ? "اعرض على السبورة" : "Show on board"}</span></>
               )}
             </button>
           </div>
@@ -259,7 +268,7 @@ export default function SmartBoardAsk() {
           <div className="flex items-center gap-4 mt-12 mb-6">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent" />
             <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 px-2 flex items-center gap-1.5">
-              <Zap size={16} className="text-amber-500" /> جرّب سؤالاً
+              <Zap size={16} className="text-amber-500" /> {isAr ? "جرّب سؤالاً" : "Try a question"}
             </h3>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent" />
           </div>

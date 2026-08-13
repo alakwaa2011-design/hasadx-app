@@ -43,8 +43,10 @@ interface LessonPlan {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SUBJECTS = ["الرياضيات", "العلوم", "اللغة العربية", "اللغة الإنجليزية", "الدراسات الاجتماعية", "التربية الإسلامية", "الحاسب الآلي", "الفيزياء", "الكيمياء", "الأحياء", "أخرى"];
-const GRADES = ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس", "الصف السابع", "الصف الثامن", "الصف التاسع", "الصف العاشر", "الصف الحادي عشر", "الصف الثاني عشر"];
+const SUBJECTS_AR = ["الرياضيات", "العلوم", "اللغة العربية", "اللغة الإنجليزية", "الدراسات الاجتماعية", "التربية الإسلامية", "الحاسب الآلي", "الفيزياء", "الكيمياء", "الأحياء", "أخرى"];
+const SUBJECTS_EN = ["Mathematics", "Science", "Arabic Language", "English Language", "Social Studies", "Islamic Education", "Computer Science", "Physics", "Chemistry", "Biology", "Other"];
+const GRADES_AR = ["الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس", "الصف السابع", "الصف الثامن", "الصف التاسع", "الصف العاشر", "الصف الحادي عشر", "الصف الثاني عشر"];
+const GRADES_EN = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 
 const ACTION_COLOR: Record<string, string> = {
   writeText: "#2f684d", writeMath: "#60a5fa", bullet: "#c4b5fd",
@@ -54,13 +56,17 @@ const ACTION_COLOR: Record<string, string> = {
   showImage: "#0ea5e9", drawConnector: "#f59e0b", showChart: "#a855f7",
 };
 
-const ACTION_LABEL: Record<string, string> = {
-  writeText: "نص", writeMath: "معادلة", bullet: "نقطة",
-  highlight: "تظليل", underline: "تسطير", drawArrow: "سهم",
-  drawCircle: "دائرة", showDiagram: "مخطط", clearBoard: "مسح",
-  erase: "حذف", pause: "إيقاف مؤقت", bullet2: "نقطة٢", writeTitle: "عنوان",
-  showImage: "صورة", drawConnector: "ربط", showChart: "مخطط بياني",
-};
+function getActionLabel(type: string, isAr: boolean): string {
+  const m: Record<string, [string, string]> = {
+    writeText: ["نص","Text"], writeMath: ["معادلة","Math"], bullet: ["نقطة","Bullet"],
+    highlight: ["تظليل","Highlight"], underline: ["تسطير","Underline"], drawArrow: ["سهم","Arrow"],
+    drawCircle: ["دائرة","Circle"], showDiagram: ["مخطط","Diagram"], clearBoard: ["مسح","Clear"],
+    erase: ["حذف","Erase"], pause: ["إيقاف مؤقت","Pause"], bullet2: ["نقطة٢","Bullet 2"],
+    writeTitle: ["عنوان","Title"], showImage: ["صورة","Image"],
+    drawConnector: ["ربط","Connect"], showChart: ["مخطط بياني","Chart"],
+  };
+  return isAr ? (m[type]?.[0] ?? type) : (m[type]?.[1] ?? type);
+}
 
 /** Returns the editable text field for an action */
 function getActionText(a: BoardAction): string {
@@ -104,6 +110,8 @@ function ActionRow({
   onDrop: () => void;
   isDragOver: boolean;
 }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const color = ACTION_COLOR[action.type] ?? "#9ca3af";
@@ -138,7 +146,7 @@ function ActionRow({
       <div className="flex items-start gap-3">
         <div 
           className="cursor-grab text-slate-300 hover:text-emerald-500 dark:text-slate-600 dark:hover:text-emerald-400 pt-1 shrink-0 transition-colors"
-          title="اسحب لإعادة الترتيب"
+          title={isAr ? "اسحب لإعادة الترتيب" : "Drag to reorder"}
         >
           <GripVertical size={16} />
         </div>
@@ -146,7 +154,7 @@ function ActionRow({
           className="shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-black mt-1 whitespace-nowrap"
           style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}
         >
-          {ACTION_LABEL[action.type] ?? action.type}
+          {getActionLabel(action.type, isAr)}
         </div>
         <div className="flex-1 min-w-0">
           {editing ? (
@@ -165,10 +173,10 @@ function ActionRow({
               {action.type === "writeMath" && <MathPreview src={draft} />}
               <div className="flex gap-2 mt-2">
                 <button onClick={save} className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-1.5 text-xs font-black transition-colors">
-                  <Check size={14} /> حفظ
+                  <Check size={14} /> {isAr ? "حفظ" : "Save"}
                 </button>
                 <button onClick={cancel} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-1.5 text-xs font-bold transition-colors">
-                  <X size={14} /> إلغاء
+                  <X size={14} /> {isAr ? "إلغاء" : "Cancel"}
                 </button>
               </div>
             </div>
@@ -180,9 +188,9 @@ function ActionRow({
                   ? "text-slate-400 italic cursor-default" 
                   : "text-slate-700 dark:text-slate-200 cursor-text hover:bg-white dark:hover:bg-[#15201B] hover:border-emerald-100 dark:hover:border-emerald-800/50"
               }`}
-              title={isNonText ? undefined : "انقر للتعديل"}
+              title={isNonText ? undefined : (isAr ? "انقر للتعديل" : "Click to edit")}
             >
-              {text || <span className="opacity-40">(فارغ)</span>}
+              {text || <span className="opacity-40">{isAr ? "(فارغ)" : "(empty)"}</span>}
               {!isNonText && <Edit2 size={12} className="inline-block ms-2 opacity-0 group-hover:opacity-40 transition-opacity" />}
             </div>
           )}
@@ -190,7 +198,7 @@ function ActionRow({
         <button 
           onClick={onDelete} 
           className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg p-1.5 shrink-0 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" 
-          title="حذف"
+          title={isAr ? "حذف" : "Delete"}
         >
           <Trash2 size={16} />
         </button>
@@ -202,6 +210,8 @@ function ActionRow({
 // ── Draggable action list ─────────────────────────────────────────────────────
 
 function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (actions: BoardAction[]) => void }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
@@ -217,10 +227,10 @@ function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (
   return (
     <div className="mt-4 pt-4 border-t border-emerald-50 dark:border-emerald-900/30">
       <div className="text-xs font-black text-slate-500 mb-3 flex items-center justify-between">
-        <span>عناصر السبورة <span className="font-bold font-sans text-[10px] text-slate-400 ms-1">— اسحب للترتيب · انقر للتعديل</span></span>
+        <span>{isAr ? "عناصر السبورة" : "Board elements"} <span className="font-bold font-sans text-[10px] text-slate-400 ms-1">— {isAr ? "اسحب للترتيب · انقر للتعديل" : "drag to reorder · click to edit"}</span></span>
       </div>
       {actions.length === 0 && (
-        <div className="text-xs font-bold text-slate-400 italic mb-3 px-2">لا توجد عناصر</div>
+        <div className="text-xs font-bold text-slate-400 italic mb-3 px-2">{isAr ? "لا توجد عناصر" : "No elements"}</div>
       )}
       <div className="space-y-1">
         {actions.map((a, i) => (
@@ -237,10 +247,10 @@ function ActionList({ actions, onChange }: { actions: BoardAction[]; onChange: (
         ))}
       </div>
       <button
-        onClick={() => onChange([...actions, { type: "bullet", content: "نقطة جديدة" }])}
+        onClick={() => onChange([...actions, { type: "bullet", content: isAr ? "نقطة جديدة" : "New bullet" }])}
         className="w-full flex items-center justify-center gap-2 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-900/10 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl py-2.5 mt-2 text-xs font-black transition-colors"
       >
-        <Plus size={14} /> إضافة نقطة
+        <Plus size={14} /> {isAr ? "إضافة نقطة" : "Add bullet"}
       </button>
     </div>
   );
@@ -260,13 +270,16 @@ function StepCard({
   isIntro?: boolean;
   isSummary?: boolean;
 }) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [editingVoice, setEditingVoice] = useState(false);
   const [voiceDraft, setVoiceDraft] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [expanded, setExpanded] = useState(true);
 
-  const titleText = isIntro ? "المقدمة" : isSummary ? "الخلاصة"
+  const titleText = isIntro ? (isAr ? "المقدمة" : "Introduction")
+    : isSummary ? (isAr ? "الخلاصة" : "Summary")
     : ("title" in step ? step.title : "");
 
   return (
@@ -282,7 +295,7 @@ function StepCard({
           isSummary ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' :
           'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
         }`}>
-          {isIntro ? "مقدمة" : isSummary ? "خلاصة" : `خطوة ${index}`}
+          {isIntro ? (isAr ? "مقدمة" : "Intro") : isSummary ? (isAr ? "خلاصة" : "Summary") : (isAr ? `خطوة ${index}` : `Step ${index}`)}
         </span>
 
         {!isIntro && !isSummary && onEditTitle ? (
@@ -303,7 +316,7 @@ function StepCard({
             <div
               className="flex-1 text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 group"
               onClick={e => { e.stopPropagation(); setTitleDraft(titleText); setEditingTitle(true); }}
-              title="انقر لتعديل العنوان"
+              title={isAr ? "انقر لتعديل العنوان" : "Click to edit title"}
             >
               {titleText}
               <Edit2 size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
@@ -330,7 +343,7 @@ function StepCard({
               {/* Voice text */}
               <div>
                 <div className="text-xs font-black text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Volume2 size={16} className="text-emerald-500" /> النص الصوتي
+                  <Volume2 size={16} className="text-emerald-500" /> {isAr ? "النص الصوتي" : "Voice text"}
                 </div>
                 {editingVoice ? (
                   <div className="animate-in fade-in zoom-in-95 duration-200">
@@ -339,15 +352,15 @@ function StepCard({
                       className="w-full min-h-[80px] resize-y rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#15201B] p-3 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all leading-relaxed"
                     />
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-xs font-black transition-colors">حفظ</button>
-                      <button onClick={() => setEditingVoice(false)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-xs font-bold transition-colors">إلغاء</button>
+                      <button onClick={() => { onEditVoice(voiceDraft); setEditingVoice(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-xs font-black transition-colors">{isAr ? "حفظ" : "Save"}</button>
+                      <button onClick={() => setEditingVoice(false)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-xs font-bold transition-colors">{isAr ? "إلغاء" : "Cancel"}</button>
                     </div>
                   </div>
                 ) : (
                   <div
                     className="text-sm font-bold leading-relaxed text-slate-600 dark:text-slate-300 bg-[#f4f7f5] dark:bg-[#0B100E] border border-slate-100 dark:border-slate-800/60 rounded-xl p-3 cursor-text hover:border-emerald-200 dark:hover:border-emerald-800/60 transition-colors flex items-start gap-2 group"
                     onClick={() => { setVoiceDraft(step.voiceText); setEditingVoice(true); }}
-                    title="انقر للتعديل"
+                    title={isAr ? "انقر للتعديل" : "Click to edit"}
                   >
                     <span className="flex-1">{step.voiceText}</span>
                     <Edit2 size={14} className="shrink-0 text-slate-400 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -368,6 +381,7 @@ function StepCard({
 
 export default function SmartBoardNew() {
   const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [, navigate] = useLocation();
 
   const [topic, setTopic] = useState("");
@@ -381,19 +395,19 @@ export default function SmartBoardNew() {
   const [saving, setSaving] = useState(false);
 
   async function generate() {
-    if (!topic.trim()) { setError("اكتب موضوع الدرس أولاً"); return; }
+    if (!topic.trim()) { setError(isAr ? "اكتب موضوع الدرس أولاً" : "Enter a lesson topic first"); return; }
     setError(""); setLoading(true); setPlan(null);
     try {
       const r = await fetch(`${API_BASE}/api/whiteboard/generate`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim(), subject, gradeLevel, depth, language: "ar" }),
+        body: JSON.stringify({ topic: topic.trim(), subject, gradeLevel, depth, language: lang }),
       });
       const d = await r.json();
-      if (!r.ok) { setError(d.message ?? "حدث خطأ"); return; }
+      if (!r.ok) { setError(d.message ?? (isAr ? "حدث خطأ" : "An error occurred")); return; }
       setPlan(d.plan);
     } catch {
-      setError("تعذّر الاتصال بالخادم");
+      setError(isAr ? "تعذّر الاتصال بالخادم" : "Could not connect to server");
     } finally {
       setLoading(false);
     }
@@ -406,13 +420,13 @@ export default function SmartBoardNew() {
       const r = await fetch(`${API_BASE}/api/whiteboard/lessons`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: plan.topic, plan, subject, gradeLevel, depth, language: "ar" }),
+        body: JSON.stringify({ topic: plan.topic, plan, subject, gradeLevel, depth, language: lang }),
       });
       const d = await r.json();
-      if (!r.ok) { alert(d.message ?? "خطأ في الحفظ"); return; }
+      if (!r.ok) { alert(d.message ?? (isAr ? "خطأ في الحفظ" : "Save error")); return; }
       navigate(`/teacher/smart-board/present/${d.id}`);
     } catch {
-      alert("تعذّر الحفظ");
+      alert(isAr ? "تعذّر الحفظ" : "Could not save");
     } finally {
       setSaving(false);
     }
@@ -444,9 +458,9 @@ export default function SmartBoardNew() {
           <button
             onClick={() => navigate("/teacher/smart-board")}
             className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
-            title="رجوع"
+            title={isAr ? "رجوع" : "Back"}
           >
-            {lang === "ar" ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+            {isAr ? <ArrowRight className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </button>
           <div className="flex-1 min-w-0 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
@@ -454,10 +468,10 @@ export default function SmartBoardNew() {
             </div>
             <div>
               <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
-                درس جديد
+                {isAr ? "درس جديد" : "New Lesson"}
               </h1>
               <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
-                توليد خطة سبورة تفاعلية بالذكاء الاصطناعي
+                {isAr ? "توليد خطة سبورة تفاعلية بالذكاء الاصطناعي" : "Generate an AI-powered interactive board plan"}
               </p>
             </div>
           </div>
@@ -467,16 +481,16 @@ export default function SmartBoardNew() {
           
           {/* Topic input */}
           <div className="bg-white dark:bg-[#15201B] border border-emerald-50 dark:border-emerald-900/30 rounded-3xl p-5 sm:p-8 shadow-sm">
-            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">موضوع الدرس</h2>
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">{isAr ? "موضوع الدرس" : "Lesson Topic"}</h2>
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
-              اكتب الموضوع وسيُنشئ الذكاء الاصطناعي خطة درس كاملة لعرضها على السبورة
+              {isAr ? "اكتب الموضوع وسيُنشئ الذكاء الاصطناعي خطة درس كاملة لعرضها على السبورة" : "Enter a topic and AI will generate a full lesson plan for the board"}
             </p>
 
             <div className="space-y-5">
               <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-1 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all group">
                 <textarea
                   value={topic} onChange={e => setTopic(e.target.value)}
-                  placeholder="مثال: جمع الكسور المتشابهة وغير المتشابهة، قانون نيوتن الثالث..."
+                  placeholder={isAr ? "مثال: جمع الكسور المتشابهة وغير المتشابهة، قانون نيوتن الثالث..." : "e.g. Adding fractions, Newton's third law, photosynthesis..."}
                   rows={2}
                   className="w-full bg-transparent border-none p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none resize-none leading-relaxed"
                   disabled={loading}
@@ -486,39 +500,39 @@ export default function SmartBoardNew() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1">
-                    <BookOpen size={14} className="text-emerald-500"/> المادة
+                    <BookOpen size={14} className="text-emerald-500"/> {isAr ? "المادة" : "Subject"}
                   </label>
                   <select 
                     value={subject} onChange={e => setSubject(e.target.value)} disabled={loading}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
                   >
-                    <option value="">اختر المادة</option>
-                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                    <option value="">{isAr ? "اختر المادة" : "Select subject"}</option>
+                    {(isAr ? SUBJECTS_AR : SUBJECTS_EN).map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1">
-                    <Users size={14} className="text-emerald-500"/> الصف الدراسي
+                    <Users size={14} className="text-emerald-500"/> {isAr ? "الصف الدراسي" : "Grade"}
                   </label>
                   <select 
                     value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} disabled={loading}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
                   >
-                    <option value="">اختر الصف</option>
-                    {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                    <option value="">{isAr ? "اختر الصف" : "Select grade"}</option>
+                    {(isAr ? GRADES_AR : GRADES_EN).map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-slate-500 flex items-center gap-1.5 ms-1">
-                    <Clock size={14} className="text-emerald-500"/> عمق الشرح
+                    <Clock size={14} className="text-emerald-500"/> {isAr ? "عمق الشرح" : "Depth"}
                   </label>
                   <select 
                     value={depth} onChange={e => setDepth(e.target.value as any)} disabled={loading}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
                   >
-                    <option value="brief">موجز (~١٠ دقائق)</option>
-                    <option value="standard">عادي (~٢٠ دقيقة)</option>
-                    <option value="detailed">تفصيلي (~٣٠ دقيقة)</option>
+                    <option value="brief">{isAr ? "موجز (~١٠ دقائق)" : "Brief (~10 min)"}</option>
+                    <option value="standard">{isAr ? "عادي (~٢٠ دقيقة)" : "Standard (~20 min)"}</option>
+                    <option value="detailed">{isAr ? "تفصيلي (~٣٠ دقيقة)" : "Detailed (~30 min)"}</option>
                   </select>
                 </div>
               </div>
@@ -534,9 +548,9 @@ export default function SmartBoardNew() {
                 className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-3.5 font-black shadow-md shadow-emerald-600/10 transition-all hover:-translate-y-0.5 mt-2"
               >
                 {loading ? (
-                  <><Loader2 size={18} className="animate-spin" /> <span>جارٍ التوليد الذكي…</span></>
+                  <><Loader2 size={18} className="animate-spin" /> <span>{isAr ? "جارٍ التوليد الذكي…" : "Generating…"}</span></>
                 ) : (
-                  <><Wand2 size={18} /> <span>{plan ? "أعد توليد الخطة" : "أنشئ خطة الدرس"}</span></>
+                  <><Wand2 size={18} /> <span>{plan ? (isAr ? "أعد توليد الخطة" : "Regenerate plan") : (isAr ? "أنشئ خطة الدرس" : "Generate lesson plan")}</span></>
                 )}
               </button>
             </div>
@@ -552,7 +566,7 @@ export default function SmartBoardNew() {
                   </div>
                   <div>
                     <h2 className="text-lg font-black text-slate-800 dark:text-slate-100">{plan.title}</h2>
-                    <p className="text-xs font-bold text-slate-500">انقر على أي خطوة للتعديل</p>
+                    <p className="text-xs font-bold text-slate-500">{isAr ? "انقر على أي خطوة للتعديل" : "Click any step to edit"}</p>
                   </div>
                 </div>
               </div>
@@ -560,7 +574,7 @@ export default function SmartBoardNew() {
               {plan.keyPoints && plan.keyPoints.length > 0 && (
                 <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-3xl p-5">
                   <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-1.5">
-                    <Sparkles size={14} /> النقاط الرئيسية
+                    <Sparkles size={14} /> {isAr ? "النقاط الرئيسية" : "Key Points"}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {plan.keyPoints.map((kp, i) => (
@@ -600,9 +614,9 @@ export default function SmartBoardNew() {
                 className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white rounded-2xl py-4 font-black text-lg shadow-xl shadow-emerald-600/25 transition-all hover:-translate-y-1"
               >
                 {saving ? (
-                  <><Loader2 size={22} className="animate-spin" /> <span>جارٍ تجهيز العرض…</span></>
+                  <><Loader2 size={22} className="animate-spin" /> <span>{isAr ? "جارٍ تجهيز العرض…" : "Preparing presentation…"}</span></>
                 ) : (
-                  <><PlayCircle size={22} /> <span>ابدأ العرض على السبورة</span></>
+                  <><PlayCircle size={22} /> <span>{isAr ? "ابدأ العرض على السبورة" : "Start board presentation"}</span></>
                 )}
               </button>
             </div>
