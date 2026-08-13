@@ -517,49 +517,38 @@ export const CreditService = {
   },
 
   /**
-   * Reset the free-tier batch for a teacher.
-   * Called non-blocking on login if the current free batch is expired or missing.
+   * Grant the one-time 50-point welcome batch to a new teacher.
+   *
+   * This is idempotent: if ANY free batch (active or expired) already exists
+   * for the teacher, this is a no-op.  Welcome credits are granted once at
+   * account creation and NEVER renewed.  The batch has no expiry (NULL).
+   *
+   * Called non-blocking on login (safe to call repeatedly — the check inside
+   * guarantees at-most-once grant per teacher lifetime).
    */
-  async resetFreeCredits(teacherId: number): Promise<void> {
+  async grantWelcomeCredits(teacherId: number): Promise<void> {
     await db.transaction(async (tx) => {
       await lockAccount(tx, teacherId);
 
-      // Expire old free batches
-      const expiredRows = await tx.execute(sql`
-        UPDATE credit_batches
-        SET amount_remaining = 0, updated_at = NOW()
+      // Guard: if any free batch has ever been created, do nothing.
+      const existing = await tx.execute(sql`
+        SELECT 1 FROM credit_batches
         WHERE teacher_id = ${teacherId}
           AND source = 'free'
-          AND amount_remaining > 0
-        RETURNING amount_remaining AS old_remaining
+        LIMIT 1
       `);
+      if (existing.rows.length > 0) return;
 
-      // Deduct expired amounts from cache
-      let totalExpired = 0;
-      for (const r of expiredRows.rows as any[]) {
-        totalExpired += Number(r.old_remaining ?? 0);
-      }
-
-      if (totalExpired > 0) {
-        await tx.execute(sql`
-          UPDATE credit_accounts
-          SET balance      = GREATEST(0, balance      - ${totalExpired}),
-              free_balance = GREATEST(0, free_balance - ${totalExpired}),
-              updated_at   = NOW()
-          WHERE teacher_id = ${teacherId}
-        `);
-      }
-
-      // Grant fresh 50-credit free batch (30-day TTL)
+      // Grant 50 welcome points with no expiry (one-time, permanent).
       await this._grantBatchInTx(
         tx,
         teacherId,
         "free",
         50,
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        "monthly_free_reset",
+        null,                   // no expiry — welcome gift never expires
+        "welcome_credits",
         null,
-        "الرصيد المجاني الشهري"
+        "رصيد ترحيبي (مرة واحدة)"
       );
     });
   },

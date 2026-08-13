@@ -1012,10 +1012,11 @@ async function runSchemaMigrations() {
         FROM credit_accounts
         WHERE earned_balance > 0
       `);
-      // Grant a free batch (50 credits, 30-day TTL) for every teacher without one
+      // Grant a one-time welcome batch (50 credits, no expiry) for every teacher without one.
+      // expires_at = NULL because welcome credits are permanent (not a monthly renewal).
       await db.execute(sql`
         INSERT INTO credit_batches (teacher_id, source, amount, amount_remaining, expires_at, reference_id, created_at, updated_at)
-        SELECT ca.teacher_id, 'free', 50, 50, NOW() + INTERVAL '30 days', 'initial_free', NOW(), NOW()
+        SELECT ca.teacher_id, 'free', 50, 50, NULL, 'welcome_credits', NOW(), NOW()
         FROM credit_accounts ca
         WHERE NOT EXISTS (
           SELECT 1 FROM credit_batches cb WHERE cb.teacher_id = ca.teacher_id AND cb.source = 'free'

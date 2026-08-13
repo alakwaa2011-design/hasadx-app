@@ -405,7 +405,7 @@ describe("S7 · Hold ثم فشل أداة AI → يعود الرصيد للـ ba
 describe("S8 · Refund شراء → يُخصم فقط من دفعات الشراء", () => {
   it("free_balance و subscription_balance لا يتغيران بعد refund الشراء", async () => {
     // Grant 50 free credits
-    await CreditService.resetFreeCredits(T.s8);
+    await CreditService.grantWelcomeCredits(T.s8);
 
     const orderRef = `ls_order_${RUN_ID}_s8`;
 

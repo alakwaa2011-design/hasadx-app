@@ -512,7 +512,8 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     void trackLoginDevice(req, teacher, req.log);
     void runAfterCommit();
 
-    // Non-blocking: reset free credits if the current batch is expired/missing
+    // Non-blocking: grant welcome credits if this teacher has never had a free batch.
+    // We check for ANY free batch (active or expired) — welcome credits are one-time only.
     void import("../lib/credit-service").then(async ({ CreditService }) => {
       try {
         const { db: dbInner } = await import("@workspace/db");
@@ -521,15 +522,13 @@ router.post("/auth/login", authLimiter, async (req, res) => {
           SELECT 1 FROM credit_batches
           WHERE teacher_id = ${teacher.id}
             AND source = 'free'
-            AND amount_remaining > 0
-            AND expires_at > NOW()
           LIMIT 1
         `);
         if (res2.rows.length === 0) {
-          await CreditService.resetFreeCredits(teacher.id);
+          await CreditService.grantWelcomeCredits(teacher.id);
         }
       } catch (e) {
-        req.log.warn({ err: e }, "free credit reset on login failed");
+        req.log.warn({ err: e }, "welcome credits grant on login failed");
       }
     }).catch(() => {});
 
