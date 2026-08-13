@@ -952,7 +952,7 @@ export default function TeacherDashboard() {
 
             {/* ── Section: Content ── */}
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
-              {"Content"}
+              {lang === "ar" ? "المحتوى" : "Content"}
             </p>
             {tabs.filter(t => ["tools","presentations","videos"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
@@ -960,9 +960,9 @@ export default function TeacherDashboard() {
 
               if (isTools) {
                 const subItems: { id: "ai-tools" | "content" | "other"; label: string; icon: ReactNode }[] = [
-                  { id: "ai-tools",  label: "AI Tools",            icon: <Sparkles className="w-3.5 h-3.5" /> },
-                  { id: "content",   label: "Content Organization", icon: <Database className="w-3.5 h-3.5" /> },
-                  { id: "other",     label: "Other",                icon: <MessageSquarePlus className="w-3.5 h-3.5" /> },
+                  { id: "ai-tools",  label: lang === "ar" ? "أدوات الذكاء الاصطناعي" : "AI Tools",      icon: <Sparkles className="w-3.5 h-3.5" /> },
+                  { id: "content",   label: lang === "ar" ? "تنظيم المحتوى" : "Content Organization",    icon: <Database className="w-3.5 h-3.5" /> },
+                  { id: "other",     label: lang === "ar" ? "أخرى" : "Other",                             icon: <MessageSquarePlus className="w-3.5 h-3.5" /> },
                 ];
                 return (
                   <div key={tab.id}>
@@ -2717,7 +2717,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
       // "create something with AI" entry point side-by-side. Renders
       // in the same 4-up grid as the other groups so the cards line up.
       groupId: "ai-tools",
-      groupTitle: "AI Tools",
+      groupTitle: isAr ? "أدوات الذكاء الاصطناعي" : "AI Tools",
       groupIcon: <Sparkles className="w-4 h-4" />,
       tools: [
         {
@@ -2729,7 +2729,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <BookOpen className="w-6 h-6" />,
-          title: "Lesson Plan Generator",
+          title: isAr ? "مولّد خطة الدرس" : "Lesson Plan Generator",
           desc: isAr
             ? "خطّط حصّة كاملة بأهداف وأنشطة وتقويم بمساعدة الذكاء الاصطناعي"
             : "Plan a full class with objectives, activities, and assessment using AI",
@@ -2738,7 +2738,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <FileText className="w-6 h-6" />,
-          title: "Worksheet Generator",
+          title: isAr ? "مولّد ورقة العمل" : "Worksheet Generator",
           desc: isAr
             ? "صمّم ورقة عمل احترافية للطباعة بمساعدة الذكاء الاصطناعي"
             : "Design a print-ready worksheet with AI assistance",
@@ -2747,7 +2747,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Brain className="w-6 h-6" />,
-          title: "Mind Map Generator",
+          title: isAr ? "مولّد الخريطة الذهنية" : "Mind Map Generator",
           desc: isAr
             ? "حوّل أي موضوع أو درس إلى خريطة ذهنية بصرية رائعة بضغطة واحدة"
             : "Turn any topic or lesson into a stunning visual mind map in one click",
@@ -2756,7 +2756,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Video className="w-6 h-6" />,
-          title: "Interactive Video Lesson",
+          title: isAr ? "درس فيديو تفاعلي" : "Interactive Video Lesson",
           desc: isAr
             ? "أنشئ درساً بأسئلة تتوقف تلقائياً أثناء الفيديو"
             : "Create a lesson with auto-pausing questions during the video",
@@ -2765,7 +2765,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Monitor className="w-6 h-6" />,
-          title: "Interactive Presentations",
+          title: isAr ? "العروض التفاعلية" : "Interactive Presentations",
           desc: isAr
             ? "أنشئ عروضاً تقديمية تفاعلية لطلابك في الفصل"
             : "Build interactive slide decks for your classroom",
@@ -2776,7 +2776,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <School className="w-6 h-6" />,
-          title: "Smart Whiteboard",
+          title: isAr ? "السبورة الذكية" : "Smart Whiteboard",
           desc: isAr
             ? "اطرح سؤالاً أو اكتب معلومة أو طلباً وسيعرضه الذكاء الاصطناعي على السبورة أمام طلابك"
             : "Ask a question, share information, or make a request — AI displays it on the board for your class",
@@ -2785,7 +2785,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <FileImage className="w-6 h-6" />,
-          title: "AI Paper Grading",
+          title: isAr ? "تصحيح الأوراق بالذكاء الاصطناعي" : "AI Paper Grading",
           desc: isAr
             ? "ارفع صور أوراق الطلاب والذكاء الاصطناعي يصحّح فوراً حسب تعليماتك"
             : "Students photograph their papers — AI grades them instantly per your instructions",
@@ -2796,7 +2796,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "content",
-      groupTitle: "Content Library",
+      groupTitle: isAr ? "مكتبة المحتوى" : "Content Library",
       groupIcon: <Database className="w-4 h-4" />,
       tools: [
         {
@@ -2822,7 +2822,9 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Sparkles className="w-6 h-6" />,
-          title: isAdmin ? "Hasaad Arena Content" : "My Arena Categories",
+          title: isAr
+            ? (isAdmin ? "محتوى ساحة حصاد" : "فئاتي في الساحة")
+            : (isAdmin ? "Hasaad Arena Content" : "My Arena Categories"),
           desc: isAr
             ? (isAdmin
                 ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"
@@ -2835,7 +2837,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Library className="w-6 h-6" />,
-          title: "Teacher Library",
+          title: isAr ? "مكتبة المعلم" : "Teacher Library",
           desc: isAr
             ? "ارفع وأدر كتبك وأوراق عملك وخطط دروسك"
             : "Upload and manage your books, worksheets & lesson plans",
@@ -2844,7 +2846,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Globe className="w-6 h-6" />,
-          title: "Shared Content",
+          title: isAr ? "المحتوى المشترك" : "Shared Content",
           desc: isAr
             ? "تصفح واجبات وأسئلة ومسابقات المعلمين الآخرين"
             : "Browse assignments, questions & games from other teachers",
@@ -2855,7 +2857,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "students",
-      groupTitle: "Student Management",
+      groupTitle: isAr ? "إدارة الطلاب" : "Student Management",
       groupIcon: <Users className="w-4 h-4" />,
       tools: [
         {
@@ -2895,7 +2897,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "other",
-      groupTitle: "Other",
+      groupTitle: isAr ? "أخرى" : "Other",
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
       tools: [
         {
@@ -2909,7 +2911,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           ? [
               {
                 icon: <Crown className="w-6 h-6" />,
-                title: "Admin Panel",
+                title: isAr ? "لوحة التحكم" : "Admin Panel",
                 desc: isAr
                   ? "إدارة المعلمين والطلاب ومراقبة المنصة"
                   : "Manage teachers, students & monitor platform",
