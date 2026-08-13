@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useI18n } from "@/lib/i18n";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -48,9 +49,6 @@ interface Plan {
   billingPeriodDays: number;
   monthlyCredits: number;
   rolloverCap: number | null;
-  maxStudents: number | null;
-  maxClasses: number | null;
-  isActive: boolean;
 }
 
 interface CurrentSub {
@@ -67,42 +65,25 @@ const PLAN_ICONS: Record<string, any> = {
   pro:   Zap,
 };
 
-// ─── Free items included in EVERY plan (always shown first) ──────────────────
-const FREE_FOR_ALL = [
-  "إنشاء الفصول وإضافة الطلاب مجاناً",
-  "وصول كامل لجميع الألعاب والتحكم بها",
-  "إنشاء أسئلة وأنشطة واختبارات يدوياً",
-  "مشاركة الأنشطة مع الطلاب بلا حدود",
-];
-
-const PLAN_FEATURES: Record<string, string[]> = {
-  free: [
-    // FREE_FOR_ALL يُضاف تلقائياً في وقت العرض
-    "أدوات الذكاء الاصطناعي تستهلك من رصيدك الشهري",
-  ],
-  basic: [
-    // FREE_FOR_ALL يُضاف تلقائياً في وقت العرض
-    "جميع أدوات الذكاء الاصطناعي",
-    "تقارير تفصيلية للطلاب",
-    "مراسلة أولياء الأمور ومتابعتهم",
-  ],
-  pro: [
-    // FREE_FOR_ALL يُضاف تلقائياً في وقت العرض
-    "جميع مميزات الأساسي",
-    "مراسلة أولياء الأمور ومتابعتهم",
-    "أولوية في المعالجة",
-    "دعم متقدم",
-  ],
-};
-
 export default function PricingPage() {
   const [, setLocation] = useLocation();
-  const [plans, setPlans]           = useState<Plan[]>([]);
-  const [currentSub, setCurrentSub] = useState<CurrentSub | null>(null);
+  const { t, lang }     = useI18n();
+  const p               = t.pricing;
+
+  const [plans, setPlans]             = useState<Plan[]>([]);
+  const [currentSub, setCurrentSub]   = useState<CurrentSub | null>(null);
   const [pricingPageVisible, setPricingPageVisible] = useState(false);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]         = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
-  const [cancelling,  setCancelling]  = useState(false);
+  const [cancelling, setCancelling]   = useState(false);
+
+  // Feature lists built from locale keys
+  const FREE_FOR_ALL = [p.freeCreate, p.freeGames, p.freeActivities, p.freeShare];
+  const PLAN_FEATURES: Record<string, string[]> = {
+    free:  [p.freeAiNote],
+    basic: [p.basicAiTools, p.basicReports, p.basicParents],
+    pro:   [p.proBasicAll, p.proParents, p.proPriority, p.proSupport],
+  };
 
   useEffect(() => {
     Promise.all([
@@ -114,7 +95,7 @@ export default function PricingPage() {
         setPricingPageVisible(plansData.pricingPageVisible === true);
         setCurrentSub(subData.subscription ?? null);
       })
-      .catch(() => toast("فشل تحميل بيانات الاشتراكات", { className: "text-red-500" }))
+      .catch(() => toast(p.loadError, { className: "text-red-500" }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -127,7 +108,7 @@ export default function PricingPage() {
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        throw new Error((err as any).message || "تعذر إنشاء رابط الدفع");
+        throw new Error((err as any).message || p.checkoutError);
       }
       const { checkoutUrl } = await r.json();
       window.location.href = checkoutUrl;
@@ -144,10 +125,9 @@ export default function PricingPage() {
       const r = await apiFetch("/api/subscriptions/cancel", { method: "POST" });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        throw new Error((err as any).message || "تعذر إلغاء الاشتراك");
+        throw new Error((err as any).message || p.cancelError);
       }
-      toast("تم إلغاء الاشتراك. ستبقى مشتركاً حتى نهاية الدورة المدفوعة الحالية.");
-      // Reload subscription state
+      toast(p.cancelSuccess);
       const subData = await apiFetch("/api/subscriptions/me").then((r) => r.json());
       setCurrentSub(subData.subscription ?? null);
     } catch (err: any) {
@@ -163,13 +143,11 @@ export default function PricingPage() {
   if (!loading && !pricingPageVisible) {
     return (
       <Layout>
-        <div dir="rtl" className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <div dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-2xl mx-auto px-4 py-20 text-center">
           <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-sm">
             <Sparkles className="mx-auto mb-4 text-emerald-700" size={30} />
-            <h1 className="text-2xl font-extrabold">الباقات غير متاحة حالياً</h1>
-            <p className="mt-3 text-muted-foreground">
-              سيتم الإعلان عن الباقات وخيارات الاشتراك عند تفعيلها من إدارة المنصة.
-            </p>
+            <h1 className="text-2xl font-extrabold">{p.unavailableTitle}</h1>
+            <p className="mt-3 text-muted-foreground">{p.unavailableBody}</p>
           </div>
         </div>
       </Layout>
@@ -178,36 +156,35 @@ export default function PricingPage() {
 
   // Ensure deterministic order: free → basic → pro
   const orderedPlans = ["free", "basic", "pro"]
-    .map((code) => plans.find((p) => p.code === code))
+    .map((code) => plans.find((pl) => pl.code === code))
     .filter(Boolean) as Plan[];
 
   return (
     <Layout>
-      <div dir="rtl" className="max-w-5xl mx-auto space-y-8 pb-16">
+      <div dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-5xl mx-auto space-y-8 pb-16">
         {/* Header */}
         <div className="text-center space-y-2 pt-4">
           <div className="inline-flex items-center gap-2 bg-emerald-800/10 text-emerald-800 text-sm font-medium px-4 py-1.5 rounded-full mb-2">
             <Sparkles size={15} />
-            باقات حصاد
+            {p.pageTitle}
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight">اختر الباقة المناسبة لك</h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            نقاط شهرية لاستخدام أدوات الذكاء الاصطناعي — تتراكم النقاط غير المستخدمة حتى الشهر التالي
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight">{p.pageHeading}</h1>
+          <p className="text-muted-foreground max-w-md mx-auto">{p.pageSubtitle}</p>
         </div>
 
         {/* Plan cards */}
         {loading ? (
-          <p className="text-center text-muted-foreground py-12">جارٍ التحميل…</p>
+          <p className="text-center text-muted-foreground py-12">{p.loading}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {orderedPlans.map((plan) => {
-              const Icon       = PLAN_ICONS[plan.code] ?? Sparkles;
-              const isCurrent  = plan.code === currentPlanCode && isActive;
-              const isPro      = plan.code === "pro";
-              const isFree     = plan.code === "free";
-              const priceUSD   = (plan.priceMinor / 100).toFixed(2);
-              const features   = [...FREE_FOR_ALL, ...(PLAN_FEATURES[plan.code] ?? [])];
+              const Icon      = PLAN_ICONS[plan.code] ?? Sparkles;
+              const isCurrent = plan.code === currentPlanCode && isActive;
+              const isPro     = plan.code === "pro";
+              const isFree    = plan.code === "free";
+              const priceUSD  = (plan.priceMinor / 100).toFixed(2);
+              const features  = [...FREE_FOR_ALL, ...(PLAN_FEATURES[plan.code] ?? [])];
+              const planName  = lang === "ar" ? plan.nameAr : plan.nameEn;
 
               return (
                 <Card
@@ -223,12 +200,12 @@ export default function PricingPage() {
                 >
                   {isPro && (
                     <span className="absolute -top-3.5 right-5 bg-[#E8B84B] text-emerald-950 text-xs font-bold px-3 py-0.5 rounded-full">
-                      الأفضل قيمة
+                      {p.bestValue}
                     </span>
                   )}
                   {isCurrent && (
                     <span className="absolute -top-3.5 right-5 bg-emerald-600 text-white text-xs font-bold px-3 py-0.5 rounded-full">
-                      باقتك الحالية
+                      {p.currentPlan}
                     </span>
                   )}
 
@@ -240,17 +217,14 @@ export default function PricingPage() {
                         isPro ? "bg-white/15" : "bg-emerald-800/10",
                       ].join(" ")}
                     >
-                      <Icon
-                        size={20}
-                        className={isPro ? "text-[#E8B84B]" : "text-emerald-700"}
-                      />
+                      <Icon size={20} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
                     </div>
                     <div>
                       <p className={["font-bold text-lg", isPro ? "text-white" : ""].join(" ")}>
-                        {plan.nameAr}
+                        {planName}
                       </p>
                       <p className={["text-xs", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
-                        {plan.nameEn}
+                        {lang === "ar" ? plan.nameEn : plan.nameAr}
                       </p>
                     </div>
                   </div>
@@ -258,20 +232,22 @@ export default function PricingPage() {
                   {/* Price */}
                   <div>
                     {isFree ? (
-                      <p className="text-3xl font-extrabold">مجاناً</p>
+                      <p className="text-3xl font-extrabold">{p.freePlanLabel}</p>
                     ) : (
                       <div className="flex items-baseline gap-1">
                         <span className={["text-3xl font-extrabold", isPro ? "text-white" : "text-emerald-800"].join(" ")}>
                           ${priceUSD}
                         </span>
                         <span className={isPro ? "text-white/70 text-sm" : "text-muted-foreground text-sm"}>
-                          / شهر
+                          {p.perMonth}
                         </span>
                       </div>
                     )}
                     <p className={["text-sm mt-0.5", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
-                      {plan.monthlyCredits} نقطة شهرياً
-                      {plan.rolloverCap ? ` · تتراكم حتى ${plan.rolloverCap}` : " (بدون تراكم)"}
+                      {plan.monthlyCredits} {p.pointsMonthly}
+                      {plan.rolloverCap
+                        ? ` · ${p.rolloverUntil} ${plan.rolloverCap}`
+                        : ` (${p.noRollover})`}
                     </p>
                   </div>
 
@@ -281,10 +257,7 @@ export default function PricingPage() {
                       <li key={f} className="flex items-start gap-2 text-sm">
                         <Check
                           size={15}
-                          className={[
-                            "shrink-0 mt-0.5",
-                            isPro ? "text-[#E8B84B]" : "text-emerald-700",
-                          ].join(" ")}
+                          className={["shrink-0 mt-0.5", isPro ? "text-[#E8B84B]" : "text-emerald-700"].join(" ")}
                         />
                         <span className={isPro ? "text-white/90" : ""}>{f}</span>
                       </li>
@@ -300,9 +273,8 @@ export default function PricingPage() {
                           className="w-full"
                           onClick={() => setLocation("/teacher/credits")}
                         >
-                          إدارة الاشتراك
+                          {p.manageSubscription}
                         </Button>
-                        {/* Cancel — only for paid plans not already cancelled */}
                         {!currentSub?.cancelled_at && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -315,25 +287,26 @@ export default function PricingPage() {
                                     : "text-muted-foreground hover:text-red-600",
                                 ].join(" ")}
                               >
-                                إلغاء الاشتراك
+                                {p.cancelSubscription}
                               </button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent dir="rtl">
+                            <AlertDialogContent dir={lang === "ar" ? "rtl" : "ltr"}>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>تأكيد إلغاء الاشتراك</AlertDialogTitle>
+                                <AlertDialogTitle>{p.confirmCancelTitle}</AlertDialogTitle>
                                 <AlertDialogDescription className="space-y-2 text-right">
                                   <span className="block">
                                     {currentSub?.current_period_end
-                                      ? `ستبقى مشتركاً حتى ${new Date(currentSub.current_period_end).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })}.`
-                                      : "ستبقى مشتركاً حتى نهاية الدورة المدفوعة الحالية."}
+                                      ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
+                                          lang === "ar" ? "ar-SA" : "en-US",
+                                          { year: "numeric", month: "long", day: "numeric" }
+                                        )}.`
+                                      : p.cancelledFallback}
                                   </span>
-                                  <span className="block">
-                                    لن تحصل على نقاط اشتراك جديدة بعد هذا التاريخ. نقاطك الحالية ونقاط الشراء لن تتأثر.
-                                  </span>
+                                  <span className="block">{p.cancelNote}</span>
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>رجوع</AlertDialogCancel>
+                                <AlertDialogCancel>{p.back}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={handleCancel}
                                   disabled={cancelling}
@@ -342,9 +315,9 @@ export default function PricingPage() {
                                   {cancelling ? (
                                     <span className="flex items-center gap-2">
                                       <Loader2 size={14} className="animate-spin" />
-                                      جارٍ الإلغاء…
+                                      {p.cancelling}
                                     </span>
-                                  ) : "تأكيد الإلغاء"}
+                                  ) : p.confirmCancel}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -352,30 +325,23 @@ export default function PricingPage() {
                         )}
                       </>
                     ) : isFree ? (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        disabled
-                      >
-                        باقة البداية
+                      <Button variant="outline" className="w-full" disabled>
+                        {p.starterPlan}
                       </Button>
                     ) : (
                       <Button
                         variant={isPro ? "secondary" : "default"}
-                        className={[
-                          "w-full",
-                          isPro ? "bg-white text-emerald-900 hover:bg-white/90" : "",
-                        ].join(" ")}
+                        className={["w-full", isPro ? "bg-white text-emerald-900 hover:bg-white/90" : ""].join(" ")}
                         onClick={() => handleUpgrade(plan.code)}
                         disabled={checkingOut !== null}
                       >
                         {checkingOut === plan.code ? (
                           <span className="flex items-center gap-2">
                             <Loader2 size={15} className="animate-spin" />
-                            جارٍ التحويل…
+                            {p.redirecting}
                           </span>
                         ) : (
-                          `الترقية إلى ${plan.nameAr}`
+                          `${p.upgradePrefix} ${planName}`
                         )}
                       </Button>
                     )}
@@ -388,14 +354,14 @@ export default function PricingPage() {
 
         {/* Extra credits note */}
         <div className="text-center text-sm text-muted-foreground space-y-1">
-          <p className="font-medium">نقاط إضافية (دفعة واحدة · لا تنتهي أبداً)</p>
-          <p>100 نقطة · $2.99 &nbsp;|&nbsp; 300 نقطة · $6.99 &nbsp;|&nbsp; 600 نقطة · $11.99</p>
+          <p className="font-medium">{p.extraCreditsTitle}</p>
+          <p>{p.extraCreditsPricing}</p>
           <button
             type="button"
             onClick={() => setLocation("/teacher/credits")}
             className="text-emerald-700 underline underline-offset-2 hover:text-emerald-800 mt-1"
           >
-            شراء نقاط إضافية ←
+            {p.buyExtraCredits}
           </button>
         </div>
       </div>
