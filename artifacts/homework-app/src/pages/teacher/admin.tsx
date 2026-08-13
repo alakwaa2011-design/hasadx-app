@@ -89,7 +89,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime" | "messages" | "credits";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime" | "messages" | "credits" | "new-pricing" | "new-credits";
 
 interface FeedbackItem {
   id: number;
@@ -1395,8 +1395,10 @@ export default function AdminPage() {
       color: "text-violet-500",
       icon: CreditCard,
       tabs: [
-        { key: "billing" as Tab, label: lang === "ar" ? "الباقات والإيرادات" : "Plans & Revenue", icon: CreditCard },
-        { key: "credits" as Tab, label: lang === "ar" ? "إدارة الرصيد"       : "Credits",         icon: Coins      },
+        { key: "billing"      as Tab, label: lang === "ar" ? "الباقات والإيرادات"  : "Plans & Revenue", icon: CreditCard },
+        { key: "credits"      as Tab, label: lang === "ar" ? "إدارة الرصيد"        : "Credits",         icon: Coins      },
+        { key: "new-pricing"  as Tab, label: lang === "ar" ? "صفحة الباقات الجديدة" : "New Pricing",     icon: Sparkles   },
+        { key: "new-credits"  as Tab, label: lang === "ar" ? "صفحة الرصيد الجديدة"  : "New Credits",     icon: Coins      },
       ],
     },
     {
@@ -1605,6 +1607,44 @@ export default function AdminPage() {
         {activeTab === "messages" && <MessagesTab />}
 
         {activeTab === "credits" && <CreditsTab />}
+
+        {activeTab === "new-pricing" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2.5 border">
+              <Sparkles className="w-4 h-4 shrink-0 text-violet-500" />
+              <span>
+                {lang === "ar"
+                  ? "هذه هي صفحة الباقات كما يراها المعلم — تشمل زر «إلغاء الاشتراك» الجديد."
+                  : "This is the teacher-facing pricing page including the new cancel button."}
+              </span>
+            </div>
+            <iframe
+              src="/teacher/pricing"
+              className="w-full rounded-xl border bg-background"
+              style={{ height: "calc(100vh - 180px)", minHeight: 500 }}
+              title="صفحة الباقات الجديدة"
+            />
+          </div>
+        )}
+
+        {activeTab === "new-credits" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2.5 border">
+              <Coins className="w-4 h-4 shrink-0 text-violet-500" />
+              <span>
+                {lang === "ar"
+                  ? "هذه هي صفحة الرصيد كما يراها المعلم — تشمل الأرصدة والمشتريات."
+                  : "This is the teacher-facing credits page including balances and purchases."}
+              </span>
+            </div>
+            <iframe
+              src="/teacher/credits"
+              className="w-full rounded-xl border bg-background"
+              style={{ height: "calc(100vh - 180px)", minHeight: 500 }}
+              title="صفحة الرصيد الجديدة"
+            />
+          </div>
+        )}
 
         {activeTab === "online" && (
           <div className="space-y-4">
