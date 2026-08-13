@@ -91,12 +91,12 @@ export default function PricingPage() {
     basic: [p.basicAiTools, p.basicReports, p.basicParents],
     pro:   [], // Pro rendered separately via PRO_FEATURES with tooltip support
   };
-  type ProFeatureItem = { text: string; tooltip?: { title: string; body: string; example: string } };
+  type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string; example: string } };
   const PRO_FEATURES: ProFeatureItem[] = [
-    { text: p.proBasicAll },
+    { text: p.proSavings20, highlight: true, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody, example: p.proSavingsTooltipExample } },
     { text: p.proCredits600 },
     { text: p.proRollover1200 },
-    { text: p.proSavings20, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody, example: p.proSavingsTooltipExample } },
+    { text: p.proBasicAll },
     { text: p.proAdvancedReports },
   ];
 
@@ -214,8 +214,9 @@ export default function PricingPage() {
                   ].join(" ")}
                 >
                   {isPro && (
-                    <span className="absolute -top-3.5 right-5 bg-[#E8B84B] text-emerald-950 text-xs font-bold px-3 py-0.5 rounded-full">
-                      {p.bestValue}
+                    <span className="absolute -top-3.5 right-5 bg-[#E8B84B] text-emerald-950 text-xs font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
+                      <Zap size={11} className="shrink-0" />
+                      {p.proSavingsBadge}
                     </span>
                   )}
                   {isCurrent && (
@@ -272,14 +273,25 @@ export default function PricingPage() {
                     <ul className="space-y-2 flex-1">
                       {isPro
                         ? PRO_FEATURES.map((f) => (
-                            <li key={f.text} className="flex items-start gap-2 text-sm">
-                              <Check size={15} className="shrink-0 mt-0.5 text-[#E8B84B]" />
-                              <span className="text-white/90 flex items-center gap-1.5">
+                            <li
+                              key={f.text}
+                              className={[
+                                "flex items-start gap-2",
+                                f.highlight
+                                  ? "text-[#E8B84B] font-semibold text-sm bg-white/5 rounded-lg px-2 py-1.5 -mx-2"
+                                  : "text-sm",
+                              ].join(" ")}
+                            >
+                              {f.highlight
+                                ? <Zap size={15} className="shrink-0 mt-0.5 text-[#E8B84B]" fill="currentColor" />
+                                : <Check size={15} className="shrink-0 mt-0.5 text-[#E8B84B]" />
+                              }
+                              <span className={f.highlight ? "text-[#E8B84B] flex items-center gap-1.5" : "text-white/90 flex items-center gap-1.5"}>
                                 {f.text}
                                 {f.tooltip && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Info size={13} className="text-white/50 hover:text-white/90 cursor-help shrink-0" />
+                                      <Info size={13} className={f.highlight ? "text-[#E8B84B]/60 hover:text-[#E8B84B] cursor-help shrink-0" : "text-white/50 hover:text-white/90 cursor-help shrink-0"} />
                                     </TooltipTrigger>
                                     <TooltipContent
                                       side="bottom"
