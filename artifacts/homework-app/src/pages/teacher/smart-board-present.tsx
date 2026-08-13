@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
+import { useI18n } from "@/lib/i18n";
 import {
   Pause, Play, ChevronRight, ChevronLeft, X,
   Pencil, Eraser, Trash2, Volume2, VolumeX, Loader2,
@@ -19,22 +20,22 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 // ─── Voices ───────────────────────────────────────────────────────────────────
 
 const VOICES = [
-  { id:"shimmer", ar:"شيمر",  desc:"نسائي هادئ",  dot:"#f9a8d4" },
-  { id:"nova",    ar:"نوفا",   desc:"نسائي واضح",  dot:"#93c5fd" },
-  { id:"alloy",   ar:"ألوي",   desc:"محايد",        dot:"#a5f3fc" },
-  { id:"echo",    ar:"إيكو",   desc:"رجالي ناعم",  dot:"#86efac" },
-  { id:"onyx",    ar:"أونيكس", desc:"رجالي عميق",  dot:"#c4b5fd" },
+  { id:"shimmer", ar:"شيمر",  en:"Shimmer", desc:"نسائي هادئ",  enDesc:"Calm female",  dot:"#f9a8d4" },
+  { id:"nova",    ar:"نوفا",   en:"Nova",    desc:"نسائي واضح",  enDesc:"Clear female", dot:"#93c5fd" },
+  { id:"alloy",   ar:"ألوي",   en:"Alloy",   desc:"محايد",       enDesc:"Neutral",      dot:"#a5f3fc" },
+  { id:"echo",    ar:"إيكو",   en:"Echo",    desc:"رجالي ناعم", enDesc:"Soft male",    dot:"#86efac" },
+  { id:"onyx",    ar:"أونيكس", en:"Onyx",    desc:"رجالي عميق", enDesc:"Deep male",    dot:"#c4b5fd" },
 ] as const;
 type VoiceId = typeof VOICES[number]["id"];
 
 // ─── Paces ────────────────────────────────────────────────────────────────────
 
 const PACES = [
-  { id:"slow2",  ar:"بطيء جداً", icon:"🐢", chars:2, between:30, step:80,  rate:0.75 },
-  { id:"slow",   ar:"بطيء",      icon:"🚶", chars:3, between:20, step:60,  rate:0.9  },
-  { id:"normal", ar:"عادي",      icon:"✦",  chars:4, between:12, step:40,  rate:1.0  },
-  { id:"fast",   ar:"سريع",      icon:"🏃", chars:6, between:7,  step:24,  rate:1.1  },
-  { id:"fast2",  ar:"سريع جداً", icon:"⚡", chars:9, between:4,  step:14,  rate:1.25 },
+  { id:"slow2",  ar:"بطيء جداً", en:"Very Slow", icon:"🐢", chars:2, between:30, step:80,  rate:0.75 },
+  { id:"slow",   ar:"بطيء",      en:"Slow",       icon:"🚶", chars:3, between:20, step:60,  rate:0.9  },
+  { id:"normal", ar:"عادي",      en:"Normal",     icon:"✦",  chars:4, between:12, step:40,  rate:1.0  },
+  { id:"fast",   ar:"سريع",      en:"Fast",       icon:"🏃", chars:6, between:7,  step:24,  rate:1.1  },
+  { id:"fast2",  ar:"سريع جداً", en:"Very Fast",  icon:"⚡", chars:9, between:4,  step:14,  rate:1.25 },
 ] as const;
 type PaceId = typeof PACES[number]["id"];
 
@@ -314,6 +315,7 @@ function BoardLine({ item, typedChars, scale=1 }:
 function BoardMap({ item, scale = 1 }: { item: BoardItem; scale?: number }) {
   const [coords, setCoords] = useState<{lat:number;lng:number}|null>(null);
   const [failed,  setFailed] = useState(false);
+  const { lang } = useI18n();
   const color = ch(item.color);
   const fs = (n:number) => Math.round(n * scale);
 
@@ -354,7 +356,7 @@ function BoardMap({ item, scale = 1 }: { item: BoardItem; scale?: number }) {
             fontFamily:"'Tajawal',sans-serif", color:`${color}40`, fontSize:fs(16) }}>🗺️</div>
         ) : (
           <div style={{ height:fs(60), display:"flex", alignItems:"center", justifyContent:"center",
-            fontFamily:"'Tajawal',sans-serif", color:`${color}30`, fontSize:fs(13) }}>جارٍ تحميل الخريطة…</div>
+            fontFamily:"'Tajawal',sans-serif", color:`${color}30`, fontSize:fs(13) }}>{lang === "ar" ? "جارٍ تحميل الخريطة…" : "Loading map…"}</div>
         )}
         {/* Description */}
         {item.description && (
@@ -483,6 +485,51 @@ function ChalkDefs() {
 export default function SmartBoardPresent() {
   const params = useParams<{ id:string }>();
   const [, navigate] = useLocation();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
+  const ui = {
+    loading:           isAr ? "جارٍ تحميل الدرس…"                                              : "Loading lesson…",
+    back:              isAr ? "العودة"                                                            : "Go back",
+    invalidId:         isAr ? "معرّف غير صالح"                                                  : "Invalid lesson ID",
+    notFound:          isAr ? "الدرس غير موجود"                                                  : "Lesson not found",
+    loadFailed:        isAr ? "تعذّر تحميل الدرس"                                               : "Failed to load lesson",
+    answerNotFound:    isAr ? "لم يُعثر على الإجابة — حاول مجدداً"                              : "Answer not found — try again",
+    loadAnswerFailed:  isAr ? "تعذّر تحميل الإجابة"                                             : "Failed to load answer",
+    answerFallback:    isAr ? "الإجابة"                                                           : "Answer",
+    intro:             isAr ? "المقدمة"                                                           : "Introduction",
+    summary:           isAr ? "الخلاصة"                                                          : "Summary",
+    mapLoading:        isAr ? "جارٍ تحميل الخريطة…"                                            : "Loading map…",
+    liveBroadcast:     isAr ? "البث المباشر"                                                     : "Live Broadcast",
+    broadcastInstr:    isAr ? `اطلب من الطلاب فتح hasad.app والضغط على "شاهد السبورة"، ثم إدخال الرمز:` : `Ask students to open hasad.app and tap "Watch Board", then enter the code:`,
+    copied:            isAr ? "تم"                                                                : "Copied",
+    copy:              isAr ? "نسخ"                                                               : "Copy",
+    broadcastNote:     isAr ? "السبورة تتحدّث على شاشات الطلاب بشكل تلقائي ✦"                : "The board syncs to all student screens automatically ✦",
+    stopBroadcast:     isAr ? "إيقاف البث"                                                       : "Stop Broadcast",
+    voiceLabel:        isAr ? "الصوت"                                                             : "VOICE",
+    paceLabel:         isAr ? "الوتيرة — كتابة + صوت"                                           : "PACE — text + audio",
+    sizeLabel:         isAr ? "الحجم"                                                             : "SIZE",
+    manualMode:        isAr ? "وضع يدوي"                                                          : "Manual",
+    prev:              isAr ? "السابق"                                                            : "Prev",
+    next:              isAr ? "التالي"                                                            : "Next",
+    pause:             isAr ? "إيقاف"                                                             : "Pause",
+    resume:            isAr ? "متابعة"                                                            : "Resume",
+    restart:           isAr ? "إعادة"                                                             : "Restart",
+    draw:              isAr ? "رسم"                                                               : "Draw",
+    audioSettings:     isAr ? "الصوت"                                                             : "Audio",
+    shareStudents:     isAr ? "شارك مع الطلاب"                                                   : "Share with Students",
+    liveActive:        isAr ? "بث مباشر"                                                          : "Live",
+    share:             isAr ? "شارك"                                                              : "Share",
+    shrink:            isAr ? "تصغير"                                                             : "Exit Full",
+    fullscreen:        isAr ? "ملء الشاشة"                                                       : "Fullscreen",
+    exitFullscreen:    isAr ? "خروج من ملء الشاشة (F)"                                          : "Exit Fullscreen (F)",
+    enterFullscreen:   isAr ? "عرض ملء الشاشة (F)"                                              : "Fullscreen (F)",
+    exit:              isAr ? "خروج"                                                              : "Exit",
+    settings:          isAr ? "إعدادات"                                                           : "Settings",
+    edit:              isAr ? "تعديل"                                                             : "Edit",
+    tapToContinue:     isAr ? "اضغط للمتابعة"                                                   : "Tap to continue",
+    keyPoints:         isAr ? "✦ النقاط الرئيسية"                                              : "✦ Key Points",
+    drawMode:          isAr ? "✏️ وضع الكتابة — D للخروج"                                      : "✏️ Draw Mode — D to exit",
+  };
 
   // Lesson data
   const [loadingLesson, setLoadingLesson] = useState(true);
@@ -621,13 +668,13 @@ export default function SmartBoardPresent() {
 
   useEffect(() => {
     const id = params?.id;
-    if (!id) { setLoadError("معرّف غير صالح"); setLoadingLesson(false); return; }
+    if (!id) { setLoadError(ui.invalidId); setLoadingLesson(false); return; }
 
     // "ask" mode: lesson plan was stored in sessionStorage by SmartBoardAsk
     if (id === "ask") {
       try {
         const raw = sessionStorage.getItem("whiteboard_ask_plan");
-        if (!raw) { setLoadError("لم يُعثر على الإجابة — حاول مجدداً"); setLoadingLesson(false); return; }
+        if (!raw) { setLoadError(ui.answerNotFound); setLoadingLesson(false); return; }
         const p: LessonPlan = JSON.parse(raw);
         planRef.current = p;
         // Skip empty intro/summary for Q&A mode — only the answer step matters
@@ -635,9 +682,9 @@ export default function SmartBoardPresent() {
           title: s.title, voiceText: s.voiceText, boardActions: s.boardActions,
         }));
         phasesRef.current = phases;
-        setStepTitle(phases[0]?.title ?? "الإجابة");
+        setStepTitle(phases[0]?.title ?? ui.answerFallback);
       } catch {
-        setLoadError("تعذّر تحميل الإجابة");
+        setLoadError(ui.loadAnswerFailed);
       }
       setLoadingLesson(false);
       return;
@@ -646,19 +693,19 @@ export default function SmartBoardPresent() {
     fetch(`${API_BASE}/api/whiteboard/lessons/${id}`, { credentials:"include" })
       .then(r => r.json())
       .then(d => {
-        if (!d.lesson?.plan) { setLoadError("الدرس غير موجود"); return; }
+        if (!d.lesson?.plan) { setLoadError(ui.notFound); return; }
         const p: LessonPlan = typeof d.lesson.plan === "string"
           ? JSON.parse(d.lesson.plan) : d.lesson.plan;
         planRef.current = p;
         const phases: Phase[] = [
-          { title:"المقدمة",  voiceText:p.intro.voiceText,   boardActions:p.intro.boardActions },
+          { title:ui.intro,   voiceText:p.intro.voiceText,   boardActions:p.intro.boardActions },
           ...p.steps.map(s => ({ title:s.title, voiceText:s.voiceText, boardActions:s.boardActions })),
-          { title:"الخلاصة", voiceText:p.summary.voiceText, boardActions:p.summary.boardActions },
+          { title:ui.summary, voiceText:p.summary.voiceText, boardActions:p.summary.boardActions },
         ];
         phasesRef.current = phases;
         setStepTitle(phases[0]?.title ?? "");
       })
-      .catch(() => setLoadError("تعذّر تحميل الدرس"))
+      .catch(() => setLoadError(ui.loadFailed))
       .finally(() => setLoadingLesson(false));
   }, [params?.id]); // eslint-disable-line
 
@@ -1111,7 +1158,7 @@ export default function SmartBoardPresent() {
     <div style={{ minHeight:"100vh", background:"#0d1108", display:"flex",
       alignItems:"center", justifyContent:"center", flexDirection:"column", gap:18 }}>
       <Loader2 size={44} color="#a8e6b0" style={{ animation:"spin 1s linear infinite" }}/>
-      <p style={{ color:"#a8e6b0", fontFamily:"'Tajawal',sans-serif", fontSize:18 }}>جارٍ تحميل الدرس…</p>
+      <p style={{ color:"#a8e6b0", fontFamily:"'Tajawal',sans-serif", fontSize:18 }}>{ui.loading}</p>
       <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -1122,7 +1169,7 @@ export default function SmartBoardPresent() {
       <button onClick={() => navigate("/teacher/smart-board")}
         style={{ color:"#a8e6b0", background:"none", border:"1px solid #a8e6b0",
           borderRadius:8, padding:"8px 24px", cursor:"pointer", fontFamily:"'Tajawal',sans-serif" }}>
-        العودة
+        {ui.back}
       </button>
     </div>
   );
@@ -1146,7 +1193,7 @@ export default function SmartBoardPresent() {
 
   return (
     <div
-      dir="rtl"
+      dir={isAr ? "rtl" : "ltr"}
       style={{ position:"fixed", inset:0, zIndex:9999, background:"#0a0d08",
         display:"flex", flexDirection:"column",
         fontFamily:"'Tajawal','Noto Sans Arabic',sans-serif", overflow:"hidden" }}
@@ -1186,13 +1233,13 @@ export default function SmartBoardPresent() {
             onClick={e => { if (e.target===e.currentTarget) setShowBroadcastModal(false); }}>
             <div style={{ background:"#111a12", border:"1px solid rgba(168,230,176,.25)",
               borderRadius:18, padding:"32px 36px", maxWidth:400, width:"calc(100% - 40px)",
-              fontFamily:"'Tajawal',sans-serif", direction:"rtl",
+              fontFamily:"'Tajawal',sans-serif", direction:isAr ? "rtl" : "ltr",
               boxShadow:"0 20px 60px rgba(0,0,0,.8)" }}>
 
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                   <Radio size={20} color="#a8e6b0"/>
-                  <span style={{ color:"#a8e6b0", fontSize:18, fontWeight:700 }}>البث المباشر</span>
+                  <span style={{ color:"#a8e6b0", fontSize:18, fontWeight:700 }}>{ui.liveBroadcast}</span>
                 </div>
                 <button onClick={() => setShowBroadcastModal(false)}
                   style={{ background:"none", border:"none", color:"rgba(255,255,255,.3)",
@@ -1202,7 +1249,7 @@ export default function SmartBoardPresent() {
               </div>
 
               <p style={{ color:"rgba(242,237,224,.6)", fontSize:14, marginBottom:20, lineHeight:1.7 }}>
-                اطلب من الطلاب فتح <strong style={{ color:"#a8e6b0" }}>hasad.app</strong> والضغط على "شاهد السبورة"، ثم إدخال الرمز:
+                {ui.broadcastInstr}
               </p>
 
               {/* Big code display */}
@@ -1223,12 +1270,12 @@ export default function SmartBoardPresent() {
                     border:"1px solid rgba(168,230,176,.3)", color:"#a8e6b0",
                     borderRadius:8, padding:"5px 8px", cursor:"pointer",
                     display:"flex", alignItems:"center", gap:4, fontSize:12 }}>
-                  {broadcastCopied ? <><Check size={12}/> تم</> : <><Copy size={12}/> نسخ</>}
+                  {broadcastCopied ? <><Check size={12}/> {ui.copied}</> : <><Copy size={12}/> {ui.copy}</>}
                 </button>
               </div>
 
               <p style={{ color:"rgba(242,237,224,.4)", fontSize:12, textAlign:"center", marginBottom:20 }}>
-                السبورة تتحدّث على شاشات الطلاب بشكل تلقائي ✦
+                {ui.broadcastNote}
               </p>
 
               <button onClick={stopBroadcast}
@@ -1236,7 +1283,7 @@ export default function SmartBoardPresent() {
                   border:"1px solid rgba(245,128,128,.35)", borderRadius:10,
                   color:"#f58080", padding:"12px", cursor:"pointer",
                   fontFamily:"'Tajawal',sans-serif", fontSize:15, fontWeight:700 }}>
-                إيقاف البث
+                {ui.stopBroadcast}
               </button>
             </div>
           </div>
@@ -1254,7 +1301,7 @@ export default function SmartBoardPresent() {
             {/* Voices */}
             <div style={{ marginBottom:18 }}>
               <p style={{ color:"rgba(242,237,224,.4)", fontSize:11, fontWeight:700,
-                letterSpacing:1.5, marginBottom:10, textTransform:"uppercase" }}>الصوت</p>
+                letterSpacing:1.5, marginBottom:10, textTransform:"uppercase" }}>{ui.voiceLabel}</p>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {VOICES.map(v => (
                   <button key={v.id} onClick={() => setVoice(v.id)}
@@ -1266,10 +1313,10 @@ export default function SmartBoardPresent() {
                       <span style={{ width:8, height:8, borderRadius:"50%", background:v.dot,
                         display:"inline-block", boxShadow: voice===v.id ? `0 0 8px ${v.dot}`:undefined }}/>
                       <span style={{ color: voice===v.id ? v.dot:"rgba(242,237,224,.7)",
-                        fontWeight:700, fontSize:15, fontFamily:"'Tajawal',sans-serif" }}>{v.ar}</span>
+                        fontWeight:700, fontSize:15, fontFamily:"'Tajawal',sans-serif" }}>{isAr ? v.ar : v.en}</span>
                     </div>
                     <span style={{ color:"rgba(242,237,224,.3)", fontSize:11,
-                      fontFamily:"'Tajawal',sans-serif", paddingRight:14 }}>{v.desc}</span>
+                      fontFamily:"'Tajawal',sans-serif", paddingRight:14 }}>{isAr ? v.desc : v.enDesc}</span>
                   </button>
                 ))}
               </div>
@@ -1278,7 +1325,7 @@ export default function SmartBoardPresent() {
             {/* Pace */}
             <div style={{ marginBottom:18 }}>
               <p style={{ color:"rgba(242,237,224,.4)", fontSize:11, fontWeight:700,
-                letterSpacing:1.5, marginBottom:10, textTransform:"uppercase" }}>الوتيرة — كتابة + صوت</p>
+                letterSpacing:1.5, marginBottom:10, textTransform:"uppercase" }}>{ui.paceLabel}</p>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {PACES.map(p => (
                   <button key={p.id} onClick={() => setPaceId(p.id)}
@@ -1290,7 +1337,7 @@ export default function SmartBoardPresent() {
                       fontFamily:"'Tajawal',sans-serif", fontSize:14,
                       fontWeight: paceId===p.id ? 700:400 }}>
                     <span style={{ fontSize:16 }}>{p.icon}</span>
-                    <span>{p.ar}</span>
+                    <span>{isAr ? p.ar : p.en}</span>
                     <span style={{ fontSize:11, opacity:.5 }}>{p.rate}×</span>
                   </button>
                 ))}
@@ -1300,7 +1347,7 @@ export default function SmartBoardPresent() {
             {/* Font size + manual mode */}
             <div style={{ display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ color:"rgba(242,237,224,.4)", fontSize:11, fontWeight:700, letterSpacing:1.5 }}>الحجم</span>
+                <span style={{ color:"rgba(242,237,224,.4)", fontSize:11, fontWeight:700, letterSpacing:1.5 }}>{ui.sizeLabel}</span>
                 <button onClick={() => setFontSize(f => Math.max(.6,+(f-.1).toFixed(1)))}
                   style={{ background:"rgba(255,255,255,.06)", border:"none", color:"rgba(242,237,224,.7)",
                     borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1324,7 +1371,7 @@ export default function SmartBoardPresent() {
                   color: manualMode?"#f5d76e":"rgba(242,237,224,.6)",
                   fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight: manualMode?700:400 }}>
                 <Hand size={15}/>
-                <span>وضع يدوي</span>
+                <span>{ui.manualMode}</span>
                 <span style={{ fontSize:11, opacity:.5 }}>Space</span>
               </button>
             </div>
@@ -1479,7 +1526,7 @@ export default function SmartBoardPresent() {
                               color:"#a8e6b0", fontFamily:"'Tajawal',sans-serif",
                               fontSize:14, fontWeight:700, animation:"tapPulse 1.8s infinite",
                               display:"flex", alignItems:"center", gap:8 }}>
-                            <Hand size={15}/> اضغط للمتابعة
+                            <Hand size={15}/> {ui.tapToContinue}
                           </button>
                         </div>
                       )}
@@ -1494,7 +1541,7 @@ export default function SmartBoardPresent() {
                     background:"rgba(168,230,176,.04)", animation:"chalkIn .5s" }}>
                     <div style={{ color:"rgba(168,230,176,.65)", fontWeight:700,
                       fontSize:14, marginBottom:12, filter:"url(#chalk-rough)" }}>
-                      ✦ النقاط الرئيسية
+                      {ui.keyPoints}
                     </div>
                     {plan.keyPoints.map((kp,i) => (
                       <div key={i} style={{ display:"flex", gap:10, marginBottom:9 }}>
@@ -1523,7 +1570,7 @@ export default function SmartBoardPresent() {
                 background:"rgba(245,215,110,.15)", border:"1px solid rgba(245,215,110,.4)",
                 color:"#f5d76e", borderRadius:20, padding:"5px 18px",
                 fontSize:12, fontWeight:700, fontFamily:"'Tajawal',sans-serif", letterSpacing:.5 }}>
-                ✏️ وضع الكتابة — D للخروج
+                {ui.drawMode}
               </div>
             )}
 
@@ -1562,10 +1609,10 @@ export default function SmartBoardPresent() {
                 borderRadius:10, padding:"10px 16px", cursor:stepIdx===0?"not-allowed":"pointer",
                 display:"flex", alignItems:"center", gap:5,
                 fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
-              <ChevronRight size={16}/> السابق
+              <ChevronRight size={16}/> {ui.prev}
             </button>
 
-            {/* إيقاف / متابعة */}
+            {/* pause / resume */}
             <button onClick={() => {
               if (manualModeRef.current && waitingTapRef.current) manualAdvance();
               else togglePause();
@@ -1576,17 +1623,17 @@ export default function SmartBoardPresent() {
                 borderRadius:12, padding:"12px 22px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:8,
                 fontFamily:"'Tajawal',sans-serif", fontSize:15, fontWeight:700 }}>
-              {isPaused ? <><Play size={16}/> متابعة</> : <><Pause size={16}/> إيقاف</>}
+              {isPaused ? <><Play size={16}/> {ui.resume}</> : <><Pause size={16}/> {ui.pause}</>}
             </button>
 
-            {/* التالي */}
+            {/* next */}
             <button onClick={goNext} disabled={isDone && stepIdx >= phasesRef.current.length-1}
               style={{ background:"rgba(255,255,255,.07)", border:"none",
                 color:(isDone&&stepIdx>=phasesRef.current.length-1)?"rgba(255,255,255,.2)":"rgba(242,237,224,.8)",
                 borderRadius:10, padding:"10px 16px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:5,
                 fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
-              التالي <ChevronLeft size={16}/>
+              {ui.next} <ChevronLeft size={16}/>
             </button>
 
             {/* الصوت */}
@@ -1627,16 +1674,16 @@ export default function SmartBoardPresent() {
               {/* إعادة */}
               <button onClick={() => { restartStep(); }}
                 style={mobileSecBtn}>
-                <RotateCcw size={14}/> إعادة
+                <RotateCcw size={14}/> {ui.restart}
               </button>
 
-              {/* رسم */}
+              {/* draw */}
               <button onClick={() => setIsDrawMode(m=>!m)}
                 style={{ ...mobileSecBtn,
                   background: isDrawMode?"rgba(245,215,110,.12)":"rgba(255,255,255,.06)",
                   border:`1px solid ${isDrawMode?"rgba(245,215,110,.4)":"rgba(255,255,255,.08)"}`,
                   color: isDrawMode?"#f5d76e":"rgba(242,237,224,.6)" }}>
-                <Pencil size={14}/> رسم
+                <Pencil size={14}/> {ui.draw}
               </button>
 
               {/* Draw color strip */}
@@ -1668,10 +1715,10 @@ export default function SmartBoardPresent() {
                   background: showSettings?"rgba(168,230,176,.12)":"rgba(255,255,255,.06)",
                   border:`1px solid ${showSettings?"rgba(168,230,176,.35)":"rgba(255,255,255,.08)"}`,
                   color: showSettings?"#a8e6b0":"rgba(242,237,224,.6)" }}>
-                <Volume2 size={14}/> الصوت
+                <Volume2 size={14}/> {ui.audioSettings}
               </button>
 
-              {/* شارك مع الطلاب */}
+              {/* share with students */}
               <button onClick={() => broadcastCode ? setShowBroadcastModal(true) : startBroadcast()}
                 disabled={broadcastLoading}
                 style={{ ...mobileSecBtn,
@@ -1681,23 +1728,23 @@ export default function SmartBoardPresent() {
                 {broadcastLoading
                   ? <Loader2 size={14} style={{ animation:"spin 1s linear infinite" }}/>
                   : <Radio size={14}/>}
-                {broadcastCode ? "بث مباشر" : "شارك"}
+                {broadcastCode ? ui.liveActive : ui.share}
                 {broadcastCode && <span style={{ width:6,height:6,borderRadius:"50%",background:"#a8e6b0",display:"inline-block" }}/>}
               </button>
 
-              {/* ملء الشاشة */}
+              {/* fullscreen */}
               <button onClick={() => { toggleFullscreen(); resetCtrlTimer(); }}
                 style={{ ...mobileSecBtn,
                   background: isFullscreen?"rgba(168,230,176,.12)":"rgba(255,255,255,.06)",
                   color: isFullscreen?"#a8e6b0":"rgba(242,237,224,.6)" }}>
                 {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
-                {isFullscreen ? "تصغير" : "ملء الشاشة"}
+                {isFullscreen ? ui.shrink : ui.fullscreen}
               </button>
 
-              {/* خروج */}
+              {/* exit */}
               <button onClick={handleExit}
                 style={{ ...mobileSecBtn, color:"rgba(245,128,128,.6)" }}>
-                <X size={14}/> خروج
+                <X size={14}/> {ui.exit}
               </button>
             </div>
           )}
@@ -1717,7 +1764,7 @@ export default function SmartBoardPresent() {
                 color: stepIdx===0?"rgba(255,255,255,.2)":"rgba(242,237,224,.7)",
                 borderRadius:8, padding:"7px 12px", cursor:stepIdx===0?"not-allowed":"pointer",
                 display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
-              <ChevronRight size={13}/> السابق
+              <ChevronRight size={13}/> {ui.prev}
             </button>
 
             <button onClick={() => {
@@ -1730,7 +1777,7 @@ export default function SmartBoardPresent() {
                 borderRadius:8, padding:"8px 20px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:7,
                 fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
-              {isPaused ? <><Play size={15}/> متابعة</> : <><Pause size={15}/> إيقاف</>}
+              {isPaused ? <><Play size={15}/> {ui.resume}</> : <><Pause size={15}/> {ui.pause}</>}
             </button>
 
             <button onClick={goNext} disabled={isDone && stepIdx >= phasesRef.current.length-1}
@@ -1738,10 +1785,10 @@ export default function SmartBoardPresent() {
                 color:(isDone&&stepIdx>=phasesRef.current.length-1)?"rgba(255,255,255,.2)":"rgba(242,237,224,.7)",
                 borderRadius:8, padding:"7px 12px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
-              التالي <ChevronLeft size={13}/>
+              {ui.next} <ChevronLeft size={13}/>
             </button>
 
-            <button onClick={restartStep} title="إعادة (R)"
+            <button onClick={restartStep} title={ui.restart}
               style={{ background:"rgba(255,255,255,.05)", border:"none",
                 color:"rgba(242,237,224,.35)", borderRadius:8, padding:"8px 9px", cursor:"pointer" }}>
               <RotateCcw size={13}/>
@@ -1764,7 +1811,7 @@ export default function SmartBoardPresent() {
                 color: isDrawMode?"#f5d76e":"rgba(242,237,224,.4)",
                 borderRadius:8, padding:"7px 10px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:5, fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
-              <Pencil size={13}/> رسم
+              <Pencil size={13}/> {ui.draw}
             </button>
 
             {isDrawMode && (
@@ -1794,7 +1841,7 @@ export default function SmartBoardPresent() {
                 color: showSettings?"#a8e6b0":"rgba(242,237,224,.4)",
                 borderRadius:8, padding:"7px 10px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:5, fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
-              <Settings size={13}/> إعدادات
+              <Settings size={13}/> {ui.settings}
               <span style={{ width:6, height:6, borderRadius:"50%",
                 background:VOICES.find(v=>v.id===voice)?.dot??"#f2ede0",
                 display:"inline-block", marginRight:2 }}/>
@@ -1808,14 +1855,14 @@ export default function SmartBoardPresent() {
             </button>
 
             <button onClick={() => { toggleFullscreen(); resetCtrlTimer(); }}
-              title={isFullscreen ? "خروج من ملء الشاشة (F)" : "عرض ملء الشاشة (F)"}
+              title={isFullscreen ? ui.exitFullscreen : ui.enterFullscreen}
               style={{ background: isFullscreen ? "rgba(168,230,176,.12)" : "rgba(255,255,255,.06)",
                 border: `1px solid ${isFullscreen ? "rgba(168,230,176,.35)" : "transparent"}`,
                 color: isFullscreen ? "#a8e6b0" : "rgba(242,237,224,.45)",
                 borderRadius:8, padding:"7px 10px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:5, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
               {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
-              <span>{isFullscreen ? "تصغير" : "ملء الشاشة"}</span>
+              <span>{isFullscreen ? ui.shrink : ui.fullscreen}</span>
             </button>
 
             <button
@@ -1830,7 +1877,7 @@ export default function SmartBoardPresent() {
               {broadcastLoading
                 ? <Loader2 size={13} style={{ animation:"spin 1s linear infinite" }}/>
                 : <Radio size={13}/>}
-              {broadcastCode ? "بث مباشر" : "شارك مع الطلاب"}
+              {broadcastCode ? ui.liveActive : ui.shareStudents}
               {broadcastCode && (
                 <span style={{ width:7, height:7, borderRadius:"50%",
                   background:"#a8e6b0", display:"inline-block",
@@ -1843,14 +1890,14 @@ export default function SmartBoardPresent() {
               style={{ background:"rgba(255,255,255,.04)", border:"none",
                 color:"rgba(242,237,224,.35)", borderRadius:8, padding:"7px 10px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:12 }}>
-              <Edit2 size={13}/> تعديل
+              <Edit2 size={13}/> {ui.edit}
             </button>
 
             <button onClick={handleExit}
               style={{ background:"rgba(255,255,255,.04)", border:"none",
                 color:"rgba(242,237,224,.28)", borderRadius:8, padding:"7px 10px", cursor:"pointer",
                 display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:12 }}>
-              <X size={13}/> خروج
+              <X size={13}/> {ui.exit}
             </button>
           </div>
         </div>

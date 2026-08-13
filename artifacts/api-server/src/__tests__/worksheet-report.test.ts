@@ -73,6 +73,11 @@ vi.mock("../lib/file-upload", () => ({
 vi.mock("../lib/rate-limiter", () => ({
   imageUploadLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
+vi.mock("@workspace/billing", () => ({
+  featureAccess: {
+    getSubscription: async () => ({ planCode: "pro", isAdmin: false }),
+  },
+}));
 
 import express from "express";
 import request from "supertest";
