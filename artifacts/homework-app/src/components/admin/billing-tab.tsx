@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { toast } from "@/components/ui/sonner";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -68,22 +69,26 @@ function limitLabel(v: number | null) {
   return v === null ? "∞" : String(v);
 }
 
+/* ─── Pricing Visibility Control ─────────────────────────────────────────── */
 export function PricingVisibilityControl() {
+  const { t } = useI18n();
+  const b = t.billingAdmin;
+
   const [visible, setVisible] = useState<boolean | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/billing/admin/overview`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : Promise.reject(new Error("load failed")))
       .then((data: Overview) => setVisible(data.pricingPageVisible === true))
-      .catch(() => toast.error("تعذّر تحميل إعداد ظهور صفحة الباقات"));
+      .catch(() => toast.error(b.visibilityLoadError));
   }, []);
 
   if (visible === null) {
     return (
       <Card className="p-4 flex items-center gap-3">
         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">جاري تحميل إعداد ظهور صفحة الباقات...</span>
+        <span className="text-sm text-muted-foreground">{b.loadingVisibility}</span>
       </Card>
     );
   }
@@ -91,18 +96,16 @@ export function PricingVisibilityControl() {
   const nextValue = !visible;
   return (
     <Card className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-      <div className="flex items-start gap-3" dir="rtl">
+      <div className="flex items-start gap-3">
         {visible ? (
           <Eye className="w-5 h-5 mt-0.5 text-emerald-600 shrink-0" />
         ) : (
           <EyeOff className="w-5 h-5 mt-0.5 text-muted-foreground shrink-0" />
         )}
         <div>
-          <h3 className="font-bold">ظهور صفحة الباقات للمعلمين</h3>
+          <h3 className="font-bold">{b.visibilityTitle}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {visible
-              ? "صفحة الباقات ظاهرة للمعلمين حالياً."
-              : "صفحة الباقات مخفية عن المعلمين. يمكنك إظهارها دون تفعيل الدفع."}
+            {visible ? b.visibleDesc : b.hiddenDesc}
           </p>
         </div>
       </div>
@@ -121,25 +124,29 @@ export function PricingVisibilityControl() {
             });
             if (!r.ok) throw new Error("update failed");
             setVisible(nextValue);
-            toast.success(nextValue ? "تم إظهار صفحة الباقات للمعلمين" : "تم إخفاء صفحة الباقات عن المعلمين");
+            toast.success(nextValue ? b.showSuccess : b.hideSuccess);
           } catch {
-            toast.error("تعذّر تحديث ظهور صفحة الباقات");
+            toast.error(b.visibilityError);
           } finally {
             setSaving(false);
           }
         }}
         className="shrink-0"
       >
-        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : visible ? "إخفاء الصفحة" : "إظهار الصفحة"}
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : visible ? b.hideBtn : b.showBtn}
       </Button>
     </Card>
   );
 }
 
+/* ─── BillingTab ─────────────────────────────────────────────────────────── */
 export function BillingTab() {
-  const [view, setView] = useState<SubView>("overview");
-  const [overview, setOverview] = useState<Overview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { t, lang } = useI18n();
+  const b = t.billingAdmin;
+
+  const [view, setView]               = useState<SubView>("overview");
+  const [overview, setOverview]       = useState<Overview | null>(null);
+  const [loading, setLoading]         = useState(true);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
 
   const loadOverview = async () => {
@@ -147,9 +154,9 @@ export function BillingTab() {
     try {
       const r = await fetch(`${API_BASE}/api/billing/admin/overview`, { credentials: "include" });
       if (r.ok) setOverview(await r.json());
-      else toast.error("تعذّر تحميل بيانات الاشتراكات");
+      else toast.error(b.loadError);
     } catch {
-      toast.error("خطأ في الشبكة");
+      toast.error(b.networkError);
     } finally {
       setLoading(false);
     }
@@ -161,27 +168,28 @@ export function BillingTab() {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin inline-block ml-2" />
-        جاري التحميل...
       </div>
     );
   }
   if (!overview) {
-    return <div className="text-center py-12 text-muted-foreground">لا توجد بيانات</div>;
+    return <div className="text-center py-12 text-muted-foreground">—</div>;
   }
 
   const editing = editingPlanId != null
     ? overview.plans.find((p) => p.id === editingPlanId) ?? null
     : null;
 
+  const subViews: { key: SubView; label: string; icon: any }[] = [
+    { key: "overview",     label: b.overview,     icon: TrendingUp },
+    { key: "plans",        label: b.plans,        icon: Crown },
+    { key: "subscribers",  label: b.subscribers,  icon: Users },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Sub-nav */}
       <div className="flex flex-wrap items-center gap-2">
-        {([
-          { key: "overview" as SubView, label: "نظرة عامة", icon: TrendingUp },
-          { key: "plans" as SubView, label: "الباقات", icon: Crown },
-          { key: "subscribers" as SubView, label: "المشتركون", icon: Users },
-        ]).map((s) => (
+        {subViews.map((s) => (
           <button
             key={s.key}
             onClick={() => setView(s.key)}
@@ -200,22 +208,27 @@ export function BillingTab() {
             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
             : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
         }`}>
-          {overview.paymentsEnabled ? "الدفع مفعّل" : "وضع الاختبار (الدفع متوقف)"}
+          {overview.paymentsEnabled ? b.paymentsEnabled : b.testMode}
         </span>
       </div>
 
-      {view === "overview" && <OverviewView overview={overview} />}
+      {view === "overview" && <OverviewView overview={overview} lang={lang} b={b} />}
       {view === "plans" && (
         <PlansView
           plans={overview.plans}
           onEdit={(id) => setEditingPlanId(id)}
+          lang={lang}
+          b={b}
         />
       )}
-      {view === "subscribers" && <SubscribersView plans={overview.plans} onChanged={loadOverview} />}
+      {view === "subscribers" && (
+        <SubscribersView plans={overview.plans} onChanged={loadOverview} lang={lang} b={b} />
+      )}
 
       {editing && (
         <PlanEditModal
           plan={editing}
+          b={b}
           onClose={() => setEditingPlanId(null)}
           onSaved={() => { setEditingPlanId(null); loadOverview(); }}
         />
@@ -224,29 +237,24 @@ export function BillingTab() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Overview                                                                  */
-/* -------------------------------------------------------------------------- */
-function OverviewView({ overview }: { overview: Overview }) {
+/* ─── Overview ───────────────────────────────────────────────────────────── */
+function OverviewView({
+  overview, lang, b,
+}: { overview: Overview; lang: string; b: any }) {
   const { totals, plans } = overview;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiCard icon={Crown} label="عدد الباقات" value={totals.plans} tone="emerald" />
-        <KpiCard icon={Users} label="إجمالي المشتركين" value={totals.totalSubscribers} tone="blue" />
-        <KpiCard icon={CheckCircle2} label="المشتركون النشطون" value={totals.activeSubscribers} tone="amber" />
-        <KpiCard
-          icon={TrendingUp}
-          label="إيراد شهري تقديري"
-          value={formatPrice(totals.mrrFils, totals.currency)}
-          tone="green"
-        />
+        <KpiCard icon={Crown}        label={b.kpiPlans}   value={totals.plans}              tone="emerald" />
+        <KpiCard icon={Users}        label={b.kpiTotal}   value={totals.totalSubscribers}   tone="blue" />
+        <KpiCard icon={CheckCircle2} label={b.kpiActive}  value={totals.activeSubscribers}  tone="amber" />
+        <KpiCard icon={TrendingUp}   label={b.kpiMrr}     value={formatPrice(totals.mrrFils, totals.currency)} tone="green" />
       </div>
 
       <Card className="p-4">
         <h3 className="font-bold mb-3 flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-primary" />
-          توزيع المشتركين على الباقات
+          {b.subscribers}
         </h3>
         <div className="space-y-2">
           {plans.map((p) => {
@@ -255,12 +263,14 @@ function OverviewView({ overview }: { overview: Overview }) {
               : Math.round((p.subscriberCount / totals.totalSubscribers) * 100);
             return (
               <div key={p.id} className="flex items-center gap-3">
-                <div className="w-32 text-sm font-bold">{p.nameAr}</div>
+                <div className="w-32 text-sm font-bold">
+                  {lang === "ar" ? p.nameAr : p.nameEn}
+                </div>
                 <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <div className="w-24 text-end text-xs text-muted-foreground tabular-nums">
-                  {p.subscriberCount} مشترك ({pct}%)
+                  {p.subscriberCount} ({pct}%)
                 </div>
               </div>
             );
@@ -276,9 +286,9 @@ function KpiCard({
 }: { icon: any; label: string; value: number | string; tone: "emerald" | "blue" | "amber" | "green" }) {
   const tones: Record<string, string> = {
     emerald: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600",
-    blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600",
-    amber: "bg-amber-100 dark:bg-amber-900/30 text-amber-600",
-    green: "bg-primary/10 text-primary",
+    blue:    "bg-blue-100 dark:bg-blue-900/30 text-blue-600",
+    amber:   "bg-amber-100 dark:bg-amber-900/30 text-amber-600",
+    green:   "bg-primary/10 text-primary",
   };
   return (
     <Card className="p-4 text-center">
@@ -291,63 +301,73 @@ function KpiCard({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Plans                                                                     */
-/* -------------------------------------------------------------------------- */
-function PlansView({ plans, onEdit }: { plans: Plan[]; onEdit: (id: number) => void }) {
+/* ─── Plans ──────────────────────────────────────────────────────────────── */
+function PlansView({
+  plans, onEdit, lang, b,
+}: { plans: Plan[]; onEdit: (id: number) => void; lang: string; b: any }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {plans.map((p) => (
-        <Card key={p.id} className="p-4 flex flex-col">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="font-extrabold text-lg">{p.nameAr}</h3>
-              <p className="text-[11px] text-muted-foreground font-mono">{p.code}</p>
+      {plans.map((p) => {
+        const periodLabel = p.billingPeriodDays === 0
+          ? b.free
+          : p.billingPeriodDays === 30
+          ? b.month
+          : p.billingPeriodDays === 365
+          ? b.year
+          : `${p.billingPeriodDays} ${b.day}`;
+
+        return (
+          <Card key={p.id} className="p-4 flex flex-col">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h3 className="font-extrabold text-lg">{lang === "ar" ? p.nameAr : p.nameEn}</h3>
+                <p className="text-[11px] text-muted-foreground font-mono">{p.code}</p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                p.isActive
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {p.isActive ? "✓" : "✗"}
+              </span>
             </div>
-            {p.isActive ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">نشط</span>
-            ) : (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">معطّل</span>
-            )}
-          </div>
-          <div className="my-2">
-            <span className="text-2xl font-black text-primary tabular-nums">{(p.priceMinor / 1000).toFixed(3)}</span>
-            <span className="text-xs text-muted-foreground mr-1">{p.currency} / {p.billingPeriodDays === 0 ? "مجاني" : p.billingPeriodDays === 30 ? "شهر" : p.billingPeriodDays === 365 ? "سنة" : `${p.billingPeriodDays} يوم`}</span>
-          </div>
-          <ul className="text-xs space-y-1 mb-3 text-muted-foreground">
-            <li className="flex justify-between"><span>الواجبات/شهر</span><span className="font-bold text-foreground">{limitLabel(p.maxHomeworksPerMonth)}</span></li>
-            <li className="flex justify-between"><span>الذكاء/يوم</span><span className="font-bold text-foreground">{limitLabel(p.aiUsageDailyLimit)}</span></li>
-            <li className="flex justify-between"><span>الطلاب</span><span className="font-bold text-foreground">{limitLabel(p.maxStudents)}</span></li>
-            <li className="flex justify-between"><span>الصفوف</span><span className="font-bold text-foreground">{limitLabel(p.maxClasses)}</span></li>
-            <li className="flex justify-between"><span>المعلمون</span><span className="font-bold text-foreground">{limitLabel(p.maxUsers)}</span></li>
-          </ul>
-          <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">{p.subscriberCount} مشترك</span>
-            <Button variant="outline" onClick={() => onEdit(p.id)} className="text-xs h-8 px-3">تعديل</Button>
-          </div>
-        </Card>
-      ))}
+            <div className="my-2">
+              <span className="text-2xl font-black text-primary tabular-nums">{(p.priceMinor / 1000).toFixed(3)}</span>
+              <span className="text-xs text-muted-foreground mr-1">{p.currency} / {periodLabel}</span>
+            </div>
+            <ul className="text-xs space-y-1 mb-3 text-muted-foreground">
+              <li className="flex justify-between"><span>{b.monthlyAssignments}</span><span className="font-bold text-foreground">{limitLabel(p.maxHomeworksPerMonth)}</span></li>
+              <li className="flex justify-between"><span>{b.dailyAiMessages}</span><span className="font-bold text-foreground">{limitLabel(p.aiUsageDailyLimit)}</span></li>
+              <li className="flex justify-between"><span>{b.maxStudents}</span><span className="font-bold text-foreground">{limitLabel(p.maxStudents)}</span></li>
+              <li className="flex justify-between"><span>{b.maxClasses}</span><span className="font-bold text-foreground">{limitLabel(p.maxClasses)}</span></li>
+              <li className="flex justify-between"><span>{b.maxTeachers}</span><span className="font-bold text-foreground">{limitLabel(p.maxUsers)}</span></li>
+            </ul>
+            <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{p.subscriberCount}</span>
+              <Button variant="outline" onClick={() => onEdit(p.id)} className="text-xs h-8 px-3">✎</Button>
+            </div>
+          </Card>
+        );
+      })}
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Edit modal                                                                */
-/* -------------------------------------------------------------------------- */
+/* ─── Plan Edit Modal ────────────────────────────────────────────────────── */
 function PlanEditModal({
-  plan, onClose, onSaved,
-}: { plan: Plan; onClose: () => void; onSaved: () => void }) {
-  const [nameAr, setNameAr] = useState(plan.nameAr);
-  const [nameEn, setNameEn] = useState(plan.nameEn);
-  const [priceMajor, setPriceMajor] = useState((plan.priceMinor / 1000).toString());
+  plan, onClose, onSaved, b,
+}: { plan: Plan; onClose: () => void; onSaved: () => void; b: any }) {
+  const [nameAr, setNameAr]               = useState(plan.nameAr);
+  const [nameEn, setNameEn]               = useState(plan.nameEn);
+  const [priceMajor, setPriceMajor]       = useState((plan.priceMinor / 1000).toString());
   const [billingPeriodDays, setBillingPeriodDays] = useState(plan.billingPeriodDays);
-  const [isActive, setIsActive] = useState(plan.isActive);
-  const [maxStudents, setMaxStudents] = useState<string>(plan.maxStudents == null ? "" : String(plan.maxStudents));
-  const [maxClasses, setMaxClasses] = useState<string>(plan.maxClasses == null ? "" : String(plan.maxClasses));
-  const [maxHw, setMaxHw] = useState<string>(plan.maxHomeworksPerMonth == null ? "" : String(plan.maxHomeworksPerMonth));
-  const [aiDaily, setAiDaily] = useState<string>(plan.aiUsageDailyLimit == null ? "" : String(plan.aiUsageDailyLimit));
-  const [maxUsers, setMaxUsers] = useState<string>(plan.maxUsers == null ? "" : String(plan.maxUsers));
-  const [saving, setSaving] = useState(false);
+  const [isActive, setIsActive]           = useState(plan.isActive);
+  const [maxStudents, setMaxStudents]     = useState<string>(plan.maxStudents == null ? "" : String(plan.maxStudents));
+  const [maxClasses, setMaxClasses]       = useState<string>(plan.maxClasses == null ? "" : String(plan.maxClasses));
+  const [maxHw, setMaxHw]                 = useState<string>(plan.maxHomeworksPerMonth == null ? "" : String(plan.maxHomeworksPerMonth));
+  const [aiDaily, setAiDaily]             = useState<string>(plan.aiUsageDailyLimit == null ? "" : String(plan.aiUsageDailyLimit));
+  const [maxUsers, setMaxUsers]           = useState<string>(plan.maxUsers == null ? "" : String(plan.maxUsers));
+  const [saving, setSaving]               = useState(false);
 
   const parseLimit = (s: string): number | null => {
     const trimmed = s.trim();
@@ -359,14 +379,13 @@ function PlanEditModal({
   const save = async () => {
     const priceNum = Number(priceMajor);
     if (!Number.isFinite(priceNum) || priceNum < 0) {
-      toast.error("السعر غير صالح");
+      toast.error(b.invalidPrice);
       return;
     }
     setSaving(true);
     try {
       const body = {
-        nameAr,
-        nameEn,
+        nameAr, nameEn,
         priceMinor: Math.round(priceNum * 1000),
         billingPeriodDays: Number(billingPeriodDays),
         isActive,
@@ -383,14 +402,14 @@ function PlanEditModal({
         body: JSON.stringify(body),
       });
       if (r.ok) {
-        toast.success("تم حفظ الباقة");
+        toast.success(b.savePlanSuccess);
         onSaved();
       } else {
         const data = await r.json().catch(() => ({}));
-        toast.error(data.message || "تعذّر الحفظ");
+        toast.error(data.message || b.savePlanError);
       }
     } catch {
-      toast.error("خطأ في الشبكة");
+      toast.error(b.networkError);
     } finally {
       setSaving(false);
     }
@@ -402,7 +421,7 @@ function PlanEditModal({
         <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card">
           <div className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold">تعديل باقة: {plan.nameAr}</h2>
+            <h2 className="text-lg font-bold">{plan.nameAr} / {plan.nameEn}</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg">
             <X className="w-5 h-5" />
@@ -410,25 +429,25 @@ function PlanEditModal({
         </div>
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="الاسم بالعربية">
+            <Field label={b.planNameAr}>
               <Input value={nameAr} onChange={(e) => setNameAr(e.target.value)} />
             </Field>
-            <Field label="الاسم بالإنجليزية">
+            <Field label={b.planNameEn}>
               <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} dir="ltr" />
             </Field>
-            <Field label={`السعر (${plan.currency})`}>
+            <Field label={`Price (${plan.currency})`}>
               <Input type="number" step="0.001" min="0" value={priceMajor} onChange={(e) => setPriceMajor(e.target.value)} dir="ltr" />
             </Field>
-            <Field label="مدة الباقة (بالأيام)">
+            <Field label={b.planDuration}>
               <select
                 value={billingPeriodDays}
                 onChange={(e) => setBillingPeriodDays(Number(e.target.value))}
                 className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm"
               >
-                <option value={0}>مجاني / مدى الحياة</option>
-                <option value={30}>30 يوم (شهري)</option>
-                <option value={90}>90 يوم (ربع سنوي)</option>
-                <option value={365}>365 يوم (سنوي)</option>
+                <option value={0}>Free / lifetime</option>
+                <option value={30}>30 days (monthly)</option>
+                <option value={90}>90 days (quarterly)</option>
+                <option value={365}>365 days (annual)</option>
               </select>
             </Field>
           </div>
@@ -436,22 +455,22 @@ function PlanEditModal({
           <div className="border-t border-border pt-3">
             <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1">
               <InfinityIcon className="w-3 h-3" />
-              اترك الحقل فارغاً لجعل الحدّ غير محدود
+              Leave blank for unlimited
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="الواجبات شهرياً">
+              <Field label={b.monthlyAssignments}>
                 <Input type="number" min="0" placeholder="∞" value={maxHw} onChange={(e) => setMaxHw(e.target.value)} dir="ltr" />
               </Field>
-              <Field label="رسائل الذكاء يومياً">
+              <Field label={b.dailyAiMessages}>
                 <Input type="number" min="0" placeholder="∞" value={aiDaily} onChange={(e) => setAiDaily(e.target.value)} dir="ltr" />
               </Field>
-              <Field label="عدد الطلاب">
+              <Field label={b.maxStudents}>
                 <Input type="number" min="0" placeholder="∞" value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} dir="ltr" />
               </Field>
-              <Field label="عدد الصفوف">
+              <Field label={b.maxClasses}>
                 <Input type="number" min="0" placeholder="∞" value={maxClasses} onChange={(e) => setMaxClasses(e.target.value)} dir="ltr" />
               </Field>
-              <Field label="عدد المعلمين (للمدارس)">
+              <Field label={b.maxTeachers}>
                 <Input type="number" min="0" placeholder="∞" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} dir="ltr" />
               </Field>
             </div>
@@ -459,21 +478,21 @@ function PlanEditModal({
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4" />
-            <span className="text-sm font-bold">الباقة نشطة (تظهر في صفحة الأسعار)</span>
+            <span className="text-sm font-bold">Active (shown on pricing page)</span>
           </label>
 
           {plan.subscriberCount > 0 && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3 flex gap-2 text-sm text-amber-800 dark:text-amber-200">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p>سيتم تطبيق الحدود الجديدة فوراً على {plan.subscriberCount} مشترك في هذه الباقة.</p>
+              <p>New limits will apply immediately to {plan.subscriberCount} subscribers in this plan.</p>
             </div>
           )}
         </div>
         <div className="p-4 border-t border-border flex items-center justify-end gap-2 sticky bottom-0 bg-card">
-          <Button variant="outline" onClick={onClose} disabled={saving}>إلغاء</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            حفظ
+            Save
           </Button>
         </div>
       </div>
@@ -490,21 +509,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Subscribers                                                               */
-/* -------------------------------------------------------------------------- */
-function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () => void }) {
-  const [rows, setRows] = useState<SubscriberRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [planFilter, setPlanFilter] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [assigning, setAssigning] = useState<number | null>(null);
+/* ─── Subscribers ────────────────────────────────────────────────────────── */
+function SubscribersView({
+  plans, onChanged, lang, b,
+}: { plans: Plan[]; onChanged: () => void; lang: string; b: any }) {
+  const [rows, setRows]               = useState<SubscriberRow[]>([]);
+  const [total, setTotal]             = useState(0);
+  const [loading, setLoading]         = useState(true);
+  const [planFilter, setPlanFilter]   = useState<string>("");
+  const [search, setSearch]           = useState("");
+  const [debounced, setDebounced]     = useState("");
+  const [assigning, setAssigning]     = useState<number | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(search.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const load = async () => {
@@ -514,22 +533,28 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
       if (planFilter) params.set("planCode", planFilter);
       if (debounced) params.set("q", debounced);
       params.set("limit", "200");
-      const r = await fetch(`${API_BASE}/api/billing/admin/subscriptions?${params.toString()}`, { credentials: "include" });
+      const r = await fetch(
+        `${API_BASE}/api/billing/admin/subscriptions?${params.toString()}`,
+        { credentials: "include" }
+      );
       if (r.ok) {
         const data = await r.json();
         setRows(data.rows ?? []);
         setTotal(data.total ?? 0);
       } else {
-        toast.error("تعذّر تحميل المشتركين");
+        toast.error(b.subscribersLoadError);
       }
     } catch {
-      toast.error("خطأ في الشبكة");
+      toast.error(b.networkError);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [planFilter, debounced]);
+  useEffect(() => {
+    load();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [planFilter, debounced]);
 
   const assignPlan = async (teacherId: number, planCode: string) => {
     setAssigning(teacherId);
@@ -541,15 +566,15 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
         body: JSON.stringify({ teacherId, planCode }),
       });
       if (r.ok) {
-        toast.success("تم تحديث الباقة");
+        toast.success(b.updatePlanSuccess);
         load();
         onChanged();
       } else {
         const d = await r.json().catch(() => ({}));
-        toast.error(d.message || "فشل التحديث");
+        toast.error(d.message || b.updatePlanError);
       }
     } catch {
-      toast.error("خطأ في الشبكة");
+      toast.error(b.networkError);
     } finally {
       setAssigning(null);
     }
@@ -565,7 +590,7 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث بالاسم أو البريد أو الجوال..."
+            placeholder={b.searchPlaceholder}
             className="ps-9"
           />
         </div>
@@ -574,35 +599,34 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
           onChange={(e) => setPlanFilter(e.target.value)}
           className="px-3 py-2 rounded-xl border border-border bg-background text-sm font-bold min-w-[160px]"
         >
-          <option value="">كل الباقات</option>
+          <option value="">All plans</option>
           {planOptions.map((p) => (
-            <option key={p.id} value={p.code}>{p.nameAr}</option>
+            <option key={p.id} value={p.code}>{lang === "ar" ? p.nameAr : p.nameEn}</option>
           ))}
         </select>
         <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-          {total} مشترك
+          {total}
         </span>
       </Card>
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin inline-block ml-2" />
-          جاري التحميل...
         </div>
       ) : rows.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">لا يوجد مشتركون مطابقون</div>
+        <div className="text-center py-12 text-muted-foreground">—</div>
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs font-bold text-muted-foreground">
                 <tr>
-                  <th className="text-start px-3 py-2.5">المعلم</th>
-                  <th className="text-start px-3 py-2.5 hidden md:table-cell">التواصل</th>
-                  <th className="text-start px-3 py-2.5">الباقة</th>
-                  <th className="text-start px-3 py-2.5 hidden lg:table-cell">الحالة</th>
-                  <th className="text-start px-3 py-2.5 hidden lg:table-cell">منذ</th>
-                  <th className="text-start px-3 py-2.5">إجراء</th>
+                  <th className="text-start px-3 py-2.5">Teacher</th>
+                  <th className="text-start px-3 py-2.5 hidden md:table-cell">Contact</th>
+                  <th className="text-start px-3 py-2.5">Plan</th>
+                  <th className="text-start px-3 py-2.5 hidden lg:table-cell">Status</th>
+                  <th className="text-start px-3 py-2.5 hidden lg:table-cell">Since</th>
+                  <th className="text-start px-3 py-2.5">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -620,7 +644,7 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
                       {r.teacherPhone && <div dir="ltr">{r.teacherPhone}</div>}
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="font-bold">{r.planNameAr}</div>
+                      <div className="font-bold">{lang === "ar" ? r.planNameAr : r.planNameAr}</div>
                       <div className="text-[11px] text-muted-foreground tabular-nums">
                         {formatPrice(r.priceMinor, r.currency)}
                       </div>
@@ -633,7 +657,7 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
                       }`}>{r.status}</span>
                     </td>
                     <td className="px-3 py-2.5 hidden lg:table-cell text-xs text-muted-foreground">
-                      {new Date(r.startedAt).toLocaleDateString("ar-EG")}
+                      {new Date(r.startedAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}
                     </td>
                     <td className="px-3 py-2.5">
                       <select
@@ -643,7 +667,7 @@ function SubscribersView({ plans, onChanged }: { plans: Plan[]; onChanged: () =>
                         className="px-2 py-1.5 rounded-lg border border-border bg-background text-xs font-bold"
                       >
                         {planOptions.map((p) => (
-                          <option key={p.id} value={p.code}>{p.nameAr}</option>
+                          <option key={p.id} value={p.code}>{lang === "ar" ? p.nameAr : p.nameEn}</option>
                         ))}
                       </select>
                     </td>
