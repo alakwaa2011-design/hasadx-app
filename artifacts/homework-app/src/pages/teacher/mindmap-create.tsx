@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
+import { useI18n } from "@/lib/i18n";
 import {
   Loader2, RefreshCw, Printer, Copy, ArrowRight, ArrowLeft,
   Sparkles, Brain, BookOpen, Lightbulb, Zap,
@@ -321,14 +322,20 @@ const USE_CASES_EN = [
 /* ── Main page ────────────────────────────────────────────────────────── */
 export default function MindMapCreate() {
   const [, setLocation]   = useLocation();
+  const { lang: globalLang } = useI18n();
   const [topic, setTopic] = useState("");
-  const [lang, setLang]   = useState<"ar" | "en">("ar");
+  const [lang, setLang]   = useState<"ar" | "en">(globalLang as "ar" | "en");
   const [depth, setDepth] = useState<"standard" | "detailed">("standard");
   const [loading, setLoading]         = useState(false);
   const [map, setMap]                 = useState<MindMap | null>(null);
   const [copied, setCopied]           = useState(false);
   const [exporting, setExporting]     = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync with global app language whenever it changes
+  useEffect(() => {
+    setLang(globalLang as "ar" | "en");
+  }, [globalLang]);
 
   const isAr = lang === "ar";
   const dir = isAr ? "rtl" : "ltr";
