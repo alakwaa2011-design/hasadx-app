@@ -386,7 +386,7 @@ export default function AdminPage() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
   const urlTab = new URLSearchParams(location.split("?")[1] ?? "").get("tab") as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(urlTab ?? "teachers");
+  const [activeTab, setActiveTab] = useState<Tab>(urlTab ?? "stats");
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [students, setStudents] = useState<StudentData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
