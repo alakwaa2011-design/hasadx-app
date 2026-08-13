@@ -231,6 +231,7 @@ router.get("/public/settings", async (req, res) => {
         showSecretGame: platformSettingsTable.showSecretGame,
         classroomEnabled: platformSettingsTable.classroomEnabled,
         socialLinks: platformSettingsTable.socialLinks,
+        organizerEnabled: platformSettingsTable.organizerEnabled,
       })
       .from(platformSettingsTable)
       .limit(1);
@@ -256,6 +257,7 @@ router.get("/public/settings", async (req, res) => {
       showMaraqui: row?.showMaraqui ?? false,
       showSecretGame: row?.showSecretGame ?? false,
       classroomEnabled: row?.classroomEnabled ?? false,
+      organizerEnabled: row?.organizerEnabled ?? true,
     });
   } catch (err) {
     req.log.error(err, "Public settings error");

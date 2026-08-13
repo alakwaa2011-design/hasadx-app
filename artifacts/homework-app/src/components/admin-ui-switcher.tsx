@@ -17,6 +17,18 @@ import {
   type AdminSurface as Surface,
 } from "@/lib/admin-last-surface";
 
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+/* Cache so we only hit /api/public/settings once per page load */
+let _orgEnabled: boolean | null = null;
+function fetchOrgEnabled(): Promise<boolean> {
+  if (_orgEnabled !== null) return Promise.resolve(_orgEnabled);
+  return fetch(`${API_BASE}/api/public/settings`)
+    .then(r => (r.ok ? r.json() : {}))
+    .then((d: { organizerEnabled?: boolean }) => { _orgEnabled = d?.organizerEnabled !== false; return _orgEnabled!; })
+    .catch(() => { _orgEnabled = true; return true; });
+}
+
 interface AdminUiSwitcherProps {
   variant?: "header" | "compact" | "menu";
 }
@@ -26,7 +38,12 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   const [location, setLocation] = useLocation();
   const { data: user } = useGetCurrentTeacher();
   const [open, setOpen] = useState(false);
+  const [orgEnabled, setOrgEnabled] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchOrgEnabled().then(setOrgEnabled);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +57,9 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   if (!user) return null;
 
   const isAdmin = Boolean(user.isAdmin) || user.role === "admin";
-  const isOrganizer = isAdmin || user.role === "organizer";
+  /* isOrganizer: true if user IS an organizer or admin.
+     When orgEnabled=false, only admins can still switch to organizer view. */
+  const isOrganizer = isAdmin || (user.role === "organizer" && orgEnabled);
 
   const current: Surface = location.startsWith("/organizer")
     ? "organizer"

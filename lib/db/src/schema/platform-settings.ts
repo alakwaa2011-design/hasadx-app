@@ -92,6 +92,9 @@ export const platformSettingsTable = pgTable("platform_settings", {
   pricingPageVisible:   boolean("pricing_page_visible").notNull().default(false),
   /** روابط وسائل التواصل الاجتماعي — مصفوفة منصات قابلة للتفعيل/الإخفاء */
   socialLinks: jsonb("social_links").$type<SocialLink[]>().notNull().default([]),
+  /** نظام منظم المسابقات — يُخفي بطاقة "منظم فعاليات" من الصفحة الرئيسية
+      وخيار التبديل للمنظّم من الهيدر. افتراضياً مفعّل (true). */
+  organizerEnabled: boolean("organizer_enabled").notNull().default(true),
 });
 
 export interface SocialLink {

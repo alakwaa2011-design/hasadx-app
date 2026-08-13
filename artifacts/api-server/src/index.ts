@@ -353,6 +353,11 @@ async function runSchemaMigrations() {
       ALTER TABLE platform_settings
         ADD COLUMN IF NOT EXISTS social_links JSONB NOT NULL DEFAULT '[]'::jsonb
     `);
+    // نظام منظم المسابقات — إخفاء/إظهار
+    await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS organizer_enabled BOOLEAN NOT NULL DEFAULT TRUE
+    `);
     await db.execute(sql`
       UPDATE platform_settings
       SET social_links = '[{"id":"instagram","url":"https://www.instagram.com/hasaadxapp","enabled":true,"order":1},{"id":"twitter","url":"","enabled":false,"order":2},{"id":"facebook","url":"","enabled":false,"order":3},{"id":"tiktok","url":"","enabled":false,"order":4},{"id":"youtube","url":"","enabled":false,"order":5},{"id":"snapchat","url":"","enabled":false,"order":6},{"id":"threads","url":"","enabled":false,"order":7},{"id":"linkedin","url":"","enabled":false,"order":8},{"id":"whatsapp","url":"","enabled":false,"order":9}]'::jsonb

@@ -852,6 +852,7 @@ export default function Home() {
     showCapitalsGame: true,
     showMaraqui: false,
     showSecretGame: false,
+    organizerEnabled: true,
   });
   const {
     guestLimit,
@@ -911,6 +912,9 @@ export default function Home() {
             : {}),
           ...(d?.showSecretGame !== undefined
             ? { showSecretGame: d.showSecretGame }
+            : {}),
+          ...(d?.organizerEnabled !== undefined
+            ? { organizerEnabled: d.organizerEnabled }
             : {}),
         }));
       });
@@ -1991,12 +1995,12 @@ export default function Home() {
                 padding: "0 clamp(12px,3vw,20px)",
               }}
             >
-              {/* Three role cards — Teacher / Organizer / Student.
-                  Mobile: compact 3-column grid so all three fit above the fold.
-                  Desktop (sm+): full-height vertical card layout with description. */}
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-5 items-stretch">
+              {/* Role cards — Teacher / [Organizer] / Student.
+                  When organizer is disabled: 2-column grid (teacher + student).
+                  When enabled: 3-column grid including organizer. */}
+              <div className={`grid gap-2.5 sm:gap-5 items-stretch ${platformSettings.organizerEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
                 {(() => {
-                  const roleCards = [
+                  const allRoleCards = [
                     {
                       key: "teacher",
                       href: "/register?role=teacher",
@@ -2052,6 +2056,9 @@ export default function Home() {
                       delay: 0.15,
                     },
                   ];
+                  const roleCards = allRoleCards.filter(
+                    c => c.key !== "organizer" || platformSettings.organizerEnabled
+                  );
                   return roleCards.map((c) => {
                     const Icon = c.Icon;
                     return (

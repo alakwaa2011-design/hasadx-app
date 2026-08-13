@@ -652,6 +652,7 @@ async function getPlatformSettings() {
     showPublicStats: row?.showPublicStats ?? false,
     publicStatsOverride: row?.publicStatsOverride ?? null,
     pricingPageVisible: row?.pricingPageVisible ?? false,
+    organizerEnabled: row?.organizerEnabled ?? true,
   };
 }
 
@@ -705,6 +706,7 @@ router.patch("/admin/platform-settings", async (req, res) => {
       showPublicStats,
       publicStatsOverride,
       pricingPageVisible,
+      organizerEnabled,
     } = patchBody;
 
     const update: Record<string, unknown> = {};
@@ -782,6 +784,9 @@ router.patch("/admin/platform-settings", async (req, res) => {
     }
     if (pricingPageVisible !== undefined) {
       update.pricingPageVisible = coerceBodyBool(pricingPageVisible);
+    }
+    if (organizerEnabled !== undefined) {
+      update.organizerEnabled = coerceBodyBool(organizerEnabled);
     }
     // Social links
     if (Object.prototype.hasOwnProperty.call(patchBody, "socialLinks")) {

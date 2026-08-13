@@ -427,6 +427,7 @@ export default function AdminPage() {
   const [showGeneralCertificates, setShowGeneralCertificates] = useState(false);
   const [showMaraqui, setShowMaraqui] = useState(false);
   const [showSecretGame, setShowSecretGame] = useState(false);
+  const [organizerEnabled, setOrganizerEnabled] = useState(true);
   const [classroomEnabled, setClassroomEnabled] = useState(false);
   const [classroomAllowedEmails, setClassroomAllowedEmails] = useState<string[]>([]);
   const [classroomEmailsInput, setClassroomEmailsInput] = useState("");
@@ -787,6 +788,7 @@ export default function AdminPage() {
           setShowGeneralCertificates(ps.showGeneralCertificates ?? false);
           setShowMaraqui(ps.showMaraqui ?? false);
           setShowSecretGame(ps.showSecretGame ?? false);
+          setOrganizerEnabled(ps.organizerEnabled ?? true);
           setTeacherXpRewardsEnabled(ps.teacherXpRewardsEnabled ?? true);
           setShowPublicStats(ps.showPublicStats ?? false);
           if (ps.publicStatsOverride) {
@@ -2940,6 +2942,37 @@ export default function AdminPage() {
                     <AdminOnOffPill on={game.value} lang={adminLang} />
                   </button>
                 ))}
+
+                <div className="border-t border-border/40 my-2" />
+                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "نظام منظم المسابقات" : "Competition Organizer System"}</p>
+
+                <button
+                  onClick={async () => {
+                    const next = !organizerEnabled;
+                    setOrganizerEnabled(next);
+                    setSavingGameVisibility(true);
+                    try {
+                      const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+                        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+                        body: JSON.stringify({ organizerEnabled: next }),
+                      });
+                      if (res.ok) toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+                      else setOrganizerEnabled(!next);
+                    } catch { setOrganizerEnabled(!next); } finally { setSavingGameVisibility(false); }
+                  }}
+                  disabled={savingGameVisibility}
+                  className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3 hover:bg-muted/30 transition-colors text-start disabled:opacity-60"
+                >
+                  <div>
+                    <p className="font-bold text-sm text-foreground">{lang === "ar" ? "إظهار نظام منظم المسابقات" : "Show competition organizer system"}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lang === "ar"
+                        ? "عند الإيقاف تختفي بطاقة «منظم فعاليات» من الصفحة الرئيسية وخيار التبديل من الهيدر."
+                        : "When off, the 'Organizer' card is hidden from the homepage and the role switcher."}
+                    </p>
+                  </div>
+                  <AdminOnOffPill on={organizerEnabled} lang={adminLang} />
+                </button>
 
                 <div className="border-t border-border/40 my-2" />
                 <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "مسابقات عامة" : "General Quizzes"}</p>
