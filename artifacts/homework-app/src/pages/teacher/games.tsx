@@ -301,7 +301,7 @@ export default function TeacherGamesPage() {
           <ChevronRight
             className={`w-4 h-4 ${isAr ? "" : "rotate-180"}`}
           />
-          {isAr ? "العودة للرئيسية" : "Back to home"}
+          {isAr ? "لوحة التحكم" : "Dashboard"}
         </button>
 
         <div className="mb-6 sm:mb-8">

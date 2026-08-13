@@ -42,6 +42,7 @@ import { AuthSideRail } from "./auth-side-rail";
 import { AdminUiSwitcher } from "./admin-ui-switcher";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-provider";
+import { useSmartBack } from "@/lib/nav-history";
 import { useDarkMode } from "@/lib/dark-mode";
 import { SocialLinksBar } from "./social-links-bar";
 
@@ -204,6 +205,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { t, lang, setLang, dir } = useI18n();
+  const goBack = useSmartBack("/");
   const theme = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -599,7 +601,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     {location !== "/" && (
                       <>
                         <button
-                          onClick={() => window.history.back()}
+                          onClick={goBack}
                           title={lang === "ar" ? "رجوع" : "Back"}
                           className="p-2 text-foreground hover:bg-muted rounded-lg transition-colors"
                         >

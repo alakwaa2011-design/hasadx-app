@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useSmartBack } from "@/lib/nav-history";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Play, ArrowLeft, ArrowRight, Globe, Trophy, Star, Users, User, Copy, Check, QrCode, Share2, Swords } from "lucide-react";
@@ -18,6 +19,7 @@ export default function FlagsSetup() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/");
 
   const [mode, setMode] = useState<GameMode>("solo");
   const [phase, setPhase] = useState<SetupPhase>("mode");
@@ -369,10 +371,10 @@ export default function FlagsSetup() {
 
           {phase === "mode" && (
             <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-              onClick={() => setLocation("/")}
+              onClick={goBack}
               className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
               <BackArrow className="w-4 h-4" />
-              {lang === "ar" ? "العودة للرئيسية" : "Back to Home"}
+              {lang === "ar" ? "رجوع" : "Back"}
             </motion.button>
           )}
         </div>

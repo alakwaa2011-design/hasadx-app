@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { GlobalAiAssistant } from "@/components/ai-assistant";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { HeartbeatTracker } from "@/components/heartbeat-tracker";
+import { NavTracker } from "@/lib/nav-history";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
@@ -664,6 +665,7 @@ function App() {
                   <GlobalAiAssistant />
                   <PageViewTracker />
                   <HeartbeatTracker />
+                  <NavTracker />
                 </WouterRouter>
                 <I18nAwareToaster />
               </TooltipProvider>

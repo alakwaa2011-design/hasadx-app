@@ -1069,9 +1069,9 @@ export default function TeacherGame() {
         broadcastSent={broadcastSent}
         sentMessages={sentMessages}
         t={t}
-        onHome={() => { endGame(); setLocation("/teacher"); }}
+        onHome={() => { endGame(); setLocation("/teacher/games"); }}
         onToggleLang={() => setLang(isAr ? "en" : "ar")}
-        onEndGame={() => { endGame(); setLocation("/teacher"); }}
+        onEndGame={() => { endGame(); setLocation("/teacher/games"); }}
         onStartGame={startGame}
         onCopyPin={copyPin}
         onCopyLink={copyLink}

@@ -223,7 +223,7 @@ export default function RocketHost() {
         }) => {
           if (res.error) {
             toast.error(res.error);
-            setLocation("/");
+            setLocation("/teacher/games");
             return;
           }
           if (res.success) {
@@ -421,7 +421,7 @@ export default function RocketHost() {
           <button onClick={toggleMute} style={btnSmall}>
             {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
-          <button onClick={() => setLocation("/")} style={btnSmall}>
+          <button onClick={() => setLocation("/teacher/games")} style={btnSmall}>
             <Home size={14} />
           </button>
         </div>
@@ -884,9 +884,9 @@ export default function RocketHost() {
                 <RefreshCw size={18} />
                 {ar ? "أعد اللعب" : "Replay"}
               </button>
-              <button onClick={() => setLocation("/")} style={btnAction(GOLD)}>
+              <button onClick={() => setLocation("/teacher/games")} style={btnAction(GOLD)}>
                 <Home size={18} />
-                {ar ? "الرئيسية" : "Home"}
+                {ar ? "الألعاب" : "Games"}
               </button>
             </div>
           </motion.div>

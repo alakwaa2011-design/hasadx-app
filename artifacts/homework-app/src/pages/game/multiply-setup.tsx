@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useSmartBack } from "@/lib/nav-history";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calculator, ArrowLeft, ArrowRight, Play, Trophy, Crown, Medal, Shuffle, BookOpen, Zap, Flame, Target, Swords } from "lucide-react";
@@ -32,6 +33,7 @@ export default function MultiplySetup() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/");
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
@@ -252,9 +254,9 @@ export default function MultiplySetup() {
             )}
           </motion.div>
 
-          <button onClick={() => setLocation("/")} className="w-full mt-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
+          <button onClick={goBack} className="w-full mt-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
             <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "الرئيسية" : "Home"}
+            {lang === "ar" ? "رجوع" : "Back"}
           </button>
         </div>
       </div>
