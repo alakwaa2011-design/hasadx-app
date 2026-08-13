@@ -500,9 +500,9 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       INSERT INTO credit_packages (name, price_usd_cents, credits, sort_order, is_visible, is_featured)
       SELECT * FROM (VALUES
-        ('باقة البداية',   500, 250,  1, TRUE, FALSE),
-        ('باقة التوفير',  1000, 600,  2, TRUE, TRUE),
-        ('باقة الاحتراف', 2000, 1400, 3, TRUE, FALSE)
+        ('100 رصيد',  299,  100, 1, TRUE, FALSE),
+        ('300 رصيد',  699,  300, 2, TRUE, TRUE),
+        ('600 رصيد', 1199,  600, 3, TRUE, FALSE)
       ) AS seed(name, price_usd_cents, credits, sort_order, is_visible, is_featured)
       WHERE NOT EXISTS (SELECT 1 FROM credit_packages)
     `);

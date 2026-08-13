@@ -77,7 +77,9 @@ export async function seedPlansIfMissing(): Promise<void> {
           ${p.sortOrder}, true, NOW(), NOW()
         )
         ON CONFLICT (code) DO UPDATE
-          SET monthly_credits = EXCLUDED.monthly_credits,
+          SET price_minor    = EXCLUDED.price_minor,
+              currency       = EXCLUDED.currency,
+              monthly_credits = EXCLUDED.monthly_credits,
               rollover_cap    = EXCLUDED.rollover_cap,
               updated_at      = NOW()
       `);
