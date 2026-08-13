@@ -195,7 +195,23 @@ export const CreditService = {
     const creditsCost = tool?.creditsCost ?? 0;
     const timeoutSeconds = tool?.timeoutSeconds ?? 60;
 
-    if (creditsCost === 0) {
+    // ── Apply 20% discount for active Pro subscribers ───────────────────────
+    let effectiveCost = creditsCost;
+    if (creditsCost > 0) {
+      const proCheck = await db.execute(sql`
+        SELECT 1 FROM subscriptions s
+        JOIN plans p ON p.id = s.plan_id
+        WHERE s.teacher_id = ${teacherId}
+          AND p.code = 'pro'
+          AND s.status = 'active'
+        LIMIT 1
+      `);
+      if ((proCheck.rows?.length ?? 0) > 0) {
+        effectiveCost = Math.ceil(creditsCost * 0.8);
+      }
+    }
+
+    if (effectiveCost === 0) {
       return { requestId, creditsHeld: 0, newBalance: await this.getBalance(teacherId) };
     }
 
@@ -203,8 +219,8 @@ export const CreditService = {
       const acct = await lockAccount(tx, teacherId);
       const currentBalance = Number(acct?.balance ?? 0);
 
-      if (currentBalance < creditsCost) {
-        throw new Error(`رصيد غير كافٍ (${currentBalance} من ${creditsCost} رصيد مطلوب)`);
+      if (currentBalance < effectiveCost) {
+        throw new Error(`رصيد غير كافٍ (${currentBalance} من ${effectiveCost} رصيد مطلوب)`);
       }
 
       // Fetch available batches in consumption order (expiring-first, NULL-last)
@@ -221,7 +237,7 @@ export const CreditService = {
       const batches = batchRows.rows as any[];
 
       // Greedy deduction
-      let remaining = creditsCost;
+      let remaining = effectiveCost;
       const deductions: Array<{ id: number; source: string; amount: number }> = [];
 
       for (const b of batches) {
@@ -240,7 +256,7 @@ export const CreditService = {
         INSERT INTO credit_holds
           (teacher_id, tool_key, credits_held, request_id, status, timeout_seconds, created_at)
         VALUES
-          (${teacherId}, ${toolKey}, ${creditsCost}, ${requestId}, 'pending', ${timeoutSeconds}, NOW())
+          (${teacherId}, ${toolKey}, ${effectiveCost}, ${requestId}, 'pending', ${timeoutSeconds}, NOW())
         RETURNING id
       `);
       const holdId = Number((holdRows.rows[0] as any).id);
@@ -267,7 +283,7 @@ export const CreditService = {
         else promoDelta += d.amount; // fallback
       }
 
-      const newBalance = currentBalance - creditsCost;
+      const newBalance = currentBalance - effectiveCost;
 
       await tx.execute(sql`
         UPDATE credit_accounts
@@ -277,14 +293,14 @@ export const CreditService = {
             earned_balance       = earned_balance       - ${earnedDelta},
             subscription_balance = subscription_balance - ${subDelta},
             free_balance         = free_balance         - ${freeDelta},
-            total_spent          = total_spent + ${creditsCost},
+            total_spent          = total_spent + ${effectiveCost},
             updated_at           = NOW()
         WHERE teacher_id = ${teacherId}
       `);
 
       await tx.insert(creditTransactionsTable).values({
         teacherId,
-        amount: -creditsCost,
+        amount: -effectiveCost,
         type: "spend",
         reason: `استخدام أداة: ${toolKey}`,
         toolKey,
@@ -292,7 +308,7 @@ export const CreditService = {
         status: "pending",
       });
 
-      return { requestId, creditsHeld: creditsCost, newBalance };
+      return { requestId, creditsHeld: effectiveCost, newBalance };
     });
   },
 

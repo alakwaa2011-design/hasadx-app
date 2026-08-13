@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable, studentsTable } from "@workspace/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { featureAccess } from "@workspace/billing";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
@@ -637,6 +638,14 @@ router.get("/worksheets/:id/report", requireTeacher, async (req, res) => {
       res.status(403).json({ message: "Forbidden" });
       return;
     }
+
+    // ── Pro gate: detailed worksheet report is an advanced report ────────
+    const sub = await featureAccess.getSubscription(teacherId);
+    if (sub.planCode !== "pro" && !sub.isAdmin) {
+      res.status(403).json({ code: "PRO_REQUIRED", message: "تقرير ورقة العمل التفصيلي متاح لمشتركي Pro فقط" });
+      return;
+    }
+
     if (!ws.linkedAssignmentId) {
       res.status(409).json({ message: "grading_not_enabled" });
       return;

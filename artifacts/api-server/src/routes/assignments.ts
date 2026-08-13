@@ -815,6 +815,13 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
     const gradeLevel = decodeURIComponent(req.params.gradeLevel);
     const teacherId = req.session.teacherId;
 
+    // ── Pro gate: detailed gradebook is an advanced report ───────────────
+    const sub = await featureAccess.getSubscription(teacherId);
+    if (sub.planCode !== "pro" && !sub.isAdmin) {
+      res.status(403).json({ code: "PRO_REQUIRED", message: "سجل الدرجات متاح لمشتركي Pro فقط" });
+      return;
+    }
+
     const students = await db
       .select({ id: studentsTable.id, name: studentsTable.name })
       .from(studentsTable)

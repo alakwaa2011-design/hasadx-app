@@ -7,9 +7,10 @@ import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
   ArrowRight, Loader2, XCircle, CheckCircle2, User, Users,
-  TrendingUp, TrendingDown, AlertTriangle, X, Printer, UserPen, Mail, Check,
+  TrendingUp, TrendingDown, AlertTriangle, X, Printer, UserPen, Mail, Check, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -78,7 +79,8 @@ export default function WorksheetReport() {
   const worksheetId = params?.id;
 
   const [data, setData] = useState<ReportData | null>(null);
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "error" | "forbidden">("loading");
+  const { t, lang } = useI18n();
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error" | "forbidden" | "pro_required">("loading");
   const [details, setDetails] = useState<SubmissionDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   // حالة إرسال النتيجة لولي الأمر لكل صف: sending أثناء الإرسال، sent بعد النجاح
@@ -99,7 +101,11 @@ export default function WorksheetReport() {
         setLocation(`/login?returnTo=${encodeURIComponent(`/teacher/worksheets/${worksheetId}/report`)}`);
         return;
       }
-      if (res.status === 403) { setLoadState("forbidden"); return; }
+      if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        setLoadState(body.code === "PRO_REQUIRED" ? "pro_required" : "forbidden");
+        return;
+      }
       if (!res.ok) throw new Error();
       setData(await res.json());
       setLoadState("ready");
@@ -221,6 +227,25 @@ export default function WorksheetReport() {
     return (
       <div dir="rtl" className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+  if (loadState === "pro_required") {
+    return (
+      <div dir={lang === "ar" ? "rtl" : "ltr"} className="min-h-screen flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-slate-950 p-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-800/10 flex items-center justify-center">
+          <Zap size={28} className="text-emerald-700" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">{t.pricing.proGateTitle}</h2>
+          <p className="text-slate-500 dark:text-slate-400 max-w-sm">{t.pricing.proGateBody}</p>
+        </div>
+        <button
+          onClick={() => setLocation("/teacher/pricing")}
+          className="px-6 py-2.5 rounded-xl bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition-colors"
+        >
+          {t.pricing.proGateButton}
+        </button>
       </div>
     );
   }

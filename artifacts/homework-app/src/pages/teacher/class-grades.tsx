@@ -60,7 +60,7 @@ type FillTarget = { kind: "custom"; id: number } | { kind: "assignment"; id: num
 export default function ClassGrades() {
   const [, params] = useRoute("/teacher/class-grades/:gradeLevel");
   const gradeLevel = decodeURIComponent(params?.gradeLevel || "");
-  const { lang, dir } = useI18n();
+  const { lang, dir, t } = useI18n();
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -70,6 +70,7 @@ export default function ClassGrades() {
   const [videoSubmissions, setVideoSubmissions] = useState<VideoGradeSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [proGated, setProGated] = useState(false);
 
   /* ── custom columns state ── */
   const [customCols, setCustomCols] = useState<CustomColumn[]>([]);
@@ -115,8 +116,14 @@ export default function ClassGrades() {
     if (!gradeLevel) return;
     setLoading(true);
     fetch(`${API_BASE}/api/class-grades/${encodeURIComponent(gradeLevel)}`, { credentials: "include" })
-      .then(r => r.json())
-      .then(data => {
+      .then(async r => {
+        if (r.status === 403) {
+          const body = await r.json().catch(() => ({}));
+          if (body.code === "PRO_REQUIRED") setProGated(true);
+          return;
+        }
+        if (!r.ok) return;
+        const data = await r.json();
         setStudents(data.students || []);
         setAssignments(data.assignments || []);
         setSubmissions(data.submissions || []);
@@ -651,6 +658,28 @@ export default function ClassGrades() {
         : `Updated ${updated} student(s).`
     );
   };
+
+  /* ── Pro gate ── */
+  if (proGated) {
+    return (
+      <Layout>
+        <div dir={dir} className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-800/10 flex items-center justify-center">
+            <BookOpen size={28} className="text-emerald-700" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold">{t.pricing.proGateTitle}</h2>
+            <p className="text-muted-foreground max-w-sm">{t.pricing.proGateBody}</p>
+          </div>
+          <Link href="/teacher/pricing">
+            <span className="inline-block px-6 py-2.5 rounded-xl bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition-colors cursor-pointer">
+              {t.pricing.proGateButton}
+            </span>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
 
   /* ── Loading state ── */
   if (loading) {

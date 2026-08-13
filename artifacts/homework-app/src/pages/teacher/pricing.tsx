@@ -16,7 +16,14 @@ import {
   Star,
   Zap,
   BadgeDollarSign,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,8 +89,16 @@ export default function PricingPage() {
   const PLAN_FEATURES: Record<string, string[]> = {
     free:  [p.freeAiNote],
     basic: [p.basicAiTools, p.basicReports, p.basicParents],
-    pro:   [p.proBasicAll, p.basicParents],
+    pro:   [], // Pro rendered separately via PRO_FEATURES with tooltip support
   };
+  type ProFeatureItem = { text: string; tooltip?: { title: string; body: string; example: string } };
+  const PRO_FEATURES: ProFeatureItem[] = [
+    { text: p.proBasicAll },
+    { text: p.proCredits600 },
+    { text: p.proRollover1200 },
+    { text: p.proSavings20, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody, example: p.proSavingsTooltipExample } },
+    { text: p.proAdvancedReports },
+  ];
 
   useEffect(() => {
     Promise.all([
@@ -253,17 +268,41 @@ export default function PricingPage() {
                   </div>
 
                   {/* Features list */}
-                  <ul className="space-y-2 flex-1">
-                    {features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm">
-                        <Check
-                          size={15}
-                          className={["shrink-0 mt-0.5", isPro ? "text-[#E8B84B]" : "text-emerald-700"].join(" ")}
-                        />
-                        <span className={isPro ? "text-white/90" : ""}>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <TooltipProvider delayDuration={100}>
+                    <ul className="space-y-2 flex-1">
+                      {isPro
+                        ? PRO_FEATURES.map((f) => (
+                            <li key={f.text} className="flex items-start gap-2 text-sm">
+                              <Check size={15} className="shrink-0 mt-0.5 text-[#E8B84B]" />
+                              <span className="text-white/90 flex items-center gap-1.5">
+                                {f.text}
+                                {f.tooltip && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Info size={13} className="text-white/50 hover:text-white/90 cursor-help shrink-0" />
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="bottom"
+                                      className="max-w-[240px] p-3"
+                                      dir={lang === "ar" ? "rtl" : "ltr"}
+                                    >
+                                      <p className="font-bold text-sm mb-1">{f.tooltip.title}</p>
+                                      <p className="text-xs text-muted-foreground">{f.tooltip.body}</p>
+                                      <p className="text-xs text-emerald-600 font-medium mt-1">{f.tooltip.example}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </span>
+                            </li>
+                          ))
+                        : features.map((f) => (
+                            <li key={f} className="flex items-start gap-2 text-sm">
+                              <Check size={15} className="shrink-0 mt-0.5 text-emerald-700" />
+                              <span>{f}</span>
+                            </li>
+                          ))}
+                    </ul>
+                  </TooltipProvider>
 
                   {/* CTA */}
                   <div className="mt-auto space-y-2">
@@ -276,8 +315,8 @@ export default function PricingPage() {
                       /* Paid plan is current */
                       <>
                         <Button
-                          variant={isPro ? "secondary" : "outline"}
-                          className="w-full"
+                          variant="outline"
+                          className={["w-full", isPro ? "bg-white/15 text-white border-white/30 hover:bg-white/25" : ""].join(" ")}
                           onClick={() => setLocation("/teacher/credits")}
                         >
                           {p.manageSubscription}
@@ -338,7 +377,7 @@ export default function PricingPage() {
                       </Button>
                     ) : (
                       <Button
-                        variant={isPro ? "secondary" : "default"}
+                        variant="default"
                         className={["w-full", isPro ? "bg-white text-emerald-900 hover:bg-white/90" : ""].join(" ")}
                         onClick={() => handleUpgrade(plan.code)}
                         disabled={checkingOut !== null}
