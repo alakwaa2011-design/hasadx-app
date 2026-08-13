@@ -651,6 +651,7 @@ async function getPlatformSettings() {
     teacherXpRewardsEnabled: row?.teacherXpRewardsEnabled ?? true,
     showPublicStats: row?.showPublicStats ?? false,
     publicStatsOverride: row?.publicStatsOverride ?? null,
+    pricingPageVisible: row?.pricingPageVisible ?? false,
   };
 }
 
@@ -703,6 +704,7 @@ router.patch("/admin/platform-settings", async (req, res) => {
       arenaImportSources,
       showPublicStats,
       publicStatsOverride,
+      pricingPageVisible,
     } = patchBody;
 
     const update: Record<string, unknown> = {};
@@ -777,6 +779,9 @@ router.patch("/admin/platform-settings", async (req, res) => {
     if (showPublicStats !== undefined) update.showPublicStats = coerceBodyBool(showPublicStats);
     if (publicStatsOverride !== undefined) {
       update.publicStatsOverride = publicStatsOverride === null ? null : publicStatsOverride;
+    }
+    if (pricingPageVisible !== undefined) {
+      update.pricingPageVisible = coerceBodyBool(pricingPageVisible);
     }
     // Social links
     if (Object.prototype.hasOwnProperty.call(patchBody, "socialLinks")) {

@@ -7,7 +7,7 @@
  * POST /api/subscriptions/cancel    — cancel active subscription (end of period)
  */
 import { Router, type IRouter } from "express";
-import { db, plansTable, subscriptionsTable } from "@workspace/db";
+import { db, plansTable, subscriptionsTable, platformSettingsTable, teachersTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -18,29 +18,46 @@ const router: IRouter = Router();
 
 router.get("/subscriptions/plans", async (req, res) => {
   try {
-    const plans = await db
-      .select({
-        id:                   plansTable.id,
-        code:                 plansTable.code,
-        nameAr:               plansTable.nameAr,
-        nameEn:               plansTable.nameEn,
-        priceMinor:           plansTable.priceMinor,
-        currency:             plansTable.currency,
-        billingPeriodDays:    plansTable.billingPeriodDays,
-        monthlyCredits:       plansTable.monthlyCredits,
-        rolloverCap:          plansTable.rolloverCap,
-        maxStudents:          plansTable.maxStudents,
-        maxClasses:           plansTable.maxClasses,
-        maxHomeworksPerMonth: plansTable.maxHomeworksPerMonth,
-        aiUsageDailyLimit:    plansTable.aiUsageDailyLimit,
-        isActive:             plansTable.isActive,
-        sortOrder:            plansTable.sortOrder,
-      })
-      .from(plansTable)
-      .where(eq(plansTable.isActive, true))
-      .orderBy(asc(plansTable.sortOrder));
+    const [plans, [settings]] = await Promise.all([
+      db
+        .select({
+          id:                   plansTable.id,
+          code:                 plansTable.code,
+          nameAr:               plansTable.nameAr,
+          nameEn:               plansTable.nameEn,
+          priceMinor:           plansTable.priceMinor,
+          currency:             plansTable.currency,
+          billingPeriodDays:    plansTable.billingPeriodDays,
+          monthlyCredits:       plansTable.monthlyCredits,
+          rolloverCap:          plansTable.rolloverCap,
+          maxStudents:          plansTable.maxStudents,
+          maxClasses:           plansTable.maxClasses,
+          maxHomeworksPerMonth: plansTable.maxHomeworksPerMonth,
+          aiUsageDailyLimit:    plansTable.aiUsageDailyLimit,
+          isActive:             plansTable.isActive,
+          sortOrder:            plansTable.sortOrder,
+        })
+        .from(plansTable)
+        .where(eq(plansTable.isActive, true))
+        .orderBy(asc(plansTable.sortOrder)),
+      db
+        .select({ pricingPageVisible: platformSettingsTable.pricingPageVisible })
+        .from(platformSettingsTable)
+        .orderBy(asc(platformSettingsTable.id))
+        .limit(1),
+    ]);
 
-    res.json({ plans });
+    let pricingPageVisible = settings?.pricingPageVisible ?? false;
+    if (!pricingPageVisible && req.session?.teacherId) {
+      const [viewer] = await db
+        .select({ isAdmin: teachersTable.isAdmin })
+        .from(teachersTable)
+        .where(eq(teachersTable.id, req.session.teacherId))
+        .limit(1);
+      pricingPageVisible = viewer?.isAdmin === true;
+    }
+
+    res.json({ plans, pricingPageVisible });
   } catch (err) {
     logger.error(err, "GET /subscriptions/plans failed");
     res.status(500).json({ message: "حدث خطأ" });

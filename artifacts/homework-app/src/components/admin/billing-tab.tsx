@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CreditCard, Crown, Users, TrendingUp, Save, Loader2, Search,
-  Infinity as InfinityIcon, CheckCircle2, AlertCircle, X,
+  Infinity as InfinityIcon, CheckCircle2, AlertCircle, X, Eye, EyeOff,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { toast } from "@/components/ui/sonner";
@@ -37,6 +37,7 @@ type Overview = {
     currency: string;
   };
   paymentsEnabled: boolean;
+  pricingPageVisible: boolean;
 };
 
 type SubscriberRow = {
@@ -72,6 +73,7 @@ export function BillingTab() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [savingVisibility, setSavingVisibility] = useState(false);
 
   const loadOverview = async () => {
     setLoading(true);
@@ -134,6 +136,51 @@ export function BillingTab() {
           {overview.paymentsEnabled ? "الدفع مفعّل" : "وضع الاختبار (الدفع متوقف)"}
         </span>
       </div>
+
+      <Card className="p-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div className="flex items-start gap-3" dir="rtl">
+          {overview.pricingPageVisible ? (
+            <Eye className="w-5 h-5 mt-0.5 text-emerald-600 shrink-0" />
+          ) : (
+            <EyeOff className="w-5 h-5 mt-0.5 text-muted-foreground shrink-0" />
+          )}
+          <div>
+            <h3 className="font-bold">ظهور صفحة الباقات للمعلمين</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {overview.pricingPageVisible
+                ? "صفحة الباقات ظاهرة للمعلمين حالياً."
+                : "صفحة الباقات مخفية عن المعلمين. يمكنك تفعيلها دون تفعيل الدفع."}
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant={overview.pricingPageVisible ? "outline" : "default"}
+          disabled={savingVisibility}
+          onClick={async () => {
+            const nextValue = !overview.pricingPageVisible;
+            setSavingVisibility(true);
+            try {
+              const r = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pricingPageVisible: nextValue }),
+              });
+              if (!r.ok) throw new Error("failed");
+              setOverview((current) => current ? { ...current, pricingPageVisible: nextValue } : current);
+              toast.success(nextValue ? "تم إظهار صفحة الباقات للمعلمين" : "تم إخفاء صفحة الباقات عن المعلمين");
+            } catch {
+              toast.error("تعذّر تحديث ظهور صفحة الباقات");
+            } finally {
+              setSavingVisibility(false);
+            }
+          }}
+          className="shrink-0"
+        >
+          {savingVisibility ? <Loader2 className="w-4 h-4 animate-spin" /> : overview.pricingPageVisible ? "إخفاء الصفحة" : "إظهار الصفحة"}
+        </Button>
+      </Card>
 
       {view === "overview" && <OverviewView overview={overview} />}
       {view === "plans" && (

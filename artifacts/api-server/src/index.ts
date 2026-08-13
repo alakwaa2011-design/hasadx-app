@@ -340,7 +340,8 @@ async function runSchemaMigrations() {
       ALTER TABLE platform_settings
         ADD COLUMN IF NOT EXISTS credits_enabled       BOOLEAN NOT NULL DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS welcome_credits       INTEGER NOT NULL DEFAULT 120,
-        ADD COLUMN IF NOT EXISTS admin_credit_test_mode BOOLEAN NOT NULL DEFAULT FALSE
+        ADD COLUMN IF NOT EXISTS admin_credit_test_mode BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS pricing_page_visible  BOOLEAN NOT NULL DEFAULT FALSE
     `);
     // استخدام غير محدود بدون خصم — per-teacher override
     await db.execute(sql`

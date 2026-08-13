@@ -624,6 +624,23 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        pricingPageVisible: import("drizzle-orm/pg-core").PgColumn<{
+            name: "pricing_page_visible";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         socialLinks: import("drizzle-orm/pg-core").PgColumn<{
             name: "social_links";
             tableName: "platform_settings";

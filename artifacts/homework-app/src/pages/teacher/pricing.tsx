@@ -99,6 +99,7 @@ export default function PricingPage() {
   const [, setLocation] = useLocation();
   const [plans, setPlans]           = useState<Plan[]>([]);
   const [currentSub, setCurrentSub] = useState<CurrentSub | null>(null);
+  const [pricingPageVisible, setPricingPageVisible] = useState(false);
   const [loading, setLoading]       = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [cancelling,  setCancelling]  = useState(false);
@@ -110,6 +111,7 @@ export default function PricingPage() {
     ])
       .then(([plansData, subData]) => {
         setPlans(plansData.plans ?? []);
+        setPricingPageVisible(plansData.pricingPageVisible === true);
         setCurrentSub(subData.subscription ?? null);
       })
       .catch(() => toast("فشل تحميل بيانات الاشتراكات", { className: "text-red-500" }))
@@ -157,6 +159,22 @@ export default function PricingPage() {
 
   const currentPlanCode = currentSub?.plan_code ?? "free";
   const isActive        = currentSub?.status === "active" && currentSub?.payment_status === "active";
+
+  if (!loading && !pricingPageVisible) {
+    return (
+      <Layout>
+        <div dir="rtl" className="max-w-2xl mx-auto px-4 py-20 text-center">
+          <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-sm">
+            <Sparkles className="mx-auto mb-4 text-emerald-700" size={30} />
+            <h1 className="text-2xl font-extrabold">الباقات غير متاحة حالياً</h1>
+            <p className="mt-3 text-muted-foreground">
+              سيتم الإعلان عن الباقات وخيارات الاشتراك عند تفعيلها من إدارة المنصة.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   // Ensure deterministic order: free → basic → pro
   const orderedPlans = ["free", "basic", "pro"]

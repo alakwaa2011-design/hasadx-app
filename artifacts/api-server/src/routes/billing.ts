@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, desc, and, ilike, or } from "drizzle-orm";
 import { z } from "zod";
-import { db, plansTable, subscriptionsTable, teachersTable } from "@workspace/db";
+import { db, plansTable, subscriptionsTable, teachersTable, platformSettingsTable } from "@workspace/db";
 import { featureAccess, FEATURES } from "@workspace/billing";
 
 const router: IRouter = Router();
@@ -97,7 +97,14 @@ router.post("/billing/admin/assign", requireAdminMw, async (req: any, res) => {
 
 /** GET /api/billing/admin/overview — totals + per-plan subscriber count + MRR estimate */
 router.get("/billing/admin/overview", requireAdminMw, async (_req, res) => {
-  const plans = await db.select().from(plansTable).orderBy(plansTable.sortOrder);
+  const [plans, [settings]] = await Promise.all([
+    db.select().from(plansTable).orderBy(plansTable.sortOrder),
+    db
+      .select({ pricingPageVisible: platformSettingsTable.pricingPageVisible })
+      .from(platformSettingsTable)
+      .orderBy(platformSettingsTable.id)
+      .limit(1),
+  ]);
 
   const perPlan = await db
     .select({
@@ -135,6 +142,7 @@ router.get("/billing/admin/overview", requireAdminMw, async (_req, res) => {
       currency: plans[0]?.currency ?? "KWD",
     },
     paymentsEnabled: process.env.PAYMENTS_ENABLED === "true",
+    pricingPageVisible: settings?.pricingPageVisible ?? false,
   });
 });
 

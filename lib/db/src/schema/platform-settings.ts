@@ -88,6 +88,8 @@ export const platformSettingsTable = pgTable("platform_settings", {
   creditsEnabled:       boolean("credits_enabled").notNull().default(false),
   welcomeCredits:       integer("welcome_credits").notNull().default(120),
   adminCreditTestMode:  boolean("admin_credit_test_mode").notNull().default(false),
+  /** صفحة الباقات للمعلمين — مخفية افتراضياً حتى يفعّلها المسؤول. */
+  pricingPageVisible:   boolean("pricing_page_visible").notNull().default(false),
   /** روابط وسائل التواصل الاجتماعي — مصفوفة منصات قابلة للتفعيل/الإخفاء */
   socialLinks: jsonb("social_links").$type<SocialLink[]>().notNull().default([]),
 });
