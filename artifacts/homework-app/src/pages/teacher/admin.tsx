@@ -10,7 +10,7 @@ import {
   MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
   CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy, Coins, Menu,
 } from "lucide-react";
-import { BillingTab } from "@/components/admin/billing-tab";
+import { BillingTab, PricingVisibilityControl } from "@/components/admin/billing-tab";
 import { CreditsTab } from "@/components/admin/credits-tab";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { RealtimeTab } from "@/components/admin/realtime-tab";
@@ -1610,6 +1610,7 @@ export default function AdminPage() {
 
         {activeTab === "new-pricing" && (
           <div className="space-y-3">
+            <PricingVisibilityControl />
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2.5 border">
               <Sparkles className="w-4 h-4 shrink-0 text-violet-500" />
               <span>
