@@ -140,11 +140,11 @@ export function CreditsTab() {
       {/* Top-5 tools */}
       {(summary?.topTools?.length ?? 0) > 0 && (
         <Card className="p-4">
-          <p className="text-sm font-semibold mb-3">أكثر الأدوات استهلاكاً للرصيد</p>
+          <p className="text-sm font-semibold mb-3">أكثر الأدوات استهلاكاً للنقاط</p>
           <div className="flex flex-wrap gap-2">
             {(summary?.topTools ?? []).map((t: any, i) => (
               <span key={t.tool_key} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                {i + 1}. {t.tool_key} — {fmt(t.total_credits)} رصيد
+                {i + 1}. {t.tool_key} — {fmt(t.total_credits)} نقطة
               </span>
             ))}
           </div>
@@ -319,7 +319,7 @@ function ToolPricesPanel() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-sm text-muted-foreground block mb-1">تكلفة الرصيد</label>
+                <label className="text-sm text-muted-foreground block mb-1">تكلفة النقاط</label>
                 <Input type="number" min="0" value={editCost} onChange={(e) => setEditCost(e.target.value)} />
                 <p className="text-xs text-muted-foreground mt-1">الافتراضي: {editing.defaultCreditsCost}</p>
               </div>
@@ -383,7 +383,7 @@ function BalancesPanel() {
         method: "POST",
         body: JSON.stringify({ delta: parseInt(delta), reason, mode }),
       });
-      toast("تم تعديل الرصيد");
+      toast("تم تعديل النقاط");
       setAdjusting(null);
       setDelta(""); setReason(""); setMode("add");
       load();
@@ -455,7 +455,7 @@ function BalancesPanel() {
               <thead>
                 <tr className="border-b text-muted-foreground">
                   <th className="text-right py-2 px-3">المعلم</th>
-                  <th className="text-right py-2 px-3">الرصيد</th>
+                  <th className="text-right py-2 px-3">النقاط</th>
                   <th className="text-right py-2 px-3">المكتسب</th>
                   <th className="text-right py-2 px-3">المُنفَق</th>
                   <th className="text-right py-2 px-3">غير محدود</th>
@@ -513,13 +513,13 @@ function BalancesPanel() {
           <div className="bg-background rounded-xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()} dir="rtl">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="font-semibold">تعديل رصيد يدوي</h3>
+                <h3 className="font-semibold">تعديل نقاط يدوياً</h3>
                 <p className="text-sm text-muted-foreground">{adjusting.name}</p>
               </div>
               <button onClick={() => setAdjusting(null)}><X size={16} /></button>
             </div>
             <div className="bg-muted/40 rounded-lg px-4 py-2 mb-4 text-sm">
-              الرصيد الحالي: <strong className="text-primary">{fmt(adjusting.balance)}</strong> نقطة
+              النقاط الحالية: <strong className="text-primary">{fmt(adjusting.balance)}</strong> نقطة
               {adjusting.unlimitedCredits && (
                 <span className="mr-2 text-amber-600 text-xs flex items-center gap-1 inline-flex">
                   <Infinity size={12} /> استخدام غير محدود مفعّل
@@ -565,7 +565,7 @@ function BalancesPanel() {
 
             {unlimitedModal.unlimitedCredits ? (
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
-                هذا المعلم يستخدم جميع الأدوات حالياً بدون خصم رصيد. إلغاء التفعيل يُعيده فوراً لنظام الرصيد الطبيعي.
+                هذا المعلم يستخدم جميع الأدوات حالياً بدون خصم نقاط. إلغاء التفعيل يُعيده فوراً لنظام النقاط الطبيعي.
               </div>
             ) : (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 text-sm text-blue-800 dark:text-blue-200">
@@ -936,8 +936,8 @@ function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
         {/* Global toggle */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-semibold">تفعيل نظام الرصيد</p>
-            <p className="text-sm text-muted-foreground">عند التعطيل: لا تُخصَم أي نقاط ولا يرى أي مستخدم الرصيد</p>
+            <p className="font-semibold">تفعيل نظام النقاط</p>
+            <p className="text-sm text-muted-foreground">عند التعطيل: لا تُخصَم أي نقاط ولا يرى أي مستخدم النقاط</p>
           </div>
           <button
             onClick={() => save({ creditsEnabled: !settings.creditsEnabled })}
@@ -952,7 +952,7 @@ function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
 
         {/* Welcome credits */}
         <div>
-          <p className="font-semibold mb-2">رصيد الترحيب</p>
+          <p className="font-semibold mb-2">نقاط الترحيب</p>
           <p className="text-sm text-muted-foreground mb-2">النقاط المُمنوحة تلقائياً عند التسجيل (يُطبَّق عند تفعيل النظام)</p>
           <div className="flex gap-2">
             <Input
@@ -972,7 +972,7 @@ function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold">وضع الاختبار للمسؤول</p>
-            <p className="text-sm text-muted-foreground">تفعيل الرصيد لحساب المسؤول فقط دون تغيير الإعداد العام</p>
+            <p className="text-sm text-muted-foreground">تفعيل النقاط لحساب المسؤول فقط دون تغيير الإعداد العام</p>
           </div>
           <button
             onClick={() => save({ adminCreditTestMode: !settings.adminCreditTestMode })}
@@ -987,7 +987,7 @@ function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
 
       <Card className="p-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
         <p className="text-sm text-amber-800 dark:text-amber-200">
-          <strong>ملاحظة:</strong> نظام الرصيد حالياً في وضع البنية التحتية — لا يرى المعلمون أو الطلاب أي تغيير حتى يتم تفعيل النظام رسمياً.
+          <strong>ملاحظة:</strong> نظام النقاط حالياً في وضع البنية التحتية — لا يرى المعلمون أو الطلاب أي تغيير حتى يتم تفعيل النظام رسمياً.
           الجداول جاهزة، وأسعار الأدوات محفوظة في قاعدة البيانات ويمكن تعديلها في أي وقت.
         </p>
       </Card>

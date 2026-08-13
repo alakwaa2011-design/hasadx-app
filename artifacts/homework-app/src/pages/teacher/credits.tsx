@@ -201,7 +201,7 @@ export default function TeacherCreditsPage() {
               <Coins size={22} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">الرصيد والباقات</h1>
+              <h1 className="text-xl font-bold">نقاط حصاد</h1>
               <p className="text-sm text-muted-foreground">أدوات الذكاء الاصطناعي في حصاد</p>
             </div>
           </div>
@@ -215,20 +215,20 @@ export default function TeacherCreditsPage() {
         {intentStatus === "waiting" && (
           <Card className="p-4 border-amber-200 bg-amber-50 flex items-center gap-3">
             <Loader2 size={20} className="text-amber-600 animate-spin shrink-0" />
-            <p className="text-sm text-amber-800">تم استلام طلب الدفع. سيظهر الرصيد بعد تأكيد العملية.</p>
+            <p className="text-sm text-amber-800">تم استلام طلب الدفع. ستظهر النقاط بعد تأكيد العملية.</p>
           </Card>
         )}
         {intentStatus === "confirmed" && (
           <Card className="p-4 border-emerald-200 bg-emerald-50 flex items-center gap-3">
             <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
-            <p className="text-sm text-emerald-800">تمت العملية بنجاح وأُضيف الرصيد إلى حسابك.</p>
+            <p className="text-sm text-emerald-800">تمت العملية بنجاح وأُضيفت النقاط إلى حسابك.</p>
           </Card>
         )}
         {intentStatus === "timeout" && (
           <Card className="p-4 border-orange-200 bg-orange-50 flex items-center gap-3">
             <Clock size={20} className="text-orange-600 shrink-0" />
             <p className="text-sm text-orange-800">
-              تعذر تأكيد العملية حاليًا. لم يتم احتساب الرصيد مرتين. تحقق من سجل العمليات أو تواصل مع الدعم.
+              تعذر تأكيد العملية حاليًا. لم تُحتسب النقاط مرتين. تحقق من سجل العمليات أو تواصل مع الدعم.
             </p>
           </Card>
         )}
@@ -265,8 +265,8 @@ export default function TeacherCreditsPage() {
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <p className="text-sm text-muted-foreground">
-                  {subscription.monthly_credits} رصيد شهرياً
-                  {subscription.rollover_cap ? ` · تراكم حتى ${subscription.rollover_cap}` : ""}
+                  {subscription.monthly_credits} نقطة شهرياً
+                  {subscription.rollover_cap ? ` · تتراكم حتى ${subscription.rollover_cap}` : ""}
                 </p>
                 <Button variant="outline" className="text-xs h-8 mt-1" onClick={() => setLocation("/teacher/pricing")}>
                   إدارة الاشتراك
@@ -276,7 +276,7 @@ export default function TeacherCreditsPage() {
             {subscription.payment_status === "past_due" && (
               <div className="mt-3 flex items-start gap-2 text-sm text-amber-700 bg-amber-100 rounded-lg px-3 py-2">
                 <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                <p>يوجد دفعة متأخرة. قد يتوقف الرصيد الشهري حتى إتمام الدفع.</p>
+                <p>يوجد دفعة متأخرة. قد تتوقف النقاط الشهرية حتى إتمام الدفع.</p>
               </div>
             )}
           </Card>
@@ -287,7 +287,7 @@ export default function TeacherCreditsPage() {
           <Card className="p-4 bg-emerald-800 text-white border-0">
             <div className="flex items-center gap-2 mb-1">
               <Coins size={16} className="text-[#E8B84B]" />
-              <span className="text-xs opacity-80">الرصيد الكلي</span>
+              <span className="text-xs opacity-80">إجمالي النقاط</span>
             </div>
             <p className="text-2xl font-bold">{loading ? "…" : fmt(balance?.balance ?? 0)}</p>
           </Card>
@@ -296,7 +296,7 @@ export default function TeacherCreditsPage() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-1">
                 <CreditCard size={16} className="text-emerald-700" />
-                <span className="text-xs text-muted-foreground">رصيد الاشتراك</span>
+                <span className="text-xs text-muted-foreground">نقاط الاشتراك</span>
               </div>
               <p className="text-2xl font-bold text-emerald-800">
                 {loading ? "…" : fmt(balance?.subscriptionBalance ?? 0)}
@@ -333,9 +333,9 @@ export default function TeacherCreditsPage() {
         {isFreeOrNoSub && (
           <Card className="p-5 border-dashed border-emerald-600/40 bg-emerald-50/40 flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <p className="font-bold text-emerald-800">هل تريد المزيد من الرصيد الشهري؟</p>
+              <p className="font-bold text-emerald-800">هل تريد المزيد من النقاط الشهرية؟</p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Basic: 250 رصيد/شهر · Pro: 600 رصيد/شهر — يتراكم غير المستخدم
+                Basic: 250 نقطة/شهر · Pro: 600 نقطة/شهر — تتراكم النقاط غير المستخدمة
               </p>
             </div>
             <Button onClick={() => setLocation("/teacher/pricing")}>
@@ -349,7 +349,7 @@ export default function TeacherCreditsPage() {
         <div>
           <h2 className="font-bold mb-3 flex items-center gap-2">
             <Sparkles size={17} className="text-[#E8B84B]" />
-            رصيد إضافي — دفعة واحدة
+            نقاط إضافية — دفعة واحدة
           </h2>
           {!purchasesEnabled && (
             <Card className="p-4 mb-3 bg-muted/40">
@@ -378,7 +378,7 @@ export default function TeacherCreditsPage() {
                   )}
                   <div className="flex items-baseline gap-1 mb-1">
                     <span className="text-3xl font-extrabold text-emerald-800">{fmt(pkg.credits)}</span>
-                    <span className="text-sm text-muted-foreground">رصيد</span>
+                    <span className="text-sm text-muted-foreground">نقطة</span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
                     ${(pkg.priceUsdCents / 100).toFixed(2)} — لا تنتهي صلاحيته
@@ -390,14 +390,14 @@ export default function TeacherCreditsPage() {
                   >
                     {buyingId === pkg.id
                       ? <span className="flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> جارٍ التحويل…</span>
-                      : <span className="flex items-center gap-2"><ShoppingCart size={15} /> شراء الرصيد</span>}
+                      : <span className="flex items-center gap-2"><ShoppingCart size={15} /> شراء النقاط</span>}
                   </Button>
                 </Card>
               ))}
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-3">
-            الرصيد المدفوع لا تنتهي صلاحيته أبداً. يُخصم رصيد الاشتراك أولاً عند الاستخدام.
+            النقاط المدفوعة لا تنتهي صلاحيتها أبداً. تُخصم نقاط الاشتراك أولاً عند الاستخدام.
           </p>
         </div>
 

@@ -174,7 +174,7 @@ export default function PricingPage() {
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight">اختر الباقة المناسبة لك</h1>
           <p className="text-muted-foreground max-w-md mx-auto">
-            رصيد شهري لاستخدام أدوات الذكاء الاصطناعي — يتراكم الرصيد غير المستخدم حتى الشهر التالي
+            نقاط شهرية لاستخدام أدوات الذكاء الاصطناعي — تتراكم النقاط غير المستخدمة حتى الشهر التالي
           </p>
         </div>
 
@@ -252,8 +252,8 @@ export default function PricingPage() {
                       </div>
                     )}
                     <p className={["text-sm mt-0.5", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
-                      {plan.monthlyCredits} رصيد شهرياً
-                      {plan.rolloverCap ? ` · تراكم حتى ${plan.rolloverCap}` : " (بدون تراكم)"}
+                      {plan.monthlyCredits} نقطة شهرياً
+                      {plan.rolloverCap ? ` · تتراكم حتى ${plan.rolloverCap}` : " (بدون تراكم)"}
                     </p>
                   </div>
 
@@ -310,7 +310,7 @@ export default function PricingPage() {
                                       : "ستبقى مشتركاً حتى نهاية الدورة المدفوعة الحالية."}
                                   </span>
                                   <span className="block">
-                                    لن تحصل على رصيد اشتراك جديد بعد هذا التاريخ. رصيدك الحالي ورصيد الشراء لن يتأثرا.
+                                    لن تحصل على نقاط اشتراك جديدة بعد هذا التاريخ. نقاطك الحالية ونقاط الشراء لن تتأثر.
                                   </span>
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
@@ -370,14 +370,14 @@ export default function PricingPage() {
 
         {/* Extra credits note */}
         <div className="text-center text-sm text-muted-foreground space-y-1">
-          <p className="font-medium">رصيد إضافي (دفعة واحدة · لا ينتهي أبداً)</p>
-          <p>100 رصيد · $2.99 &nbsp;|&nbsp; 300 رصيد · $6.99 &nbsp;|&nbsp; 600 رصيد · $11.99</p>
+          <p className="font-medium">نقاط إضافية (دفعة واحدة · لا تنتهي أبداً)</p>
+          <p>100 نقطة · $2.99 &nbsp;|&nbsp; 300 نقطة · $6.99 &nbsp;|&nbsp; 600 نقطة · $11.99</p>
           <button
             type="button"
             onClick={() => setLocation("/teacher/credits")}
             className="text-emerald-700 underline underline-offset-2 hover:text-emerald-800 mt-1"
           >
-            شراء رصيد إضافي ←
+            شراء نقاط إضافية ←
           </button>
         </div>
       </div>
