@@ -103,7 +103,7 @@ const defaultTeam = (idx: number): TeamFormState => ({
 });
 
 export default function ArenaSetup() {
-  const { lang } = useI18n();
+  const {lang, t} = useI18n();
   const [, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
@@ -277,7 +277,7 @@ export default function ArenaSetup() {
   );
 
   const addTeam = () => {
-    if (teams.length >= 8) { toast.error("الحد الأقصى 8 فرق"); return; }
+    if (teams.length >= 8) { toast.error(t.arenaSetup.maxTeams); return; }
     const idx = teams.length;
     setTeams(prev => [...prev, defaultTeam(idx)]);
     setShowEmoji(prev => [...prev, false]);
@@ -286,7 +286,7 @@ export default function ArenaSetup() {
   };
 
   const removeTeam = (idx: number) => {
-    if (teams.length <= 2) { toast.error("الحد الأدنى فريقان"); return; }
+    if (teams.length <= 2) { toast.error(t.arenaSetup.minTeams); return; }
     setTeams(prev => prev.filter((_, i) => i !== idx));
     setShowEmoji(prev => prev.filter((_, i) => i !== idx));
     setShowColors(prev => prev.filter((_, i) => i !== idx));
@@ -320,12 +320,12 @@ export default function ArenaSetup() {
 
   const toggleSub = (teamIdx: number, id: string) => {
     const takenByOther = teams.some((t, i) => i !== teamIdx && t.subCategoryIds.includes(id));
-    if (takenByOther) { toast.error("هذه الفئة اختارها فريق آخر"); return; }
+    if (takenByOther) { toast.error(t.arenaSetup.categoryTaken); return; }
     const current = teams[teamIdx].subCategoryIds;
     let next: string[];
     if (current.includes(id)) next = current.filter(x => x !== id);
     else {
-      if (current.length >= 3) { toast.error("لا يمكن اختيار أكثر من 3 فئات لكل فريق"); return; }
+      if (current.length >= 3) { toast.error(t.arenaSetup.maxCategories); return; }
       next = [...current, id];
     }
     updateTeam(teamIdx, { subCategoryIds: next });
@@ -336,7 +336,7 @@ export default function ArenaSetup() {
     let next: HelperId[];
     if (current.includes(id)) next = current.filter(x => x !== id);
     else {
-      if (current.length >= 3) { toast.error("لا يمكن اختيار أكثر من 3 وسائل مساعدة لكل فريق"); return; }
+      if (current.length >= 3) { toast.error(t.arenaSetup.maxHelpers); return; }
       next = [...current, id];
     }
     updateTeam(teamIdx, { helpers: next });
@@ -346,8 +346,8 @@ export default function ArenaSetup() {
     const name = playerDraft[teamIdx]?.trim();
     if (!name) return;
     const current = teams[teamIdx].players;
-    if (current.includes(name)) { toast.error("هذا الاسم موجود مسبقاً"); return; }
-    if (current.length >= 12) { toast.error("الحد الأقصى 12 لاعباً لكل فريق"); return; }
+    if (current.includes(name)) { toast.error(t.arenaSetup.duplicatePlayer); return; }
+    if (current.length >= 12) { toast.error(t.arenaSetup.maxPlayers); return; }
     updateTeam(teamIdx, { players: [...current, name] });
     setPlayerDraft(prev => prev.map((v, i) => i === teamIdx ? "" : v));
   };
@@ -393,7 +393,7 @@ export default function ArenaSetup() {
       subCategoryIds: randomReveal.result[i],
     })));
     setRandomReveal(null);
-    toast.success("تم اختيار الفئات بالقرعة 🎉");
+    toast.success(t.arenaSetup.randomSelectionComplete);
   };
 
   const step1Valid = teams.every(t => t.name.trim());
@@ -402,14 +402,14 @@ export default function ArenaSetup() {
   const canStart = step1Valid && step2Valid && step3Valid;
 
   const goNext = () => {
-    if (step === 1 && !step1Valid) { toast.error("اكتب اسم لكل فريق"); return; }
-    if (step === 2 && !step2Valid) { toast.error("اختر 3 فئات لكل فريق"); return; }
+    if (step === 1 && !step1Valid) { toast.error(t.arenaSetup.teamNamesRequired); return; }
+    if (step === 2 && !step2Valid) { toast.error(t.arenaSetup.categoriesRequired); return; }
     if (step < 3) setStep((step + 1) as Step);
   };
   const goPrev = () => { if (step > 1) setStep((step - 1) as Step); };
 
   const start = () => {
-    if (!canStart) { toast.error("اكمل اختيار 3 فئات و 3 وسائل مساعدة لكل فريق"); return; }
+    if (!canStart) { toast.error(t.arenaSetup.selectionRequired); return; }
     const teamsRecord: Record<string, { name: string; color: string; emoji: string; score: number; helpers: HelperId[]; usedHelpers: HelperId[]; players: string[] }> = {};
     const teamOrder: string[] = [];
     for (let i = 0; i < teams.length; i++) {
@@ -496,7 +496,7 @@ export default function ArenaSetup() {
               <Lock className="w-10 h-10 text-amber-300" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-amber-200 mb-3">
-              تسجيل الدخول مطلوب
+              {t.arenaSetup.loginRequired}
             </h1>
             <p className="text-emerald-100/85 text-base sm:text-lg leading-relaxed mb-6">
               تحدّي حصاد لعبة منظّمة للمعلّمين والمدرّبين — يحتاج حسابك حتى نحفظ تقدّم اللعبة وأسئلتك المخصّصة.
@@ -505,12 +505,12 @@ export default function ArenaSetup() {
               <Link href="/login">
                 <button className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-extrabold text-lg bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center justify-center gap-2 shadow-xl">
                   <LogIn className="w-5 h-5" />
-                  تسجيل الدخول
+                  {t.arenaSetup.login}
                 </button>
               </Link>
               <Link href="/games">
                 <button className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20">
-                  العودة للألعاب
+                  {t.arenaSetup.backToGames}
                 </button>
               </Link>
             </div>
@@ -545,7 +545,7 @@ export default function ArenaSetup() {
               }}
             >
               <div className="text-5xl mb-3">⚔️</div>
-              <h2 className="text-2xl font-black text-amber-200 mb-1">لعبة في منتصف الطريق!</h2>
+              <h2 className="text-2xl font-black text-amber-200 mb-1">{t.arenaSetup.gameInProgress}</h2>
               {resumeGame.tournamentName && (
                 <p className="text-amber-300/80 font-bold text-sm mb-3">
                   {resumeGame.tournamentName}
@@ -591,7 +591,7 @@ export default function ArenaSetup() {
                   className="w-full py-3.5 rounded-xl font-black text-lg text-emerald-950 transition-all shadow-lg"
                   style={{ background: "linear-gradient(135deg, #fbbf24, #f59e0b)" }}
                 >
-                  استمرار اللعبة ▶
+                  {t.arenaSetup.continueGame}
                 </button>
                 <button
                   onClick={async () => {

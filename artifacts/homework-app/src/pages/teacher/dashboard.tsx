@@ -161,6 +161,7 @@ function SidebarXpCard({
   setLocation: (path: string) => void;
   isAr: boolean;
 }) {
+  const { t } = useI18n();
   const { data } = useQuery<SidebarXpStats | null, Error>({
     queryKey: ["sidebar-xp"],
     queryFn: async (): Promise<SidebarXpStats | null> => {
@@ -238,7 +239,7 @@ function SidebarXpCard({
             <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: "#fff", marginBottom: 5 }}>
               {data.totalXp.toLocaleString("ar-SA")}{" "}
               <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
-                {isAr ? "نقطة XP" : "XP"}
+                {t.dashboard.xpPoints}
               </span>
             </p>
             {/* Progress bar */}
@@ -261,19 +262,19 @@ function SidebarXpCard({
             {data.currentStreakDays > 0 && (
               <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: "#fb923c" }}>
                 <Flame style={{ width: 11, height: 11 }} />
-                {data.currentStreakDays} {isAr ? "يوم متتالي" : "day streak"}
+                {data.currentStreakDays} {t.dashboard.dayStreak}
               </span>
             )}
             {data.badgeCount > 0 && (
               <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: "#F5C842" }}>
-                🏅 {data.badgeCount} {isAr ? "شارة" : "badges"}
+                🏅 {data.badgeCount} {t.dashboard.badgesCount}
               </span>
             )}
           </div>
         )}
 
         <p style={{ margin: "8px 0 0", fontSize: 10, fontWeight: 700, color: "rgba(201,160,80,0.8)", textAlign: "center" as const }}>
-          {isAr ? "عرض الإنجازات كاملة ←" : "View all achievements →"}
+          {t.dashboard.viewAllAchievements}
         </p>
       </button>
     </div>
@@ -374,12 +375,12 @@ export default function TeacherDashboard() {
         queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
         toast.success(
           t.assignmentDetail?.deleted ||
-            (lang === "ar" ? "تم حذف الواجب" : "Assignment deleted"),
+            (t.dashboard.assignmentDeleted),
         );
       },
       onError: () => {
         toast.error(
-          lang === "ar" ? "خطأ في حذف الواجب" : "Error deleting assignment",
+          t.dashboard.assignmentDeleteError,
         );
       },
     },
@@ -491,11 +492,11 @@ export default function TeacherDashboard() {
       } else {
         const d = await res.json().catch(() => ({}));
         toast.error(
-          d.message || (lang === "ar" ? "خطأ في الاستيراد" : "Import failed"),
+          d.message || (t.dashboard.importError),
         );
       }
     } catch {
-      toast.error(lang === "ar" ? "خطأ في الاستيراد" : "Import failed");
+      toast.error(t.dashboard.importError);
     } finally {
       setImportingIds((prev) => {
         const s = new Set(prev);
@@ -579,7 +580,7 @@ export default function TeacherDashboard() {
       setCreatingGameForId(assignmentId);
       try {
         const res = await fetch(`/api/assignments/${assignmentId}`, { credentials: "include" });
-        if (!res.ok) { toast.error(lang === "ar" ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
+        if (!res.ok) { toast.error(t.dashboard.questionsLoadError); return; }
         const data = await res.json();
         const assignment = assignments.find((a: { id: number }) => a.id === assignmentId);
         const qs = (data.questions || [])
@@ -591,7 +592,7 @@ export default function TeacherDashboard() {
             correct: ["A","B","C","D"].indexOf(q.correctAnswer),
           }));
         if (qs.length < 2) {
-          toast.error(lang === "ar" ? "يحتاج وميض الصف سؤالين اختيار متعدد على الأقل" : "Wameeth Class needs at least 2 MCQ questions");
+          toast.error(t.dashboard.wameethMinQuestions);
           return;
         }
         sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({
@@ -601,7 +602,7 @@ export default function TeacherDashboard() {
         }));
         setLocation("/game/wameeth/class");
       } catch {
-        toast.error(lang === "ar" ? "حدث خطأ" : "An error occurred");
+        toast.error(t.dashboard.genericError);
       } finally {
         setCreatingGameForId(null);
       }
@@ -704,68 +705,68 @@ export default function TeacherDashboard() {
   }[] = [
     {
       id: "overview",
-      label: lang === "ar" ? "الرئيسية" : "Overview",
-      shortLabel: lang === "ar" ? "الرئيسية" : "Home",
+      label: t.dashboard.overview,
+      shortLabel: t.dashboard.overview,
       icon: <Home className="w-4 h-4" />,
     },
     {
       id: "assignments",
-      label: lang === "ar" ? "أنشطتي" : "My Activities",
-      shortLabel: lang === "ar" ? "أنشطتي" : "Activities",
+      label: t.dashboard.myActivities,
+      shortLabel: t.dashboard.myActivities,
       icon: <BookText className="w-4 h-4" />,
     },
     {
       id: "library_homework",
-      label: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
-      shortLabel: lang === "ar" ? "الأنشطة" : "Activities",
+      label: t.dashboard.activitiesLibrary,
+      shortLabel: t.dashboard.activitiesShort,
       icon: <BookOpen className="w-4 h-4" />,
     },
     {
       id: "library_competitions",
-      label: lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
-      shortLabel: lang === "ar" ? "المسابقات" : "Competitions",
+      label: t.dashboard.competitionsLibrary,
+      shortLabel: t.dashboard.competitionsShort,
       icon: <Trophy className="w-4 h-4" />,
     },
     {
       id: "competitive",
-      label: lang === "ar" ? "الألعاب التعليمية" : "Educational Games",
-      shortLabel: lang === "ar" ? "ابدأ مسابقة" : "Start Quiz",
+      label: t.dashboard.educationalGames,
+      shortLabel: t.dashboard.startQuiz,
       icon: <Trophy className="w-4 h-4" />,
     },
     {
       id: "tools",
-      label: lang === "ar" ? "الأدوات" : "Tools",
-      shortLabel: lang === "ar" ? "أدوات" : "Tools",
+      label: t.dashboard.tools,
+      shortLabel: t.dashboard.toolsShort,
       icon: <Sparkles className="w-4 h-4" />,
     },
     {
       id: "presentations",
-      label: lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations",
-      shortLabel: lang === "ar" ? "العروض" : "Decks",
+      label: t.dashboard.presentationsLabel,
+      shortLabel: t.dashboard.presentationsShort,
       icon: <Monitor className="w-4 h-4" />,
     },
     {
       id: "videos",
-      label: lang === "ar" ? "الفيديو التفاعلي" : "Interactive Video",
-      shortLabel: lang === "ar" ? "الفيديو" : "Video",
+      label: t.dashboard.videoLabel,
+      shortLabel: t.dashboard.videoShort,
       icon: <Video className="w-4 h-4" />,
     },
     {
       id: "stats",
-      label: lang === "ar" ? "ملخص الأداء" : "Performance Summary",
-      shortLabel: lang === "ar" ? "الأداء" : "Stats",
+      label: t.dashboard.performanceSummary,
+      shortLabel: t.dashboard.performanceShort,
       icon: <BarChart3 className="w-4 h-4" />,
     },
     {
       id: "students",
-      label: lang === "ar" ? "صفوفي وطلابي" : "My Classes & Students",
-      shortLabel: lang === "ar" ? "الطلاب" : "Students",
+      label: t.dashboard.classesStudents,
+      shortLabel: t.dashboard.studentsShort,
       icon: <Users className="w-4 h-4" />,
     },
     {
       id: "parent_messages",
-      label: lang === "ar" ? "رسائل أولياء الأمور" : "Parent Messages",
-      shortLabel: lang === "ar" ? "الأهالي" : "Parents",
+      label: t.dashboard.parentMessages,
+      shortLabel: t.dashboard.parentsShort,
       icon: <MessageSquarePlus className="w-4 h-4" />,
     },
   ];
@@ -897,7 +898,7 @@ export default function TeacherDashboard() {
                 {(user?.name || "?").charAt(0)}
               </div>
               <div style={{flex: 1, minWidth: 0}}>
-                <p style={{fontSize: 9, color: "hsl(var(--muted-foreground))", margin: 0, fontWeight: 600}}>{isAr ? "مرحباً" : "Hello"}</p>
+                <p style={{fontSize: 9, color: "hsl(var(--muted-foreground))", margin: 0, fontWeight: 600}}>{"Hello"}</p>
                 <p style={{fontSize: 12, fontWeight: 800, color: "#1E4D35", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{user?.name}</p>
               </div>
             </div>
@@ -909,13 +910,13 @@ export default function TeacherDashboard() {
               style={{width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 14px", background: "#E8A80E", color: "#1E4D35", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 3px 12px rgba(232,168,14,0.35)"}}
             >
               <Plus className="w-3.5 h-3.5" />
-              {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
+              {t.dashboard.createNew}
             </button>
           </div>
           <nav className="flex-1 space-y-0.5">
             {/* ── Section: Main ── */}
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
-              {isAr ? "الرئيسية" : "Main"}
+              {t.dashboard.overview}
             </p>
             {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
                 const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"];
@@ -951,7 +952,7 @@ export default function TeacherDashboard() {
 
             {/* ── Section: Content ── */}
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
-              {isAr ? "المحتوى" : "Content"}
+              {"Content"}
             </p>
             {tabs.filter(t => ["tools","presentations","videos"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
@@ -959,9 +960,9 @@ export default function TeacherDashboard() {
 
               if (isTools) {
                 const subItems: { id: "ai-tools" | "content" | "other"; label: string; icon: ReactNode }[] = [
-                  { id: "ai-tools",  label: isAr ? "أدوات الذكاء الاصطناعي" : "AI Tools",            icon: <Sparkles className="w-3.5 h-3.5" /> },
-                  { id: "content",   label: isAr ? "أدوات تنظيم المحتوى"   : "Content Organization", icon: <Database className="w-3.5 h-3.5" /> },
-                  { id: "other",     label: isAr ? "أخرى"                   : "Other",                icon: <MessageSquarePlus className="w-3.5 h-3.5" /> },
+                  { id: "ai-tools",  label: "AI Tools",            icon: <Sparkles className="w-3.5 h-3.5" /> },
+                  { id: "content",   label: "Content Organization", icon: <Database className="w-3.5 h-3.5" /> },
+                  { id: "other",     label: "Other",                icon: <MessageSquarePlus className="w-3.5 h-3.5" /> },
                 ];
                 return (
                   <div key={tab.id}>
@@ -1134,7 +1135,7 @@ export default function TeacherDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {isAr ? "الواجبات" : "Assignments"}
+                  {t.dashboard.tabAssignments}
                 </p>
                 <p
                   className={cn(
@@ -1166,7 +1167,7 @@ export default function TeacherDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {isAr ? "التسليمات" : "Submissions"}
+                  {t.dashboard.totalSubmissions}
                 </p>
                 <p
                   className={cn(
@@ -1199,7 +1200,7 @@ export default function TeacherDashboard() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {isAr ? "النشطة" : "Active"}
+                    {t.dashboard.statsActiveAssignments}
                   </p>
                   <p
                     className={cn(
@@ -1363,7 +1364,7 @@ export default function TeacherDashboard() {
                     type="button"
                     onClick={() => setAssignmentGamePickerId(null)}
                     className="shrink-0 rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    aria-label={lang === "ar" ? "إغلاق" : "Close"}
+                    aria-label={t.dashboard.closeLabel}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1482,7 +1483,7 @@ export default function TeacherDashboard() {
                             </span>
                             {(opt as { defaultBadge?: boolean }).defaultBadge && (
                               <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
-                                {lang === "ar" ? "افتراضي" : "Default"}
+                                {t.dashboard.defaultLabel}
                               </span>
                             )}
                           </div>
@@ -1565,7 +1566,7 @@ export default function TeacherDashboard() {
                   <School className={`w-8 h-8 shrink-0 ${gameMode === "classroom" ? "text-emerald-500" : ""}`} />
                   <div className="text-start flex-1">
                     <p className="font-black text-sm">
-                      {lang === "ar" ? "وضع اللعب داخل الصف" : "Classroom Mode"}
+                      {t.dashboard.classroomMode}
                     </p>
                     <p className="text-xs mt-0.5 opacity-70">
                       {lang === "ar"
@@ -1768,7 +1769,7 @@ function AssignmentsTab({
       );
       if (r.ok) {
         toast.success(
-          lang === "ar" ? "تمت الإضافة للمجموعة" : "Added to group",
+          t.dashboard.addedToGroup,
         );
         loadCollections();
       } else {
@@ -1787,7 +1788,7 @@ function AssignmentsTab({
           ),
         );
         const d = await r.json().catch(() => ({}));
-        toast.error(d.message || (lang === "ar" ? "خطأ" : "Error"));
+        toast.error(d.message || (t.dashboard.errorLabel));
       }
     } catch {
       // Revert optimistic update on error
@@ -1804,7 +1805,7 @@ function AssignmentsTab({
             : c,
         ),
       );
-      toast.error(lang === "ar" ? "خطأ" : "Error");
+      toast.error(t.dashboard.errorLabel);
     }
   }
 
@@ -1834,12 +1835,12 @@ function AssignmentsTab({
       );
       if (r.ok) {
         toast.success(
-          lang === "ar" ? "تمت الإزالة من المجموعة" : "Removed from group",
+          t.dashboard.removedFromGroup,
         );
         loadCollections();
       }
     } catch {
-      toast.error(lang === "ar" ? "خطأ" : "Error");
+      toast.error(t.dashboard.errorLabel);
     }
   }
 
@@ -1865,7 +1866,7 @@ function AssignmentsTab({
         loadCollections();
       }
     } catch {
-      toast.error(lang === "ar" ? "خطأ" : "Error");
+      toast.error(t.dashboard.errorLabel);
     } finally {
       setSavingGroup(false);
     }
@@ -2022,7 +2023,7 @@ function CompetitiveTab({
   /** تحدّي حصاد — يُعرَض بجوار مسابقات عامة (لا يُكرَّر في شبكة المسابقات الحية) */
   const arenaGame = {
     icon: <ArenaIcon size={44} />,
-    title: lang === "ar" ? "تحدّي حصاد" : "Hasaad Arena",
+    title: t.dashboard.hasadChallengeTitle,
     desc:
       lang === "ar"
         ? "مسابقة فريقين على شاشة كبيرة — فئات وبطاقات بنقاط متدرجة ووسائل مساعدة."
@@ -2030,7 +2031,7 @@ function CompetitiveTab({
     color: "from-emerald-700 to-amber-600",
     type: "arena",
     available: true,
-    pill: lang === "ar" ? "شاشة كبيرة · جديد" : "Big screen · New",
+    pill: t.dashboard.hasadChallengeTag,
   };
 
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
@@ -2049,11 +2050,11 @@ function CompetitiveTab({
       type: "knowledge_race",
       available: true,
       pill:
-        lang === "ar" ? "موصى به — وميض" : "Recommended — Wameedh",
+        t.dashboard.wameethClassTag,
     },
     {
       icon: <TugWarIcon size={70} />,
-      title: lang === "ar" ? "شد الحبل" : "Tug of War",
+      title: t.dashboard.tugTitle,
       desc:
         lang === "ar"
           ? "فريقان يتنافسان بأسئلة اختيار من متعدد؛ الحبل يتحرك مع كل إجابة صحيحة."
@@ -2061,11 +2062,11 @@ function CompetitiveTab({
       color: "from-blue-500 to-indigo-600",
       type: "tug_of_war",
       available: true,
-      pill: lang === "ar" ? "جماعي" : "Team play",
+      pill: t.dashboard.tugTag,
     },
     {
       icon: <EscapeVaultIcon size={56} />,
-      title: lang === "ar" ? "غرفة الهروب" : "Escape Room",
+      title: t.dashboard.escapeRoomTitle,
       desc:
         lang === "ar"
           ? "فكّكوا الأقفال بالإجابات الصحيحة واهربوا قبل انتهاء الوقت — كل خطأ يُطلق الإنذار. وضع صفّي تعاوني أو فردي بالأجهزة."
@@ -2073,7 +2074,7 @@ function CompetitiveTab({
       color: "from-amber-500 to-yellow-700",
       type: "escape_room",
       available: true,
-      pill: lang === "ar" ? "جديد · تعاوني" : "New · Co-op",
+      pill: t.dashboard.escapeRoomTag,
     },
     {
       icon: <WheelIcon size={52} />,
@@ -2085,7 +2086,7 @@ function CompetitiveTab({
       color: "from-emerald-700 to-yellow-600",
       type: "wheel_of_fortune",
       available: true,
-      pill: lang === "ar" ? "عرض صفّي" : "Class display",
+      pill: t.dashboard.wheelTag,
     },
     {
       icon: <RocketIcon size={62} />,
@@ -2097,11 +2098,11 @@ function CompetitiveTab({
       color: "from-red-500 to-orange-500",
       type: "rocket_race",
       available: true,
-      pill: lang === "ar" ? "سباق حي" : "Live race",
+      pill: t.dashboard.spaceRaceLiveTag,
     },
     {
       icon: <HotSeatIcon size={58} />,
-      title: lang === "ar" ? "الكرسي الساخن" : "HotSeat",
+      title: t.dashboard.hotSeatTitle,
       desc:
         lang === "ar"
           ? "طالب يجلس على الكرسي ويجيب على أسئلة زملائه المجهولة — والجميع يصوّت على إجابته. نقاط للأسرع والأكثر إقناعاً!"
@@ -2109,11 +2110,11 @@ function CompetitiveTab({
       color: "from-orange-500 to-red-600",
       type: "hotseat",
       available: true,
-      pill: lang === "ar" ? "حوار وتقييم" : "Q&A + vote",
+      pill: t.dashboard.hotSeatTag,
     },
     {
       icon: <MillionIcon size={58} />,
-      title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?",
+      title: t.dashboard.millionGameTitle,
       desc:
         lang === "ar"
           ? "أسئلة متصاعدة حتى الجائزة الكبرى مع أطواق نجاة — مناسبة للعرض على السبورة."
@@ -2121,7 +2122,7 @@ function CompetitiveTab({
       color: "from-amber-500 to-yellow-600",
       type: "million",
       available: true,
-      pill: lang === "ar" ? "عرض صفّي" : "Class display",
+      pill: t.dashboard.wheelTag,
     },
     {
       icon: <HackIcon size={58} />,
@@ -2133,7 +2134,7 @@ function CompetitiveTab({
       color: "from-green-700 to-emerald-900",
       type: "hack",
       available: true,
-      pill: lang === "ar" ? "تنافس عالي" : "High stakes",
+      pill: t.dashboard.millionGameTag,
     },
     {
       icon: <VideoIcon size={52} />,
@@ -2145,7 +2146,7 @@ function CompetitiveTab({
       color: "from-red-600 to-red-700",
       type: "video_lesson",
       available: true,
-      pill: lang === "ar" ? "درس مرئي" : "Video lesson",
+      pill: t.dashboard.videoLessonTag,
     },
   ];
 
@@ -2153,7 +2154,7 @@ function CompetitiveTab({
   const soloGamesAll = [
     {
       icon: "🪜",
-      title: lang === "ar" ? "مَراقي" : "Maraqui",
+      title: t.dashboard.maraaqiTitle,
       desc:
         lang === "ar"
           ? "مسابقة ثقافية بمراحل متدرجة حتى المرحلة الأخيرة — تحدّ نفسك بالتاريخ والثقافة."
@@ -2161,7 +2162,7 @@ function CompetitiveTab({
       color: "from-teal-500 to-emerald-600",
       type: "maraqui",
       available: true,
-      pill: lang === "ar" ? "مراحل" : "Stages",
+      pill: t.dashboard.maraaqiTag,
       _gated: "maraqui" as const,
     },
     {
@@ -2174,7 +2175,7 @@ function CompetitiveTab({
       color: "from-violet-500 to-fuchsia-600",
       type: "color_game",
       available: true,
-      pill: lang === "ar" ? "تركيز" : "Focus",
+      pill: t.dashboard.colorGameCatalogTag,
     },
     {
       icon: <FlagQuizIcon size={58} />,
@@ -2186,7 +2187,7 @@ function CompetitiveTab({
       color: "from-sky-500 to-indigo-600",
       type: "flag_quiz",
       available: true,
-      pill: lang === "ar" ? "جغرافيا" : "Geo",
+      pill: t.dashboard.flagsGameCatalogTag,
     },
     {
       icon: <CapitalsIcon height={44} />,
@@ -2198,7 +2199,7 @@ function CompetitiveTab({
       color: "from-teal-500 to-cyan-600",
       type: "capitals",
       available: true,
-      pill: lang === "ar" ? "جغرافيا" : "Geo",
+      pill: t.dashboard.flagsGameCatalogTag,
     },
     {
       icon: <MemoryIcon size={56} />,
@@ -2210,7 +2211,7 @@ function CompetitiveTab({
       color: "from-indigo-500 to-pink-600",
       type: "memory_match",
       available: true,
-      pill: lang === "ar" ? "ذاكرة" : "Memory",
+      pill: t.dashboard.memoryGameCatalogTag,
     },
     {
       icon: <MultiplyIcon size={56} />,
@@ -2222,7 +2223,7 @@ function CompetitiveTab({
       color: "from-orange-500 to-amber-600",
       type: "multiplication",
       available: true,
-      pill: lang === "ar" ? "رياضيات" : "Math",
+      pill: t.dashboard.multiplyGameCatalogTag,
     },
     {
       icon: <StroopIcon size={56} />,
@@ -2234,7 +2235,7 @@ function CompetitiveTab({
       color: "from-red-500 to-orange-600",
       type: "stroop",
       available: true,
-      pill: lang === "ar" ? "دماغ" : "Brain",
+      pill: t.dashboard.stroopGameTag,
     },
     {
       icon: <ScrambleIcon size={56} />,
@@ -2246,7 +2247,7 @@ function CompetitiveTab({
       color: "from-violet-500 to-fuchsia-600",
       type: "scramble_words",
       available: true,
-      pill: lang === "ar" ? "إملاء" : "Spelling",
+      pill: t.dashboard.scrambleGameCatalogTag,
     },
     {
       icon: <LetrlyIcon size={56} />,
@@ -2716,7 +2717,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
       // "create something with AI" entry point side-by-side. Renders
       // in the same 4-up grid as the other groups so the cards line up.
       groupId: "ai-tools",
-      groupTitle: isAr ? "أدوات الذكاء الاصطناعي" : "AI Tools",
+      groupTitle: "AI Tools",
       groupIcon: <Sparkles className="w-4 h-4" />,
       tools: [
         {
@@ -2728,7 +2729,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <BookOpen className="w-6 h-6" />,
-          title: isAr ? "مولّد خطط الدروس" : "Lesson Plan Generator",
+          title: "Lesson Plan Generator",
           desc: isAr
             ? "خطّط حصّة كاملة بأهداف وأنشطة وتقويم بمساعدة الذكاء الاصطناعي"
             : "Plan a full class with objectives, activities, and assessment using AI",
@@ -2737,7 +2738,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <FileText className="w-6 h-6" />,
-          title: isAr ? "مولّد ورقة العمل" : "Worksheet Generator",
+          title: "Worksheet Generator",
           desc: isAr
             ? "صمّم ورقة عمل احترافية للطباعة بمساعدة الذكاء الاصطناعي"
             : "Design a print-ready worksheet with AI assistance",
@@ -2746,7 +2747,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Brain className="w-6 h-6" />,
-          title: isAr ? "مولّد الخرائط الذهنية" : "Mind Map Generator",
+          title: "Mind Map Generator",
           desc: isAr
             ? "حوّل أي موضوع أو درس إلى خريطة ذهنية بصرية رائعة بضغطة واحدة"
             : "Turn any topic or lesson into a stunning visual mind map in one click",
@@ -2755,7 +2756,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Video className="w-6 h-6" />,
-          title: isAr ? "درس فيديو تفاعلي" : "Interactive Video Lesson",
+          title: "Interactive Video Lesson",
           desc: isAr
             ? "أنشئ درساً بأسئلة تتوقف تلقائياً أثناء الفيديو"
             : "Create a lesson with auto-pausing questions during the video",
@@ -2764,7 +2765,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Monitor className="w-6 h-6" />,
-          title: isAr ? "العروض التفاعلية" : "Interactive Presentations",
+          title: "Interactive Presentations",
           desc: isAr
             ? "أنشئ عروضاً تقديمية تفاعلية لطلابك في الفصل"
             : "Build interactive slide decks for your classroom",
@@ -2775,7 +2776,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <School className="w-6 h-6" />,
-          title: isAr ? "السبورة الذكية" : "Smart Whiteboard",
+          title: "Smart Whiteboard",
           desc: isAr
             ? "اطرح سؤالاً أو اكتب معلومة أو طلباً وسيعرضه الذكاء الاصطناعي على السبورة أمام طلابك"
             : "Ask a question, share information, or make a request — AI displays it on the board for your class",
@@ -2784,7 +2785,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <FileImage className="w-6 h-6" />,
-          title: isAr ? "تصحيح ورقي ذكي" : "AI Paper Grading",
+          title: "AI Paper Grading",
           desc: isAr
             ? "ارفع صور أوراق الطلاب والذكاء الاصطناعي يصحّح فوراً حسب تعليماتك"
             : "Students photograph their papers — AI grades them instantly per your instructions",
@@ -2795,7 +2796,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "content",
-      groupTitle: isAr ? "تنظيم المحتوى" : "Content Library",
+      groupTitle: "Content Library",
       groupIcon: <Database className="w-4 h-4" />,
       tools: [
         {
@@ -2821,7 +2822,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Sparkles className="w-6 h-6" />,
-          title: isAr ? (isAdmin ? "محتوى تحدي حصاد" : "فئاتي في تحدي حصاد") : (isAdmin ? "Hasaad Arena Content" : "My Arena Categories"),
+          title: isAdmin ? "Hasaad Arena Content" : "My Arena Categories",
           desc: isAr
             ? (isAdmin
                 ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"
@@ -2834,7 +2835,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Library className="w-6 h-6" />,
-          title: isAr ? "مكتبة المعلم" : "Teacher Library",
+          title: "Teacher Library",
           desc: isAr
             ? "ارفع وأدر كتبك وأوراق عملك وخطط دروسك"
             : "Upload and manage your books, worksheets & lesson plans",
@@ -2843,7 +2844,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Globe className="w-6 h-6" />,
-          title: isAr ? "المحتوى المشترك" : "Shared Content",
+          title: "Shared Content",
           desc: isAr
             ? "تصفح واجبات وأسئلة ومسابقات المعلمين الآخرين"
             : "Browse assignments, questions & games from other teachers",
@@ -2854,7 +2855,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "students",
-      groupTitle: isAr ? "إدارة الطلاب" : "Student Management",
+      groupTitle: "Student Management",
       groupIcon: <Users className="w-4 h-4" />,
       tools: [
         {
@@ -2866,7 +2867,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         ...(classroomEnabled ? [{
           icon: <GraduationCap className="w-6 h-6" />,
-          title: isAr ? "Google Classroom" : "Google Classroom",
+          title: "Google Classroom",
           desc: isAr
             ? "استيراد الطلاب ونشر الواجبات ومزامنة الدرجات"
             : "Import students, publish assignments & sync grades",
@@ -2883,7 +2884,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
               <path d="M19.5 10.5H15.5V14C15.5 14.83 16.17 15.5 17 15.5H18C19.1 15.5 20 14.6 20 13.5V11C20 10.72 19.78 10.5 19.5 10.5Z" fill="#7B83EB" />
             </svg>
           ),
-          title: isAr ? "Microsoft Teams" : "Microsoft Teams",
+          title: "Microsoft Teams",
           desc: isAr
             ? "استيراد الطلاب ونشر الواجبات عبر Teams"
             : "Import students, publish assignments via Teams",
@@ -2894,7 +2895,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "other",
-      groupTitle: isAr ? "أخرى" : "Other",
+      groupTitle: "Other",
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
       tools: [
         {
@@ -2908,7 +2909,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           ? [
               {
                 icon: <Crown className="w-6 h-6" />,
-                title: isAr ? "لوحة المسؤول" : "Admin Panel",
+                title: "Admin Panel",
                 desc: isAr
                   ? "إدارة المعلمين والطلاب ومراقبة المنصة"
                   : "Manage teachers, students & monitor platform",
@@ -3037,7 +3038,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
                         featuredBadgeSide,
                       )}
                     >
-                      {isAr ? "موصى به" : "Featured"}
+                      {"Featured"}
                     </span>
                   )}
 
@@ -3108,7 +3109,7 @@ function StudentsInlineTab({ lang, setLocation }: { lang: string; setLocation: (
           style={{ background: "#225739", color: "#FCFAF8" }}
         >
           <Users className="w-4 h-4" />
-          {isAr ? "إدارة الطلاب" : "Manage"}
+          {"Manage"}
         </button>
       </div>
 
@@ -3121,7 +3122,7 @@ function StudentsInlineTab({ lang, setLocation }: { lang: string; setLocation: (
           <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
           <p className="font-bold text-foreground mb-1">{isAr ? "لا توجد صفوف بعد" : "No classes yet"}</p>
           <button onClick={() => setLocation("/teacher/students")} className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white mt-2" style={{ background: "#225739" }}>
-            {isAr ? "أضف صفاً جديداً" : "Add class"}
+            {"Add class"}
           </button>
         </div>
       ) : (
@@ -4311,7 +4312,7 @@ function AssignmentsTabRender({
     },
     {
       type: "tug_of_war",
-      title: lang === "ar" ? "شد الحبل" : "Tug of War",
+      title: t.dashboard.tugTitle,
       desc: lang === "ar" ? "فريقان يتنافسان" : "Two teams compete",
       icon: Swords,
     },
@@ -4320,17 +4321,17 @@ function AssignmentsTabRender({
       title: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
       desc: lang === "ar" ? "سباق فردي للصواريخ" : "Individual rocket race",
       icon: Rocket,
-      tag: lang === "ar" ? "جديد" : "New",
+      tag: "New",
     },
     {
       type: "maraqui",
-      title: lang === "ar" ? "مَراقي" : "Maraqui",
+      title: t.dashboard.maraaqiTitle,
       desc: lang === "ar" ? "مراحل متدرجة الصعوبة" : "Progressive stages",
       icon: Mountain,
     },
     {
       type: "million",
-      title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?",
+      title: t.dashboard.millionGameTitle,
       desc: lang === "ar" ? "15 سؤالاً متدرجاً" : "15 escalating questions",
       icon: Coins,
     },
@@ -4413,7 +4414,7 @@ function AssignmentsTabRender({
 
       <Section
         title={
-          lang === "ar" ? "الواجبات والمسابقات" : "Assignments & Competitions"
+          t.dashboard.assignmentsAndCompetitions
         }
         count={filteredAssignments.length}
         defaultOpen
@@ -4582,7 +4583,7 @@ function AssignmentsTabRender({
                       onClick={() => setShowAllAssignments(false)}
                       className="w-full py-2.5 bg-muted/25 border border-border/45 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {lang === "ar" ? "عرض أقل" : "Show less"}
+                      {t.dashboard.showLess}
                     </button>
                   )}
                 </>
@@ -4594,14 +4595,14 @@ function AssignmentsTabRender({
             onClick={() => setLocation("/teacher/new")}
             className="w-full py-2.5 border border-dashed border-border/65 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/[0.03] transition-colors"
           >
-            + {lang === "ar" ? "إضافة واجب" : "Add Assignment"}
+            + {t.dashboard.addAssignment}
           </button>
         </div>
 
         {/* Games grid */}
         <div className="border-t border-border/45 pt-2.5 mt-0.5">
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
-            {lang === "ar" ? "الألعاب والمسابقات" : "Games & Competitions"}
+            {t.dashboard.gamesAndCompetitions}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {games.map((game, i) => {
@@ -4684,11 +4685,11 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
           </div>
           <div className="min-w-0">
             <h2 className="text-base font-extrabold text-foreground truncate">
-              {isAr ? "الفيديو التفاعلي" : "Interactive Video"}
+              {"Interactive Video"}
             </h2>
             <p className="text-xs text-muted-foreground truncate">
               {lessons.length}{" "}
-              {isAr ? "فيديو" : lessons.length === 1 ? "video" : "videos"}
+              {lessons.length === 1 ? "video" : "videos"}
             </p>
           </div>
         </div>
@@ -4697,7 +4698,7 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
           className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl transition-colors shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" />
-          {isAr ? "فيديو جديد" : "New Video"}
+          {"New Video"}
         </button>
       </div>
 
@@ -4708,7 +4709,7 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
             <Video className="w-8 h-8 text-red-400/60" />
           </div>
           <h3 className="text-base font-bold text-foreground mb-2">
-            {isAr ? "لا يوجد فيديو تفاعلي بعد" : "No interactive videos yet"}
+            {"No interactive videos yet"}
           </h3>
           <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
             {isAr
@@ -4720,7 +4721,7 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-sm rounded-xl transition-colors shadow-md"
           >
             <Plus className="w-4 h-4" />
-            {isAr ? "إنشاء أول فيديو" : "Create First Video"}
+            {"Create First Video"}
           </button>
         </div>
       ) : (
@@ -4763,11 +4764,11 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
                 <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <MessageSquarePlus className="w-3 h-3" />
-                    {vl.questionCount} {isAr ? "سؤال" : "Q"}
+                    {vl.questionCount} {"Q"}
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    {vl.submissionCount} {isAr ? "تسليم" : "sub."}
+                    {vl.submissionCount} {"sub."}
                   </span>
                 </div>
               </div>

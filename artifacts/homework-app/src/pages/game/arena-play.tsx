@@ -82,6 +82,7 @@ import {
 } from "@/lib/arena-content";
 import { io as socketIOClient } from "socket.io-client";
 import QRCodeLib from "react-qr-code";
+import { useI18n } from "@/lib/i18n";
 
 /** Base difficulty tiers shown on the board. 800 is only added when
  *  the sub-category has explicit 800-pt questions (DB-backed only). */
@@ -134,6 +135,7 @@ function findSection(
 }
 
 export default function ArenaPlay() {
+  const { t: tr, lang } = useI18n();
   const [, setLocation] = useLocation();
   const [state, setState] = useState<ArenaState | null>(null);
   const [phase, setPhase] = useState<"board" | "end">("board");
@@ -1344,7 +1346,7 @@ export default function ArenaPlay() {
     if (!sub) return;
     const pool = sub.questions[active.difficulty];
     if (pool.length <= 1) {
-      toast.error("لا توجد أسئلة أخرى في هذه الفئة");
+      toast.error(tr.arenaPlay.noMoreQuestions);
       return;
     }
     let nextIdx = active.questionIndex;
@@ -1361,7 +1363,7 @@ export default function ArenaPlay() {
       revealed: false,
     });
     setTimerRunning(false);
-    toast.success("تم استبدال السؤال");
+    toast.success(tr.arenaPlay.questionReplaced);
     playSound("click");
   };
 
@@ -1391,7 +1393,7 @@ export default function ArenaPlay() {
       note,
     });
     setShowReport(false);
-    toast.success("تم إرسال البلاغ — شكراً، سيراجعه المسؤول");
+    toast.success(tr.arenaPlay.reportSubmitted);
   };
 
   const reveal = () => {
@@ -1551,7 +1553,7 @@ export default function ArenaPlay() {
           t.subCategoryIds.every((id) => !!findSubCategory(id, sections)),
       );
       if (!allValid) {
-        toast.error("بعض الفئات لم تعد متاحة — يرجى إعادة الإعداد");
+        toast.error(tr.arenaPlay.categoriesUnavailable);
         sessionStorage.removeItem("arena_public_mode");
         setLocation("/play/arena");
         return;
@@ -1645,7 +1647,7 @@ export default function ArenaPlay() {
         <VolumeX className="w-[18px] h-[18px]" />
       ),
       action: () => setSoundOn((s) => !s),
-      label: "الصوت",
+      label: tr.arenaPlay.sound,
     },
     {
       icon: isFullscreen ? (
@@ -1654,33 +1656,33 @@ export default function ArenaPlay() {
         <Maximize className="w-[18px] h-[18px]" />
       ),
       action: toggleFullscreen,
-      label: "ملء الشاشة",
+      label: tr.arenaPlay.fullscreen,
     },
     {
       icon: <BookOpen className="w-[18px] h-[18px]" />,
       action: () =>
         setState((prev) => (prev ? { ...prev, rulesAck: false } : prev)),
-      label: "تعليمات",
+      label: tr.arenaPlay.instructions,
     },
     {
       icon: <Share2 className="w-[18px] h-[18px]" />,
       action: () => setShowShare(true),
-      label: "مشاركة",
+      label: tr.arenaPlay.share,
     },
     {
       icon: <RotateCcw className="w-[18px] h-[18px]" />,
       action: () => setShowRestartConfirm(true),
-      label: "إعادة",
+      label: tr.arenaPlay.restart,
     },
     {
       icon: <Flag className="w-[18px] h-[18px]" />,
       action: () => setShowEndConfirm(true),
-      label: "إنهاء",
+      label: tr.arenaPlay.end,
     },
     {
       icon: <Home className="w-[18px] h-[18px]" />,
       action: exitKeep,
-      label: "الرئيسية",
+      label: tr.arenaPlay.home,
     },
   ];
 
@@ -1769,7 +1771,7 @@ export default function ArenaPlay() {
                           fontFamily: ARABIC_FONT,
                         }}
                       >
-                        ← دورك
+                        {tr.arenaPlay.yourTurnPrevious}
                       </motion.span>
                     )}
                     <div
@@ -1887,7 +1889,7 @@ export default function ArenaPlay() {
                           fontFamily: ARABIC_FONT,
                         }}
                       >
-                        دورك →
+                        {tr.arenaPlay.yourTurnNext}
                       </motion.span>
                     )}
                     <div className="flex flex-col leading-none items-end">
@@ -1951,7 +1953,7 @@ export default function ArenaPlay() {
                   letterSpacing: "0.02em",
                 }}
               >
-                تحدّي حصاد
+                {tr.arenaPlay.hasadChallenge}
               </span>
               <span
                 className="arena-brand-subtitle"
@@ -1969,7 +1971,7 @@ export default function ArenaPlay() {
                   letterSpacing: "0.005em",
                 }}
               >
-                {state.tournamentName ?? "بطولة المعرفة والتحدي"}
+                {state.tournamentName ?? tr.arenaPlay.defaultTournamentName}
               </span>
             </div>
           </div>
@@ -2087,7 +2089,7 @@ export default function ArenaPlay() {
                   fontFamily: ARABIC_FONT,
                 }}
               >
-                الدور الآن
+                {tr.arenaPlay.currentTurn}
               </span>
               <motion.span
                 key={turnTeam.name}
@@ -2121,7 +2123,7 @@ export default function ArenaPlay() {
             }}
           >
             <Tv2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
+            <span>{tr.arenaPlay.spectatorMode}</span>
             <Share2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           </button>
         )}
@@ -2191,9 +2193,9 @@ export default function ArenaPlay() {
       <AnimatePresence>
         {showEndConfirm && (
           <ConfirmDialog
-            title="إنهاء اللعبة الآن؟"
-            body="سيظهر الفائز بناءً على النقاط الحالية ولا يمكن التراجع."
-            confirmLabel="نعم، أنهِ اللعبة"
+            title={tr.arenaPlay.confirmEndTitle}
+            body={tr.arenaPlay.confirmEndBody}
+            confirmLabel={tr.arenaPlay.confirmEnd}
             confirmTone="amber"
             onCancel={() => setShowEndConfirm(false)}
             onConfirm={forceEnd}
@@ -2204,9 +2206,9 @@ export default function ArenaPlay() {
       <AnimatePresence>
         {showRestartConfirm && (
           <ConfirmDialog
-            title="إعادة من البداية؟"
-            body="سيتم حذف هذه المسابقة بكل بياناتها والعودة لإعداد لعبة جديدة."
-            confirmLabel="نعم، أعد من البداية"
+            title={tr.arenaPlay.confirmRestartTitle}
+            body={tr.arenaPlay.confirmRestartBody}
+            confirmLabel={tr.arenaPlay.confirmRestart}
             confirmTone="rose"
             onCancel={() => setShowRestartConfirm(false)}
             onConfirm={() => {
@@ -2223,6 +2225,7 @@ export default function ArenaPlay() {
 /* ─────────────────────────────  Login gate  ───────────────────────────── */
 
 function ArenaLoginGate() {
+  const { t: tr } = useI18n();
   return (
     <div
       dir="rtl"
@@ -2246,21 +2249,21 @@ function ArenaLoginGate() {
           <Lock className="w-10 h-10 text-amber-300" />
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-amber-200 mb-3">
-          تسجيل الدخول مطلوب
+          {tr.arenaPlay.loginRequired}
         </h1>
         <p className="text-emerald-100/85 text-base sm:text-lg leading-relaxed mb-6">
-          سجّل دخولك لمتابعة لعبة تحدّي حصاد.
+          {tr.arenaPlay.loginPrompt}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/login">
             <button className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-extrabold text-lg bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center justify-center gap-2 shadow-xl">
               <LogIn className="w-5 h-5" />
-              تسجيل الدخول
+              {tr.arenaPlay.login}
             </button>
           </Link>
           <Link href="/games">
             <button className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20">
-              العودة للألعاب
+              {tr.arenaPlay.backToGames}
             </button>
           </Link>
         </div>
@@ -2322,7 +2325,7 @@ function TurnIndicator({
             <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}>
               <Zap className="w-2.5 h-2.5" style={{ color: "#c9a14b" }} fill="#c9a14b" />
             </motion.span>
-            الدور الآن
+            {tr.arenaPlay.currentTurn}
           </div>
           <div
             className="text-lg sm:text-2xl font-black"
@@ -3180,6 +3183,7 @@ function buildAudienceQrUrl(audienceUrl: string, size: number): string {
 /* ─────────────────────────────  Share dialog (QR for audience)  ───────────────────────────── */
 
 function ShareDialog({ onClose }: { onClose: () => void }) {
+  const { t: tr } = useI18n();
   const code = useMemo(() => getOrCreateShareCode(), []);
   const url = useMemo(() => buildAudienceUrl(code), [code]);
   const qrUrl = buildAudienceQrUrl(url, 260);
@@ -3516,6 +3520,7 @@ function RulesOverlay({
   teamB: { name: string; emoji: string; color: string };
   onAck: () => void;
 }) {
+  const { t: tr } = useI18n();
   return (
     <div
       dir="rtl"
@@ -3539,7 +3544,7 @@ function RulesOverlay({
             }}
           >
             <BookOpen className="w-3 h-3" style={{ color: "#c9a14b" }} />
-            قوانين تحدّي حصاد
+            {tr.arenaPlay.hasadChallenge}
           </div>
           <h1
             className="text-3xl sm:text-4xl font-black mb-2"
