@@ -67,22 +67,26 @@ const PLAN_ICONS: Record<string, any> = {
   pro:   Zap,
 };
 
+// ─── Free items included in EVERY plan (always shown first) ──────────────────
+const FREE_FOR_ALL = [
+  "وصول كامل لجميع الألعاب والتحكم بها",
+  "إنشاء أسئلة وأنشطة واختبارات يدوياً",
+  "مشاركة الأنشطة مع الطلاب بلا حدود",
+];
+
 const PLAN_FEATURES: Record<string, string[]> = {
   free: [
-    "50 رصيد شهرياً (بدون تراكم)",
-    "وصول كامل لجميع الألعاب والتحكم بها",
-    "إنشاء أسئلة وأنشطة يدوياً دون قيود",
+    // FREE_FOR_ALL يُضاف تلقائياً في وقت العرض
+    "أدوات الذكاء الاصطناعي تستهلك من رصيدك الشهري",
   ],
   basic: [
-    "250 رصيد شهرياً",
-    "تراكم حتى 500 رصيد",
+    // FREE_FOR_ALL يُضاف تلقائياً في وقت العرض
     "جميع أدوات الذكاء الاصطناعي",
     "تقارير تفصيلية للطلاب",
   ],
   pro: [
-    "600 رصيد شهرياً",
-    "تراكم حتى 1200 رصيد",
-    "جميع مميزات Basic",
+    // FREE_FOR_ALL يُضاف تلقائياً في وقت العرض
+    "جميع مميزات الأساسي",
     "أولوية في المعالجة",
     "دعم متقدم",
   ],
@@ -182,7 +186,7 @@ export default function PricingPage() {
               const isPro      = plan.code === "pro";
               const isFree     = plan.code === "free";
               const priceUSD   = (plan.priceMinor / 100).toFixed(2);
-              const features   = PLAN_FEATURES[plan.code] ?? [];
+              const features   = [...FREE_FOR_ALL, ...(PLAN_FEATURES[plan.code] ?? [])];
 
               return (
                 <Card
