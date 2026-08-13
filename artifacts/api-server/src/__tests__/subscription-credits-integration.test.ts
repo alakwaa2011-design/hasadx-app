@@ -451,7 +451,7 @@ describe("S9 · Migration idempotency + balance consistency", () => {
   it("seed_completions يحمي من تكرار المنح عند إعادة تشغيل migration", async () => {
     const scRows = await db.execute(sql`
       SELECT COUNT(*)::int AS cnt
-      FROM seed_completions WHERE key LIKE 'credit_batches_seeded_%'
+      FROM seed_completions WHERE key LIKE 'credit_batches_seed_%'
     `);
     const seedCount = Number((scRows.rows[0] as any).cnt);
     console.log(`  seed_completions guards: ${seedCount}`);
