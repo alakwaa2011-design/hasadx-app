@@ -19,14 +19,11 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-/* Cache so we only hit /api/public/settings once per page load */
-let _orgEnabled: boolean | null = null;
 function fetchOrgEnabled(): Promise<boolean> {
-  if (_orgEnabled !== null) return Promise.resolve(_orgEnabled);
   return fetch(`${API_BASE}/api/public/settings`)
     .then(r => (r.ok ? r.json() : {}))
-    .then((d: { organizerEnabled?: boolean }) => { _orgEnabled = d?.organizerEnabled !== false; return _orgEnabled!; })
-    .catch(() => { _orgEnabled = true; return true; });
+    .then((d: { organizerEnabled?: boolean }) => d?.organizerEnabled !== false)
+    .catch(() => true);
 }
 
 interface AdminUiSwitcherProps {
@@ -57,9 +54,8 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   if (!user) return null;
 
   const isAdmin = Boolean(user.isAdmin) || user.role === "admin";
-  /* isOrganizer: true if user IS an organizer or admin.
-     When orgEnabled=false, only admins can still switch to organizer view. */
-  const isOrganizer = isAdmin || (user.role === "organizer" && orgEnabled);
+  /* isOrganizer: visible only when orgEnabled=true, regardless of admin status */
+  const isOrganizer = orgEnabled && (isAdmin || user.role === "organizer");
 
   const current: Surface = location.startsWith("/organizer")
     ? "organizer"
