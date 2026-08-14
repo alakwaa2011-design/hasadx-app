@@ -99,19 +99,23 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).not.toContain(ar.pricing.manageSubscription);
   });
 
-  it("Pro: يعرض نص خصم 20% المعتمد والمزايا الفعلية فقط (600 نقطة، ترحيل 1,200)", async () => {
+  it("Pro: يعرض نص خصم 20% المعتمد وأرقام النقاط الصحيحة (600، ترحيل 1,200)", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const text = await render(<PricingPage />);
     expect(text()).toContain(ar.pricing.proSavings20);
     expect(ar.pricing.proSavings20).toBe("وفّر 20% من الرصيد عند استخدام أدوات الذكاء الاصطناعي.");
-    expect(text()).toContain(ar.pricing.proCredits600);
-    expect(text()).toContain(ar.pricing.proRollover1200);
+    // الأرقام تظهر في قسم السعر (لا عبر مفاتيح locale المحذوفة)
+    expect(text()).toContain("600");
+    expect(text()).toContain("1,200");
     // لا «تقارير متقدمة» في بطاقة Pro — ميزة غير معتمدة
     expect(text()).not.toContain(ar.pricing.proAdvancedReports);
     // لا مزايا مخترعة
     expect(text()).not.toMatch(/دعم أولوية|معالجة أسرع|priority/i);
     // لا خطة School
     expect(text()).not.toMatch(/School|مدرسة/);
+    // لا قسم «نقاط إضافية» أو زر «شراء نقاط إضافية»
+    expect(text()).not.toContain("نقاط إضافية (دفعة واحدة");
+    expect(text()).not.toContain("شراء نقاط إضافية");
   });
 
   it("أزرار الترقية تظهر لمستخدم مجاني للباقتين المدفوعتين", async () => {

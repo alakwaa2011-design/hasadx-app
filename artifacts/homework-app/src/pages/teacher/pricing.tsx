@@ -86,18 +86,15 @@ export default function PricingPage() {
   const fmt = (n: number) => n.toLocaleString("en-US");
   const dateLocale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
-  // Feature lists built from locale keys
-  const FREE_FOR_ALL = [p.freeCreate, p.freeGames, p.freeActivities, p.freeShare];
+  // Per-plan differentiating features only (price section already shows credits + rollover)
   const PLAN_FEATURES: Record<string, string[]> = {
     free:  [p.freeAiNote],
-    basic: [p.basicAiTools, p.basicReports, p.basicParents],
-    pro:   [], // Pro rendered separately via PRO_FEATURES with tooltip support
+    basic: [p.basicReports, p.basicParents],
+    pro:   [],
   };
   type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string } };
   const PRO_FEATURES: ProFeatureItem[] = [
     { text: p.proSavings20, highlight: true, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody } },
-    { text: p.proCredits600 },
-    { text: p.proRollover1200 },
     { text: p.proBasicAll },
   ];
 
@@ -204,7 +201,7 @@ export default function PricingPage() {
               const isPro     = plan.code === "pro";
               const isFree    = plan.code === "free";
               const priceUSD  = (plan.priceMinor / 100).toFixed(2);
-              const features  = [...FREE_FOR_ALL, ...(PLAN_FEATURES[plan.code] ?? [])];
+              const features  = PLAN_FEATURES[plan.code] ?? [];
               const planName  = lang === "ar" ? plan.nameAr : plan.nameEn;
 
               return (
@@ -429,21 +426,6 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Extra credits note */}
-        <div className="max-w-2xl mx-auto text-center pt-8 border-t border-border">
-          <div className="inline-flex flex-col items-center p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100 shadow-sm w-full">
-            <Sparkles size={20} className="text-[#E8B84B] mb-3" />
-            <h4 className="font-bold text-emerald-950 text-lg mb-2">{p.extraCreditsTitle}</h4>
-            <p className="text-muted-foreground text-sm font-medium mb-4">{p.extraCreditsPricing}</p>
-            <Button
-              variant="outline"
-              onClick={() => setLocation("/teacher/credits")}
-              className="bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-50 w-full sm:w-auto"
-            >
-              {p.buyExtraCredits}
-            </Button>
-          </div>
-        </div>
       </div>
 
     </Layout>
