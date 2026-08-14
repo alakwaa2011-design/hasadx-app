@@ -63,9 +63,31 @@ async function getFreeBalance(tid: number): Promise<number> {
 
 describe("رصيد الترحيب المجاني — grantWelcomeCredits", () => {
   const tids: number[] = [];
-  beforeAll(async () => {});
+  let originalWelcomeCredits: number | null = null;
+
+  beforeAll(async () => {
+    // تأكد أن platform_settings تملك صفًا واحدًا على الأقل مع welcome_credits=50.
+    // ضروري لأن DB الاختبار قد تكون فارغة من هذا الجدول.
+    const existing = await db.execute(sql`SELECT id, welcome_credits FROM platform_settings ORDER BY id LIMIT 1`);
+    if (existing.rows.length === 0) {
+      // لا يوجد صف — ننشئ واحدًا بالقيم الافتراضية ثم نضبط القيمة.
+      await db.execute(sql`INSERT INTO platform_settings DEFAULT VALUES`);
+      originalWelcomeCredits = null; // لم يكن موجودًا
+    } else {
+      originalWelcomeCredits = Number((existing.rows[0] as any).welcome_credits ?? 0);
+    }
+    // ضبط welcome_credits=50 لضمان نتيجة حتمية في الاختبارات.
+    await db.execute(sql`UPDATE platform_settings SET welcome_credits = 50 WHERE id = (SELECT id FROM platform_settings ORDER BY id LIMIT 1)`);
+  });
+
   afterAll(async () => {
     for (const tid of tids) await cleanTeacher(tid).catch(() => {});
+    // أعد القيمة الأصلية إذا كانت مختلفة.
+    if (originalWelcomeCredits !== null && originalWelcomeCredits !== 50) {
+      await db
+        .execute(sql`UPDATE platform_settings SET welcome_credits = ${originalWelcomeCredits} WHERE id = (SELECT id FROM platform_settings ORDER BY id LIMIT 1)`)
+        .catch(() => {});
+    }
   });
 
   it("W1 — معلم جديد يحصل على عدد النقاط المضبوطة في platform_settings (50)", async () => {
