@@ -73,6 +73,10 @@ router.post("/billing/admin/assign", requireAdminMw, async (req: any, res) => {
   if (!Number.isFinite(teacherId) || teacherId <= 0 || !planCode) {
     return res.status(400).json({ message: "teacherId و planCode مطلوبان" });
   }
+  // خطة school القديمة خارج نظام نقاط حصاد — لا تُعيَّن يدويًا (الصف يبقى في DB)
+  if (!HASAD_PLAN_CODES.includes(planCode)) {
+    return res.status(400).json({ message: "هذه الباقة خارج نظام نقاط حصاد ولا يمكن تعيينها" });
+  }
   const [plan] = await db
     .select({ id: plansTable.id })
     .from(plansTable)
@@ -95,9 +99,12 @@ router.post("/billing/admin/assign", requireAdminMw, async (req: any, res) => {
 /*  Admin: plans catalog management                                            */
 /* -------------------------------------------------------------------------- */
 
+/** خطط نظام نقاط حصاد المعتمد — أي خطة أخرى (مثل school القديمة) تُستبعد من الواجهة الجديدة */
+const HASAD_PLAN_CODES = ["free", "basic", "pro"];
+
 /** GET /api/billing/admin/overview — totals + per-plan subscriber count + MRR estimate */
 router.get("/billing/admin/overview", requireAdminMw, async (_req, res) => {
-  const [plans, [settings]] = await Promise.all([
+  const [allPlans, [settings]] = await Promise.all([
     db.select().from(plansTable).orderBy(plansTable.sortOrder),
     db
       .select({ pricingPageVisible: platformSettingsTable.pricingPageVisible })
@@ -119,6 +126,9 @@ router.get("/billing/admin/overview", requireAdminMw, async (_req, res) => {
   for (const r of perPlan) {
     byPlanId.set(r.planId, { total: r.total, active: r.active });
   }
+
+  // استبعاد الخطط خارج النظام المعتمد (school القديمة) — يبقى صفها في DB دون حذف
+  const plans = allPlans.filter((p) => HASAD_PLAN_CODES.includes(p.code));
 
   let totalSubscribers = 0;
   let activeSubscribers = 0;

@@ -22,6 +22,9 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+/** خطط نظام نقاط حصاد المعتمد — أي خطة أخرى (مثل school القديمة) لا تظهر في هذه الواجهة */
+const HASAD_PLAN_CODES = ["free", "basic", "pro"];
+
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
 type Plan = {
@@ -385,7 +388,10 @@ function AssignSection({ plans }: { plans: Plan[] }) {
     }
   };
 
-  const planOptions = useMemo(() => plans.filter((p) => p.isActive), [plans]);
+  const planOptions = useMemo(
+    () => plans.filter((p) => p.isActive && HASAD_PLAN_CODES.includes(p.code)),
+    [plans],
+  );
 
   return (
     <div className="space-y-3" dir="rtl">
@@ -586,7 +592,8 @@ export function HasadCreditsSystem() {
   const loadOverview = () => {
     fetch(`${API_BASE}/api/billing/admin/overview`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setOverview)
+      // الخادم يستبعد school أصلًا — فلتر إضافي دفاعي في الواجهة
+      .then((d: Overview) => setOverview({ ...d, plans: d.plans.filter((p) => HASAD_PLAN_CODES.includes(p.code)) }))
       .catch(() => toast.error("فشل تحميل بيانات الخطط"));
   };
   useEffect(() => { loadOverview(); }, []);

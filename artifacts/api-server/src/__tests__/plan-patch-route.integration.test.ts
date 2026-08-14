@@ -69,6 +69,7 @@ describe.skipIf(!RUN_INTEGRATION)("PATCH /api/billing/admin/plans/:id — route"
           name_ar = ${basicBackup.name_ar}
         WHERE id = ${basicPlanId}`);
     }
+    await db.execute(sql`DELETE FROM subscriptions WHERE teacher_id IN (${adminId}, ${teacherId})`);
     await db.execute(sql`DELETE FROM teachers WHERE id IN (${adminId}, ${teacherId})`);
   });
 
@@ -102,6 +103,30 @@ describe.skipIf(!RUN_INTEGRATION)("PATCH /api/billing/admin/plans/:id — route"
     const res = await request(makeApp(adminId))
       .patch(`/api/billing/admin/plans/${freePlanId}`)
       .send({ nameAr: `${origName}` });
+    expect(res.status).toBe(200);
+  });
+
+  it("P6 — overview لا يُرجع خطة school؛ free/basic/pro ظاهرة", async () => {
+    const res = await request(makeApp(adminId)).get("/api/billing/admin/overview");
+    expect(res.status).toBe(200);
+    const codes = res.body.plans.map((p: any) => p.code);
+    expect(codes).not.toContain("school");
+    expect(codes).toEqual(expect.arrayContaining(["free", "basic", "pro"]));
+  });
+
+  it("P7 — التعيين اليدوي يرفض planCode=school → 400 (والصف يبقى في DB)", async () => {
+    const res = await request(makeApp(adminId))
+      .post("/api/billing/admin/assign")
+      .send({ teacherId, planCode: "school" });
+    expect(res.status).toBe(400);
+    const row = await db.execute(sql`SELECT id FROM plans WHERE code = 'school'`);
+    expect(row.rows.length).toBe(1); // لم يُحذف من قاعدة البيانات
+  });
+
+  it("P8 — التعيين اليدوي لا يزال يعمل لخطط النظام (basic) → 200", async () => {
+    const res = await request(makeApp(adminId))
+      .post("/api/billing/admin/assign")
+      .send({ teacherId, planCode: "basic" });
     expect(res.status).toBe(200);
   });
 
