@@ -1,9 +1,3 @@
-/**
- * صفحة الاشتراكات الشهرية — /teacher/pricing
- *
- * تعرض بطاقات الباقات الثلاث (مجانية / Basic / Pro) مع أزرار الترقية.
- * الشراء عبر Lemon Squeezy checkout.
- */
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -17,6 +11,9 @@ import {
   Zap,
   BadgeDollarSign,
   Info,
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle
 } from "lucide-react";
 import {
   Tooltip,
@@ -74,16 +71,21 @@ const PLAN_ICONS: Record<string, any> = {
 
 export default function PricingPage() {
   const [, setLocation] = useLocation();
-  const { t, lang }     = useI18n();
-  const p               = t.pricing;
+  const { t, lang, dir } = useI18n();
+  const p = t.pricing;
+  const c = t.credits; // For checkout confirm texts
 
   const [plans, setPlans]             = useState<Plan[]>([]);
   const [currentSub, setCurrentSub]   = useState<CurrentSub | null>(null);
   const [pricingPageVisible, setPricingPageVisible] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [loading, setLoading]         = useState(true);
+  
+  const [confirmingPlan, setConfirmingPlan] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [cancelling, setCancelling]   = useState(false);
+
+  const fmt = (n: number) => n.toLocaleString(lang === "ar" ? "ar-EG" : "en-US");
 
   // Feature lists built from locale keys
   const FREE_FOR_ALL = [p.freeCreate, p.freeGames, p.freeActivities, p.freeShare];
@@ -92,13 +94,12 @@ export default function PricingPage() {
     basic: [p.basicAiTools, p.basicReports, p.basicParents],
     pro:   [], // Pro rendered separately via PRO_FEATURES with tooltip support
   };
-  type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string; example: string } };
+  type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string } };
   const PRO_FEATURES: ProFeatureItem[] = [
-    { text: p.proSavings20, highlight: true, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody, example: p.proSavingsTooltipExample } },
+    { text: p.proSavings20, highlight: true, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody } },
     { text: p.proCredits600 },
     { text: p.proRollover1200 },
     { text: p.proBasicAll },
-    { text: p.proAdvancedReports },
   ];
 
   useEffect(() => {
@@ -131,8 +132,8 @@ export default function PricingPage() {
       window.location.href = checkoutUrl;
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
-    } finally {
       setCheckingOut(null);
+      setConfirmingPlan(null);
     }
   };
 
@@ -144,11 +145,11 @@ export default function PricingPage() {
         const err = await r.json().catch(() => ({}));
         throw new Error((err as any).message || p.cancelError);
       }
-      toast(p.cancelSuccess);
+      toast.success(p.cancelSuccess);
       const subData = await apiFetch("/api/subscriptions/me").then((r) => r.json());
       setCurrentSub(subData.subscription ?? null);
     } catch (err: any) {
-      toast(err.message, { className: "text-red-500" });
+      toast.error(err.message);
     } finally {
       setCancelling(false);
     }
@@ -156,15 +157,18 @@ export default function PricingPage() {
 
   const currentPlanCode = currentSub?.plan_code ?? "free";
   const isActive        = currentSub?.status === "active" && currentSub?.payment_status === "active";
+  const ChevronIcon     = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   if (!loading && !pricingPageVisible) {
     return (
       <Layout>
-        <div dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-2xl mx-auto px-4 py-20 text-center">
-          <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-sm">
-            <Sparkles className="mx-auto mb-4 text-emerald-700" size={30} />
-            <h1 className="text-2xl font-extrabold">{p.unavailableTitle}</h1>
-            <p className="mt-3 text-muted-foreground">{p.unavailableBody}</p>
+        <div dir={dir} className="max-w-2xl mx-auto px-4 py-20 text-center">
+          <div className="rounded-[2rem] border border-border/60 bg-white p-12 shadow-sm">
+            <div className="w-16 h-16 mx-auto bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
+              <Sparkles className="text-emerald-700" size={30} />
+            </div>
+            <h1 className="text-2xl font-extrabold text-emerald-950">{p.unavailableTitle}</h1>
+            <p className="mt-3 text-muted-foreground leading-relaxed max-w-md mx-auto">{p.unavailableBody}</p>
           </div>
         </div>
       </Layout>
@@ -178,22 +182,24 @@ export default function PricingPage() {
 
   return (
     <Layout>
-      <div dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-5xl mx-auto space-y-8 pb-16">
+      <div dir={dir} className="max-w-5xl mx-auto space-y-12 pb-20 pt-6">
         {/* Header */}
-        <div className="text-center space-y-2 pt-4">
-          <div className="inline-flex items-center gap-2 bg-emerald-800/10 text-emerald-800 text-sm font-medium px-4 py-1.5 rounded-full mb-2">
-            <Sparkles size={15} />
+        <div className="text-center space-y-4 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-bold px-4 py-1.5 rounded-full mb-2 shadow-sm">
+            <Sparkles size={16} className="text-[#E8B84B]" />
             {p.pageTitle}
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight">{p.pageHeading}</h1>
-          <p className="text-muted-foreground max-w-md mx-auto">{p.pageSubtitle}</p>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-emerald-950">{p.pageHeading}</h1>
+          <p className="text-lg text-muted-foreground leading-relaxed">{p.pageSubtitle}</p>
         </div>
 
         {/* Plan cards */}
         {loading ? (
-          <p className="text-center text-muted-foreground py-12">{p.loading}</p>
-        ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             {[1, 2, 3].map(i => <div key={i} className="h-[500px] rounded-3xl bg-muted/40 animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {orderedPlans.map((plan) => {
               const Icon      = PLAN_ICONS[plan.code] ?? Sparkles;
               const isCurrent = plan.code === currentPlanCode && isActive;
@@ -204,233 +210,266 @@ export default function PricingPage() {
               const planName  = lang === "ar" ? plan.nameAr : plan.nameEn;
 
               return (
-                <Card
+                <div
                   key={plan.code}
                   className={[
-                    "relative flex flex-col p-6 gap-4",
+                    "relative flex flex-col p-8 rounded-[2rem] transition-all duration-300",
                     isPro
-                      ? "border-2 border-emerald-700 shadow-lg bg-emerald-800 text-white"
+                      ? "border-2 border-emerald-800 shadow-2xl bg-emerald-900 text-white transform md:-translate-y-4 md:hover:-translate-y-5"
                       : isCurrent
-                      ? "border-2 border-emerald-600/50"
-                      : "",
+                      ? "border-2 border-emerald-500 shadow-lg bg-white"
+                      : "border border-border/80 shadow-sm bg-white/60 hover:border-emerald-200 hover:bg-white hover:shadow-md",
                   ].join(" ")}
                 >
                   {isPro && (
-                    <span className="absolute -top-3.5 right-5 bg-[#E8B84B] text-emerald-950 text-xs font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
-                      <Zap size={11} className="shrink-0" />
-                      {p.proSavingsBadge}
-                    </span>
+                    <div className="absolute -top-4 right-0 left-0 flex justify-center">
+                      <span className="bg-[#E8B84B] text-amber-950 text-sm font-extrabold px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
+                        <Zap size={14} className="shrink-0" fill="currentColor" />
+                        {p.proSavingsBadge}
+                      </span>
+                    </div>
                   )}
-                  {isCurrent && (
-                    <span className="absolute -top-3.5 right-5 bg-emerald-600 text-white text-xs font-bold px-3 py-0.5 rounded-full">
-                      {p.currentPlan}
-                    </span>
+                  {isCurrent && !isPro && (
+                    <div className="absolute -top-4 right-0 left-0 flex justify-center">
+                      <span className="bg-emerald-600 text-white text-sm font-extrabold px-4 py-1.5 rounded-full shadow-md">
+                        {p.currentPlan}
+                      </span>
+                    </div>
                   )}
 
                   {/* Plan name + icon */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-center text-center mb-6 mt-2">
                     <div
                       className={[
-                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                        isPro ? "bg-white/15" : "bg-emerald-800/10",
+                        "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-inner",
+                        isPro ? "bg-white/10 border border-white/20" : "bg-emerald-50 border border-emerald-100",
                       ].join(" ")}
                     >
-                      <Icon size={20} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
+                      <Icon size={28} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
                     </div>
-                    <div>
-                      <p className={["font-bold text-lg", isPro ? "text-white" : ""].join(" ")}>
-                        {planName}
-                      </p>
-                      <p className={["text-xs", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
-                        {lang === "ar" ? plan.nameEn : plan.nameAr}
-                      </p>
-                    </div>
+                    <h3 className={["font-extrabold text-2xl mb-1", isPro ? "text-white" : "text-emerald-950"].join(" ")}>
+                      {planName}
+                    </h3>
                   </div>
 
                   {/* Price */}
-                  <div>
+                  <div className="text-center mb-8 pb-8 border-b border-dashed border-border/50" style={{ borderColor: isPro ? 'rgba(255,255,255,0.15)' : undefined }}>
                     {isFree ? (
-                      <p className="text-3xl font-extrabold">{p.freePlanLabel}</p>
+                      <div className="h-[48px] flex items-center justify-center">
+                        <span className="text-4xl font-black">{p.freePlanLabel}</span>
+                      </div>
                     ) : (
-                      <div className="flex items-baseline gap-1">
-                        <span className={["text-3xl font-extrabold", isPro ? "text-white" : "text-emerald-800"].join(" ")}>
-                          ${priceUSD}
+                      <div className="flex items-baseline justify-center gap-1.5 h-[48px]">
+                        <span className="text-2xl font-bold opacity-60 self-start mt-1">$</span>
+                        <span className={["text-5xl font-black tracking-tight", isPro ? "text-white" : "text-emerald-900"].join(" ")}>
+                          {priceUSD}
                         </span>
-                        <span className={isPro ? "text-white/70 text-sm" : "text-muted-foreground text-sm"}>
+                        <span className={isPro ? "text-white/60 font-medium" : "text-muted-foreground font-medium"}>
                           {p.perMonth}
                         </span>
                       </div>
                     )}
-                    <p className={["text-sm mt-0.5", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
-                      {isFree
-                        ? `${plan.monthlyCredits} ${p.freeWelcomePoints}`
-                        : plan.rolloverCap
-                          ? `${plan.monthlyCredits} ${p.pointsMonthly} · ${p.rolloverUntil} ${plan.rolloverCap}`
-                          : `${plan.monthlyCredits} ${p.pointsMonthly} (${p.noRollover})`}
-                    </p>
+                    
+                    <div className={["mt-3 text-sm font-medium", isPro ? "text-emerald-200" : "text-emerald-700"].join(" ")}>
+                      {isFree ? (
+                        <span>{fmt(plan.monthlyCredits)} {p.freeWelcomePoints}</span>
+                      ) : plan.rolloverCap ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span>{fmt(plan.monthlyCredits)} {p.pointsMonthly}</span>
+                          <span className={isPro ? "text-white/50 text-xs" : "text-muted-foreground text-xs"}>
+                            {p.rolloverUntil} {fmt(plan.rolloverCap)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span>{fmt(plan.monthlyCredits)} {p.pointsMonthly} ({p.noRollover})</span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Features list */}
                   <TooltipProvider delayDuration={100}>
-                    <ul className="space-y-2 flex-1">
+                    <ul className="space-y-3.5 flex-1 mb-8">
                       {isPro
-                        ? PRO_FEATURES.map((f) => (
+                        ? PRO_FEATURES.map((f, i) => (
                             <li
-                              key={f.text}
+                              key={i}
                               className={[
-                                "flex items-start gap-2",
+                                "flex items-start gap-3",
                                 f.highlight
-                                  ? "text-[#E8B84B] font-semibold text-sm bg-white/5 rounded-lg px-2 py-1.5 -mx-2"
-                                  : "text-sm",
+                                  ? "text-[#E8B84B] font-bold text-[15px] bg-white/5 rounded-xl p-3 border border-white/10 -mx-3"
+                                  : "text-[15px] font-medium",
                               ].join(" ")}
                             >
                               {f.highlight
-                                ? <Zap size={15} className="shrink-0 mt-0.5 text-[#E8B84B]" fill="currentColor" />
-                                : <Check size={15} className="shrink-0 mt-0.5 text-[#E8B84B]" />
+                                ? <Zap size={18} className="shrink-0 mt-0.5 text-[#E8B84B]" fill="currentColor" />
+                                : <Check size={18} className="shrink-0 mt-0.5 text-[#E8B84B]" />
                               }
-                              <span className={f.highlight ? "text-[#E8B84B] flex items-center gap-1.5" : "text-white/90 flex items-center gap-1.5"}>
-                                {f.text}
+                              <span className={f.highlight ? "text-[#E8B84B] flex items-center gap-1.5 flex-wrap" : "text-white/90 flex items-center gap-1.5 flex-wrap"}>
+                                <span>{f.text}</span>
                                 {f.tooltip && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Info size={13} className={f.highlight ? "text-[#E8B84B]/60 hover:text-[#E8B84B] cursor-help shrink-0" : "text-white/50 hover:text-white/90 cursor-help shrink-0"} />
+                                      <span className="inline-flex cursor-help"><Info size={15} className={f.highlight ? "text-[#E8B84B]/60 hover:text-[#E8B84B] shrink-0" : "text-white/50 hover:text-white/90 shrink-0"} /></span>
                                     </TooltipTrigger>
                                     <TooltipContent
                                       side="bottom"
-                                      className="max-w-[240px] p-3"
-                                      dir={lang === "ar" ? "rtl" : "ltr"}
+                                      className="max-w-[260px] p-4 bg-emerald-950 border-emerald-800 text-white shadow-xl rounded-xl"
+                                      dir={dir}
                                     >
-                                      <p className="font-bold text-sm mb-1">{f.tooltip.title}</p>
-                                      <p className="text-xs text-muted-foreground">{f.tooltip.body}</p>
-                                      <p className="text-xs text-emerald-600 font-medium mt-1">{f.tooltip.example}</p>
+                                      <p className="font-bold text-sm mb-1.5 text-[#E8B84B]">{f.tooltip.title}</p>
+                                      <p className="text-xs leading-relaxed opacity-90">{f.tooltip.body}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 )}
                               </span>
                             </li>
                           ))
-                        : features.map((f) => (
-                            <li key={f} className="flex items-start gap-2 text-sm">
-                              <Check size={15} className="shrink-0 mt-0.5 text-emerald-700" />
-                              <span>{f}</span>
+                        : features.map((f, i) => (
+                            <li key={i} className="flex items-start gap-3 text-[15px] font-medium text-foreground/80">
+                              <Check size={18} className="shrink-0 mt-0.5 text-emerald-600" />
+                              <span className="leading-snug">{f}</span>
                             </li>
                           ))}
                     </ul>
                   </TooltipProvider>
 
                   {/* CTA */}
-                  <div className="mt-auto space-y-2">
+                  <div className="mt-auto pt-4">
                     {isCurrent && isFree ? (
-                      /* Free is current plan — just show a label, no manage/cancel */
-                      <Button variant="outline" className="w-full" disabled>
-                        {p.currentPlan}
+                      /* Free is current plan — just show a label */
+                      <Button variant="outline" className="w-full bg-emerald-50/50 text-emerald-800 border-emerald-200" disabled>
+                        <Check size={16} className="mr-2 rtl:ml-2 rtl:mr-0" /> {p.starterPlan}
                       </Button>
                     ) : isCurrent ? (
                       /* Paid plan is current */
-                      <>
+                      <div className="space-y-3">
                         <Button
-                          variant="outline"
-                          className={["w-full", isPro ? "bg-white/15 text-white border-white/30 hover:bg-white/25" : ""].join(" ")}
+                          variant={isPro ? "outline" : "default"}
+                          className={["w-full", isPro ? "bg-white/10 text-white border-white/20 hover:bg-white/20 hover:text-white" : ""].join(" ")}
                           onClick={() => setLocation("/teacher/credits")}
                         >
                           {p.manageSubscription}
                         </Button>
                         {!currentSub?.cancelled_at && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button
-                                type="button"
-                                className={[
-                                  "w-full text-xs underline underline-offset-2 transition-colors",
-                                  isPro
-                                    ? "text-white/50 hover:text-white/80"
-                                    : "text-muted-foreground hover:text-red-600",
-                                ].join(" ")}
-                              >
-                                {p.cancelSubscription}
-                              </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent dir={lang === "ar" ? "rtl" : "ltr"}>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>{p.confirmCancelTitle}</AlertDialogTitle>
-                                <AlertDialogDescription className="space-y-2 text-right">
-                                  <span className="block">
-                                    {currentSub?.current_period_end
-                                      ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
-                                          lang === "ar" ? "ar-SA" : "en-US",
-                                          { year: "numeric", month: "long", day: "numeric" }
-                                        )}.`
-                                      : p.cancelledFallback}
-                                  </span>
-                                  <span className="block">{p.cancelNote}</span>
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>{p.back}</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={handleCancel}
-                                  disabled={cancelling}
-                                  className="bg-red-600 hover:bg-red-700 text-white"
+                          <div className="text-center">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={[
+                                    "text-sm underline underline-offset-4 transition-colors font-medium",
+                                    isPro ? "text-white/50 hover:text-white/90" : "text-muted-foreground hover:text-red-600",
+                                  ].join(" ")}
                                 >
-                                  {cancelling ? (
-                                    <span className="flex items-center gap-2">
-                                      <Loader2 size={14} className="animate-spin" />
-                                      {p.cancelling}
+                                  {p.cancelSubscription}
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent dir={dir} className="sm:max-w-md">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-xl text-red-600">{p.confirmCancelTitle}</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-base mt-2 space-y-3 leading-relaxed">
+                                    <span className="block font-medium text-foreground">
+                                      {currentSub?.current_period_end
+                                        ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
+                                            lang === "ar" ? "ar-SA" : "en-US",
+                                            { year: "numeric", month: "long", day: "numeric" }
+                                          )}.`
+                                        : p.cancelledFallback}
                                     </span>
-                                  ) : p.confirmCancel}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                    <span className="block text-sm">{p.cancelNote}</span>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="mt-6 gap-3">
+                                  <AlertDialogCancel className="mt-0">{p.back}</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={(e) => { e.preventDefault(); handleCancel(); }}
+                                    disabled={cancelling}
+                                    className="bg-red-600 hover:bg-red-700 text-white min-w-[140px]"
+                                  >
+                                    {cancelling ? <Loader2 size={16} className="animate-spin" /> : p.confirmCancel}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         )}
-                      </>
+                      </div>
                     ) : isFree ? (
-                      /* Non-current free plan slot (shouldn't normally appear, but guard it) */
-                      <Button variant="outline" className="w-full" disabled>
+                      /* Non-current free plan slot */
+                      <Button variant="outline" className="w-full bg-muted/30" disabled>
                         {p.starterPlan}
                       </Button>
                     ) : !paymentsEnabled ? (
-                      /* المدفوعات معطّلة — نظهر حالة عربية واضحة بدل زر شراء فعّال */
-                      <Button variant="outline" className="w-full opacity-70" disabled>
-                        الدفع غير متاح حاليًا
-                      </Button>
+                      /* Payments disabled */
+                      <div className="w-full text-center p-3 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground font-medium flex items-center justify-center gap-2">
+                        <AlertCircle size={16} className="opacity-70" />
+                        {p.paymentsDisabled}
+                      </div>
                     ) : (
                       <Button
-                        variant="default"
-                        className={["w-full", isPro ? "bg-white text-emerald-900 hover:bg-white/90" : ""].join(" ")}
-                        onClick={() => handleUpgrade(plan.code)}
+                        variant={isPro ? "outline" : "default"}
+                        className={["w-full group", isPro ? "bg-white text-emerald-950 border-white hover:bg-emerald-50 hover:text-emerald-950" : ""].join(" ")}
+                        onClick={() => setConfirmingPlan(plan.code)}
                         disabled={checkingOut !== null}
                       >
                         {checkingOut === plan.code ? (
                           <span className="flex items-center gap-2">
-                            <Loader2 size={15} className="animate-spin" />
-                            {p.redirecting}
+                            <Loader2 size={18} className="animate-spin" /> {p.redirecting}
                           </span>
                         ) : (
-                          `${p.upgradePrefix} ${planName}`
+                          <span className="flex items-center gap-2 font-bold text-[15px]">
+                            {p.upgradePrefix} {planName}
+                            <ChevronIcon size={16} className="transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
+                          </span>
                         )}
                       </Button>
                     )}
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>
         )}
 
         {/* Extra credits note */}
-        <div className="text-center text-sm text-muted-foreground space-y-1">
-          <p className="font-medium">{p.extraCreditsTitle}</p>
-          <p>{p.extraCreditsPricing}</p>
-          <button
-            type="button"
-            onClick={() => setLocation("/teacher/credits")}
-            className="text-emerald-700 underline underline-offset-2 hover:text-emerald-800 mt-1"
-          >
-            {p.buyExtraCredits}
-          </button>
+        <div className="max-w-2xl mx-auto text-center pt-8 border-t border-border">
+          <div className="inline-flex flex-col items-center p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100 shadow-sm w-full">
+            <Sparkles size={20} className="text-[#E8B84B] mb-3" />
+            <h4 className="font-bold text-emerald-950 text-lg mb-2">{p.extraCreditsTitle}</h4>
+            <p className="text-muted-foreground text-sm font-medium mb-4">{p.extraCreditsPricing}</p>
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/teacher/credits")}
+              className="bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-50 w-full sm:w-auto"
+            >
+              {p.buyExtraCredits}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Checkout Confirmation Dialog for Plans */}
+      <AlertDialog open={!!confirmingPlan} onOpenChange={(o) => !o && setConfirmingPlan(null)}>
+        <AlertDialogContent dir={dir} className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl">{c.checkoutConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="text-base mt-2 leading-relaxed">
+              {c.checkoutConfirmDesc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-3">
+            <AlertDialogCancel className="mt-0">{c.cancelBtn}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); confirmingPlan && handleUpgrade(confirmingPlan); }}
+              disabled={checkingOut !== null}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[140px]"
+            >
+              {checkingOut !== null ? <Loader2 size={16} className="animate-spin" /> : c.checkoutConfirmBtn}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </Layout>
   );
 }

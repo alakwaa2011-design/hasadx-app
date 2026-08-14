@@ -1376,7 +1376,7 @@ export default function TeacherDashboard() {
                   [
                     {
                       key: "knowledge_race" as const,
-                      icon: <WameethIcon size={56} />,
+                      icon: <WameethIcon />,
                       svgIcon: true,
                       titleAr: "وميض",
                       titleEn: "Wameedh",
@@ -2153,7 +2153,7 @@ function CompetitiveTab({
   /** تحديات فردية — للتمرّن أو مسابقات الزوار بدون غرفة صفّية مباشرة */
   const soloGamesAll = [
     {
-      icon: "🪜",
+      icon: <>🪜</>, // fragment يحافظ على العرض السابق تمامًا ويوافق نوع JSX.Element
       title: t.dashboard.maraaqiTitle,
       desc:
         lang === "ar"

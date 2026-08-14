@@ -130,20 +130,20 @@ export function OutlineCard({ slide, onChange, onDelete, allowSubtitle, maxPoint
                   <Sparkles className="h-2.5 w-2.5" /> {slide.interactionHint}
                 </span>
               ) : null}
-              {slide.activityType && slide.activityType !== "null" ? (
+              {(slide as any).activityType && (slide as any).activityType !== "null" ? (
                 <span
                   className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"
                   style={{ background: "#0ea5e920", color: "#0ea5e9" }}
                 >
-                  <Gamepad2 className="h-2.5 w-2.5" /> {slide.activityType.replace(/_/g, " ")}
+                  <Gamepad2 className="h-2.5 w-2.5" /> {(slide as any).activityType.replace(/_/g, " ")}
                 </span>
               ) : null}
-              {slide.strategyStage && slide.strategyStage !== "null" ? (
+              {(slide as any).strategyStage && (slide as any).strategyStage !== "null" ? (
                 <span
                   className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"
                   style={{ background: "#a855f720", color: "#a855f7" }}
                 >
-                  <Tag className="h-2.5 w-2.5" /> {slide.strategyStage.replace(/_/g, " ")}
+                  <Tag className="h-2.5 w-2.5" /> {(slide as any).strategyStage.replace(/_/g, " ")}
                 </span>
               ) : null}
             </div>

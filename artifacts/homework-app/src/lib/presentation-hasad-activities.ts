@@ -106,7 +106,7 @@ function titleFromSlide(slide: Slide): string {
   return titleEl?.text?.trim().slice(0, 120) || "نشاط عرض تفاعلي";
 }
 
-function getRecommendedActivityType(slide: Slide): string | null {
+function getRecommendedActivityType(slide: any): string | null {
   if (slide.activityType && slide.activityType !== "null") return slide.activityType;
   if (slide.gameSuggestion === "tug")    return "tug_war";
   if (slide.gameSuggestion === "kahoot") return "quick_quiz";

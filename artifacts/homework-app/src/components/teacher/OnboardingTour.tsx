@@ -59,15 +59,15 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
     try {
       if (!localStorage.getItem(STORAGE_KEY)) {
-        // تأخير بسيط حتى تنتهي الصفحة من التحميل
-        const t = setTimeout(() => setVisible(true), 1200);
-        return () => clearTimeout(t);
+        t = setTimeout(() => setVisible(true), 1200);
       }
     } catch {
       /* ignore */
     }
+    return () => { if (t) clearTimeout(t); };
   }, []);
 
   function close() {

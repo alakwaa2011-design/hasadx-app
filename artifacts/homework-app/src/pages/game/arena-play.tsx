@@ -2281,6 +2281,7 @@ function TurnIndicator({
   team: { name: string; emoji: string; color: string };
   side: TeamSide;
 }) {
+  const { t: tr } = useI18n();
   return (
     <div className="relative px-3 py-1.5 flex items-center justify-center">
       <motion.div

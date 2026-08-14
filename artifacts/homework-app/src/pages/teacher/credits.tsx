@@ -1,6 +1,3 @@
-/**
- * صفحة «الرصيد والباقات» للمعلم.
- */
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -9,9 +6,19 @@ import { toast } from "@/components/ui/sonner";
 import {
   Coins, Sparkles, Gift, Award, ShoppingCart, Loader2,
   CheckCircle2, Clock, ReceiptText, ShieldCheck,
-  CalendarClock, AlertCircle, CreditCard,
+  CalendarClock, AlertCircle, CreditCard, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -66,8 +73,8 @@ interface SubInfo {
 
 export default function TeacherCreditsPage() {
   const [, setLocation] = useLocation();
-  const { t, lang }     = useI18n();
-  const c               = t.credits;
+  const { t, lang, dir } = useI18n();
+  const c = t.credits;
 
   const fmt = (n: number) => n.toLocaleString(lang === "ar" ? "ar-EG" : "en-US");
 
@@ -78,19 +85,21 @@ export default function TeacherCreditsPage() {
     refunded:           c.statusRefunded,
     failed:             c.statusFailed,
   };
+  
   const statusColor: Record<string, string> = {
-    pending_checkout:   "text-amber-600 bg-amber-50",
-    completed:          "text-emerald-700 bg-emerald-50",
-    partially_refunded: "text-orange-600 bg-orange-50",
-    refunded:           "text-red-500 bg-red-50",
-    failed:             "text-red-500 bg-red-50",
+    pending_checkout:   "text-amber-700 bg-amber-50 border-amber-200",
+    completed:          "text-emerald-700 bg-emerald-50 border-emerald-200",
+    partially_refunded: "text-orange-700 bg-orange-50 border-orange-200",
+    refunded:           "text-red-700 bg-red-50 border-red-200",
+    failed:             "text-red-700 bg-red-50 border-red-200",
   };
+
   const paymentStatusLabel: Record<string, { label: string; color: string }> = {
-    active:    { label: c.payStatusActive,    color: "text-emerald-700 bg-emerald-50" },
-    past_due:  { label: c.payStatusPastDue,   color: "text-amber-600 bg-amber-50" },
-    unpaid:    { label: c.payStatusUnpaid,    color: "text-red-500 bg-red-50" },
-    cancelled: { label: c.payStatusCancelled, color: "text-muted-foreground bg-muted" },
-    expired:   { label: c.payStatusExpired,   color: "text-muted-foreground bg-muted" },
+    active:    { label: c.payStatusActive,    color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+    past_due:  { label: c.payStatusPastDue,   color: "text-amber-700 bg-amber-50 border-amber-200" },
+    unpaid:    { label: c.payStatusUnpaid,    color: "text-red-700 bg-red-50 border-red-200" },
+    cancelled: { label: c.payStatusCancelled, color: "text-muted-foreground bg-muted border-border" },
+    expired:   { label: c.payStatusExpired,   color: "text-muted-foreground bg-muted border-border" },
   };
 
   const [balance,          setBalance]          = useState<BalanceDetail | null>(null);
@@ -99,6 +108,8 @@ export default function TeacherCreditsPage() {
   const [purchasesEnabled, setPurchasesEnabled] = useState(true);
   const [purchases,        setPurchases]        = useState<Purchase[]>([]);
   const [loading,          setLoading]          = useState(true);
+  
+  const [confirmingPkg,    setConfirmingPkg]    = useState<Pkg | null>(null);
   const [buyingId,         setBuyingId]         = useState<number | null>(null);
 
   const [pendingIntent, setPendingIntent] = useState<string | null>(null);
@@ -127,9 +138,15 @@ export default function TeacherCreditsPage() {
     loadAll();
     const params = new URLSearchParams(window.location.search);
     const intent = params.get("intent");
+    const subscribed = params.get("subscribed");
+    
     if (intent) {
       setPendingIntent(intent);
       setIntentStatus("waiting");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (subscribed === "1") {
+      // Just show a success toast or set a confirmed state visually
+      toast.success(c.paymentConfirmed || "Subscription successful!");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -175,6 +192,7 @@ export default function TeacherCreditsPage() {
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setBuyingId(null);
+      setConfirmingPkg(null);
     }
   };
 
@@ -189,257 +207,303 @@ export default function TeacherCreditsPage() {
   const planName      = subscription
     ? (lang === "ar" ? subscription.plan_name_ar : subscription.plan_name_en)
     : "";
-  const dir = lang === "ar" ? "rtl" : "ltr";
+
+  const ChevronIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   return (
     <Layout>
-      <div dir={dir} className="max-w-5xl mx-auto space-y-6 pb-12">
-
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-700 flex items-center justify-center">
-              <Coins size={22} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">{c.pageTitle}</h1>
-              <p className="text-sm text-muted-foreground">{c.pageSubtitle}</p>
-            </div>
-          </div>
-          <Button variant="outline" onClick={() => setLocation("/teacher/pricing")}>
-            <Sparkles size={15} className="ml-1 text-[#E8B84B]" />
-            {c.viewPlans}
-          </Button>
-        </div>
-
+      <div dir={dir} className="max-w-4xl mx-auto space-y-10 pb-16 pt-4">
+        
         {/* Payment return banners */}
-        {intentStatus === "waiting" && (
-          <Card className="p-4 border-amber-200 bg-amber-50 flex items-center gap-3">
-            <Loader2 size={20} className="text-amber-600 animate-spin shrink-0" />
-            <p className="text-sm text-amber-800">{c.paymentWaiting}</p>
-          </Card>
-        )}
-        {intentStatus === "confirmed" && (
-          <Card className="p-4 border-emerald-200 bg-emerald-50 flex items-center gap-3">
-            <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
-            <p className="text-sm text-emerald-800">{c.paymentConfirmed}</p>
-          </Card>
-        )}
-        {intentStatus === "timeout" && (
-          <Card className="p-4 border-orange-200 bg-orange-50 flex items-center gap-3">
-            <Clock size={20} className="text-orange-600 shrink-0" />
-            <p className="text-sm text-orange-800">{c.paymentTimeout}</p>
-          </Card>
-        )}
-
-        {/* Active subscription card */}
-        {!isFreeOrNoSub && subscription && (
-          <Card className="p-5 border-emerald-200 bg-emerald-50/60">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-800 flex items-center justify-center shrink-0">
-                  <CreditCard size={18} className="text-white" />
-                </div>
-                <div>
-                  <p className="font-bold text-emerald-900">
-                    {c.planPrefix} {planName}
-                    {subscription.cancelled_at && (
-                      <span className="mr-2 text-xs font-normal text-amber-600">{c.cancelledNote}</span>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    {payStatusInfo && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${payStatusInfo.color}`}>
-                        {payStatusInfo.label}
-                      </span>
-                    )}
-                    {renewalDate && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CalendarClock size={12} />
-                        {subscription.cancelled_at ? c.expiresOn : c.renewsOn} {renewalDate}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <p className="text-sm text-muted-foreground">
-                  {subscription.monthly_credits} {c.pointsMonthly}
-                  {subscription.rollover_cap ? ` · ${c.rolloverUntil} ${subscription.rollover_cap}` : ""}
-                </p>
-                <Button variant="outline" className="text-xs h-8 mt-1" onClick={() => setLocation("/teacher/pricing")}>
-                  {c.manageSubscription}
-                </Button>
-              </div>
-            </div>
-            {subscription.payment_status === "past_due" && (
-              <div className="mt-3 flex items-start gap-2 text-sm text-amber-700 bg-amber-100 rounded-lg px-3 py-2">
-                <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                <p>{c.pastDueWarning}</p>
+        {intentStatus && (
+          <div className="animate-in fade-in slide-in-from-top-2">
+            {intentStatus === "waiting" && (
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 flex items-center gap-3 shadow-sm">
+                <Loader2 size={20} className="text-amber-600 animate-spin shrink-0" />
+                <p className="text-sm font-medium text-amber-800">{c.paymentWaiting}</p>
               </div>
             )}
-          </Card>
+            {intentStatus === "confirmed" && (
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center gap-3 shadow-sm">
+                <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
+                <p className="text-sm font-medium text-emerald-800">{c.paymentConfirmed}</p>
+              </div>
+            )}
+            {intentStatus === "timeout" && (
+              <div className="p-4 rounded-xl border border-orange-200 bg-orange-50 flex items-center gap-3 shadow-sm">
+                <Clock size={20} className="text-orange-600 shrink-0" />
+                <p className="text-sm font-medium text-orange-800">{c.paymentTimeout}</p>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Balance breakdown */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="p-4 bg-emerald-800 text-white border-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Coins size={16} className="text-[#E8B84B]" />
-              <span className="text-xs opacity-80">{c.totalPoints}</span>
-            </div>
-            <p className="text-2xl font-bold">{loading ? "…" : fmt(balance?.balance ?? 0)}</p>
-          </Card>
+        {/* Hero Section */}
+        <section className="bg-emerald-950 text-white rounded-[2rem] p-8 md:p-10 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
+            <div className="absolute -top-32 -left-32 w-[30rem] h-[30rem] bg-emerald-500 rounded-full blur-[100px] mix-blend-screen" />
+            <div className="absolute top-1/2 right-0 w-[20rem] h-[20rem] bg-[#E8B84B] rounded-full blur-[80px] mix-blend-screen" />
+          </div>
 
-          {!isFreeOrNoSub ? (
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <CreditCard size={16} className="text-emerald-700" />
-                <span className="text-xs text-muted-foreground">{c.subscriptionPoints}</span>
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+            <div className="space-y-5 flex-1">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-extrabold mb-2 text-white">{c.pageTitle}</h1>
+                <p className="text-emerald-100/90 text-sm md:text-base flex items-center gap-2 font-medium">
+                  <Sparkles size={16} className="text-[#E8B84B]" fill="currentColor" />
+                  {c.aiToolsOnly}
+                </p>
               </div>
-              <p className="text-2xl font-bold text-emerald-800">
-                {loading ? "…" : fmt(balance?.subscriptionBalance ?? 0)}
-              </p>
-            </Card>
+
+              <div className="flex items-baseline gap-2">
+                <span className="text-6xl md:text-7xl font-black tracking-tight drop-shadow-sm">
+                  {loading ? "…" : fmt(balance?.balance ?? 0)}
+                </span>
+                <span className="text-xl md:text-2xl font-medium text-emerald-200">{c.pointsLabel}</span>
+              </div>
+            </div>
+
+            {/* Breakdown */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/15 w-full md:w-auto shrink-0 shadow-inner">
+              {!isFreeOrNoSub ? (
+                <div>
+                  <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                    <CreditCard size={14} className="opacity-80" /> {c.breakdownSub}
+                  </p>
+                  <p className="font-bold text-xl text-white">{loading ? "…" : fmt(balance?.subscriptionBalance ?? 0)}</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                    <Gift size={14} className="opacity-80" /> {c.breakdownWelcome}
+                  </p>
+                  <p className="font-bold text-xl text-white">{loading ? "…" : fmt(balance?.freeBalance ?? 0)}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="opacity-80" /> {c.breakdownPaid}
+                </p>
+                <p className="font-bold text-xl text-[#E8B84B] drop-shadow-sm">{loading ? "…" : fmt(balance?.paidBalance ?? 0)}</p>
+              </div>
+              <div className="col-span-2 pt-2 border-t border-white/10">
+                <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                  <Award size={14} className="opacity-80" /> {c.breakdownEarned}
+                </p>
+                <p className="font-bold text-xl text-white">{loading ? "…" : fmt(balance?.earnedBalance ?? 0)}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Current Plan / Upgrade Section */}
+        <section>
+          {!isFreeOrNoSub && subscription ? (
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 bg-white border border-emerald-100 rounded-2xl shadow-sm gap-5 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-700 shadow-inner">
+                  <CreditCard size={26} strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-emerald-950 flex items-center flex-wrap gap-2">
+                    {c.planPrefix} {planName}
+                    {subscription.cancelled_at && (
+                      <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                        {c.cancelledNote}
+                      </span>
+                    )}
+                  </h3>
+                  <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-foreground">{fmt(subscription.monthly_credits)} {c.pointsMonthly}</span>
+                    {subscription.rollover_cap ? (
+                      <>
+                        <span className="opacity-40">•</span>
+                        <span>{c.rolloverUntil} {fmt(subscription.rollover_cap)}</span>
+                      </>
+                    ) : null}
+                  </div>
+                  {renewalDate && (
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                      <CalendarClock size={13} className="opacity-70" />
+                      {subscription.cancelled_at ? c.expiresOn : c.renewsOn} <span className="font-medium text-foreground">{renewalDate}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto shrink-0">
+                <Button variant="outline" className="w-full md:w-auto bg-emerald-50/50 hover:bg-emerald-50 border-emerald-200" onClick={() => setLocation("/teacher/pricing")}>
+                  {c.manageSubscription}
+                </Button>
+                {subscription.payment_status === "past_due" && (
+                  <span className="text-xs text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
+                    <AlertCircle size={14}/> {payStatusInfo?.label}
+                  </span>
+                )}
+              </div>
+            </div>
           ) : (
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Gift size={16} className="text-amber-600" />
-                <span className="text-xs text-muted-foreground">{c.freePoints}</span>
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 sm:p-8 bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-2xl shadow-sm gap-6">
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-emerald-950 mb-1.5 flex items-center gap-2">
+                  <Sparkles size={18} className="text-[#E8B84B]" />
+                  {c.upgradePrompt}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">{c.upgradeDesc}</p>
               </div>
-              <p className="text-2xl font-bold">{loading ? "…" : fmt(balance?.freeBalance ?? 0)}</p>
-            </Card>
+              <Button onClick={() => setLocation("/teacher/pricing")} className="w-full sm:w-auto shrink-0 group">
+                {c.viewPackages}
+                <ChevronIcon size={16} className="ml-2 group-hover:translate-x-1 transition-transform rtl:group-hover:-translate-x-1" />
+              </Button>
+            </div>
           )}
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldCheck size={16} className="text-emerald-700" />
-              <span className="text-xs text-muted-foreground">{c.paidPoints}</span>
-            </div>
-            <p className="text-2xl font-bold text-emerald-800">{loading ? "…" : fmt(balance?.paidBalance ?? 0)}</p>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Award size={16} className="text-sky-600" />
-              <span className="text-xs text-muted-foreground">{c.earnedPoints}</span>
-            </div>
-            <p className="text-2xl font-bold">{loading ? "…" : fmt(balance?.earnedBalance ?? 0)}</p>
-          </Card>
-        </div>
-
-        {/* Upgrade prompt for free users */}
-        {isFreeOrNoSub && (
-          <Card className="p-5 border-dashed border-emerald-600/40 bg-emerald-50/40 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="font-bold text-emerald-800">{c.upgradePrompt}</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{c.upgradeDesc}</p>
-            </div>
-            <Button onClick={() => setLocation("/teacher/pricing")}>
-              <Sparkles size={15} className="ml-1" />
-              {c.viewPackages}
-            </Button>
-          </Card>
-        )}
+        </section>
 
         {/* One-time packages */}
-        <div>
-          <h2 className="font-bold mb-3 flex items-center gap-2">
-            <Sparkles size={17} className="text-[#E8B84B]" />
-            {c.oneTimeTitle}
-          </h2>
+        <section>
+          <div className="mb-5">
+            <h2 className="text-xl font-extrabold text-emerald-950">{c.oneTimeTitle}</h2>
+            <p className="text-sm text-muted-foreground mt-1">{c.paidPointsNote}</p>
+          </div>
+          
           {!purchasesEnabled && (
-            <Card className="p-4 mb-3 bg-muted/40">
-              <p className="text-sm text-muted-foreground">{c.purchasesDisabled}</p>
-            </Card>
-          )}
-          {loading ? (
-            <p className="text-center text-muted-foreground py-8">{c.loading}</p>
-          ) : packages.length === 0 ? (
-            <Card className="p-6 text-center text-muted-foreground text-sm">{c.noPackages}</Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {packages.map((pkg) => (
-                <Card
-                  key={pkg.id}
-                  className={`p-5 relative flex flex-col ${pkg.isFeatured ? "border-2 border-[#E8B84B] shadow-md" : ""}`}
-                >
-                  {pkg.isFeatured && (
-                    <span className="absolute -top-3 right-4 bg-[#E8B84B] text-emerald-950 text-xs font-bold px-3 py-0.5 rounded-full">
-                      {c.mostValue}
-                    </span>
-                  )}
-                  <p className="font-bold mb-1">{pkg.name || `${c.packagePrefix} ${fmt(pkg.credits)}`}</p>
-                  {pkg.description && (
-                    <p className="text-xs text-muted-foreground mb-2">{pkg.description}</p>
-                  )}
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-3xl font-extrabold text-emerald-800">{fmt(pkg.credits)}</span>
-                    <span className="text-sm text-muted-foreground">{c.pointsLabel}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    ${(pkg.priceUsdCents / 100).toFixed(2)} — {c.neverExpires}
-                  </p>
-                  <Button
-                    variant="default"
-                    onClick={() => buy(pkg)}
-                    disabled={!purchasesEnabled || buyingId !== null}
-                  >
-                    {buyingId === pkg.id
-                      ? <span className="flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> {c.redirecting}</span>
-                      : <span className="flex items-center gap-2"><ShoppingCart size={15} /> {c.buyPoints}</span>}
-                  </Button>
-                </Card>
-              ))}
+            <div className="p-4 mb-6 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground flex items-center gap-2">
+              <AlertCircle size={16} className="opacity-70" />
+              {c.purchasesDisabled}
             </div>
           )}
-          <p className="text-xs text-muted-foreground mt-3">{c.paidPointsNote}</p>
-        </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {[1, 2, 3].map(i => <div key={i} className="h-[220px] rounded-2xl bg-muted/40 animate-pulse" />)}
+            </div>
+          ) : packages.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm border rounded-2xl border-dashed">
+              {c.noPackages}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-end">
+              {packages.map((pkg) => {
+                const isRecommended = pkg.credits === 300 || pkg.isFeatured;
+                return (
+                  <Card
+                    key={pkg.id}
+                    className={`relative flex flex-col p-6 overflow-hidden transition-all duration-300 ${
+                      isRecommended 
+                        ? "border-2 border-[#E8B84B] shadow-xl shadow-[#E8B84B]/10 -translate-y-2 bg-white" 
+                        : "border border-border/60 hover:border-emerald-200 hover:shadow-md bg-white/60"
+                    }`}
+                  >
+                    {isRecommended && (
+                      <div className="absolute top-0 right-0 left-0 bg-[#E8B84B] text-amber-950 text-xs font-bold py-1.5 text-center shadow-sm">
+                        {c.mostValue}
+                      </div>
+                    )}
+                    <div className={isRecommended ? "mt-4" : ""}>
+                      <h3 className="font-bold text-lg mb-1 text-emerald-950">{pkg.name || `${c.packagePrefix} ${fmt(pkg.credits)}`}</h3>
+                      {pkg.description && (
+                        <p className="text-xs text-muted-foreground mb-4 min-h-[2.5rem]">{pkg.description}</p>
+                      )}
+                      <div className="flex items-baseline gap-1.5 mb-2 mt-4">
+                        <span className={`text-4xl font-black tracking-tight ${isRecommended ? "text-emerald-800" : "text-emerald-700"}`}>
+                          {fmt(pkg.credits)}
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">{c.pointsLabel}</span>
+                      </div>
+                      <p className="text-sm font-medium text-emerald-900/70 mb-6 bg-emerald-50 inline-block px-2.5 py-1 rounded-md">
+                        ${(pkg.priceUsdCents / 100).toFixed(2)} — {c.neverExpires}
+                      </p>
+                      <Button
+                        variant={isRecommended ? "default" : "outline"}
+                        className={`w-full ${!isRecommended && "bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-50"}`}
+                        onClick={() => setConfirmingPkg(pkg)}
+                        disabled={!purchasesEnabled || buyingId !== null}
+                      >
+                        {buyingId === pkg.id ? (
+                          <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {c.redirecting}</span>
+                        ) : (
+                          <span className="flex items-center gap-2 font-bold"><ShoppingCart size={16} /> {c.buyPoints}</span>
+                        )}
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Purchase history */}
-        <div>
-          <h2 className="font-bold mb-3 flex items-center gap-2">
-            <ReceiptText size={17} className="text-emerald-700" />
-            {c.historyTitle}
-          </h2>
-          {purchases.length === 0 ? (
-            <Card className="p-6 text-center text-muted-foreground text-sm">{c.noPurchases}</Card>
+        <section>
+          <h2 className="text-xl font-extrabold text-emerald-950 mb-4">{c.historyTitle}</h2>
+          {loading ? (
+            <div className="h-32 rounded-2xl bg-muted/40 animate-pulse" />
+          ) : purchases.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm border rounded-2xl border-dashed">
+              {c.noPurchases}
+            </div>
           ) : (
-            <Card className="p-0 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-muted-foreground">
-                    <th className="text-right py-2.5 px-4">{c.colPackage}</th>
-                    <th className="text-right py-2.5 px-4">{c.colPoints}</th>
-                    <th className="text-right py-2.5 px-4">{c.colAmount}</th>
-                    <th className="text-right py-2.5 px-4">{c.colStatus}</th>
-                    <th className="text-right py-2.5 px-4">{c.colDate}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchases.map((p) => (
-                    <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="py-2.5 px-4 font-medium">{p.packageName}</td>
-                      <td className="py-2.5 px-4">{fmt(p.credits)}</td>
-                      <td className="py-2.5 px-4">${(p.amountCents / 100).toFixed(2)}</td>
-                      <td className="py-2.5 px-4">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[p.paymentStatus] ?? "bg-muted"}`}>
-                          {statusLabel[p.paymentStatus] ?? p.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-xs text-muted-foreground">
-                        {new Date(p.purchasedAt ?? p.createdAt).toLocaleDateString(
-                          lang === "ar" ? "ar-SA" : "en-US"
-                        )}
-                      </td>
+            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-right whitespace-nowrap">
+                  <thead className="bg-muted/30">
+                    <tr className="text-muted-foreground border-b border-border">
+                      <th className="py-3 px-5 font-semibold">{c.colPackage}</th>
+                      <th className="py-3 px-5 font-semibold">{c.colPoints}</th>
+                      <th className="py-3 px-5 font-semibold">{c.colAmount}</th>
+                      <th className="py-3 px-5 font-semibold">{c.colStatus}</th>
+                      <th className="py-3 px-5 font-semibold">{c.colDate}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {purchases.map((p) => (
+                      <tr key={p.id} className="hover:bg-muted/10 transition-colors">
+                        <td className="py-3.5 px-5 font-bold text-emerald-950">{p.packageName}</td>
+                        <td className="py-3.5 px-5 font-medium text-emerald-800">{fmt(p.credits)}</td>
+                        <td className="py-3.5 px-5 text-muted-foreground">${(p.amountCents / 100).toFixed(2)}</td>
+                        <td className="py-3.5 px-5">
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusColor[p.paymentStatus] ?? "bg-muted text-muted-foreground border-border"}`}>
+                            {statusLabel[p.paymentStatus] ?? p.paymentStatus}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 text-muted-foreground">
+                          {new Date(p.purchasedAt ?? p.createdAt).toLocaleDateString(
+                            lang === "ar" ? "ar-EG" : "en-US",
+                            { year: "numeric", month: "short", day: "numeric" }
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
-        </div>
+        </section>
+
       </div>
+
+      {/* Checkout Confirmation Dialog */}
+      <AlertDialog open={!!confirmingPkg} onOpenChange={(o) => !o && setConfirmingPkg(null)}>
+        <AlertDialogContent dir={dir} className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl">{c.checkoutConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="text-base mt-2 leading-relaxed">
+              {c.checkoutConfirmDesc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-3">
+            <AlertDialogCancel className="mt-0">{c.cancelBtn}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); confirmingPkg && buy(confirmingPkg); }}
+              disabled={buyingId !== null}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[140px]"
+            >
+              {buyingId !== null ? <Loader2 size={16} className="animate-spin" /> : c.checkoutConfirmBtn}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </Layout>
   );
 }

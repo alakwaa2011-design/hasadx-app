@@ -3895,20 +3895,21 @@ function Inspector({
     );
   }
 
+  const s = slide as any;
   return (
     <div className="space-y-1">
-      {(slide.activityType || slide.gameSuggestion) && (() => {
+      {(s.activityType || s.gameSuggestion) && (() => {
         /* Display label for the detected activity type */
-        const actKey = slide.activityType ?? "";
+        const actKey = s.activityType ?? "";
         const actLabel = ACTIVITY_TYPE_LABELS[actKey];
         const actDisplayAr = actLabel?.ar ?? actKey.replace(/_/g, " ");
         const actDisplayEn = actLabel?.en ?? actKey.replace(/_/g, " ");
         const actEmoji    = actLabel?.emoji ?? "🎮";
 
         /* Linked activity state */
-        const linkedId = slide.linkedActivityId ? Number(slide.linkedActivityId) : null;
-        const isWameeth = slide.linkedActivityType === "quick_quiz";
-        const isTug     = slide.linkedActivityType === "tug_war";
+        const linkedId = s.linkedActivityId ? Number(s.linkedActivityId) : null;
+        const isWameeth = s.linkedActivityType === "quick_quiz";
+        const isTug     = s.linkedActivityType === "tug_war";
 
         return (
           <Section
@@ -3919,7 +3920,7 @@ function Inspector({
             <div className="space-y-2.5">
               {/* Badges row */}
               <div className="flex flex-wrap items-center gap-1.5">
-                {slide.activityType && (
+                {s.activityType && (
                   <span
                     className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
                     style={{ background: `${BRAND_GREEN}12`, color: BRAND_GREEN }}
@@ -3928,9 +3929,9 @@ function Inspector({
                     {isAr ? actDisplayAr : actDisplayEn}
                   </span>
                 )}
-                {slide.strategyStage && (
+                {s.strategyStage && (
                   <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
-                    {slide.strategyStage.replace(/_/g, " ")}
+                    {s.strategyStage.replace(/_/g, " ")}
                   </span>
                 )}
               </div>
@@ -3952,11 +3953,11 @@ function Inspector({
                     ? (isAr ? "جارٍ التشغيل..." : "Starting…")
                     : (isAr ? "⚡ تشغيل وميض الآن" : "⚡ Start Wameeth now")}
                 </button>
-              ) : linkedId && isTug && slide.linkedActivityUrl ? (
+              ) : linkedId && isTug && s.linkedActivityUrl ? (
                 /* Tug of War: open setup page */
                 <button
                   type="button"
-                  onClick={() => window.open(slide.linkedActivityUrl ?? undefined, "_blank", "noopener")}
+                  onClick={() => window.open(s.linkedActivityUrl ?? undefined, "_blank", "noopener")}
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white"
                   style={{ background: BRAND_GREEN }}
                 >
