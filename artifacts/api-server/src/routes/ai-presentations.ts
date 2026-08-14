@@ -1387,7 +1387,7 @@ Rules:
   }
 }
 
-router.post("/presentations/ai/single-slide", requireTeacher, async (req, res) => {
+router.post("/presentations/ai/single-slide", requireTeacher, checkCredits("presentation-slide"), async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
     const body = singleSlideBody.parse(req.body);
@@ -1405,8 +1405,14 @@ router.post("/presentations/ai/single-slide", requireTeacher, async (req, res) =
       .where(eq(presentationsTable.id, body.presentationId))
       .limit(1);
 
-    if (!deck) { res.status(404).json({ message: "Presentation not found" }); return; }
-    if (deck.teacherId !== teacherId) { res.status(403).json({ message: "Forbidden" }); return; }
+    if (!deck) {
+      await refundCredits(req, "العرض غير موجود");
+      res.status(404).json({ message: "Presentation not found" }); return;
+    }
+    if (deck.teacherId !== teacherId) {
+      await refundCredits(req, "غير مصرّح");
+      res.status(403).json({ message: "Forbidden" }); return;
+    }
 
     const lang = (deck.language ?? "ar") as "ar" | "en";
     const themeKey = body.theme && isAllowedTheme(body.theme) ? body.theme : "harvest";
@@ -1434,6 +1440,7 @@ router.post("/presentations/ai/single-slide", requireTeacher, async (req, res) =
     /* Parse the AI response as a single card object. */
     const parsed = parseJsonLoose(result.text);
     if (!parsed || typeof parsed !== "object") {
+      await refundCredits(req, "تعذّر تفسير رد الذكاء الاصطناعي");
       res.status(502).json({ message: lang === "ar" ? "تعذّر تفسير رد الذكاء الاصطناعي" : "Could not parse AI response" });
       return;
     }
@@ -1485,6 +1492,7 @@ router.post("/presentations/ai/single-slide", requireTeacher, async (req, res) =
     const validated = slideSchema.safeParse(slide);
     if (!validated.success) {
       req.log.warn({ err: validated.error.flatten() }, "Single-slide slide schema mismatch");
+      await refundCredits(req, "الشريحة المولَّدة غير صالحة");
       res.status(502).json({ message: lang === "ar" ? "الشريحة المولَّدة غير صالحة" : "Generated slide failed validation" });
       return;
     }
@@ -1492,8 +1500,10 @@ router.post("/presentations/ai/single-slide", requireTeacher, async (req, res) =
     /* Fire-and-forget usage tracking (same table as outline). */
     addOutlineUsage(teacherId, result.tokensIn, result.tokensOut, estimateCostMicroUsd(result.tokensIn, result.tokensOut)).catch(() => {});
 
+    await captureCredits(req);
     res.json({ slide: validated.data });
   } catch (err) {
+    await refundCredits(req, "فشل توليد الشريحة");
     if (err instanceof ZodError) {
       res.status(400).json({ message: "Bad request", issues: err.flatten() });
       return;

@@ -244,14 +244,18 @@ router.post("/whiteboard/generate", requireTeacher, checkCredits("whiteboard"), 
     const rawText = await runCompletion({ tier, prompt, maxTokens: 6000 });
     const json = parseJsonLoose(rawText);
     if (!json) {
+      await refundCredits(req, "تنسيق غير صالح من النموذج");
       res.status(500).json({ message: "تنسيق غير صالح من النموذج" }); return;
     }
     const validated = lessonPlanSchema.safeParse(json);
     if (!validated.success) {
       if (json.steps && Array.isArray(json.steps) && json.steps.length > 0) {
+        // نجاح فعلي (خطة صالحة بصيغة متساهلة) — يُخصم كأي نجاح
+        await captureCredits(req);
         res.json({ plan: json }); return;
       }
       req.log.warn({ issues: validated.error.issues }, "whiteboard generate schema mismatch");
+      await refundCredits(req, "فشل توليد خطة الدرس");
       res.status(500).json({ message: "تعذّر توليد خطة الدرس" }); return;
     }
     await captureCredits(req);
@@ -402,10 +406,11 @@ router.put("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
 });
 
 // ── POST /api/whiteboard/ask — instant Q&A answer on the chalkboard ──────────
-router.post("/whiteboard/ask", requireTeacher, async (req, res) => {
+router.post("/whiteboard/ask", requireTeacher, checkCredits("whiteboard"), async (req, res) => {
   try {
     const { question = "", imageBase64 } = req.body as { question?: string; imageBase64?: string };
     if (!question.trim() && !imageBase64) {
+      await refundCredits(req, "طلب غير صالح — لا سؤال");
       res.status(400).json({ error: "سؤال مطلوب" }); return;
     }
 
@@ -630,6 +635,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
     const parsed = parseJsonLoose(rawJson);
     if (!parsed) {
       req.log.error({ rawSample: rawJson.slice(0, 800) }, "whiteboard ask: JSON parse failed");
+      await refundCredits(req, "فشل توليد إجابة السبورة");
       res.status(500).json({ error: "تعذّر توليد الإجابة" });
       return;
     }
@@ -685,8 +691,10 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
       req.log.warn({ saveErr }, "whiteboard ask auto-save failed (non-fatal)");
     }
 
+    await captureCredits(req);
     res.json({ ...plan, savedId });
   } catch (err) {
+    await refundCredits(req, "فشل توليد إجابة السبورة");
     req.log.error({ err }, "whiteboard ask failed");
     res.status(500).json({ error: "تعذّر توليد الإجابة" });
   }

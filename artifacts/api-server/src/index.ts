@@ -548,6 +548,7 @@ async function runSchemaMigrations() {
         ('lesson-plan',      'خطة الدرس',               'ai',    15, 15,  120),
         ('pdf-to-questions', 'استخراج أسئلة من PDF',    'ai',    15, 15,  120),
         ('presentation',     'العرض التقديمي',           'ai',    20, 20,  300),
+        ('presentation-slide','توليد شريحة واحدة',       'ai',     5,  5,  120),
         ('video-interactive','الفيديو التفاعلي',         'ai',    20, 20,  180),
         ('adaptive-test',    'الاختبار التكيّفي',        'ai',    20, 20,  120),
         ('arena',            'ميدان التحدي',            'game',   0,  0,   60),

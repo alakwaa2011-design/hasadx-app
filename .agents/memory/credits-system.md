@@ -27,6 +27,15 @@ Without this, the api-server tsc will report "Module '@workspace/db' has no expo
 - `Button` in `ui-elements.tsx` accepts only `variant` (`default | outline | ghost | destructive`) — no `size` prop. Using `size="sm"` causes TS2322.
 - Admin tab key: `"credits"`, icon: `Coins` from lucide-react (must be in the import list in admin.tsx).
 
+## Handler contract (post-hold)
+Every response after `checkCredits` must either `captureCredits(req)` (content delivered — including lenient/fallback success paths) or `refundCredits(req, reason)` (400/403/404/5xx early exits), otherwise held credits sit until the 60s auto-refund cron. `checkCredits` honors an `X-Idempotency-Key` UUID header (requestId = `teacherId:toolKey:key`) so browser retries can't double-charge; frontend does not send it yet.
+
+## Test DB gotcha
+TEST_DATABASE_URL DB lacks the boot-time `credit_tool_prices` seed (it runs in api-server startup). Integration tests must seed/normalize the tool rows they assert costs for.
+
+## Deliberately free (audited 2026-08-14)
+Admin-only image-question extraction; game AI generation (wheel, quick-challenge, arena, million hint — games policy cost 0); guest/public AI routes (no teacher session); TTS (student listening, rate-limited); AI chat (own daily cap).
+
 ## Wired tool_keys (checkCredits middleware applied)
 - `ai-questions` → POST /api/ai/generate-questions
 - `mindmap` → POST /api/ai/generate-mindmap
@@ -34,6 +43,9 @@ Without this, the api-server tsc will report "Module '@workspace/db' has no expo
 - `lesson-plan` → POST /api/lesson-plans/ai/generate
 - `whiteboard` → POST /api/whiteboard/generate
 - `presentation` → POST /api/presentations/ai/outline + /api/presentations/ai/build/:draftId
+- `whiteboard` → POST /api/whiteboard/ask (shared key with generate)
+- `presentation-slide` (cost 5) → POST /api/presentations/ai/single-slide
+- Pro 20% discount is central in `CreditService.hold` (`Math.ceil(cost*0.8)`, plan code `pro`, active)
 
 ## @workspace/billing is NOT modified
 The credits system is entirely independent of subscriptions/plans in `@workspace/billing`.

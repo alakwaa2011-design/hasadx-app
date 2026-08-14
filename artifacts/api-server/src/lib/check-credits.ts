@@ -111,7 +111,13 @@ export function checkCredits(toolKey: string) {
       }
 
       // ── System ON — hold credits ─────────────────────────────────────────────
-      const requestId = randomUUID();
+      // إن أرسل العميل مفتاح idempotency صالحًا (UUID) نستخدمه بدل UUID عشوائي؛
+      // CreditService.hold idempotent على requestId، فإعادة الإرسال/التكرار من
+      // المتصفح بنفس المفتاح لا تنشئ حجزًا ثانيًا ولا خصمًا مكررًا.
+      const clientKey = String(req.get("x-idempotency-key") ?? "");
+      const isValidKey =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientKey);
+      const requestId = isValidKey ? `${teacherId}:${toolKey}:${clientKey}` : randomUUID();
       const { creditsHeld } = await CreditService.hold(teacherId, toolKey, requestId);
 
       // Attach to req so the route handler can capture or refund
