@@ -134,25 +134,50 @@ describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests 
     expect(cd?.custom?.package_id).toBe("1");
   });
 
-  it("subscriptions/checkout payload — redirect_url ?subscribed=1 وKW وcustom.user_id", async () => {
+  it("subscriptions/checkout payload — redirect_url ?subscribed=1 وKW وcustom.user_id فقط (بلا package_id/purchase_intent_id)", async () => {
     const { createCheckout } = await import("../lib/lemonsqueezy");
+
+    // Basic checkout
     capturedBody = null;
     await createCheckout({
       variantId:  "2017681",
       successUrl: `${process.env.FRONTEND_URL}/teacher/credits?subscribed=1`,
       email:      "teacher@school.kw",
       name:       "مريم المطيري",
-      customData: { user_id: "42", package_id: "", purchase_intent_id: "" },
+      customData: { user_id: "42" }, // لا package_id ولا purchase_intent_id
     });
 
-    const cd = capturedBody?.data?.attributes?.checkout_data;
-    const po = capturedBody?.data?.attributes?.product_options;
+    const cdBasic = capturedBody?.data?.attributes?.checkout_data;
+    const poBasic = capturedBody?.data?.attributes?.product_options;
 
-    expect(po?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
-    expect(cd?.billing_address?.country).toBe("KW");
-    expect(cd?.custom?.user_id).toBe("42");
-    expect(cd?.email).toBe("teacher@school.kw");
-    expect(cd?.name).toBe("مريم المطيري");
+    expect(poBasic?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
+    expect(cdBasic?.billing_address?.country).toBe("KW");
+    expect(cdBasic?.custom?.user_id).toBe("42");
+    expect(cdBasic?.email).toBe("teacher@school.kw");
+    expect(cdBasic?.name).toBe("مريم المطيري");
+    // الحقلان الفارغان يجب ألا يُرسلا لـ LS — كانا سبب 422
+    expect(cdBasic?.custom?.package_id).toBeUndefined();
+    expect(cdBasic?.custom?.purchase_intent_id).toBeUndefined();
+
+    // Pro checkout — variant 2017697
+    capturedBody = null;
+    await createCheckout({
+      variantId:  "2017697",
+      successUrl: `${process.env.FRONTEND_URL}/teacher/credits?subscribed=1`,
+      email:      "pro@school.kw",
+      name:       "خالد المري",
+      customData: { user_id: "55" },
+    });
+
+    const cdPro = capturedBody?.data?.attributes?.checkout_data;
+    const poPro = capturedBody?.data?.attributes?.product_options;
+
+    expect(poPro?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
+    expect(capturedBody?.data?.relationships?.variant?.data?.id).toBe("2017697");
+    expect(cdPro?.custom?.user_id).toBe("55");
+    // تأكيد غياب الحقلين الفارغين
+    expect(cdPro?.custom?.package_id).toBeUndefined();
+    expect(cdPro?.custom?.purchase_intent_id).toBeUndefined();
   });
 
   it("بلا name/email — billing_address.country=KW يظل موجودًا و product_options غائب بلا successUrl", async () => {

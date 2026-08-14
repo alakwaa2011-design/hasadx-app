@@ -42,8 +42,10 @@ export function lemonConfigured(): boolean {
 
 export interface CheckoutCustomData {
   user_id: string;
-  package_id: string;
-  purchase_intent_id: string;
+  /** required for one-time credit purchases; must be omitted (not empty-string) for subscription checkouts */
+  package_id?: string;
+  /** required for one-time credit purchases; must be omitted (not empty-string) for subscription checkouts */
+  purchase_intent_id?: string;
 }
 
 export async function createCheckout(opts: {

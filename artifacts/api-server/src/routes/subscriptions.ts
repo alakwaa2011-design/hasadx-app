@@ -154,10 +154,11 @@ router.post("/subscriptions/checkout", async (req, res) => {
       email:      teacher?.email ?? null,
       name:       teacher?.name  ?? null,
       successUrl: `${frontendOrigin()}/teacher/credits?subscribed=1`,
+      // NOTE: package_id and purchase_intent_id must NOT be sent for subscription
+      // checkouts — Lemon Squeezy rejects empty strings for these fields (422).
+      // They are required only for one-time credit-package checkouts (credit-purchases.ts).
       customData: {
-        user_id:            String(teacherId),
-        package_id:         "",
-        purchase_intent_id: "",
+        user_id: String(teacherId),
       },
     });
 
