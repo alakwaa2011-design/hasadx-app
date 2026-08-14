@@ -102,9 +102,11 @@ router.post("/credits/checkout", requireTeacher as any, async (req, res) => {
       paymentStatus: "pending_checkout",
     });
 
+    const FRONTEND_URL = process.env.FRONTEND_URL ?? "";
     const { checkoutUrl } = await createCheckout({
       variantId: pkg.lemonVariantId,
       email: teacher?.email ?? null,
+      successUrl: `${FRONTEND_URL}/teacher/credits?purchase=success`,
       customData: {
         user_id: String(teacherId),
         package_id: String(pkg.id),
