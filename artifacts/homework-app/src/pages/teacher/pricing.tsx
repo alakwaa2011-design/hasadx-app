@@ -33,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
+import { useCreditsBalance } from "@/components/credits-chip";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -82,20 +83,27 @@ export default function PricingPage() {
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [cancelling, setCancelling]   = useState(false);
 
+  // Shared react-query cache with the header CreditsChip — no duplicate request.
+  const { data: creditsData } = useCreditsBalance();
+  const balance = creditsData?.balance ?? null;
+
   // Keep Arabic copy/RTL, but always render numeric values with Latin digits.
   const fmt = (n: number) => n.toLocaleString("en-US");
   const dateLocale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
-  // Per-plan differentiating features only (price section already shows credits + rollover)
+  // Value-first copy: short taglines + only actually-implemented facts.
+  const PLAN_TAGLINES: Record<string, string> = {
+    basic: p.basicTagline,
+    pro:   p.proTagline,
+  };
   const PLAN_FEATURES: Record<string, string[]> = {
-    free:  [p.freeAiNote],
-    basic: [p.basicReports, p.basicParents],
+    free:  [p.freeStart, p.freeAlwaysFree],
+    basic: [],
     pro:   [],
   };
   type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string } };
   const PRO_FEATURES: ProFeatureItem[] = [
     { text: p.proSavings20, highlight: true, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody } },
-    { text: p.proBasicAll },
   ];
 
   useEffect(() => {
@@ -245,6 +253,11 @@ export default function PricingPage() {
                     <h3 className={["font-extrabold text-2xl mb-1", isPro ? "text-white" : "text-emerald-950"].join(" ")}>
                       {planName}
                     </h3>
+                    {PLAN_TAGLINES[plan.code] && (
+                      <p className={["text-sm font-medium leading-snug", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
+                        {PLAN_TAGLINES[plan.code]}
+                      </p>
+                    )}
                   </div>
 
                   {/* Price */}
@@ -413,7 +426,7 @@ export default function PricingPage() {
                           </span>
                         ) : (
                           <span className="flex items-center gap-2 font-bold text-[15px]">
-                            {p.upgradePrefix} {planName}
+                            {plan.code === "basic" ? p.basicCta : p.proCta}
                             <ChevronIcon size={16} className="transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
                           </span>
                         )}
@@ -423,6 +436,29 @@ export default function PricingPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Quiet secondary balance line — never competes with the plan cards */}
+        {!loading && (
+          <div
+            className="text-center text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap"
+            data-testid="pricing-balance-line"
+          >
+            {balance != null && (
+              <span>
+                {p.currentBalanceLabel}{" "}
+                <span className="font-bold tabular-nums text-emerald-900">{fmt(balance)}</span>{" "}
+                {p.balancePointsWord}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setLocation("/teacher/credits")}
+              className="underline underline-offset-4 font-semibold text-emerald-800 hover:text-emerald-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded"
+            >
+              {p.managePoints}
+            </button>
           </div>
         )}
 

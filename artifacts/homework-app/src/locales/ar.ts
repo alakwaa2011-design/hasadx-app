@@ -272,6 +272,15 @@ export const ar = {
     // Free-for-all features
     // Plan-specific features
     freeAiNote: "أدوات الذكاء الاصطناعي تستهلك من رصيدك — الألعاب والإنشاء اليدوي مجانيان دائماً",
+    freeStart: "ابدأ مجاناً — 50 نقطة ترحيبية لمرة واحدة.",
+    freeAlwaysFree: "الألعاب والإنشاء اليدوي مجانيان دائماً.",
+    basicTagline: "للمعلم الذي يستخدم أدوات الذكاء بانتظام",
+    proTagline: "للاستخدام المتقدم داخل الصف",
+    basicCta: "ابدأ بالأساسي",
+    proCta: "اختر الاحترافي",
+    currentBalanceLabel: "رصيدك الحالي:",
+    balancePointsWord: "نقطة",
+    managePoints: "إدارة نقاطك",
     basicReports: "نتائج الطلاب الأساسية لكل نشاط",
     basicParents: "مراسلة أولياء الأمور ومتابعتهم",
     proBasicAll: "جميع مميزات الأساسي",

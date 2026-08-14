@@ -274,6 +274,15 @@ export const en: typeof ar = {
     // Free-for-all features
     // Plan-specific features
     freeAiNote: "AI tools consume from your balance — games and manual creation are always free",
+    freeStart: "Start free — 50 one-time welcome points.",
+    freeAlwaysFree: "Games and manual creation are always free.",
+    basicTagline: "For teachers who use AI tools regularly",
+    proTagline: "For advanced in-class use",
+    basicCta: "Start with Basic",
+    proCta: "Choose Pro",
+    currentBalanceLabel: "Your current balance:",
+    balancePointsWord: "points",
+    managePoints: "Manage your points",
     basicReports: "Basic student results per activity",
     basicParents: "Parent messaging and follow-up",
     proBasicAll: "Everything in Basic",

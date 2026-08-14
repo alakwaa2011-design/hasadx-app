@@ -14,6 +14,7 @@ import { act } from "react";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { I18nProvider } from "@/lib/i18n";
 import { ar } from "@/locales/ar";
 import { en } from "@/locales/en";
@@ -81,7 +82,11 @@ afterEach(async () => {
 
 async function render(el: React.ReactElement) {
   await act(async () => {
-    root.render(<I18nProvider>{el}</I18nProvider>);
+    root.render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <I18nProvider>{el}</I18nProvider>
+      </QueryClientProvider>,
+    );
   });
   // انتظار اكتمال promises تحميل البيانات
   await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
@@ -121,8 +126,8 @@ describe("صفحة الباقات /teacher/pricing", () => {
   it("أزرار الترقية تظهر لمستخدم مجاني للباقتين المدفوعتين", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const text = await render(<PricingPage />);
-    expect(text()).toContain(`${ar.pricing.upgradePrefix} الأساسية`);
-    expect(text()).toContain(`${ar.pricing.upgradePrefix} الاحترافية`);
+    expect(text()).toContain(ar.pricing.basicCta);
+    expect(text()).toContain(ar.pricing.proCta);
   });
 
   it("عند تعطيل المدفوعات: رسالة تعطيل بدل زر شراء فعّال", async () => {
