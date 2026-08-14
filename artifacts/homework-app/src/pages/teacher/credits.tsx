@@ -4,21 +4,11 @@ import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { toast } from "@/components/ui/sonner";
 import {
-  Coins, Sparkles, Gift, Award, ShoppingCart, Loader2,
-  CheckCircle2, Clock, ReceiptText, ShieldCheck,
+  Sparkles, Gift, Award, ShoppingCart, Loader2,
+  CheckCircle2, Clock, ShieldCheck, Star, Zap, Check,
   CalendarClock, AlertCircle, CreditCard, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -71,10 +61,25 @@ interface SubInfo {
   rollover_cap: number | null;
 }
 
+interface Plan {
+  id: number;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  priceMinor: number;
+  currency: string;
+  billingPeriodDays: number;
+  monthlyCredits: number;
+  rolloverCap: number | null;
+}
+
+const PLAN_ICONS: Record<string, any> = { basic: Star, pro: Zap };
+
 export default function TeacherCreditsPage() {
   const [, setLocation] = useLocation();
   const { t, lang, dir } = useI18n();
   const c = t.credits;
+  const p = t.pricing;
 
   const fmt = (n: number) => n.toLocaleString(lang === "ar" ? "ar-EG" : "en-US");
 
@@ -107,16 +112,27 @@ export default function TeacherCreditsPage() {
   const [packages,         setPackages]         = useState<Pkg[]>([]);
   const [purchasesEnabled, setPurchasesEnabled] = useState(true);
   const [purchases,        setPurchases]        = useState<Purchase[]>([]);
+  const [plans,            setPlans]            = useState<Plan[]>([]);
+  const [paymentsEnabled,  setPaymentsEnabled]  = useState(false);
   const [loading,          setLoading]          = useState(true);
-  
-  const [confirmingPkg,    setConfirmingPkg]    = useState<Pkg | null>(null);
-  const [buyingId,         setBuyingId]         = useState<number | null>(null);
+
+  const [buyingId,     setBuyingId]     = useState<number | null>(null);
+  const [checkingOut,  setCheckingOut]  = useState<string | null>(null);
 
   const [pendingIntent, setPendingIntent] = useState<string | null>(null);
   const [intentStatus,  setIntentStatus]  = useState<"waiting" | "confirmed" | "timeout" | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadAll = () => {
+    // بيانات الترقية مستقلة: فشلها لا يمنع عرض الرصيد والحزم والسجل
+    apiFetch("/api/subscriptions/plans")
+      .then((r) => r.json())
+      .then((plansData) => {
+        setPlans(plansData.plans ?? []);
+        setPaymentsEnabled(plansData.paymentsEnabled === true);
+      })
+      .catch(() => toast(t.pricing.loadError, { className: "text-red-500" }));
+
     Promise.all([
       apiFetch("/api/credits/me").then((r) => r.json()),
       apiFetch("/api/credits/packages").then((r) => r.json()),
@@ -192,7 +208,25 @@ export default function TeacherCreditsPage() {
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setBuyingId(null);
-      setConfirmingPkg(null);
+    }
+  };
+
+  const upgrade = async (planCode: string) => {
+    setCheckingOut(planCode);
+    try {
+      const r = await apiFetch("/api/subscriptions/checkout", {
+        method: "POST",
+        body: JSON.stringify({ planCode }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as any).message || p.checkoutError);
+      }
+      const { checkoutUrl } = await r.json();
+      window.location.href = checkoutUrl;
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+      setCheckingOut(null);
     }
   };
 
@@ -209,6 +243,26 @@ export default function TeacherCreditsPage() {
     : "";
 
   const ChevronIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
+
+  // Which paid plans are actual upgrades from the current plan?
+  // الاشتراك الملغى لا يُعرض عليه أي ترقية — فقط توضيح استمرار الوصول
+  const currentPlanCode = isFreeOrNoSub ? "free" : subscription!.plan_code;
+  const upgradeCodes = subscription?.cancelled_at ? [] :
+    currentPlanCode === "free"  ? ["basic", "pro"] :
+    currentPlanCode === "basic" ? ["pro"] : [];
+  const upgradePlans = upgradeCodes
+    .map((code) => plans.find((pl) => pl.code === code))
+    .filter(Boolean) as Plan[];
+
+  // Balance breakdown: only show non-zero sources (total stays the hero number)
+  const breakdownEntries = balance
+    ? ([
+        { key: "sub",     label: c.breakdownSub,     value: balance.subscriptionBalance, icon: CreditCard, gold: false },
+        { key: "welcome", label: c.breakdownWelcome, value: balance.freeBalance,         icon: Gift,       gold: false },
+        { key: "paid",    label: c.breakdownPaid,    value: balance.paidBalance,         icon: ShieldCheck, gold: true },
+        { key: "earned",  label: c.breakdownEarned,  value: balance.earnedBalance,       icon: Award,      gold: false },
+      ] as const).filter((e) => e.value > 0)
+    : [];
 
   return (
     <Layout>
@@ -263,97 +317,168 @@ export default function TeacherCreditsPage() {
               </div>
             </div>
 
-            {/* Breakdown */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/15 w-full md:w-auto shrink-0 shadow-inner">
-              {!isFreeOrNoSub ? (
-                <div>
-                  <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
-                    <CreditCard size={14} className="opacity-80" /> {c.breakdownSub}
-                  </p>
-                  <p className="font-bold text-xl text-white">{loading ? "…" : fmt(balance?.subscriptionBalance ?? 0)}</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
-                    <Gift size={14} className="opacity-80" /> {c.breakdownWelcome}
-                  </p>
-                  <p className="font-bold text-xl text-white">{loading ? "…" : fmt(balance?.freeBalance ?? 0)}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="opacity-80" /> {c.breakdownPaid}
-                </p>
-                <p className="font-bold text-xl text-[#E8B84B] drop-shadow-sm">{loading ? "…" : fmt(balance?.paidBalance ?? 0)}</p>
+            {/* Breakdown — only non-zero sources */}
+            {!loading && breakdownEntries.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/15 w-full md:w-auto shrink-0 shadow-inner">
+                {breakdownEntries.map(({ key, label, value, icon: Icon, gold }) => (
+                  <div key={key}>
+                    <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                      <Icon size={14} className="opacity-80" /> {label}
+                    </p>
+                    <p className={`font-bold text-xl ${gold ? "text-[#E8B84B] drop-shadow-sm" : "text-white"}`}>{fmt(value)}</p>
+                  </div>
+                ))}
               </div>
-              <div className="col-span-2 pt-2 border-t border-white/10">
-                <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
-                  <Award size={14} className="opacity-80" /> {c.breakdownEarned}
-                </p>
-                <p className="font-bold text-xl text-white">{loading ? "…" : fmt(balance?.earnedBalance ?? 0)}</p>
-              </div>
-            </div>
+            )}
           </div>
         </section>
 
-        {/* Current Plan / Upgrade Section */}
+        {/* Monthly plan — integrated section */}
         <section>
-          {!isFreeOrNoSub && subscription ? (
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 bg-white border border-emerald-100 rounded-2xl shadow-sm gap-5 hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-700 shadow-inner">
-                  <CreditCard size={26} strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-emerald-950 flex items-center flex-wrap gap-2">
-                    {c.planPrefix} {planName}
-                    {subscription.cancelled_at && (
-                      <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                        {c.cancelledNote}
-                      </span>
-                    )}
-                  </h3>
-                  <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-foreground">{fmt(subscription.monthly_credits)} {c.pointsMonthly}</span>
-                    {subscription.rollover_cap ? (
-                      <>
-                        <span className="opacity-40">•</span>
-                        <span>{c.rolloverUntil} {fmt(subscription.rollover_cap)}</span>
-                      </>
-                    ) : null}
+          <div className="mb-5">
+            <h2 className="text-xl font-extrabold text-emerald-950">{c.yourPlanTitle}</h2>
+          </div>
+
+          {loading ? (
+            <div className="h-40 rounded-2xl bg-muted/40 animate-pulse" />
+          ) : (
+            <div className="space-y-5">
+              {/* Current plan status — compact */}
+              {!isFreeOrNoSub && subscription ? (
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 bg-white border border-emerald-100 rounded-2xl shadow-sm gap-5">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-700 shadow-inner">
+                      <CreditCard size={26} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-emerald-950 flex items-center flex-wrap gap-2">
+                        {c.planPrefix} {planName}
+                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                          {p.currentPlan}
+                        </span>
+                      </h3>
+                      <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground">{fmt(subscription.monthly_credits)} {c.pointsMonthly}</span>
+                        {subscription.rollover_cap ? (
+                          <>
+                            <span className="opacity-40">•</span>
+                            <span>{c.rolloverUntil} {fmt(subscription.rollover_cap)}</span>
+                          </>
+                        ) : null}
+                      </div>
+                      {subscription.cancelled_at ? (
+                        <p className="text-xs text-amber-800 mt-2 flex items-center gap-1.5 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 w-fit">
+                          <CalendarClock size={13} className="opacity-70 shrink-0" />
+                          {c.cancelledAccessNote}{renewalDate ? ` ${renewalDate}` : ""}
+                        </p>
+                      ) : renewalDate ? (
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                          <CalendarClock size={13} className="opacity-70" />
+                          {c.renewsOn} <span className="font-medium text-foreground">{renewalDate}</span>
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
-                  {renewalDate && (
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
-                      <CalendarClock size={13} className="opacity-70" />
-                      {subscription.cancelled_at ? c.expiresOn : c.renewsOn} <span className="font-medium text-foreground">{renewalDate}</span>
-                    </p>
+                  {!subscription.cancelled_at && (
+                    <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto shrink-0">
+                      <Button variant="outline" className="w-full md:w-auto bg-emerald-50/50 hover:bg-emerald-50 border-emerald-200" onClick={() => setLocation("/teacher/pricing")}>
+                        {c.manageSubscription}
+                      </Button>
+                      {subscription.payment_status === "past_due" && (
+                        <span className="text-xs text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
+                          <AlertCircle size={14}/> {payStatusInfo?.label}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-              <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto shrink-0">
-                <Button variant="outline" className="w-full md:w-auto bg-emerald-50/50 hover:bg-emerald-50 border-emerald-200" onClick={() => setLocation("/teacher/pricing")}>
-                  {c.manageSubscription}
-                </Button>
-                {subscription.payment_status === "past_due" && (
-                  <span className="text-xs text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
-                    <AlertCircle size={14}/> {payStatusInfo?.label}
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 sm:p-8 bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-2xl shadow-sm gap-6">
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-emerald-950 mb-1.5 flex items-center gap-2">
-                  <Sparkles size={18} className="text-[#E8B84B]" />
-                  {c.upgradePrompt}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">{c.upgradeDesc}</p>
-              </div>
-              <Button onClick={() => setLocation("/teacher/pricing")} className="w-full sm:w-auto shrink-0 group">
-                {c.viewPackages}
-                <ChevronIcon size={16} className="ml-2 group-hover:translate-x-1 transition-transform rtl:group-hover:-translate-x-1" />
-              </Button>
+              ) : (
+                <div className="flex items-center gap-4 p-5 bg-white border border-border/60 rounded-2xl shadow-sm">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <Gift size={22} className="text-emerald-700" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-emerald-950">{c.freePlanCurrent}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{c.freePlanCurrentDesc}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Upgrade options — only real upgrades from the current plan */}
+              {upgradePlans.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {upgradePlans.map((plan) => {
+                    const Icon = PLAN_ICONS[plan.code] ?? Sparkles;
+                    const isPro = plan.code === "pro";
+                    const priceUSD = (plan.priceMinor / 100).toFixed(2);
+                    const upPlanName = lang === "ar" ? plan.nameAr : plan.nameEn;
+                    return (
+                      <Card
+                        key={plan.code}
+                        className={`flex flex-col p-6 transition-all duration-300 ${
+                          isPro
+                            ? "border-2 border-emerald-800 bg-emerald-900 text-white shadow-xl"
+                            : "border border-border/60 bg-white hover:border-emerald-200 hover:shadow-md"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${isPro ? "bg-white/10 border border-white/20" : "bg-emerald-50 border border-emerald-100"}`}>
+                            <Icon size={22} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
+                          </div>
+                          <div>
+                            <h3 className={`font-extrabold text-lg ${isPro ? "text-white" : "text-emerald-950"}`}>{upPlanName}</h3>
+                            <p className={`text-sm font-medium ${isPro ? "text-white/70" : "text-muted-foreground"}`}>
+                              ${priceUSD} {p.perMonth}
+                            </p>
+                          </div>
+                        </div>
+
+                        <ul className={`space-y-2.5 text-sm mb-6 flex-1 ${isPro ? "text-white/90" : "text-foreground/80"}`}>
+                          <li className="flex items-start gap-2.5">
+                            <Check size={16} className={`shrink-0 mt-0.5 ${isPro ? "text-[#E8B84B]" : "text-emerald-600"}`} />
+                            <span>{fmt(plan.monthlyCredits)} {p.pointsMonthly}</span>
+                          </li>
+                          {plan.rolloverCap ? (
+                            <li className="flex items-start gap-2.5">
+                              <Check size={16} className={`shrink-0 mt-0.5 ${isPro ? "text-[#E8B84B]" : "text-emerald-600"}`} />
+                              <span>{p.rolloverUntil} {fmt(plan.rolloverCap)}</span>
+                            </li>
+                          ) : null}
+                          {isPro && (
+                            <li className="flex items-start gap-2.5 font-bold text-[#E8B84B]">
+                              <Zap size={16} className="shrink-0 mt-0.5" fill="currentColor" />
+                              <span>{p.proSavings20}</span>
+                            </li>
+                          )}
+                        </ul>
+
+                        {!paymentsEnabled ? (
+                          <div className={`w-full text-center p-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 ${isPro ? "bg-white/10 text-white/70 border border-white/15" : "bg-muted/50 text-muted-foreground border border-border"}`}>
+                            <AlertCircle size={16} className="opacity-70" />
+                            {p.paymentsDisabled}
+                          </div>
+                        ) : (
+                          <Button
+                            variant={isPro ? "outline" : "default"}
+                            className={`w-full group ${isPro ? "bg-white text-emerald-950 border-white hover:bg-emerald-50 hover:text-emerald-950" : ""}`}
+                            onClick={() => upgrade(plan.code)}
+                            disabled={checkingOut !== null}
+                          >
+                            {checkingOut === plan.code ? (
+                              <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {c.redirecting}</span>
+                            ) : (
+                              <span className="flex items-center gap-2 font-bold">
+                                {p.upgradePrefix} {upPlanName}
+                                <ChevronIcon size={16} className="transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
+                              </span>
+                            )}
+                          </Button>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -399,23 +524,19 @@ export default function TeacherCreditsPage() {
                       </div>
                     )}
                     <div className={isRecommended ? "mt-4" : ""}>
-                      <h3 className="font-bold text-lg mb-1 text-emerald-950">{pkg.name || `${c.packagePrefix} ${fmt(pkg.credits)}`}</h3>
-                      {pkg.description && (
-                        <p className="text-xs text-muted-foreground mb-4 min-h-[2.5rem]">{pkg.description}</p>
-                      )}
-                      <div className="flex items-baseline gap-1.5 mb-2 mt-4">
+                      <div className="flex items-baseline gap-1.5 mb-2 mt-2">
                         <span className={`text-4xl font-black tracking-tight ${isRecommended ? "text-emerald-800" : "text-emerald-700"}`}>
                           {fmt(pkg.credits)}
                         </span>
                         <span className="text-sm font-medium text-muted-foreground">{c.pointsLabel}</span>
                       </div>
                       <p className="text-sm font-medium text-emerald-900/70 mb-6 bg-emerald-50 inline-block px-2.5 py-1 rounded-md">
-                        ${(pkg.priceUsdCents / 100).toFixed(2)} — {c.neverExpires}
+                        ${(pkg.priceUsdCents / 100).toFixed(2)}
                       </p>
                       <Button
                         variant={isRecommended ? "default" : "outline"}
                         className={`w-full ${!isRecommended && "bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-50"}`}
-                        onClick={() => setConfirmingPkg(pkg)}
+                        onClick={() => buy(pkg)}
                         disabled={!purchasesEnabled || buyingId !== null}
                       >
                         {buyingId === pkg.id ? (
@@ -455,18 +576,18 @@ export default function TeacherCreditsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {purchases.map((p) => (
-                      <tr key={p.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="py-3.5 px-5 font-bold text-emerald-950">{p.packageName}</td>
-                        <td className="py-3.5 px-5 font-medium text-emerald-800">{fmt(p.credits)}</td>
-                        <td className="py-3.5 px-5 text-muted-foreground">${(p.amountCents / 100).toFixed(2)}</td>
+                    {purchases.map((p2) => (
+                      <tr key={p2.id} className="hover:bg-muted/10 transition-colors">
+                        <td className="py-3.5 px-5 font-bold text-emerald-950">{p2.packageName}</td>
+                        <td className="py-3.5 px-5 font-medium text-emerald-800">{fmt(p2.credits)}</td>
+                        <td className="py-3.5 px-5 text-muted-foreground">${(p2.amountCents / 100).toFixed(2)}</td>
                         <td className="py-3.5 px-5">
-                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusColor[p.paymentStatus] ?? "bg-muted text-muted-foreground border-border"}`}>
-                            {statusLabel[p.paymentStatus] ?? p.paymentStatus}
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusColor[p2.paymentStatus] ?? "bg-muted text-muted-foreground border-border"}`}>
+                            {statusLabel[p2.paymentStatus] ?? p2.paymentStatus}
                           </span>
                         </td>
                         <td className="py-3.5 px-5 text-muted-foreground">
-                          {new Date(p.purchasedAt ?? p.createdAt).toLocaleDateString(
+                          {new Date(p2.purchasedAt ?? p2.createdAt).toLocaleDateString(
                             lang === "ar" ? "ar-EG" : "en-US",
                             { year: "numeric", month: "short", day: "numeric" }
                           )}
@@ -481,29 +602,6 @@ export default function TeacherCreditsPage() {
         </section>
 
       </div>
-
-      {/* Checkout Confirmation Dialog */}
-      <AlertDialog open={!!confirmingPkg} onOpenChange={(o) => !o && setConfirmingPkg(null)}>
-        <AlertDialogContent dir={dir} className="sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl">{c.checkoutConfirmTitle}</AlertDialogTitle>
-            <AlertDialogDescription className="text-base mt-2 leading-relaxed">
-              {c.checkoutConfirmDesc}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="mt-0">{c.cancelBtn}</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => { e.preventDefault(); confirmingPkg && buy(confirmingPkg); }}
-              disabled={buyingId !== null}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[140px]"
-            >
-              {buyingId !== null ? <Loader2 size={16} className="animate-spin" /> : c.checkoutConfirmBtn}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </Layout>
   );
 }

@@ -145,15 +145,121 @@ describe("صفحة الباقات /teacher/pricing", () => {
 });
 
 describe("صفحة النقاط /teacher/credits", () => {
-  it("الحزم الثلاث بأسعارها الصحيحة وعبارة عدم انتهاء الصلاحية", async () => {
+  it("الحزم الثلاث بأسعارها الصحيحة وبلا تكرار بصري", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const text = await render(<TeacherCreditsPage />);
     expect(text()).toContain("2.99");
     expect(text()).toContain("6.99");
     expect(text()).toContain("11.99");
-    // عبارة عدم انتهاء الصلاحية تظهر في كل بطاقة من البطاقات الثلاث
-    const occurrences = (container.innerHTML.match(new RegExp(ar.credits.neverExpires, "g")) ?? []).length;
-    expect(occurrences).toBeGreaterThanOrEqual(3);
+    // لا تكرار: اسم الحزمة («حزمة 100») لا يُعرض بجانب الرقم الكبير
+    expect(text()).not.toContain("حزمة 100");
+    // كل سعر يظهر مرة واحدة فقط
+    expect((text().match(/2\.99/g) ?? []).length).toBe(1);
+    // عبارة عدم انتهاء الصلاحية تظهر مرة واحدة بهدوء (في ملاحظة القسم)
+    expect((text().match(/لا تنتهي صلاحيتها/g) ?? []).length).toBe(1);
+  });
+
+  it("القسم المدمج «باقتك الشهرية» يظهر ولا يوجد زر «عرض الباقات»", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(ar.credits.yourPlanTitle);
+    expect(text()).not.toContain("عرض الباقات");
+    expect(text()).not.toContain("هل تريد المزيد من النقاط الشهرية؟");
+  });
+
+  it("مجاني: حالة الباقة المجانية + خيارا ترقية Basic وPro", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(ar.credits.freePlanCurrent);
+    expect(text()).toContain(`${ar.pricing.upgradePrefix} الأساسية`);
+    expect(text()).toContain(`${ar.pricing.upgradePrefix} الاحترافية`);
+  });
+
+  it("Basic: الباقة الحالية ظاهرة وترقية Pro فقط", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/me": {
+        subscription: {
+          plan_code: "basic", plan_name_ar: "الأساسية", plan_name_en: "Basic",
+          status: "active", payment_status: "active",
+          current_period_end: "2026-09-01T00:00:00Z", cancelled_at: null,
+          monthly_credits: 250, rollover_cap: 500,
+        },
+      },
+    }));
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(`${ar.credits.planPrefix} الأساسية`);
+    expect(text()).toContain(`${ar.pricing.upgradePrefix} الاحترافية`);
+    expect(text()).not.toContain(`${ar.pricing.upgradePrefix} الأساسية`);
+  });
+
+  it("Pro: الباقة الحالية بلا أي دفع نحو ترقية", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/me": {
+        subscription: {
+          plan_code: "pro", plan_name_ar: "الاحترافية", plan_name_en: "Pro",
+          status: "active", payment_status: "active",
+          current_period_end: "2026-09-01T00:00:00Z", cancelled_at: null,
+          monthly_credits: 600, rollover_cap: 1200,
+        },
+      },
+    }));
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(`${ar.credits.planPrefix} الاحترافية`);
+    expect(text()).not.toContain(ar.pricing.upgradePrefix);
+  });
+
+  it("Basic ملغى: لا يُعرض أي زر ترقية أو إدارة — فقط ملاحظة استمرار الوصول", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/me": {
+        subscription: {
+          plan_code: "basic", plan_name_ar: "الأساسية", plan_name_en: "Basic",
+          status: "active", payment_status: "active",
+          current_period_end: "2026-09-01T00:00:00Z", cancelled_at: "2026-08-10T00:00:00Z",
+          monthly_credits: 250, rollover_cap: 500,
+        },
+      },
+    }));
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(ar.credits.cancelledAccessNote);
+    expect(text()).not.toContain(ar.pricing.upgradePrefix);
+    expect(text()).not.toContain(ar.credits.manageSubscription);
+  });
+
+  it("الاشتراك الملغى: توضيح استمرار الوصول حتى نهاية الدورة بلا أزرار مربكة", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/me": {
+        subscription: {
+          plan_code: "pro", plan_name_ar: "الاحترافية", plan_name_en: "Pro",
+          status: "active", payment_status: "active",
+          current_period_end: "2026-09-01T00:00:00Z", cancelled_at: "2026-08-10T00:00:00Z",
+          monthly_credits: 600, rollover_cap: 1200,
+        },
+      },
+    }));
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(ar.credits.cancelledAccessNote);
+    expect(text()).not.toContain(ar.credits.manageSubscription);
+    expect(text()).not.toContain(ar.pricing.upgradePrefix);
+  });
+
+  it("تفصيل الرصيد: لا تُعرض المصادر الصفرية", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<TeacherCreditsPage />);
+    // subscriptionBalance=0 و promoBalance=0 في BALANCE — لا يظهران
+    expect(text()).not.toContain(ar.credits.breakdownSub);
+    // earnedBalance=7 و freeBalance=30 و paidBalance=100 — تظهر
+    expect(text()).toContain(ar.credits.breakdownEarned);
+    expect(text()).toContain(ar.credits.breakdownWelcome);
+    expect(text()).toContain(ar.credits.breakdownPaid);
+  });
+
+  it("عند تعطيل المدفوعات: رسالة التعطيل بدل أزرار الترقية في القسم المدمج", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/plans": { plans: PLANS, pricingPageVisible: true, paymentsEnabled: false },
+    }));
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(ar.pricing.paymentsDisabled);
+    expect(text()).not.toContain(`${ar.pricing.upgradePrefix} الاحترافية`);
   });
 
   it("الرصيد يُعرض كما جاء من الخادم ولا يتغيّر بسبب حالة الاشتراك", async () => {
@@ -196,10 +302,16 @@ describe("سلامة مسار الدفع والنصوص المعتمدة", () =>
     expect(pricingSrc).not.toContain("window.open");
   });
 
-  it("نص توضيح ما قبل الدفع معتمد حرفيًا في العربية", () => {
-    expect(ar.credits.checkoutConfirmDesc).toBe(
-      "سيتم فتح صفحة دفع آمنة لإكمال العملية. الكويت محددة تلقائيًا، ورقم الضريبة اختياري، وقد يطلب مزود الدفع الرمز البريدي للتحقق من الفوترة."
-    );
+  it("لا نافذة تأكيد قبل Checkout: الشراء/الترقية يبدآن مباشرة", () => {
+    // لا AlertDialog في أي من الصفحتين، والأزرار تستدعي الدفع مباشرة
+    expect(creditsSrc).not.toContain("AlertDialog");
+    // في صفحة الباقات يبقى Dialog إلغاء الاشتراك فقط — لا Dialog تأكيد دفع
+    expect(pricingSrc).not.toContain("checkoutConfirm");
+    expect(creditsSrc).toContain("onClick={() => buy(pkg)}");
+    expect(creditsSrc).toContain("onClick={() => upgrade(plan.code)}");
+    expect(pricingSrc).toContain("onClick={() => handleUpgrade(plan.code)}");
+    expect(creditsSrc).not.toContain("confirmingPkg");
+    expect(pricingSrc).not.toContain("confirmingPlan");
   });
 
   it("اكتمال الترجمة: كل مفاتيح credits وpricing موجودة في الإنجليزية أيضًا", () => {

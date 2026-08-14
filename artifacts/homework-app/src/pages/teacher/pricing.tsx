@@ -73,15 +73,12 @@ export default function PricingPage() {
   const [, setLocation] = useLocation();
   const { t, lang, dir } = useI18n();
   const p = t.pricing;
-  const c = t.credits; // For checkout confirm texts
-
   const [plans, setPlans]             = useState<Plan[]>([]);
   const [currentSub, setCurrentSub]   = useState<CurrentSub | null>(null);
   const [pricingPageVisible, setPricingPageVisible] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [loading, setLoading]         = useState(true);
   
-  const [confirmingPlan, setConfirmingPlan] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [cancelling, setCancelling]   = useState(false);
 
@@ -133,7 +130,6 @@ export default function PricingPage() {
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setCheckingOut(null);
-      setConfirmingPlan(null);
     }
   };
 
@@ -409,7 +405,7 @@ export default function PricingPage() {
                       <Button
                         variant={isPro ? "outline" : "default"}
                         className={["w-full group", isPro ? "bg-white text-emerald-950 border-white hover:bg-emerald-50 hover:text-emerald-950" : ""].join(" ")}
-                        onClick={() => setConfirmingPlan(plan.code)}
+                        onClick={() => handleUpgrade(plan.code)}
                         disabled={checkingOut !== null}
                       >
                         {checkingOut === plan.code ? (
@@ -447,28 +443,6 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
-
-      {/* Checkout Confirmation Dialog for Plans */}
-      <AlertDialog open={!!confirmingPlan} onOpenChange={(o) => !o && setConfirmingPlan(null)}>
-        <AlertDialogContent dir={dir} className="sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl">{c.checkoutConfirmTitle}</AlertDialogTitle>
-            <AlertDialogDescription className="text-base mt-2 leading-relaxed">
-              {c.checkoutConfirmDesc}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="mt-0">{c.cancelBtn}</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => { e.preventDefault(); confirmingPlan && handleUpgrade(confirmingPlan); }}
-              disabled={checkingOut !== null}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[140px]"
-            >
-              {checkingOut !== null ? <Loader2 size={16} className="animate-spin" /> : c.checkoutConfirmBtn}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
     </Layout>
   );
