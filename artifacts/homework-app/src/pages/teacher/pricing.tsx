@@ -82,7 +82,9 @@ export default function PricingPage() {
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [cancelling, setCancelling]   = useState(false);
 
-  const fmt = (n: number) => n.toLocaleString(lang === "ar" ? "ar-EG" : "en-US");
+  // Keep Arabic copy/RTL, but always render numeric values with Latin digits.
+  const fmt = (n: number) => n.toLocaleString("en-US");
+  const dateLocale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   // Feature lists built from locale keys
   const FREE_FOR_ALL = [p.freeCreate, p.freeGames, p.freeActivities, p.freeShare];
@@ -367,7 +369,7 @@ export default function PricingPage() {
                                     <span className="block font-medium text-foreground">
                                       {currentSub?.current_period_end
                                         ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
-                                            lang === "ar" ? "ar-SA" : "en-US",
+                                            dateLocale,
                                             { year: "numeric", month: "long", day: "numeric" }
                                           )}.`
                                         : p.cancelledFallback}

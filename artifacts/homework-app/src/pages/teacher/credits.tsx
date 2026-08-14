@@ -81,7 +81,9 @@ export default function TeacherCreditsPage() {
   const c = t.credits;
   const p = t.pricing;
 
-  const fmt = (n: number) => n.toLocaleString(lang === "ar" ? "ar-EG" : "en-US");
+  // Keep Arabic copy/RTL, but always render numeric values with Latin digits.
+  const fmt = (n: number) => n.toLocaleString("en-US");
+  const dateLocale = lang === "ar" ? "ar-EG-u-nu-latn" : "en-US";
 
   const statusLabel: Record<string, string> = {
     pending_checkout:   c.statusPendingCheckout,
@@ -233,7 +235,7 @@ export default function TeacherCreditsPage() {
   const isFreeOrNoSub = !subscription || subscription.plan_code === "free";
   const renewalDate   = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString(
-        lang === "ar" ? "ar-SA" : "en-US",
+        dateLocale,
         { year: "numeric", month: "long", day: "numeric" }
       )
     : null;
@@ -588,7 +590,7 @@ export default function TeacherCreditsPage() {
                         </td>
                         <td className="py-3.5 px-5 text-muted-foreground">
                           {new Date(p2.purchasedAt ?? p2.createdAt).toLocaleDateString(
-                            lang === "ar" ? "ar-EG" : "en-US",
+                            dateLocale,
                             { year: "numeric", month: "short", day: "numeric" }
                           )}
                         </td>

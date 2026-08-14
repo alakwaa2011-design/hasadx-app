@@ -92,7 +92,8 @@ describe("صفحة الباقات /teacher/pricing", () => {
   it("المجاني: 50 نقطة ترحيبية لمرة واحدة، بلا إلغاء اشتراك أو إدارة اشتراك", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const text = await render(<PricingPage />);
-    expect(text()).toContain((50).toLocaleString("ar-EG")); // ٥٠ بالأرقام العربية
+    expect(text()).toContain("50");
+    expect(text()).not.toContain("٥٠");
     expect(text()).toContain(ar.pricing.freeWelcomePoints);
     expect(text()).not.toContain(ar.pricing.cancelSubscription);
     expect(text()).not.toContain(ar.pricing.manageSubscription);
@@ -265,8 +266,8 @@ describe("صفحة النقاط /teacher/credits", () => {
   it("الرصيد يُعرض كما جاء من الخادم ولا يتغيّر بسبب حالة الاشتراك", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const noSub = await render(<TeacherCreditsPage />);
-    const totalAr = (137).toLocaleString("ar-EG");
-    expect(noSub()).toContain(totalAr);
+    expect(noSub()).toContain("137");
+    expect(noSub()).not.toContain("١٣٧");
 
     await act(async () => root.unmount());
     root = createRoot(container);
@@ -281,7 +282,8 @@ describe("صفحة النقاط /teacher/credits", () => {
       },
     }));
     const withSub = await render(<TeacherCreditsPage />);
-    expect(withSub()).toContain(totalAr); // نفس الرصيد بغضّ النظر عن الحالة
+    expect(withSub()).toContain("137"); // نفس الرصيد بغضّ النظر عن الحالة
+    expect(withSub()).not.toContain("١٣٧");
   });
 
   it("مستخدم مجاني: لا تظهر «إدارة الاشتراك» في صفحة النقاط", async () => {
