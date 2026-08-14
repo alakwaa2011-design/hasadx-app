@@ -66,46 +66,69 @@ describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests 
     restore("FRONTEND_URL", envBackup.frontendUrl);
   });
 
-  it("credits/checkout — payload يتضمن product_options.redirect_url صحيحًا لشراء النقاط", async () => {
+  it("credits/checkout — payload يتضمن redirect_url وcountry=KW وemail وname وcustom.user_id", async () => {
     const { createCheckout } = await import("../lib/lemonsqueezy");
     capturedBody = null;
     const { checkoutUrl } = await createCheckout({
-      variantId: "2017706",
+      variantId:  "2017706",
       successUrl: "https://example.hasad.app/teacher/credits?purchase=success",
+      email:      "teacher@school.kw",
+      name:       "أحمد الكويتي",
       customData: { user_id: "35", package_id: "1", purchase_intent_id: "uuid-test" },
     });
 
+    const cd = capturedBody?.data?.attributes?.checkout_data;
+    const po = capturedBody?.data?.attributes?.product_options;
+
     expect(checkoutUrl).toBe("https://pay.lemonsqueezy.com/test/fake-checkout-url");
-    expect(capturedBody?.data?.attributes?.product_options?.redirect_url).toBe(
-      "https://example.hasad.app/teacher/credits?purchase=success"
-    );
+    // redirect_url في product_options
+    expect(po?.redirect_url).toBe("https://example.hasad.app/teacher/credits?purchase=success");
+    // بيانات المعلم في checkout_data
+    expect(cd?.email).toBe("teacher@school.kw");
+    expect(cd?.name).toBe("أحمد الكويتي");
+    // البلد في checkout_data.billing_address
+    expect(cd?.billing_address?.country).toBe("KW");
+    // custom user_id محفوظ
+    expect(cd?.custom?.user_id).toBe("35");
+    expect(cd?.custom?.package_id).toBe("1");
   });
 
-  it("subscriptions/checkout payload — redirect_url يشير إلى ?subscribed=1", async () => {
+  it("subscriptions/checkout payload — redirect_url ?subscribed=1 وKW وcustom.user_id", async () => {
     const { createCheckout } = await import("../lib/lemonsqueezy");
     capturedBody = null;
     await createCheckout({
-      variantId: "2017681",
+      variantId:  "2017681",
       successUrl: `${process.env.FRONTEND_URL}/teacher/credits?subscribed=1`,
-      customData: { user_id: "35", package_id: "", purchase_intent_id: "" },
+      email:      "teacher@school.kw",
+      name:       "مريم المطيري",
+      customData: { user_id: "42", package_id: "", purchase_intent_id: "" },
     });
 
-    expect(capturedBody?.data?.attributes?.product_options?.redirect_url).toBe(
-      "https://example.hasad.app/teacher/credits?subscribed=1"
-    );
+    const cd = capturedBody?.data?.attributes?.checkout_data;
+    const po = capturedBody?.data?.attributes?.product_options;
+
+    expect(po?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
+    expect(cd?.billing_address?.country).toBe("KW");
+    expect(cd?.custom?.user_id).toBe("42");
+    expect(cd?.email).toBe("teacher@school.kw");
+    expect(cd?.name).toBe("مريم المطيري");
   });
 
-  it("redirect_url غائب عند عدم إرسال successUrl → الكائن خالٍ من product_options", async () => {
+  it("بلا name/email — billing_address.country=KW يظل موجودًا و product_options غائب بلا successUrl", async () => {
     const { createCheckout } = await import("../lib/lemonsqueezy");
     capturedBody = null;
     const origSuccess = process.env.LEMON_SQUEEZY_CHECKOUT_SUCCESS_URL;
     delete process.env.LEMON_SQUEEZY_CHECKOUT_SUCCESS_URL;
 
     await createCheckout({
-      variantId: "2017706",
+      variantId:  "2017706",
       customData: { user_id: "35", package_id: "1", purchase_intent_id: "uuid-test" },
     });
 
+    const cd = capturedBody?.data?.attributes?.checkout_data;
+    expect(cd?.billing_address?.country).toBe("KW");
+    expect(cd?.name).toBeUndefined();
+    expect(cd?.email).toBeUndefined();
     expect(capturedBody?.data?.attributes?.product_options).toBeUndefined();
     restore("LEMON_SQUEEZY_CHECKOUT_SUCCESS_URL", origSuccess);
   });

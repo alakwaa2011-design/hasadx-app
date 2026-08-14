@@ -11,6 +11,7 @@ import { db, plansTable, subscriptionsTable, platformSettingsTable, teachersTabl
 import { eq, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { createCheckout } from "../lib/lemonsqueezy";
 
 const router: IRouter = Router();
 
@@ -141,55 +142,26 @@ router.post("/subscriptions/checkout", async (req, res) => {
       return;
     }
 
-    const LS_API_KEY  = process.env["LEMON_SQUEEZY_API_KEY"];
-    const LS_STORE_ID = process.env["LEMON_SQUEEZY_STORE_ID"];
     const FRONTEND_URL = process.env["FRONTEND_URL"] ?? "";
 
-    if (!LS_API_KEY || !LS_STORE_ID) {
-      logger.error("LEMON_SQUEEZY_API_KEY or LEMON_SQUEEZY_STORE_ID not set");
-      res.status(503).json({ message: "خدمة الدفع غير مُعدَّة" });
-      return;
-    }
+    // بيانات المعلم لملء حقول الدفع مسبقًا
+    const [teacher] = await db
+      .select({ email: teachersTable.email, name: teachersTable.name })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, teacherId))
+      .limit(1);
 
-    const lsRes = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
-      method: "POST",
-      headers: {
-        Authorization:  `Bearer ${LS_API_KEY}`,
-        "Content-Type": "application/vnd.api+json",
-        Accept:         "application/vnd.api+json",
+    const { checkoutUrl } = await createCheckout({
+      variantId:  plan.lemonVariantId,
+      email:      teacher?.email ?? null,
+      name:       teacher?.name  ?? null,
+      successUrl: `${FRONTEND_URL}/teacher/credits?subscribed=1`,
+      customData: {
+        user_id:            String(teacherId),
+        package_id:         "",
+        purchase_intent_id: "",
       },
-      body: JSON.stringify({
-        data: {
-          type: "checkouts",
-          attributes: {
-            checkout_data: {
-              custom: { user_id: String(teacherId) },
-            },
-            product_options: {
-              redirect_url: `${FRONTEND_URL}/teacher/credits?subscribed=1`,
-            },
-          },
-          relationships: {
-            store:   { data: { type: "stores",   id: LS_STORE_ID } },
-            variant: { data: { type: "variants",  id: plan.lemonVariantId } },
-          },
-        },
-      }),
     });
-
-    if (!lsRes.ok) {
-      const errBody = await lsRes.text().catch(() => "");
-      logger.error({ status: lsRes.status, body: errBody }, "LS checkout creation failed");
-      res.status(502).json({ message: "فشل إنشاء رابط الدفع" });
-      return;
-    }
-
-    const lsData: any    = await lsRes.json();
-    const checkoutUrl: string = lsData?.data?.attributes?.url ?? "";
-    if (!checkoutUrl) {
-      res.status(502).json({ message: "لم يُرسل رابط الدفع من Lemon Squeezy" });
-      return;
-    }
 
     res.json({ checkoutUrl });
   } catch (err) {

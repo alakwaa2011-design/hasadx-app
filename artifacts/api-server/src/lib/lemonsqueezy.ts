@@ -32,6 +32,7 @@ export async function createCheckout(opts: {
   variantId: string;
   customData: CheckoutCustomData;
   email?: string | null;
+  name?: string | null;
   successUrl?: string | null;
 }): Promise<{ checkoutUrl: string }> {
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
@@ -45,7 +46,11 @@ export async function createCheckout(opts: {
       type: "checkouts",
       attributes: {
         checkout_data: {
+          // بيانات المعلم تملأ الحقول مسبقًا (قابلة للتعديل في صفحة الدفع)
           ...(opts.email ? { email: opts.email } : {}),
+          ...(opts.name  ? { name: opts.name }   : {}),
+          // تحديد الكويت مسبقًا لتقليل الإدخال اليدوي — لا يُخفي حقولًا إلزامية
+          billing_address: { country: "KW" },
           custom: opts.customData,
         },
         ...(successUrl ? { product_options: { redirect_url: successUrl } } : {}),

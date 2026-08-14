@@ -84,7 +84,7 @@ router.post("/credits/checkout", requireTeacher as any, async (req, res) => {
       return;
     }
 
-    const [teacher] = await db.select({ email: teachersTable.email }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+    const [teacher] = await db.select({ email: teachersTable.email, name: teachersTable.name }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
 
     // Purchase Intent + Snapshot قبل إنشاء الـ Checkout
     const purchaseIntentId = randomUUID();
@@ -106,6 +106,7 @@ router.post("/credits/checkout", requireTeacher as any, async (req, res) => {
     const { checkoutUrl } = await createCheckout({
       variantId: pkg.lemonVariantId,
       email: teacher?.email ?? null,
+      name: teacher?.name  ?? null,
       successUrl: `${FRONTEND_URL}/teacher/credits?purchase=success`,
       customData: {
         user_id: String(teacherId),
