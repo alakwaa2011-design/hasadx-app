@@ -1049,6 +1049,19 @@ async function runSchemaMigrations() {
     logger.error(err, "credit_batches seed failed");
   }
 
+  // ── Welcome credits backfill (v1) — one-time migration for legacy teachers ──
+  // Policy: every teacher gets a one-time 50-credit welcome batch, even those
+  // registered before the credits system existed. Guarded by seed_completions.
+  try {
+    const { runWelcomeCreditsBackfill } = await import("./lib/welcome-backfill");
+    const result = await runWelcomeCreditsBackfill();
+    if (result.applied) {
+      logger.info({ granted: result.granted }, "[seed] welcome_credits_backfill_v1 applied");
+    }
+  } catch (err) {
+    logger.error(err, "welcome_credits_backfill_v1 failed");
+  }
+
   // ── Subscriptions: seed free plan rows for every teacher without one ────────
   try {
     const seedKey = "subscriptions_free_seed_v1";

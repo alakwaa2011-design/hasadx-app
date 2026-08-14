@@ -19,3 +19,4 @@
 - [Lemon Squeezy credit purchases](lemonsqueezy-credits.md) — paid credits granted ONLY in HMAC webhook; webhook path needs raw-body + CSRF exemptions; buckets paid/promo/earned must sum to balance.
 - [jscanify/OpenCV scanner](jscanify-opencv-scanner.md) — jscanify 1.4.x leaks cv.Mat in findPaperContour/extractPaper; call cv directly with full deletes in any per-frame loop.
 - [Webhook idempotency semantics](webhook-idempotency-semantics.md) — handlers must throw (not silently return) when required work fails, or the idempotency key locks as "processed" and corrected retries are dropped.
+- [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.

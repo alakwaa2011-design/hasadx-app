@@ -27,6 +27,7 @@ export default defineConfig({
       "src/__tests__/credits-admin-teachers.integration.test.ts",
       "src/__tests__/credit-packages-endpoint.integration.test.ts",
       "src/__tests__/checkout-redirect-url.integration.test.ts",
+      "src/__tests__/welcome-backfill-integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل
