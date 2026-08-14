@@ -26,6 +26,8 @@ type Plan = {
   isActive: boolean;
   subscriberCount: number;
   activeCount: number;
+  lemonVariantId: string | null;
+  lemonProductId: string | null;
 };
 
 type Overview = {
@@ -367,6 +369,8 @@ function PlanEditModal({
   const [maxHw, setMaxHw]                 = useState<string>(plan.maxHomeworksPerMonth == null ? "" : String(plan.maxHomeworksPerMonth));
   const [aiDaily, setAiDaily]             = useState<string>(plan.aiUsageDailyLimit == null ? "" : String(plan.aiUsageDailyLimit));
   const [maxUsers, setMaxUsers]           = useState<string>(plan.maxUsers == null ? "" : String(plan.maxUsers));
+  const [lemonVariantId, setLemonVariantId] = useState<string>(plan.lemonVariantId ?? "");
+  const [lemonProductId, setLemonProductId] = useState<string>(plan.lemonProductId ?? "");
   const [saving, setSaving]               = useState(false);
 
   const parseLimit = (s: string): number | null => {
@@ -376,10 +380,27 @@ function PlanEditModal({
     return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
   };
 
+  /** Returns trimmed string or null for empty; undefined (skip) never returned */
+  const parseLemonId = (s: string): string | null => {
+    const trimmed = s.trim();
+    return trimmed === "" ? null : trimmed;
+  };
+
   const save = async () => {
     const priceNum = Number(priceMajor);
     if (!Number.isFinite(priceNum) || priceNum < 0) {
       toast.error(b.invalidPrice);
+      return;
+    }
+    // Validate Lemon Squeezy IDs — digits only if provided
+    const lsVariant = parseLemonId(lemonVariantId);
+    const lsProduct = parseLemonId(lemonProductId);
+    if (lsVariant !== null && !/^\d+$/.test(lsVariant)) {
+      toast.error("Lemon Squeezy Variant ID يجب أن يكون رقماً صحيحاً");
+      return;
+    }
+    if (lsProduct !== null && !/^\d+$/.test(lsProduct)) {
+      toast.error("Lemon Squeezy Product ID يجب أن يكون رقماً صحيحاً");
       return;
     }
     setSaving(true);
@@ -394,6 +415,8 @@ function PlanEditModal({
         maxHomeworksPerMonth: parseLimit(maxHw),
         aiUsageDailyLimit: parseLimit(aiDaily),
         maxUsers: parseLimit(maxUsers),
+        lemonVariantId: lsVariant,
+        lemonProductId: lsProduct,
       };
       const r = await fetch(`${API_BASE}/api/billing/admin/plans/${plan.id}`, {
         method: "PATCH",
@@ -472,6 +495,34 @@ function PlanEditModal({
               </Field>
               <Field label={b.maxTeachers}>
                 <Input type="number" min="0" placeholder="∞" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} dir="ltr" />
+              </Field>
+            </div>
+          </div>
+
+          {/* ── Lemon Squeezy Integration ─────────────────────────── */}
+          <div className="border-t border-border pt-3">
+            <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1">
+              🍋 Lemon Squeezy
+              <span className="font-normal opacity-70 ms-1">— digits only, leave blank to unlink</span>
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Lemon Squeezy Variant ID">
+                <Input
+                  value={lemonVariantId}
+                  onChange={(e) => setLemonVariantId(e.target.value)}
+                  placeholder="e.g. 2017697"
+                  dir="ltr"
+                  inputMode="numeric"
+                />
+              </Field>
+              <Field label="Lemon Squeezy Product ID">
+                <Input
+                  value={lemonProductId}
+                  onChange={(e) => setLemonProductId(e.target.value)}
+                  placeholder="e.g. 448058"
+                  dir="ltr"
+                  inputMode="numeric"
+                />
               </Field>
             </div>
           </div>
