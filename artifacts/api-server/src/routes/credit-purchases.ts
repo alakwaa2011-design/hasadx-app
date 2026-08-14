@@ -12,7 +12,7 @@ import { db, teachersTable, creditPackagesTable, creditPurchasesTable } from "@w
 import { eq, and, isNull, asc, desc } from "drizzle-orm";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
-import { createCheckout, lemonConfigured } from "../lib/lemonsqueezy";
+import { createCheckout, lemonConfigured, frontendOrigin } from "../lib/lemonsqueezy";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -102,12 +102,11 @@ router.post("/credits/checkout", requireTeacher as any, async (req, res) => {
       paymentStatus: "pending_checkout",
     });
 
-    const FRONTEND_URL = process.env.FRONTEND_URL ?? "";
     const { checkoutUrl } = await createCheckout({
       variantId: pkg.lemonVariantId,
       email: teacher?.email ?? null,
       name: teacher?.name  ?? null,
-      successUrl: `${FRONTEND_URL}/teacher/credits?purchase=success`,
+      successUrl: `${frontendOrigin()}/teacher/credits?purchase=success`,
       customData: {
         user_id: String(teacherId),
         package_id: String(pkg.id),

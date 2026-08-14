@@ -14,6 +14,24 @@ import crypto from "crypto";
 
 const API_BASE = "https://api.lemonsqueezy.com/v1";
 
+/**
+ * يستخرج أصل الرابط (origin) من FRONTEND_URL بأمان.
+ * يضمن أن أي path زائد في قيمة Secret (مثل /homework-app) لا يتسرب
+ * إلى روابط redirect_url المُرسلة لـ Lemon Squeezy.
+ *
+ * مثال: "https://domain.replit.dev/homework-app" → "https://domain.replit.dev"
+ */
+export function frontendOrigin(): string {
+  const raw = process.env.FRONTEND_URL ?? "";
+  if (!raw) return "";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    // قيمة غير صالحة — أرجعها كما هي تجنبًا لرابط فارغ صامت
+    return raw;
+  }
+}
+
 export function lemonConfigured(): boolean {
   return Boolean(
     process.env.LEMON_SQUEEZY_API_KEY &&

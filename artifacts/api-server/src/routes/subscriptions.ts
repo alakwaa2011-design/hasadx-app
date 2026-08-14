@@ -11,7 +11,7 @@ import { db, plansTable, subscriptionsTable, platformSettingsTable, teachersTabl
 import { eq, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { createCheckout } from "../lib/lemonsqueezy";
+import { createCheckout, frontendOrigin } from "../lib/lemonsqueezy";
 
 const router: IRouter = Router();
 
@@ -142,8 +142,6 @@ router.post("/subscriptions/checkout", async (req, res) => {
       return;
     }
 
-    const FRONTEND_URL = process.env["FRONTEND_URL"] ?? "";
-
     // بيانات المعلم لملء حقول الدفع مسبقًا
     const [teacher] = await db
       .select({ email: teachersTable.email, name: teachersTable.name })
@@ -155,7 +153,7 @@ router.post("/subscriptions/checkout", async (req, res) => {
       variantId:  plan.lemonVariantId,
       email:      teacher?.email ?? null,
       name:       teacher?.name  ?? null,
-      successUrl: `${FRONTEND_URL}/teacher/credits?subscribed=1`,
+      successUrl: `${frontendOrigin()}/teacher/credits?subscribed=1`,
       customData: {
         user_id:            String(teacherId),
         package_id:         "",

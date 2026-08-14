@@ -15,6 +15,47 @@ const RUN_INTEGRATION =
   !!process.env.TEST_DATABASE_URL &&
   process.env.DATABASE_URL === process.env.TEST_DATABASE_URL;
 
+// ─── اختبار frontendOrigin() — لا يحتاج قاعدة بيانات ───────────────────────
+
+describe("frontendOrigin() — يجرّد أي path زائد من FRONTEND_URL", () => {
+  const backupFrontend = process.env.FRONTEND_URL;
+  afterAll(() => restore("FRONTEND_URL", backupFrontend));
+
+  it("يُرجع الأصل فقط عندما تحتوي FRONTEND_URL على /homework-app", async () => {
+    process.env.FRONTEND_URL = "https://domain.replit.dev/homework-app";
+    const { frontendOrigin } = await import("../lib/lemonsqueezy");
+    expect(frontendOrigin()).toBe("https://domain.replit.dev");
+  });
+
+  it("يُرجع القيمة كما هي إذا كانت بلا path (الحالة النظيفة)", async () => {
+    process.env.FRONTEND_URL = "https://domain.replit.dev";
+    const { frontendOrigin } = await import("../lib/lemonsqueezy");
+    expect(frontendOrigin()).toBe("https://domain.replit.dev");
+  });
+
+  it("يُرجع نصًا فارغًا إذا كانت FRONTEND_URL غير مضبوطة", async () => {
+    delete process.env.FRONTEND_URL;
+    const { frontendOrigin } = await import("../lib/lemonsqueezy");
+    expect(frontendOrigin()).toBe("");
+  });
+
+  it("redirect_url الناتج لشراء النقاط لا يحتوي /homework-app عندما تكون FRONTEND_URL ملوثة", async () => {
+    process.env.FRONTEND_URL = "https://domain.replit.dev/homework-app";
+    const { frontendOrigin } = await import("../lib/lemonsqueezy");
+    const url = `${frontendOrigin()}/teacher/credits?purchase=success`;
+    expect(url).toBe("https://domain.replit.dev/teacher/credits?purchase=success");
+    expect(url).not.toContain("/homework-app");
+  });
+
+  it("redirect_url الناتج للاشتراك لا يحتوي /homework-app عندما تكون FRONTEND_URL ملوثة", async () => {
+    process.env.FRONTEND_URL = "https://domain.replit.dev/homework-app";
+    const { frontendOrigin } = await import("../lib/lemonsqueezy");
+    const url = `${frontendOrigin()}/teacher/credits?subscribed=1`;
+    expect(url).toBe("https://domain.replit.dev/teacher/credits?subscribed=1");
+    expect(url).not.toContain("/homework-app");
+  });
+});
+
 // قيم بيئة تجريبية — تُسترجع في afterAll
 const envBackup = {
   payments: process.env.PAYMENTS_ENABLED,
