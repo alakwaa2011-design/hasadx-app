@@ -38,6 +38,7 @@ import { NotificationBell } from "./notification-bell";
 import { DirectMessageDrawer, useDmUnreadCount } from "./direct-message-drawer";
 import { XpToastListener } from "./xp-toast-listener";
 import { XpPill } from "./xp-pill";
+import { CreditsChip } from "./credits-chip";
 import { AuthSideRail } from "./auth-side-rail";
 import { AdminUiSwitcher } from "./admin-ui-switcher";
 import { useI18n } from "@/lib/i18n";
@@ -362,6 +363,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         redundant. */}
                     <AdminUiSwitcher />
                     <XpPill />
+                    <CreditsChip />
                     {!isTeacherAdmin && (
                       <button
                         onClick={() => setDmOpen(true)}
@@ -576,6 +578,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     >
                       <Languages className="w-4 h-4" />
                     </button>
+                    <CreditsChip />
                     <NotificationBell />
                     <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
