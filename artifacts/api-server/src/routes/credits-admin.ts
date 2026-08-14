@@ -6,6 +6,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, teachersTable, creditToolPricesTable, creditAccountsTable, creditTransactionsTable, creditPackagesTable, platformSettingsTable } from "@workspace/db";
 import { eq, sql, and, ilike, or, desc, asc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
@@ -83,6 +84,8 @@ router.get("/teachers", async (req, res) => {
     const size = Math.min(100, Math.max(1, parseInt(pageSize)));
     const offset = (pg - 1) * size;
 
+    // الـ SQL الخام أدناه يشير للجدول بالاسم المستعار "ca" — يجب أن يحمل الـ join نفس الاسم
+    const ca = alias(creditAccountsTable, "ca");
     let baseQuery = db
       .select({
         id: teachersTable.id,
@@ -95,16 +98,21 @@ router.get("/teachers", async (req, res) => {
         updatedAt: sql<string>`ca.updated_at`,
       })
       .from(teachersTable)
-      .leftJoin(creditAccountsTable, eq(creditAccountsTable.teacherId, teachersTable.id))
+      .leftJoin(ca, eq(ca.teacherId, teachersTable.id))
       .$dynamic();
 
-    if (q) {
-      baseQuery = baseQuery.where(or(ilike(teachersTable.name, `%${q}%`), ilike(teachersTable.email, `%${q}%`)));
-    }
+    // شرط البحث يُبنى مرة واحدة ويُطبَّق على الصفوف والعدّاد معًا
+    const searchWhere = q
+      ? or(ilike(teachersTable.name, `%${q}%`), ilike(teachersTable.email, `%${q}%`))
+      : undefined;
+    if (searchWhere) baseQuery = baseQuery.where(searchWhere);
+
+    let countQuery = db.select({ total: sql<number>`COUNT(*)::int` }).from(teachersTable).$dynamic();
+    if (searchWhere) countQuery = countQuery.where(searchWhere);
 
     const [rows, [{ total }]] = await Promise.all([
-      baseQuery.orderBy(desc(sql`ca.balance`)).limit(size).offset(offset),
-      db.select({ total: sql<number>`COUNT(*)::int` }).from(teachersTable),
+      baseQuery.orderBy(desc(sql`COALESCE(ca.balance, 0)`)).limit(size).offset(offset),
+      countQuery,
     ]);
 
     res.json({ rows, total, page: pg, pageSize: size });
