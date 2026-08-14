@@ -61,8 +61,10 @@ const PLANS = [
 export async function seedPlansIfMissing(): Promise<void> {
   try {
     for (const p of PLANS) {
-      // INSERT new plans; UPDATE credits/cap columns for existing ones so the
-      // numbers stay consistent even if a plan was seeded before credits existed.
+      // INSERT new plans only. Existing rows are administrator-managed via the
+      // admin panel (PATCH /api/billing/admin/plans/:id) — the seeder must never
+      // overwrite price/credits there. COALESCE only backfills columns that are
+      // still NULL (plans seeded before the credits system existed).
       await db.execute(sql`
         INSERT INTO plans (
           code, name_ar, name_en, price_minor, currency, billing_period_days,
@@ -77,11 +79,8 @@ export async function seedPlansIfMissing(): Promise<void> {
           ${p.sortOrder}, true, NOW(), NOW()
         )
         ON CONFLICT (code) DO UPDATE
-          SET price_minor    = EXCLUDED.price_minor,
-              currency       = EXCLUDED.currency,
-              monthly_credits = EXCLUDED.monthly_credits,
-              rollover_cap    = EXCLUDED.rollover_cap,
-              updated_at      = NOW()
+          SET monthly_credits = COALESCE(plans.monthly_credits, EXCLUDED.monthly_credits),
+              currency        = COALESCE(plans.currency, EXCLUDED.currency)
       `);
     }
     logger.info("[seedPlans] plans seeded/updated");

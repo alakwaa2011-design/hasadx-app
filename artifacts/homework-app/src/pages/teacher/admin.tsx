@@ -10,8 +10,7 @@ import {
   MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
   CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy, Coins, Menu,
 } from "lucide-react";
-import { BillingTab, PricingVisibilityControl } from "@/components/admin/billing-tab";
-import { CreditsTab } from "@/components/admin/credits-tab";
+import { HasadCreditsSystem, PricingVisibilityControl } from "@/components/admin/hasad-credits-system";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { RealtimeTab } from "@/components/admin/realtime-tab";
 import { RewardsTab } from "@/components/admin/rewards-tab";
@@ -89,7 +88,10 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime" | "messages" | "credits" | "new-pricing" | "new-credits";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "activity-log" | "rewards" | "realtime" | "messages" | "hasad-credits" | "new-pricing";
+
+/** التبويبات القديمة المُلغاة — أي وصول إليها عبر URL يُعاد توجيهه للتبويب الموحد */
+const LEGACY_CREDIT_TABS = ["billing", "credits", "new-credits"];
 
 interface FeedbackItem {
   id: number;
@@ -385,7 +387,9 @@ export default function AdminPage() {
   const [location, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
-  const urlTab = new URLSearchParams(location.split("?")[1] ?? "").get("tab") as Tab | null;
+  const rawUrlTab = new URLSearchParams(location.split("?")[1] ?? "").get("tab");
+  // إعادة توجيه التبويبات القديمة (الباقات والإيرادات / إدارة الرصيد / صفحة الرصيد الجديدة) للتبويب الموحد
+  const urlTab = (rawUrlTab && LEGACY_CREDIT_TABS.includes(rawUrlTab) ? "hasad-credits" : rawUrlTab) as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(urlTab ?? "stats");
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [students, setStudents] = useState<StudentData[]>([]);
@@ -1397,10 +1401,8 @@ export default function AdminPage() {
       color: "text-violet-500",
       icon: CreditCard,
       tabs: [
-        { key: "billing"      as Tab, label: lang === "ar" ? "الباقات والإيرادات"  : "Plans & Revenue", icon: CreditCard },
-        { key: "credits"      as Tab, label: lang === "ar" ? "إدارة الرصيد"        : "Credits",         icon: Coins      },
-        { key: "new-pricing"  as Tab, label: lang === "ar" ? "صفحة الباقات الجديدة" : "New Pricing",     icon: Sparkles   },
-        { key: "new-credits"  as Tab, label: lang === "ar" ? "صفحة الرصيد الجديدة"  : "New Credits",     icon: Coins      },
+        { key: "hasad-credits" as Tab, label: lang === "ar" ? "نظام نقاط حصاد"      : "Hasad Credits",   icon: Coins      },
+        { key: "new-pricing"   as Tab, label: lang === "ar" ? "صفحة الباقات الجديدة" : "New Pricing",     icon: Sparkles   },
       ],
     },
     {
@@ -1602,13 +1604,11 @@ export default function AdminPage() {
           {/* Content padding wrapper */}
           <div className="flex-1 py-4 px-4 sm:py-6 sm:px-8">
 
-        {activeTab === "billing" && <BillingTab />}
+        {activeTab === "hasad-credits" && <HasadCreditsSystem />}
 
         {activeTab === "rewards" && <RewardsTab />}
 
         {activeTab === "messages" && <MessagesTab />}
-
-        {activeTab === "credits" && <CreditsTab />}
 
         {activeTab === "new-pricing" && (
           <div className="space-y-3">
@@ -1626,25 +1626,6 @@ export default function AdminPage() {
               className="w-full rounded-xl border bg-background"
               style={{ height: "calc(100vh - 180px)", minHeight: 500 }}
               title="صفحة الباقات الجديدة"
-            />
-          </div>
-        )}
-
-        {activeTab === "new-credits" && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2.5 border">
-              <Coins className="w-4 h-4 shrink-0 text-violet-500" />
-              <span>
-                {lang === "ar"
-                  ? "هذه هي صفحة الرصيد كما يراها المعلم — تشمل الأرصدة والمشتريات."
-                  : "This is the teacher-facing credits page including balances and purchases."}
-              </span>
-            </div>
-            <iframe
-              src="/teacher/credits"
-              className="w-full rounded-xl border bg-background"
-              style={{ height: "calc(100vh - 180px)", minHeight: 500 }}
-              title="صفحة الرصيد الجديدة"
             />
           </div>
         )}

@@ -21,6 +21,7 @@ export default defineConfig({
     include: [
       "src/__tests__/subscription-credits-integration.test.ts",
       "src/__tests__/free-welcome-credits.test.ts",
+      "src/__tests__/plan-patch-route.integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
   },

@@ -178,6 +178,20 @@ router.patch("/billing/admin/plans/:id", requireAdminMw, async (req: any, res) =
   if (Object.keys(parsed.data).length === 0) {
     return res.status(400).json({ message: "لا توجد حقول للتحديث" });
   }
+  // الخطة المجانية ثابتة في النظام المعتمد — يُمنع تعديل حقول التسعير/النقاط الخاصة بها
+  const [existing] = await db
+    .select({ code: plansTable.code })
+    .from(plansTable)
+    .where(eq(plansTable.id, id))
+    .limit(1);
+  if (!existing) return res.status(404).json({ message: "الباقة غير موجودة" });
+  if (existing.code === "free") {
+    const lockedFields = ["priceMinor", "monthlyCredits", "rolloverCap", "lemonProductId", "lemonVariantId", "currency", "billingPeriodDays"];
+    const attempted = Object.keys(parsed.data).filter((k) => lockedFields.includes(k));
+    if (attempted.length > 0) {
+      return res.status(400).json({ message: "لا يمكن تعديل حقول التسعير أو النقاط للخطة المجانية", fields: attempted });
+    }
+  }
   const [updated] = await db
     .update(plansTable)
     .set({ ...parsed.data, updatedAt: new Date() })

@@ -185,7 +185,7 @@ export function CreditsTab() {
 
 // ─── Tool Prices Panel ────────────────────────────────────────────────────────
 
-function ToolPricesPanel() {
+export function ToolPricesPanel() {
   const [rows, setRows] = useState<ToolPrice[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -345,7 +345,7 @@ function ToolPricesPanel() {
 
 // ─── Balances Panel ───────────────────────────────────────────────────────────
 
-function BalancesPanel() {
+export function BalancesPanel() {
   const [rows, setRows] = useState<TeacherBalance[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -616,7 +616,7 @@ function BalancesPanel() {
 
 // ─── Transactions Panel ───────────────────────────────────────────────────────
 
-function TransactionsPanel() {
+export function TransactionsPanel() {
   const [rows, setRows] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -733,12 +733,12 @@ function TransactionsPanel() {
 
 // ─── Packages Panel ───────────────────────────────────────────────────────────
 
-function PackagesPanel() {
+export function PackagesPanel() {
   const [rows, setRows] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newPkg, setNewPkg] = useState({ name: "", priceUsdCents: "", credits: "", sortOrder: "0", lemonVariantId: "" });
+  const [newPkg, setNewPkg] = useState({ name: "", priceUsdCents: "", credits: "", sortOrder: "0", lemonProductId: "", lemonVariantId: "" });
   const [adding, setAdding] = useState(false);
-  const [editVariant, setEditVariant] = useState<{ id: number; value: string } | null>(null);
+  const [editLemon, setEditLemon] = useState<{ id: number; productId: string; variantId: string } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -761,11 +761,12 @@ function PackagesPanel() {
           priceUsdCents: parseInt(newPkg.priceUsdCents),
           credits: parseInt(newPkg.credits),
           sortOrder: parseInt(newPkg.sortOrder),
+          lemonProductId: newPkg.lemonProductId || null,
           lemonVariantId: newPkg.lemonVariantId || null,
         }),
       });
       toast("تمت الإضافة");
-      setNewPkg({ name: "", priceUsdCents: "", credits: "", sortOrder: "0", lemonVariantId: "" });
+      setNewPkg({ name: "", priceUsdCents: "", credits: "", sortOrder: "0", lemonProductId: "", lemonVariantId: "" });
       load();
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
@@ -818,13 +819,15 @@ function PackagesPanel() {
             value={newPkg.credits} onChange={(e) => setNewPkg((p) => ({ ...p, credits: e.target.value }))} />
           <Input type="number" placeholder="الترتيب" className="w-24"
             value={newPkg.sortOrder} onChange={(e) => setNewPkg((p) => ({ ...p, sortOrder: e.target.value }))} />
+          <Input placeholder="Lemon Product ID" className="w-40" dir="ltr"
+            value={newPkg.lemonProductId} onChange={(e) => setNewPkg((p) => ({ ...p, lemonProductId: e.target.value }))} />
           <Input placeholder="Lemon Variant ID" className="w-40" dir="ltr"
             value={newPkg.lemonVariantId} onChange={(e) => setNewPkg((p) => ({ ...p, lemonVariantId: e.target.value }))} />
           <Button variant="default" onClick={addPkg} disabled={adding || !newPkg.name || !newPkg.priceUsdCents || !newPkg.credits}>
             <Plus size={14} className="ml-1" />{adding ? "جارٍ…" : "إضافة"}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Variant ID من لوحة Lemon Squeezy — بدونه لا يمكن شراء الباقة.</p>
+        <p className="text-xs text-muted-foreground mt-2">Product ID وVariant ID من لوحة Lemon Squeezy — بدون Variant ID لا يمكن شراء الباقة.</p>
       </Card>
 
       {loading ? (
@@ -837,7 +840,7 @@ function PackagesPanel() {
                 <th className="text-right py-2 px-3">الاسم</th>
                 <th className="text-right py-2 px-3">السعر</th>
                 <th className="text-right py-2 px-3">النقاط</th>
-                <th className="text-right py-2 px-3">Variant</th>
+                <th className="text-right py-2 px-3">Lemon (Product / Variant)</th>
                 <th className="text-right py-2 px-3">الترتيب</th>
                 <th className="text-right py-2 px-3">موصى بها</th>
                 <th className="text-right py-2 px-3">مرئي</th>
@@ -854,16 +857,26 @@ function PackagesPanel() {
                   <td className="py-2 px-3">${(pkg.priceUsdCents / 100).toFixed(2)}</td>
                   <td className="py-2 px-3 font-semibold">{fmt(pkg.credits)}</td>
                   <td className="py-2 px-3" dir="ltr">
-                    {editVariant?.id === pkg.id ? (
+                    {editLemon?.id === pkg.id ? (
                       <span className="flex gap-1 items-center">
-                        <Input className="w-32 h-7 text-xs" dir="ltr" value={editVariant.value}
-                          onChange={(e) => setEditVariant({ id: pkg.id, value: e.target.value })} />
-                        <Button variant="ghost" onClick={async () => { await patchPkg(pkg.id, { lemonVariantId: editVariant.value || null }); setEditVariant(null); }}>حفظ</Button>
+                        <Input className="w-28 h-7 text-xs" dir="ltr" placeholder="Product ID" value={editLemon.productId}
+                          onChange={(e) => setEditLemon({ ...editLemon, productId: e.target.value })} />
+                        <Input className="w-28 h-7 text-xs" dir="ltr" placeholder="Variant ID" value={editLemon.variantId}
+                          onChange={(e) => setEditLemon({ ...editLemon, variantId: e.target.value })} />
+                        <Button variant="ghost" onClick={async () => {
+                          await patchPkg(pkg.id, {
+                            lemonProductId: editLemon.productId.trim() || null,
+                            lemonVariantId: editLemon.variantId.trim() || null,
+                          });
+                          setEditLemon(null);
+                        }}>حفظ</Button>
                       </span>
                     ) : (
                       <button className="text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
-                        onClick={() => setEditVariant({ id: pkg.id, value: (pkg as any).lemonVariantId ?? "" })}>
-                        {(pkg as any).lemonVariantId || "ربط"}
+                        onClick={() => setEditLemon({ id: pkg.id, productId: (pkg as any).lemonProductId ?? "", variantId: (pkg as any).lemonVariantId ?? "" })}>
+                        {((pkg as any).lemonProductId || (pkg as any).lemonVariantId)
+                          ? `${(pkg as any).lemonProductId || "—"} / ${(pkg as any).lemonVariantId || "—"}`
+                          : "ربط"}
                       </button>
                     )}
                   </td>
@@ -900,7 +913,7 @@ function PackagesPanel() {
 
 // ─── Settings Panel ───────────────────────────────────────────────────────────
 
-function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
+export function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
   const [settings, setSettings] = useState<CreditSettings>({ creditsEnabled: false, welcomeCredits: 50, adminCreditTestMode: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

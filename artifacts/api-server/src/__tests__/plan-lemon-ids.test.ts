@@ -148,3 +148,6 @@ describe("PlanPatchSchema — lemonVariantId / lemonProductId", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ملاحظة: حارس الخطة المجانية مُغطّى الآن باختبارات route-level حقيقية في
+// plan-patch-route.integration.test.ts (تعمل عبر pnpm run test:integration).
