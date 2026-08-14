@@ -1,0 +1,39 @@
+نفّذ إصلاحًا محدودًا وآمنًا لمنطق idempotency في Lemon Squeezy webhooks. لا تغيّر أسعار الباقات أو Lemon IDs أو Secrets أو PAYMENTS_ENABLED أو CreditService أو الواجهة.
+
+المشكلة المثبتة:
+- subscription_created وصل سابقًا بـ variant_id غير معروف.
+- handler نفّذ early return بلا error.
+- webhook_events سجل الحدث processed وحجز idempotency key.
+- بعد تصحيح Variant ID، أصبح أي retry لنفس subscription_created يُسقط كـduplicate ولا يُعاد تشغيل handler.
+- external_subscription_id لم يُسجّل للمعلم، لذلك subscription_payment_success لا يجد الاشتراك ولا يمنح النقاط.
+
+المطلوب:
+
+1. أصلح دلالة حالات webhook_events:
+   - لا يجوز تسجيل أي حدث كـ processed إذا انتهى handler قبل إتمام العملية المطلوبة بسبب unknown variant أو subscription not found أو missing required mapping.
+   - سجّل هذه الحالات كـ failed مع error_message واضح وآمن، أو أعد خطأ قابلًا لإعادة المحاولة وفق نمط المشروع.
+   - idempotency يجب أن يمنع فقط إعادة تنفيذ حدث نجح فعلًا (processed)، لا أن يمنع إعادة معالجة حدث فشل.
+
+2. في subscription_created:
+   - إذا لم يجد resolvePlanByVariant خطة، لا تترك الحدث processed صامتًا.
+   - إذا وجد الخطة وcustom_data.user_id صحيح، يجب أن يتم upsert للاشتراك ويتخزن external_subscription_id قبل اعتبار الحدث processed.
+   - يجب ألا يمنح subscription_created أي نقاط.
+
+3. لا تطبق تحديثًا يدويًا مباشرًا لاشتراك المعلم 35 كحل إنتاجي.
+   - بعد إصلاح الكود، استخدم فقط بيانات اختبار معزولة أو تسلسل Webhooks تجريبي لإثبات أن الربط يتم آليًا.
+   - لا تمنح نقاطًا يدويًا.
+
+4. أضف اختبارات فعلية تغطي:
+   - unknown variant في subscription_created → status=failed وليس processed.
+   - بعد إصلاح mapping ثم إعادة نفس الحدث → يعاد معالجته بنجاح ويخزن external_subscription_id.
+   - event ناجح مكرر → لا ينفذ مرتين.
+   - subscription_created الناجح لا يمنح نقاطًا.
+   - subscription_payment_success بعد الربط → يمنح 250 نقطة Basic مرة واحدة فقط.
+
+5. شغّل الاختبارات المناسبة (unit + integration إن وجدت) وأرسل:
+   - الملفات المعدلة.
+   - نتائج الاختبارات الفعلية.
+   - تأكيد أن لا بيانات إنتاج ولا Secrets ولا Lemon settings تغيرت.
+   - طريقة اختبار نظيفة بعد الإصلاح: هل نعيد محاكاة subscription_created ثم payment_success للاشتراك الحالي، أم ننشئ اشتراك Test Mode جديدًا؟
+
+لا تبدأ أي إعادة Webhook من Lemon قبل أن أوافق على نتائج الاختبارات.

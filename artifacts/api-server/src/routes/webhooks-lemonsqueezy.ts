@@ -23,6 +23,13 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+/**
+ * خلل دائم في الـ payload نفسه (لا يُصلحه أي retry من Lemon Squeezy).
+ * يُسجَّل failed مع رسالة واضحة، لكن نرد 200 حتى لا يدخل LS في عاصفة إعادة إرسال.
+ * إن أُعيد إرساله لاحقًا (يدويًا) فمسار retry الداخلي يسمح بإعادة المعالجة.
+ */
+class TerminalWebhookError extends Error {}
+
 router.post("/webhooks/lemonsqueezy", async (req, res) => {
   try {
     const rawBody: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from("");
@@ -155,7 +162,12 @@ router.post("/webhooks/lemonsqueezy", async (req, res) => {
     } catch (err: any) {
       logger.error(err, `LS webhook failed (${eventName} ${objectId})`);
       await finish("failed", String(err?.message ?? err).slice(0, 2000));
-      res.status(500).json({ message: "processing failed — retry" });
+      if (err instanceof TerminalWebhookError) {
+        // عيب دائم في الـ payload — أقرّ الاستلام (200) لمنع retry storm من LS
+        res.status(200).json({ message: "acknowledged — terminal payload defect recorded" });
+      } else {
+        res.status(500).json({ message: "processing failed — retry" });
+      }
     }
   } catch (err) {
     logger.error(err, "Lemon Squeezy webhook: unexpected error");
@@ -383,14 +395,14 @@ async function handleSubscriptionCreated(payload: any): Promise<void> {
 
   const teacherId = parseInt(String(custom.user_id ?? ""));
   if (!teacherId || Number.isNaN(teacherId)) {
-    logger.warn({ subId }, "subscription_created: no user_id in custom_data");
-    return;
+    // عيب دائم في الـ payload — retry بنفس الحمولة لن يصلحه
+    throw new TerminalWebhookError(`subscription_created: user_id مفقود في custom_data (sub ${subId})`);
   }
 
   const plan = variantId ? await resolvePlanByVariant(variantId) : null;
   if (!plan) {
-    logger.warn({ subId, variantId }, "subscription_created: unknown variant");
-    return;
+    // Variant غير مربوط بخطة — فشل صريح حتى يمكن إعادة المحاولة بعد تصحيح الربط
+    throw new Error(`subscription_created: Variant غير معروف (${variantId}) — لم يُربط الاشتراك (sub ${subId})`);
   }
 
   await db.execute(sql`
@@ -428,14 +440,14 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
   const subscriptionId = String(attrs?.subscription_id ?? "");
 
   if (!invoiceId || !subscriptionId) {
-    logger.warn({ invoiceId, subscriptionId }, "subscription_payment_success: missing ids");
-    return;
+    // عيب دائم في الـ payload — retry بنفس الحمولة لن يصلحه
+    throw new TerminalWebhookError(`subscription_payment_success: invoice/subscription id مفقود (invoice=${invoiceId || "?"}, sub=${subscriptionId || "?"})`);
   }
 
   const teacherId = await resolveTeacherFromSubscription(subscriptionId);
   if (!teacherId) {
-    logger.warn({ subscriptionId }, "subscription_payment_success: subscription not found");
-    return;
+    // الاشتراك غير مربوط محليًا بعد — فشل قابل لإعادة المحاولة بعد معالجة subscription_created
+    throw new Error(`subscription_payment_success: Subscription غير موجود محليًا (${subscriptionId}) — أعد المحاولة بعد ربط subscription_created`);
   }
 
   // Guard: do not grant credits for locally-cancelled subscriptions.
@@ -562,8 +574,8 @@ async function handleSubscriptionExpired(payload: any): Promise<void> {
   const teacherId = await resolveTeacherFromSubscription(subId);
 
   if (!teacherId) {
-    logger.warn({ subId }, "subscription_expired: subscription not found");
-    return;
+    // قابل للإصلاح بوصول subscription_created متأخرًا — فشل retryable، لا processed صامت
+    throw new Error(`subscription_expired: Subscription غير موجود محليًا (${subId}) — أعد المحاولة بعد ربط subscription_created`);
   }
 
   await CreditService.expireSubscriptionBatches(teacherId);
@@ -612,7 +624,11 @@ async function handleSubscriptionUpdated(payload: any): Promise<void> {
   let planId: number | undefined;
   if (variantId) {
     const plan = await resolvePlanByVariant(variantId);
-    if (plan) planId = plan.id;
+    if (!plan) {
+      // variant غير مربوط — تجاهله بصمت يعني بقاء الخطة القديمة للأبد؛ فشل retryable حتى يُصحَّح الربط
+      throw new Error(`subscription_updated: Variant غير معروف (${variantId}) — لم تُحدَّث الخطة (sub ${subId})`);
+    }
+    planId = plan.id;
   }
 
   await db.execute(sql`

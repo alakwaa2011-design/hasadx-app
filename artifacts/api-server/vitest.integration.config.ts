@@ -22,7 +22,10 @@ export default defineConfig({
       "src/__tests__/subscription-credits-integration.test.ts",
       "src/__tests__/free-welcome-credits.test.ts",
       "src/__tests__/plan-patch-route.integration.test.ts",
+      "src/__tests__/webhook-idempotency.integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
+    // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل
+    fileParallelism: false,
   },
 });

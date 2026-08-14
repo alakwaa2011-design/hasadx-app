@@ -18,3 +18,4 @@
 - [Hasad unified color tokens](hasad-color-tokens.md) — emerald/teal/green Tailwind scales overridden in index.css from #225739; never hardcode bright green hexes.
 - [Lemon Squeezy credit purchases](lemonsqueezy-credits.md) — paid credits granted ONLY in HMAC webhook; webhook path needs raw-body + CSRF exemptions; buckets paid/promo/earned must sum to balance.
 - [jscanify/OpenCV scanner](jscanify-opencv-scanner.md) — jscanify 1.4.x leaks cv.Mat in findPaperContour/extractPaper; call cv directly with full deletes in any per-frame loop.
+- [Webhook idempotency semantics](webhook-idempotency-semantics.md) — handlers must throw (not silently return) when required work fails, or the idempotency key locks as "processed" and corrected retries are dropped.
