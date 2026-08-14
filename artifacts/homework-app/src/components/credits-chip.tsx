@@ -17,10 +17,12 @@ interface BalanceSummary {
   balance: number;
 }
 
-export function CreditsChip() {
-  const [, setLocation] = useLocation();
-
-  const { data, isLoading } = useQuery<BalanceSummary | null, Error>({
+/**
+ * Shared balance source — same query key as the header chip, so the sidebar
+ * badge and the chip share one cache entry (no duplicate requests).
+ */
+export function useCreditsBalance() {
+  return useQuery<BalanceSummary | null, Error>({
     queryKey: ["credits-chip-balance"],
     queryFn: async (): Promise<BalanceSummary | null> => {
       const res = await fetch(`${API_BASE}/api/credits/me`, {
@@ -33,6 +35,12 @@ export function CreditsChip() {
     staleTime: 60_000,
     retry: false,
   });
+}
+
+export function CreditsChip() {
+  const [, setLocation] = useLocation();
+
+  const { data, isLoading } = useCreditsBalance();
 
   const fmt = (n: number) => n.toLocaleString("en-US");
 

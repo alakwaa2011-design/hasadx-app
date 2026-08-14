@@ -31,6 +31,7 @@ import {
 import type { Assignment } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { useCreditsBalance } from "@/components/credits-chip";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
 import { Link, useLocation } from "wouter";
 import {
@@ -79,6 +80,7 @@ import {
   Medal,
   X,
   Rocket,
+  CreditCard,
   ChevronLeft,
   FileText,
   FileImage,
@@ -285,6 +287,7 @@ function SidebarXpCard({
 
 type TabId =
   | "overview"
+  | "credits"
   | "assignments"
   | "shared"
   | "library_homework"
@@ -369,6 +372,9 @@ export default function TeacherDashboard() {
       : [];
 
   const queryClient = useQueryClient();
+  // Shared with the header CreditsChip (same query key) — no duplicate request.
+  const { data: creditsData } = useCreditsBalance();
+  const creditsBalance = creditsData?.balance ?? null;
   const deleteAssignmentMutation = useDeleteAssignment({
     mutation: {
       onSuccess: () => {
@@ -710,6 +716,13 @@ export default function TeacherDashboard() {
       icon: <Home className="w-4 h-4" />,
     },
     {
+      id: "credits",
+      label: lang === "ar" ? "الباقات" : "Packages",
+      shortLabel: lang === "ar" ? "الباقات" : "Packages",
+      icon: <CreditCard className="w-4 h-4" />,
+      href: "/teacher/credits",
+    },
+    {
       id: "assignments",
       label: t.dashboard.myActivities,
       shortLabel: t.dashboard.myActivities,
@@ -918,8 +931,8 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {t.dashboard.overview}
             </p>
-            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
-                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"];
+            {tabs.filter(t => ["overview","credits","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
+                const order = ["overview","credits","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"];
                 return order.indexOf(a.id) - order.indexOf(b.id);
               }).map((tab) => {
               const active = activeTab === tab.id;
@@ -943,6 +956,15 @@ export default function TeacherDashboard() {
                     {tab.icon}
                   </span>
                   <span className="relative truncate">{tab.label}</span>
+                  {tab.id === "credits" && creditsBalance != null && (
+                    <span
+                      className="relative ms-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums"
+                      style={{ background: "rgba(232,168,14,0.15)", color: "#1E4D35", border: "1px solid rgba(232,168,14,0.4)" }}
+                      data-testid="sidebar-credits-badge"
+                    >
+                      {creditsBalance.toLocaleString("en-US")}
+                    </span>
+                  )}
                 </button>
               );
             })}
