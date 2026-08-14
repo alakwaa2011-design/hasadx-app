@@ -151,9 +151,10 @@ export const ar = {
     paidPoints: "مدفوع (دائم)",
     earnedPoints: "مكتسب",
     // Monthly plan section (integrated)
-    yourPlanTitle: "باقتك الشهرية",
-    freePlanCurrent: "أنت على الباقة المجانية",
-    freePlanCurrentDesc: "50 نقطة ترحيبية (مرة واحدة). للحصول على نقاط شهرية متجددة، رقِّ باقتك أدناه.",
+    yourPlanTitle: "خطط شهرية",
+    freePlanCurrent: "خطتك الحالية: مجانية · 50 نقطة ترحيبية لمرة واحدة",
+    freePlanCurrentDesc: "زد نقاطك الشهرية حسب استخدامك لأدوات الذكاء الاصطناعي.",
+    proSavingsCompact: "استهلاك أقل 20% في أدوات الذكاء الاصطناعي",
     cancelledAccessNote: "الاشتراك ملغى — يستمر وصولك إلى نقاط الباقة حتى نهاية الدورة الحالية:",
     // One-time packages
     oneTimeTitle: "نقاط إضافية — دفعة واحدة",
@@ -170,7 +171,6 @@ export const ar = {
     historyTitle: "سجل المشتريات",
     noPurchases: "لا توجد مشتريات بعد.",
     colPackage: "الباقة",
-    colPoints: "الرصيد",
     colAmount: "المبلغ",
     colStatus: "الحالة",
     colDate: "التاريخ",

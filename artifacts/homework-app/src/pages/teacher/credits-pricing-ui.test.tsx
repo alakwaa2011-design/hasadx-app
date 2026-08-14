@@ -243,6 +243,17 @@ describe("صفحة النقاط /teacher/credits", () => {
     expect(text()).not.toContain(ar.pricing.upgradePrefix);
   });
 
+  it("سجل المشتريات: يعرض «100 نقطة» بدل اسم «رصيد»", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/credits/purchases": [
+        { id: 1, packageName: "100 رصيد", amountCents: 299, currency: "USD", credits: 100, paymentStatus: "completed", purchasedAt: "2026-08-14T00:00:00Z", createdAt: "2026-08-14T00:00:00Z" },
+      ],
+    }));
+    const text = await render(<TeacherCreditsPage />);
+    expect(text()).toContain(`100 ${ar.credits.pointsLabel}`);
+    expect(text()).not.toContain("رصيد");
+  });
+
   it("تفصيل الرصيد: لا تُعرض المصادر الصفرية", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const text = await render(<TeacherCreditsPage />);

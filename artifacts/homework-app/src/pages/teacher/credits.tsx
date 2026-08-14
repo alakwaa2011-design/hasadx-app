@@ -268,7 +268,7 @@ export default function TeacherCreditsPage() {
 
   return (
     <Layout>
-      <div dir={dir} className="max-w-4xl mx-auto space-y-10 pb-16 pt-4">
+      <div dir={dir} className="max-w-6xl mx-auto space-y-7 pb-12 pt-4">
         
         {/* Payment return banners */}
         {intentStatus && (
@@ -294,50 +294,52 @@ export default function TeacherCreditsPage() {
           </div>
         )}
 
-        {/* Hero Section */}
-        <section className="bg-emerald-950 text-white rounded-[2rem] p-8 md:p-10 shadow-2xl relative overflow-hidden">
+        {/* Hero Section — compact header */}
+        <section className="bg-emerald-950 text-white rounded-2xl px-6 py-5 md:px-8 shadow-lg relative overflow-hidden">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
-            <div className="absolute -top-32 -left-32 w-[30rem] h-[30rem] bg-emerald-500 rounded-full blur-[100px] mix-blend-screen" />
-            <div className="absolute top-1/2 right-0 w-[20rem] h-[20rem] bg-[#E8B84B] rounded-full blur-[80px] mix-blend-screen" />
+            <div className="absolute -top-24 -left-24 w-[18rem] h-[18rem] bg-emerald-500 rounded-full blur-[80px] mix-blend-screen" />
+            <div className="absolute top-1/2 right-0 w-[12rem] h-[12rem] bg-[#E8B84B] rounded-full blur-[60px] mix-blend-screen" />
           </div>
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-            <div className="space-y-5 flex-1">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-extrabold mb-2 text-white">{c.pageTitle}</h1>
-                <p className="text-emerald-100/90 text-sm md:text-base flex items-center gap-2 font-medium">
-                  <Sparkles size={16} className="text-[#E8B84B]" fill="currentColor" />
-                  {c.aiToolsOnly}
-                </p>
-              </div>
-
-              <div className="flex items-baseline gap-2">
-                <span className="text-6xl md:text-7xl font-black tracking-tight drop-shadow-sm">
-                  {loading ? "…" : fmt(balance?.balance ?? 0)}
-                </span>
-                <span className="text-xl md:text-2xl font-medium text-emerald-200">{c.pointsLabel}</span>
-              </div>
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold text-white">{c.pageTitle}</h1>
+              <p className="text-emerald-100/80 text-xs md:text-sm flex items-center gap-1.5 font-medium mt-1">
+                <Sparkles size={14} className="text-[#E8B84B]" fill="currentColor" />
+                {c.aiToolsOnly}
+              </p>
             </div>
 
-            {/* Breakdown — only non-zero sources */}
-            {!loading && breakdownEntries.length > 0 && (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-5 bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/15 w-full md:w-auto shrink-0 shadow-inner">
-                {breakdownEntries.map(({ key, label, value, icon: Icon, gold }) => (
-                  <div key={key}>
-                    <p className="text-xs font-medium text-emerald-200 mb-1.5 flex items-center gap-1.5">
-                      <Icon size={14} className="opacity-80" /> {label}
-                    </p>
-                    <p className={`font-bold text-xl ${gold ? "text-[#E8B84B] drop-shadow-sm" : "text-white"}`}>{fmt(value)}</p>
-                  </div>
-                ))}
+            <div className="flex items-center gap-5 flex-wrap">
+              {/* المصادر غير الصفرية — تظهر فقط عند تعدد المصادر حتى لا يتكرر الرقم */}
+              {!loading && breakdownEntries.length > 1 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {breakdownEntries.map(({ key, label, value, icon: Icon, gold }) => (
+                    <span
+                      key={key}
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-full border ${
+                        gold ? "bg-[#E8B84B]/15 border-[#E8B84B]/30 text-[#E8B84B]" : "bg-white/10 border-white/15 text-emerald-100"
+                      }`}
+                    >
+                      <Icon size={13} className="opacity-80" />
+                      {label}: {fmt(value)}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-sm">
+                  {loading ? "…" : fmt(balance?.balance ?? 0)}
+                </span>
+                <span className="text-base md:text-lg font-medium text-emerald-200">{c.pointsLabel}</span>
               </div>
-            )}
+            </div>
           </div>
         </section>
 
         {/* Monthly plan — integrated section */}
         <section>
-          <div className="mb-5">
+          <div className="mb-3">
             <h2 className="text-xl font-extrabold text-emerald-950">{c.yourPlanTitle}</h2>
           </div>
 
@@ -395,14 +397,12 @@ export default function TeacherCreditsPage() {
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-4 p-5 bg-white border border-border/60 rounded-2xl shadow-sm">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                    <Gift size={22} className="text-emerald-700" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-emerald-950">{c.freePlanCurrent}</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">{c.freePlanCurrentDesc}</p>
-                  </div>
+                <div className="text-sm">
+                  <p className="font-bold text-emerald-950 flex items-center gap-2">
+                    <Gift size={15} className="text-emerald-700 shrink-0" strokeWidth={1.75} />
+                    {c.freePlanCurrent}
+                  </p>
+                  <p className="text-muted-foreground mt-1">{c.freePlanCurrentDesc}</p>
                 </div>
               )}
 
@@ -417,52 +417,48 @@ export default function TeacherCreditsPage() {
                     return (
                       <Card
                         key={plan.code}
-                        className={`flex flex-col p-6 transition-all duration-300 ${
+                        className={`flex flex-col p-4 sm:p-5 transition-all duration-300 ${
                           isPro
-                            ? "border-2 border-emerald-800 bg-emerald-900 text-white shadow-xl"
+                            ? "border-2 border-emerald-800 bg-emerald-900 text-white shadow-lg"
                             : "border border-border/60 bg-white hover:border-emerald-200 hover:shadow-md"
                         }`}
                       >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${isPro ? "bg-white/10 border border-white/20" : "bg-emerald-50 border border-emerald-100"}`}>
-                            <Icon size={22} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPro ? "bg-white/10 border border-white/20" : "bg-emerald-50 border border-emerald-100"}`}>
+                            <Icon size={18} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
                           </div>
-                          <div>
-                            <h3 className={`font-extrabold text-lg ${isPro ? "text-white" : "text-emerald-950"}`}>{upPlanName}</h3>
-                            <p className={`text-sm font-medium ${isPro ? "text-white/70" : "text-muted-foreground"}`}>
-                              ${priceUSD} {p.perMonth}
-                            </p>
-                          </div>
+                          <h3 className={`font-extrabold ${isPro ? "text-white" : "text-emerald-950"}`}>{upPlanName}</h3>
+                          <span className={`ms-auto text-sm font-bold ${isPro ? "text-white/85" : "text-emerald-800"}`}>
+                            ${priceUSD} {p.perMonth}
+                          </span>
                         </div>
 
-                        <ul className={`space-y-2.5 text-sm mb-6 flex-1 ${isPro ? "text-white/90" : "text-foreground/80"}`}>
-                          <li className="flex items-start gap-2.5">
-                            <Check size={16} className={`shrink-0 mt-0.5 ${isPro ? "text-[#E8B84B]" : "text-emerald-600"}`} />
-                            <span>{fmt(plan.monthlyCredits)} {p.pointsMonthly}</span>
-                          </li>
+                        {/* سطر مواصفات مدمج */}
+                        <div className={`flex items-center gap-x-2 gap-y-1 flex-wrap text-[13px] font-medium mb-3 ${isPro ? "text-white/85" : "text-foreground/75"}`}>
+                          <span>{fmt(plan.monthlyCredits)} {p.pointsMonthly}</span>
                           {plan.rolloverCap ? (
-                            <li className="flex items-start gap-2.5">
-                              <Check size={16} className={`shrink-0 mt-0.5 ${isPro ? "text-[#E8B84B]" : "text-emerald-600"}`} />
+                            <>
+                              <span className="opacity-40">·</span>
                               <span>{p.rolloverUntil} {fmt(plan.rolloverCap)}</span>
-                            </li>
+                            </>
                           ) : null}
-                          {isPro && (
-                            <li className="flex items-start gap-2.5 font-bold text-[#E8B84B]">
-                              <Zap size={16} className="shrink-0 mt-0.5" fill="currentColor" />
-                              <span>{p.proSavings20}</span>
-                            </li>
-                          )}
-                        </ul>
+                        </div>
+                        {isPro && (
+                          <p className="flex items-center gap-1.5 text-[13px] font-bold text-[#E8B84B] mb-3">
+                            <Zap size={14} className="shrink-0" fill="currentColor" />
+                            {c.proSavingsCompact}
+                          </p>
+                        )}
 
                         {!paymentsEnabled ? (
-                          <div className={`w-full text-center p-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 ${isPro ? "bg-white/10 text-white/70 border border-white/15" : "bg-muted/50 text-muted-foreground border border-border"}`}>
+                          <div className={`w-full mt-auto text-center p-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isPro ? "bg-white/10 text-white/70 border border-white/15" : "bg-muted/50 text-muted-foreground border border-border"}`}>
                             <AlertCircle size={16} className="opacity-70" />
                             {p.paymentsDisabled}
                           </div>
                         ) : (
                           <Button
                             variant={isPro ? "outline" : "default"}
-                            className={`w-full group ${isPro ? "bg-white text-emerald-950 border-white hover:bg-emerald-50 hover:text-emerald-950" : ""}`}
+                            className={`w-full mt-auto group ${isPro ? "bg-white text-emerald-950 border-white hover:bg-emerald-50 hover:text-emerald-950" : ""}`}
                             onClick={() => upgrade(plan.code)}
                             disabled={checkingOut !== null}
                           >
@@ -487,7 +483,7 @@ export default function TeacherCreditsPage() {
 
         {/* One-time packages */}
         <section>
-          <div className="mb-5">
+          <div className="mb-3">
             <h2 className="text-xl font-extrabold text-emerald-950">{c.oneTimeTitle}</h2>
             <p className="text-sm text-muted-foreground mt-1">{c.paidPointsNote}</p>
           </div>
@@ -571,7 +567,6 @@ export default function TeacherCreditsPage() {
                   <thead className="bg-muted/30">
                     <tr className="text-muted-foreground border-b border-border">
                       <th className="py-3 px-5 font-semibold">{c.colPackage}</th>
-                      <th className="py-3 px-5 font-semibold">{c.colPoints}</th>
                       <th className="py-3 px-5 font-semibold">{c.colAmount}</th>
                       <th className="py-3 px-5 font-semibold">{c.colStatus}</th>
                       <th className="py-3 px-5 font-semibold">{c.colDate}</th>
@@ -580,8 +575,7 @@ export default function TeacherCreditsPage() {
                   <tbody className="divide-y divide-border/50">
                     {purchases.map((p2) => (
                       <tr key={p2.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="py-3.5 px-5 font-bold text-emerald-950">{p2.packageName}</td>
-                        <td className="py-3.5 px-5 font-medium text-emerald-800">{fmt(p2.credits)}</td>
+                        <td className="py-3.5 px-5 font-bold text-emerald-950">{fmt(p2.credits)} {c.pointsLabel}</td>
                         <td className="py-3.5 px-5 text-muted-foreground">${(p2.amountCents / 100).toFixed(2)}</td>
                         <td className="py-3.5 px-5">
                           <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusColor[p2.paymentStatus] ?? "bg-muted text-muted-foreground border-border"}`}>

@@ -153,9 +153,10 @@ export const en: typeof ar = {
     paidPoints: "Paid (permanent)",
     earnedPoints: "Earned",
     // Monthly plan section (integrated)
-    yourPlanTitle: "Your monthly plan",
-    freePlanCurrent: "You're on the Free plan",
-    freePlanCurrentDesc: "50 welcome points (one time). For renewing monthly points, upgrade your plan below.",
+    yourPlanTitle: "Monthly plans",
+    freePlanCurrent: "Your current plan: Free · 50 one-time welcome points",
+    freePlanCurrentDesc: "Add monthly points based on how much you use the AI tools.",
+    proSavingsCompact: "20% lower point usage in AI tools",
     cancelledAccessNote: "Subscription cancelled — you keep access to plan points until the end of the current period:",
     // One-time packages
     oneTimeTitle: "Extra Points — one-time purchase",
@@ -172,7 +173,6 @@ export const en: typeof ar = {
     historyTitle: "Purchase History",
     noPurchases: "No purchases yet.",
     colPackage: "Package",
-    colPoints: "Points",
     colAmount: "Amount",
     colStatus: "Status",
     colDate: "Date",
