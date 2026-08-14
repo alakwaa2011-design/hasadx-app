@@ -160,8 +160,10 @@ const PlanPatchSchema = z
     maxUsers: z.number().int().min(0).nullable().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),
-    lemonVariantId: z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
-    lemonProductId: z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
+    lemonVariantId:   z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
+    lemonProductId:   z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
+    monthlyCredits:   z.number().int().min(0).nullable().optional(),
+    rolloverCap:      z.number().int().min(0).nullable().optional(),
   })
   .strict();
 

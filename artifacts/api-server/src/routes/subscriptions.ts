@@ -57,7 +57,7 @@ router.get("/subscriptions/plans", async (req, res) => {
       pricingPageVisible = viewer?.isAdmin === true;
     }
 
-    res.json({ plans, pricingPageVisible });
+    res.json({ plans, pricingPageVisible, paymentsEnabled: process.env.PAYMENTS_ENABLED === "true" });
   } catch (err) {
     logger.error(err, "GET /subscriptions/plans failed");
     res.status(500).json({ message: "حدث خطأ" });
@@ -107,6 +107,12 @@ router.post("/subscriptions/checkout", async (req, res) => {
   const teacherId = req.session?.teacherId;
   if (!teacherId) {
     res.status(401).json({ message: "غير مصرح" });
+    return;
+  }
+
+  // حارس: يرفض الطلب مباشرةً إذا كانت المدفوعات معطّلة من الإعداد.
+  if (process.env.PAYMENTS_ENABLED !== "true") {
+    res.status(503).json({ code: "PAYMENTS_DISABLED", message: "الدفع غير متاح حاليًا" });
     return;
   }
 

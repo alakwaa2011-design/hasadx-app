@@ -28,6 +28,8 @@ type Plan = {
   activeCount: number;
   lemonVariantId: string | null;
   lemonProductId: string | null;
+  monthlyCredits: number | null;
+  rolloverCap: number | null;
 };
 
 type Overview = {
@@ -371,7 +373,18 @@ function PlanEditModal({
   const [maxUsers, setMaxUsers]           = useState<string>(plan.maxUsers == null ? "" : String(plan.maxUsers));
   const [lemonVariantId, setLemonVariantId] = useState<string>(plan.lemonVariantId ?? "");
   const [lemonProductId, setLemonProductId] = useState<string>(plan.lemonProductId ?? "");
+  const [monthlyCredits, setMonthlyCredits] = useState<string>(plan.monthlyCredits == null ? "" : String(plan.monthlyCredits));
+  const [rolloverCap, setRolloverCap]       = useState<string>(plan.rolloverCap == null ? "" : String(plan.rolloverCap));
   const [saving, setSaving]               = useState(false);
+
+  const isCreditsEligible = plan.code === "basic" || plan.code === "pro";
+
+  const parseCredits = (s: string): number | null => {
+    const trimmed = s.trim();
+    if (trimmed === "") return null;
+    const n = Math.floor(Number(trimmed));
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
 
   const parseLimit = (s: string): number | null => {
     const trimmed = s.trim();
@@ -417,6 +430,10 @@ function PlanEditModal({
         maxUsers: parseLimit(maxUsers),
         lemonVariantId: lsVariant,
         lemonProductId: lsProduct,
+        ...(isCreditsEligible && {
+          monthlyCredits: parseCredits(monthlyCredits),
+          rolloverCap: parseCredits(rolloverCap),
+        }),
       };
       const r = await fetch(`${API_BASE}/api/billing/admin/plans/${plan.id}`, {
         method: "PATCH",
@@ -498,6 +515,40 @@ function PlanEditModal({
               </Field>
             </div>
           </div>
+
+          {/* ── Credits (Basic / Pro only) ───────────────────────── */}
+          {isCreditsEligible && (
+            <div className="border-t border-border pt-3">
+              <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1">
+                ⭐ نقاط الاشتراك الشهرية
+                <span className="font-normal opacity-70 ms-1">— اتركه فارغاً لإبقاء القيمة الحالية</span>
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="النقاط الشهرية (monthly_credits)">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={monthlyCredits}
+                    onChange={(e) => setMonthlyCredits(e.target.value)}
+                    placeholder={`الحالية: ${plan.monthlyCredits ?? "—"}`}
+                    dir="ltr"
+                  />
+                </Field>
+                <Field label="حد الترحيل (rollover_cap)">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={rolloverCap}
+                    onChange={(e) => setRolloverCap(e.target.value)}
+                    placeholder={`الحالية: ${plan.rolloverCap ?? "—"}`}
+                    dir="ltr"
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
 
           {/* ── Lemon Squeezy Integration ─────────────────────────── */}
           <div className="border-t border-border pt-3">

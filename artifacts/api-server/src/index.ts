@@ -343,6 +343,10 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS admin_credit_test_mode BOOLEAN NOT NULL DEFAULT FALSE,
         ADD COLUMN IF NOT EXISTS pricing_page_visible  BOOLEAN NOT NULL DEFAULT FALSE
     `);
+    // توحيد welcome_credits على 50 — آمن ومكرر التنفيذ: يُصحّح القيمة الافتراضية القديمة فقط
+    await db.execute(sql`
+      UPDATE platform_settings SET welcome_credits = 50 WHERE welcome_credits = 120
+    `);
     // استخدام غير محدود بدون خصم — per-teacher override
     await db.execute(sql`
       ALTER TABLE teachers

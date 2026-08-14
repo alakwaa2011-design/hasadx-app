@@ -68,7 +68,12 @@ describe("رصيد الترحيب المجاني — grantWelcomeCredits", () =>
     for (const tid of tids) await cleanTeacher(tid).catch(() => {});
   });
 
-  it("W1 — معلم جديد يحصل على 50 نقطة ترحيبية (مرة واحدة)", async () => {
+  it("W1 — معلم جديد يحصل على عدد النقاط المضبوطة في platform_settings (50)", async () => {
+    // تحقق أولاً أن platform_settings.welcome_credits = 50 (قيمة النظام المعتمدة).
+    const psRows = await db.execute(sql`SELECT welcome_credits FROM platform_settings LIMIT 1`);
+    const configuredAmount = Number((psRows.rows[0] as any)?.welcome_credits ?? 0);
+    expect(configuredAmount).toBe(50); // ← يثبت أن migration تمت بصحة
+
     const tid = await createTeacher("w1");
     tids.push(tid);
     await seedAccount(tid);
@@ -77,12 +82,12 @@ describe("رصيد الترحيب المجاني — grantWelcomeCredits", () =>
 
     const batches = await getFreeBatches(tid);
     expect(batches).toHaveLength(1);
-    expect(Number(batches[0].amount)).toBe(50);
-    expect(Number(batches[0].amount_remaining)).toBe(50);
+    expect(Number(batches[0].amount)).toBe(configuredAmount);        // يقرأ من DB
+    expect(Number(batches[0].amount_remaining)).toBe(configuredAmount);
     expect(batches[0].reference_id).toBe("welcome_credits");
 
     const bal = await getFreeBalance(tid);
-    expect(bal).toBe(50);
+    expect(bal).toBe(configuredAmount);
   });
 
   it("W2 — معلم لديه دفعة مجانية نشطة لا يحصل على دفعة ثانية", async () => {

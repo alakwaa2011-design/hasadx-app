@@ -26,16 +26,10 @@ const PlanPatchSchema = z
     maxUsers: z.number().int().min(0).nullable().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),
-    lemonVariantId: z
-      .string()
-      .regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً")
-      .nullable()
-      .optional(),
-    lemonProductId: z
-      .string()
-      .regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً")
-      .nullable()
-      .optional(),
+    lemonVariantId:   z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
+    lemonProductId:   z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
+    monthlyCredits:   z.number().int().min(0).nullable().optional(),
+    rolloverCap:      z.number().int().min(0).nullable().optional(),
   })
   .strict();
 
@@ -105,6 +99,52 @@ describe("PlanPatchSchema — lemonVariantId / lemonProductId", () => {
 
   it("rejects unknown fields (strict schema)", () => {
     const result = PlanPatchSchema.safeParse({ unknownField: "value" });
+    expect(result.success).toBe(false);
+  });
+
+  // ── monthlyCredits / rolloverCap ───────────────────────────────────────────
+
+  it("accepts valid monthlyCredits and rolloverCap", () => {
+    const result = PlanPatchSchema.safeParse({ monthlyCredits: 250, rolloverCap: 500 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.monthlyCredits).toBe(250);
+      expect(result.data.rolloverCap).toBe(500);
+    }
+  });
+
+  it("accepts null monthlyCredits and rolloverCap (clears the field)", () => {
+    const result = PlanPatchSchema.safeParse({ monthlyCredits: null, rolloverCap: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.monthlyCredits).toBeNull();
+      expect(result.data.rolloverCap).toBeNull();
+    }
+  });
+
+  it("accepts zero monthlyCredits (edge case — free plan)", () => {
+    const result = PlanPatchSchema.safeParse({ monthlyCredits: 0 });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects negative monthlyCredits", () => {
+    const result = PlanPatchSchema.safeParse({ monthlyCredits: -1 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain("monthlyCredits");
+    }
+  });
+
+  it("rejects negative rolloverCap", () => {
+    const result = PlanPatchSchema.safeParse({ rolloverCap: -100 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain("rolloverCap");
+    }
+  });
+
+  it("rejects non-integer monthlyCredits", () => {
+    const result = PlanPatchSchema.safeParse({ monthlyCredits: 250.5 });
     expect(result.success).toBe(false);
   });
 });

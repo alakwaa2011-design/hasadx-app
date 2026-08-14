@@ -80,6 +80,7 @@ export default function PricingPage() {
   const [plans, setPlans]             = useState<Plan[]>([]);
   const [currentSub, setCurrentSub]   = useState<CurrentSub | null>(null);
   const [pricingPageVisible, setPricingPageVisible] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [loading, setLoading]         = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [cancelling, setCancelling]   = useState(false);
@@ -108,6 +109,7 @@ export default function PricingPage() {
       .then(([plansData, subData]) => {
         setPlans(plansData.plans ?? []);
         setPricingPageVisible(plansData.pricingPageVisible === true);
+        setPaymentsEnabled(plansData.paymentsEnabled === true);
         setCurrentSub(subData.subscription ?? null);
       })
       .catch(() => toast(p.loadError, { className: "text-red-500" }))
@@ -386,6 +388,11 @@ export default function PricingPage() {
                       /* Non-current free plan slot (shouldn't normally appear, but guard it) */
                       <Button variant="outline" className="w-full" disabled>
                         {p.starterPlan}
+                      </Button>
+                    ) : !paymentsEnabled ? (
+                      /* المدفوعات معطّلة — نظهر حالة عربية واضحة بدل زر شراء فعّال */
+                      <Button variant="outline" className="w-full opacity-70" disabled>
+                        الدفع غير متاح حاليًا
                       </Button>
                     ) : (
                       <Button

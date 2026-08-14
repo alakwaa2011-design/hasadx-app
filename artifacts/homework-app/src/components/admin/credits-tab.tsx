@@ -901,7 +901,7 @@ function PackagesPanel() {
 // ─── Settings Panel ───────────────────────────────────────────────────────────
 
 function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
-  const [settings, setSettings] = useState<CreditSettings>({ creditsEnabled: false, welcomeCredits: 120, adminCreditTestMode: false });
+  const [settings, setSettings] = useState<CreditSettings>({ creditsEnabled: false, welcomeCredits: 50, adminCreditTestMode: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 

@@ -533,16 +533,24 @@ export const CreditService = {
   },
 
   /**
-   * Grant the one-time 50-point welcome batch to a new teacher.
+   * Grant the one-time welcome-credits batch to a new teacher.
    *
-   * This is idempotent: if ANY free batch (active or expired) already exists
-   * for the teacher, this is a no-op.  Welcome credits are granted once at
-   * account creation and NEVER renewed.  The batch has no expiry (NULL).
+   * The amount is read from platform_settings.welcome_credits at call time
+   * (fallback: 50).  This is idempotent: if ANY free batch (active or expired)
+   * already exists for the teacher, this is a no-op.  Welcome credits are
+   * granted once at account creation and NEVER renewed.  The batch has no
+   * expiry (NULL).
    *
-   * Called non-blocking on login (safe to call repeatedly — the check inside
+   * Called non-blocking on login (safe to call repeatedly — the guard inside
    * guarantees at-most-once grant per teacher lifetime).
    */
   async grantWelcomeCredits(teacherId: number): Promise<void> {
+    // Read the configured welcome amount before opening the transaction.
+    // Fallback to 50 if the row or column is absent / zero.
+    const psRows = await db.execute(sql`SELECT welcome_credits FROM platform_settings LIMIT 1`);
+    const rawAmount = Number((psRows.rows[0] as any)?.welcome_credits ?? 0);
+    const welcomeAmount = rawAmount > 0 ? rawAmount : 50;
+
     await db.transaction(async (tx) => {
       await lockAccount(tx, teacherId);
 
@@ -555,12 +563,12 @@ export const CreditService = {
       `);
       if (existing.rows.length > 0) return;
 
-      // Grant 50 welcome points with no expiry (one-time, permanent).
+      // Grant welcome points with no expiry (one-time, permanent).
       await this._grantBatchInTx(
         tx,
         teacherId,
         "free",
-        50,
+        welcomeAmount,
         null,                   // no expiry — welcome gift never expires
         "welcome_credits",
         null,

@@ -38,7 +38,7 @@ router.get("/credits/packages", requireTeacher as any, async (_req, res) => {
       .from(creditPackagesTable)
       .where(and(eq(creditPackagesTable.isVisible, true), isNull(creditPackagesTable.archivedAt)))
       .orderBy(asc(creditPackagesTable.sortOrder), asc(creditPackagesTable.id));
-    res.json({ packages: rows, purchasesEnabled: lemonConfigured() });
+    res.json({ packages: rows, purchasesEnabled: process.env.PAYMENTS_ENABLED === "true" && lemonConfigured() });
   } catch {
     res.status(500).json({ message: "فشل تحميل الباقات" });
   }
@@ -57,6 +57,11 @@ const CheckoutSchema = z.object({ packageId: z.number().int().positive() }).stri
 
 router.post("/credits/checkout", requireTeacher as any, async (req, res) => {
   try {
+    // حارس: يرفض الطلب مباشرةً إذا كانت المدفوعات معطّلة من الإعداد.
+    if (process.env.PAYMENTS_ENABLED !== "true") {
+      res.status(503).json({ code: "PAYMENTS_DISABLED", message: "الدفع غير متاح حاليًا" });
+      return;
+    }
     if (!lemonConfigured()) {
       res.status(503).json({ message: "الشراء غير متاح حالياً" });
       return;
