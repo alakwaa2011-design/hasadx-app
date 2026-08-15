@@ -435,9 +435,23 @@ export default function CreateAssignment() {
     setAiLoading(true); setAiError("");
     try {
       const endpoint = aiWithImages ? "/api/ai/generate-questions-with-images" : "/api/ai/generate-questions";
+      /* Respect the template structure: send the prepared slots' question types
+         so AI generates the same mix (e.g. true/false template → true/false questions). */
+      const slotTypes = questions.map(q =>
+        q.questionType === "true_false" || q.questionType === "fill_blank" ? q.questionType : "mcq");
+      const hasNonMcq = slotTypes.some(t => t !== "mcq");
+      /* With a typed template, generate exactly the prepared slot count so the
+         template structure (count + type order) is preserved 1:1. */
+      const requestCount = hasNonMcq ? slotTypes.length : aiCount;
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ topic: aiTopic, count: aiWithImages ? Math.min(aiCount, 20) : aiCount, difficulty: aiDifficulty, subject: subject || undefined }),
+        body: JSON.stringify({
+          topic: aiTopic,
+          count: aiWithImages ? Math.min(requestCount, 20) : requestCount,
+          difficulty: aiDifficulty,
+          subject: subject || undefined,
+          questionTypes: hasNonMcq ? slotTypes.slice(0, aiWithImages ? 20 : slotTypes.length) : undefined,
+        }),
       });
       let data: any;
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
