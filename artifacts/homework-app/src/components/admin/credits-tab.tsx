@@ -6,11 +6,12 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Coins, Settings, Package, Users, BarChart2, Pencil, RotateCcw, X, Check,
-  Download, Plus, Trash2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
+  Download, Plus, Trash2, ChevronDown, ChevronUp,
   RefreshCw, Search, Infinity, Minus,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { Card, Button, Input } from "@/components/ui-elements";
+import { Switch } from "@/components/ui/switch";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -293,9 +294,11 @@ export function ToolPricesPanel() {
                   <td className="py-2 px-3 font-semibold">{row.creditsCost}</td>
                   <td className="py-2 px-3 text-muted-foreground">{row.timeoutSeconds}ث</td>
                   <td className="py-2 px-3">
-                    <button onClick={() => toggleEnabled(row)} className="text-primary hover:opacity-70">
-                      {row.isCreditEnabled ? <ToggleRight size={20} className="text-green-500" /> : <ToggleLeft size={20} className="text-muted-foreground" />}
-                    </button>
+                    <Switch
+                      checked={row.isCreditEnabled}
+                      onCheckedChange={() => toggleEnabled(row)}
+                      labelVariant="none"
+                    />
                   </td>
                   <td className="py-2 px-3">
                     <button onClick={() => openEdit(row)} className="text-muted-foreground hover:text-primary">
@@ -478,14 +481,12 @@ export function BalancesPanel() {
                     <td className="py-2 px-3 text-green-600">{fmt(row.totalEarned)}</td>
                     <td className="py-2 px-3 text-red-500">{fmt(row.totalSpent)}</td>
                     <td className="py-2 px-3">
-                      <button
-                        onClick={() => { setUnlimitedModal(row); setUnlimitedReason(""); }}
+                      <Switch
+                        checked={Boolean(row.unlimitedCredits)}
+                        onCheckedChange={() => { setUnlimitedModal(row); setUnlimitedReason(""); }}
+                        labelVariant="none"
                         title={row.unlimitedCredits ? "إلغاء الاستخدام غير المحدود" : "تفعيل الاستخدام غير المحدود"}
-                      >
-                        {row.unlimitedCredits
-                          ? <ToggleRight size={20} className="text-amber-500" />
-                          : <ToggleLeft size={20} className="text-muted-foreground" />}
-                      </button>
+                      />
                     </td>
                     <td className="py-2 px-3">
                       <button onClick={() => { setAdjusting(row); setDelta(""); setReason(""); setMode("add"); }} className="text-muted-foreground hover:text-primary" title="تعديل رصيد يدوي">
@@ -882,14 +883,19 @@ export function PackagesPanel() {
                   </td>
                   <td className="py-2 px-3 text-muted-foreground">{pkg.sortOrder}</td>
                   <td className="py-2 px-3">
-                    <button onClick={() => patchPkg(pkg.id, { isFeatured: !(pkg as any).isFeatured })} title="باقة موصى بها واحدة فقط">
-                      {(pkg as any).isFeatured ? <ToggleRight size={20} className="text-amber-500" /> : <ToggleLeft size={20} className="text-muted-foreground" />}
-                    </button>
+                    <Switch
+                      checked={Boolean((pkg as any).isFeatured)}
+                      onCheckedChange={() => patchPkg(pkg.id, { isFeatured: !(pkg as any).isFeatured })}
+                      labelVariant="none"
+                      title="باقة موصى بها واحدة فقط"
+                    />
                   </td>
                   <td className="py-2 px-3">
-                    <button onClick={() => patchPkg(pkg.id, { isVisible: !pkg.isVisible })}>
-                      {pkg.isVisible ? <ToggleRight size={20} className="text-green-500" /> : <ToggleLeft size={20} className="text-muted-foreground" />}
-                    </button>
+                    <Switch
+                      checked={pkg.isVisible}
+                      onCheckedChange={() => patchPkg(pkg.id, { isVisible: !pkg.isVisible })}
+                      labelVariant="visibility"
+                    />
                   </td>
                   <td className="py-2 px-3 text-xs">
                     <button onClick={() => archivePkg(pkg)} className={archived ? "text-orange-500" : "text-muted-foreground hover:text-foreground"}>
@@ -952,15 +958,11 @@ export function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
             <p className="font-semibold">تفعيل نظام النقاط</p>
             <p className="text-sm text-muted-foreground">عند التعطيل: لا تُخصَم أي نقاط ولا يرى أي مستخدم النقاط</p>
           </div>
-          <button
-            onClick={() => save({ creditsEnabled: !settings.creditsEnabled })}
+          <Switch
+            checked={settings.creditsEnabled}
+            onCheckedChange={(v) => save({ creditsEnabled: v })}
             disabled={saving}
-            className="text-primary"
-          >
-            {settings.creditsEnabled
-              ? <ToggleRight size={36} className="text-green-500" />
-              : <ToggleLeft size={36} className="text-muted-foreground" />}
-          </button>
+          />
         </div>
 
         {/* Welcome credits */}
@@ -987,14 +989,11 @@ export function CreditSettingsPanel({ onChanged }: { onChanged?: () => void }) {
             <p className="font-semibold">وضع الاختبار للمسؤول</p>
             <p className="text-sm text-muted-foreground">تفعيل النقاط لحساب المسؤول فقط دون تغيير الإعداد العام</p>
           </div>
-          <button
-            onClick={() => save({ adminCreditTestMode: !settings.adminCreditTestMode })}
+          <Switch
+            checked={settings.adminCreditTestMode}
+            onCheckedChange={(v) => save({ adminCreditTestMode: v })}
             disabled={saving}
-          >
-            {settings.adminCreditTestMode
-              ? <ToggleRight size={36} className="text-blue-500" />
-              : <ToggleLeft size={36} className="text-muted-foreground" />}
-          </button>
+          />
         </div>
       </Card>
 
