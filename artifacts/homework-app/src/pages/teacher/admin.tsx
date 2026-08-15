@@ -307,6 +307,7 @@ function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete,
                       checked={sendByEmail}
                       onCheckedChange={setSendByEmail}
                       disabled={sending || !fb.email}
+                      labelVariant="none"
                     />
                     <AtSign className="w-3.5 h-3.5" />
                     {fb.email
@@ -2746,6 +2747,7 @@ export default function AdminPage() {
                 <Switch
                   checked={showPublicStats}
                   onCheckedChange={setShowPublicStats}
+                  labelVariant="visibility"
                 />
               </div>
 

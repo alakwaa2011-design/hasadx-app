@@ -585,7 +585,7 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
   return (
     <label className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 cursor-pointer">
       <span className="text-sm">{label}</span>
-      <Switch checked={value} onCheckedChange={onChange} />
+      <Switch checked={value} onCheckedChange={onChange} labelVariant="none" />
     </label>
   );
 }

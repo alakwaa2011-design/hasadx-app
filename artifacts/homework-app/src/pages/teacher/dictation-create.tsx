@@ -383,7 +383,8 @@ function ToggleCell({
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="shrink-0 mt-1 data-[state=checked]:bg-[#1E4D35]"
+        labelVariant="none"
+        className="shrink-0 mt-1"
       />
     </div>
   );
@@ -1278,7 +1279,7 @@ export default function DictationCreate() {
                     <Switch
                       checked={settings.allowSpeedControl}
                       onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSpeedControl: v }))}
-                      className="data-[state=checked]:bg-[#1E4D35]"
+                      labelVariant="none"
                     />
                   </div>
                 }
@@ -1292,7 +1293,7 @@ export default function DictationCreate() {
                     <Switch
                       checked={settings.allowSeek}
                       onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSeek: v }))}
-                      className="data-[state=checked]:bg-[#1E4D35]"
+                      labelVariant="none"
                     />
                   </div>
                 }
@@ -1306,7 +1307,7 @@ export default function DictationCreate() {
                     <Switch
                       checked={settings.showTranscript}
                       onCheckedChange={(v) => setSettings((s) => ({ ...s, showTranscript: v }))}
-                      className="data-[state=checked]:bg-[#1E4D35]"
+                      labelVariant="none"
                     />
                   </div>
                 }
