@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { featureAccess } from "@workspace/billing";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -17,6 +18,17 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     res.status(401).json({ error: "Authentication required" });
     return;
   }
+
+  // Video upload is restricted to Basic and Pro subscribers (+ admins)
+  const sub = await featureAccess.getSubscription(req.session.teacherId);
+  if (sub.planCode === "free" && !sub.isAdmin) {
+    res.status(403).json({
+      error: "VIDEO_UPLOAD_RESTRICTED",
+      message: "Video upload from device is available for Basic and Pro subscribers only",
+    });
+    return;
+  }
+
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });

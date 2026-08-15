@@ -527,12 +527,18 @@ export default function CreateVideoLesson() {
   const BackArrowIcon = isAr ? ArrowRight : ArrowLeft;
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canUploadVideo, setCanUploadVideo] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((u) => {
-        if (u?.isAdmin) setIsAdmin(true);
+    Promise.all([
+      fetch(`${API_BASE}/api/auth/me`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_BASE}/api/subscriptions/me`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([u, subData]) => {
+        const admin = !!u?.isAdmin;
+        const planCode: string = subData?.subscription?.plan_code ?? "free";
+        setIsAdmin(admin);
+        setCanUploadVideo(admin || planCode !== "free");
       })
       .catch(() => {});
   }, []);
@@ -1491,11 +1497,11 @@ export default function CreateVideoLesson() {
                     </p>
                   )}
                   
-                  <div className={cn("mb-4 grid gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/30 p-1", isAdmin ? "grid-cols-3" : "grid-cols-2")}>
+                  <div className={cn("mb-4 grid gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/30 p-1", canUploadVideo ? "grid-cols-3" : "grid-cols-2")}>
                     {(
                       [
                         { key: "youtube" as VideoSource, short: isAr ? "يوتيوب" : "YT", full: isAr ? "يوتيوب" : "YouTube", Icon: Play },
-                        ...(isAdmin
+                        ...(canUploadVideo
                           ? [
                               {
                                 key: "upload" as VideoSource,
