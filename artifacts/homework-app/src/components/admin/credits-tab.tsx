@@ -56,6 +56,16 @@ interface TeacherBalance {
   totalEarned: number;
   totalSpent: number;
   updatedAt: string | null;
+  planCode: string | null;
+  planNameAr: string | null;
+  subscriptionStatus: string | null;
+  planExpiresAt: string | null;
+}
+
+interface GrantablePlan {
+  code: string;
+  nameAr: string;
+  monthlyCredits: number | null;
 }
 
 interface Transaction {
@@ -366,6 +376,24 @@ export function BalancesPanel() {
   const [unlimitedModal, setUnlimitedModal] = useState<TeacherBalance | null>(null);
   const [unlimitedReason, setUnlimitedReason] = useState("");
   const [unlimitedSaving, setUnlimitedSaving] = useState(false);
+  const [grantModal, setGrantModal] = useState<TeacherBalance | null>(null);
+  const [grantPlanCode, setGrantPlanCode] = useState<"basic" | "pro" | "">("");
+  const [grantId, setGrantId] = useState("");
+  const [grantSaving, setGrantSaving] = useState(false);
+  const [grantablePlans, setGrantablePlans] = useState<GrantablePlan[]>([]);
+
+  useEffect(() => {
+    apiFetch("/api/billing/plans")
+      .then((r) => r.json())
+      .then((plans: any[]) =>
+        setGrantablePlans(
+          plans
+            .filter((p) => p.code === "basic" || p.code === "pro")
+            .map((p) => ({ code: p.code, nameAr: p.nameAr, monthlyCredits: p.monthlyCredits })),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -436,6 +464,53 @@ export function BalancesPanel() {
     }
   };
 
+  const openGrantModal = (row: TeacherBalance) => {
+    setGrantModal(row);
+    setGrantPlanCode("");
+    // grantId ثابت لكل فتح للحوار — يمنع النقر المزدوج/إعادة الطلب من مضاعفة المنح
+    setGrantId(crypto.randomUUID());
+  };
+
+  const saveGrantPlan = async () => {
+    if (!grantModal || !grantPlanCode || !grantId) return;
+    setGrantSaving(true);
+    try {
+      const res = await apiFetch("/api/billing/admin/grant-plan", {
+        method: "POST",
+        body: JSON.stringify({ teacherId: grantModal.id, planCode: grantPlanCode, grantId }),
+      });
+      const d = await res.json();
+      const expiry = d.expiresAt ? new Date(d.expiresAt).toLocaleDateString("ar", { numberingSystem: "latn" }) : "—";
+      toast(`تم منح باقة ${d.planNameAr} — ${fmt(d.granted)} نقطة اشتراك، تنتهي في ${expiry}`);
+      setGrantModal(null);
+      setGrantPlanCode("");
+      load();
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+    } finally {
+      setGrantSaving(false);
+    }
+  };
+
+  const planBadge = (row: TeacherBalance) => {
+    const code = row.planCode ?? "free";
+    const label = row.planNameAr ?? "مجانية";
+    const cls =
+      code === "pro"
+        ? "bg-primary/10 text-primary"
+        : code === "basic"
+          ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
+          : "bg-muted text-muted-foreground";
+    return (
+      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>
+        {label}
+        {row.subscriptionStatus && row.subscriptionStatus !== "active" && (
+          <span className="opacity-70"> · {row.subscriptionStatus}</span>
+        )}
+      </span>
+    );
+  };
+
   const totalPages = Math.ceil(total / 30);
 
   return (
@@ -458,6 +533,7 @@ export function BalancesPanel() {
               <thead>
                 <tr className="border-b text-muted-foreground">
                   <th className="text-right py-2 px-3">المعلم</th>
+                  <th className="text-right py-2 px-3">باقة حصاد</th>
                   <th className="text-right py-2 px-3">النقاط</th>
                   <th className="text-right py-2 px-3">المكتسب</th>
                   <th className="text-right py-2 px-3">المُنفَق</th>
@@ -476,6 +552,23 @@ export function BalancesPanel() {
                           <p className="text-xs text-muted-foreground">{row.email}</p>
                         </div>
                       </div>
+                    </td>
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-1.5">
+                        {planBadge(row)}
+                        <button
+                          onClick={() => openGrantModal(row)}
+                          className="text-[11px] font-bold text-primary hover:underline whitespace-nowrap"
+                          title="منح باقة حصاد يدوياً مع نقاط الاشتراك"
+                        >
+                          منح باقة
+                        </button>
+                      </div>
+                      {row.planExpiresAt && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5" dir="ltr">
+                          {new Date(row.planExpiresAt).toLocaleDateString("ar", { numberingSystem: "latn" })}
+                        </p>
+                      )}
                     </td>
                     <td className="py-2 px-3 font-bold text-primary">{fmt(row.balance)}</td>
                     <td className="py-2 px-3 text-green-600">{fmt(row.totalEarned)}</td>
@@ -544,6 +637,54 @@ export function BalancesPanel() {
                 {saving ? "جارٍ الحفظ…" : "تطبيق التعديل"}
               </Button>
               <Button variant="ghost" onClick={() => setAdjusting(null)}>إلغاء</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual plan grant modal */}
+      {grantModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setGrantModal(null)}>
+          <div className="bg-background rounded-xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()} dir="rtl">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold">منح باقة حصاد</h3>
+                <p className="text-sm text-muted-foreground">{grantModal.name}</p>
+              </div>
+              <button onClick={() => setGrantModal(null)}><X size={16} /></button>
+            </div>
+            <div className="bg-muted/40 rounded-lg px-4 py-2 mb-4 text-sm space-y-1">
+              <p>الباقة الحالية: {planBadge(grantModal)}</p>
+              <p>الرصيد الحالي: <strong className="text-primary">{fmt(grantModal.balance)}</strong> نقطة</p>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">اختر الباقة الممنوحة</p>
+            <div className="flex flex-col gap-2 mb-3">
+              {grantablePlans.map((p) => (
+                <button
+                  key={p.code}
+                  onClick={() => setGrantPlanCode(p.code as "basic" | "pro")}
+                  className={`flex items-center justify-between text-sm px-3 py-2.5 rounded-lg border transition-colors ${
+                    grantPlanCode === p.code
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <span className="font-bold">{p.nameAr}</span>
+                  <span className="text-xs">{fmt(p.monthlyCredits)} نقطة اشتراك</span>
+                </button>
+              ))}
+              {grantablePlans.length === 0 && (
+                <p className="text-xs text-muted-foreground">جارٍ تحميل الباقات…</p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              المنح اليدوي يفعّل الباقة لمدة دورة الباقة المحددة (حالياً شهر واحد)، ولا ينشئ تجديداً أو دفعة في Lemon Squeezy.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="default" className="flex-1" onClick={saveGrantPlan} disabled={grantSaving || !grantPlanCode}>
+                {grantSaving ? "جارٍ التنفيذ…" : "تأكيد منح الباقة"}
+              </Button>
+              <Button variant="ghost" onClick={() => setGrantModal(null)}>إلغاء</Button>
             </div>
           </div>
         </div>

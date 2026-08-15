@@ -533,6 +533,129 @@ export const CreditService = {
   },
 
   /**
+   * منح باقة حصاد يدوياً (admin) — الاشتراك + نقاط الاشتراك في معاملة واحدة.
+   *
+   * يختلف عن grantSubscriptionCredits في أن monthly_credits تُقرأ من صف الباقة
+   * المطلوبة (planCode) لا من اشتراك المعلم الحالي — فلا يمكن لسباق تحديث
+   * الاشتراك أن يموّل دفعة Basic بنقاط Pro.
+   *
+   * منع التكرار: القيد الفريد على subscription_invoice_id يُطالب به أولاً داخل
+   * المعاملة؛ الطلب المكرر (نفس invoiceId) يعيد نتيجة العملية الأولى المخزّنة
+   * دون أي كتابة على الاشتراك أو الأرصدة.
+   */
+  async grantManualPlan(
+    teacherId: number,
+    planCode: string,
+    invoiceId: string
+  ): Promise<{
+    granted: number;
+    alreadyGranted: boolean;
+    planCode: string;
+    expiresAt: Date;
+  }> {
+    return await db.transaction(async (tx) => {
+      // ── الباقة الحية (monthly_credits / rollover_cap / مدة الدورة) ──
+      const planRows = await tx.execute(sql`
+        SELECT id, monthly_credits, rollover_cap, billing_period_days
+        FROM plans WHERE code = ${planCode} LIMIT 1
+      `);
+      const plan = planRows.rows[0] as any;
+      if (!plan) throw new Error(`الباقة غير موجودة: ${planCode}`);
+
+      const periodDays = Number(plan.billing_period_days || 30);
+      const expiresAt = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000);
+
+      // ── المطالبة بالمرجع الفريد أولاً (الحارس الأساسي) ──
+      const claimed = await tx.execute(sql`
+        INSERT INTO subscription_credit_grants
+          (subscription_invoice_id, subscription_id, teacher_id, plan_code, credits_granted, period_end)
+        VALUES
+          (${invoiceId}, ${`manual:${teacherId}`}, ${teacherId}, ${planCode}, 0, ${expiresAt})
+        ON CONFLICT (subscription_invoice_id) DO NOTHING
+        RETURNING id
+      `);
+
+      if (claimed.rows.length === 0) {
+        // طلب مكرر — أعد النتيجة المخزّنة كما هي، بلا أي كتابة
+        const prior = await tx.execute(sql`
+          SELECT credits_granted, period_end, plan_code
+          FROM subscription_credit_grants
+          WHERE subscription_invoice_id = ${invoiceId} LIMIT 1
+        `);
+        const p = prior.rows[0] as any;
+        return {
+          granted: Number(p?.credits_granted ?? 0),
+          alreadyGranted: true,
+          planCode: String(p?.plan_code ?? planCode),
+          expiresAt: p?.period_end ? new Date(p.period_end) : expiresAt,
+        };
+      }
+      const grantRowId = Number((claimed.rows[0] as any).id);
+
+      // ── قفل حساب النقاط — يسلسل كل عمليات المنح لهذا المعلم ──
+      await lockAccount(tx, teacherId);
+
+      // ── تفعيل/تحديث الاشتراك داخل المعاملة نفسها ──
+      await tx.execute(sql`
+        INSERT INTO subscriptions
+          (teacher_id, plan_id, status, started_at, expires_at, current_period_end, created_at, updated_at)
+        VALUES
+          (${teacherId}, ${plan.id}, 'active', NOW(), ${expiresAt}, ${expiresAt}, NOW(), NOW())
+        ON CONFLICT (teacher_id) DO UPDATE
+          SET plan_id = ${plan.id}, status = 'active', started_at = NOW(),
+              expires_at = ${expiresAt}, current_period_end = ${expiresAt},
+              cancelled_at = NULL, updated_at = NOW()
+      `);
+
+      // ── حساب النقاط من صف الباقة المطلوبة مع احترام حد التراكم ──
+      const monthlyCredits = Number(plan.monthly_credits ?? 0);
+      const rolloverCap = plan.rollover_cap != null ? Number(plan.rollover_cap) : null;
+
+      const remainingRows = await tx.execute(sql`
+        SELECT COALESCE(SUM(amount_remaining), 0)::int AS remaining
+        FROM credit_batches
+        WHERE teacher_id = ${teacherId}
+          AND source = 'subscription'
+          AND amount_remaining > 0
+          AND (expires_at IS NULL OR expires_at > NOW())
+      `);
+      const remainingSub = Number((remainingRows.rows[0] as any)?.remaining ?? 0);
+
+      let toAdd = monthlyCredits;
+      if (rolloverCap !== null) {
+        toAdd = Math.max(0, Math.min(monthlyCredits, rolloverCap - remainingSub));
+      }
+
+      let granted = 0;
+      if (toAdd > 0) {
+        granted = await this._grantBatchInTx(
+          tx,
+          teacherId,
+          "subscription",
+          toAdd,
+          expiresAt, // المنح اليدوي بلا تجديد — تنتهي النقاط بنهاية الدورة الممنوحة
+          invoiceId,
+          planCode,
+          `منح باقة يدوي (${planCode})`
+        );
+      }
+
+      await tx.execute(sql`
+        UPDATE subscription_credit_grants
+        SET credits_granted = ${granted}
+        WHERE id = ${grantRowId}
+      `);
+      await tx.execute(sql`
+        UPDATE subscriptions
+        SET last_credited_period_end = ${expiresAt}, updated_at = NOW()
+        WHERE teacher_id = ${teacherId}
+      `);
+
+      return { granted, alreadyGranted: false, planCode, expiresAt };
+    });
+  },
+
+  /**
    * Grant the one-time welcome-credits batch to a new teacher.
    *
    * The amount is read from platform_settings.welcome_credits at call time

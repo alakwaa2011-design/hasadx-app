@@ -4,7 +4,7 @@
  * Mounted at /api/admin/credits via routes/index.ts.
  */
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, teachersTable, creditToolPricesTable, creditAccountsTable, creditTransactionsTable, creditPackagesTable, platformSettingsTable } from "@workspace/db";
+import { db, teachersTable, creditToolPricesTable, creditAccountsTable, creditTransactionsTable, creditPackagesTable, platformSettingsTable, subscriptionsTable, plansTable } from "@workspace/db";
 import { eq, sql, and, ilike, or, desc, asc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
@@ -86,6 +86,8 @@ router.get("/teachers", async (req, res) => {
 
     // الـ SQL الخام أدناه يشير للجدول بالاسم المستعار "ca" — يجب أن يحمل الـ join نفس الاسم
     const ca = alias(creditAccountsTable, "ca");
+    const sub = alias(subscriptionsTable, "sub");
+    const pl = alias(plansTable, "pl");
     let baseQuery = db
       .select({
         id: teachersTable.id,
@@ -96,9 +98,15 @@ router.get("/teachers", async (req, res) => {
         totalEarned: sql<number>`COALESCE(ca.total_earned, 0)`,
         totalSpent: sql<number>`COALESCE(ca.total_spent, 0)`,
         updatedAt: sql<string>`ca.updated_at`,
+        planCode: sql<string | null>`pl.code`,
+        planNameAr: sql<string | null>`pl.name_ar`,
+        subscriptionStatus: sql<string | null>`sub.status`,
+        planExpiresAt: sql<string | null>`COALESCE(sub.expires_at, sub.current_period_end)`,
       })
       .from(teachersTable)
       .leftJoin(ca, eq(ca.teacherId, teachersTable.id))
+      .leftJoin(sub, eq(sub.teacherId, teachersTable.id))
+      .leftJoin(pl, eq(pl.id, sub.planId))
       .$dynamic();
 
     // شرط البحث يُبنى مرة واحدة ويُطبَّق على الصفوف والعدّاد معًا

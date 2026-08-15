@@ -395,6 +395,9 @@ function AssignSection({ plans }: { plans: Plan[] }) {
 
   return (
     <div className="space-y-3" dir="rtl">
+      <p className="text-xs text-muted-foreground">
+        إعدادات ومزايا العروض التفاعلية فقط — لا تغيّر باقة حصاد أو نقاط المعلم.
+      </p>
       <Card className="p-3 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -602,7 +605,7 @@ export function HasadCreditsSystem() {
     { key: "plans",    label: "الخطط",              icon: <Crown size={15} /> },
     { key: "packages", label: "حزم النقاط",          icon: <Package size={15} /> },
     { key: "tools",    label: "أسعار أدوات الذكاء",  icon: <Coins size={15} /> },
-    { key: "assign",   label: "اشتراكات المعلمين",   icon: <Users size={15} /> },
+    { key: "assign",   label: "العروض التفاعلية للمعلمين", icon: <Users size={15} /> },
     { key: "balances",     label: "أرصدة المعلمين",  icon: <Coins size={15} /> },
     { key: "transactions", label: "حركات الرصيد",    icon: <ScrollText size={15} /> },
     { key: "settings", label: "إعدادات النظام",      icon: <Settings size={15} /> },

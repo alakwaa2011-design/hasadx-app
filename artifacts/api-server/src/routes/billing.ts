@@ -3,6 +3,7 @@ import { eq, sql, desc, and, ilike, or } from "drizzle-orm";
 import { z } from "zod";
 import { db, plansTable, subscriptionsTable, teachersTable, platformSettingsTable } from "@workspace/db";
 import { featureAccess, FEATURES } from "@workspace/billing";
+import { CreditService } from "../lib/credit-service";
 
 const router: IRouter = Router();
 
@@ -93,6 +94,63 @@ router.post("/billing/admin/assign", requireAdminMw, async (req: any, res) => {
     });
   featureAccess.invalidate(teacherId);
   res.json({ ok: true });
+});
+
+/**
+ * POST /api/billing/admin/grant-plan — منح باقة حصاد يدوياً (basic/pro) مع نقاط الاشتراك.
+ *
+ * ينفّذ تحديث الاشتراك + منح نقاط الاشتراك عبر نفس مسار webhook الدفع الناجح
+ * (CreditService.grantSubscriptionCredits → credit_batches / credit_transactions / credit_accounts).
+ * لا ينشئ أي عملية في Lemon Squeezy ولا تجديداً تلقائياً.
+ *
+ * منع التكرار: العميل يرسل grantId (UUID) ثابتاً لكل عملية؛ يُستخدم كـ
+ * subscription_invoice_id = manual_plan_grant_<grantId> — القيد الفريد في
+ * subscription_credit_grants يضمن أن إعادة نفس الطلب لا تضيف دفعة ثانية.
+ */
+const MANUAL_GRANT_CODES = ["basic", "pro"];
+router.post("/billing/admin/grant-plan", requireAdminMw, async (req: any, res) => {
+  const teacherId = Number(req.body?.teacherId);
+  const planCode = String(req.body?.planCode || "").trim();
+  const grantId = String(req.body?.grantId || "").trim();
+  if (!Number.isFinite(teacherId) || teacherId <= 0) {
+    return res.status(400).json({ message: "teacherId غير صالح" });
+  }
+  if (!MANUAL_GRANT_CODES.includes(planCode)) {
+    return res.status(400).json({ message: "المنح اليدوي يقبل الأساسية أو الاحترافية فقط" });
+  }
+  if (!/^[0-9a-zA-Z-]{8,64}$/.test(grantId)) {
+    return res.status(400).json({ message: "grantId مطلوب (معرّف فريد للعملية)" });
+  }
+  const invoiceId = `manual_plan_grant_${grantId}`;
+
+  const [teacher] = await db
+    .select({ id: teachersTable.id, name: teachersTable.name })
+    .from(teachersTable)
+    .where(eq(teachersTable.id, teacherId))
+    .limit(1);
+  if (!teacher) return res.status(404).json({ message: "المعلم غير موجود" });
+
+  // ── المعاملة الواحدة: مطالبة المرجع الفريد + قفل الحساب + الاشتراك + الدفعة + الحركة ──
+  // إعادة نفس grantId (نقر مزدوج/إعادة طلب) تعيد نتيجة العملية الأولى بلا أي كتابة.
+  const result = await CreditService.grantManualPlan(teacherId, planCode, invoiceId);
+
+  const [plan] = await db
+    .select({ nameAr: plansTable.nameAr })
+    .from(plansTable)
+    .where(eq(plansTable.code, result.planCode))
+    .limit(1);
+
+  featureAccess.invalidate(teacherId);
+  const newBalance = await CreditService.getBalance(teacherId);
+  res.json({
+    ok: true,
+    alreadyGranted: result.alreadyGranted,
+    planCode: result.planCode,
+    planNameAr: plan?.nameAr ?? result.planCode,
+    granted: result.granted,
+    newBalance,
+    expiresAt: result.expiresAt,
+  });
 });
 
 /* -------------------------------------------------------------------------- */
