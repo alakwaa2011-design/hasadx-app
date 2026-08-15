@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { resolveImageUrl } from "@/lib/image-url";
 import {
   currentQuestion, escapeProgress, revealedCode,
   type EscapeAction, type EscapeState, type LockState, type LockType,
@@ -845,7 +846,7 @@ export function EscapeGameView({
             </p>
             {question.imageUrl && (
               <div className="flex justify-center mt-2">
-                <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: big ? "clamp(90px,18vh,180px)" : "clamp(70px,14vh,140px)", maxWidth: "80%" }} />
+                <img src={resolveImageUrl(question.imageUrl) ?? ""} alt="" className="rounded-lg object-contain" style={{ maxHeight: big ? "clamp(90px,18vh,180px)" : "clamp(70px,14vh,140px)", maxWidth: "80%" }} />
               </div>
             )}
           </motion.div>

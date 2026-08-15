@@ -9,6 +9,7 @@ import { getSocket } from "@/lib/socket";
 import { HostJoinBar } from "@/components/host-join-bar";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { useGameAudio } from "./useGameAudio";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -648,7 +649,7 @@ export default function MillionTeamControlHost() {
                 <>
                   <div className="rounded-xl p-5" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)" }}>
                     <p className="text-white text-xl font-bold leading-relaxed">{currentQuestion.text}</p>
-                    {currentQuestion.imageUrl && (<img src={currentQuestion.imageUrl} alt="" className="mt-3 max-h-64 rounded-lg" />)}
+                    {currentQuestion.imageUrl && (<img src={resolveImageUrl(currentQuestion.imageUrl) ?? ""} alt="" className="mt-3 max-h-64 rounded-lg" />)}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

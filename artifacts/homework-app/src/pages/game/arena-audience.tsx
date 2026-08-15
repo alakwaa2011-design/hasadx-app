@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tv2, ChevronLeft, Trophy, Clock, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
+import { resolveImageUrl } from "@/lib/image-url";
 
 interface AudienceTeam {
   id: string;
@@ -444,7 +445,7 @@ export default function ArenaAudience() {
                     {session.activeQuestion.imageUrl && (
                       <div className="flex justify-center mt-3">
                         <img
-                          src={session.activeQuestion.imageUrl}
+                          src={resolveImageUrl(session.activeQuestion.imageUrl) ?? ""}
                           alt=""
                           className="rounded-lg object-contain"
                           style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }}

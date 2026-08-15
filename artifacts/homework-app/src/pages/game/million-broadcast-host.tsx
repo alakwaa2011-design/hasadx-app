@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
 import { HostJoinBar } from "@/components/host-join-bar";
 import { useGameAudio } from "./useGameAudio";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const PRIZE_LADDER = [100, 200, 300, 500, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000, 125_000, 250_000, 500_000, 1_000_000];
@@ -217,7 +218,7 @@ export default function MillionBroadcastHost() {
                   <div className="rounded-xl p-5" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)" }}>
                     <p className="text-white text-xl font-bold leading-relaxed">{currentQuestion.text}</p>
                     {currentQuestion.imageUrl && (
-                      <img src={currentQuestion.imageUrl} alt="" className="mt-3 max-h-64 rounded-lg" />
+                      <img src={resolveImageUrl(currentQuestion.imageUrl) ?? ""} alt="" className="mt-3 max-h-64 rounded-lg" />
                     )}
                   </div>
 

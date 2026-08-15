@@ -14,6 +14,7 @@ import { useTeamGameAudio } from "./useTeamGameAudio";
 import { HarvestCoin } from "@/components/harvest-coin";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { QRCodeSVG } from "qrcode.react";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -1057,7 +1058,7 @@ export default function MillionTeamHost() {
                     )}
 
                     {question.imageUrl && (
-                      <img src={question.imageUrl} alt="" className="w-full max-h-48 object-contain rounded-xl mb-3" />
+                      <img src={resolveImageUrl(question.imageUrl) ?? ""} alt="" className="w-full max-h-48 object-contain rounded-xl mb-3" />
                     )}
 
                     <p className="text-gray-900 dark:text-white text-2xl font-bold text-center leading-relaxed mb-4">

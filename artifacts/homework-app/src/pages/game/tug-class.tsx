@@ -21,6 +21,7 @@ import {
   StadiumBackdrop, TugCharacters, TugPowerMeter,
   WAMID_GRADIENT, WAMID_BORDER, type TugImpulse,
 } from "@/components/game/tug-shared";
+import { resolveImageUrl } from "@/lib/image-url";
 import {
   classReducer, createClassState, currentQuestion,
   type ClassQuestion, type ClassState, type TeamId, type TeamState,
@@ -616,7 +617,7 @@ function TeamZone({
             </p>
             {question.imageUrl && (
               <div className="flex justify-center mt-1.5">
-                <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(70px,14vh,140px)", maxWidth: "70%" }} />
+                <img src={resolveImageUrl(question.imageUrl) ?? ""} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(70px,14vh,140px)", maxWidth: "70%" }} />
               </div>
             )}
             {/* Idle beckon — the zone waves at its team after 8 quiet seconds */}

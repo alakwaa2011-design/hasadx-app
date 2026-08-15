@@ -15,6 +15,7 @@ import { CoinRain } from "@/components/coin-rain";
 import { ShareButtons } from "@/components/share-buttons";
 import { useArena } from "@/lib/use-arena";
 import { ArenaBar } from "@/components/multiplayer-lobby";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const CLASS_STUDENTS_KEY = "millionClassStudents";
@@ -1365,7 +1366,7 @@ export default function MillionPlay() {
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
 
                 {currentQuestion.imageUrl && (
-                  <img src={currentQuestion.imageUrl} alt="" className="w-full max-h-48 object-contain rounded-xl mb-4" />
+                  <img src={resolveImageUrl(currentQuestion.imageUrl) ?? ""} alt="" className="w-full max-h-48 object-contain rounded-xl mb-4" />
                 )}
                 {surpriseDoubleActive && (
                   <motion.div

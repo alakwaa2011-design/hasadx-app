@@ -8,6 +8,7 @@ import { useTeamGameAudio } from "./useTeamGameAudio";
 import { HarvestCoin } from "@/components/harvest-coin";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { toast } from "@/components/ui/sonner";
+import { resolveImageUrl } from "@/lib/image-url";
 
 type OptionKey = "A" | "B" | "C" | "D";
 type TeamId = "A" | "B";
@@ -830,7 +831,7 @@ export default function MillionTeamPlay() {
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
               {question.imageUrl && (
-                <img src={question.imageUrl} alt="" className="w-full max-h-40 object-contain rounded-xl mb-3" />
+                <img src={resolveImageUrl(question.imageUrl) ?? ""} alt="" className="w-full max-h-40 object-contain rounded-xl mb-3" />
               )}
               <p className="text-white font-bold text-lg leading-relaxed text-center">{question.text}</p>
             </div>

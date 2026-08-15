@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { fileToBase64 } from "@/lib/utils";
 import { getSuggestions } from "@/lib/suggestions";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -994,7 +995,7 @@ export default function TeacherAssignmentDetail() {
                       <div className="mt-2 flex items-center gap-2">
                         {q.imageUrl ? (
                           <div className="relative inline-block">
-                            <img src={q.imageUrl} alt="" className="max-h-20 rounded-lg border border-border object-contain" />
+                            <img src={resolveImageUrl(q.imageUrl) ?? ""} alt="" className="max-h-20 rounded-lg border border-border object-contain" />
                             <button
                               type="button"
                               onClick={() => updateQuestion(idx, "imageUrl", "")}
@@ -1459,7 +1460,7 @@ export default function TeacherAssignmentDetail() {
                                 </span>
                                 {(q as any).imageUrl && (
                                   <div className="mb-2">
-                                    <img src={(q as any).imageUrl} alt={q.text} className="max-h-36 rounded-xl border border-border object-contain" />
+                                    <img src={resolveImageUrl((q as any).imageUrl) ?? ""} alt={q.text} className="max-h-36 rounded-xl border border-border object-contain" />
                                   </div>
                                 )}
                                 {q.questionType === "whiteboard" ? (

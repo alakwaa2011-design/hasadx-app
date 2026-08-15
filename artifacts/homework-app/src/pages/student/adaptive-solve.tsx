@@ -5,6 +5,7 @@ import { Card, Input, Button, Label } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { ConfettiBurst } from "@/components/confetti-burst";
+import { resolveImageUrl } from "@/lib/image-url";
 import {
   Brain,
   CheckCircle2,
@@ -730,7 +731,7 @@ export default function AdaptiveSolve() {
 
                   {currentQuestion.imageUrl && (
                     <div className="mb-4 rounded-xl overflow-hidden border border-border">
-                      <img src={currentQuestion.imageUrl} alt="" className="max-h-56 w-full object-contain bg-muted/20" />
+                      <img src={resolveImageUrl(currentQuestion.imageUrl) ?? ""} alt="" className="max-h-56 w-full object-contain bg-muted/20" />
                     </div>
                   )}
                 </div>

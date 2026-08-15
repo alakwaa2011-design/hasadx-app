@@ -22,6 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { fileToBase64 } from "@/lib/utils";
+import { resolveImageUrl } from "@/lib/image-url";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
@@ -434,7 +435,7 @@ export default function CreateAssignment() {
       const generated = (data.questions as CreateQuestionBody[]).map(q => ({
         ...q,
         /* Object-storage paths (/objects/...) are only reachable via the API server at /api/objects/... */
-        imageUrl: q.imageUrl && q.imageUrl.startsWith("/objects/") ? `${API_BASE}/api${q.imageUrl}` : q.imageUrl,
+        imageUrl: q.imageUrl ?? null, /* keep raw /objects/... path; resolveImageUrl() handles display */
       }));
       const hasRealQuestions = questions.length > 0 && questions.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
       setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
@@ -1398,7 +1399,7 @@ export default function CreateAssignment() {
                                   {/* Image button — single button with inline picker */}
                                   {q.imageUrl ? (
                                     <div className="relative inline-block">
-                                      <img src={q.imageUrl} alt="" className="max-h-20 rounded border border-border object-contain" />
+                                      <img src={resolveImageUrl(q.imageUrl) ?? ""} alt="" className="max-h-20 rounded border border-border object-contain" />
                                       <button type="button" onClick={() => handleQuestionChange(qIndex, 'imageUrl', null)} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"><X className="w-2.5 h-2.5" /></button>
                                     </div>
                                   ) : (
@@ -1677,7 +1678,7 @@ export default function CreateAssignment() {
                             <span className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-black text-primary shrink-0 mt-0.5">{i + 1}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-foreground leading-snug">{q.text || <span className="text-muted-foreground/50">{lang === "ar" ? "نص السؤال..." : "Question text..."}</span>}</p>
-                              {q.imageUrl && <img src={q.imageUrl} alt="" className="mt-2 max-h-36 rounded-lg border border-border object-contain" />}
+                              {q.imageUrl && <img src={resolveImageUrl(q.imageUrl) ?? ""} alt="" className="mt-2 max-h-36 rounded-lg border border-border object-contain" />}
                             </div>
                             <span className="text-xs font-bold text-secondary shrink-0">{q.points || 1} {lang === "ar" ? "د" : "pt"}</span>
                           </div>

@@ -8,6 +8,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { playVictoryFanfare, playCorrectSound, playGiftSound, playNotificationSound } from "@/lib/game-sounds";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -804,7 +805,7 @@ export default function WheelPlay() {
                     <p className="text-2xl font-black leading-relaxed">{currentSeg.text}</p>
                     {currentSeg.imageUrl && (
                       <div className="flex justify-center mt-2">
-                        <img src={currentSeg.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }} />
+                        <img src={resolveImageUrl(currentSeg.imageUrl) ?? ""} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }} />
                       </div>
                     )}
                     {showAnswer ? (
@@ -871,7 +872,7 @@ export default function WheelPlay() {
                     <p className="text-2xl font-black leading-relaxed">{currentSeg.text}</p>
                     {currentSeg.imageUrl && (
                       <div className="flex justify-center mt-2">
-                        <img src={currentSeg.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }} />
+                        <img src={resolveImageUrl(currentSeg.imageUrl) ?? ""} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,20vh,200px)", maxWidth: "80%" }} />
                       </div>
                     )}
                     {currentSeg.bonusType && (

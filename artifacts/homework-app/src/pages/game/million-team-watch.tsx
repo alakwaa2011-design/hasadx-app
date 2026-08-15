@@ -7,6 +7,7 @@ import { Trophy, Users, ArrowRight, ArrowLeft } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { useGameAudio } from "./useGameAudio";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 type LifelineKey = "fifty" | "phone" | "audience" | "swap";
@@ -187,7 +188,7 @@ export default function MillionTeamWatch() {
                 )}
               </div>
               <p className="text-white text-lg font-bold leading-relaxed">{currentQuestion.text}</p>
-              {currentQuestion.imageUrl && <img src={currentQuestion.imageUrl} alt="" className="mt-3 max-h-48 mx-auto rounded-lg" />}
+              {currentQuestion.imageUrl && <img src={resolveImageUrl(currentQuestion.imageUrl) ?? ""} alt="" className="mt-3 max-h-48 mx-auto rounded-lg" />}
               <div className="grid grid-cols-2 gap-2 mt-3">
                 {(["A", "B", "C", "D"] as const).map(k => {
                   const opt = currentQuestion[`option${k}` as "optionA"];

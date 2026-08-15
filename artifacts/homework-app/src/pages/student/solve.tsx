@@ -16,6 +16,7 @@ import { WhiteboardCanvas } from "@/components/whiteboard-canvas";
 import { getSocket } from "@/lib/socket";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { feedbackOnSelect, feedbackOnCelebrate, isSolveSoundEnabled, setSolveSoundEnabled } from "@/lib/solve-feedback";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -879,7 +880,7 @@ export default function StudentSolve() {
                         </div>
                         {q.imageUrl && (
                           <div className="mb-4">
-                            <img src={q.imageUrl} alt={q.text} className="max-h-48 rounded-xl border border-border object-contain" />
+                            <img src={resolveImageUrl(q.imageUrl) ?? ""} alt={q.text} className="max-h-48 rounded-xl border border-border object-contain" />
                           </div>
                         )}
                       </div>
@@ -1707,7 +1708,7 @@ export default function StudentSolve() {
 
                           {q.imageUrl && (
                             <div className="mb-4 rounded-xl overflow-hidden border border-border">
-                              <img src={q.imageUrl} alt={q.text} className="max-h-56 w-full object-contain bg-muted/20" />
+                              <img src={resolveImageUrl(q.imageUrl) ?? ""} alt={q.text} className="max-h-56 w-full object-contain bg-muted/20" />
                             </div>
                           )}
 

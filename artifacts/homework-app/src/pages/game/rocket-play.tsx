@@ -5,6 +5,7 @@ import { Volume2, VolumeX, Loader2, CheckCircle2, XCircle, Send, Trophy } from "
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const GOLD = "#D9A521";
 const CYAN = "#54d8ff";
@@ -2908,7 +2909,7 @@ function QuestionPanel({
         </p>
         {currentQ.imageUrl && (
           <img
-            src={currentQ.imageUrl}
+            src={resolveImageUrl(currentQ.imageUrl) ?? ""}
             alt=""
             style={{
               marginTop: 12,

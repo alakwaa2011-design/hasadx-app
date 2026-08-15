@@ -78,6 +78,7 @@ import { useI18n } from "@/lib/i18n";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { SoloChallengeResults } from "@/components/game/solo-challenge-results";
 import AudioPlayer from "@/components/AudioPlayer";
+import { resolveImageUrl } from "@/lib/image-url";
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const WOOMEEZ_FLASH_STYLES = `
@@ -3388,7 +3389,7 @@ export default function GamePlay() {
               className="flex justify-center mt-3"
             >
               <img
-                src={question.imageUrl}
+                src={resolveImageUrl(question.imageUrl) ?? ""}
                 alt=""
                 className="max-h-64 sm:max-h-80 w-full rounded-2xl border-2 border-white/20 object-contain shadow-lg"
                 style={{ maxWidth: "min(100%, 600px)" }}
