@@ -62,6 +62,15 @@ interface TeacherBalance {
   planExpiresAt: string | null;
 }
 
+/** تسميات عربية لحالة الاشتراك — القيم الداخلية لا تُعرض للمستخدم */
+const STATUS_AR: Record<string, string> = {
+  active: "نشطة",
+  canceled: "ملغاة",
+  cancelled: "ملغاة",
+  expired: "منتهية",
+  past_due: "متأخرة السداد",
+};
+
 interface GrantablePlan {
   code: string;
   nameAr: string;
@@ -505,7 +514,7 @@ export function BalancesPanel() {
       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>
         {label}
         {row.subscriptionStatus && row.subscriptionStatus !== "active" && (
-          <span className="opacity-70"> · {row.subscriptionStatus}</span>
+          <span className="opacity-70"> · {STATUS_AR[row.subscriptionStatus] ?? row.subscriptionStatus}</span>
         )}
       </span>
     );
