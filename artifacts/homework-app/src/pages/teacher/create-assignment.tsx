@@ -75,6 +75,8 @@ interface AssignmentTemplate {
     questionCount: number;
     pointsPerQuestion: number;
     questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard";
+    /** Optional per-question type override — when provided, each slot gets its own type. */
+    questionTypes?: Array<"mcq" | "true_false" | "fill_blank" | "whiteboard">;
     hasDeadline: boolean;
     examMode: boolean;
     examDurationMinutes: number;
@@ -85,10 +87,10 @@ const TEMPLATES: AssignmentTemplate[] = [
   {
     id: "scratch",
     emoji: "✏️",
-    title: "من الصفر",
-    titleEn: "From Scratch",
-    desc: "صفحة فارغة — أضف أسئلتك بحرية",
-    descEn: "Blank page — add your questions freely",
+    title: "إنشاء واجب مخصص",
+    titleEn: "Custom Assignment",
+    desc: "أنشئ واجبك بالطريقة التي تناسبك وحدد الأسئلة بنفسك",
+    descEn: "Build your assignment your way and choose questions yourself",
     color: "#2d6a4f",
     bgColor: "#e8f5e9",
     tags: ["حر"],
@@ -119,7 +121,12 @@ const TEMPLATES: AssignmentTemplate[] = [
     bgColor: "#fef3c7",
     tags: ["5 أسئلة", "موعد تسليم"],
     tagsEn: ["5 questions", "Deadline"],
-    defaults: { submissionMode: "electronic", questionCount: 5, pointsPerQuestion: 2, questionType: "mcq", hasDeadline: true, examMode: false, examDurationMinutes: 30 },
+    defaults: {
+      submissionMode: "electronic", questionCount: 5, pointsPerQuestion: 2, questionType: "mcq",
+      /* Mixed types: 3 اختيار متعدد + 1 صح/خطأ + 1 إكمال — fully editable after applying */
+      questionTypes: ["mcq", "mcq", "true_false", "mcq", "fill_blank"],
+      hasDeadline: true, examMode: false, examDurationMinutes: 30,
+    },
   },
   {
     id: "shorttest",
@@ -398,13 +405,17 @@ export default function CreateAssignment() {
       setPaperTotalPoints(total);
       setQuestions([{ text: t.createAssignment.paperAnswer, points: total }]);
     } else {
-      const newQs: QuestionWithTts[] = Array.from({ length: defaults.questionCount }, () => ({
-        text: "", optionA: "", optionB: "", optionC: "", optionD: "",
-        correctAnswer: defaults.questionType === "true_false" ? "true" : "A",
-        points: defaults.pointsPerQuestion, questionType: defaults.questionType,
-        readAloud: false, allowMultipleAnswers: false, repeatQuestion: false,
-        correctAnswers: [defaults.questionType === "true_false" ? "true" : "A"],
-      }));
+      const newQs: QuestionWithTts[] = Array.from({ length: defaults.questionCount }, (_, i) => {
+        const qType = defaults.questionTypes?.[i] ?? defaults.questionType;
+        const defaultCorrect = qType === "true_false" ? "true" : "A";
+        return {
+          text: "", optionA: "", optionB: "", optionC: "", optionD: "",
+          correctAnswer: defaultCorrect,
+          points: defaults.pointsPerQuestion, questionType: qType,
+          readAloud: false, allowMultipleAnswers: false, repeatQuestion: false,
+          correctAnswers: [defaultCorrect],
+        };
+      });
       setQuestions(newQs);
     }
     if (defaults.hasDeadline) {
@@ -1089,7 +1100,7 @@ export default function CreateAssignment() {
                   </div>
                   <div>
                     <h3 className="font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "قوالب جاهزة" : "Ready Templates"}</h3>
-                    <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "ابدأ بسرعة أو أنشئ من الصفر" : "Start quickly or build from scratch"}</p>
+                    <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "جهّز هيكل أسئلتك بقالب، أو ابدأ بطريقتك" : "Pick a template or start your own way"}</p>
                   </div>
                 </div>
 
