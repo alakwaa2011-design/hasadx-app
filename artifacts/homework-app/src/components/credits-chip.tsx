@@ -15,6 +15,8 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 
 interface BalanceSummary {
   balance: number;
+  freeBalance: number;
+  paidBalance: number;
 }
 
 /**
@@ -30,7 +32,11 @@ export function useCreditsBalance() {
       });
       if (!res.ok) throw new Error("credits");
       const json = await res.json();
-      return { balance: typeof json.balance === "number" ? json.balance : 0 };
+      return {
+        balance: typeof json.balance === "number" ? json.balance : 0,
+        freeBalance: typeof json.freeBalance === "number" ? json.freeBalance : 0,
+        paidBalance: typeof json.paidBalance === "number" ? json.paidBalance : 0,
+      };
     },
     staleTime: 60_000,
     retry: false,

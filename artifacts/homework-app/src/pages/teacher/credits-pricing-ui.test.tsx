@@ -99,7 +99,8 @@ describe("صفحة الباقات /teacher/pricing", () => {
     const text = await render(<PricingPage />);
     expect(text()).toContain("50");
     expect(text()).not.toContain("٥٠");
-    expect(text()).toContain(ar.pricing.freeWelcomePoints);
+    expect(text()).toContain(ar.pricing.welcomePointsShort);
+    expect(text()).toContain(ar.pricing.welcomeOnce);
     expect(text()).not.toContain(ar.pricing.cancelSubscription);
     expect(text()).not.toContain(ar.pricing.manageSubscription);
   });
@@ -121,14 +122,14 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).toContain("600");
     expect(text()).toContain("1,200");
     // مزايا Pro المعتمدة موجودة
-    expect(text()).toContain(ar.pricing.proBasicAll);
-    expect(text()).toContain(ar.pricing.proSlidesAdvanced);
-    expect(text()).toContain(ar.pricing.proAdvancedReports);
-    expect(text()).toContain(ar.pricing.proExport);
+    expect(text()).toContain(ar.pricing.proF2);
+    expect(text()).toContain(ar.pricing.proF3);
+    expect(text()).toContain(ar.pricing.proF4);
+    expect(text()).toContain(ar.pricing.proF5);
     // مزايا Basic المعتمدة موجودة
-    expect(text()).toContain(ar.pricing.basicSmartSlides);
-    expect(text()).toContain(ar.pricing.basicVideo);
-    expect(text()).toContain(ar.pricing.basicClasses);
+    expect(text()).toContain(ar.pricing.basicF3);
+    expect(text()).toContain(ar.pricing.basicF4);
+    expect(text()).toContain(ar.pricing.basicF2);
     // لا مزايا مخترعة
     expect(text()).not.toMatch(/دعم أولوية|معالجة أسرع|priority/i);
     // لا خطة School
@@ -150,11 +151,12 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).toContain("1,200");
     expect(text()).toContain(ar.pricing.proSavingsBadge.split("20%")[0]);
     expect(text()).toContain(ar.pricing.proSavings20.split("20%")[0]);
-    expect(text()).toContain(ar.pricing.proExport);
+    expect(text()).toContain(ar.pricing.proF5);
     // بطاقتا Free وBasic تبقيان كاملتين
     expect(text()).toContain("4.99");
-    expect(text()).toContain(ar.pricing.basicSmartSlides);
-    expect(text()).toContain(ar.pricing.freeWelcomePoints);
+    expect(text()).toContain(ar.pricing.basicF3);
+    expect(text()).toContain(ar.pricing.welcomePointsShort);
+    expect(text()).toContain(ar.pricing.welcomeOnce);
     // حالة المستخدم تظهر بهدوء + إدارة/إلغاء الاشتراك
     expect(text()).toContain(ar.pricing.currentPlan);
     expect(text()).toContain(ar.pricing.manageSubscription);
@@ -219,8 +221,8 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(toggle).toBeTruthy();
     await act(async () => { toggle.click(); });
     expect(container.querySelector('[data-testid="compare-table"]')).toBeTruthy();
-    expect(text()).toContain(ar.pricing.comparePriceRow);
-    expect(text()).toContain(ar.pricing.compareSavingsRow);
+    expect(text()).toContain(ar.pricing.comparePointsRow);
+    expect(text()).toContain(ar.pricing.compareAiRow);
   });
 
   it("أزرار الترقية تظهر لمستخدم مجاني للباقتين المدفوعتين", async () => {
