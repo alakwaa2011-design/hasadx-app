@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { Card, Button } from "@/components/ui-elements";
+import { Button } from "@/components/ui-elements";
 import { toast } from "@/components/ui/sonner";
 import {
   Sparkles,
@@ -13,7 +13,10 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
-  AlertCircle
+  ChevronDown,
+  AlertCircle,
+  ShoppingCart,
+  Coins,
 } from "lucide-react";
 import {
   Tooltip,
@@ -44,6 +47,10 @@ async function apiFetch(path: string, opts?: RequestInit) {
   });
 }
 
+/* هوية حصاد للصفحة — أخضر داكن وذهبي هادئ */
+const HASAD_GREEN = "#0b4b35";
+const HASAD_GOLD = "#f1c657";
+
 interface Plan {
   id: number;
   code: string;
@@ -64,24 +71,52 @@ interface CurrentSub {
   cancelled_at: string | null;
 }
 
+interface Pkg {
+  id: number;
+  name: string;
+  description: string | null;
+  priceUsdCents: number;
+  currency: string;
+  credits: number;
+  isFeatured: boolean;
+}
+
 const PLAN_ICONS: Record<string, any> = {
-  free:  BadgeDollarSign,
+  free: BadgeDollarSign,
   basic: Star,
-  pro:   Zap,
+  pro: Zap,
 };
+
+/** يعرض نص الميزة مع إبراز "20%" بالذهبي */
+function GoldHighlight({ text }: { text: string }) {
+  const parts = text.split("20%");
+  if (parts.length === 1) return <span>{text}</span>;
+  return (
+    <span>
+      {parts[0]}
+      <span className="font-black" style={{ color: HASAD_GOLD }}>20%</span>
+      {parts[1]}
+    </span>
+  );
+}
 
 export default function PricingPage() {
   const [, setLocation] = useLocation();
   const { t, lang, dir } = useI18n();
   const p = t.pricing;
-  const [plans, setPlans]             = useState<Plan[]>([]);
-  const [currentSub, setCurrentSub]   = useState<CurrentSub | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [currentSub, setCurrentSub] = useState<CurrentSub | null>(null);
   const [pricingPageVisible, setPricingPageVisible] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
-  const [loading, setLoading]         = useState(true);
-  
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [purchasesEnabled, setPurchasesEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
-  const [cancelling, setCancelling]   = useState(false);
+  const [buyingId, setBuyingId] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const compareRef = useRef<HTMLDivElement>(null);
 
   // Shared react-query cache with the header CreditsChip — no duplicate request.
   const { data: creditsData } = useCreditsBalance();
@@ -94,12 +129,12 @@ export default function PricingPage() {
   // Value-first copy: short taglines + only actually-implemented facts.
   const PLAN_TAGLINES: Record<string, string> = {
     basic: p.basicTagline,
-    pro:   p.proTagline,
+    pro: p.proTagline,
   };
   const PLAN_FEATURES: Record<string, string[]> = {
-    free:  [p.freeStart, p.freeAlwaysFree],
+    free: [p.freeStart, p.freeAlwaysFree],
     basic: [],
-    pro:   [],
+    pro: [],
   };
   type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string } };
   const PRO_FEATURES: ProFeatureItem[] = [
@@ -110,12 +145,15 @@ export default function PricingPage() {
     Promise.all([
       apiFetch("/api/subscriptions/plans").then((r) => r.json()),
       apiFetch("/api/subscriptions/me").then((r) => r.json()),
+      apiFetch("/api/credits/packages").then((r) => r.json()).catch(() => ({ packages: [] })),
     ])
-      .then(([plansData, subData]) => {
+      .then(([plansData, subData, pkgs]) => {
         setPlans(plansData.plans ?? []);
         setPricingPageVisible(plansData.pricingPageVisible === true);
         setPaymentsEnabled(plansData.paymentsEnabled === true);
         setCurrentSub(subData.subscription ?? null);
+        setPackages(pkgs.packages ?? []);
+        setPurchasesEnabled(pkgs.purchasesEnabled !== false);
       })
       .catch(() => toast(p.loadError, { className: "text-red-500" }))
       .finally(() => setLoading(false));
@@ -140,6 +178,25 @@ export default function PricingPage() {
     }
   };
 
+  const handleBuyPack = async (pkg: Pkg) => {
+    setBuyingId(pkg.id);
+    try {
+      const r = await apiFetch("/api/credits/checkout", {
+        method: "POST",
+        body: JSON.stringify({ packageId: pkg.id }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as any).message || p.checkoutError);
+      }
+      const { checkoutUrl } = await r.json();
+      window.location.href = checkoutUrl;
+    } catch (err: any) {
+      toast(err.message, { className: "text-red-500" });
+      setBuyingId(null);
+    }
+  };
+
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -158,9 +215,15 @@ export default function PricingPage() {
     }
   };
 
+  const openCompare = () => {
+    setCompareOpen(true);
+    // بعد الفتح، مرّر إلى الجدول
+    setTimeout(() => compareRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
   const currentPlanCode = currentSub?.plan_code ?? "free";
-  const isActive        = currentSub?.status === "active" && currentSub?.payment_status === "active";
-  const ChevronIcon     = dir === "rtl" ? ChevronLeft : ChevronRight;
+  const isActive = currentSub?.status === "active" && currentSub?.payment_status === "active";
+  const ChevronIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   if (!loading && !pricingPageVisible) {
     return (
@@ -183,34 +246,72 @@ export default function PricingPage() {
     .map((code) => plans.find((pl) => pl.code === code))
     .filter(Boolean) as Plan[];
 
+  const orderedPacks = [...packages].sort((a, b) => a.credits - b.credits);
+
+  const packBadge = (pkg: Pkg): string | null => {
+    if (pkg.credits === 300) return p.badgeBalanced;
+    if (pkg.credits === 600) return p.badgeBestRate;
+    return null;
+  };
+
   return (
     <Layout>
-      <div dir={dir} className="max-w-5xl mx-auto space-y-12 pb-20 pt-6">
-        {/* Header */}
-        <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm font-bold px-4 py-1.5 rounded-full mb-2 shadow-sm">
-            <Sparkles size={16} className="text-[#E8B84B]" />
-            {p.pageTitle}
+      <div dir={dir} className="max-w-5xl mx-auto space-y-10 pb-20 pt-6 px-4">
+        {/* ── 1) هيدر أخضر مختصر ── */}
+        <header
+          className="rounded-[2rem] px-6 py-7 md:px-10 md:py-8 shadow-lg text-white flex flex-col md:flex-row md:items-center gap-6"
+          style={{ backgroundColor: HASAD_GREEN }}
+        >
+          <div className="flex-1 space-y-3">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight">{p.heroTitle}</h1>
+            <p className="text-white/75 text-sm md:text-base leading-relaxed">{p.heroSubtitle}</p>
+            <button
+              type="button"
+              onClick={openCompare}
+              className="inline-flex items-center gap-1.5 text-sm font-bold rounded-xl border border-white/25 bg-white/10 hover:bg-white/20 px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            >
+              {p.compareAll}
+              <ChevronDown size={15} className={compareOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+            </button>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-emerald-950">{p.pageHeading}</h1>
-          <p className="text-lg text-muted-foreground leading-relaxed">{p.pageSubtitle}</p>
-        </div>
+          {/* بطاقة الرصيد المصغرة */}
+          <button
+            type="button"
+            onClick={() => setLocation("/teacher/credits")}
+            data-testid="pricing-balance-line"
+            className="shrink-0 rounded-2xl bg-white/10 border border-white/20 hover:bg-white/15 transition-colors px-5 py-4 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            <span className="flex items-center gap-2 text-[13px] font-bold text-white/70">
+              <Coins size={15} style={{ color: HASAD_GOLD }} />
+              {p.availablePointsLabel}
+            </span>
+            <span className="mt-1 block text-2xl font-black tabular-nums" style={{ color: HASAD_GOLD }}>
+              {balance != null ? fmt(balance) : "—"}
+            </span>
+            <span className="mt-0.5 block text-[11px] font-semibold text-white/60 underline underline-offset-4">
+              {p.managePoints}
+            </span>
+          </button>
+        </header>
 
-        {/* Plan cards */}
+        {/* ── 2) بطاقات الاشتراك ── */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-             {[1, 2, 3].map(i => <div key={i} className="h-[500px] rounded-3xl bg-muted/40 animate-pulse" />)}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-[480px] rounded-3xl bg-muted/40 animate-pulse" />
+            ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch pt-4">
             {orderedPlans.map((plan) => {
-              const Icon      = PLAN_ICONS[plan.code] ?? Sparkles;
+              const Icon = PLAN_ICONS[plan.code] ?? Sparkles;
               const isCurrent = plan.code === currentPlanCode && isActive;
-              const isPro     = plan.code === "pro";
-              const isFree    = plan.code === "free";
-              const priceUSD  = (plan.priceMinor / 100).toFixed(2);
-              const features  = PLAN_FEATURES[plan.code] ?? [];
-              const planName  = lang === "ar" ? plan.nameAr : plan.nameEn;
+              const isPro = plan.code === "pro";
+              const isBasic = plan.code === "basic";
+              const isFree = plan.code === "free";
+              const priceUSD = (plan.priceMinor / 100).toFixed(2);
+              const features = PLAN_FEATURES[plan.code] ?? [];
+              const planName = lang === "ar" ? plan.nameAr : plan.nameEn;
 
               return (
                 <div
@@ -218,15 +319,21 @@ export default function PricingPage() {
                   className={[
                     "relative flex flex-col p-8 rounded-[2rem] transition-all duration-300",
                     isPro
-                      ? "border-2 border-emerald-800 shadow-2xl bg-emerald-900 text-white transform md:-translate-y-4 md:hover:-translate-y-5"
+                      ? "shadow-2xl text-white transform md:-translate-y-4 md:hover:-translate-y-5 border-2"
                       : isCurrent
                       ? "border-2 border-emerald-500 shadow-lg bg-white"
-                      : "border border-border/80 shadow-sm bg-white/60 hover:border-emerald-200 hover:bg-white hover:shadow-md",
+                      : isBasic
+                      ? "border border-amber-100/80 shadow-sm bg-[#fffdf6] hover:border-amber-200 hover:shadow-md"
+                      : "border border-border/80 shadow-sm bg-white hover:border-emerald-200 hover:shadow-md",
                   ].join(" ")}
+                  style={isPro ? { backgroundColor: HASAD_GREEN, borderColor: "#0a3f2d" } : undefined}
                 >
                   {isPro && (
                     <div className="absolute -top-4 right-0 left-0 flex justify-center">
-                      <span className="bg-[#E8B84B] text-amber-950 text-sm font-extrabold px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
+                      <span
+                        className="text-sm font-extrabold px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-md"
+                        style={{ backgroundColor: HASAD_GOLD, color: "#3d2e00" }}
+                      >
                         <Zap size={14} className="shrink-0" fill="currentColor" />
                         {p.proSavingsBadge}
                       </span>
@@ -240,7 +347,7 @@ export default function PricingPage() {
                     </div>
                   )}
 
-                  {/* Plan name + icon */}
+                  {/* رأس البطاقة — في المنتصف */}
                   <div className="flex flex-col items-center text-center mb-6 mt-2">
                     <div
                       className={[
@@ -248,7 +355,7 @@ export default function PricingPage() {
                         isPro ? "bg-white/10 border border-white/20" : "bg-emerald-50 border border-emerald-100",
                       ].join(" ")}
                     >
-                      <Icon size={28} className={isPro ? "text-[#E8B84B]" : "text-emerald-700"} />
+                      <Icon size={28} style={isPro ? { color: HASAD_GOLD } : undefined} className={isPro ? "" : "text-emerald-700"} />
                     </div>
                     <h3 className={["font-extrabold text-2xl mb-1", isPro ? "text-white" : "text-emerald-950"].join(" ")}>
                       {planName}
@@ -260,8 +367,11 @@ export default function PricingPage() {
                     )}
                   </div>
 
-                  {/* Price */}
-                  <div className="text-center mb-8 pb-8 border-b border-dashed border-border/50" style={{ borderColor: isPro ? 'rgba(255,255,255,0.15)' : undefined }}>
+                  {/* السعر — في المنتصف */}
+                  <div
+                    className="text-center mb-8 pb-8 border-b border-dashed border-border/50"
+                    style={{ borderColor: isPro ? "rgba(255,255,255,0.15)" : undefined }}
+                  >
                     {isFree ? (
                       <div className="h-[48px] flex items-center justify-center">
                         <span className="text-4xl font-black">{p.freePlanLabel}</span>
@@ -277,8 +387,8 @@ export default function PricingPage() {
                         </span>
                       </div>
                     )}
-                    
-                    <div className={["mt-3 text-sm font-medium", isPro ? "text-emerald-200" : "text-emerald-700"].join(" ")}>
+
+                    <div className={["mt-3 text-sm font-medium", isPro ? "text-emerald-100" : "text-emerald-700"].join(" ")}>
                       {isFree ? (
                         <span>{fmt(plan.monthlyCredits)} {p.freeWelcomePoints}</span>
                       ) : plan.rolloverCap ? (
@@ -294,9 +404,9 @@ export default function PricingPage() {
                     </div>
                   </div>
 
-                  {/* Features list */}
+                  {/* قائمة المزايا — RTL محاذاة لليمين */}
                   <TooltipProvider delayDuration={100}>
-                    <ul className="space-y-3.5 flex-1 mb-8">
+                    <ul className="space-y-3.5 flex-1 mb-8 text-start">
                       {isPro
                         ? PRO_FEATURES.map((f, i) => (
                             <li
@@ -304,27 +414,30 @@ export default function PricingPage() {
                               className={[
                                 "flex items-start gap-3",
                                 f.highlight
-                                  ? "text-[#E8B84B] font-bold text-[15px] bg-white/5 rounded-xl p-3 border border-white/10 -mx-3"
+                                  ? "font-bold text-[15px] bg-white/5 rounded-xl p-3 border border-white/10 -mx-3"
                                   : "text-[15px] font-medium",
                               ].join(" ")}
                             >
-                              {f.highlight
-                                ? <Zap size={18} className="shrink-0 mt-0.5 text-[#E8B84B]" fill="currentColor" />
-                                : <Check size={18} className="shrink-0 mt-0.5 text-[#E8B84B]" />
-                              }
-                              <span className={f.highlight ? "text-[#E8B84B] flex items-center gap-1.5 flex-wrap" : "text-white/90 flex items-center gap-1.5 flex-wrap"}>
-                                <span>{f.text}</span>
+                              {f.highlight ? (
+                                <Zap size={18} className="shrink-0 mt-0.5" style={{ color: HASAD_GOLD }} fill="currentColor" />
+                              ) : (
+                                <Check size={18} className="shrink-0 mt-0.5" style={{ color: HASAD_GOLD }} />
+                              )}
+                              <span className="text-white/90 flex items-center gap-1.5 flex-wrap">
+                                <GoldHighlight text={f.text} />
                                 {f.tooltip && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className="inline-flex cursor-help"><Info size={15} className={f.highlight ? "text-[#E8B84B]/60 hover:text-[#E8B84B] shrink-0" : "text-white/50 hover:text-white/90 shrink-0"} /></span>
+                                      <span className="inline-flex cursor-help" tabIndex={0}>
+                                        <Info size={15} className="text-white/50 hover:text-white/90 shrink-0" />
+                                      </span>
                                     </TooltipTrigger>
                                     <TooltipContent
                                       side="bottom"
-                                      className="max-w-[260px] p-4 bg-emerald-950 border-emerald-800 text-white shadow-xl rounded-xl"
+                                      className="max-w-[270px] p-4 bg-emerald-950 border-emerald-800 text-white shadow-xl rounded-xl"
                                       dir={dir}
                                     >
-                                      <p className="font-bold text-sm mb-1.5 text-[#E8B84B]">{f.tooltip.title}</p>
+                                      <p className="font-bold text-sm mb-1.5" style={{ color: HASAD_GOLD }}>{f.tooltip.title}</p>
                                       <p className="text-xs leading-relaxed opacity-90">{f.tooltip.body}</p>
                                     </TooltipContent>
                                   </Tooltip>
@@ -341,15 +454,13 @@ export default function PricingPage() {
                     </ul>
                   </TooltipProvider>
 
-                  {/* CTA */}
+                  {/* CTA — في المنتصف */}
                   <div className="mt-auto pt-4">
                     {isCurrent && isFree ? (
-                      /* Free is current plan — just show a label */
                       <Button variant="outline" className="w-full bg-emerald-50/50 text-emerald-800 border-emerald-200" disabled>
                         <Check size={16} className="mr-2 rtl:ml-2 rtl:mr-0" /> {p.starterPlan}
                       </Button>
                     ) : isCurrent ? (
-                      /* Paid plan is current */
                       <div className="space-y-3">
                         <Button
                           variant={isPro ? "outline" : "default"}
@@ -403,20 +514,19 @@ export default function PricingPage() {
                         )}
                       </div>
                     ) : isFree ? (
-                      /* Non-current free plan slot */
                       <Button variant="outline" className="w-full bg-muted/30" disabled>
                         {p.starterPlan}
                       </Button>
                     ) : !paymentsEnabled ? (
-                      /* Payments disabled */
                       <div className="w-full text-center p-3 rounded-xl bg-muted/50 border border-border text-sm text-muted-foreground font-medium flex items-center justify-center gap-2">
                         <AlertCircle size={16} className="opacity-70" />
                         {p.paymentsDisabled}
                       </div>
                     ) : (
                       <Button
-                        variant={isPro ? "outline" : "default"}
-                        className={["w-full group", isPro ? "bg-white text-emerald-950 border-white hover:bg-emerald-50 hover:text-emerald-950" : ""].join(" ")}
+                        variant="default"
+                        className={["w-full group font-bold", isPro ? "border-0 hover:opacity-90" : ""].join(" ")}
+                        style={isPro ? { backgroundColor: HASAD_GOLD, color: "#3d2e00" } : undefined}
                         onClick={() => handleUpgrade(plan.code)}
                         disabled={checkingOut !== null}
                       >
@@ -439,31 +549,166 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Quiet secondary balance line — never competes with the plan cards */}
-        {!loading && (
-          <div
-            className="text-center text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap"
-            data-testid="pricing-balance-line"
-          >
-            {balance != null && (
-              <span>
-                {p.currentBalanceLabel}{" "}
-                <span className="font-bold tabular-nums text-emerald-900">{fmt(balance)}</span>{" "}
-                {p.balancePointsWord}
-              </span>
+        {/* ── 3) جدول المقارنة (قابل للفتح/الإغلاق) ── */}
+        {!loading && orderedPlans.length > 0 && (
+          <div ref={compareRef} className="scroll-mt-24">
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setCompareOpen((o) => !o)}
+                aria-expanded={compareOpen}
+                data-testid="compare-toggle"
+                className="inline-flex items-center gap-2 text-sm font-bold text-emerald-900 border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50 rounded-xl px-5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+              >
+                {p.compareAll}
+                <ChevronDown size={16} className={["transition-transform", compareOpen ? "rotate-180" : ""].join(" ")} />
+              </button>
+            </div>
+            {compareOpen && (
+              <div className="mt-6 bg-white rounded-2xl border border-border shadow-sm overflow-hidden" data-testid="compare-table">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm whitespace-nowrap">
+                    <thead style={{ backgroundColor: HASAD_GREEN }} className="text-white">
+                      <tr>
+                        <th className="py-3.5 px-5 font-bold text-start">{p.compareFeatureCol}</th>
+                        {orderedPlans.map((pl) => (
+                          <th key={pl.code} className="py-3.5 px-5 font-bold text-center">
+                            {lang === "ar" ? pl.nameAr : pl.nameEn}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      <tr>
+                        <td className="py-3.5 px-5 font-semibold text-start">{p.comparePriceRow}</td>
+                        {orderedPlans.map((pl) => (
+                          <td key={pl.code} className="py-3.5 px-5 text-center font-bold tabular-nums">
+                            {pl.priceMinor === 0 ? p.freePlanLabel : `$${(pl.priceMinor / 100).toFixed(2)}`}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3.5 px-5 font-semibold text-start">{p.comparePointsRow}</td>
+                        {orderedPlans.map((pl) => (
+                          <td key={pl.code} className="py-3.5 px-5 text-center tabular-nums">
+                            {pl.code === "free"
+                              ? `${fmt(pl.monthlyCredits)} (${p.freeWelcomePoints})`
+                              : fmt(pl.monthlyCredits)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3.5 px-5 font-semibold text-start">{p.compareRolloverRow}</td>
+                        {orderedPlans.map((pl) => (
+                          <td key={pl.code} className="py-3.5 px-5 text-center tabular-nums">
+                            {pl.rolloverCap ? `${p.rolloverUntil} ${fmt(pl.rolloverCap)}` : "—"}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-3.5 px-5 font-semibold text-start">{p.compareSavingsRow}</td>
+                        {orderedPlans.map((pl) => (
+                          <td key={pl.code} className="py-3.5 px-5 text-center">
+                            {pl.code === "pro" ? (
+                              <Check size={18} className="inline text-emerald-600" />
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={() => setLocation("/teacher/credits")}
-              className="underline underline-offset-4 font-semibold text-emerald-800 hover:text-emerald-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded"
-            >
-              {p.managePoints}
-            </button>
           </div>
         )}
 
-      </div>
+        {/* ── 4) مركز نقاط حصاد ── */}
+        {!loading && orderedPacks.length > 0 && (
+          <section
+            className="rounded-[2rem] border border-amber-100/70 px-6 py-10 md:px-10"
+            style={{ backgroundColor: "#fdfaf1" }}
+            data-testid="packs-section"
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-black text-emerald-950">{p.packsTitle}</h2>
+              <p className="mt-2 text-sm font-semibold text-muted-foreground">{p.packsSubtitle}</p>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {orderedPacks.map((pkg) => {
+                const badge = packBadge(pkg);
+                return (
+                  <div
+                    key={pkg.id}
+                    className="relative flex flex-col items-center text-center bg-white rounded-2xl border border-border/70 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all px-6 pt-8 pb-6"
+                  >
+                    {badge && (
+                      <span className="absolute -top-3 inline-flex items-center rounded-full bg-emerald-600 text-white text-[11px] font-extrabold px-3 py-1 shadow">
+                        {badge}
+                      </span>
+                    )}
+                    <span className="text-5xl font-black tracking-tight text-emerald-900 tabular-nums">{fmt(pkg.credits)}</span>
+                    <span className="mt-1 text-sm font-bold text-emerald-700">{p.packPointUnit}</span>
+                    {pkg.description && (
+                      <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{pkg.description}</p>
+                    )}
+                    <span className="mt-4 text-2xl font-extrabold text-emerald-950 tabular-nums">
+                      ${(pkg.priceUsdCents / 100).toFixed(2)}
+                    </span>
+                    <div className="mt-5 w-full">
+                      {!paymentsEnabled || !purchasesEnabled ? (
+                        <div className="w-full text-center p-2.5 rounded-xl bg-muted/50 border border-border text-xs text-muted-foreground font-medium flex items-center justify-center gap-1.5">
+                          <AlertCircle size={14} className="opacity-70" />
+                          {p.paymentsDisabled}
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-50 font-bold"
+                          onClick={() => handleBuyPack(pkg)}
+                          disabled={buyingId !== null}
+                        >
+                          {buyingId === pkg.id ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 size={15} className="animate-spin" /> {p.redirecting}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              <ShoppingCart size={15} />
+                              {p.packBuyWord} {fmt(pkg.credits)} {p.packPointsWord}
+                            </span>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mt-8 text-center text-sm font-medium text-muted-foreground leading-relaxed" data-testid="packs-policy">
+              {p.packsPolicy}
+            </p>
+          </section>
+        )}
+
+        {/* ── 5) دعوة ختامية خفيفة ── */}
+        {!loading && (
+          <div className="text-center text-sm text-muted-foreground flex items-center justify-center gap-3 flex-wrap">
+            <span className="font-semibold">{p.notSureTitle}</span>
+            <button
+              type="button"
+              onClick={openCompare}
+              className="underline underline-offset-4 font-bold text-emerald-800 hover:text-emerald-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded"
+            >
+              {p.notSureCta}
+            </button>
+          </div>
+        )}
+      </div>
     </Layout>
   );
 }

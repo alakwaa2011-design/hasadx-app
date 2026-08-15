@@ -104,12 +104,20 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).not.toContain(ar.pricing.manageSubscription);
   });
 
-  it("Pro: يعرض نص خصم 20% المعتمد وأرقام النقاط الصحيحة (600، ترحيل 1,200)", async () => {
+  it("Pro: ميزة توفير 20% بالنص المعتمد + أرقام النقاط الصحيحة (600، ترحيل 1,200)", async () => {
     vi.stubGlobal("fetch", mockFetch());
     const text = await render(<PricingPage />);
-    expect(text()).toContain(ar.pricing.proSavings20);
-    expect(ar.pricing.proSavings20).toBe("وفّر 20% من الرصيد عند استخدام أدوات الذكاء الاصطناعي.");
-    // الأرقام تظهر في قسم السعر (لا عبر مفاتيح locale المحذوفة)
+    // النص المعتمد للميزة (يُعرض مجزّأً حول "20%" لإبرازها بالذهبي)
+    expect(ar.pricing.proSavings20).toBe("استهلاك أقل للنقاط بـ20%");
+    const [before, after] = ar.pricing.proSavings20.split("20%");
+    expect(text()).toContain(before);
+    expect(text()).toContain("20%");
+    expect(after).toBe("");
+    // الميزة لا تتكرر: تظهر داخل بطاقة Pro مرة واحدة فقط
+    expect((text().match(new RegExp(before, "g")) ?? []).length).toBe(1);
+    // الشارة العلوية المختصرة موجودة أيضاً وغير مكررة
+    expect((text().match(new RegExp(ar.pricing.proSavingsBadge, "g")) ?? []).length).toBe(1);
+    // الأرقام تظهر في قسم السعر (قيم حية من الـAPI)
     expect(text()).toContain("600");
     expect(text()).toContain("1,200");
     // لا «تقارير متقدمة» في بطاقة Pro — ميزة غير معتمدة
@@ -118,9 +126,68 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).not.toMatch(/دعم أولوية|معالجة أسرع|priority/i);
     // لا خطة School
     expect(text()).not.toMatch(/School|مدرسة/);
-    // لا قسم «نقاط إضافية» أو زر «شراء نقاط إضافية»
-    expect(text()).not.toContain("نقاط إضافية (دفعة واحدة");
-    expect(text()).not.toContain("شراء نقاط إضافية");
+  });
+
+  it("ميزة التوفير أول عنصر في قائمة مزايا Pro", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    await render(<PricingPage />);
+    const lists = Array.from(container.querySelectorAll("ul"));
+    const proList = lists.find((ul) => (ul.textContent ?? "").includes("استهلاك أقل للنقاط"));
+    expect(proList).toBeTruthy();
+    const firstItem = proList!.querySelector("li");
+    expect(firstItem?.textContent).toContain("استهلاك أقل للنقاط");
+  });
+
+  it("البطاقات الثلاث تُعرض بقيم حية من الـAPI", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<PricingPage />);
+    expect(text()).toContain("المجانية");
+    expect(text()).toContain("الأساسية");
+    expect(text()).toContain("الاحترافية");
+    expect(text()).toContain("4.99");
+    expect(text()).toContain("9.99");
+    expect(text()).toContain("250");
+  });
+
+  it("قسم النقاط الإضافية: الحزم الحية + الشارات + نص السياسة الحرفي", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<PricingPage />);
+    expect(text()).toContain(ar.pricing.packsTitle);
+    // الحزم من /api/credits/packages (قيم حية)
+    expect(text()).toContain("2.99");
+    expect(text()).toContain("6.99");
+    expect(text()).toContain("11.99");
+    // أزرار الشراء
+    expect(text()).toContain(`${ar.pricing.packBuyWord} 100 ${ar.pricing.packPointsWord}`);
+    expect(text()).toContain(`${ar.pricing.packBuyWord} 300 ${ar.pricing.packPointsWord}`);
+    expect(text()).toContain(`${ar.pricing.packBuyWord} 600 ${ar.pricing.packPointsWord}`);
+    // الشارات
+    expect(text()).toContain(ar.pricing.badgeBalanced);
+    expect(text()).toContain(ar.pricing.badgeBestRate);
+    // نص السياسة الحرفي المطلوب
+    expect(ar.pricing.packsPolicy).toBe("شراء النقاط لا يغيّر باقتك؛ الاشتراك يفتح المزايا، والنقاط تُستخدم للعمليات الذكية.");
+    expect(text()).toContain(ar.pricing.packsPolicy);
+  });
+
+  it("لا حزم من الـAPI ⇒ قسم النقاط الإضافية لا يظهر", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/credits/packages": { packages: [], purchasesEnabled: true },
+    }));
+    const text = await render(<PricingPage />);
+    expect(text()).not.toContain(ar.pricing.packsTitle);
+    expect(text()).not.toContain(ar.pricing.packsPolicy);
+  });
+
+  it("جدول المقارنة يُفتح عند الضغط ويعرض حقائق فعلية فقط", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<PricingPage />);
+    expect(container.querySelector('[data-testid="compare-table"]')).toBeNull();
+    const toggle = container.querySelector('[data-testid="compare-toggle"]') as HTMLButtonElement;
+    expect(toggle).toBeTruthy();
+    await act(async () => { toggle.click(); });
+    expect(container.querySelector('[data-testid="compare-table"]')).toBeTruthy();
+    expect(text()).toContain(ar.pricing.comparePriceRow);
+    expect(text()).toContain(ar.pricing.compareSavingsRow);
   });
 
   it("أزرار الترقية تظهر لمستخدم مجاني للباقتين المدفوعتين", async () => {
