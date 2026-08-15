@@ -325,7 +325,7 @@ export default function PricingPage() {
               type="button"
               onClick={() => setLocation("/teacher/credits")}
               data-testid="pricing-balance-line"
-              className="rounded-[20px] border border-white/15 bg-white/10 p-3.5 text-start transition-transform hover:-translate-y-0.5"
+              className="rounded-[20px] border border-white/15 bg-white/10 p-3.5 text-start transition-all duration-300 hover:-translate-y-1 hover:bg-white/15 hover:border-[#f4d978]/40 hover:shadow-[0_14px_30px_rgba(0,0,0,0.18)]"
             >
               <div className="flex items-center justify-between text-[#cde0d1]">
                 <span className="text-xs font-bold">{p.availablePointsLabel}</span>
@@ -375,7 +375,11 @@ export default function PricingPage() {
                 return (
                   <article
                     key={plan.code}
-                    className={`relative flex min-h-[550px] flex-col overflow-hidden rounded-[28px] border p-5 sm:p-6 ${style.card}`}
+                    className={`group relative flex min-h-[550px] flex-col overflow-hidden rounded-[28px] border p-5 sm:p-6 transition-all duration-300 ease-out hover:-translate-y-1.5 ${
+                      plan.code === "pro"
+                        ? "hover:shadow-[0_30px_60px_rgba(9,62,42,0.38)] hover:border-[#f2c856]/60"
+                        : "hover:shadow-[0_24px_48px_rgba(13,68,46,0.16)] hover:border-[#9dbfa6]"
+                    } ${style.card}`}
                   >
                     {/* شريط الشارة العلوي */}
                     {meta?.badge && (
@@ -399,7 +403,7 @@ export default function PricingPage() {
 
                     {/* الرأس — في المنتصف */}
                     <div className="flex flex-col items-center text-center">
-                      <div className={`grid size-11 place-items-center rounded-2xl ${style.icon}`}>
+                      <div className={`grid size-11 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 ${style.icon}`}>
                         <Icon className="size-5" />
                       </div>
                       <div className="mt-3">
@@ -461,12 +465,12 @@ export default function PricingPage() {
                         return (
                           <li
                             key={f.label}
-                            className={`flex items-start gap-2.5 text-sm font-bold leading-6 ${
-                              isProSaving ? "rounded-xl border border-[#f4d978]/30 bg-[#f1c657]/10 px-2.5 py-1.5" : ""
+                            className={`flex items-start gap-2.5 text-sm font-bold leading-6 transition-transform duration-200 hover:translate-x-[-3px] rtl:hover:translate-x-[3px] ${
+                              isProSaving ? "rounded-xl border border-[#f4d978]/30 bg-[#f1c657]/10 px-2.5 py-1.5 hover:bg-[#f1c657]/20" : ""
                             }`}
                           >
                             <span
-                              className={`mt-1 grid size-5 shrink-0 place-items-center rounded-full ${
+                              className={`mt-1 grid size-5 shrink-0 place-items-center rounded-full transition-transform duration-200 group-hover:scale-105 ${
                                 isPro ? "bg-white/10 text-[#f4d978]" : "bg-[#eaf3eb] text-[#0b4b35]"
                               }`}
                             >
@@ -705,7 +709,7 @@ export default function PricingPage() {
                 return (
                   <article
                     key={pkg.id}
-                    className={`relative flex min-h-[210px] flex-col items-center rounded-[22px] border bg-white p-3.5 text-center transition-all hover:-translate-y-0.5 ${
+                    className={`relative flex min-h-[210px] flex-col items-center rounded-[22px] border bg-white p-3.5 text-center transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_18px_36px_rgba(13,68,46,0.12)] ${
                       featured
                         ? "border-[#d2a52d] shadow-[0_10px_22px_rgba(204,157,34,0.10)]"
                         : "border-[#dce7dd] hover:border-[#b8cdbb]"
