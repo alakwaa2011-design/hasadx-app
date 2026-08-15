@@ -1687,7 +1687,7 @@ export default function CreateVideoLesson() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-end">
-                      <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-emerald-600" />
+                      <Switch checked={isShared} onCheckedChange={setIsShared}  />
                     </div>
                   </div>
                 </section>

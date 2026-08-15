@@ -1781,7 +1781,7 @@ export default function DictationCreate() {
                   </p>
                 </div>
                 <div className="flex justify-end sm:shrink-0">
-                  <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
+                  <Switch checked={isShared} onCheckedChange={setIsShared}  />
                 </div>
               </div>
 

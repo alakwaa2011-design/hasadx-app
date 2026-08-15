@@ -18,6 +18,7 @@ import { MessagesTab } from "@/components/admin/messages-tab";
 import { AdminOnOffPill } from "@/components/admin/admin-on-off-pill";
 import { useThemeUpdater, type SocialLink } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 
@@ -302,13 +303,10 @@ function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete,
                 />
                 <div className="flex items-center gap-3 flex-wrap">
                   <label className="flex items-center gap-2 text-xs font-medium cursor-pointer flex-wrap">
-                    {fb.email ? <AdminOnOffPill on={sendByEmail} lang={lang} size="sm" /> : null}
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={sendByEmail}
-                      onChange={(e) => setSendByEmail(e.target.checked)}
+                      onCheckedChange={setSendByEmail}
                       disabled={sending || !fb.email}
-                      className="w-4 h-4 accent-primary"
                     />
                     <AtSign className="w-3.5 h-3.5" />
                     {fb.email
@@ -2608,15 +2606,10 @@ export default function AdminPage() {
                       : "When on, every teacher can choose the Pro tier when generating."}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <AdminOnOffPill on={proAiForAll} lang={adminLang} />
-                  <input
-                    type="checkbox"
-                    checked={proAiForAll}
-                    onChange={(e) => handleToggleProAiForAll(e.target.checked)}
-                    className="w-5 h-5 accent-violet-600 cursor-pointer"
-                  />
-                </div>
+                <Switch
+                  checked={proAiForAll}
+                  onCheckedChange={handleToggleProAiForAll}
+                />
               </label>
             </Card>
 
@@ -2646,15 +2639,10 @@ export default function AdminPage() {
                       : "When on, every teacher gets the uncapped Pro tier."}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <AdminOnOffPill on={presentationsProForAll} lang={adminLang} />
-                  <input
-                    type="checkbox"
-                    checked={presentationsProForAll}
-                    onChange={(e) => handleTogglePresentationsProForAll(e.target.checked)}
-                    className="w-5 h-5 accent-fuchsia-600 cursor-pointer"
-                  />
-                </div>
+                <Switch
+                  checked={presentationsProForAll}
+                  onCheckedChange={handleTogglePresentationsProForAll}
+                />
               </label>
 
               <div className="space-y-3">
@@ -2755,12 +2743,10 @@ export default function AdminPage() {
                   <p className="font-bold text-sm text-foreground">{lang === "ar" ? "إظهار قسم الإحصائيات" : "Show Statistics Section"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{lang === "ar" ? "عند التفعيل يظهر قسم «حصاد ينمو» في الصفحة الرئيسية" : "When enabled, the stats section is visible to all visitors"}</p>
                 </div>
-                <button
-                  onClick={() => setShowPublicStats(v => !v)}
-                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${showPublicStats ? "bg-primary" : "bg-muted-foreground/30"}`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${showPublicStats ? (lang === "ar" ? "right-1" : "left-7") : (lang === "ar" ? "right-7" : "left-1")}`} />
-                </button>
+                <Switch
+                  checked={showPublicStats}
+                  onCheckedChange={setShowPublicStats}
+                />
               </div>
 
               {/* Stat rows — editable only when stats visible */}
