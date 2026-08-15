@@ -132,13 +132,17 @@ export default function PricingPage() {
     pro: p.proTagline,
   };
   const PLAN_FEATURES: Record<string, string[]> = {
-    free: [p.freeStart, p.freeAlwaysFree],
-    basic: [],
+    free: [p.freeAlwaysFree],
+    basic: [p.basicSmartSlides, p.basicVideo, p.basicClasses],
     pro: [],
   };
   type ProFeatureItem = { text: string; highlight?: boolean; tooltip?: { title: string; body: string } };
   const PRO_FEATURES: ProFeatureItem[] = [
     { text: p.proSavings20, highlight: true, tooltip: { title: p.proSavingsTooltipTitle, body: p.proSavingsTooltipBody } },
+    { text: p.proBasicAll },
+    { text: p.proSlidesAdvanced },
+    { text: p.proAdvancedReports },
+    { text: p.proExport },
   ];
 
   useEffect(() => {
@@ -335,7 +339,11 @@ export default function PricingPage() {
                         style={{ backgroundColor: HASAD_GOLD, color: "#3d2e00" }}
                       >
                         <Zap size={14} className="shrink-0" fill="currentColor" />
-                        {p.proSavingsBadge}
+                        <span>
+                          {p.proSavingsBadge.split("20%")[0]}
+                          <span className="font-black">20%</span>
+                          {p.proSavingsBadge.split("20%")[1]}
+                        </span>
                       </span>
                     </div>
                   )}
@@ -357,9 +365,20 @@ export default function PricingPage() {
                     >
                       <Icon size={28} style={isPro ? { color: HASAD_GOLD } : undefined} className={isPro ? "" : "text-emerald-700"} />
                     </div>
+                    {isPro && (
+                      <span className="text-[12px] font-bold tracking-wide mb-1" style={{ color: HASAD_GOLD }}>
+                        {p.proKicker}
+                      </span>
+                    )}
                     <h3 className={["font-extrabold text-2xl mb-1", isPro ? "text-white" : "text-emerald-950"].join(" ")}>
                       {planName}
                     </h3>
+                    {isCurrent && isPro && (
+                      <span className="mt-1 mb-1 inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/20 text-white/90 text-[11px] font-bold px-3 py-0.5">
+                        <Check size={12} style={{ color: HASAD_GOLD }} />
+                        {p.currentPlan}
+                      </span>
+                    )}
                     {PLAN_TAGLINES[plan.code] && (
                       <p className={["text-sm font-medium leading-snug", isPro ? "text-white/70" : "text-muted-foreground"].join(" ")}>
                         {PLAN_TAGLINES[plan.code]}

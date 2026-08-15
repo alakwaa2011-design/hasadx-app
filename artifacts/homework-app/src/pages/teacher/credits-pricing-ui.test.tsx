@@ -120,12 +120,45 @@ describe("صفحة الباقات /teacher/pricing", () => {
     // الأرقام تظهر في قسم السعر (قيم حية من الـAPI)
     expect(text()).toContain("600");
     expect(text()).toContain("1,200");
-    // لا «تقارير متقدمة» في بطاقة Pro — ميزة غير معتمدة
-    expect(text()).not.toContain(ar.pricing.proAdvancedReports);
+    // مزايا Pro المعتمدة موجودة
+    expect(text()).toContain(ar.pricing.proBasicAll);
+    expect(text()).toContain(ar.pricing.proSlidesAdvanced);
+    expect(text()).toContain(ar.pricing.proAdvancedReports);
+    expect(text()).toContain(ar.pricing.proExport);
+    // مزايا Basic المعتمدة موجودة
+    expect(text()).toContain(ar.pricing.basicSmartSlides);
+    expect(text()).toContain(ar.pricing.basicVideo);
+    expect(text()).toContain(ar.pricing.basicClasses);
     // لا مزايا مخترعة
     expect(text()).not.toMatch(/دعم أولوية|معالجة أسرع|priority/i);
     // لا خطة School
     expect(text()).not.toMatch(/School|مدرسة/);
+  });
+
+  it("مشترك Pro: البطاقات الثلاث تبقى كاملة + شارة «باقتك الحالية» وإدارة الاشتراك", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/me": {
+        subscription: {
+          plan_code: "pro", status: "active", payment_status: "active",
+          current_period_end: "2026-09-01T00:00:00Z", cancelled_at: null,
+        },
+      },
+    }));
+    const text = await render(<PricingPage />);
+    // بطاقة Pro تحتفظ بكامل محتواها: السعر والنقاط والشارة والمزايا
+    expect(text()).toContain("9.99");
+    expect(text()).toContain("1,200");
+    expect(text()).toContain(ar.pricing.proSavingsBadge.split("20%")[0]);
+    expect(text()).toContain(ar.pricing.proSavings20.split("20%")[0]);
+    expect(text()).toContain(ar.pricing.proExport);
+    // بطاقتا Free وBasic تبقيان كاملتين
+    expect(text()).toContain("4.99");
+    expect(text()).toContain(ar.pricing.basicSmartSlides);
+    expect(text()).toContain(ar.pricing.freeWelcomePoints);
+    // حالة المستخدم تظهر بهدوء + إدارة/إلغاء الاشتراك
+    expect(text()).toContain(ar.pricing.currentPlan);
+    expect(text()).toContain(ar.pricing.manageSubscription);
+    expect(text()).toContain(ar.pricing.cancelSubscription);
   });
 
   it("ميزة التوفير أول عنصر في قائمة مزايا Pro", async () => {
