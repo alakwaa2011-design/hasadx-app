@@ -1630,7 +1630,7 @@ export default function CreateVideoLesson() {
                             <p className="text-xs font-black text-slate-800 dark:text-slate-100">
                               {isAr ? "اسحب الفيديو أو اختر ملفاً" : "Drag or choose a video"}
                             </p>
-                            <p className="text-[11px] font-semibold text-slate-500">MP4, WebM, MOV · max 500MB</p>
+                            <p className="text-[11px] font-semibold text-slate-500">{isAr ? "MP4, WebM, MOV · الحد الأقصى 500 ميجا" : "MP4, WebM, MOV · max 500MB"}</p>
                           </div>
                         )}
                       </div>
