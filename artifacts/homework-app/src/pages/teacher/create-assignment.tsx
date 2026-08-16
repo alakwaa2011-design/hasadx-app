@@ -235,7 +235,7 @@ export default function CreateAssignment() {
   const [isShared, setIsShared] = useState(true);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
-  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<{ id: number; name: string; groupName?: string | null }[]>([]);
 
   const emptyElectronicQuestion: QuestionWithTts = {
     text: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", points: 1,
@@ -541,7 +541,7 @@ export default function CreateAssignment() {
     }
 
     fetch(`${API_BASE}/api/categories`, { credentials: "include" }).then(r => r.ok ? r.json() : []).then(setAvailableCategories).catch(() => {});
-    fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" }).then(r => r.ok ? r.json() : []).then(setGradeLevels).catch(() => {});
+    fetch(`${API_BASE}/api/teacher/classes`, { credentials: "include" }).then(r => r.ok ? r.json() : []).then((rows: { id: number; name: string; groupName?: string | null }[]) => setTeacherClasses(Array.isArray(rows) ? rows : [])).catch(() => {});
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" }).then(r => r.ok ? r.json() : null).then(data => { if (data?.isAdmin) setIsAdmin(true); }).catch(() => {});
   }, []);
 
@@ -1104,13 +1104,13 @@ export default function CreateAssignment() {
                           ))}
                         </div>
                       )}
-                      {gradeLevels.length > 0 ? (
+                      {teacherClasses.length > 0 ? (
                         <select onChange={e => { if (e.target.value && !targetClasses.includes(e.target.value)) setTargetClasses([...targetClasses, e.target.value]); e.target.value = ""; }} className="w-full bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5 cursor-pointer">
                           <option value="">{lang === "ar" ? "اختر صفاً..." : "Select class..."}</option>
-                          {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel}</option>)}
+                          {teacherClasses.map(c => <option key={c.id} value={c.name}>{c.groupName ? `${c.groupName} — ${c.name}` : c.name}</option>)}
                         </select>
                       ) : (
-                        <input value={classInput} onChange={e => setClassInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && classInput.trim()) { e.preventDefault(); if (!targetClasses.includes(classInput.trim())) setTargetClasses([...targetClasses, classInput.trim()]); setClassInput(""); } }} placeholder={lang === "ar" ? "Enter للإضافة" : "Enter to add"} className="w-full bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5" />
+                        <input value={classInput} onChange={e => setClassInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && classInput.trim()) { e.preventDefault(); if (!targetClasses.includes(classInput.trim())) setTargetClasses([...targetClasses, classInput.trim()]); setClassInput(""); } }} placeholder={lang === "ar" ? "اضغط Enter للإضافة" : "Press Enter to add"} className="w-full bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5" />
                       )}
                     </div>
                   </div>
