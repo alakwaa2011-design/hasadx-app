@@ -26,6 +26,7 @@ import { fileToBase64 } from "@/lib/utils";
 import { resolveImageUrl } from "@/lib/image-url";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
 import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
 import {
@@ -206,6 +207,7 @@ export default function CreateAssignment() {
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [colorTheme, setColorTheme] = useState("green");
 
   // ── Basic info ──
@@ -1070,7 +1072,7 @@ export default function CreateAssignment() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Label className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
                       <Database className="w-3.5 h-3.5 text-emerald-500" />
@@ -1110,101 +1112,64 @@ export default function CreateAssignment() {
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    {lang === "ar" ? "الوصف" : "Description"}
-                  </Label>
-                  <textarea
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder={lang === "ar" ? "وصف النشاط أو التعليمات (اختياري)" : "Activity description or instructions (optional)"}
-                    rows={2}
-                    className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all resize-none"
-                  />
-                </div>
               </div>
 
-              {/* Templates Section */}
-              <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                    <Copy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "ابدأ من هيكل جاهز" : "Start from a ready structure"}</h3>
-                    <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "هياكل فارغة (عدد أسئلة، أنواع، درجات) — املأها بنفسك أو بالذكاء لاحقاً" : "Empty structures (count, types, points) — fill them yourself or with AI later"}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {(() => {
-                    const scratch = TEMPLATES.find(t => t.id === "scratch")!;
-                    return (
-                      <button type="button" onClick={() => applyTemplate(scratch)}
-                        className={`w-full relative text-start p-5 rounded-2xl border-2 transition-all hover:shadow-md active:scale-[0.99] overflow-hidden bg-gradient-to-r from-emerald-500 to-emerald-600 border-transparent shadow-emerald-500/20 shadow-lg ${selectedTemplateId === "scratch" ? "ring-4 ring-emerald-500/30 ring-offset-2 dark:ring-offset-[#15201B]" : ""}`}>
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0 backdrop-blur-sm">
-                            {scratch.emoji}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-base sm:text-lg font-black text-white leading-tight">{lang === "ar" ? scratch.title : scratch.titleEn}</p>
-                            <p className="text-xs font-bold mt-1 text-emerald-100 truncate">{lang === "ar" ? scratch.desc : scratch.descEn}</p>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-emerald-200 shrink-0 rtl:rotate-180" />
-                        </div>
-                      </button>
-                    );
-                  })()}
-
-                  <div>
-                    <button type="button" onClick={() => setShowTemplates(v => !v)}
-                      className="flex items-center justify-between w-full p-4 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-colors group">
-                      <span className="text-sm font-black text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                        {lang === "ar" ? "تصفح القوالب الجاهزة المتبقية" : "Browse other ready-made templates"}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {!showTemplates && <span className="text-[11px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2.5 py-1 rounded-full">{TEMPLATES.length - 1}</span>}
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${showTemplates ? "rotate-180" : ""}`} />
-                      </div>
+              {/* Compact template picker */}
+              <div className="px-1">
+                {selectedTemplateId && selectedTemplateId !== "scratch" ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-bold text-slate-500">{lang === "ar" ? "القالب المختار:" : "Template:"}</span>
+                    <span className="text-[12px] font-black text-emerald-700 dark:text-emerald-400">
+                      {(() => { const tmpl = TEMPLATES.find(t => t.id === selectedTemplateId); return tmpl ? (lang === "ar" ? tmpl.title : tmpl.titleEn) : ""; })()}
+                    </span>
+                    <button type="button" onClick={() => setShowTemplateDialog(true)}
+                      className="text-[11px] font-black text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-2 transition-colors">
+                      {lang === "ar" ? "· تغيير" : "· Change"}
                     </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowTemplateDialog(true)}
+                    className="flex items-center gap-1.5 text-[12px] font-black text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group">
+                    <Copy className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                    {lang === "ar"
+                      ? `استخدام قالب جاهز · ${TEMPLATES.filter(t => t.id !== "scratch").length} قوالب`
+                      : `Use a ready-made template · ${TEMPLATES.filter(t => t.id !== "scratch").length} templates`}
+                  </button>
+                )}
+              </div>
 
-                    <AnimatePresence initial={false}>
-                      {showTemplates && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-                            {TEMPLATES.filter(tmpl => tmpl.id !== "scratch").map((tmpl) => (
-                              <button key={tmpl.id} type="button" onClick={() => applyTemplate(tmpl)}
-                                className={`group flex flex-col text-start p-4 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] border-2 transition-all hover:shadow-md active:scale-[0.98] ${selectedTemplateId === tmpl.id ? "border-emerald-500 shadow-sm" : "border-transparent hover:border-emerald-200 dark:hover:border-emerald-800/50"}`}>
-                                <div className="flex items-start justify-between gap-2 mb-2 w-full">
-                                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-110" style={{ backgroundColor: tmpl.bgColor }}>
-                                    {tmpl.emoji}
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 justify-end">
-                                    {(lang === "ar" ? tmpl.tags : tmpl.tagsEn).map(tag => (
-                                      <span key={tag} className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-500 shadow-sm border border-slate-100 dark:border-slate-700">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                                <p className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? tmpl.title : tmpl.titleEn}</p>
-                                <p className="text-[11px] font-bold text-slate-500 mt-1 line-clamp-2">{lang === "ar" ? tmpl.desc : tmpl.descEn}</p>
-                              </button>
+              {/* Template picker Dialog */}
+              <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+                <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" dir={lang === "ar" ? "rtl" : "ltr"}>
+                  <DialogHeader>
+                    <DialogTitle className="font-black text-slate-800 dark:text-slate-100">
+                      {lang === "ar" ? "اختر قالباً جاهزاً" : "Choose a ready-made template"}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {TEMPLATES.filter(tmpl => tmpl.id !== "scratch").map((tmpl) => (
+                      <button key={tmpl.id} type="button"
+                        onClick={() => { applyTemplate(tmpl); setShowTemplateDialog(false); }}
+                        className={`group flex flex-col text-start p-4 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] border-2 transition-all hover:shadow-md active:scale-[0.98] ${selectedTemplateId === tmpl.id ? "border-emerald-500 shadow-sm" : "border-transparent hover:border-emerald-200 dark:hover:border-emerald-800/50"}`}>
+                        <div className="flex items-start justify-between gap-2 mb-2 w-full">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-110" style={{ backgroundColor: tmpl.bgColor }}>
+                            {tmpl.emoji}
+                          </div>
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            {(lang === "ar" ? tmpl.tags : tmpl.tagsEn).map(tag => (
+                              <span key={tag} className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-500 shadow-sm border border-slate-100 dark:border-slate-700">
+                                {tag}
+                              </span>
                             ))}
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        </div>
+                        <p className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? tmpl.title : tmpl.titleEn}</p>
+                        <p className="text-[11px] font-bold text-slate-500 mt-1 line-clamp-2">{lang === "ar" ? tmpl.desc : tmpl.descEn}</p>
+                      </button>
+                    ))}
                   </div>
-                </div>
-              </div>
+                </DialogContent>
+              </Dialog>
             </motion.div>
           )}
               {/* ══════════════════════════════════ STEP 2 — الأسئلة ══════════════════════════════════ */}
@@ -2270,12 +2235,13 @@ export default function CreateAssignment() {
 
                 {wizardStep < 3 ? (
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={goNext} disabled={wizardStep === 2 && !canLeaveStep2}
+                    <button type="button" onClick={goNext}
+                      disabled={(wizardStep === 1 && !title.trim()) || (wizardStep === 2 && !canLeaveStep2)}
                       data-testid="btn-wizard-next"
                       className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed">
                       <span className="truncate max-w-[46vw]">
                         {wizardStep === 1
-                          ? (lang === "ar" ? "التالي: إعداد الأسئلة" : "Next: Questions")
+                          ? (lang === "ar" ? "التالي: إضافة الأسئلة" : "Next: Add Questions")
                           : (lang === "ar" ? "التالي: المراجعة والنشر" : "Next: Review & Publish")}
                       </span>
                       {lang === "ar" ? <ArrowLeft className="w-5 h-5 shrink-0" /> : <ArrowRight className="w-5 h-5 shrink-0" />}
