@@ -1932,7 +1932,7 @@ export default function StudentSolve() {
                   )}
                 </motion.div>
               </div>
-            ) : (
+            ) : showPaper ? (
               <div className="space-y-6">
                 <div className="bg-muted/30 rounded-xl p-4 border border-border">
                   <h3 className="font-bold text-base mb-3 flex items-center gap-2">
@@ -2012,7 +2012,7 @@ export default function StudentSolve() {
                   </Button>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
