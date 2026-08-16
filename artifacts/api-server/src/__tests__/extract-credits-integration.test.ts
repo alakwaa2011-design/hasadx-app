@@ -14,6 +14,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { CreditService } from "../lib/credit-service";
+import { checkCredits, captureCredits, invalidateCreditsSettingsCache } from "../lib/check-credits";
 
 const TOOL = "extract_questions_from_source";
 const RUN_ID = `xc${Date.now()}`;
@@ -210,6 +211,125 @@ d("سياسة نقاط استخراج الأسئلة من مصدر", () => {
     await CreditService.capture(rid);
     const st = await db.execute(sql`SELECT status FROM credit_holds WHERE request_id = ${rid}`);
     expect((st.rows[0] as any).status).toBe("refunded");
+  });
+
+  it("X10: إعادة نفس X-Idempotency-Key بعد النجاح → 200 بنفس النتيجة المخزنة، بلا خصم أو توليد جديد", async () => {
+    const tid = await createTeacher("okreplay");
+    await seedBalance(tid, 50);
+
+    // فعّل نظام النقاط في إعدادات المنصة (مع استعادة الحالة السابقة)
+    const prevRow = await db.execute(sql`SELECT id, credits_enabled FROM platform_settings LIMIT 1`);
+    const hadRow = !!prevRow.rows[0];
+    const prevEnabled = hadRow ? !!(prevRow.rows[0] as any).credits_enabled : null;
+    if (hadRow) {
+      await db.execute(sql`UPDATE platform_settings SET credits_enabled = TRUE WHERE id = ${(prevRow.rows[0] as any).id}`);
+    } else {
+      await db.execute(sql`INSERT INTO platform_settings (credits_enabled) VALUES (TRUE)`);
+    }
+    invalidateCreditsSettingsCache();
+
+    try {
+      const middleware = checkCredits(TOOL);
+      const clientKey = randomUUID();
+      let aiGeneratorCalls = 0;
+      const storedResult = { questions: [{ text: "س: ما ناتج 2+2؟", questionType: "mcq" }] };
+
+      const makeReqRes = () => {
+        const state = { nextCalled: false, statusCode: 0, body: undefined as unknown };
+        const req = {
+          session: { teacherId: tid },
+          get: (h: string) => (h.toLowerCase() === "x-idempotency-key" ? clientKey : undefined),
+        } as any;
+        const res = {
+          status(code: number) { state.statusCode = code; return this; },
+          json(payload: unknown) { state.body = payload; return this; },
+        } as any;
+        const next = () => { state.nextCalled = true; };
+        return { req, res, next, state };
+      };
+
+      // 1) الطلب الأول: يمر الوسيط → «المولد» يعمل → capture مع تخزين النتيجة
+      const r1 = makeReqRes();
+      await middleware(r1.req, r1.res, r1.next);
+      expect(r1.state.nextCalled).toBe(true);
+      aiGeneratorCalls++;
+      await captureCredits(r1.req, storedResult);
+      expect(await CreditService.getBalance(tid)).toBe(40); // خصم 10 مرة واحدة
+
+      // 2) إعادة نفس المفتاح (العميل فقد الرد): 200 بنفس النتيجة، بلا next()
+      const r2 = makeReqRes();
+      await middleware(r2.req, r2.res, r2.next);
+      expect(r2.state.nextCalled).toBe(false); // المولد لم يُستدعَ ثانية
+      expect(r2.state.statusCode).toBe(200);
+      expect(r2.state.body).toEqual(storedResult);
+      expect(aiGeneratorCalls).toBe(1);
+
+      // 3) لا خصم إضافي ولا حجز ثانٍ
+      expect(await CreditService.getBalance(tid)).toBe(40);
+      const holds = await db.execute(sql`
+        SELECT COUNT(*)::int AS c FROM credit_holds WHERE teacher_id = ${tid}
+      `);
+      expect(Number((holds.rows[0] as any).c)).toBe(1);
+    } finally {
+      if (hadRow) {
+        await db.execute(sql`UPDATE platform_settings SET credits_enabled = ${prevEnabled} WHERE id = ${(prevRow.rows[0] as any).id}`);
+      } else {
+        await db.execute(sql`DELETE FROM platform_settings WHERE credits_enabled = TRUE`);
+      }
+      invalidateCreditsSettingsCache();
+    }
+  });
+
+  it("X11: مفتاح قيد التنفيذ (pending) — الوسيط يرفض بـ 409 ولا يشغّل المولد ثانية", async () => {
+    const tid = await createTeacher("pending");
+    await seedBalance(tid, 50);
+
+    const prevRow = await db.execute(sql`SELECT id, credits_enabled FROM platform_settings LIMIT 1`);
+    const hadRow = !!prevRow.rows[0];
+    const prevEnabled = hadRow ? !!(prevRow.rows[0] as any).credits_enabled : null;
+    if (hadRow) {
+      await db.execute(sql`UPDATE platform_settings SET credits_enabled = TRUE WHERE id = ${(prevRow.rows[0] as any).id}`);
+    } else {
+      await db.execute(sql`INSERT INTO platform_settings (credits_enabled) VALUES (TRUE)`);
+    }
+    invalidateCreditsSettingsCache();
+
+    try {
+      const middleware = checkCredits(TOOL);
+      const clientKey = randomUUID();
+      const makeReqRes = () => {
+        const state = { nextCalled: false, statusCode: 0, body: undefined as any };
+        const req = {
+          session: { teacherId: tid },
+          get: (h: string) => (h.toLowerCase() === "x-idempotency-key" ? clientKey : undefined),
+        } as any;
+        const res = {
+          status(code: number) { state.statusCode = code; return this; },
+          json(payload: unknown) { state.body = payload; return this; },
+        } as any;
+        return { req, res, next: () => { state.nextCalled = true; }, state };
+      };
+
+      // الطلب الأول يمر (الحجز pending — «المولد» ما يزال يعمل)
+      const r1 = makeReqRes();
+      await middleware(r1.req, r1.res, r1.next);
+      expect(r1.state.nextCalled).toBe(true);
+
+      // طلب متزامن بنفس المفتاح قبل capture → 409 REQUEST_IN_PROGRESS
+      const r2 = makeReqRes();
+      await middleware(r2.req, r2.res, r2.next);
+      expect(r2.state.nextCalled).toBe(false);
+      expect(r2.state.statusCode).toBe(409);
+      expect(r2.state.body?.code).toBe("REQUEST_IN_PROGRESS");
+      expect(await CreditService.getBalance(tid)).toBe(40); // حجز واحد فقط
+    } finally {
+      if (hadRow) {
+        await db.execute(sql`UPDATE platform_settings SET credits_enabled = ${prevEnabled} WHERE id = ${(prevRow.rows[0] as any).id}`);
+      } else {
+        await db.execute(sql`DELETE FROM platform_settings WHERE credits_enabled = TRUE`);
+      }
+      invalidateCreditsSettingsCache();
+    }
   });
 
   it("X7: getEffectiveCost — baseCost=10 و effectiveCost=8 لمعلم Pro", async () => {

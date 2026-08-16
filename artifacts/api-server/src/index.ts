@@ -463,7 +463,8 @@ async function runSchemaMigrations() {
       ALTER TABLE credit_holds
         ADD COLUMN IF NOT EXISTS held_promo  INTEGER NOT NULL DEFAULT 0,
         ADD COLUMN IF NOT EXISTS held_earned INTEGER NOT NULL DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS held_paid   INTEGER NOT NULL DEFAULT 0
+        ADD COLUMN IF NOT EXISTS held_paid   INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS result_json TEXT
     `);
     await db.execute(sql`
       ALTER TABLE credit_packages

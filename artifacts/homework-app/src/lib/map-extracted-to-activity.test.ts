@@ -11,6 +11,7 @@ import {
   extractFileError,
   EXTRACT_EXT_RE,
   fingerprintFiles,
+  fingerprintFilesContent,
 } from "./map-extracted-to-activity";
 
 /* ─────────────────────────────────────────────────────────
@@ -36,6 +37,55 @@ describe("fingerprintFiles — same-source duplicate detection", () => {
   it("adding a file changes the fingerprint", () => {
     expect(fingerprintFiles([f("a.pdf", 100), f("c.txt", 5)]))
       .not.toBe(fingerprintFiles([f("a.pdf", 100)]));
+  });
+});
+
+describe("fingerprintFilesContent — content-based SHA-256 fingerprint", () => {
+  /** File-like object backed by actual bytes. */
+  const cf = (name: string, content: string, lastModified = 111) => {
+    const bytes = new TextEncoder().encode(content);
+    return {
+      name,
+      size: bytes.byteLength,
+      lastModified,
+      arrayBuffer: async () => bytes.buffer.slice(0) as ArrayBuffer,
+    };
+  };
+
+  it("same content under different names/timestamps → same fingerprint", async () => {
+    const a = await fingerprintFilesContent([cf("lesson.pdf", "same bytes", 111)]);
+    const b = await fingerprintFilesContent([cf("renamed-copy.pdf", "same bytes", 999)]);
+    expect(a).toBe(b);
+  });
+
+  it("multi-file fingerprint is order-insensitive", async () => {
+    const a = await fingerprintFilesContent([cf("a.pdf", "AAA"), cf("b.png", "BBB")]);
+    const b = await fingerprintFilesContent([cf("b.png", "BBB"), cf("a.pdf", "AAA")]);
+    expect(a).toBe(b);
+  });
+
+  it("different content → different fingerprint", async () => {
+    const a = await fingerprintFilesContent([cf("a.pdf", "AAA")]);
+    const b = await fingerprintFilesContent([cf("a.pdf", "AAB")]);
+    expect(a).not.toBe(b);
+  });
+
+  it("fingerprint is built from sorted SHA-256 hex hashes", async () => {
+    const fp = await fingerprintFilesContent([cf("a", "x"), cf("b", "y")]);
+    const parts = fp.split("|");
+    expect(parts).toHaveLength(2);
+    for (const p of parts) expect(p).toMatch(/^[0-9a-f]{64}$/);
+    expect([...parts].sort()).toEqual(parts);
+  });
+
+  it("falls back to metadata fingerprint when hashing fails", async () => {
+    const broken = {
+      name: "a.pdf",
+      size: 100,
+      lastModified: 111,
+      arrayBuffer: async () => { throw new Error("unreadable"); },
+    };
+    expect(await fingerprintFilesContent([broken])).toBe(fingerprintFiles([broken]));
   });
 });
 

@@ -986,8 +986,9 @@ router.post(
         res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
         return;
       }
-      await captureCredits(req);
-      res.json({ questions: validated.data });
+      const responseBody = { questions: validated.data };
+      await captureCredits(req, responseBody);
+      res.json(responseBody);
     } catch (err: any) {
       await refundCredits(req, "فشل استخراج الأسئلة");
       if (err?.issues) {

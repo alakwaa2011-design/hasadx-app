@@ -15,6 +15,9 @@ export const creditHoldsTable = pgTable("credit_holds", {
   heldPromo:       integer("held_promo").notNull().default(0),
   heldEarned:      integer("held_earned").notNull().default(0),
   heldPaid:        integer("held_paid").notNull().default(0),
+  /** JSON snapshot of the successful HTTP response body — replayed as-is when
+      the same idempotency key is retried after the client lost the response. */
+  resultJson:      text("result_json"),
   createdAt:       timestamp("created_at").notNull().default(sql`NOW()`),
   completedAt:     timestamp("completed_at"),
   refundedAt:      timestamp("refunded_at"),

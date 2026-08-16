@@ -8,7 +8,7 @@
  */
 import { type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
-import { platformSettingsTable, creditTransactionsTable } from "@workspace/db";
+import { platformSettingsTable, creditTransactionsTable, creditHoldsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { CreditService } from "./credit-service";
 import { randomUUID } from "node:crypto";
@@ -120,17 +120,48 @@ export function checkCredits(toolKey: string) {
       const requestId = isValidKey ? `${teacherId}:${toolKey}:${clientKey}` : randomUUID();
       const { creditsHeld, existingStatus } = await CreditService.hold(teacherId, toolKey, requestId);
 
-      /* Terminal replay guard: a requestId whose hold is already completed
-         (paid work delivered) or refunded (attempt failed and money returned)
-         must NOT re-run the paid work — completed would run it free, refunded
-         would run it free after a refund. The client retries with a NEW key. */
-      if (existingStatus === "completed" || existingStatus === "refunded") {
+      /* Terminal replay guard.
+         completed: the paid work already succeeded — if the response body was
+         snapshotted at capture time, replay it verbatim (200, no new charge,
+         no re-generation). This covers "client lost the connection after the
+         server succeeded, then retried the same X-Idempotency-Key". Without a
+         snapshot (older holds), fall back to 409.
+         refunded: the attempt failed and money was returned — the key is
+         burned; the client must retry with a NEW key. */
+      if (existingStatus === "completed") {
+        const [holdRow] = await db
+          .select({ resultJson: creditHoldsTable.resultJson })
+          .from(creditHoldsTable)
+          .where(eq(creditHoldsTable.requestId, requestId))
+          .limit(1);
+        if (holdRow?.resultJson) {
+          try {
+            res.status(200).json(JSON.parse(holdRow.resultJson));
+            return;
+          } catch {
+            // corrupt snapshot — fall through to 409
+          }
+        }
         res.status(409).json({
           code: "DUPLICATE_REQUEST",
-          message:
-            existingStatus === "completed"
-              ? "سبق تنفيذ هذا الطلب بنجاح. إن لم تظهر النتيجة، أعد المحاولة من جديد."
-              : "أُلغيت هذه المحاولة واستُرد رصيدها. أعد المحاولة من جديد.",
+          message: "سبق تنفيذ هذا الطلب بنجاح. إن لم تظهر النتيجة، أعد المحاولة من جديد.",
+        });
+        return;
+      }
+      if (existingStatus === "refunded") {
+        res.status(409).json({
+          code: "DUPLICATE_REQUEST",
+          message: "أُلغيت هذه المحاولة واستُرد رصيدها. أعد المحاولة من جديد.",
+        });
+        return;
+      }
+      /* pending: another request with the SAME key is still running the paid
+         work. Letting this one through would run the generator a second time
+         (unbilled — the hold is shared). Reject as in-progress instead. */
+      if (existingStatus === "pending") {
+        res.status(409).json({
+          code: "REQUEST_IN_PROGRESS",
+          message: "هذا الطلب قيد التنفيذ بالفعل — انتظر اكتماله.",
         });
         return;
       }
@@ -159,12 +190,18 @@ export function checkCredits(toolKey: string) {
 
 // ─── Route helpers ────────────────────────────────────────────────────────────
 
-/** Call after successful AI response to confirm the hold. */
-export async function captureCredits(req: Request): Promise<void> {
+/** Call after successful AI response to confirm the hold. Pass the response
+    body (`result`) so a later replay of the same idempotency key returns the
+    stored result instead of re-running the paid work. */
+export async function captureCredits(req: Request, result?: unknown): Promise<void> {
   const requestId = (req as any).__creditRequestId;
   if (requestId) {
     try {
-      await CreditService.capture(requestId);
+      let resultJson: string | undefined;
+      if (result !== undefined) {
+        try { resultJson = JSON.stringify(result); } catch { /* non-serialisable — skip snapshot */ }
+      }
+      await CreditService.capture(requestId, resultJson);
     } catch {
       // non-fatal
     }

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { useCreateAssignment } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
-import { mapExtractedToActivity, extractFileError, fingerprintFiles } from "@/lib/map-extracted-to-activity";
+import { mapExtractedToActivity, extractFileError, fingerprintFilesContent } from "@/lib/map-extracted-to-activity";
 import { Layout } from "@/components/layout";
 import { Input, Button, Label } from "@/components/ui-elements";
 import {
@@ -279,6 +279,14 @@ export default function CreateAssignment() {
   /* Same-source duplicate guard: fingerprint of the last successful
      extraction in this editor session. */
   const lastExtractFpRef = useRef<string | null>(null);
+  /* Content fingerprint of the CURRENT attempt, computed once in
+     handleExtractFromSource (SHA-256 of file bytes, order-insensitive) and
+     reused by runExtraction — including the replace/add dup-choice buttons. */
+  const pendingExtractFpRef = useRef<string | null>(null);
+  /* Synchronous attempt lock — extractLoading is async React state, so two
+     rapid clicks can both pass its check while the SHA-256 hash is awaited.
+     This ref is set before any await inside runExtraction. */
+  const extractBusyRef = useRef(false);
   const [dupChoiceOpen, setDupChoiceOpen] = useState(false);
   const [extractDifficulty, setExtractDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [extractLoading, setExtractLoading] = useState(false);
@@ -427,6 +435,10 @@ export default function CreateAssignment() {
       accepted.push(file);
     }
     if (accepted.length > 0) setExtractError("");
+    /* File set changed → the pending fingerprint (and any open dup-choice
+       dialog) no longer describes the selection. */
+    pendingExtractFpRef.current = null;
+    setDupChoiceOpen(false);
     setExtractFiles(prev => [...prev, ...accepted].slice(0, EXTRACT_MAX_FILES));
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
@@ -450,13 +462,14 @@ export default function CreateAssignment() {
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
   const runExtraction = async (replacePrevious: boolean) => {
-    if (extractFiles.length === 0 || extractLoading) return;
+    if (extractFiles.length === 0 || extractLoading || extractBusyRef.current) return;
+    extractBusyRef.current = true;
     setDupChoiceOpen(false);
     setExtractLoading(true); setExtractError("");
     /* One idempotency key per attempt: concurrent clicks / browser retries
        of this attempt share the key, so the server holds credits once. */
     const requestId = crypto.randomUUID();
-    const fingerprint = fingerprintFiles(extractFiles);
+    const fingerprint = pendingExtractFpRef.current ?? (await fingerprintFilesContent(extractFiles));
     try {
       const form = new FormData();
       for (const f of extractFiles) form.append("files", f);
@@ -504,11 +517,11 @@ export default function CreateAssignment() {
       toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من المصدر بنجاح` : `${generated.length} questions extracted from the source`);
     } catch (err: unknown) {
       setExtractError(err instanceof Error ? err.message : t.common.error);
-    } finally { setExtractLoading(false); }
+    } finally { extractBusyRef.current = false; setExtractLoading(false); }
   };
 
-  const handleExtractFromSource = () => {
-    if (extractFiles.length === 0 || extractLoading) return;
+  const handleExtractFromSource = async () => {
+    if (extractFiles.length === 0 || extractLoading || extractBusyRef.current) return;
     setExtractError("");
     /* Insufficient balance: never start generation (server re-checks too). */
     if (insufficientExtractCredit && extractCredit) {
@@ -521,7 +534,9 @@ export default function CreateAssignment() {
     }
     /* Same source extracted again while its questions are still in the
        editor → explicit replace / add / cancel choice, no silent charge. */
-    const fingerprint = fingerprintFiles(extractFiles);
+    const fingerprint = await fingerprintFilesContent(extractFiles);
+    if (extractBusyRef.current) return; // another attempt started while hashing
+    pendingExtractFpRef.current = fingerprint;
     const priorStillPresent = questions.some(q => q._extractKey === fingerprint);
     if (lastExtractFpRef.current === fingerprint && priorStillPresent) {
       setDupChoiceOpen(true);
@@ -1422,7 +1437,7 @@ export default function CreateAssignment() {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج أسئلة من صور أو مستند" : "Extract questions from images or a document"}</h3>
-                            <button type="button" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractFiles([]); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractFiles([]); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                           </div>
                           <input ref={imageInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" multiple onChange={handleSourceFiles} className="hidden" data-testid="input-extract-files" />
                           <button type="button" onClick={() => imageInputRef.current?.click()} disabled={extractFiles.length >= EXTRACT_MAX_FILES}
@@ -1446,7 +1461,7 @@ export default function CreateAssignment() {
                                     <Icon className="w-4 h-4 text-primary shrink-0" />
                                     <span className="flex-1 min-w-0 truncate text-xs font-bold text-foreground" dir="ltr">{f.name}</span>
                                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">{lang === "ar" ? "جاهز للاستخراج" : "Ready to extract"}</span>
-                                    <button type="button" onClick={() => setExtractFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                    <button type="button" onClick={() => { pendingExtractFpRef.current = null; setDupChoiceOpen(false); setExtractFiles(prev => prev.filter((_, idx) => idx !== i)); }}
                                       className="p-0.5 rounded text-muted-foreground hover:text-red-500 shrink-0"><X className="w-3.5 h-3.5" /></button>
                                   </div>
                                 );

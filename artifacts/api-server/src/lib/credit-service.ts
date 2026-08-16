@@ -370,11 +370,14 @@ export const CreditService = {
     }
   },
 
-  async capture(requestId: string): Promise<void> {
+  /** Confirms the hold. `resultJson` (optional) snapshots the successful HTTP
+      response body so a replay of the same idempotency key can return the
+      stored result instead of re-running the paid work. */
+  async capture(requestId: string, resultJson?: string): Promise<void> {
     await db.transaction(async (tx) => {
       await tx
         .update(creditHoldsTable)
-        .set({ status: "completed", completedAt: new Date() })
+        .set({ status: "completed", completedAt: new Date(), ...(resultJson !== undefined ? { resultJson } : {}) })
         .where(and(eq(creditHoldsTable.requestId, requestId), eq(creditHoldsTable.status, "pending")));
       await tx
         .update(creditTransactionsTable)

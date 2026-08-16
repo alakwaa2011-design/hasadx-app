@@ -24,10 +24,8 @@ export function extractFileError(
 }
 
 /**
- * Stable fingerprint for a selected source-file set: name + size +
- * lastModified per file, order-insensitive. Used to detect "the teacher is
- * extracting the exact same source again" so we can offer
- * replace / add-anyway / cancel instead of silently duplicating questions.
+ * Metadata fallback fingerprint (name + size + lastModified per file,
+ * order-insensitive). Only used when content hashing is unavailable.
  */
 export function fingerprintFiles(
   files: Array<{ name: string; size: number; lastModified?: number }>,
@@ -36,6 +34,45 @@ export function fingerprintFiles(
     .map((f) => `${f.name}:${f.size}:${f.lastModified ?? 0}`)
     .sort()
     .join("|");
+}
+
+/** Minimal shape needed for content fingerprinting (File satisfies it). */
+export interface HashableFile {
+  name: string;
+  size: number;
+  lastModified?: number;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+function toHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Stable fingerprint for a selected source-file set, based on the FILE
+ * CONTENT: SHA-256 of each file's bytes, hashes sorted (order-insensitive),
+ * joined. The same content under a different name or timestamp produces the
+ * same fingerprint. Falls back to the metadata fingerprint only if hashing
+ * fails (e.g. no crypto.subtle / unreadable file). Used to detect "the
+ * teacher is extracting the exact same source again" so we can offer
+ * replace / add-anyway / cancel instead of silently duplicating questions.
+ */
+export async function fingerprintFilesContent(
+  files: HashableFile[],
+): Promise<string> {
+  try {
+    const hashes = await Promise.all(
+      files.map(async (f) => {
+        const digest = await crypto.subtle.digest("SHA-256", await f.arrayBuffer());
+        return toHex(digest);
+      }),
+    );
+    return hashes.sort().join("|");
+  } catch {
+    return fingerprintFiles(files);
+  }
 }
 
 /**
