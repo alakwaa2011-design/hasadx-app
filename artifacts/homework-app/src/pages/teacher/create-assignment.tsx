@@ -10,6 +10,7 @@ import {
   Eye, EyeOff, Sparkles, Wand2, Loader2, ChevronUp, ChevronDown,
   Calendar, Database, Clock, Settings, Settings2, Brain,
   Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
+  Share2, ExternalLink, BarChart3, PartyPopper,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,6 +27,11 @@ import { resolveImageUrl } from "@/lib/image-url";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
+import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
+import {
+  getPublishBlockReason, hasAtLeastOneQuestion,
+  PUBLISH_BLOCK_MESSAGES_AR, PUBLISH_BLOCK_MESSAGES_EN,
+} from "@/lib/activity-wizard";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -56,106 +62,8 @@ function generateAccessCode(): string {
 }
 
 // ══════════════════════════════════════════════
-// القوالب
+// القوالب — moved to src/lib/activity-templates.ts (pure, unit-tested)
 // ══════════════════════════════════════════════
-
-interface AssignmentTemplate {
-  id: string;
-  emoji: string;
-  title: string;
-  titleEn: string;
-  desc: string;
-  descEn: string;
-  color: string;
-  bgColor: string;
-  tags: string[];
-  tagsEn: string[];
-  defaults: {
-    submissionMode: SubmissionMode;
-    questionCount: number;
-    pointsPerQuestion: number;
-    questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard";
-    /** Optional per-question type override — when provided, each slot gets its own type. */
-    questionTypes?: Array<"mcq" | "true_false" | "fill_blank" | "whiteboard">;
-    hasDeadline: boolean;
-    examMode: boolean;
-    examDurationMinutes: number;
-  };
-}
-
-const TEMPLATES: AssignmentTemplate[] = [
-  {
-    id: "scratch",
-    emoji: "✏️",
-    title: "إنشاء واجب مخصص",
-    titleEn: "Custom Assignment",
-    desc: "أنشئ واجبك بالطريقة التي تناسبك وحدد الأسئلة بنفسك",
-    descEn: "Build your assignment your way and choose questions yourself",
-    color: "#2d6a4f",
-    bgColor: "#e8f5e9",
-    tags: ["حر"],
-    tagsEn: ["Free"],
-    defaults: { submissionMode: "electronic", questionCount: 1, pointsPerQuestion: 1, questionType: "mcq", hasDeadline: false, examMode: false, examDurationMinutes: 30 },
-  },
-  {
-    id: "quiz",
-    emoji: "📝",
-    title: "اختبار قصير",
-    titleEn: "Quick Quiz",
-    desc: "10 أسئلة اختيار متعدد، درجة لكل سؤال",
-    descEn: "10 multiple choice questions, 1 point each",
-    color: "#0369a1",
-    bgColor: "#e0f2fe",
-    tags: ["10 أسئلة", "10 درجات"],
-    tagsEn: ["10 questions", "10 pts"],
-    defaults: { submissionMode: "electronic", questionCount: 10, pointsPerQuestion: 1, questionType: "mcq", hasDeadline: false, examMode: false, examDurationMinutes: 30 },
-  },
-  {
-    id: "homework",
-    emoji: "🏠",
-    title: "واجب منزلي",
-    titleEn: "Homework",
-    desc: "5 أسئلة متنوعة مع موعد تسليم",
-    descEn: "5 varied questions with a deadline",
-    color: "#d97706",
-    bgColor: "#fef3c7",
-    tags: ["5 أسئلة", "موعد تسليم"],
-    tagsEn: ["5 questions", "Deadline"],
-    defaults: {
-      submissionMode: "electronic", questionCount: 5, pointsPerQuestion: 2, questionType: "mcq",
-      /* Mixed types: 3 اختيار متعدد + 1 صح/خطأ + 1 إكمال — fully editable after applying */
-      questionTypes: ["mcq", "mcq", "true_false", "mcq", "fill_blank"],
-      hasDeadline: true, examMode: false, examDurationMinutes: 30,
-    },
-  },
-  {
-    id: "shorttest",
-    emoji: "⏱️",
-    title: "اختبار قصير",
-    titleEn: "Short Test",
-    desc: "10 أسئلة بوقت محدد — مثالي للتقييم السريع",
-    descEn: "10 questions with timer — perfect for quick assessment",
-    color: "#7c3aed",
-    bgColor: "#ede9fe",
-    tags: ["10 أسئلة", "وقت محدد"],
-    tagsEn: ["10 questions", "Timed"],
-    defaults: { submissionMode: "electronic", questionCount: 10, pointsPerQuestion: 1, questionType: "mcq", hasDeadline: true, examMode: true, examDurationMinutes: 20 },
-  },
-  {
-    id: "truefalse",
-    emoji: "✅",
-    title: "صح وخطأ",
-    titleEn: "True & False",
-    desc: "10 أسئلة صح/خطأ بسيطة وسريعة",
-    descEn: "10 simple true/false questions",
-    color: "#2f684d",
-    bgColor: "#e0ede5",
-    tags: ["10 أسئلة", "صح/خطأ"],
-    tagsEn: ["10 questions", "True/False"],
-    defaults: { submissionMode: "electronic", questionCount: 10, pointsPerQuestion: 1, questionType: "true_false", hasDeadline: false, examMode: false, examDurationMinutes: 15 },
-  },
-];
-// Note: "paper" preset removed — use the standalone "تصحيح ورقي ذكي" tool at /teacher/new/paper-grading
 
 const MATH_GROUPS = [
   { labelAr: "أساسي", labelEn: "Basic", symbols: ["×", "÷", "≠", "≈", "≤", "≥", "±", "∞"] },
@@ -385,6 +293,18 @@ export default function CreateAssignment() {
   const [imagePickerFor, setImagePickerFor] = useState<number>(-1);
   const [mathOptionFor, setMathOptionFor] = useState<{ qIdx: number; opt: string } | null>(null);
 
+  // ── Question-adding method (step 2 gate): null = show chooser ──
+  const [questionMethod, setQuestionMethod] = useState<null | "manual" | "ai" | "file">(null);
+  const [showOtherMethods, setShowOtherMethods] = useState(false);
+  // ── Per-question tools disclosure («أدوات السؤال») keyed by _clientId ──
+  const [toolsOpenFor, setToolsOpenFor] = useState<Set<string>>(new Set());
+  // ── Step-3 student preview modal ──
+  const [showStudentPreview, setShowStudentPreview] = useState(false);
+  // ── Post-publish success screen ──
+  const [publishedInfo, setPublishedInfo] = useState<null | {
+    id: number | string | null; title: string; accessCode: string | null; accessMode: AccessMode;
+  }>(null);
+
   // ── Draft auto-save ──
   const [draftReady, setDraftReady] = useState(false);
   const [draftSnapshot, setDraftSnapshot] = useState<WizardDraft | null>(null);
@@ -424,8 +344,11 @@ export default function CreateAssignment() {
       setDeadline(nextWeek.toISOString().slice(0, 16));
     }
     if (template.id !== "scratch") {
-      toast.success(lang === "ar" ? `تم تطبيق قالب "${template.title}" ✓` : `Template "${template.titleEn}" applied ✓`);
+      toast.success(lang === "ar"
+        ? "طُبّق القالب. يمكنك توليد الأسئلة أو إضافتها بنفسك."
+        : "Template applied. Generate questions with AI or add them yourself.");
     }
+    setQuestionMethod("manual");
     setWizardStep(2);
   };
 
@@ -523,20 +446,45 @@ export default function CreateAssignment() {
 
   const createMutation = useCreateAssignment({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data: any) => {
         addMultipleSuggestions({ subjects: subject, classes: targetClasses.join(",") });
         questions.forEach(q => { if (q.text?.trim()) addSuggestion("questions", q.text.trim()); });
         clearDraft();
-        toast.success(lang === "ar" ? "تم حفظ الواجب ونشره بنجاح" : "Assignment saved and published successfully");
-        setLocation("/teacher");
+        // Success screen (instead of toast + redirect) — shows access code, share link, next actions
+        setPublishedInfo({
+          id: data?.id ?? null,
+          title: data?.title || title,
+          accessCode: data?.accessCode || null,
+          accessMode: (data?.accessMode as AccessMode) || accessMode,
+        });
+        try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
       },
       onError: (err: any) => {
-        toast.error(err.message || (lang === "ar" ? "حدث خطأ أثناء حفظ الواجب" : "Error saving assignment"));
+        toast.error(err.message || (lang === "ar" ? "حدث خطأ أثناء حفظ النشاط" : "Error saving activity"));
       },
     }
   });
 
   const handleAddQuestion = () => setQuestions([...questions, { ...emptyElectronicQuestion }]);
+
+  // Duplicate a question (deep-ish copy, new client id assigned by setQuestions wrapper)
+  const handleDuplicateQuestion = (index: number) => {
+    setQuestions(prev => {
+      const copy = { ...prev[index], _clientId: undefined } as QuestionWithTts;
+      const next = [...prev];
+      next.splice(index + 1, 0, copy);
+      return next;
+    });
+  };
+
+  const toggleQuestionTools = (clientId: string | undefined) => {
+    if (!clientId) return;
+    setToolsOpenFor(prev => {
+      const next = new Set(prev);
+      if (next.has(clientId)) next.delete(clientId); else next.add(clientId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     let consumedSeedOrDraft = false;
@@ -563,6 +511,7 @@ export default function CreateAssignment() {
           // Library seed takes precedence over any saved draft
           clearDraft();
           setQuestions(seeded);
+          setQuestionMethod("manual");
           setWizardStep(2);
           if (parsed?.subject && typeof parsed.subject === "string") setSubject(parsed.subject);
           if (parsed?.sourceFileName && typeof parsed.sourceFileName === "string") {
@@ -621,6 +570,8 @@ export default function CreateAssignment() {
     setAdaptiveSkills(d.adaptiveSkills);
     setAdaptiveQuestionsPerSession(d.adaptiveQuestionsPerSession);
     if (Array.isArray(d.questions) && d.questions.length > 0) setQuestions(d.questions);
+    // A resumed draft goes straight to the editor — no method chooser again
+    setQuestionMethod("manual");
   };
 
   const handleContinueDraft = () => {
@@ -771,7 +722,7 @@ export default function CreateAssignment() {
   };
 
   const handlePublish = () => {
-    if (!title.trim()) { toast.error(lang === "ar" ? "يجب إدخال عنوان الواجب" : "Assignment title is required"); setWizardStep(1); return; }
+    if (!title.trim()) { toast.error(lang === "ar" ? "أضف عنواناً للنشاط قبل النشر" : "Activity title is required"); setWizardStep(1); return; }
     if (!isPaper) {
       const emptyQ = questions.findIndex(q => !q.text?.trim());
       if (emptyQ !== -1) {
@@ -824,15 +775,16 @@ export default function CreateAssignment() {
     { value: "hard" as const, label: t.createAssignment.aiHard, color: "red" },
   ];
 
+  const canLeaveStep2 = hasAtLeastOneQuestion(questions, isPaper);
+  const publishBlock = getPublishBlockReason(title, questions, isPaper);
+  const blockMessages = lang === "ar" ? PUBLISH_BLOCK_MESSAGES_AR : PUBLISH_BLOCK_MESSAGES_EN;
+
   const goNext = () => {
-    if (wizardStep === 1 && !title.trim()) { toast.error(lang === "ar" ? "يجب إدخال عنوان الواجب أولاً" : "Please enter an assignment title"); return; }
+    if (wizardStep === 1 && !title.trim()) { toast.error(lang === "ar" ? "أدخل عنوان النشاط أولاً" : "Please enter an activity title"); return; }
+    if (wizardStep === 2 && !canLeaveStep2) { toast.error(blockMessages.no_question); return; }
     if (wizardStep < 3) setWizardStep(s => (s + 1) as 1 | 2 | 3);
   };
   const goPrev = () => { if (wizardStep > 1) setWizardStep(s => (s - 1) as 1 | 2 | 3); };
-  const goToPreview = () => {
-    if (!title.trim()) { toast.error(lang === "ar" ? "يجب إدخال عنوان الواجب أولاً" : "Please enter an assignment title"); return; }
-    setWizardStep(3);
-  };
 
   const STEPS = [
     { num: 1, label: lang === "ar" ? "الأساسيات" : "Basics", icon: "📋" },
@@ -968,20 +920,20 @@ export default function CreateAssignment() {
     <Layout>
     <div dir={lang === "ar" ? "rtl" : "ltr"} className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] pb-24 font-display">
       {/* ══ Sticky Header ══ */}
-      <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
+      <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-2 sm:py-4 flex items-center gap-3 sm:gap-4 transition-all">
         <button
           type="button"
           onClick={() => setLocation("/teacher")}
-          className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
+          className="p-2 sm:p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform shrink-0"
           aria-label={lang === "ar" ? "رجوع" : "Back"}
         >
           <BackArrowIcon className="w-5 h-5" />
         </button>
         <div className="flex-1 min-w-0 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+          <div className="hidden sm:flex w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
             <Plus className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
               {isContestMode
                 ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
@@ -999,8 +951,74 @@ export default function CreateAssignment() {
             </p>
           </div>
         </div>
+        {!publishedInfo && (
+          <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black" data-testid="chip-autosaved">
+            <CheckCircle2 className="w-3 h-3" />{lang === "ar" ? "حُفظ تلقائياً" : "Autosaved"}
+          </span>
+        )}
       </header>
 
+      {publishedInfo ? (
+        /* ══ Success screen — shown after publishing instead of redirecting ══ */
+        <main className="max-w-2xl mx-auto px-4 pt-8 pb-16" data-testid="screen-publish-success">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+            className="bg-white dark:bg-[#15201B] rounded-3xl p-6 sm:p-8 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-6 text-center">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center">
+              <PartyPopper className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "نُشر النشاط بنجاح" : "Activity published"}</h2>
+              <p className="text-sm font-bold text-slate-500 truncate">{publishedInfo.title}</p>
+            </div>
+
+            {publishedInfo.accessCode && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider">{lang === "ar" ? "رمز دخول الطلاب" : "Student access code"}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <div className="flex gap-1.5" dir="ltr">
+                    {publishedInfo.accessCode.split("").map((ch, i) => (
+                      <div key={i} className="w-10 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-xl font-black text-emerald-700 dark:text-emerald-300">{ch}</div>
+                    ))}
+                  </div>
+                  <button type="button" data-testid="btn-copy-code"
+                    onClick={() => { navigator.clipboard.writeText(publishedInfo.accessCode!); toast.success(lang === "ar" ? "نُسخ الرمز" : "Code copied"); }}
+                    className="p-2.5 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
+              <button type="button" data-testid="btn-share-link"
+                onClick={() => {
+                  const url = `${window.location.origin}/solve/${publishedInfo.id}`;
+                  if (navigator.share) { navigator.share({ title: publishedInfo.title, url }).catch(() => {}); }
+                  else { navigator.clipboard.writeText(url); toast.success(lang === "ar" ? "نُسخ الرابط" : "Link copied"); }
+                }}
+                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
+                <Share2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "مشاركة رابط الحل" : "Share solve link"}</span>
+              </button>
+              <button type="button" data-testid="btn-open-activity" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}`)}
+                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+                <ExternalLink className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "فتح النشاط" : "Open activity"}</span>
+              </button>
+              <button type="button" data-testid="btn-view-results" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}?tab=results`)}
+                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+                <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "عرض النتائج" : "View results"}</span>
+              </button>
+              <button type="button" data-testid="btn-back-to-activities" onClick={() => setLocation("/teacher")}
+                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+                <BackArrowIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "العودة إلى أنشطتي" : "Back to my activities"}</span>
+              </button>
+            </div>
+          </motion.div>
+        </main>
+      ) : (
       <main className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
         {/* ══ Progress Bar ══ */}
         <div className="flex items-center px-2">
@@ -1099,7 +1117,7 @@ export default function CreateAssignment() {
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder={lang === "ar" ? "وصف الواجب أو التعليمات (اختياري)" : "Assignment description or instructions (optional)"}
+                    placeholder={lang === "ar" ? "وصف النشاط أو التعليمات (اختياري)" : "Activity description or instructions (optional)"}
                     rows={2}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all resize-none"
                   />
@@ -1113,8 +1131,8 @@ export default function CreateAssignment() {
                     <Copy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "قوالب جاهزة" : "Ready Templates"}</h3>
-                    <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "جهّز هيكل أسئلتك بقالب، أو ابدأ بطريقتك" : "Pick a template or start your own way"}</p>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "ابدأ من هيكل جاهز" : "Start from a ready structure"}</h3>
+                    <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "هياكل فارغة (عدد أسئلة، أنواع، درجات) — املأها بنفسك أو بالذكاء لاحقاً" : "Empty structures (count, types, points) — fill them yourself or with AI later"}</p>
                   </div>
                 </div>
 
@@ -1190,36 +1208,63 @@ export default function CreateAssignment() {
           )}
               {/* ══════════════════════════════════ STEP 2 — الأسئلة ══════════════════════════════════ */}
               {wizardStep === 2 && (
-                <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-6">
-                  
-                  <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 shadow-sm border border-emerald-50 dark:border-emerald-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                        <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">{lang === "ar" ? "إعداد الأسئلة" : "Questions"}</h2>
-                        <p className="text-[11px] font-bold text-slate-500">{lang === "ar" ? "أضف أسئلة أو استخدم الذكاء الاصطناعي" : "Add questions or generate with AI"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-3 py-1 rounded-xl text-xs font-black shadow-sm border border-amber-200/50 dark:border-amber-800/50">{totalPoints} {t.createAssignment.gradeUnit}</span>
-                      <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1 rounded-xl text-xs font-black shadow-sm border border-emerald-200/50 dark:border-emerald-800/50">{questions.length} {t.createAssignment.aiQuestions}</span>
-                    </div>
-                  </div>
+                <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-5">
 
-                  {/* AI Generate */}
-                  {!isPaper && (
-                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-100 dark:border-emerald-800/50">
-                      {!showAiPanel ? (
-                        <button type="button" onClick={() => setShowAiPanel(true)} className="w-full flex items-center justify-center gap-3 py-2 text-primary hover:text-primary/80 transition-colors">
-                          <div className="p-2 rounded-lg bg-primary text-primary-foreground shadow"><Sparkles className="w-4 h-4" /></div>
-                          <div className={lang === "ar" ? "text-right" : "text-left"}>
-                            <span className="block text-sm font-bold">{t.createAssignment.aiGenerate}</span>
-                            <span className="block text-xs text-muted-foreground">{t.createAssignment.aiGenerateDesc}</span>
-                          </div>
+                  {/* ── Method chooser gate: «كيف تريد إضافة الأسئلة؟» ── */}
+                  {!isPaper && questionMethod === null ? (
+                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-4" data-testid="card-method-chooser">
+                      <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 text-center">
+                        {lang === "ar" ? "كيف تريد إضافة الأسئلة؟" : "How do you want to add questions?"}
+                      </h2>
+                      <p className="text-[11px] font-bold text-slate-500 text-center -mt-2">
+                        {lang === "ar" ? "يمكنك دمج الطرق لاحقاً في المحرر نفسه" : "You can mix methods later in the same editor"}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button type="button" data-testid="btn-method-manual" onClick={() => setQuestionMethod("manual")}
+                          className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center"><Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "أكتبها بنفسي" : "Write them myself"}</span>
+                          <span className="text-[11px] font-bold text-slate-500 text-center">{lang === "ar" ? "إضافة سؤال سؤالاً في المحرر" : "Add questions one by one"}</span>
                         </button>
-                      ) : (
+                        <button type="button" data-testid="btn-method-ai" onClick={() => { setQuestionMethod("ai"); setShowAiPanel(true); }}
+                          className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center"><Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</span>
+                          <span className="text-[11px] font-bold text-slate-500 text-center">{lang === "ar" ? "حدد الموضوع والعدد ويولّدها لك" : "Pick topic & count, AI writes them"}</span>
+                        </button>
+                        <button type="button" data-testid="btn-method-file" disabled={!isAdmin}
+                          onClick={() => { setQuestionMethod("file"); setShowImageExtract(true); }}
+                          className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center"><Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج من ملف أو كتاب" : "Extract from file or book"}</span>
+                          <span className="text-[11px] font-bold text-slate-500 text-center">
+                            {isAdmin
+                              ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts questions")
+                              : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
+                          </span>
+                        </button>
+                      </div>
+                      <button type="button" onClick={openBankModal}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-black text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
+                        <Database className="w-4 h-4" />{lang === "ar" ? "أو استيراد من بنك الأسئلة" : "Or import from question bank"}
+                      </button>
+                    </div>
+                  ) : (
+                  <>
+                  {/* Live compact summary: N سؤال · M درجة */}
+                  {!isPaper && (
+                    <div className="flex items-center justify-between px-1" data-testid="row-live-summary">
+                      <h2 className="text-base font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "إعداد الأسئلة" : "Questions"}</h2>
+                      <span className="text-[12px] font-black text-slate-500">
+                        {questions.length} {lang === "ar" ? "سؤال" : "questions"} · {totalPoints} {lang === "ar" ? "درجة" : "pts"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* AI Generate — expanded panel (opened from chooser or «طريقة أخرى») */}
+                  {!isPaper && showAiPanel && (
+                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-100 dark:border-emerald-800/50">
+                      {(
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Wand2 className="w-4 h-4" />{t.createAssignment.aiGenerate}</h3>
@@ -1289,20 +1334,10 @@ export default function CreateAssignment() {
                     </div>
                   )}
 
-                  {/* Image Extract (admin) */}
-                  {!isPaper && (
-                    <div className={`p-4 border-2 border-primary/20 bg-primary/5 ${!isAdmin ? "opacity-50" : ""}`}>
-                      {!showImageExtract ? (
-                        <button type="button" onClick={() => isAdmin && setShowImageExtract(true)} disabled={!isAdmin}
-                          className="w-full flex items-center justify-center gap-3 py-2 text-primary hover:text-primary/80 transition-colors disabled:cursor-not-allowed">
-                          <div className="p-2 rounded-lg bg-primary text-primary-foreground shadow"><Camera className="w-4 h-4" /></div>
-                          <div className={lang === "ar" ? "text-right" : "text-left"}>
-                            <span className="block text-sm font-bold">{lang === "ar" ? "استخراج الأسئلة من ملف أو كتاب" : "Extract Questions from a File or Book"}</span>
-                            <span className="block text-xs text-muted-foreground">{lang === "ar" ? "ارفع صفحات من ملف أو كتاب ويستخرج الذكاء الاصطناعي الأسئلة — يمكنك تعديلها بعد الاستخراج" : "Upload pages from a file or book — AI extracts questions you can edit afterward"}</span>
-                            {!isAdmin && <span className="block text-[10px] text-amber-600 font-bold mt-0.5">{lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval"}</span>}
-                          </div>
-                        </button>
-                      ) : (
+                  {/* Image Extract (admin) — expanded panel only */}
+                  {!isPaper && showImageExtract && (
+                    <div className="p-4 rounded-3xl border-2 border-primary/20 bg-primary/5">
+                      {(
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخراج من صور" : "Extract from Images"}</h3>
@@ -1381,7 +1416,6 @@ export default function CreateAssignment() {
                                     </button>
                                     <button type="button" onClick={() => handleMoveQuestion(qIndex, "up")} disabled={qIndex === 0} className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronUp className="w-4 h-4" /></button>
                                     <button type="button" onClick={() => handleMoveQuestion(qIndex, "down")} disabled={qIndex === questions.length - 1} className="p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ChevronDown className="w-4 h-4" /></button>
-                                    <button type="button" onClick={() => handleRemoveQuestion(qIndex)} className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
                                   </>
                                 )}
                               </div>
@@ -1419,7 +1453,16 @@ export default function CreateAssignment() {
                                   <MathPanel onInsert={sym => handleQuestionChange(qIndex, 'text', (q.text || "") + sym)} />
                                 )}
 
-                                {/* Toolbar row */}
+                                {/* «أدوات السؤال» disclosure */}
+                                <button type="button" data-testid={`btn-question-tools-${qIndex}`}
+                                  onClick={() => toggleQuestionTools(q._clientId)}
+                                  className={`mt-1.5 flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-black border transition-colors ${toolsOpenFor.has(q._clientId!) ? "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-800" : "text-slate-500 border-dashed border-slate-200 dark:border-slate-700 hover:text-emerald-600 hover:border-emerald-300"}`}>
+                                  <Settings2 className="w-3 h-3" />{lang === "ar" ? "أدوات السؤال" : "Question tools"}
+                                  <ChevronDown className={`w-3 h-3 transition-transform ${toolsOpenFor.has(q._clientId!) ? "rotate-180" : ""}`} />
+                                </button>
+
+                                {/* Toolbar row (behind the disclosure) */}
+                                {toolsOpenFor.has(q._clientId!) && (
                                 <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                                   {/* Image button — single button with inline picker */}
                                   {q.imageUrl ? (
@@ -1496,6 +1539,7 @@ export default function CreateAssignment() {
                                     🔁 {t.createAssignment.repeat}
                                   </button>
                                 </div>
+                                )}
                               </div>
 
                               {/* MCQ options */}
@@ -1613,6 +1657,20 @@ export default function CreateAssignment() {
                                   <span className="text-[11px] text-muted-foreground">{q.optionA === "lined" ? `📝 ${t.createAssignment.whiteboardLined}` : `🎨 ${t.createAssignment.whiteboardBlank}`}</span>
                                 </div>
                               )}
+
+                              {/* Bottom card actions: تكرار / حذف */}
+                              <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
+                                <button type="button" data-testid={`btn-duplicate-question-${qIndex}`} onClick={() => handleDuplicateQuestion(qIndex)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-black text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
+                                  <Copy className="w-3.5 h-3.5" />{lang === "ar" ? "تكرار" : "Duplicate"}
+                                </button>
+                                {questions.length > 1 && (
+                                  <button type="button" data-testid={`btn-delete-question-${qIndex}`} onClick={() => handleRemoveQuestion(qIndex)}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-black text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />{lang === "ar" ? "حذف" : "Delete"}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </motion.div>
                             )}
@@ -1630,6 +1688,41 @@ export default function CreateAssignment() {
                           <Database className="w-5 h-5" />{t.questionBank.selectQuestions}
                         </button>
                       </div>
+
+                      {/* «طريقة أخرى لإضافة الأسئلة» — demoted alternative methods */}
+                      <div data-testid="section-other-methods">
+                        <button type="button" onClick={() => setShowOtherMethods(v => !v)}
+                          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-colors">
+                          <span className="text-[12px] font-black text-slate-600 dark:text-slate-300">{lang === "ar" ? "طريقة أخرى لإضافة الأسئلة" : "Another way to add questions"}</span>
+                          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showOtherMethods ? "rotate-180" : ""}`} />
+                        </button>
+                        {showOtherMethods && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2.5">
+                            {!showAiPanel && (
+                              <button type="button" onClick={() => setShowAiPanel(true)}
+                                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all">
+                                <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{t.createAssignment.aiGenerate}</span>
+                                  <span className="block text-[10px] font-bold text-slate-500 truncate">{t.createAssignment.aiGenerateDesc}</span>
+                                </div>
+                              </button>
+                            )}
+                            {!showImageExtract && (
+                              <button type="button" disabled={!isAdmin} onClick={() => setShowImageExtract(true)}
+                                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all disabled:opacity-45 disabled:cursor-not-allowed">
+                                <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج من ملف أو كتاب" : "Extract from file or book"}</span>
+                                  <span className="block text-[10px] font-bold text-slate-500 truncate">
+                                    {isAdmin ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts") : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
+                                  </span>
+                                </div>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -1642,13 +1735,15 @@ export default function CreateAssignment() {
                         className="w-full px-4 py-3 rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-white/50 dark:bg-black/20 text-sm font-bold resize-none focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-colors placeholder:text-amber-700/40 dark:placeholder:text-amber-300/40" rows={2} />
                     </div>
                   )}
+                  </>
+                  )}
                 </motion.div>
               )}
 
               {/* ══════════════════════════════════ STEP 3 — معاينة ونشر ══════════════════════════════════ */}
               {wizardStep === 3 && (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-5">
-                  <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "معاينة ونشر" : "Preview & Publish"}</h2>
+                  <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "مراجعة قبل النشر" : "Review before publishing"}</h2>
 
                   {/* Summary card */}
                   <div className="p-5 bg-primary/5 border-2 border-primary/20">
@@ -1674,29 +1769,30 @@ export default function CreateAssignment() {
                     </div>
                   </div>
 
-                  {/* Access code */}
-                  <div className="p-5 space-y-3">
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{lang === "ar" ? "كود الدخول" : "Access Code"}</h3>
-                    <div className="flex items-center justify-center gap-3">
-                      <div className="flex gap-1.5">
-                        {accessCode.split("").map((ch, i) => (
-                          <div key={i} className="w-10 h-12 rounded-xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center text-xl font-black text-primary">
-                            {ch}
-                          </div>
-                        ))}
-                      </div>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(accessCode); toast.success(lang === "ar" ? "تم نسخ الكود" : "Code copied!"); }}
-                        className="p-2.5 rounded-xl border border-border hover:bg-primary/10 hover:border-primary/40 transition-all">
-                        <Copy className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-center text-xs text-muted-foreground">{lang === "ar" ? "يستخدمه الطلاب للوصول للواجب" : "Students use this to access the assignment"}</p>
+                  {/* Secondary actions: student preview + publish settings */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
+                      className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                      <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة كما يراها الطالب" : "Preview as student"}
+                    </button>
+                    <button type="button" data-testid="btn-publish-settings" onClick={() => setShowAdvancedSettings(v => !v)}
+                      className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-[#15201B] text-slate-700 dark:text-slate-300 text-sm font-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all active:scale-[0.98]">
+                      <Settings className="w-4 h-4" />{lang === "ar" ? "إعدادات النشر" : "Publish settings"}
+                    </button>
                   </div>
 
-                  {/* Questions preview */}
-                  <div>
-                    <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2"><Eye className="w-4 h-4" />{lang === "ar" ? "معاينة الأسئلة (كما يراها الطالب)" : "Questions Preview (student view)"}</h3>
-                    <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  {/* Student preview modal */}
+                  <AnimatePresence>
+                  {showStudentPreview && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowStudentPreview(false)}>
+                    <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
+                      className="bg-card rounded-2xl p-5 max-w-lg w-full shadow-2xl border border-border max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-black text-foreground flex items-center gap-2"><Eye className="w-4 h-4" />{lang === "ar" ? "كما يراها الطالب" : "Student view"}</h3>
+                        <button type="button" onClick={() => setShowStudentPreview(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"><X className="w-4 h-4" /></button>
+                      </div>
+                    <div className="space-y-3 overflow-y-auto pr-1 min-h-0">
                       {questions.map((q, i) => (
                         <div key={i} className="rounded-xl border-2 border-border p-4 bg-background">
                           <div className="flex items-start gap-2 mb-3">
@@ -1737,7 +1833,10 @@ export default function CreateAssignment() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
+                  )}
+                  </AnimatePresence>
 
                   {/* Advanced settings (collapsible) */}
                   <div className="p-0 overflow-hidden">
@@ -2056,12 +2155,14 @@ export default function CreateAssignment() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight">
-                              {lang === "ar" ? "بصمتك في مكتبة حصاد" : "Your mark in the Hasaad library"}
+                              {isShared
+                                ? (lang === "ar" ? "سيُشارك هذا النشاط في مكتبة حصاد" : "This activity will be shared in the Hasad library")
+                                : (lang === "ar" ? "هذا النشاط خاص بك" : "This activity is private to you")}
                             </h3>
                             <p className="text-[11px] font-bold text-slate-500 mt-0.5">
                               {isShared
                                 ? (lang === "ar" ? "زملاؤك المعلمون يستطيعون استيراده مباشرة (اختياري)" : "Other teachers can import it directly (optional)")
-                                : (lang === "ar" ? "خاص بك فقط — لن يظهر لأي معلم آخر" : "Private to you only")}
+                                : (lang === "ar" ? "لن يظهر لأي معلم آخر" : "It won't appear to any other teacher")}
                             </p>
                           </div>
                         </div>
@@ -2078,8 +2179,8 @@ export default function CreateAssignment() {
                           className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-emerald-500/60 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"}`}
                         >
                           {isShared
-                            ? (lang === "ar" ? "اجعله خاصًا" : "Make private")
-                            : (lang === "ar" ? "شاركه مع المعلمين" : "Share with teachers")}
+                            ? (lang === "ar" ? "اجعله خاصاً" : "Make it private")
+                            : (lang === "ar" ? "مشاركته في مكتبة حصاد" : "Share it in the Hasad library")}
                         </button>
                       </div>
 
@@ -2129,12 +2230,6 @@ export default function CreateAssignment() {
                     </div>
                   )}
 
-                  {/* Publish button */}
-                  <button type="button" onClick={handlePublish} disabled={createMutation.isPending}
-                    className="w-full py-4 rounded-2xl hover:opacity-95 text-white font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
-                    style={{ background: HASAD_CTA_GRADIENT }}>
-                    {createMutation.isPending ? <><Loader2 className="w-5 h-5 animate-spin" />{t.createAssignment.savingAssignment}</> : <><Save className="w-5 h-5" />{lang === "ar" ? "نشر الواجب الآن 🚀" : "Publish Assignment 🚀"}</>}
-                  </button>
                   {createMutation.isError && (
                     <p className="text-sm text-destructive text-center">{(createMutation.error as Error)?.message}</p>
                   )}
@@ -2143,7 +2238,12 @@ export default function CreateAssignment() {
             </AnimatePresence>
 
             {/* ══ Sticky Navigation ══ */}
-            <div className="sticky bottom-4 z-20 mt-6 px-2">
+            <div className="sticky bottom-4 z-20 mt-6 px-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+              {(wizardStep === 2 && !canLeaveStep2) || (wizardStep === 3 && publishBlock) ? (
+                <p className="text-center text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-1.5" data-testid="text-nav-block-reason">
+                  {wizardStep === 2 ? blockMessages.no_question : publishBlock ? blockMessages[publishBlock] : ""}
+                </p>
+              ) : null}
               <div className="bg-white/90 dark:bg-[#15201B]/90 backdrop-blur-xl border border-emerald-100/50 dark:border-emerald-900/30 rounded-3xl shadow-lg shadow-emerald-900/5 p-3 flex items-center justify-between gap-3">
                 <button type="button" onClick={goPrev} disabled={wizardStep === 1}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
@@ -2159,27 +2259,29 @@ export default function CreateAssignment() {
 
                 {wizardStep < 3 ? (
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={goToPreview}
-                      className="hidden sm:flex items-center gap-2 px-4 py-3 rounded-2xl text-emerald-600 dark:text-emerald-400 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
-                      <Eye className="w-4 h-4" />
-                      {lang === "ar" ? "معاينة" : "Preview"}
-                    </button>
-                    <button type="button" onClick={goNext}
-                      className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.97]">
-                      {lang === "ar" ? "التالي" : "Next"}
-                      {lang === "ar" ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+                    <button type="button" onClick={goNext} disabled={wizardStep === 2 && !canLeaveStep2}
+                      data-testid="btn-wizard-next"
+                      className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed">
+                      <span className="truncate max-w-[46vw]">
+                        {wizardStep === 1
+                          ? (lang === "ar" ? "التالي: إعداد الأسئلة" : "Next: Questions")
+                          : (lang === "ar" ? "التالي: المراجعة والنشر" : "Next: Review & Publish")}
+                      </span>
+                      {lang === "ar" ? <ArrowLeft className="w-5 h-5 shrink-0" /> : <ArrowRight className="w-5 h-5 shrink-0" />}
                     </button>
                   </div>
                 ) : (
-                  <button type="button" onClick={handlePublish} disabled={createMutation.isPending}
-                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-60 active:scale-[0.97]">
+                  <button type="button" onClick={handlePublish} disabled={createMutation.isPending || !!publishBlock}
+                    data-testid="btn-publish-activity"
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]">
                     {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                    {lang === "ar" ? "نشر الواجب" : "Publish"}
+                    {lang === "ar" ? "نشر النشاط" : "Publish Activity"}
                   </button>
                 )}
               </div>
             </div>
       </main>
+      )}
 
       {/* ══ Draft Prompt Modal ══ */}
       <AnimatePresence>

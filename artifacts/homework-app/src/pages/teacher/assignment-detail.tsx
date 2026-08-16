@@ -50,7 +50,8 @@ export default function TeacherAssignmentDetail() {
   const { data: assignment, isLoading: isAssignmentLoading } = useGetAssignment(id);
   const { data: submissions, isLoading: isSubmissionsLoading } = useListSubmissions(id);
 
-  const [activeDetailTab, setActiveDetailTab] = useState<"questions" | "results">("questions");
+  const [activeDetailTab, setActiveDetailTab] = useState<"questions" | "results">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "results" ? "results" : "questions");
   const [resultsSearch, setResultsSearch] = useState("");
   const [resultsScoreFilter, setResultsScoreFilter] = useState<"all" | "below50" | "50to69" | "70to84" | "85to100">("all");
   const [assignmentShared, setAssignmentShared] = useState(false);
