@@ -400,6 +400,7 @@ router.post(
   "/lesson-plans/ai/extract",
   requireTeacher,
   uploadFiles,
+  checkCredits("lesson-plan"),
   async (req, res) => {
     let language: "ar" | "en" = "ar";
     try {
@@ -418,7 +419,10 @@ router.post(
       language = parsedBody.language;
 
       const prepared = await processUploadedFiles(req, res, files, language);
-      if (!prepared) return;
+      if (!prepared) {
+        await refundCredits(req, "فشل معالجة الملفات المرفوعة");
+        return;
+      }
 
       const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
 
@@ -453,11 +457,14 @@ router.post(
       const validated = sectionsSchema.safeParse(cleaned);
       if (!validated.success) {
         req.log.warn({ issues: validated.error.issues }, "AI lesson plan extraction failed strict validation");
+        await refundCredits(req, "فشل استخراج خطة الدرس");
         res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
         return;
       }
+      await captureCredits(req);
       res.json({ sections: validated.data });
     } catch (err: any) {
+      await refundCredits(req, "فشل استخراج خطة الدرس");
       if (err?.issues) {
         res.status(400).json({ message: language === "ar" ? "إدخال غير صالح" : "Invalid input", issues: err.issues });
         return;

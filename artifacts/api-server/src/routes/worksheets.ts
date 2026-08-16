@@ -897,6 +897,7 @@ router.post(
   "/worksheets/ai/extract",
   requireTeacher,
   uploadFiles,
+  checkCredits("worksheet"),
   async (req, res) => {
     let language: "ar" | "en" = "ar";
     try {
@@ -910,6 +911,7 @@ router.post(
       if (req.body.counts) {
         try { parsedCounts = JSON.parse(String(req.body.counts)); }
         catch {
+          await refundCredits(req, "إدخال غير صالح");
           res.status(400).json({ message: language === "ar" ? "إدخال غير صالح" : "Invalid input (counts)" });
           return;
         }
@@ -927,11 +929,13 @@ router.post(
 
       const total = parsedBody.counts.mcq + parsedBody.counts.true_false + parsedBody.counts.short_answer + parsedBody.counts.fill_blank + parsedBody.counts.matching;
       if (total === 0) {
+        await refundCredits(req, "لا أنواع أسئلة محددة");
         res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
         return;
       }
       const maxTotal = parsedBody.pages * 30;
       if (total > maxTotal) {
+        await refundCredits(req, "عدد الأسئلة يتجاوز الحد");
         res.status(400).json({ message: language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions` });
         return;
       }
@@ -940,7 +944,10 @@ router.post(
       // `processUploadedFiles` writes the error response itself on
       // failure, so we just bail out when it returns null.
       const prepared = await processUploadedFiles(req, res, files, language);
-      if (!prepared) return;
+      if (!prepared) {
+        await refundCredits(req, "فشل معالجة الملفات المرفوعة");
+        return;
+      }
 
       const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
 
@@ -973,11 +980,14 @@ router.post(
       const validated = questionsArraySchema.safeParse(cleaned);
       if (!validated.success) {
         req.log.warn({ issues: validated.error.issues }, "AI extraction questions failed strict validation");
+        await refundCredits(req, "فشل استخراج الأسئلة");
         res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
         return;
       }
+      await captureCredits(req);
       res.json({ questions: validated.data });
     } catch (err: any) {
+      await refundCredits(req, "فشل استخراج الأسئلة");
       if (err?.issues) {
         res.status(400).json({ message: language === "ar" ? "إدخال غير صالح" : "Invalid input", issues: err.issues });
         return;
