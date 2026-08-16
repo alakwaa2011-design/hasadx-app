@@ -1093,20 +1093,24 @@ export default function CreateAssignment() {
                       <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
                       {t.createAssignment.targetClass}
                     </Label>
-                    <div className="bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl p-1.5 min-h-[50px] focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all flex flex-wrap items-center gap-1.5">
-                      {targetClasses.map(c => (
-                        <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-black border border-emerald-200/50 dark:border-emerald-800/50">
-                          {c}
-                          <button type="button" onClick={() => setTargetClasses(prev => prev.filter(x => x !== c))} className="hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>
-                        </span>
-                      ))}
+                    <div className="bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-2xl p-1.5 min-h-[50px] focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all flex flex-col gap-1.5">
+                      {targetClasses.length > 0 && (
+                        <div className="flex flex-wrap gap-1 px-1 pt-0.5">
+                          {targetClasses.map(c => (
+                            <span key={c} className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-black border border-emerald-200/50 dark:border-emerald-800/50">
+                              {c}
+                              <button type="button" onClick={() => setTargetClasses(prev => prev.filter(x => x !== c))} className="hover:text-red-500 transition-colors"><X className="w-2.5 h-2.5" /></button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {gradeLevels.length > 0 ? (
-                        <select onChange={e => { if (e.target.value && !targetClasses.includes(e.target.value)) setTargetClasses([...targetClasses, e.target.value]); e.target.value = ""; }} className="flex-1 min-w-[120px] bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5 cursor-pointer">
-                          <option value="">{lang === "ar" ? "اختر من صفوفك..." : "Select class..."}</option>
+                        <select onChange={e => { if (e.target.value && !targetClasses.includes(e.target.value)) setTargetClasses([...targetClasses, e.target.value]); e.target.value = ""; }} className="w-full bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5 cursor-pointer">
+                          <option value="">{lang === "ar" ? "اختر صفاً..." : "Select class..."}</option>
                           {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel}</option>)}
                         </select>
                       ) : (
-                        <input value={classInput} onChange={e => setClassInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && classInput.trim()) { e.preventDefault(); if (!targetClasses.includes(classInput.trim())) setTargetClasses([...targetClasses, classInput.trim()]); setClassInput(""); } }} placeholder={lang === "ar" ? "اضغط Enter للإضافة" : "Press Enter to add"} className="flex-1 min-w-[120px] bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5" />
+                        <input value={classInput} onChange={e => setClassInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && classInput.trim()) { e.preventDefault(); if (!targetClasses.includes(classInput.trim())) setTargetClasses([...targetClasses, classInput.trim()]); setClassInput(""); } }} placeholder={lang === "ar" ? "Enter للإضافة" : "Enter to add"} className="w-full bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1.5" />
                       )}
                     </div>
                   </div>
