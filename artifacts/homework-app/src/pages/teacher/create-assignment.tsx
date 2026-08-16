@@ -243,27 +243,27 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
           {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
         </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-center">
           <button type="button" data-testid="btn-open-activity" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}`)}
-            className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+            className="flex items-center justify-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all text-center">
             <ExternalLink className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "فتح النشاط" : "Open activity"}</span>
           </button>
           <button type="button" data-testid="btn-view-results" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}?tab=results`)}
-            className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+            className="flex items-center justify-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all text-center">
             <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "عرض النتائج" : "View results"}</span>
           </button>
           <button type="button" data-testid="btn-live-game"
             onClick={() => setLocation(`/teacher?liveGamePicker=${publishedInfo.id}`)}
             title={lang === "ar" ? "لعبة مباشرة" : "Live game"}
-            className="flex items-center gap-2.5 p-3.5 min-h-[44px] rounded-2xl text-white transition-all active:scale-[0.98] hover:brightness-110 shadow-sm"
+            className="flex items-center justify-center gap-2.5 p-3.5 min-h-[44px] rounded-2xl text-white text-center transition-all active:scale-[0.98] hover:brightness-110 shadow-sm"
             style={{ background: "linear-gradient(180deg, #1E4D35 0%, #17382a 100%)" }}>
             <Gamepad2 className="w-5 h-5 shrink-0 opacity-95" />
             <span className="text-sm font-black">{lang === "ar" ? "لعبة مباشرة" : "Live game"}</span>
           </button>
           <button type="button" data-testid="btn-back-to-activities" onClick={() => setLocation("/teacher")}
-            className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+            className="flex items-center justify-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all text-center">
             <BackArrowIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "العودة إلى أنشطتي" : "Back to my activities"}</span>
           </button>
