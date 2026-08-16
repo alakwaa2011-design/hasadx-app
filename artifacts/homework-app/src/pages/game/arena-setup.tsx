@@ -246,7 +246,7 @@ export default function ArenaSetup() {
       return { ...sec, subCategories: [...staticKept, ...extra] };
     });
     const all: ArenaSection[] = [...enriched, ...dbSections];
-    if (secretArenaSection) all.unshift(secretArenaSection);
+    // "اكتشف السر" hidden — do not add secretArenaSection to the picker
     if (custom) all.push(custom);
     return all;
   }, [customQuestions, dbSections, mergedSubsByStaticId, secretArenaSection]);
@@ -442,7 +442,7 @@ export default function ArenaSetup() {
     // DB sub-cat only lives in mergedSubsByStaticId it is never saved and becomes
     // invisible on the board.
     const dbSectionsForState: ArenaSection[] = [
-      ...(secretArenaSection ? [secretArenaSection] : []),
+      // "اكتشف السر" hidden — excluded from saved game state
       ...dbSections,
       ...Object.entries(mergedSubsByStaticId)
         .filter(([, subs]) => subs.length > 0)
