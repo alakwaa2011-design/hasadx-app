@@ -1049,7 +1049,15 @@ export function sanitizeGeneratedQuestions(
   for (const q of raw) {
     if (!q || typeof q !== "object") continue;
     const type = typeof q.type === "string" ? q.type : "";
-    const prompt = typeof q.prompt === "string" ? q.prompt.trim().slice(0, 1000) : "";
+    /* Equivalent-format normalization: some models label the question text
+       "question" (verified live: Claude Sonnet) or "text" instead of
+       "prompt". Same content, different key — accept all three. */
+    const promptRaw =
+      typeof q.prompt === "string" && q.prompt.trim() ? q.prompt
+      : typeof q.question === "string" && q.question.trim() ? q.question
+      : typeof q.text === "string" ? q.text
+      : "";
+    const prompt = promptRaw.trim().slice(0, 1000);
     if (!prompt && type !== "matching") continue;
     const id = `q_${++idx}_${Date.now().toString(36)}`;
 
@@ -1065,15 +1073,39 @@ export function sanitizeGeneratedQuestions(
       else if (Array.isArray(q.answers)) rawOpts = q.answers;
       else if (q.options && typeof q.options === "object") rawOpts = Object.values(q.options);
       else if (q.choices && typeof q.choices === "object") rawOpts = Object.values(q.choices);
+      // 5. Flat keys optionA..optionD (the shape our other AI routes use)
+      else if ([q.optionA, q.optionB, q.optionC, q.optionD].every((o: any) => typeof o === "string" && o.trim())) {
+        rawOpts = [q.optionA, q.optionB, q.optionC, q.optionD];
+      }
 
-      const options = rawOpts
+      /* Keep the FULL trimmed texts for answer matching; truncate to the
+         editor's 300-char cap only afterwards, so two long options sharing
+         a 300-char prefix can never be confused with each other. */
+      const fullOpts = rawOpts
         .filter((o: any) => typeof o === "string" && o.trim())
-        .map((o: string) => o.trim().slice(0, 300))
+        .map((o: string) => o.trim())
         .slice(0, 4); // editor supports exactly 4 options (A-D); discard extras
-      if (options.length < 4) continue;
-      if (typeof q.correctIndex !== "number") continue;
-      const rawIdx = Math.floor(q.correctIndex);
-      if (rawIdx < 0 || rawIdx > 3) continue; // correctIndex must be 0-3 for 4-option MCQ
+      if (fullOpts.length < 4) continue;
+      const options = fullOpts.map((o) => o.slice(0, 300));
+      /* Correct answer — equivalent formats only, NEVER invented and NEVER
+         defaulted to the first option:
+         1. correctIndex integer 0-3 (expected; fractional values rejected)
+         2. correctAnswer letter "A"-"D" (case-insensitive)
+         3. correctAnswer exactly and UNIQUELY matching one option's full text
+         Anything else → the question is rejected. */
+      let rawIdx: number | null = null;
+      if (q.correctIndex !== undefined && q.correctIndex !== null) {
+        if (!Number.isInteger(q.correctIndex)) continue; // 1.9 is not a valid index
+        rawIdx = q.correctIndex as number;
+      } else if (typeof q.correctAnswer === "string" && q.correctAnswer.trim()) {
+        const ca = q.correctAnswer.trim();
+        if (/^[A-Da-d]$/.test(ca)) rawIdx = ca.toUpperCase().charCodeAt(0) - 65;
+        else {
+          const matches = fullOpts.reduce<number[]>((acc, o, i) => (o === ca ? [...acc, i] : acc), []);
+          if (matches.length === 1) rawIdx = matches[0]; // ambiguous duplicates → reject
+        }
+      }
+      if (rawIdx === null || rawIdx < 0 || rawIdx > 3) continue; // must resolve to 0-3
       const correctIndex = rawIdx;
       out.push({ id, type: "mcq", prompt, options, correctIndex });
       tally.mcq++;

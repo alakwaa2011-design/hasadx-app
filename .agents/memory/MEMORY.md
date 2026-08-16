@@ -21,4 +21,5 @@
 - [Webhook idempotency semantics](webhook-idempotency-semantics.md) — handlers must throw (not silently return) when required work fails, or the idempotency key locks as "processed" and corrected retries are dropped.
 - [Manual plan grant race safety](manual-plan-grant.md) — grantSubscriptionCredits reads credits from the STORED subscription; manual admin grants must use grantManualPlan's single-tx planCode-based path.
 - [Credit hold idempotency races](hold-idempotency-races.md) — hold needs in-lock recheck + 23505 catch (err.cause.code) + 409 for completed/refunded replays, or races double-charge/run free.
+- [Extract format normalization](extract-equivalent-format-normalization.md) — Sonnet emits `question` not `prompt`; sanitize must normalize equivalent keys, never invent/default answers.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.

@@ -35,7 +35,7 @@ const mockState = vi.hoisted(() => {
     };
     return new Proxy(p, handler);
   }
-  return { openaiCreate, makeChain };
+  return { openaiCreate, makeChain, captureCredits: vi.fn(async () => {}), refundCredits: vi.fn(async () => {}) };
 });
 
 vi.mock("@workspace/db", () => {
@@ -59,8 +59,8 @@ vi.mock("@workspace/db", () => {
 
 vi.mock("../lib/check-credits", () => ({
   checkCredits: () => (_req: any, _res: any, next: any) => next(),
-  captureCredits: async () => {},
-  refundCredits: async () => {},
+  captureCredits: mockState.captureCredits,
+  refundCredits: mockState.refundCredits,
   invalidateCreditsSettingsCache: () => {},
 }));
 
@@ -158,6 +158,8 @@ function openaiReturns(content: string) {
 
 beforeEach(() => {
   mockState.openaiCreate.mockReset();
+  mockState.captureCredits.mockClear();
+  mockState.refundCredits.mockClear();
   mockProcessUploadedFiles.mockReset();
   mockRunVisionCompletionMulti.mockReset();
   // Default: simulate a text-based PDF upload
@@ -328,6 +330,50 @@ describe("POST /api/worksheets/ai/extract — AI failure modes", () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty("message");
+  });
+
+  it("refunds and never captures when zero valid questions survive sanitization", async () => {
+    // MCQs with no resolvable correct answer — normalization must NOT invent one.
+    openaiReturns(JSON.stringify({ questions: [
+      { type: "mcq", prompt: "سؤال بلا إجابة؟", options: ["أ", "ب", "ج", "د"] },
+      { type: "mcq", prompt: "سؤال آخر؟", options: ["أ", "ب", "ج", "د"], correctAnswer: "هـ" },
+    ] }));
+
+    const res = await request(makeApp())
+      .post("/api/worksheets/ai/extract")
+      .send(VALID_FORM);
+
+    expect(res.status).toBe(500);
+    expect(mockState.captureCredits).not.toHaveBeenCalled();
+    expect(mockState.refundCredits).toHaveBeenCalled();
+  });
+
+  it("captures exactly once on a successful extraction", async () => {
+    openaiReturns(JSON.stringify({ questions: AI_MCQ_QUESTIONS }));
+
+    const res = await request(makeApp())
+      .post("/api/worksheets/ai/extract")
+      .send(VALID_FORM);
+
+    expect(res.status).toBe(200);
+    expect(mockState.captureCredits).toHaveBeenCalledTimes(1);
+    expect(mockState.refundCredits).not.toHaveBeenCalled();
+  });
+
+  it("accepts Claude-style questions ('question' key + correctAnswer letter) via normalization", async () => {
+    openaiReturns(JSON.stringify({ questions: [
+      { type: "mcq", question: "ما عاصمة الكويت؟", options: ["الكويت", "حولي", "الجهراء", "الفروانية"], correctAnswer: "A" },
+      { type: "mcq", question: "كم عدد المحافظات؟", options: ["4", "5", "6", "7"], correctIndex: 2 },
+    ] }));
+
+    const res = await request(makeApp())
+      .post("/api/worksheets/ai/extract")
+      .send(VALID_FORM);
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(2);
+    expect(res.body.questions[0]).toMatchObject({ prompt: "ما عاصمة الكويت؟", correctIndex: 0 });
+    expect(mockState.captureCredits).toHaveBeenCalledTimes(1);
   });
 
   it("returns 500 when the model returns valid JSON that fails schema validation", async () => {

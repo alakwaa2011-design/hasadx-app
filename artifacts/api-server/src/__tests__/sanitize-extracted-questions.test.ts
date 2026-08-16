@@ -35,6 +35,77 @@ const DEFAULT_EXTRACT_COUNTS = {
   matching: 0,
 };
 
+// ── Equivalent-format normalization (never inventing answers) ───────────────
+
+describe("equivalent-format normalization", () => {
+  it("accepts 'question' key instead of 'prompt' (Claude Sonnet shape, verified live)", () => {
+    const raw = [{ type: "mcq", question: "سؤال؟", options: [...FOUR_OPTS], correctIndex: 1 }];
+    const result = sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ prompt: "سؤال؟", correctIndex: 1 });
+  });
+
+  it("accepts 'text' key instead of 'prompt'", () => {
+    const raw = [{ type: "mcq", text: "سؤال؟", options: [...FOUR_OPTS], correctIndex: 0 }];
+    expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(1);
+  });
+
+  it("converts optionA..optionD flat keys into a 4-option array", () => {
+    const raw = [{ type: "mcq", prompt: "Q?", optionA: "Alpha", optionB: "Beta", optionC: "Gamma", optionD: "Delta", correctAnswer: "C" }];
+    const result = sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ options: ["Alpha", "Beta", "Gamma", "Delta"], correctIndex: 2 });
+  });
+
+  it("converts correctAnswer letter (case-insensitive) to correctIndex", () => {
+    const raw = [makeMcq({ correctIndex: undefined, correctAnswer: "d" })];
+    const result = sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ correctIndex: 3 });
+  });
+
+  it("converts correctAnswer matching an option's exact text to correctIndex", () => {
+    const raw = [makeMcq({ correctIndex: undefined, correctAnswer: "Gamma" })];
+    const result = sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ correctIndex: 2 });
+  });
+
+  it("rejects (never defaults) when correctAnswer matches no option and is not a letter", () => {
+    const raw = [makeMcq({ correctIndex: undefined, correctAnswer: "Epsilon" })];
+    expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+
+  it("rejects fractional correctIndex (1.9 must not be floored into a 'valid' answer)", () => {
+    const raw = [makeMcq({ correctIndex: 1.9 })];
+    expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+
+  it("matches correctAnswer against FULL option text, not the 300-char truncation", () => {
+    const longA = "أ".repeat(300) + " النهاية الأولى";
+    const longB = "أ".repeat(300) + " النهاية الثانية";
+    const raw = [{ type: "mcq", prompt: "Q?", options: [longA, longB, "Gamma", "Delta"], correctAnswer: longB }];
+    const result = sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ correctIndex: 1 });
+  });
+
+  it("rejects when correctAnswer text matches duplicate options ambiguously", () => {
+    const raw = [{ type: "mcq", prompt: "Q?", options: ["Same", "Same", "Gamma", "Delta"], correctAnswer: "Same" }];
+    expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+
+  it("rejects when neither correctIndex nor correctAnswer is present", () => {
+    const raw = [makeMcq({ correctIndex: undefined })];
+    expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+
+  it("rejects optionA..D shape when one option is empty (never invents options)", () => {
+    const raw = [{ type: "mcq", prompt: "Q?", optionA: "Alpha", optionB: "", optionC: "Gamma", optionD: "Delta", correctAnswer: "A" }];
+    expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+});
+
 // ── Default-counts behaviour ─────────────────────────────────────────────────
 
 describe("default extraction counts (10 MCQ, 0 others)", () => {
