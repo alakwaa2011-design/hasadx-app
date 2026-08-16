@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import * as LucideIcons from "lucide-react";
 
 const BRAND_GREEN = "#225739";
@@ -67,6 +68,9 @@ export function SmartAddSlideDialog({
 
   const dir = isAr ? "rtl" : "ltr";
 
+  /* Server charges credits for AI slide generation — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   function handleClose() {
     if (loading) return;
     setSelectedKind(null);
@@ -109,6 +113,7 @@ export function SmartAddSlideDialog({
       );
     } finally {
       setLoading(false);
+      refreshCreditsBalance();
     }
   }
 

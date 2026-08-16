@@ -6,6 +6,7 @@ import {
   PenTool, Plane, Dna, Calculator, Moon, BookText, Tornado
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { motion } from "framer-motion";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -89,6 +90,9 @@ export default function SmartBoardAsk() {
 
   const clearImage = () => { setImgPrev(null); setImageB64(null); };
 
+  /* Server charges credits for AI answers — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const ask = async (override?: string) => {
     const q = override ?? question;
     if (!q.trim() && !imageB64) return;
@@ -105,7 +109,7 @@ export default function SmartBoardAsk() {
       sessionStorage.setItem("whiteboard_ask_plan", JSON.stringify(plan));
       navigate("/teacher/smart-board/present/ask");
     } catch { setError(isAr ? "حدث خطأ — حاول مجدداً" : "An error occurred — please try again"); }
-    finally { setLoading(false); }
+    finally { setLoading(false); refreshCreditsBalance(); }
   };
 
   const ready = !loading && (!!question.trim() || !!imageB64);

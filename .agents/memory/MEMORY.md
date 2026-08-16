@@ -22,4 +22,5 @@
 - [Manual plan grant race safety](manual-plan-grant.md) — grantSubscriptionCredits reads credits from the STORED subscription; manual admin grants must use grantManualPlan's single-tx planCode-based path.
 - [Credit hold idempotency races](hold-idempotency-races.md) — hold needs in-lock recheck + 23505 catch (err.cause.code) + 409 for completed/refunded replays, or races double-charge/run free.
 - [Extract format normalization](extract-equivalent-format-normalization.md) — Sonnet emits `question` not `prompt`; sanitize must normalize equivalent keys, never invent/default answers.
+- [Central credits balance query](credits-balance-central-query.md) — one react-query key for نقاط حصاد; every AI call site must invalidate it on settle; no local deduction math.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.

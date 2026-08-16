@@ -3,6 +3,7 @@ import { useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiPresentationBuilder } from "./builder";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -348,6 +349,9 @@ export default function NewPresentationPage() {
   }, [setLocation]);
 
   const [mode, setMode] = useState<Mode>(null);
+  /* Server charges credits for AI outline/build — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const [quickPhase, setQuickPhase] = useState<QuickPhase>("form");
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -537,8 +541,12 @@ export default function NewPresentationPage() {
       setErrorMsg(msg);
       setQuickPhase("error");
       toast.error(msg);
+    } finally {
+      /* Outline + build both charge credits server-side — refresh the
+         shared balance whether the flow succeeded or failed (refund). */
+      refreshCreditsBalance();
     }
-  }, [topic, grade, subject, educationalStrategy, isAr, canGenerate]);
+  }, [topic, grade, subject, educationalStrategy, isAr, canGenerate, refreshCreditsBalance]);
 
   const resetQuick = () => {
     setQuickPhase("form");

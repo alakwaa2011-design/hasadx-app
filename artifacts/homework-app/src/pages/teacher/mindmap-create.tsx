@@ -9,6 +9,7 @@ import {
   ImageDown, FileImage,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 
 const BRAND_GREEN = "#225739";
 const API_BASE = "";
@@ -340,6 +341,10 @@ export default function MindMapCreate() {
   const isAr = lang === "ar";
   const dir = isAr ? "rtl" : "ltr";
 
+  /* Server charges credits for AI generation — refresh the shared balance
+     (header chip + credits page) after each attempt settles. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   /* ── Generate ─────────────────────────────────────────────────────── */
   const generate = useCallback(async (overrideTopic?: string) => {
     const t = (overrideTopic ?? topic).trim();
@@ -366,8 +371,9 @@ export default function MindMapCreate() {
       toast.error(isAr ? "خطأ في الشبكة، يرجى المحاولة مجدداً" : "Network error, please try again");
     } finally {
       setLoading(false);
+      refreshCreditsBalance();
     }
-  }, [topic, lang, depth, isAr]);
+  }, [topic, lang, depth, isAr, refreshCreditsBalance]);
 
   const handleExample = (ex: string) => { setTopic(ex); generate(ex); };
 

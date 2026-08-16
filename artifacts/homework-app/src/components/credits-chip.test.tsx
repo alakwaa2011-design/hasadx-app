@@ -11,7 +11,7 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/teacher/dashboard", vi.fn()],
 }));
 
-import { CreditsChip } from "./credits-chip";
+import { CreditsChip, useCreditsBalance, useRefreshCreditsBalance } from "./credits-chip";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function makeFetch(balance: number | "error") {
@@ -96,6 +96,40 @@ describe("CreditsChip", () => {
     const text = await render();
     // يعرض "0" لأن fetch نجح ورجع balance=0
     expect(text()).toContain("0");
+  });
+
+  it("useRefreshCreditsBalance يعيد جلب الرصيد من الخادم لكل المستهلكين (بلا حساب محلي)", async () => {
+    /* الخادم هو مصدر الحقيقة: أول جلب 50، بعد عملية AI يرجع 40.
+       الاستدعاء المركزي refresh() يجب أن يجعل الشريحة تعرض 40 فوراً. */
+    let serverBalance = 50;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => ({
+      ok: true,
+      json: async () => ({ balance: serverBalance }),
+    }) as unknown as Response));
+
+    let refresh: (() => void) | null = null;
+    function Grabber() {
+      useCreditsBalance();
+      refresh = useRefreshCreditsBalance();
+      return null;
+    }
+    await act(async () => {
+      root.render(
+        <Wrap>
+          <Grabber />
+          <CreditsChip />
+        </Wrap>,
+      );
+    });
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(container.textContent).toContain("50");
+
+    /* محاكاة خصم خادمي بعد عملية AI ناجحة، ثم التحديث المركزي */
+    serverBalance = 40;
+    await act(async () => { refresh!(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(container.textContent).toContain("40");
+    expect(container.textContent).not.toContain("50");
   });
 
   it("لا يستخدم window.open — التنقل فقط عبر setLocation", async () => {

@@ -9,6 +9,7 @@ import {
   CalendarClock, AlertCircle, CreditCard, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useCreditsBalance } from "@/components/credits-chip";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -17,15 +18,6 @@ async function apiFetch(path: string, opts?: RequestInit) {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
-}
-
-interface BalanceDetail {
-  balance: number;
-  paidBalance: number;
-  promoBalance: number;
-  earnedBalance: number;
-  subscriptionBalance: number;
-  freeBalance: number;
 }
 
 interface Pkg {
@@ -109,7 +101,10 @@ export default function TeacherCreditsPage() {
     expired:   { label: c.payStatusExpired,   color: "text-muted-foreground bg-muted border-border" },
   };
 
-  const [balance,          setBalance]          = useState<BalanceDetail | null>(null);
+  /* Central balance source — same react-query cache as the header chip, so
+     the hero number here always matches the chip and updates when any AI
+     operation invalidates the shared query. */
+  const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useCreditsBalance();
   const [subscription,     setSubscription]     = useState<SubInfo | null>(null);
   const [packages,         setPackages]         = useState<Pkg[]>([]);
   const [purchasesEnabled, setPurchasesEnabled] = useState(true);
@@ -135,14 +130,15 @@ export default function TeacherCreditsPage() {
       })
       .catch(() => toast(t.pricing.loadError, { className: "text-red-500" }));
 
+    /* Balance itself comes from the shared react-query source. */
+    void refetchBalance();
+
     Promise.all([
-      apiFetch("/api/credits/me").then((r) => r.json()),
       apiFetch("/api/credits/packages").then((r) => r.json()),
       apiFetch("/api/credits/purchases").then((r) => r.json()),
       apiFetch("/api/subscriptions/me").then((r) => r.json()),
     ])
-      .then(([bal, pkgs, purch, sub]) => {
-        setBalance(bal);
+      .then(([pkgs, purch, sub]) => {
         setPackages(pkgs.packages ?? []);
         setPurchasesEnabled(pkgs.purchasesEnabled !== false);
         setPurchases(Array.isArray(purch) ? purch : []);
@@ -312,7 +308,7 @@ export default function TeacherCreditsPage() {
 
             <div className="flex items-center gap-5 flex-wrap">
               {/* المصادر غير الصفرية — تظهر فقط عند تعدد المصادر حتى لا يتكرر الرقم */}
-              {!loading && breakdownEntries.length > 1 && (
+              {!balanceLoading && breakdownEntries.length > 1 && (
                 <div className="flex items-center gap-2 flex-wrap">
                   {breakdownEntries.map(({ key, label, value, icon: Icon, gold }) => (
                     <span
@@ -329,7 +325,7 @@ export default function TeacherCreditsPage() {
               )}
               <div className="flex items-baseline gap-1.5">
                 <span className="text-4xl md:text-5xl font-black tracking-tight drop-shadow-sm">
-                  {loading ? "…" : fmt(balance?.balance ?? 0)}
+                  {balanceLoading ? "…" : fmt(balance?.balance ?? 0)}
                 </span>
                 <span className="text-base md:text-lg font-medium text-emerald-200">{c.pointsLabel}</span>
               </div>

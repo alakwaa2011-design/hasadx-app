@@ -5,6 +5,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { useI18n } from "@/lib/i18n";
 import {
   useBuildPresentationFromDraft,
@@ -103,8 +104,12 @@ export function BuildProgress({
   const startedRef = useRef(false);
   const redirectedRef = useRef(false);
 
+  /* Server charges credits for the build — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const build = useBuildPresentationFromDraft({
     mutation: {
+      onSettled: () => refreshCreditsBalance(),
       onSuccess: (data: BuildPresentationResponse) => {
         setResult(data);
         if (data.presentationId > 0) {

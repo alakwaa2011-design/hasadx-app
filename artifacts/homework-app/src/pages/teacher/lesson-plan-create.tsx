@@ -11,6 +11,7 @@ import {
   Calendar, CheckCircle2, Youtube, Type, TextSelect
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { toast } from "sonner";
 import { LessonPlanPrintView, type PlanData } from "@/pages/teacher/lesson-plan-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -527,6 +528,10 @@ export default function LessonPlanCreate() {
 
   useEffect(() => { if (showSaved) loadSaved(); }, [showSaved]);
 
+  /* Server charges credits for AI generate/extract — refresh the shared
+     balance (header chip + credits page) after each attempt settles. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   async function handleGenerate() {
     if (!aiTopic.trim()) {
       toast.error(t.topicRequired);
@@ -561,6 +566,7 @@ export default function LessonPlanCreate() {
       toast.error(t.aiError);
     } finally {
       setGenerating(false);
+      refreshCreditsBalance();
     }
   }
 
@@ -605,6 +611,7 @@ export default function LessonPlanCreate() {
       toast.error(t.aiError);
     } finally {
       setExtracting(false);
+      refreshCreditsBalance();
     }
   }
 

@@ -20,6 +20,7 @@ import {
   type PresentationDraftWithGuardrails,
   type PresentationOutline,
 } from "@workspace/api-client-react";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { BriefForm, type BriefFormHandle } from "./brief-form";
 import { OutlineReview } from "./outline-review";
 import { BuildProgress } from "./build-progress";
@@ -66,8 +67,12 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
     }
   }, [open, initialDraft]);
 
+  /* Server charges credits for outline generation — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const generate = useGeneratePresentationOutline({
     mutation: {
+      onSettled: () => refreshCreditsBalance(),
       onSuccess: (data: PresentationDraftWithGuardrails) => {
         const { guardrails, ...rest } = data;
         setDraft(rest as PresentationDraft);

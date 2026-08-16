@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -169,6 +170,9 @@ export default function MaraquiCreate() {
     updateQuestion(stageIdx, qIdx, { options: newOptions });
   };
 
+  /* Server charges credits for AI generation — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const generateAI = async (stageIdx: number) => {
     if (!aiTopic.trim()) { toast.error(isRtl ? "أدخل موضوع الأسئلة" : "Enter a topic"); return; }
     setAiLoadingStage(stageIdx);
@@ -200,6 +204,7 @@ export default function MaraquiCreate() {
       toast.error(msg);
     } finally {
       setAiLoadingStage(null);
+      refreshCreditsBalance();
     }
   };
 

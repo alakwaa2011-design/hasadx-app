@@ -15,6 +15,7 @@ import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
 } from "./worksheet-themes";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { toast } from "@/components/ui/sonner";
 import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -431,6 +432,10 @@ export default function WorksheetCreate() {
     });
   };
 
+  /* Server charges credits for AI generate/extract — refresh the shared
+     balance (header chip + credits page) after each attempt settles. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const generateWithAI = async () => {
     if (!aiTopic.trim()) {
       toast.error(ar ? "اكتب موضوع الورقة" : "Add a topic first");
@@ -488,6 +493,7 @@ export default function WorksheetCreate() {
       toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
     } finally {
       setGenerating(false);
+      refreshCreditsBalance();
     }
   };
 
@@ -554,6 +560,7 @@ export default function WorksheetCreate() {
       toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
     } finally {
       setExtracting(false);
+      refreshCreditsBalance();
     }
   };
 

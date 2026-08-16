@@ -29,6 +29,7 @@ import { resolveImageUrl } from "@/lib/image-url";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCreditsBalance, useRefreshCreditsBalance } from "@/components/credits-chip";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
 import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
 import {
@@ -389,6 +390,11 @@ export default function CreateAssignment() {
   const [extractCredit, setExtractCredit] = useState<{
     effectiveCost: number; baseCost: number; isPro: boolean; balance: number; creditsEnabled: boolean;
   } | null>(null);
+  /* Central balance source — same react-query cache as the header chip and
+     the credits page. The server is the only source of truth; after any AI
+     operation settles we invalidate this query instead of doing local math. */
+  const { data: centralBalance, refetch: refetchCentralBalance } = useCreditsBalance();
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   /* Same-source duplicate guard: fingerprint of the last successful
      extraction in this editor session. */
   const lastExtractFpRef = useRef<string | null>(null);
@@ -531,7 +537,11 @@ export default function CreateAssignment() {
           ? `تعذّر توليد صور لـ ${failedImages} من الأسئلة — يمكنك إضافة صورة يدوياً من محرر السؤال`
           : `Images failed for ${failedImages} question(s) — you can add an image manually in the question editor`);
       }
-    } catch (err: any) { setAiError(err.message || t.common.error); } finally { setAiLoading(false); }
+    } catch (err: any) { setAiError(err.message || t.common.error); } finally {
+      setAiLoading(false);
+      /* AI generation charges credits server-side — refresh the shared balance. */
+      refreshCreditsBalance();
+    }
   };
 
   // ── Source extract (images / PDF / DOCX / PPTX / TXT / MD) ──
@@ -566,11 +576,20 @@ export default function CreateAssignment() {
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (!cancelled && d && typeof d.effectiveCost === "number") setExtractCredit(d); })
       .catch(() => {});
+    /* Also refresh the central balance so the guard uses a current number. */
+    void refetchCentralBalance();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showImageExtract]);
 
+  /* Guard reads the CENTRAL balance (same source as the header chip); the
+     tool-price response only provides cost/creditsEnabled/isPro. Falls back
+     to the tool-price snapshot if the central query hasn't resolved yet. */
+  const extractGuardBalance = centralBalance?.balance ?? extractCredit?.balance;
   const insufficientExtractCredit =
-    !!extractCredit?.creditsEnabled && extractCredit.balance < extractCredit.effectiveCost;
+    !!extractCredit?.creditsEnabled &&
+    typeof extractGuardBalance === "number" &&
+    extractGuardBalance < extractCredit.effectiveCost;
 
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
@@ -599,8 +618,7 @@ export default function CreateAssignment() {
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
       if (res.status === 402) {
         const required = typeof data.required === "number" ? data.required : extractCredit?.effectiveCost;
-        const bal = typeof data.balance === "number" ? data.balance : extractCredit?.balance;
-        setExtractCredit(prev => prev && typeof bal === "number" ? { ...prev, balance: bal } : prev);
+        const bal = typeof data.balance === "number" ? data.balance : extractGuardBalance;
         throw new Error(
           lang === "ar"
             ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${required ?? "?"} نقطة حصاد، ورصيدك الحالي ${bal ?? "?"} نقطة.`
@@ -625,12 +643,16 @@ export default function CreateAssignment() {
       });
       lastExtractFpRef.current = fingerprint;
       setShowImageExtract(false); setExtractFiles([]);
-      /* Refresh the shown balance after a successful charge. */
-      setExtractCredit(prev => prev && prev.creditsEnabled ? { ...prev, balance: Math.max(0, prev.balance - prev.effectiveCost) } : prev);
       toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من المصدر بنجاح` : `${generated.length} questions extracted from the source`);
     } catch (err: unknown) {
       setExtractError(err instanceof Error ? err.message : t.common.error);
-    } finally { extractBusyRef.current = false; setExtractLoading(false); }
+    } finally {
+      extractBusyRef.current = false; setExtractLoading(false);
+      /* Server is the source of truth: refetch the shared balance after the
+         attempt settles (success = capture, failure = refund — both change
+         or restore the balance). No client-side deduction math. */
+      refreshCreditsBalance();
+    }
   };
 
   const handleExtractFromSource = async () => {
@@ -640,8 +662,8 @@ export default function CreateAssignment() {
     if (insufficientExtractCredit && extractCredit) {
       setExtractError(
         lang === "ar"
-          ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractCredit.balance} نقطة.`
-          : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractCredit.balance}.`,
+          ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractGuardBalance ?? extractCredit.balance} نقطة.`
+          : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractGuardBalance ?? extractCredit.balance}.`,
       );
       return;
     }
@@ -1547,8 +1569,8 @@ export default function CreateAssignment() {
                             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-lg p-2.5 space-y-1.5" data-testid="extract-insufficient-credit">
                               <p className="text-xs text-amber-800 dark:text-amber-200 font-bold">
                                 {lang === "ar"
-                                  ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractCredit.balance} نقطة.`
-                                  : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractCredit.balance}.`}
+                                  ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractGuardBalance ?? extractCredit.balance} نقطة.`
+                                  : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractGuardBalance ?? extractCredit.balance}.`}
                               </p>
                               <button type="button" onClick={() => setLocation("/teacher/credits")}
                                 className="text-xs font-bold text-primary underline underline-offset-2">

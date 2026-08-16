@@ -7,6 +7,7 @@ import {
   ArrowRight, ArrowLeft, BookOpen, Clock, Users, Wand2, Volume2
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { motion, AnimatePresence } from "framer-motion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -394,6 +395,9 @@ export default function SmartBoardNew() {
   const [plan, setPlan] = useState<LessonPlan | null>(null);
   const [saving, setSaving] = useState(false);
 
+  /* Server charges credits for AI generation — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   async function generate() {
     if (!topic.trim()) { setError(isAr ? "اكتب موضوع الدرس أولاً" : "Enter a lesson topic first"); return; }
     setError(""); setLoading(true); setPlan(null);
@@ -410,6 +414,7 @@ export default function SmartBoardNew() {
       setError(isAr ? "تعذّر الاتصال بالخادم" : "Could not connect to server");
     } finally {
       setLoading(false);
+      refreshCreditsBalance();
     }
   }
 

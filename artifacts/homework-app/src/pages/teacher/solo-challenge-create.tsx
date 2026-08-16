@@ -15,6 +15,7 @@ import {
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { QuestionCard, emptyQuestion, isValidQ, type Question, type Correct } from "@/components/game/question-editor";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -109,6 +110,9 @@ export default function SoloChallengeCreatePage() {
     assignSearch === ""
   );
 
+  /* Server charges credits for AI generation — refresh the shared balance. */
+  const refreshCreditsBalance = useRefreshCreditsBalance();
+
   const generateWithAI = async () => {
     if (!topic.trim()) { toast.error("أدخل الموضوع أولاً"); return; }
     setGenerating(true);
@@ -141,6 +145,7 @@ export default function SoloChallengeCreatePage() {
       toast.error(err.message || "خطأ في التوليد");
     } finally {
       setGenerating(false);
+      refreshCreditsBalance();
     }
   };
 

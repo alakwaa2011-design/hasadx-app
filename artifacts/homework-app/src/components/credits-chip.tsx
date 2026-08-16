@@ -7,17 +7,27 @@
  *   error    → Sparkles icon only (chip still links to /teacher/credits)
  *   success  → Sparkles icon + "400 نقطة"
  */
-import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Sparkles } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-interface BalanceSummary {
+export interface BalanceSummary {
   balance: number;
   freeBalance: number;
   paidBalance: number;
+  promoBalance: number;
+  earnedBalance: number;
+  subscriptionBalance: number;
 }
+
+/** Single query key for the teacher's Hasad credits balance — every surface
+ *  (header chip, credits page, activity creator) must read through it. */
+export const CREDITS_BALANCE_QUERY_KEY = ["credits-chip-balance"] as const;
+
+const num = (v: unknown) => (typeof v === "number" ? v : 0);
 
 /**
  * Shared balance source — same query key as the header chip, so the sidebar
@@ -25,7 +35,7 @@ interface BalanceSummary {
  */
 export function useCreditsBalance() {
   return useQuery<BalanceSummary | null, Error>({
-    queryKey: ["credits-chip-balance"],
+    queryKey: CREDITS_BALANCE_QUERY_KEY,
     queryFn: async (): Promise<BalanceSummary | null> => {
       const res = await fetch(`${API_BASE}/api/credits/me`, {
         credentials: "include",
@@ -33,14 +43,30 @@ export function useCreditsBalance() {
       if (!res.ok) throw new Error("credits");
       const json = await res.json();
       return {
-        balance: typeof json.balance === "number" ? json.balance : 0,
-        freeBalance: typeof json.freeBalance === "number" ? json.freeBalance : 0,
-        paidBalance: typeof json.paidBalance === "number" ? json.paidBalance : 0,
+        balance: num(json.balance),
+        freeBalance: num(json.freeBalance),
+        paidBalance: num(json.paidBalance),
+        promoBalance: num(json.promoBalance),
+        earnedBalance: num(json.earnedBalance),
+        subscriptionBalance: num(json.subscriptionBalance),
       };
     },
     staleTime: 60_000,
     retry: false,
   });
+}
+
+/**
+ * Central refresh: invalidates the shared balance query so every mounted
+ * surface refetches from the server. Call after any AI operation settles
+ * (success OR failure — refunds change the balance too). The server is the
+ * only source of truth; never compute a deduction client-side.
+ */
+export function useRefreshCreditsBalance() {
+  const queryClient = useQueryClient();
+  return useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: CREDITS_BALANCE_QUERY_KEY });
+  }, [queryClient]);
 }
 
 export function CreditsChip() {
