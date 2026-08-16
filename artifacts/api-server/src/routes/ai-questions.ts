@@ -214,6 +214,7 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
 
     const jsonArray = extractJsonArray(responseText);
     if (!jsonArray) {
+      await refundCredits(req, "لا مصفوفة JSON في رد النموذج");
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد الأسئلة. حاول مرة أخرى." });
       return;
     }
@@ -222,11 +223,13 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
     try {
       parsed = JSON.parse(jsonArray);
     } catch {
+      await refundCredits(req, "خطأ في تحليل JSON من النموذج");
       res.status(500).json({ message: "خطأ في تنسيق الإجابة من الذكاء الاصطناعي. حاول مرة أخرى." });
       return;
     }
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
+      await refundCredits(req, "مصفوفة أسئلة فارغة من النموذج");
       res.status(500).json({ message: "لم يتم توليد أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
@@ -239,6 +242,7 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
       .filter((q): q is NonNullable<typeof q> => q !== null);
 
     if (validQuestions.length === 0) {
+      await refundCredits(req, "لا أسئلة صالحة بعد التحقق من الشكل");
       res.status(500).json({ message: "لم يتم توليد أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
@@ -319,13 +323,19 @@ ${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
     const responseText = completion.choices[0]?.message?.content || "";
     const jsonArray = extractJsonArray(responseText);
     if (!jsonArray) {
+      await refundCredits(req, "لا مصفوفة JSON في رد نموذج الصور");
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد الأسئلة. حاول مرة أخرى." });
       return;
     }
     parsed = JSON.parse(jsonArray);
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
-  } catch {
-    res.status(500).json({ message: "خطأ في توليد الأسئلة. يرجى المحاولة مرة أخرى." });
+  } catch (err: any) {
+    /* Throw-path: either the JSON.parse above threw, or we threw "empty".
+       Both are genuine failures — refund before responding. */
+    if (!res.headersSent) {
+      await refundCredits(req, "خطأ في تحليل رد نموذج الأسئلة مع الصور");
+      res.status(500).json({ message: "خطأ في توليد الأسئلة. يرجى المحاولة مرة أخرى." });
+    }
     return;
   }
 
@@ -336,6 +346,7 @@ ${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
     .map((q: any, idx: number) => ({ raw: q, mapped: mapTypedQuestion(q, qTypesImg?.[idx] ?? "mcq") }))
     .filter((e): e is { raw: any; mapped: NonNullable<ReturnType<typeof mapTypedQuestion>> } => e.mapped !== null);
   if (validParsed.length === 0) {
+    await refundCredits(req, "لا أسئلة صالحة بعد التحقق (مع صور)");
     res.status(500).json({ message: "لم يتم توليد أسئلة صالحة. حاول مرة أخرى." });
     return;
   }

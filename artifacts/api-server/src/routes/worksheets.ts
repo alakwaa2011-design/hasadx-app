@@ -848,11 +848,13 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
 
     const total = body.counts.mcq + body.counts.true_false + body.counts.short_answer + body.counts.fill_blank + body.counts.matching;
     if (total === 0) {
+      await refundCredits(req, "لا أنواع أسئلة محددة");
       res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
       return;
     }
     const maxTotal = body.pages * 30;
     if (total > maxTotal) {
+      await refundCredits(req, "عدد الأسئلة يتجاوز الحد المسموح");
       res.status(400).json({ message: language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions` });
       return;
     }
@@ -871,6 +873,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     const validated = questionsArraySchema.safeParse(cleaned);
     if (!validated.success) {
       req.log.warn({ issues: validated.error.issues }, "AI worksheet questions failed strict validation");
+      await refundCredits(req, "تنسيق غير صالح من مولّد الأوراق");
       res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
       return;
     }

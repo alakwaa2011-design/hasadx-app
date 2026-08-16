@@ -105,6 +105,7 @@ Return ONLY this exact JSON:
       parsed = JSON.parse(raw);
     } catch {
       req.log.error({ raw }, "Mind map: invalid JSON from AI");
+      await refundCredits(req, "خطأ في تحليل JSON من نموذج الخريطة الذهنية");
       res.status(500).json({ message: "خطأ في تنسيق الاستجابة، يرجى المحاولة مجدداً" });
       return;
     }
