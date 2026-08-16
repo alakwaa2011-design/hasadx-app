@@ -9,7 +9,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { randomUUID } from "crypto";
 import { db, teachersTable, creditPackagesTable, creditPurchasesTable } from "@workspace/db";
-import { eq, and, isNull, asc, desc } from "drizzle-orm";
+import { eq, and, isNull, asc, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
 import { createCheckout, lemonConfigured, frontendOrigin } from "../lib/lemonsqueezy";
@@ -41,6 +41,22 @@ router.get("/credits/packages", requireTeacher as any, async (_req, res) => {
     res.json({ packages: rows, purchasesEnabled: process.env.PAYMENTS_ENABLED === "true" && lemonConfigured() });
   } catch {
     res.status(500).json({ message: "فشل تحميل الباقات" });
+  }
+});
+
+/* سعر أداة للمعلم الحالي — السعر النهائي يأتي من المنطق المركزي (خصم Pro
+   يطبَّق مرة واحدة في CreditService)، فالواجهة تعرضه فقط ولا تحسبه. */
+router.get("/credits/tool-price/:toolKey", requireTeacher as any, async (req, res) => {
+  try {
+    const teacherId = req.session!.teacherId!;
+    const toolKey = String(req.params.toolKey || "").slice(0, 64);
+    const [settingsRow] = await db.execute(sql`SELECT credits_enabled FROM platform_settings LIMIT 1`).then(r => r.rows as any[]);
+    const creditsEnabled = Boolean(settingsRow?.credits_enabled);
+    const { baseCost, effectiveCost, isPro } = await CreditService.getEffectiveCost(teacherId, toolKey);
+    const balance = await CreditService.getBalance(teacherId);
+    res.json({ toolKey, baseCost, effectiveCost, isPro, balance, creditsEnabled });
+  } catch {
+    res.status(500).json({ message: "فشل تحميل سعر الأداة" });
   }
 });
 

@@ -30,6 +30,10 @@ export interface HoldResult {
   requestId: string;
   creditsHeld: number;
   newBalance: number;
+  /** Set when the requestId matched an existing hold (idempotent replay).
+      'completed'/'refunded' are terminal — callers must NOT re-run the paid
+      work for them; 'pending' means the original attempt is still in flight. */
+  existingStatus?: "pending" | "completed" | "refunded" | "expired";
 }
 
 export interface BalanceDetail {
@@ -174,30 +178,25 @@ export const CreditService = {
 
   // ── Hold → Capture / Refund ──────────────────────────────────────────────────
 
-  async hold(teacherId: number, toolKey: string, requestId: string): Promise<HoldResult> {
-    // Idempotency
-    const [existing] = await db
-      .select({ id: creditHoldsTable.id, creditsHeld: creditHoldsTable.creditsHeld })
-      .from(creditHoldsTable)
-      .where(eq(creditHoldsTable.requestId, requestId))
-      .limit(1);
-    if (existing) {
-      const balance = await this.getBalance(teacherId);
-      return { requestId, creditsHeld: existing.creditsHeld, newBalance: balance };
-    }
-
+  /** السعر الفعلي لأداة لمعلم معيّن — التكلفة الأساسية مع خصم Pro المركزي (20%).
+      المصدر الوحيد للحقيقة لسعر أي عملية؛ الواجهة تعرض ناتج هذه الدالة فقط. */
+  async getEffectiveCost(
+    teacherId: number,
+    toolKey: string,
+  ): Promise<{ baseCost: number; effectiveCost: number; timeoutSeconds: number; isPro: boolean }> {
     const [tool] = await db
       .select({ creditsCost: creditToolPricesTable.creditsCost, timeoutSeconds: creditToolPricesTable.timeoutSeconds })
       .from(creditToolPricesTable)
       .where(eq(creditToolPricesTable.toolKey, toolKey))
       .limit(1);
 
-    const creditsCost = tool?.creditsCost ?? 0;
+    const baseCost = tool?.creditsCost ?? 0;
     const timeoutSeconds = tool?.timeoutSeconds ?? 60;
 
     // ── Apply 20% discount for active Pro subscribers ───────────────────────
-    let effectiveCost = creditsCost;
-    if (creditsCost > 0) {
+    let effectiveCost = baseCost;
+    let isPro = false;
+    if (baseCost > 0) {
       const proCheck = await db.execute(sql`
         SELECT 1 FROM subscriptions s
         JOIN plans p ON p.id = s.plan_id
@@ -207,20 +206,61 @@ export const CreditService = {
         LIMIT 1
       `);
       if ((proCheck.rows?.length ?? 0) > 0) {
-        effectiveCost = Math.ceil(creditsCost * 0.8);
+        isPro = true;
+        effectiveCost = Math.ceil(baseCost * 0.8);
       }
     }
+    return { baseCost, effectiveCost, timeoutSeconds, isPro };
+  },
+
+  async hold(teacherId: number, toolKey: string, requestId: string): Promise<HoldResult> {
+    // Idempotency (fast path — re-checked under the account lock below)
+    const [existing] = await db
+      .select({ id: creditHoldsTable.id, creditsHeld: creditHoldsTable.creditsHeld, status: creditHoldsTable.status })
+      .from(creditHoldsTable)
+      .where(eq(creditHoldsTable.requestId, requestId))
+      .limit(1);
+    if (existing) {
+      const balance = await this.getBalance(teacherId);
+      return { requestId, creditsHeld: existing.creditsHeld, newBalance: balance, existingStatus: existing.status as HoldResult["existingStatus"] };
+    }
+
+    const { effectiveCost, timeoutSeconds } = await this.getEffectiveCost(teacherId, toolKey);
 
     if (effectiveCost === 0) {
       return { requestId, creditsHeld: 0, newBalance: await this.getBalance(teacherId) };
     }
 
+    try {
     return await db.transaction(async (tx) => {
       const acct = await lockAccount(tx, teacherId);
       const currentBalance = Number(acct?.balance ?? 0);
 
+      /* Idempotency re-check UNDER the account lock: two concurrent requests
+         with the same requestId can both pass the fast-path SELECT above.
+         Without this, at a balance of exactly one price the loser would see
+         "insufficient" (the winner already deducted) instead of resolving to
+         the winner's hold. */
+      const dupRows = await tx.execute(sql`
+        SELECT credits_held, status FROM credit_holds WHERE request_id = ${requestId} LIMIT 1
+      `);
+      const dup = dupRows.rows[0] as any;
+      if (dup) {
+        return {
+          requestId,
+          creditsHeld: Number(dup.credits_held),
+          newBalance: currentBalance,
+          existingStatus: String(dup.status) as HoldResult["existingStatus"],
+        };
+      }
+
       if (currentBalance < effectiveCost) {
-        throw new Error(`رصيد غير كافٍ (${currentBalance} من ${effectiveCost} رصيد مطلوب)`);
+        const err = new Error(`رصيد غير كافٍ (${currentBalance} من ${effectiveCost} رصيد مطلوب)`);
+        // Structured fields so the 402 response can show "تحتاج X ورصيدك Y".
+        (err as any).code = "INSUFFICIENT_CREDITS";
+        (err as any).required = effectiveCost;
+        (err as any).balance = currentBalance;
+        throw err;
       }
 
       // Fetch available batches in consumption order (expiring-first, NULL-last)
@@ -310,6 +350,24 @@ export const CreditService = {
 
       return { requestId, creditsHeld: effectiveCost, newBalance };
     });
+    } catch (err: any) {
+      /* Concurrency race on the same requestId: two simultaneous requests
+         both pass the idempotency SELECT, but request_id is UNIQUE so the
+         loser hits 23505 — treat it as "already held" instead of failing,
+         guaranteeing a single deduction for duplicate/concurrent clicks. */
+      const pgCode = err?.code ?? err?.cause?.code; // drizzle may nest the pg error
+      if (pgCode === "23505" || /request_id|credit_holds/.test(String(err?.message ?? err?.cause?.message ?? ""))) {
+        const [row] = await db
+          .select({ creditsHeld: creditHoldsTable.creditsHeld, status: creditHoldsTable.status })
+          .from(creditHoldsTable)
+          .where(eq(creditHoldsTable.requestId, requestId))
+          .limit(1);
+        if (row) {
+          return { requestId, creditsHeld: row.creditsHeld, newBalance: await this.getBalance(teacherId), existingStatus: row.status as HoldResult["existingStatus"] };
+        }
+      }
+      throw err;
+    }
   },
 
   async capture(requestId: string): Promise<void> {

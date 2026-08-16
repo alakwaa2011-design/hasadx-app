@@ -547,6 +547,7 @@ async function runSchemaMigrations() {
         ('worksheet',        'ورقة العمل',              'ai',    15, 15,  120),
         ('lesson-plan',      'خطة الدرس',               'ai',    15, 15,  120),
         ('pdf-to-questions', 'استخراج أسئلة من PDF',    'ai',    15, 15,  120),
+        ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'ai', 10, 10, 180),
         ('presentation',     'العرض التقديمي',           'ai',    20, 20,  300),
         ('presentation-slide','توليد شريحة واحدة',       'ai',     5,  5,  120),
         ('video-interactive','الفيديو التفاعلي',         'ai',    20, 20,  180),

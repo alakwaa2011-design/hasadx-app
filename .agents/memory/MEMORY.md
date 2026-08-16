@@ -20,4 +20,5 @@
 - [jscanify/OpenCV scanner](jscanify-opencv-scanner.md) — jscanify 1.4.x leaks cv.Mat in findPaperContour/extractPaper; call cv directly with full deletes in any per-frame loop.
 - [Webhook idempotency semantics](webhook-idempotency-semantics.md) — handlers must throw (not silently return) when required work fails, or the idempotency key locks as "processed" and corrected retries are dropped.
 - [Manual plan grant race safety](manual-plan-grant.md) — grantSubscriptionCredits reads credits from the STORED subscription; manual admin grants must use grantManualPlan's single-tx planCode-based path.
+- [Credit hold idempotency races](hold-idempotency-races.md) — hold needs in-lock recheck + 23505 catch (err.cause.code) + 409 for completed/refunded replays, or races double-charge/run free.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.

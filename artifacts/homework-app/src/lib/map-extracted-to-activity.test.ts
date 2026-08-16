@@ -10,11 +10,34 @@ import {
   mapExtractedToActivity,
   extractFileError,
   EXTRACT_EXT_RE,
+  fingerprintFiles,
 } from "./map-extracted-to-activity";
 
 /* ─────────────────────────────────────────────────────────
    mapExtractedToActivity
 ───────────────────────────────────────────────────────── */
+
+describe("fingerprintFiles — same-source duplicate detection", () => {
+  const f = (name: string, size: number, lastModified = 111) => ({ name, size, lastModified });
+
+  it("identical file sets produce the same fingerprint regardless of order", () => {
+    const a = fingerprintFiles([f("a.pdf", 100), f("b.png", 200)]);
+    const b = fingerprintFiles([f("b.png", 200), f("a.pdf", 100)]);
+    expect(a).toBe(b);
+  });
+
+  it("differing name, size, or lastModified changes the fingerprint", () => {
+    const base = fingerprintFiles([f("a.pdf", 100)]);
+    expect(fingerprintFiles([f("b.pdf", 100)])).not.toBe(base);
+    expect(fingerprintFiles([f("a.pdf", 101)])).not.toBe(base);
+    expect(fingerprintFiles([f("a.pdf", 100, 222)])).not.toBe(base);
+  });
+
+  it("adding a file changes the fingerprint", () => {
+    expect(fingerprintFiles([f("a.pdf", 100), f("c.txt", 5)]))
+      .not.toBe(fingerprintFiles([f("a.pdf", 100)]));
+  });
+});
 
 describe("mapExtractedToActivity — MCQ", () => {
   it("maps a well-formed MCQ to correctAnswer A–D letters", () => {

@@ -24,6 +24,21 @@ export function extractFileError(
 }
 
 /**
+ * Stable fingerprint for a selected source-file set: name + size +
+ * lastModified per file, order-insensitive. Used to detect "the teacher is
+ * extracting the exact same source again" so we can offer
+ * replace / add-anyway / cancel instead of silently duplicating questions.
+ */
+export function fingerprintFiles(
+  files: Array<{ name: string; size: number; lastModified?: number }>,
+): string {
+  return files
+    .map((f) => `${f.name}:${f.size}:${f.lastModified ?? 0}`)
+    .sort()
+    .join("|");
+}
+
+/**
  * Maps raw worksheet-shaped questions returned by /worksheets/ai/extract
  * into CreateQuestionBody rows understood by the activity question editor.
  *

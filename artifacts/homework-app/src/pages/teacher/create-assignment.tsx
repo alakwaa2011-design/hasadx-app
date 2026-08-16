@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { useCreateAssignment } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
-import { mapExtractedToActivity, extractFileError } from "@/lib/map-extracted-to-activity";
+import { mapExtractedToActivity, extractFileError, fingerprintFiles } from "@/lib/map-extracted-to-activity";
 import { Layout } from "@/components/layout";
 import { Input, Button, Label } from "@/components/ui-elements";
 import {
@@ -53,6 +53,9 @@ type QuestionWithTts = CreateQuestionBody & {
   repeatQuestion?: boolean;
   correctAnswers?: string[];
   _clientId?: string;
+  /** Client-only: fingerprint of the source-file set this question was
+      extracted from — used for "same source again" replace/add/cancel. */
+  _extractKey?: string;
 };
 
 let _qClientIdCounter = 0;
@@ -268,6 +271,15 @@ export default function CreateAssignment() {
   const [showImageExtract, setShowImageExtract] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [extractFiles, setExtractFiles] = useState<File[]>([]);
+  /* Credit cost/balance for the extract operation — comes from the server's
+     central pricing (Pro discount applied once, server-side). */
+  const [extractCredit, setExtractCredit] = useState<{
+    effectiveCost: number; baseCost: number; isPro: boolean; balance: number; creditsEnabled: boolean;
+  } | null>(null);
+  /* Same-source duplicate guard: fingerprint of the last successful
+     extraction in this editor session. */
+  const lastExtractFpRef = useRef<string | null>(null);
+  const [dupChoiceOpen, setDupChoiceOpen] = useState(false);
   const [extractDifficulty, setExtractDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractError, setExtractError] = useState("");
@@ -419,9 +431,32 @@ export default function CreateAssignment() {
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
-  const handleExtractFromSource = async () => {
-    if (extractFiles.length === 0) return;
+  /* Load the server-side price + balance whenever the extract panel opens.
+     The number shown in the UI is always the server's effectiveCost — no
+     client-side Pro math. */
+  useEffect(() => {
+    if (!showImageExtract) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/credits/tool-price/extract_questions_from_source`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d && typeof d.effectiveCost === "number") setExtractCredit(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [showImageExtract]);
+
+  const insufficientExtractCredit =
+    !!extractCredit?.creditsEnabled && extractCredit.balance < extractCredit.effectiveCost;
+
+  /** Runs the actual extraction API call. `replacePrevious` removes the
+      questions produced by the previous extraction of the same source. */
+  const runExtraction = async (replacePrevious: boolean) => {
+    if (extractFiles.length === 0 || extractLoading) return;
+    setDupChoiceOpen(false);
     setExtractLoading(true); setExtractError("");
+    /* One idempotency key per attempt: concurrent clicks / browser retries
+       of this attempt share the key, so the server holds credits once. */
+    const requestId = crypto.randomUUID();
+    const fingerprint = fingerprintFiles(extractFiles);
     try {
       const form = new FormData();
       for (const f of extractFiles) form.append("files", f);
@@ -432,20 +467,67 @@ export default function CreateAssignment() {
       form.append("counts", JSON.stringify({ mcq: 6, true_false: 2, short_answer: 0, fill_blank: 2, matching: 0 }));
       const res = await fetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST", credentials: "include", body: form,
+        headers: { "X-Idempotency-Key": requestId },
       });
       let data: Record<string, unknown>;
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
+      if (res.status === 402) {
+        const required = typeof data.required === "number" ? data.required : extractCredit?.effectiveCost;
+        const bal = typeof data.balance === "number" ? data.balance : extractCredit?.balance;
+        setExtractCredit(prev => prev && typeof bal === "number" ? { ...prev, balance: bal } : prev);
+        throw new Error(
+          lang === "ar"
+            ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${required ?? "?"} نقطة حصاد، ورصيدك الحالي ${bal ?? "?"} نقطة.`
+            : `Insufficient balance: ${required ?? "?"} credits needed, you have ${bal ?? "?"}.`,
+        );
+      }
+      if (res.status === 409) {
+        /* Terminal replay of this attempt's key — server refused to re-run.
+           Each click already gets a fresh UUID, so just surface the message. */
+        throw new Error((data.message as string) || (lang === "ar" ? "سبق تنفيذ هذا الطلب — أعد المحاولة." : "Duplicate request — please retry."));
+      }
       if (!res.ok) throw new Error((data.message as string) || t.createAssignment.generateError);
       if (!Array.isArray(data.questions) || data.questions.length === 0) throw new Error(t.createAssignment.noQuestionsGenerated);
-      const generated = mapExtractedToActivity(data.questions);
+      const generated = mapExtractedToActivity(data.questions).map(q => ({ ...q, _extractKey: fingerprint }));
       if (generated.length === 0) throw new Error(t.createAssignment.noQuestionsGenerated);
-      const hasRealQuestions = questions.length > 0 && questions.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
-      setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
+      setQuestions(prev => {
+        /* Replace-mode drops only questions from the previous extraction of
+           this same source; manual and other-source questions are kept. */
+        const kept = replacePrevious ? prev.filter(q => q._extractKey !== fingerprint) : prev;
+        const hasReal = kept.length > 0 && kept.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
+        return hasReal ? [...kept, ...generated] : generated;
+      });
+      lastExtractFpRef.current = fingerprint;
       setShowImageExtract(false); setExtractFiles([]);
+      /* Refresh the shown balance after a successful charge. */
+      setExtractCredit(prev => prev && prev.creditsEnabled ? { ...prev, balance: Math.max(0, prev.balance - prev.effectiveCost) } : prev);
       toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من المصدر بنجاح` : `${generated.length} questions extracted from the source`);
     } catch (err: unknown) {
       setExtractError(err instanceof Error ? err.message : t.common.error);
     } finally { setExtractLoading(false); }
+  };
+
+  const handleExtractFromSource = () => {
+    if (extractFiles.length === 0 || extractLoading) return;
+    setExtractError("");
+    /* Insufficient balance: never start generation (server re-checks too). */
+    if (insufficientExtractCredit && extractCredit) {
+      setExtractError(
+        lang === "ar"
+          ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractCredit.balance} نقطة.`
+          : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractCredit.balance}.`,
+      );
+      return;
+    }
+    /* Same source extracted again while its questions are still in the
+       editor → explicit replace / add / cancel choice, no silent charge. */
+    const fingerprint = fingerprintFiles(extractFiles);
+    const priorStillPresent = questions.some(q => q._extractKey === fingerprint);
+    if (lastExtractFpRef.current === fingerprint && priorStillPresent) {
+      setDupChoiceOpen(true);
+      return;
+    }
+    void runExtraction(false);
   };
 
   const handleModeChange = (mode: SubmissionMode) => {
@@ -778,7 +860,7 @@ export default function CreateAssignment() {
         adaptiveConfig: isAdaptive ? { questionsPerSession: adaptiveQuestionsPerSession, skills: adaptiveSkills } : undefined,
         questions: isPaper
           ? [{ text: t.createAssignment.paperAnswer, points: paperTotalPoints }]
-          : questions.map(({ allowMultipleAnswers: _a, repeatQuestion: _r, correctAnswers: _ca, _clientId: _cid, ...apiQ }) => ({
+          : questions.map(({ allowMultipleAnswers: _a, repeatQuestion: _r, correctAnswers: _ca, _clientId: _cid, _extractKey: _ek, ...apiQ }) => ({
               ...apiQ,
               difficulty: isAdaptive ? (apiQ.difficulty ?? 2) : undefined,
               skill: isAdaptive ? (apiQ.skill ?? "") : undefined,
@@ -1382,11 +1464,57 @@ export default function CreateAssignment() {
                           <p className="text-[10px] text-muted-foreground leading-relaxed">
                             {lang === "ar" ? "للحصول على أفضل نتيجة من PDF المصوّر، ارفع الصفحات كصور واضحة." : "For scanned PDFs, upload the pages as clear images for best results."}
                           </p>
+                          {extractCredit?.creditsEnabled && extractCredit.effectiveCost > 0 && (
+                            <p className="text-xs font-bold text-primary" data-testid="text-extract-cost">
+                              {lang === "ar"
+                                ? (extractCredit.isPro
+                                    ? `سيُستخدم ${extractCredit.effectiveCost} نقاط حصاد في الباقة الاحترافية.`
+                                    : `سيُستخدم ${extractCredit.effectiveCost} نقاط حصاد لإنشاء الأسئلة من هذا المصدر.`)
+                                : `${extractCredit.effectiveCost} Hasad credits will be used for this extraction${extractCredit.isPro ? " (Pro price)" : ""}.`}
+                            </p>
+                          )}
+                          {insufficientExtractCredit && extractCredit && (
+                            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-lg p-2.5 space-y-1.5" data-testid="extract-insufficient-credit">
+                              <p className="text-xs text-amber-800 dark:text-amber-200 font-bold">
+                                {lang === "ar"
+                                  ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractCredit.balance} نقطة.`
+                                  : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractCredit.balance}.`}
+                              </p>
+                              <button type="button" onClick={() => setLocation("/teacher/credits")}
+                                className="text-xs font-bold text-primary underline underline-offset-2">
+                                {lang === "ar" ? "شراء نقاط" : "Buy credits"}
+                              </button>
+                            </div>
+                          )}
                           {extractError && <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-700">{extractError}</div>}
-                          <button type="button" onClick={handleExtractFromSource} disabled={extractLoading || extractFiles.length === 0} data-testid="btn-extract-source"
+                          {dupChoiceOpen ? (
+                            <div className="bg-background border-2 border-primary/25 rounded-xl p-3 space-y-2" data-testid="extract-dup-choice">
+                              <p className="text-xs font-bold text-foreground">
+                                {lang === "ar"
+                                  ? "سبق أن استخرجت أسئلة من هذا المصدر نفسه وما زالت في المحرر. ماذا تريد؟"
+                                  : "You already extracted questions from this exact source and they are still in the editor. What would you like to do?"}
+                              </p>
+                              <div className="flex flex-col gap-1.5">
+                                <button type="button" onClick={() => void runExtraction(true)} data-testid="btn-dup-replace"
+                                  className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold">
+                                  {lang === "ar" ? "استبدال الأسئلة المستخرجة سابقاً" : "Replace previously extracted questions"}
+                                </button>
+                                <button type="button" onClick={() => void runExtraction(false)} data-testid="btn-dup-add"
+                                  className="w-full py-2 rounded-lg border border-primary/30 text-primary text-xs font-bold">
+                                  {lang === "ar" ? "إضافة أسئلة جديدة على أي حال" : "Add new questions anyway"}
+                                </button>
+                                <button type="button" onClick={() => setDupChoiceOpen(false)} data-testid="btn-dup-cancel"
+                                  className="w-full py-2 rounded-lg border border-border text-muted-foreground text-xs font-bold">
+                                  {lang === "ar" ? "إلغاء" : "Cancel"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                          <button type="button" onClick={handleExtractFromSource} disabled={extractLoading || extractFiles.length === 0 || insufficientExtractCredit} data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                            {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري الاستخراج..." : "Extracting..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج الأسئلة" : "Extract Questions"}</>}
+                            {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري القراءة والتوليد..." : "Reading & generating..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج وأنشئ الأسئلة" : "Extract & create questions"}</>}
                           </button>
+                          )}
                         </motion.div>
                       )}
                     </div>

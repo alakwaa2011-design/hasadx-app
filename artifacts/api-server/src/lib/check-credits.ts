@@ -118,7 +118,22 @@ export function checkCredits(toolKey: string) {
       const isValidKey =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientKey);
       const requestId = isValidKey ? `${teacherId}:${toolKey}:${clientKey}` : randomUUID();
-      const { creditsHeld } = await CreditService.hold(teacherId, toolKey, requestId);
+      const { creditsHeld, existingStatus } = await CreditService.hold(teacherId, toolKey, requestId);
+
+      /* Terminal replay guard: a requestId whose hold is already completed
+         (paid work delivered) or refunded (attempt failed and money returned)
+         must NOT re-run the paid work — completed would run it free, refunded
+         would run it free after a refund. The client retries with a NEW key. */
+      if (existingStatus === "completed" || existingStatus === "refunded") {
+        res.status(409).json({
+          code: "DUPLICATE_REQUEST",
+          message:
+            existingStatus === "completed"
+              ? "سبق تنفيذ هذا الطلب بنجاح. إن لم تظهر النتيجة، أعد المحاولة من جديد."
+              : "أُلغيت هذه المحاولة واستُرد رصيدها. أعد المحاولة من جديد.",
+        });
+        return;
+      }
 
       // Attach to req so the route handler can capture or refund
       (req as any).__creditRequestId  = requestId;
@@ -128,7 +143,12 @@ export function checkCredits(toolKey: string) {
       return next();
     } catch (err: any) {
       if (err?.message?.includes("رصيد غير كافٍ")) {
-        res.status(402).json({ message: err.message, code: "INSUFFICIENT_CREDITS" });
+        const required = typeof err.required === "number" ? err.required : undefined;
+        const balance  = typeof err.balance  === "number" ? err.balance  : undefined;
+        const message = required !== undefined && balance !== undefined
+          ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${required} نقطة حصاد، ورصيدك الحالي ${balance} نقطة.`
+          : err.message;
+        res.status(402).json({ message, code: "INSUFFICIENT_CREDITS", required, balance });
         return;
       }
       // Any unexpected error must not block the user — pass through silently

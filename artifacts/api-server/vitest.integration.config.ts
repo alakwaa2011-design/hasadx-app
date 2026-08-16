@@ -20,6 +20,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "src/__tests__/subscription-credits-integration.test.ts",
+      "src/__tests__/extract-credits-integration.test.ts",
       "src/__tests__/credit-consumption-integration.test.ts",
       "src/__tests__/free-welcome-credits.test.ts",
       "src/__tests__/plan-patch-route.integration.test.ts",

@@ -897,7 +897,9 @@ router.post(
   "/worksheets/ai/extract",
   requireTeacher,
   uploadFiles,
-  checkCredits("worksheet"),
+  /* سياسة النقاط: استخراج الأسئلة من مصدر = 10 نقاط (8 للاحترافية عبر
+     الخصم المركزي في CreditService.hold) — مفتاح مستقل عن 'worksheet'. */
+  checkCredits("extract_questions_from_source"),
   async (req, res) => {
     let language: "ar" | "en" = "ar";
     try {
