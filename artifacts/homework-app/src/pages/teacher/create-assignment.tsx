@@ -966,40 +966,41 @@ export default function CreateAssignment() {
             <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center">
               <PartyPopper className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="space-y-1">
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "نُشر النشاط بنجاح" : "Activity published"}</h2>
-              <p className="text-sm font-bold text-slate-500 truncate">{publishedInfo.title}</p>
-            </div>
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
+              {lang === "ar" ? "تم نشر: " : "Published: "}
+              <span className="text-emerald-700 dark:text-emerald-400">{publishedInfo.title}</span>
+            </h2>
 
             {publishedInfo.accessCode && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider">{lang === "ar" ? "رمز دخول الطلاب" : "Student access code"}</p>
-                <div className="flex items-center justify-center gap-3">
-                  <div className="flex gap-1.5" dir="ltr">
-                    {publishedInfo.accessCode.split("").map((ch, i) => (
-                      <div key={i} className="w-10 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-xl font-black text-emerald-700 dark:text-emerald-300">{ch}</div>
-                    ))}
-                  </div>
-                  <button type="button" data-testid="btn-copy-code"
-                    onClick={() => { navigator.clipboard.writeText(publishedInfo.accessCode!); toast.success(lang === "ar" ? "نُسخ الرمز" : "Code copied"); }}
-                    className="p-2.5 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
-                    <Copy className="w-4 h-4" />
-                  </button>
+              <div className="rounded-3xl bg-emerald-50/70 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 p-4 space-y-3" data-testid="section-access-code">
+                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">{lang === "ar" ? "كود الدخول للطلاب" : "Student access code"}</p>
+                <div className="flex justify-center gap-1.5" dir="ltr">
+                  {publishedInfo.accessCode.split("").map((ch, i) => (
+                    <div key={i} className="w-11 h-12 sm:w-12 sm:h-14 rounded-xl bg-white dark:bg-[#15201B] border-2 border-emerald-300 dark:border-emerald-700 flex items-center justify-center text-2xl font-black text-emerald-700 dark:text-emerald-300">{ch}</div>
+                  ))}
                 </div>
+                <button type="button" data-testid="btn-copy-code"
+                  onClick={() => { navigator.clipboard.writeText(publishedInfo.accessCode!); toast.success(lang === "ar" ? "نُسخ الرمز" : "Code copied"); }}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 text-white text-sm font-black hover:bg-emerald-700 transition-all active:scale-[0.98]">
+                  <Copy className="w-4 h-4" />{lang === "ar" ? "نسخ الكود" : "Copy code"}
+                </button>
               </div>
             )}
 
+            <button type="button" data-testid="btn-share-link"
+              onClick={() => {
+                const url = `${window.location.origin}/solve/${publishedInfo.id}`;
+                if (navigator.share) { navigator.share({ title: publishedInfo.title, url }).catch(() => {}); }
+                else { navigator.clipboard.writeText(url); toast.success(lang === "ar" ? "نُسخ الرابط" : "Link copied"); }
+              }}
+              className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] ${publishedInfo.accessCode
+                ? "border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>
+              <Share2 className="w-5 h-5 shrink-0" />
+              {lang === "ar" ? "مشاركة رابط الحل" : "Share solve link"}
+            </button>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
-              <button type="button" data-testid="btn-share-link"
-                onClick={() => {
-                  const url = `${window.location.origin}/solve/${publishedInfo.id}`;
-                  if (navigator.share) { navigator.share({ title: publishedInfo.title, url }).catch(() => {}); }
-                  else { navigator.clipboard.writeText(url); toast.success(lang === "ar" ? "نُسخ الرابط" : "Link copied"); }
-                }}
-                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
-                <Share2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "مشاركة رابط الحل" : "Share solve link"}</span>
-              </button>
               <button type="button" data-testid="btn-open-activity" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}`)}
                 className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
                 <ExternalLink className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -1019,7 +1020,7 @@ export default function CreateAssignment() {
           </motion.div>
         </main>
       ) : (
-      <main className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
+      <main className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-8">
         {/* ══ Progress Bar ══ */}
         <div className="flex items-center px-2">
           {STEPS.map((step, idx) => (
@@ -1212,41 +1213,51 @@ export default function CreateAssignment() {
 
                   {/* ── Method chooser gate: «كيف تريد إضافة الأسئلة؟» ── */}
                   {!isPaper && questionMethod === null ? (
-                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-4" data-testid="card-method-chooser">
+                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-4 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-3 sm:space-y-4" data-testid="card-method-chooser">
                       <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 text-center">
                         {lang === "ar" ? "كيف تريد إضافة الأسئلة؟" : "How do you want to add questions?"}
                       </h2>
                       <p className="text-[11px] font-bold text-slate-500 text-center -mt-2">
                         {lang === "ar" ? "يمكنك دمج الطرق لاحقاً في المحرر نفسه" : "You can mix methods later in the same editor"}
                       </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                         <button type="button" data-testid="btn-method-manual" onClick={() => setQuestionMethod("manual")}
-                          className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
-                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center"><Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "أكتبها بنفسي" : "Write them myself"}</span>
-                          <span className="text-[11px] font-bold text-slate-500 text-center">{lang === "ar" ? "إضافة سؤال سؤالاً في المحرر" : "Add questions one by one"}</span>
+                          className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] text-start sm:text-center">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                          <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "أكتبها بنفسي" : "Write them myself"}</span>
+                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "إضافة سؤال سؤالاً في المحرر" : "Add questions one by one"}</span>
+                          </div>
                         </button>
                         <button type="button" data-testid="btn-method-ai" onClick={() => { setQuestionMethod("ai"); setShowAiPanel(true); }}
-                          className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
-                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center"><Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</span>
-                          <span className="text-[11px] font-bold text-slate-500 text-center">{lang === "ar" ? "حدد الموضوع والعدد ويولّدها لك" : "Pick topic & count, AI writes them"}</span>
+                          className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] text-start sm:text-center">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                          <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</span>
+                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "حدد الموضوع والعدد ويولّدها لك" : "Pick topic & count, AI writes them"}</span>
+                          </div>
                         </button>
                         <button type="button" data-testid="btn-method-file" disabled={!isAdmin}
                           onClick={() => { setQuestionMethod("file"); setShowImageExtract(true); }}
-                          className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed">
-                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center"><Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج من ملف أو كتاب" : "Extract from file or book"}</span>
-                          <span className="text-[11px] font-bold text-slate-500 text-center">
-                            {isAdmin
-                              ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts questions")
-                              : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
-                          </span>
+                          className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed text-start sm:text-center">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                          <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج من ملف أو كتاب" : "Extract from file or book"}</span>
+                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">
+                              {isAdmin
+                                ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts questions")
+                                : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
+                            </span>
+                          </div>
                         </button>
                       </div>
-                      <button type="button" onClick={openBankModal}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-black text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
-                        <Database className="w-4 h-4" />{lang === "ar" ? "أو استيراد من بنك الأسئلة" : "Or import from question bank"}
+                      <button type="button" data-testid="btn-method-bank" onClick={openBankModal}
+                        className="w-full flex flex-row items-center gap-3 p-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] text-start">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /></div>
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استيراد من بنك الأسئلة" : "Import from question bank"}</span>
+                          <span className="text-[10px] font-bold text-slate-500">{lang === "ar" ? "اختر أسئلة محفوظة لديك مسبقاً" : "Pick from your saved questions"}</span>
+                        </div>
                       </button>
                     </div>
                   ) : (
@@ -1742,11 +1753,11 @@ export default function CreateAssignment() {
 
               {/* ══════════════════════════════════ STEP 3 — معاينة ونشر ══════════════════════════════════ */}
               {wizardStep === 3 && (
-                <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-5">
-                  <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "مراجعة قبل النشر" : "Review before publishing"}</h2>
+                <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-3.5">
+                  <h2 className="text-lg font-black text-foreground">{lang === "ar" ? "مراجعة قبل النشر" : "Review before publishing"}</h2>
 
                   {/* Summary card */}
-                  <div className="p-5 bg-primary/5 border-2 border-primary/20">
+                  <div className="p-4 bg-primary/5 border-2 border-primary/20">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm shrink-0"
                         style={{ backgroundColor: COLOR_THEMES.find(c => c.id === colorTheme)?.light, color: COLOR_THEMES.find(c => c.id === colorTheme)?.bg }}>
@@ -1772,11 +1783,11 @@ export default function CreateAssignment() {
                   {/* Secondary actions: student preview + publish settings */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
-                      className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
                       <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة كما يراها الطالب" : "Preview as student"}
                     </button>
                     <button type="button" data-testid="btn-publish-settings" onClick={() => setShowAdvancedSettings(v => !v)}
-                      className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-[#15201B] text-slate-700 dark:text-slate-300 text-sm font-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all active:scale-[0.98]">
+                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-[#15201B] text-slate-700 dark:text-slate-300 text-sm font-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all active:scale-[0.98]">
                       <Settings className="w-4 h-4" />{lang === "ar" ? "إعدادات النشر" : "Publish settings"}
                     </button>
                   </div>
@@ -2147,19 +2158,19 @@ export default function CreateAssignment() {
                       before publish; nothing here is required. Hidden when the
                       assignment is access-private (cannot be shared). */}
                   {accessMode !== "private" && (
-                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-4" data-testid="card-library-sharing">
+                    <div className="bg-white dark:bg-[#15201B] rounded-3xl p-3.5 sm:p-4 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-3" data-testid="card-library-sharing">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                            {isShared ? <Globe className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" /> : <Lock className="w-4.5 h-4.5 text-slate-400" />}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                            {isShared ? <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <Lock className="w-4 h-4 text-slate-400" />}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight">
+                            <h3 className="text-[13px] font-black text-slate-800 dark:text-slate-100 leading-tight">
                               {isShared
                                 ? (lang === "ar" ? "سيُشارك هذا النشاط في مكتبة حصاد" : "This activity will be shared in the Hasad library")
                                 : (lang === "ar" ? "هذا النشاط خاص بك" : "This activity is private to you")}
                             </h3>
-                            <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                            <p className="text-[10px] font-bold text-slate-500 mt-0.5">
                               {isShared
                                 ? (lang === "ar" ? "زملاؤك المعلمون يستطيعون استيراده مباشرة (اختياري)" : "Other teachers can import it directly (optional)")
                                 : (lang === "ar" ? "لن يظهر لأي معلم آخر" : "It won't appear to any other teacher")}
@@ -2176,7 +2187,7 @@ export default function CreateAssignment() {
                               ? (lang === "ar" ? "سيُشارك مع المعلمين" : "Will be shared with teachers")
                               : (lang === "ar" ? "تم جعله خاصًا" : "Made private"));
                           }}
-                          className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-emerald-500/60 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"}`}
+                          className={`shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-emerald-500/60 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"}`}
                         >
                           {isShared
                             ? (lang === "ar" ? "اجعله خاصاً" : "Make it private")
