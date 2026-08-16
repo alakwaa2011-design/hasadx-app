@@ -11,6 +11,7 @@ import {
   Calendar, Database, Clock, Settings, Settings2, Brain,
   Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
   Share2, ExternalLink, BarChart3, PartyPopper,
+  FilePenLine, ListChecks, Send as SendIcon, Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -789,9 +790,9 @@ export default function CreateAssignment() {
   const goPrev = () => { if (wizardStep > 1) setWizardStep(s => (s - 1) as 1 | 2 | 3); };
 
   const STEPS = [
-    { num: 1, label: lang === "ar" ? "الأساسيات" : "Basics", icon: "📋" },
-    { num: 2, label: lang === "ar" ? "الأسئلة" : "Questions", icon: "❓" },
-    { num: 3, label: lang === "ar" ? "نشر" : "Publish", icon: "🚀" },
+    { num: 1, label: lang === "ar" ? "الأساسيات" : "Basics", Icon: FilePenLine },
+    { num: 2, label: lang === "ar" ? "الأسئلة" : "Questions", Icon: ListChecks },
+    { num: 3, label: lang === "ar" ? "نشر" : "Publish", Icon: SendIcon },
   ];
 
   // ── Math toolbar panel ──
@@ -1031,7 +1032,7 @@ export default function CreateAssignment() {
                 <button
                   type="button"
                   onClick={() => { if (step.num < wizardStep) setWizardStep(step.num as 1|2|3); }}
-                  className={`w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-black transition-all ${
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center relative transition-all ${
                     wizardStep === step.num
                       ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/25 scale-110"
                       : wizardStep > step.num
@@ -1039,7 +1040,12 @@ export default function CreateAssignment() {
                       : "bg-[#f4f7f5] text-slate-400 border border-slate-200 dark:bg-[#0B100E] dark:border-slate-800 dark:text-slate-600 cursor-not-allowed"
                   }`}
                 >
-                  {wizardStep > step.num ? <CheckCircle2 className="w-5 h-5" /> : step.icon}
+                  <step.Icon className="w-5 h-5" />
+                  {wizardStep > step.num && (
+                    <span className="absolute -bottom-1 -end-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-[#0B100E] flex items-center justify-center">
+                      <Check className="w-2 h-2 text-white" />
+                    </span>
+                  )}
                 </button>
                 <span className={`text-[10px] font-bold mt-1.5 whitespace-nowrap ${wizardStep === step.num ? "text-slate-800 dark:text-slate-200" : "text-slate-400"}`}>
                   {step.label}
@@ -1133,8 +1139,8 @@ export default function CreateAssignment() {
                   </div>
                 ) : (
                   <button type="button" onClick={() => setShowTemplateDialog(true)}
-                    className="flex items-center gap-1.5 text-[12px] font-black text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group">
-                    <Copy className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-[12px] font-black text-slate-600 dark:text-slate-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.97]">
+                    <Copy className="w-3.5 h-3.5 shrink-0" />
                     {lang === "ar"
                       ? `استخدام قالب جاهز · ${TEMPLATES.filter(t => t.id !== "scratch").length} قوالب`
                       : `Use a ready-made template · ${TEMPLATES.filter(t => t.id !== "scratch").length} templates`}
@@ -1372,7 +1378,9 @@ export default function CreateAssignment() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
+                      {/* Question editor — only shown when method=manual OR real questions have arrived */}
+                      {(questionMethod === "manual" || questions.some(q => q.text?.trim())) && (
+                      <><DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
                         <SortableContext items={questions.map(q => q._clientId!)} strategy={verticalListSortingStrategy}>
                       <AnimatePresence>
                         {questions.map((q, qIndex) => (
@@ -1668,6 +1676,7 @@ export default function CreateAssignment() {
                           <Database className="w-5 h-5" />{t.questionBank.selectQuestions}
                         </button>
                       </div>
+                      </>)}
 
                       {/* «طريقة أخرى لإضافة الأسئلة» — demoted alternative methods */}
                       <div data-testid="section-other-methods">
