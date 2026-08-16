@@ -997,7 +997,7 @@ export default function CreateAssignment() {
                 ? "border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                 : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>
               <Share2 className="w-5 h-5 shrink-0" />
-              {lang === "ar" ? "مشاركة رابط الحل" : "Share solve link"}
+              {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
             </button>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
@@ -1242,7 +1242,7 @@ export default function CreateAssignment() {
                           className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed text-start sm:text-center">
                           <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                           <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
-                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج من ملف أو كتاب" : "Extract from file or book"}</span>
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج أسئلة من ملف أو كتاب" : "Extract questions from a file or book"}</span>
                             <span className="text-[11px] font-bold text-slate-500 sm:text-center">
                               {isAdmin
                                 ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts questions")
@@ -1724,7 +1724,7 @@ export default function CreateAssignment() {
                                 className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all disabled:opacity-45 disabled:cursor-not-allowed">
                                 <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                 <div className="min-w-0">
-                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج من ملف أو كتاب" : "Extract from file or book"}</span>
+                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج أسئلة من ملف أو كتاب" : "Extract questions from a file or book"}</span>
                                   <span className="block text-[10px] font-bold text-slate-500 truncate">
                                     {isAdmin ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts") : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
                                   </span>
