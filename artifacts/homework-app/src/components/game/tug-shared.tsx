@@ -854,7 +854,7 @@ function TugPowerMeter({ position }: { position: number }) {
         />
       )}
       <div
-        className="relative h-8 sm:h-10 lg:h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-1 sm:p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+        className="relative h-5 sm:h-10 lg:h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-0.5 sm:p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
         style={{
           boxShadow: leader === "blue"
             ? "0 18px 50px rgba(0,0,0,0.38), 0 0 22px rgba(59,130,246,0.35), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)"
@@ -887,13 +887,13 @@ function TugPowerMeter({ position }: { position: number }) {
         <motion.div
           animate={{ left: `${pos}%`, scale: inDanger ? [1, 1.08, 1] : 1 }}
           transition={{ type: "spring", stiffness: 95, damping: 16 }}
-          className="absolute top-1/2 z-20 h-6 w-6 sm:h-8 sm:w-8 lg:h-9 lg:w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_14px_rgba(247,201,72,0.65)]"
+          className="absolute top-1/2 z-20 h-5 w-5 sm:h-8 sm:w-8 lg:h-9 lg:w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_14px_rgba(247,201,72,0.65)]"
           style={{
             background: "radial-gradient(circle at 32% 24%, #fff7cc 0%, #f7c948 28%, #d97706 62%, #7c3f09 100%)",
             boxShadow: "0 0 18px rgba(247,201,72,0.62), inset 0 2px 5px rgba(255,255,255,0.58), inset 0 -5px 10px rgba(95,45,8,0.5)",
           }}
         >
-          <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm lg:text-base drop-shadow-sm">🪢</div>
+          <div className="flex h-full w-full items-center justify-center text-[10px] sm:text-sm lg:text-base drop-shadow-sm">🪢</div>
         </motion.div>
       </div>
     </div>

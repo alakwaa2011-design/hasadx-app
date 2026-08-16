@@ -542,13 +542,14 @@ function TeamZone({
       <div className="relative z-20 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl sm:h-11 sm:w-11"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base sm:h-11 sm:w-11 sm:text-xl"
             style={{ background: `rgba(${rgb},0.22)`, border: `1.5px solid rgba(${rgb},0.5)` }}
           >
             {isBlue ? "🔵" : "🔴"}
           </span>
-          <div className="min-w-0">
-            <p className="break-words text-base font-black leading-tight text-white sm:text-lg lg:text-xl">
+          <div className="min-w-0 flex-1">
+            {/* لا break-words هنا — كان يكسر الاسم العربي حرفاً حرفاً في الأعمدة الضيقة على الهاتف */}
+            <p className="text-sm font-black leading-tight text-white sm:text-lg lg:text-xl">
               {name}
             </p>
             <p className="text-[11px] font-bold text-white/70">
@@ -1068,7 +1069,7 @@ function ClassGame({
           <div className="relative z-10 mx-auto max-w-6xl">
             {/* scaleX(-1) mirrors the whole SVG scene in Arabic — blue moves to
                 the right side. The scene contains no text, so this is safe. */}
-            <div className="min-h-[190px] sm:min-h-[300px] lg:min-h-[380px]" style={mirror}>
+            <div className="min-h-[150px] sm:min-h-[300px] lg:min-h-[380px]" style={mirror}>
               <TugCharacters
                 ropePos={state.rope}
                 isPulling={isPulling}
