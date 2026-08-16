@@ -94,4 +94,28 @@ describe("PublishSuccessScreen — زر لعبة مباشرة", () => {
     expect(container.querySelector('[data-testid="btn-live-game"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="section-access-code"]')).toBeNull();
   });
+
+  it("يعرض رابط النشاط للنسخ فقط دون فتح خيارات المشاركة الأصلية", async () => {
+    const nativeShare = vi.fn();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: nativeShare });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+
+    render();
+    act(() => {
+      (container.querySelector('[data-testid="btn-share-link"]') as HTMLButtonElement).click();
+    });
+
+    const linkInput = document.body.querySelector('input[aria-label="رابط النشاط"]') as HTMLInputElement;
+    expect(linkInput).not.toBeNull();
+    expect(linkInput.value).toMatch(/\/solve\/42$/);
+    expect(nativeShare).not.toHaveBeenCalled();
+
+    const copyButton = document.body.querySelector('[data-testid="btn-copy-share-link"]') as HTMLButtonElement;
+    await act(async () => {
+      copyButton.click();
+      await Promise.resolve();
+    });
+    expect(writeText).toHaveBeenCalledWith(linkInput.value);
+  });
 });

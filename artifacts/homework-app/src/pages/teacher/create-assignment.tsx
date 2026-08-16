@@ -202,6 +202,14 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
   setLocation: (path: string) => void;
 }) {
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const shareUrl = `${window.location.origin}/solve/${publishedInfo.id}`;
+
+  const copyShareLink = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    toast.success(lang === "ar" ? "نُسخ رابط النشاط" : "Activity link copied");
+  };
+
   return (
     <main className="max-w-2xl mx-auto px-4 pt-8 pb-16" data-testid="screen-publish-success">
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
@@ -231,17 +239,43 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
         )}
 
         <button type="button" data-testid="btn-share-link"
-          onClick={() => {
-            const url = `${window.location.origin}/solve/${publishedInfo.id}`;
-            if (navigator.share) { navigator.share({ title: publishedInfo.title, url }).catch(() => {}); }
-            else { navigator.clipboard.writeText(url); toast.success(lang === "ar" ? "نُسخ الرابط" : "Link copied"); }
-          }}
+          onClick={() => setShowShareDialog(true)}
           className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] ${publishedInfo.accessCode
             ? "border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
             : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>
           <Share2 className="w-5 h-5 shrink-0" />
           {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
         </button>
+
+        <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+          <DialogContent dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-md rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-center text-lg font-black text-foreground">
+                {lang === "ar" ? "رابط النشاط" : "Activity link"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-center text-sm font-bold text-muted-foreground">
+                {lang === "ar" ? "انسخ الرابط لمشاركته مع المشاركين" : "Copy the link to share it with participants"}
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={shareUrl}
+                  dir="ltr"
+                  aria-label={lang === "ar" ? "رابط النشاط" : "Activity link"}
+                  onFocus={event => event.currentTarget.select()}
+                  className="min-w-0 flex-1 rounded-xl border-2 border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary"
+                />
+                <button type="button" data-testid="btn-copy-share-link" onClick={copyShareLink}
+                  className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-black text-white transition-all hover:bg-emerald-700 active:scale-[0.98]">
+                  <Copy className="h-4 w-4" />
+                  {lang === "ar" ? "نسخ" : "Copy"}
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-center">
           <button type="button" data-testid="btn-open-activity" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}`)}
