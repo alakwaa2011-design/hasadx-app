@@ -417,6 +417,16 @@ export default function TeacherDashboard() {
       const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
       window.history.replaceState({}, "", newUrl);
     }
+    /* From publish-success («لعبة مباشرة» after publishing): open the SAME
+       game-type picker used by the «أنشطتي» rows for that assignment. */
+    const pickerParam = params.get("liveGamePicker");
+    if (pickerParam && /^\d+$/.test(pickerParam)) {
+      params.delete("liveGamePicker");
+      const qs2 = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${qs2 ? `?${qs2}` : ""}${window.location.hash}`);
+      setAssignmentGamePickerId(Number(pickerParam));
+      return;
+    }
     if (params.get("liveGame") !== "1") return;
     params.delete("liveGame");
     const qs = params.toString();

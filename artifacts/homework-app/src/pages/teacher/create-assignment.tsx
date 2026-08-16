@@ -12,7 +12,7 @@ import {
   Calendar, Database, Clock, Settings, Settings2, Brain,
   Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
   Share2, ExternalLink, BarChart3, PartyPopper,
-  FilePenLine, ListChecks, Send as SendIcon, Check, RotateCcw,
+  FilePenLine, ListChecks, Send as SendIcon, Check, RotateCcw, Gamepad2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -193,6 +193,85 @@ function SortableQuestionWrapper({
 // ══════════════════════════════════════════════
 // الصفحة الرئيسية
 // ══════════════════════════════════════════════
+
+/* ══ Post-publish success screen — extracted (unchanged JSX) so it can be
+   unit-tested; rendered by CreateAssignment when publishedInfo is set. ══ */
+export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
+  publishedInfo: { id: number | string | null; title: string; accessCode: string | null; accessMode: AccessMode };
+  lang: string;
+  setLocation: (path: string) => void;
+}) {
+  const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
+  return (
+    <main className="max-w-2xl mx-auto px-4 pt-8 pb-16" data-testid="screen-publish-success">
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+        className="bg-white dark:bg-[#15201B] rounded-3xl p-6 sm:p-8 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-6 text-center">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center">
+          <PartyPopper className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
+          {lang === "ar" ? "تم نشر: " : "Published: "}
+          <span className="text-emerald-700 dark:text-emerald-400">{publishedInfo.title}</span>
+        </h2>
+
+        {publishedInfo.accessCode && (
+          <div className="rounded-3xl bg-emerald-50/70 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 p-4 space-y-3" data-testid="section-access-code">
+            <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">{lang === "ar" ? "كود الدخول للطلاب" : "Student access code"}</p>
+            <div className="flex justify-center gap-1.5" dir="ltr">
+              {publishedInfo.accessCode.split("").map((ch, i) => (
+                <div key={i} className="w-11 h-12 sm:w-12 sm:h-14 rounded-xl bg-white dark:bg-[#15201B] border-2 border-emerald-300 dark:border-emerald-700 flex items-center justify-center text-2xl font-black text-emerald-700 dark:text-emerald-300">{ch}</div>
+              ))}
+            </div>
+            <button type="button" data-testid="btn-copy-code"
+              onClick={() => { navigator.clipboard.writeText(publishedInfo.accessCode!); toast.success(lang === "ar" ? "نُسخ الرمز" : "Code copied"); }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 text-white text-sm font-black hover:bg-emerald-700 transition-all active:scale-[0.98]">
+              <Copy className="w-4 h-4" />{lang === "ar" ? "نسخ الكود" : "Copy code"}
+            </button>
+          </div>
+        )}
+
+        <button type="button" data-testid="btn-share-link"
+          onClick={() => {
+            const url = `${window.location.origin}/solve/${publishedInfo.id}`;
+            if (navigator.share) { navigator.share({ title: publishedInfo.title, url }).catch(() => {}); }
+            else { navigator.clipboard.writeText(url); toast.success(lang === "ar" ? "نُسخ الرابط" : "Link copied"); }
+          }}
+          className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] ${publishedInfo.accessCode
+            ? "border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+            : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>
+          <Share2 className="w-5 h-5 shrink-0" />
+          {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
+        </button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
+          <button type="button" data-testid="btn-open-activity" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}`)}
+            className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+            <ExternalLink className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "فتح النشاط" : "Open activity"}</span>
+          </button>
+          <button type="button" data-testid="btn-view-results" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}?tab=results`)}
+            className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+            <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "عرض النتائج" : "View results"}</span>
+          </button>
+          <button type="button" data-testid="btn-live-game"
+            onClick={() => setLocation(`/teacher?liveGamePicker=${publishedInfo.id}`)}
+            title={lang === "ar" ? "لعبة مباشرة" : "Live game"}
+            className="flex items-center gap-2.5 p-3.5 min-h-[44px] rounded-2xl text-white transition-all active:scale-[0.98] hover:brightness-110 shadow-sm"
+            style={{ background: "linear-gradient(180deg, #1E4D35 0%, #17382a 100%)" }}>
+            <Gamepad2 className="w-5 h-5 shrink-0 opacity-95" />
+            <span className="text-sm font-black">{lang === "ar" ? "لعبة مباشرة" : "Live game"}</span>
+          </button>
+          <button type="button" data-testid="btn-back-to-activities" onClick={() => setLocation("/teacher")}
+            className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
+            <BackArrowIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "العودة إلى أنشطتي" : "Back to my activities"}</span>
+          </button>
+        </div>
+      </motion.div>
+    </main>
+  );
+}
 
 export default function CreateAssignment() {
   const [, setLocation] = useLocation();
@@ -1075,65 +1154,7 @@ export default function CreateAssignment() {
 
       {publishedInfo ? (
         /* ══ Success screen — shown after publishing instead of redirecting ══ */
-        <main className="max-w-2xl mx-auto px-4 pt-8 pb-16" data-testid="screen-publish-success">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-            className="bg-white dark:bg-[#15201B] rounded-3xl p-6 sm:p-8 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-6 text-center">
-            <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center">
-              <PartyPopper className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
-              {lang === "ar" ? "تم نشر: " : "Published: "}
-              <span className="text-emerald-700 dark:text-emerald-400">{publishedInfo.title}</span>
-            </h2>
-
-            {publishedInfo.accessCode && (
-              <div className="rounded-3xl bg-emerald-50/70 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 p-4 space-y-3" data-testid="section-access-code">
-                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">{lang === "ar" ? "كود الدخول للطلاب" : "Student access code"}</p>
-                <div className="flex justify-center gap-1.5" dir="ltr">
-                  {publishedInfo.accessCode.split("").map((ch, i) => (
-                    <div key={i} className="w-11 h-12 sm:w-12 sm:h-14 rounded-xl bg-white dark:bg-[#15201B] border-2 border-emerald-300 dark:border-emerald-700 flex items-center justify-center text-2xl font-black text-emerald-700 dark:text-emerald-300">{ch}</div>
-                  ))}
-                </div>
-                <button type="button" data-testid="btn-copy-code"
-                  onClick={() => { navigator.clipboard.writeText(publishedInfo.accessCode!); toast.success(lang === "ar" ? "نُسخ الرمز" : "Code copied"); }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 text-white text-sm font-black hover:bg-emerald-700 transition-all active:scale-[0.98]">
-                  <Copy className="w-4 h-4" />{lang === "ar" ? "نسخ الكود" : "Copy code"}
-                </button>
-              </div>
-            )}
-
-            <button type="button" data-testid="btn-share-link"
-              onClick={() => {
-                const url = `${window.location.origin}/solve/${publishedInfo.id}`;
-                if (navigator.share) { navigator.share({ title: publishedInfo.title, url }).catch(() => {}); }
-                else { navigator.clipboard.writeText(url); toast.success(lang === "ar" ? "نُسخ الرابط" : "Link copied"); }
-              }}
-              className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] ${publishedInfo.accessCode
-                ? "border-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                : "bg-emerald-600 text-white hover:bg-emerald-700"}`}>
-              <Share2 className="w-5 h-5 shrink-0" />
-              {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
-            </button>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
-              <button type="button" data-testid="btn-open-activity" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}`)}
-                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
-                <ExternalLink className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "فتح النشاط" : "Open activity"}</span>
-              </button>
-              <button type="button" data-testid="btn-view-results" onClick={() => setLocation(`/teacher/assignment/${publishedInfo.id}?tab=results`)}
-                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
-                <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "عرض النتائج" : "View results"}</span>
-              </button>
-              <button type="button" data-testid="btn-back-to-activities" onClick={() => setLocation("/teacher")}
-                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all">
-                <BackArrowIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "العودة إلى أنشطتي" : "Back to my activities"}</span>
-              </button>
-            </div>
-          </motion.div>
-        </main>
+        <PublishSuccessScreen publishedInfo={publishedInfo} lang={lang} setLocation={setLocation} />
       ) : (
       <main className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-8">
         {/* ══ Progress Bar ══ */}
