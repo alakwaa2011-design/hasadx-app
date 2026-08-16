@@ -255,4 +255,35 @@ describe.skipIf(!RUN_INTEGRATION)("Lemon Squeezy webhook idempotency — route",
     expect((sub.rows[0] as any).code).toBe("basic");
     await db.execute(sql`DELETE FROM webhook_events WHERE idempotency_key = ${key}`);
   });
+
+  it("W8 — GET /api/credits/me يعكس الرصيد الجديد فوراً بعد subscription_payment_success", async () => {
+    /**
+     * W5 منح 250 نقطة Basic لـ teacherId عبر webhook.
+     * هنا نختبر المسار HTTP الكامل: نُنشئ تطبيق express يضم
+     * credit-purchases router مع middleware وهمي يُحاكي الجلسة
+     * (req.session.teacherId = teacherId)، ثم نرسل GET /api/credits/me
+     * ونتحقق من أن الاستجابة تعكس الرصيد الصحيح.
+     */
+    const { default: creditPurchasesRouter } = await import("../routes/credit-purchases");
+    const creditsApp = express();
+
+    // Fake session middleware — simulates a logged-in teacher session
+    creditsApp.use((req: any, _res: any, next: any) => {
+      req.session = { teacherId };
+      next();
+    });
+    creditsApp.use(express.json());
+    creditsApp.use("/api", creditPurchasesRouter);
+
+    const res = await request(creditsApp)
+      .get("/api/credits/me")
+      .set("Content-Type", "application/json");
+
+    expect(res.status,                         "200 OK").toBe(200);
+    // W5 منح 250 نقطة Basic
+    expect(Number(res.body.balance),            "balance=250").toBe(250);
+    expect(Number(res.body.subscriptionBalance),"subscriptionBalance=250").toBe(250);
+    expect(Number(res.body.freeBalance),        "freeBalance=0").toBe(0);
+    expect(Number(res.body.paidBalance),        "paidBalance=0").toBe(0);
+  });
 });

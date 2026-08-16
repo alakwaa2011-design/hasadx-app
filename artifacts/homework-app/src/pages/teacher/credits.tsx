@@ -120,6 +120,14 @@ export default function TeacherCreditsPage() {
   const [intentStatus,  setIntentStatus]  = useState<"waiting" | "confirmed" | "timeout" | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Subscription return polling — mirrors pendingIntent flow but polls /api/credits/me
+  // directly (no purchase_intent_id for subscriptions).
+  const [subPollStatus, setSubPollStatus] = useState<"waiting" | "confirmed" | "timeout" | null>(null);
+  const subPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Snapshot of balance captured just before checkout redirect (sessionStorage key).
+  // Used so polling detects *new* credits rather than treating any existing balance as confirmed.
+  const subBaselineRef = useRef<number>(-1);
+
   const loadAll = () => {
     // بيانات الترقية مستقلة: فشلها لا يمنع عرض الرصيد والحزم والسجل
     apiFetch("/api/subscriptions/plans")
@@ -159,8 +167,13 @@ export default function TeacherCreditsPage() {
       setIntentStatus("waiting");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (subscribed === "1") {
-      // Just show a success toast or set a confirmed state visually
-      toast.success(c.paymentConfirmed || "Subscription successful!");
+      // Read the balance snapshot captured just before checkout redirect.
+      // We poll until balance > snapshot to detect that the subscription webhook
+      // has actually arrived — not just that the teacher has any credits at all.
+      const rawSnapshot = sessionStorage.getItem("subCheckoutBalanceSnapshot");
+      sessionStorage.removeItem("subCheckoutBalanceSnapshot");
+      subBaselineRef.current = rawSnapshot !== null ? parseInt(rawSnapshot, 10) : -1;
+      setSubPollStatus("waiting");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -190,6 +203,41 @@ export default function TeacherCreditsPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [pendingIntent, intentStatus]);
 
+  // Subscription purchase return: poll /api/credits/me until balance strictly
+  // exceeds the snapshot captured before the redirect (subBaselineRef.current).
+  // Using > snapshot (not > 0) ensures teachers with existing credits aren't
+  // falsely confirmed before the subscription webhook has actually landed.
+  useEffect(() => {
+    if (subPollStatus !== "waiting") return;
+    let tries = 0;
+    subPollRef.current = setInterval(async () => {
+      tries++;
+      try {
+        const r = await apiFetch("/api/credits/me");
+        if (r.ok) {
+          const data = await r.json();
+          const newBalance = Number(data.balance ?? 0);
+          // Credit grant arrived when the new balance exceeds pre-checkout level.
+          // Fallback: if no snapshot was stored (e.g. different-device return),
+          // accept any positive balance as confirmation.
+          const baseline = subBaselineRef.current;
+          const granted  = baseline >= 0 ? newBalance > baseline : newBalance > 0;
+          if (granted) {
+            setSubPollStatus("confirmed");
+            clearInterval(subPollRef.current!);
+            loadAll();
+            return;
+          }
+        }
+      } catch { /* retry */ }
+      if (tries >= 20) {
+        setSubPollStatus("timeout");
+        clearInterval(subPollRef.current!);
+      }
+    }, 3000);
+    return () => { if (subPollRef.current) clearInterval(subPollRef.current); };
+  }, [subPollStatus]);
+
   const buy = async (pkg: Pkg) => {
     setBuyingId(pkg.id);
     try {
@@ -212,6 +260,19 @@ export default function TeacherCreditsPage() {
   const upgrade = async (planCode: string) => {
     setCheckingOut(planCode);
     try {
+      // Snapshot current balance before leaving so the return-polling can detect
+      // *new* credits rather than treating existing credits as confirmation.
+      try {
+        const balRes = await apiFetch("/api/credits/me");
+        if (balRes.ok) {
+          const balData = await balRes.json();
+          sessionStorage.setItem(
+            "subCheckoutBalanceSnapshot",
+            String(Number(balData?.balance ?? 0)),
+          );
+        }
+      } catch { /* non-fatal — polling falls back to baseline=-1 */ }
+
       const r = await apiFetch("/api/subscriptions/checkout", {
         method: "POST",
         body: JSON.stringify({ planCode }),
@@ -266,7 +327,7 @@ export default function TeacherCreditsPage() {
     <Layout>
       <div dir={dir} className="max-w-6xl mx-auto space-y-7 pb-12 pt-4">
         
-        {/* Payment return banners */}
+        {/* Payment return banners — one-time purchase intent */}
         {intentStatus && (
           <div className="animate-in fade-in slide-in-from-top-2">
             {intentStatus === "waiting" && (
@@ -282,6 +343,30 @@ export default function TeacherCreditsPage() {
               </div>
             )}
             {intentStatus === "timeout" && (
+              <div className="p-4 rounded-xl border border-orange-200 bg-orange-50 flex items-center gap-3 shadow-sm">
+                <Clock size={20} className="text-orange-600 shrink-0" />
+                <p className="text-sm font-medium text-orange-800">{c.paymentTimeout}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Subscription return banner — polls /api/credits/me until webhook lands */}
+        {subPollStatus && (
+          <div className="animate-in fade-in slide-in-from-top-2">
+            {subPollStatus === "waiting" && (
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 flex items-center gap-3 shadow-sm">
+                <Loader2 size={20} className="text-amber-600 animate-spin shrink-0" />
+                <p className="text-sm font-medium text-amber-800">{c.paymentWaiting}</p>
+              </div>
+            )}
+            {subPollStatus === "confirmed" && (
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center gap-3 shadow-sm">
+                <CheckCircle2 size={20} className="text-emerald-700 shrink-0" />
+                <p className="text-sm font-medium text-emerald-800">{c.paymentConfirmed}</p>
+              </div>
+            )}
+            {subPollStatus === "timeout" && (
               <div className="p-4 rounded-xl border border-orange-200 bg-orange-50 flex items-center gap-3 shadow-sm">
                 <Clock size={20} className="text-orange-600 shrink-0" />
                 <p className="text-sm font-medium text-orange-800">{c.paymentTimeout}</p>
