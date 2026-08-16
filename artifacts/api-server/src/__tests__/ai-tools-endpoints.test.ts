@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const mockState = vi.hoisted(() => {
   const openaiCreate = vi.fn();
+  const openaiImagesGenerate = vi.fn();
   const anthropicCreate = vi.fn();
   function makeChain(result: unknown): unknown {
     const p: Promise<unknown> = Promise.resolve(result);
@@ -23,7 +24,7 @@ const mockState = vi.hoisted(() => {
     };
     return new Proxy(p, handler);
   }
-  return { openaiCreate, anthropicCreate, makeChain };
+  return { openaiCreate, openaiImagesGenerate, anthropicCreate, makeChain };
 });
 
 vi.mock("@workspace/db", () => {
@@ -53,8 +54,20 @@ vi.mock("../lib/check-credits", () => ({
 }));
 
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
-  openai: { chat: { completions: { create: mockState.openaiCreate } } },
+  openai: {
+    chat: { completions: { create: mockState.openaiCreate } },
+    images: { generate: mockState.openaiImagesGenerate },
+  },
 }));
+
+vi.mock("../lib/objectStorage", () => {
+  class MockObjectStorageService {
+    async uploadBufferAsPublic() {
+      return "https://storage.example.com/img.png";
+    }
+  }
+  return { ObjectStorageService: MockObjectStorageService };
+});
 
 vi.mock("../lib/anthropic-client", () => ({
   anthropic: { messages: { create: mockState.anthropicCreate } },
@@ -141,6 +154,7 @@ function expectNoLegacyParams() {
 
 beforeEach(() => {
   mockState.openaiCreate.mockReset();
+  mockState.openaiImagesGenerate.mockReset();
   mockState.anthropicCreate.mockReset();
 });
 
@@ -459,5 +473,127 @@ describe("POST /api/ai/generate-questions", () => {
       .post("/api/ai/generate-questions")
       .send({ topic: "الجغرافيا", count: 1 });
     expect(res.status).toBe(500);
+  });
+
+  it("typed-template: question types reach the prompt in order and mixed responses (true_false + fill_blank) are accepted", async () => {
+    /* Simulate a 3-question response matching the requested type plan:
+       slot 0 → mcq, slot 1 → true_false, slot 2 → fill_blank */
+    openaiReturns(
+      JSON.stringify([
+        {
+          text: "ما عاصمة فرنسا؟",
+          questionType: "mcq",
+          optionA: "لندن", optionB: "باريس", optionC: "روما", optionD: "برلين",
+          correctAnswer: "B",
+          points: 1,
+        },
+        {
+          text: "الشمس نجم.",
+          questionType: "true_false",
+          correctAnswer: "true",
+          points: 1,
+        },
+        {
+          text: "عاصمة اليابان هي ____.",
+          questionType: "fill_blank",
+          correctAnswer: "طوكيو",
+          points: 1,
+        },
+      ]),
+    );
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({
+        topic: "الجغرافيا",
+        count: 3,
+        difficulty: "medium",
+        questionTypes: ["mcq", "true_false", "fill_blank"],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(3);
+
+    /* Slot types must be set from the plan, not from the raw AI output. */
+    expect(res.body.questions[0]).toMatchObject({ questionType: "mcq", correctAnswer: "B" });
+    expect(res.body.questions[1]).toMatchObject({ questionType: "true_false", correctAnswer: "true" });
+    expect(res.body.questions[2]).toMatchObject({ questionType: "fill_blank", correctAnswer: "طوكيو" });
+
+    /* The type plan must appear in the prompt so the model knows the order. */
+    const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
+    const promptText: string = callArgs.messages[0].content;
+    expect(promptText).toContain("السؤال 1: اختيار من متعدد");
+    expect(promptText).toContain("السؤال 2: صح أو خطأ");
+    expect(promptText).toContain("السؤال 3: أكمل الفراغ");
+    expectNoLegacyParams();
+  });
+
+  it("typed-template: a true_false question with a malformed correctAnswer is silently dropped (not published wrong)", async () => {
+    openaiReturns(
+      JSON.stringify([
+        {
+          text: "الأرض مسطحة.",
+          questionType: "true_false",
+          /* "maybe" is not a valid true/false value */
+          correctAnswer: "maybe",
+          points: 1,
+        },
+      ]),
+    );
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({
+        topic: "العلوم",
+        count: 1,
+        questionTypes: ["true_false"],
+      });
+
+    /* Invalid true_false drops to zero valid questions → 500, not a wrong answer published */
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("POST /api/ai/generate-questions-with-images", () => {
+  function openaiImagesReturns(b64 = "aGVsbG8=") {
+    mockState.openaiImagesGenerate.mockResolvedValue({
+      data: [{ b64_json: b64 }],
+    });
+  }
+
+  it("sends reasoning_effort:minimal and max_completion_tokens>=12000 to gpt-5 family", async () => {
+    openaiReturns(
+      JSON.stringify([
+        {
+          text: "ما الحيوان في الصورة؟",
+          imagePrompt: "A cat sitting on a mat, white background, no text",
+          optionA: "قط", optionB: "كلب", optionC: "أسد", optionD: "نمر",
+          correctAnswer: "A",
+          points: 1,
+        },
+      ]),
+    );
+    openaiImagesReturns();
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions-with-images")
+      .send({ topic: "الحيوانات", count: 1, difficulty: "easy" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(1);
+    expect(res.body.questions[0]).toMatchObject({ questionType: "mcq", correctAnswer: "A" });
+
+    const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
+    expect(callArgs.reasoning_effort).toBe("minimal");
+    expect(callArgs.max_completion_tokens).toBeGreaterThanOrEqual(12000);
+    expectNoLegacyParams();
+  });
+
+  it("returns 401 without a teacher session", async () => {
+    const res = await request(makeApp(aiQuestionsRouter, null))
+      .post("/api/ai/generate-questions-with-images")
+      .send({ topic: "الحيوانات", count: 1 });
+    expect(res.status).toBe(401);
+    expect(mockState.openaiCreate).not.toHaveBeenCalled();
   });
 });
