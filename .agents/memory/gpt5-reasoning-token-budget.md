@@ -7,4 +7,6 @@ The rule: every gpt-5-family chat.completions call MUST set `reasoning_effort` (
 
 **Why:** gpt-5 counts hidden reasoning tokens against `max_completion_tokens`. With a ~4k-token prompt and a 4000 budget, ALL 4000 tokens went to reasoning and the reply content was EMPTY with `finish_reason: "length"` — every retry failed the same way, so requests dragged past the proxy's hard 120s abort (log signature: `request aborted`, `responseTime: 120000`). Default reasoning effort alone also routinely exceeds 120s.
 
+**Exception (verified live, Aug 2026):** `gpt-5.2` via the AI-integrations proxy REJECTS `reasoning_effort: "minimal"` (400 unsupported_value — supported: none/low/medium/high/xhigh), and by default burns ZERO hidden reasoning tokens: a 10-Arabic-MCQ prompt returned complete at 4000 max_completion_tokens with finish_reason "stop". Do not blanket-apply the gpt-5 rule to gpt-5.2 — verify with a live call first.
+
 **How to apply:** when adding/auditing AI calls in the api-server, check the model; if it starts with `gpt-5`, add `reasoning_effort: "minimal"` (or "low") and size `max_completion_tokens` to expected output + slack. Diagnose by curling the AI proxy with the real prompt and inspecting `usage.completion_tokens_details.reasoning_tokens` and `finish_reason`.

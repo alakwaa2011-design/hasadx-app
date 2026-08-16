@@ -408,7 +408,7 @@ describe("POST /api/ai/generate-questions", () => {
     expectNoLegacyParams();
   });
 
-  it("count=10 reaches the prompt and returns all 10 valid questions with a reasoning budget", async () => {
+  it("count=10 reaches the prompt and returns all 10 valid questions", async () => {
     const tenQuestions = Array.from({ length: 10 }, (_, i) => ({
       text: `سؤال رقم ${i + 1}؟`,
       optionA: "أ", optionB: "ب", optionC: "ج", optionD: "د",
@@ -434,10 +434,9 @@ describe("POST /api/ai/generate-questions", () => {
     /* The requested count must reach the generation prompt verbatim. */
     const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
     expect(callArgs.messages[0].content).toContain("إنشاء 10 سؤال");
-    /* gpt-5 family: hidden reasoning eats the token budget — the route must
-       pin minimal reasoning and a budget large enough for 10 Arabic MCQs. */
-    expect(callArgs.reasoning_effort).toBe("minimal");
-    expect(callArgs.max_completion_tokens).toBeGreaterThanOrEqual(12000);
+    /* Verified live: gpt-5.2 rejects reasoning_effort:"minimal" with a 400 —
+       guard against it sneaking back in (it would break the route outright). */
+    expect(callArgs).not.toHaveProperty("reasoning_effort");
     expectNoLegacyParams();
   });
 
@@ -561,7 +560,7 @@ describe("POST /api/ai/generate-questions-with-images", () => {
     });
   }
 
-  it("sends reasoning_effort:minimal and max_completion_tokens>=12000 to gpt-5 family", async () => {
+  it("never sends reasoning_effort to gpt-5.2 (rejected live with 400)", async () => {
     openaiReturns(
       JSON.stringify([
         {
@@ -584,8 +583,9 @@ describe("POST /api/ai/generate-questions-with-images", () => {
     expect(res.body.questions[0]).toMatchObject({ questionType: "mcq", correctAnswer: "A" });
 
     const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
-    expect(callArgs.reasoning_effort).toBe("minimal");
-    expect(callArgs.max_completion_tokens).toBeGreaterThanOrEqual(12000);
+    /* Verified live: gpt-5.2 rejects reasoning_effort:"minimal" with a 400 —
+       guard against it sneaking back in (it would break the route outright). */
+    expect(callArgs).not.toHaveProperty("reasoning_effort");
     expectNoLegacyParams();
   });
 

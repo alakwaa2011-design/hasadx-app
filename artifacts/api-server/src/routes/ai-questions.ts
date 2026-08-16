@@ -202,12 +202,11 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
-      /* gpt-5 family spends max_completion_tokens on hidden reasoning first;
-         without reasoning_effort:"minimal" + a generous budget, a 10-question
-         Arabic batch comes back truncated or empty (finish_reason "length"),
-         so fewer valid questions survive parsing than were requested. */
-      reasoning_effort: "minimal",
-      max_completion_tokens: 12000,
+      /* Verified live (evidence run): gpt-5.2 with this exact prompt returns
+         10 complete MCQs at 4000 tokens with zero hidden reasoning tokens,
+         and it REJECTS reasoning_effort:"minimal" (400 unsupported_value) —
+         do not add reasoning params or raise the budget here. */
+      max_completion_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -313,9 +312,8 @@ ${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
-      /* Same gpt-5 reasoning-budget rule as /ai/generate-questions above. */
-      reasoning_effort: "minimal",
-      max_completion_tokens: 12000,
+      /* Same rule as /ai/generate-questions: no reasoning params on gpt-5.2. */
+      max_completion_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
     });
     const responseText = completion.choices[0]?.message?.content || "";
