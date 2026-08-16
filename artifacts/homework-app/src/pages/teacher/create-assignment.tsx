@@ -1333,8 +1333,8 @@ export default function CreateAssignment() {
                           className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] text-start sm:text-center">
                           <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                           <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
-                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "أكتبها بنفسي" : "Write them myself"}</span>
-                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "إضافة سؤال سؤالاً في المحرر" : "Add questions one by one"}</span>
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "إضافة يدوية" : "Write them myself"}</span>
+                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "أضف الأسئلة والخيارات بنفسك" : "Add questions one by one"}</span>
                           </div>
                         </button>
                         <button type="button" data-testid="btn-method-ai" onClick={() => { setQuestionMethod("ai"); setShowAiPanel(true); }}
@@ -1342,7 +1342,7 @@ export default function CreateAssignment() {
                           <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                           <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
                             <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "توليد بالذكاء الاصطناعي" : "Generate with AI"}</span>
-                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "حدد الموضوع والعدد ويولّدها لك" : "Pick topic & count, AI writes them"}</span>
+                            <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "حدّد الموضوع وعدد الأسئلة ودع الذكاء الاصطناعي ينشئها لك" : "Pick topic & count, AI writes them"}</span>
                           </div>
                         </button>
                         <button type="button" data-testid="btn-method-file"
