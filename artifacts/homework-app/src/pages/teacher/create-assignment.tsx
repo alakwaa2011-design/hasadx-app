@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { useCreateAssignment } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
+import { mapExtractedToActivity, extractFileError } from "@/lib/map-extracted-to-activity";
 import { Layout } from "@/components/layout";
 import { Input, Button, Label } from "@/components/ui-elements";
 import {
@@ -401,9 +402,6 @@ export default function CreateAssignment() {
   };
 
   // ── Source extract (images / PDF / DOCX / PPTX / TXT / MD) ──
-  /* Mirror of the backend's allowlist in file-upload.ts — reject
-     unsupported picks client-side with a clear message. */
-  const EXTRACT_EXT_RE = /\.(jpe?g|png|webp|gif|pdf|docx|pptx|txt|md)$/i;
   /* Mirror the server's tier limits (file-upload.ts): 5 files for
      teachers, 25 for admins. The server re-validates regardless. */
   const EXTRACT_MAX_FILES = isAdmin ? 25 : 5;
@@ -412,39 +410,13 @@ export default function CreateAssignment() {
     const files = e.target.files; if (!files) return;
     const accepted: File[] = [];
     for (const file of Array.from(files)) {
-      if (!EXTRACT_EXT_RE.test(file.name)) {
-        setExtractError(lang === "ar"
-          ? `صيغة غير مدعومة: ${file.name} — المسموح: صور JPG/PNG/WEBP/GIF أو PDF أو DOCX أو PPTX أو TXT/MD`
-          : `Unsupported format: ${file.name} — allowed: JPG/PNG/WEBP/GIF images, PDF, DOCX, PPTX, TXT/MD`);
-        continue;
-      }
+      const err = extractFileError(file.name, lang === "ar" ? "ar" : "en");
+      if (err) { setExtractError(err); continue; }
       accepted.push(file);
     }
     if (accepted.length > 0) setExtractError("");
     setExtractFiles(prev => [...prev, ...accepted].slice(0, EXTRACT_MAX_FILES));
     if (imageInputRef.current) imageInputRef.current.value = "";
-  };
-
-  /* The worksheet extract endpoint returns worksheet-shaped questions
-     (mcq/true_false/fill_blank/...); map the ones the activity editor
-     supports into CreateQuestionBody rows. */
-  const mapExtractedToActivity = (raw: unknown[]): CreateQuestionBody[] => {
-    const LETTERS = ["A", "B", "C", "D"] as const;
-    const out: CreateQuestionBody[] = [];
-    for (const item of raw) {
-      const q = item as Record<string, unknown>;
-      const base = { optionA: "", optionB: "", optionC: "", optionD: "", points: typeof q.points === "number" && q.points > 0 ? q.points : 1 };
-      if (q.type === "mcq" && Array.isArray(q.options)) {
-        const opts = (q.options as string[]).slice(0, 4);
-        const idx = Math.min(Math.max(Number(q.correctIndex) || 0, 0), opts.length - 1);
-        out.push({ ...base, text: String(q.prompt || ""), optionA: opts[0] || "", optionB: opts[1] || "", optionC: opts[2] || "", optionD: opts[3] || "", correctAnswer: LETTERS[idx] || "A", questionType: "mcq" } as CreateQuestionBody);
-      } else if (q.type === "true_false") {
-        out.push({ ...base, text: String(q.prompt || ""), correctAnswer: q.correct ? "true" : "false", questionType: "true_false" } as CreateQuestionBody);
-      } else if (q.type === "fill_blank") {
-        out.push({ ...base, text: String(q.prompt || ""), correctAnswer: String(q.answer || ""), questionType: "fill_blank" } as CreateQuestionBody);
-      }
-    }
-    return out.filter(q => q.text && q.text.trim().length > 0);
   };
 
   const handleExtractFromSource = async () => {
