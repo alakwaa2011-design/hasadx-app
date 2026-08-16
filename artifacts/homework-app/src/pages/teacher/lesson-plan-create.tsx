@@ -813,7 +813,7 @@ export default function LessonPlanCreate() {
                 <input
                   type="file"
                   multiple
-                  accept="image/*,.pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md"
                   className="hidden"
                   ref={fileInputRef}
                   onChange={e => {

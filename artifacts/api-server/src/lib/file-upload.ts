@@ -196,10 +196,12 @@ export async function processUploadedFiles(
       (mime === "" && IMAGE_EXT_RE.test(lower)) ||
       (mime.startsWith("image/") && IMAGE_EXT_RE.test(lower));
     const looksLikePdf = mime === "application/pdf" || lower.endsWith(".pdf");
+    /* Modern OOXML only — legacy binary .doc/.odt are NOT reliably
+       parseable by mammoth and are rejected below with a clear message. */
     const looksLikeDocx =
-      mime.includes("wordprocessingml") ||
-      mime === "application/msword" ||
-      /\.(docx?|odt)$/i.test(lower);
+      mime.includes("wordprocessingml") || lower.endsWith(".docx");
+    const looksLikePptx =
+      mime.includes("presentationml") || lower.endsWith(".pptx");
     const looksLikeText = mime.startsWith("text/") || /\.(txt|md)$/i.test(lower);
 
     /* Reject SVG/HEIC/TIFF up-front so the user gets a clean error
@@ -212,7 +214,42 @@ export async function processUploadedFiles(
       });
       return null;
     }
-    if (!looksLikeImage && !looksLikePdf && !looksLikeDocx && !looksLikeText) {
+    /* Legacy Office / spreadsheet / archive formats: explicit, actionable
+       rejection instead of a generic "unsupported" or a silent parser
+       failure downstream. */
+    if (!looksLikeDocx && (lower.endsWith(".doc") || lower.endsWith(".odt") || mime === "application/msword")) {
+      res.status(415).json({
+        message: ar
+          ? `صيغة Word القديمة غير مدعومة: ${file.originalname} — احفظ الملف بصيغة DOCX ثم أعد رفعه`
+          : `Legacy Word format not supported: ${file.originalname} — re-save as DOCX and upload again`,
+      });
+      return null;
+    }
+    if (!looksLikePptx && (lower.endsWith(".ppt") || mime === "application/vnd.ms-powerpoint")) {
+      res.status(415).json({
+        message: ar
+          ? `صيغة PowerPoint القديمة غير مدعومة: ${file.originalname} — احفظ الملف بصيغة PPTX ثم أعد رفعه`
+          : `Legacy PowerPoint format not supported: ${file.originalname} — re-save as PPTX and upload again`,
+      });
+      return null;
+    }
+    if (/\.(xlsx?|csv)$/i.test(lower) && !looksLikeText) {
+      res.status(415).json({
+        message: ar
+          ? `ملفات Excel غير مدعومة في هذا المسار: ${file.originalname}`
+          : `Excel files are not supported here: ${file.originalname}`,
+      });
+      return null;
+    }
+    if (lower.endsWith(".zip") || mime === "application/zip") {
+      res.status(415).json({
+        message: ar
+          ? `ملفات ZIP غير مدعومة: ${file.originalname} — ارفع الملفات مباشرة`
+          : `ZIP files are not supported: ${file.originalname} — upload the files directly`,
+      });
+      return null;
+    }
+    if (!looksLikeImage && !looksLikePdf && !looksLikeDocx && !looksLikePptx && !looksLikeText) {
       res.status(415).json({
         message: ar
           ? `نوع الملف غير مدعوم: ${file.originalname}`
@@ -245,8 +282,8 @@ export async function processUploadedFiles(
         req.log?.warn({ err, file: file.originalname }, "pdf-parse failed");
         res.status(422).json({
           message: ar
-            ? `تعذّر قراءة ملف PDF: ${file.originalname}`
-            : `Could not read PDF: ${file.originalname}`,
+            ? `تعذّر قراءة ملف PDF: ${file.originalname} — جرّب ملفاً آخر أو ارفع الصفحات كصور واضحة`
+            : `Could not read PDF: ${file.originalname} — try another file or upload the pages as clear images`,
         });
         return null;
       }
@@ -262,8 +299,35 @@ export async function processUploadedFiles(
         req.log?.warn({ err, file: file.originalname }, "mammoth failed");
         res.status(422).json({
           message: ar
-            ? `تعذّر قراءة ملف Word: ${file.originalname}`
-            : `Could not read Word file: ${file.originalname}`,
+            ? `تعذّر قراءة ملف Word: ${file.originalname} — جرّب ملفاً آخر أو ارفع الصفحات كصور واضحة`
+            : `Could not read Word file: ${file.originalname} — try another file or upload the pages as clear images`,
+        });
+        return null;
+      }
+      continue;
+    }
+
+    if (looksLikePptx) {
+      /* Reuse the existing presentation-import PPTX parser (JSZip + slide
+         XML). Text only — images/charts/design are out of scope here. */
+      try {
+        const { parsePptx } = await import("./import-file-parser");
+        const slides = await parsePptx(file.buffer);
+        const t = slides
+          .map((s, i) => {
+            const parts = [s.title, ...s.bullets].filter(Boolean);
+            return parts.length ? `[${i + 1}] ${parts.join("\n")}` : "";
+          })
+          .filter(Boolean)
+          .join("\n\n")
+          .trim();
+        if (t) textParts.push(`--- ${file.originalname} ---\n${t}`);
+      } catch (err) {
+        req.log?.warn({ err, file: file.originalname }, "pptx parse failed");
+        res.status(422).json({
+          message: ar
+            ? `تعذّر قراءة ملف PowerPoint: ${file.originalname} — جرّب ملفاً آخر أو ارفع الشرائح كصور واضحة`
+            : `Could not read PowerPoint file: ${file.originalname} — try another file or upload the slides as clear images`,
         });
         return null;
       }

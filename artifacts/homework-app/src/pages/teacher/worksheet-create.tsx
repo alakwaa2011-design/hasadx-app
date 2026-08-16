@@ -795,7 +795,7 @@ export default function WorksheetCreate() {
                    "h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all border-2",
                    pickedFiles.length > 0 ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted text-muted-foreground bg-background"
                 )}>
-                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.docx,.doc,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" 
+                   <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" className="hidden" 
                      onChange={e => {
                        const incoming = Array.from(e.target.files || []);
                        if (incoming.length === 0) return;

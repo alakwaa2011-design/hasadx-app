@@ -6,7 +6,7 @@ import { Layout } from "@/components/layout";
 import { Input, Button, Label } from "@/components/ui-elements";
 import {
   Plus, Trash2, Save, ArrowRight, ArrowLeft, Image, CheckCircle2, X,
-  Monitor, FileText, Layers, Globe, Lock, GraduationCap, Copy, Star,
+  Monitor, FileText, Image as ImageIcon, Layers, Globe, Lock, GraduationCap, Copy, Star,
   Eye, EyeOff, Sparkles, Wand2, Loader2, ChevronUp, ChevronDown,
   Calendar, Database, Clock, Settings, Settings2, Brain,
   Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
@@ -266,8 +266,7 @@ export default function CreateAssignment() {
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [showImageExtract, setShowImageExtract] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [extractImages, setExtractImages] = useState<string[]>([]);
-  const [extractCount] = useState(10);
+  const [extractFiles, setExtractFiles] = useState<File[]>([]);
   const [extractDifficulty, setExtractDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractError, setExtractError] = useState("");
@@ -401,33 +400,77 @@ export default function CreateAssignment() {
     } catch (err: any) { setAiError(err.message || t.common.error); } finally { setAiLoading(false); }
   };
 
-  // ── Image extract ──
-  const handleImageFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Source extract (images / PDF / DOCX / PPTX / TXT / MD) ──
+  /* Mirror of the backend's allowlist in file-upload.ts — reject
+     unsupported picks client-side with a clear message. */
+  const EXTRACT_EXT_RE = /\.(jpe?g|png|webp|gif|pdf|docx|pptx|txt|md)$/i;
+  /* Mirror the server's tier limits (file-upload.ts): 5 files for
+     teachers, 25 for admins. The server re-validates regardless. */
+  const EXTRACT_MAX_FILES = isAdmin ? 25 : 5;
+
+  const handleSourceFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files; if (!files) return;
-    const toProcess = Array.from(files).slice(0, 5 - extractImages.length);
-    const newImages: string[] = [];
-    for (const file of toProcess) { if (!file.type.startsWith("image/")) continue; newImages.push(await fileToBase64(file)); }
-    setExtractImages(prev => [...prev, ...newImages].slice(0, 5));
+    const accepted: File[] = [];
+    for (const file of Array.from(files)) {
+      if (!EXTRACT_EXT_RE.test(file.name)) {
+        setExtractError(lang === "ar"
+          ? `صيغة غير مدعومة: ${file.name} — المسموح: صور JPG/PNG/WEBP/GIF أو PDF أو DOCX أو PPTX أو TXT/MD`
+          : `Unsupported format: ${file.name} — allowed: JPG/PNG/WEBP/GIF images, PDF, DOCX, PPTX, TXT/MD`);
+        continue;
+      }
+      accepted.push(file);
+    }
+    if (accepted.length > 0) setExtractError("");
+    setExtractFiles(prev => [...prev, ...accepted].slice(0, EXTRACT_MAX_FILES));
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
-  const handleExtractFromImage = async () => {
-    if (extractImages.length === 0) return;
+  /* The worksheet extract endpoint returns worksheet-shaped questions
+     (mcq/true_false/fill_blank/...); map the ones the activity editor
+     supports into CreateQuestionBody rows. */
+  const mapExtractedToActivity = (raw: unknown[]): CreateQuestionBody[] => {
+    const LETTERS = ["A", "B", "C", "D"] as const;
+    const out: CreateQuestionBody[] = [];
+    for (const item of raw) {
+      const q = item as Record<string, unknown>;
+      const base = { optionA: "", optionB: "", optionC: "", optionD: "", points: typeof q.points === "number" && q.points > 0 ? q.points : 1 };
+      if (q.type === "mcq" && Array.isArray(q.options)) {
+        const opts = (q.options as string[]).slice(0, 4);
+        const idx = Math.min(Math.max(Number(q.correctIndex) || 0, 0), opts.length - 1);
+        out.push({ ...base, text: String(q.prompt || ""), optionA: opts[0] || "", optionB: opts[1] || "", optionC: opts[2] || "", optionD: opts[3] || "", correctAnswer: LETTERS[idx] || "A", questionType: "mcq" } as CreateQuestionBody);
+      } else if (q.type === "true_false") {
+        out.push({ ...base, text: String(q.prompt || ""), correctAnswer: q.correct ? "true" : "false", questionType: "true_false" } as CreateQuestionBody);
+      } else if (q.type === "fill_blank") {
+        out.push({ ...base, text: String(q.prompt || ""), correctAnswer: String(q.answer || ""), questionType: "fill_blank" } as CreateQuestionBody);
+      }
+    }
+    return out.filter(q => q.text && q.text.trim().length > 0);
+  };
+
+  const handleExtractFromSource = async () => {
+    if (extractFiles.length === 0) return;
     setExtractLoading(true); setExtractError("");
     try {
-      const res = await fetch(`${API_BASE}/api/ai/extract-questions-from-image`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ images: extractImages, count: extractCount, difficulty: extractDifficulty }),
+      const form = new FormData();
+      for (const f of extractFiles) form.append("files", f);
+      form.append("language", lang === "ar" ? "ar" : "en");
+      form.append("difficulty", extractDifficulty);
+      form.append("pages", "1");
+      /* Activity editor supports mcq / true_false / fill_blank. */
+      form.append("counts", JSON.stringify({ mcq: 6, true_false: 2, short_answer: 0, fill_blank: 2, matching: 0 }));
+      const res = await fetch(`${API_BASE}/api/worksheets/ai/extract`, {
+        method: "POST", credentials: "include", body: form,
       });
       let data: Record<string, unknown>;
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
       if (!res.ok) throw new Error((data.message as string) || t.createAssignment.generateError);
       if (!Array.isArray(data.questions) || data.questions.length === 0) throw new Error(t.createAssignment.noQuestionsGenerated);
-      const generated = data.questions as CreateQuestionBody[];
+      const generated = mapExtractedToActivity(data.questions);
+      if (generated.length === 0) throw new Error(t.createAssignment.noQuestionsGenerated);
       const hasRealQuestions = questions.length > 0 && questions.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
       setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
-      setShowImageExtract(false); setExtractImages([]);
-      toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من الصور بنجاح` : `${generated.length} questions extracted from images`);
+      setShowImageExtract(false); setExtractFiles([]);
+      toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من المصدر بنجاح` : `${generated.length} questions extracted from the source`);
     } catch (err: unknown) {
       setExtractError(err instanceof Error ? err.message : t.common.error);
     } finally { setExtractLoading(false); }
@@ -1212,16 +1255,14 @@ export default function CreateAssignment() {
                             <span className="text-[11px] font-bold text-slate-500 sm:text-center">{lang === "ar" ? "حدد الموضوع والعدد ويولّدها لك" : "Pick topic & count, AI writes them"}</span>
                           </div>
                         </button>
-                        <button type="button" data-testid="btn-method-file" disabled={!isAdmin}
+                        <button type="button" data-testid="btn-method-file"
                           onClick={() => { setQuestionMethod("file"); setShowImageExtract(true); }}
                           className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed text-start sm:text-center">
                           <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                           <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
-                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج أسئلة من ملف أو كتاب" : "Extract questions from a file or book"}</span>
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخرج أسئلة من صور أو مستند" : "Extract questions from images or a document"}</span>
                             <span className="text-[11px] font-bold text-slate-500 sm:text-center">
-                              {isAdmin
-                                ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts questions")
-                                : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
+                              {lang === "ar" ? "ارفع صوراً أو PDF أو Word أو PowerPoint" : "Upload images, PDF, Word or PowerPoint"}
                             </span>
                           </div>
                         </button>
@@ -1320,30 +1361,42 @@ export default function CreateAssignment() {
                     </div>
                   )}
 
-                  {/* Image Extract (admin) — expanded panel only */}
+                  {/* Source extract — images / PDF / DOCX / PPTX / TXT / MD */}
                   {!isPaper && showImageExtract && (
                     <div className="p-4 rounded-3xl border-2 border-primary/20 bg-primary/5">
                       {(
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخراج من صور" : "Extract from Images"}</h3>
-                            <button type="button" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractImages([]); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                            <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج أسئلة من صور أو مستند" : "Extract questions from images or a document"}</h3>
+                            <button type="button" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractFiles([]); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                           </div>
-                          <input ref={imageInputRef} type="file" accept="image/*" multiple onChange={handleImageFiles} className="hidden" />
-                          <button type="button" onClick={() => imageInputRef.current?.click()} disabled={extractImages.length >= 5}
+                          <input ref={imageInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" multiple onChange={handleSourceFiles} className="hidden" data-testid="input-extract-files" />
+                          <button type="button" onClick={() => imageInputRef.current?.click()} disabled={extractFiles.length >= EXTRACT_MAX_FILES}
                             className="w-full py-3 border-2 border-dashed border-primary/30 rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center gap-1.5 disabled:opacity-50">
                             <Upload className="w-5 h-5 text-primary" />
-                            <span className="text-xs text-primary font-bold">{lang === "ar" ? "اضغط لرفع صور (حتى 5)" : "Click to upload (up to 5)"}</span>
+                            <span className="text-xs text-primary font-bold">{lang === "ar" ? `ارفع صوراً أو ملف PDF أو Word أو PowerPoint أو ملفاً نصياً (حتى ${EXTRACT_MAX_FILES})` : `Upload images, PDF, Word, PowerPoint or a text file (up to ${EXTRACT_MAX_FILES})`}</span>
                           </button>
-                          {extractImages.length > 0 && (
-                            <div className="grid grid-cols-5 gap-2">
-                              {extractImages.map((img, i) => (
-                                <div key={i} className="relative group">
-                                  <img src={img} alt="" className="w-full aspect-square object-cover rounded-lg border-2 border-primary/20" />
-                                  <button type="button" onClick={() => setExtractImages(prev => prev.filter((_, idx) => idx !== i))}
-                                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                                </div>
-                              ))}
+                          <div className="flex flex-wrap gap-1.5">
+                            {["PDF", "Word", "PowerPoint", lang === "ar" ? "صور" : "Images", lang === "ar" ? "نص" : "Text"].map(b => (
+                              <span key={b} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">{b}</span>
+                            ))}
+                          </div>
+                          {extractFiles.length > 0 && (
+                            <div className="space-y-1.5">
+                              {extractFiles.map((f, i) => {
+                                const n = f.name.toLowerCase();
+                                const isImg = /\.(jpe?g|png|webp|gif)$/.test(n);
+                                const Icon = isImg ? ImageIcon : FileText;
+                                return (
+                                  <div key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border border-primary/15" data-testid={`extract-file-${i}`}>
+                                    <Icon className="w-4 h-4 text-primary shrink-0" />
+                                    <span className="flex-1 min-w-0 truncate text-xs font-bold text-foreground" dir="ltr">{f.name}</span>
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">{lang === "ar" ? "جاهز للاستخراج" : "Ready to extract"}</span>
+                                    <button type="button" onClick={() => setExtractFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                      className="p-0.5 rounded text-muted-foreground hover:text-red-500 shrink-0"><X className="w-3.5 h-3.5" /></button>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           <div className="flex gap-1">
@@ -1354,8 +1407,11 @@ export default function CreateAssignment() {
                               </button>
                             ))}
                           </div>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">
+                            {lang === "ar" ? "للحصول على أفضل نتيجة من PDF المصوّر، ارفع الصفحات كصور واضحة." : "For scanned PDFs, upload the pages as clear images for best results."}
+                          </p>
                           {extractError && <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-700">{extractError}</div>}
-                          <button type="button" onClick={handleExtractFromImage} disabled={extractLoading || extractImages.length === 0}
+                          <button type="button" onClick={handleExtractFromSource} disabled={extractLoading || extractFiles.length === 0} data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري الاستخراج..." : "Extracting..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج الأسئلة" : "Extract Questions"}</>}
                           </button>
@@ -1698,13 +1754,13 @@ export default function CreateAssignment() {
                               </button>
                             )}
                             {!showImageExtract && (
-                              <button type="button" disabled={!isAdmin} onClick={() => setShowImageExtract(true)}
-                                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all disabled:opacity-45 disabled:cursor-not-allowed">
+                              <button type="button" onClick={() => setShowImageExtract(true)}
+                                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all">
                                 <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                 <div className="min-w-0">
-                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخراج أسئلة من ملف أو كتاب" : "Extract questions from a file or book"}</span>
+                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "استخرج أسئلة من صور أو مستند" : "Extract questions from images or a document"}</span>
                                   <span className="block text-[10px] font-bold text-slate-500 truncate">
-                                    {isAdmin ? (lang === "ar" ? "ارفع صوراً ويستخرج الذكاء الأسئلة" : "Upload pages, AI extracts") : (lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval")}
+                                    {lang === "ar" ? "ارفع صوراً أو PDF أو Word أو PowerPoint" : "Upload images, PDF, Word or PowerPoint"}
                                   </span>
                                 </div>
                               </button>
