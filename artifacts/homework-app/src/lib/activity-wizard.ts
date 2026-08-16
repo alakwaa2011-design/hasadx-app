@@ -3,6 +3,10 @@
  * Kept free of React/DOM so validation rules are unit-testable.
  */
 
+/** Default question count preselected when the teacher opens «توليد بالذكاء
+    الاصطناعي». A default only — the teacher can still change it in the panel. */
+export const DEFAULT_AI_QUESTION_COUNT = 10;
+
 export interface WizardQuestionLike {
   text?: string | null;
 }

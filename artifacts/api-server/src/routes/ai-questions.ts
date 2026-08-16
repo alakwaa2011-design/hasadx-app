@@ -80,6 +80,32 @@ function mapTypedQuestion(q: any, expectedType: AiQType) {
   if (!["A", "B", "C", "D"].includes(q.correctAnswer)) return null;
   return { ...base, ...opts, correctAnswer: q.correctAnswer };
 }
+/** Extract the FIRST complete top-level JSON array from model output.
+    Quote/escape-aware bracket balancing — robust against both truncation
+    (non-greedy regex stopped at the first "]") and trailing prose containing
+    "]" (greedy regex swallowed it). Returns null when no balanced array. */
+export function extractJsonArray(text: string): string | null {
+  const start = text.indexOf("[");
+  if (start === -1) return null;
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "[") depth++;
+    else if (ch === "]") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 const MAX_TOPIC_LENGTH = 500;
 const MAX_SUBJECT_LENGTH = 200;
 const MIN_QUESTIONS = 1;
@@ -176,21 +202,26 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 4000,
+      /* gpt-5 family spends max_completion_tokens on hidden reasoning first;
+         without reasoning_effort:"minimal" + a generous budget, a 10-question
+         Arabic batch comes back truncated or empty (finish_reason "length"),
+         so fewer valid questions survive parsing than were requested. */
+      reasoning_effort: "minimal",
+      max_completion_tokens: 12000,
       messages: [{ role: "user", content: prompt }],
     });
 
     const responseText = completion.choices[0]?.message?.content || "";
 
-    const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
-    if (!jsonMatch) {
+    const jsonArray = extractJsonArray(responseText);
+    if (!jsonArray) {
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد الأسئلة. حاول مرة أخرى." });
       return;
     }
 
     let parsed: any[];
     try {
-      parsed = JSON.parse(jsonMatch[0]);
+      parsed = JSON.parse(jsonArray);
     } catch {
       res.status(500).json({ message: "خطأ في تنسيق الإجابة من الذكاء الاصطناعي. حاول مرة أخرى." });
       return;
@@ -282,16 +313,18 @@ ${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 6000,
+      /* Same gpt-5 reasoning-budget rule as /ai/generate-questions above. */
+      reasoning_effort: "minimal",
+      max_completion_tokens: 12000,
       messages: [{ role: "user", content: prompt }],
     });
     const responseText = completion.choices[0]?.message?.content || "";
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
+    const jsonArray = extractJsonArray(responseText);
+    if (!jsonArray) {
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد الأسئلة. حاول مرة أخرى." });
       return;
     }
-    parsed = JSON.parse(jsonMatch[0]);
+    parsed = JSON.parse(jsonArray);
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("empty");
   } catch {
     res.status(500).json({ message: "خطأ في توليد الأسئلة. يرجى المحاولة مرة أخرى." });

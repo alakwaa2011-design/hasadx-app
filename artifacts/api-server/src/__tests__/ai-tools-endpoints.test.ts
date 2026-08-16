@@ -394,6 +394,57 @@ describe("POST /api/ai/generate-questions", () => {
     expectNoLegacyParams();
   });
 
+  it("count=10 reaches the prompt and returns all 10 valid questions with a reasoning budget", async () => {
+    const tenQuestions = Array.from({ length: 10 }, (_, i) => ({
+      text: `سؤال رقم ${i + 1}؟`,
+      optionA: "أ", optionB: "ب", optionC: "ج", optionD: "د",
+      correctAnswer: (["A", "B", "C", "D"] as const)[i % 4],
+      points: 1,
+    }));
+    openaiReturns(JSON.stringify(tenQuestions));
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({ topic: "الدورة الدموية", count: 10, difficulty: "medium" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(10);
+    for (const q of res.body.questions) {
+      expect(q.text).toBeTruthy();
+      expect(q.optionA).toBeTruthy();
+      expect(q.optionB).toBeTruthy();
+      expect(q.optionC).toBeTruthy();
+      expect(q.optionD).toBeTruthy();
+      expect(["A", "B", "C", "D"]).toContain(q.correctAnswer);
+    }
+    /* The requested count must reach the generation prompt verbatim. */
+    const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
+    expect(callArgs.messages[0].content).toContain("إنشاء 10 سؤال");
+    /* gpt-5 family: hidden reasoning eats the token budget — the route must
+       pin minimal reasoning and a budget large enough for 10 Arabic MCQs. */
+    expect(callArgs.reasoning_effort).toBe("minimal");
+    expect(callArgs.max_completion_tokens).toBeGreaterThanOrEqual(12000);
+    expectNoLegacyParams();
+  });
+
+  it("parses the array even with trailing prose containing ']' and ']' inside question text", async () => {
+    const questions = [{
+      text: "ما ناتج [٢ + ٢]؟",
+      optionA: "3", optionB: "4", optionC: "5", optionD: "6",
+      correctAnswer: "B",
+      points: 1,
+    }];
+    openaiReturns(`إليك الأسئلة:\n${JSON.stringify(questions)}\nملاحظة: [يمكن تعديلها] حسب الحاجة.`);
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({ topic: "الرياضيات", count: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(1);
+    expect(res.body.questions[0].text).toBe("ما ناتج [٢ + ٢]؟");
+  });
+
   it("returns 401 without a teacher session", async () => {
     const res = await request(makeApp(aiQuestionsRouter, null))
       .post("/api/ai/generate-questions")

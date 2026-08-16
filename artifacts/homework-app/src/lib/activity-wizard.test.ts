@@ -4,7 +4,14 @@ import {
   hasAtLeastOneQuestion,
   PUBLISH_BLOCK_MESSAGES_AR,
   PUBLISH_BLOCK_MESSAGES_EN,
+  DEFAULT_AI_QUESTION_COUNT,
 } from "./activity-wizard";
+
+describe("AI generation defaults", () => {
+  it("defaults the AI panel question count to 10 (a default, not a cap)", () => {
+    expect(DEFAULT_AI_QUESTION_COUNT).toBe(10);
+  });
+});
 import { TEMPLATES } from "./activity-templates";
 
 describe("getPublishBlockReason", () => {

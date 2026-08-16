@@ -32,7 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
 import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
 import {
-  getPublishBlockReason, hasAtLeastOneQuestion,
+  getPublishBlockReason, hasAtLeastOneQuestion, DEFAULT_AI_QUESTION_COUNT,
   PUBLISH_BLOCK_MESSAGES_AR, PUBLISH_BLOCK_MESSAGES_EN,
 } from "@/lib/activity-wizard";
 
@@ -262,7 +262,7 @@ export default function CreateAssignment() {
 
   // ── AI / image extract ──
   const [aiTopic, setAiTopic] = useState("");
-  const [aiCount, setAiCount] = useState(10);
+  const [aiCount, setAiCount] = useState(DEFAULT_AI_QUESTION_COUNT);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [aiWithImages, setAiWithImages] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
