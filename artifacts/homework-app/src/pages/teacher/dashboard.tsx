@@ -326,6 +326,91 @@ type AssignmentLiveGameChoice =
   | "rocket_race"
   | "wheel_of_fortune";
 
+/* ── URL-parameter parsing (exported for unit tests) ─────────────────────── */
+
+const DASHBOARD_ALLOWED_TABS = [
+  "overview", "assignments", "shared", "library_homework",
+  "library_competitions", "competitive", "tools", "videos", "stats", "students",
+] as const;
+
+export type DashboardUrlParseResult = {
+  /** Tab to switch to — set when ?tab= is present and is a recognised value. */
+  tab?: TabId;
+  /**
+   * Assignment ID whose game-picker modal should open — set when
+   * ?liveGamePicker=<numeric-id> is present.  Takes precedence over
+   * ?liveGame=1 when both appear.
+   */
+  liveGamePickerId?: number;
+  /**
+   * Path to navigate to — set when the legacy ?liveGame=1 param is present
+   * and ?liveGamePicker was absent.
+   */
+  navigateTo?: string;
+  /**
+   * The URL (pathname + search + hash) after all consumed params have been
+   * stripped — pass this to history.replaceState so the address bar stays
+   * clean.
+   */
+  cleanedUrl: string;
+};
+
+/**
+ * Pure function that decodes the deep-link contract used by dashboard.tsx.
+ *
+ * Consumed URL parameters (in precedence order):
+ *   ?tab=<id>             — switch to the given tab (if recognised)
+ *   ?liveGamePicker=<id>  — open the live-game-type picker for that assignment
+ *   ?liveGame=1           — legacy redirect to Wameedh create flow
+ *
+ * All consumed params are removed from `cleanedUrl` so callers can push it
+ * to history.replaceState in one shot.
+ */
+export function parseDashboardUrlParams(
+  search: string,
+  pathname: string,
+  hash = "",
+): DashboardUrlParseResult {
+  const params = new URLSearchParams(search);
+
+  // ── ?tab= ──────────────────────────────────────────────────────────────
+  let tab: TabId | undefined;
+  const tabParam = params.get("tab");
+  if (tabParam && (DASHBOARD_ALLOWED_TABS as readonly string[]).includes(tabParam)) {
+    tab = tabParam as TabId;
+    params.delete("tab");
+  }
+
+  // ── ?liveGamePicker= ───────────────────────────────────────────────────
+  const pickerParam = params.get("liveGamePicker");
+  if (pickerParam && /^\d+$/.test(pickerParam)) {
+    params.delete("liveGamePicker");
+    const qs = params.toString();
+    return {
+      tab,
+      liveGamePickerId: Number(pickerParam),
+      cleanedUrl: `${pathname}${qs ? `?${qs}` : ""}${hash}`,
+    };
+  }
+
+  // ── ?liveGame=1 (legacy) ───────────────────────────────────────────────
+  if (params.get("liveGame") === "1") {
+    params.delete("liveGame");
+    const qs = params.toString();
+    return {
+      tab,
+      navigateTo: "/game/wameeth/create",
+      cleanedUrl: `${pathname}${qs ? `?${qs}` : ""}`,
+    };
+  }
+
+  // ── nothing special — just (maybe) a tab switch ────────────────────────
+  const qs = params.toString();
+  return { tab, cleanedUrl: `${pathname}${qs ? `?${qs}` : ""}${hash}` };
+}
+
+/* ── End URL-parameter parsing ───────────────────────────────────────────── */
+
 export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
   const [creatingGameForId, setCreatingGameForId] = useState<number | null>(
@@ -406,34 +491,26 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (!user) return;
     if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    const allowed = ["overview", "assignments", "shared", "library_homework", "library_competitions", "competitive", "tools", "videos", "stats", "students"] as const;
-    type AllowedTab = typeof allowed[number];
-    if (tabParam && (allowed as readonly string[]).includes(tabParam)) {
-      setActiveTab(tabParam as AllowedTab);
-      params.delete("tab");
-      const newSearch = params.toString();
-      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
-      window.history.replaceState({}, "", newUrl);
-    }
-    /* From publish-success («لعبة مباشرة» after publishing): open the SAME
-       game-type picker used by the «أنشطتي» rows for that assignment. */
-    const pickerParam = params.get("liveGamePicker");
-    if (pickerParam && /^\d+$/.test(pickerParam)) {
-      params.delete("liveGamePicker");
-      const qs2 = params.toString();
-      window.history.replaceState({}, "", `${window.location.pathname}${qs2 ? `?${qs2}` : ""}${window.location.hash}`);
-      setAssignmentGamePickerId(Number(pickerParam));
+    /* parseDashboardUrlParams encodes the deep-link contract between
+       publish-success-screen (and other callers) and this dashboard.
+       Keep side-effects here; keep parsing logic in that pure function. */
+    const { tab, liveGamePickerId, navigateTo, cleanedUrl } = parseDashboardUrlParams(
+      window.location.search,
+      window.location.pathname,
+      window.location.hash,
+    );
+    if (tab) setActiveTab(tab);
+    window.history.replaceState({}, "", cleanedUrl);
+    if (liveGamePickerId != null) {
+      /* From publish-success («لعبة مباشرة» after publishing): open the SAME
+         game-type picker used by the «أنشطتي» rows for that assignment. */
+      setAssignmentGamePickerId(liveGamePickerId);
       return;
     }
-    if (params.get("liveGame") !== "1") return;
-    params.delete("liveGame");
-    const qs = params.toString();
-    const path = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
-    window.history.replaceState({}, "", path);
-    // Wameedh now always starts from its own question-prep flow.
-    setLocation("/game/wameeth/create");
+    if (navigateTo) {
+      // Legacy ?liveGame=1 — Wameedh now always starts from its own question-prep flow.
+      setLocation(navigateTo);
+    }
   }, [user, setLocation]);
 
   /* ── XP socket: real-time reward toasts ─────────────────────────────── */
