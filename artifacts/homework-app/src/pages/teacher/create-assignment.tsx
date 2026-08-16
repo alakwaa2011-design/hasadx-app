@@ -1950,11 +1950,19 @@ export default function CreateAssignment() {
                     </div>
                   </div>
 
-                  {/* Secondary action: student preview */}
-                  <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
-                    <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة كما يراها المشارك" : "Preview as participant"}
-                  </button>
+                  {/* Secondary actions: preview / advanced settings */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
+                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                      <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة" : "Preview"}
+                    </button>
+                    <button type="button" data-testid="btn-advanced-settings" onClick={() => setShowAdvancedSettings(v => !v)}
+                      aria-expanded={showAdvancedSettings}
+                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                      <Settings2 className="w-4 h-4" />{lang === "ar" ? "إعدادات متقدمة" : "Advanced settings"}
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedSettings ? "rotate-180" : ""}`} />
+                    </button>
+                  </div>
 
                   {/* Student preview modal */}
                   <AnimatePresence>
@@ -1964,7 +1972,7 @@ export default function CreateAssignment() {
                     <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
                       className="bg-card rounded-2xl p-5 max-w-lg w-full shadow-2xl border border-border max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-base font-black text-foreground flex items-center gap-2"><Eye className="w-4 h-4" />{lang === "ar" ? "كما يراها الطالب" : "Student view"}</h3>
+                        <h3 className="text-base font-black text-foreground flex items-center gap-2"><Eye className="w-4 h-4" />{lang === "ar" ? "عرض النشاط كما يراه المشارك" : "Student view"}</h3>
                         <button type="button" onClick={() => setShowStudentPreview(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"><X className="w-4 h-4" /></button>
                       </div>
                     <div className="space-y-3 overflow-y-auto pr-1 min-h-0">
@@ -2015,17 +2023,6 @@ export default function CreateAssignment() {
 
                   {/* Advanced settings (collapsible) */}
                   <div className="p-0 overflow-hidden">
-                    <button type="button" onClick={() => setShowAdvancedSettings(v => !v)}
-                      className="w-full px-5 py-4 flex items-center justify-between text-start hover:bg-muted/40 transition-colors">
-                      <div className="flex items-center gap-2.5">
-                        <Settings2 className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <span className="text-sm font-bold block">{lang === "ar" ? "إعدادات متقدمة" : "Advanced Settings"}</span>
-                          <span className="text-[11px] text-muted-foreground">{lang === "ar" ? "طريقة التسليم، النتائج، الوصول، وخيارات إضافية" : "Submission, results, access, and more"}</span>
-                        </div>
-                      </div>
-                      <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showAdvancedSettings ? "rotate-180" : ""}`} />
-                    </button>
                     <AnimatePresence>
                       {showAdvancedSettings && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
