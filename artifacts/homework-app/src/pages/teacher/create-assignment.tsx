@@ -11,7 +11,7 @@ import {
   Calendar, Database, Clock, Settings, Settings2, Brain,
   Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
   Share2, ExternalLink, BarChart3, PartyPopper,
-  FilePenLine, ListChecks, Send as SendIcon, Check,
+  FilePenLine, ListChecks, Send as SendIcon, Check, RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -1758,17 +1758,11 @@ export default function CreateAssignment() {
                     </div>
                   </div>
 
-                  {/* Secondary actions: student preview + publish settings */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
-                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
-                      <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة كما يراها الطالب" : "Preview as student"}
-                    </button>
-                    <button type="button" data-testid="btn-publish-settings" onClick={() => setShowAdvancedSettings(v => !v)}
-                      className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-[#15201B] text-slate-700 dark:text-slate-300 text-sm font-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all active:scale-[0.98]">
-                      <Settings className="w-4 h-4" />{lang === "ar" ? "إعدادات النشر" : "Publish settings"}
-                    </button>
-                  </div>
+                  {/* Secondary action: student preview */}
+                  <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
+                    <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة كما يراها المشارك" : "Preview as participant"}
+                  </button>
 
                   {/* Student preview modal */}
                   <AnimatePresence>
@@ -1835,7 +1829,7 @@ export default function CreateAssignment() {
                         <Settings2 className="w-4 h-4 text-muted-foreground" />
                         <div>
                           <span className="text-sm font-bold block">{lang === "ar" ? "إعدادات متقدمة" : "Advanced Settings"}</span>
-                          <span className="text-[11px] text-muted-foreground">{lang === "ar" ? "طريقة التسليم، الكود، الموعد، الوضع التكيفي، وأكثر" : "Submission, code, deadline, adaptive, and more"}</span>
+                          <span className="text-[11px] text-muted-foreground">{lang === "ar" ? "طريقة التسليم، النتائج، الوصول، وخيارات إضافية" : "Submission, results, access, and more"}</span>
                         </div>
                       </div>
                       <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showAdvancedSettings ? "rotate-180" : ""}`} />
@@ -1843,287 +1837,320 @@ export default function CreateAssignment() {
                     <AnimatePresence>
                       {showAdvancedSettings && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                          <div className="px-5 pb-5 pt-2 space-y-4 border-t border-border">
-                  {/* Submission mode */}
-                  <div className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-5">
-                    <h3 className="text-sm font-bold flex items-center gap-2"><Layers className="w-4 h-4 text-primary" />{t.createAssignment.submissionMethod}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "electronic" as SubmissionMode, label: t.createAssignment.electronicOnly, icon: <Monitor className="w-4 h-4" /> },
-                        { value: "paper" as SubmissionMode, label: t.createAssignment.paperOnly, icon: <FileText className="w-4 h-4" /> },
-                        { value: "both" as SubmissionMode, label: t.createAssignment.electronicAndPaper, icon: <Layers className="w-4 h-4" /> },
-                      ].map(opt => (
-                        <button key={opt.value} type="button" onClick={() => handleModeChange(opt.value)}
-                          className={`px-4 py-2.5 rounded-xl border-2 text-sm font-bold flex items-center gap-2 transition-all ${submissionMode === opt.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
-                          {opt.icon}{opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                          <div className="border-t border-border divide-y divide-border/50">
 
-                  {/* Toggles */}
-                  <div className="p-5 divide-y divide-border space-y-0">
-                    {/* Show results */}
-                    <div className="flex items-center justify-between py-3 first:pt-0">
-                      <div className="flex items-center gap-2.5">
-                        {showResults ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-amber-500" />}
-                        <div>
-                          <span className="text-sm font-bold block">{t.createAssignment.showResults}</span>
-                          <span className="text-[11px] text-muted-foreground">{showResults ? t.createAssignment.showResultsOn : t.createAssignment.showResultsOff}</span>
-                        </div>
-                      </div>
-                      <Toggle on={showResults} onChange={() => setShowResults(!showResults)} color="green" />
-                    </div>
-
-                    {/* Results release mode — standalone (not exam-mode-only) */}
-                    <div className="py-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Eye className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-bold">{t.createAssignment.resultsRelease}</span>
-                      </div>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {[
-                          { v: "immediate", label: lang === "ar" ? "فوري" : "Immediate" },
-                          { v: "after_deadline", label: lang === "ar" ? "بعد الموعد" : "After Deadline" },
-                          { v: "manual", label: lang === "ar" ? "يدوي" : "Manual" },
-                        ].map(({ v, label }) => (
-                          <button key={v} type="button"
-                            onClick={() => { if (v === "immediate" || v === "after_deadline" || v === "manual") setResultsReleaseMode(v); }}
-                            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${resultsReleaseMode === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Allow retry */}
-                    <div className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className={`text-base ${allowRetry ? "opacity-100" : "opacity-40"}`}>🔁</span>
-                        <div>
-                          <span className="text-sm font-bold block">{lang === "ar" ? "السماح بإعادة المحاولة" : "Allow Retry"}</span>
-                          <span className="text-[11px] text-muted-foreground">{allowRetry ? (lang === "ar" ? "يمكن للطلاب إعادة الواجب" : "Students can retake the assignment") : (lang === "ar" ? "محاولة واحدة فقط" : "One attempt only")}</span>
-                        </div>
-                      </div>
-                      <Toggle on={allowRetry} onChange={() => setAllowRetry(!allowRetry)} color="green" />
-                    </div>
-
-                    {/* Share publicly — hidden when accessMode is private,
-                        because a private assignment by definition cannot be
-                        published to the shared library. */}
-                    {accessMode !== "private" && (
-                      <div className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-2.5">
-                          <Globe className={`w-4 h-4 ${isShared ? "text-primary" : "text-muted-foreground"}`} />
-                          <div>
-                            <span className="text-sm font-bold block">{lang === "ar" ? (isShared ? "منشور في المكتبة" : "خاص بك") : (isShared ? "Published in Library" : "Private")}</span>
-                            <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "ستظهر تلقائياً للمعلمين الآخرين. اضغط لجعلها خاصة 🔒" : "Will be auto-published to other teachers. Tap to make private 🔒") : (lang === "ar" ? "خاص بك فقط — لن يراها أحد" : "Only visible to you")}</span>
-                          </div>
-                        </div>
-                        <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="green" />
-                      </div>
-                    )}
-
-                    {/* Exam mode */}
-                    {!isPaper && (
-                      <div className="py-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <Clock className={`w-4 h-4 ${examMode ? "text-orange-500" : "text-muted-foreground"}`} />
-                            <div>
-                              <span className="text-sm font-bold block">{t.createAssignment.examMode}</span>
-                              <span className="text-[11px] text-muted-foreground">{t.createAssignment.examModeDesc}</span>
-                            </div>
-                          </div>
-                          <Toggle on={examMode} onChange={() => setExamMode(!examMode)} color="orange" />
-                        </div>
-                        <AnimatePresence>
-                          {examMode && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                              <div className="mt-3">
-                                <Label className="text-xs">{t.createAssignment.examDuration}</Label>
-                                <input type="number" min="1" max="300" value={examDurationMinutes} onChange={e => setExamDurationMinutes(parseInt(e.target.value) || 30)}
-                                  className="w-32 px-3 py-2 rounded-lg bg-background border-2 border-border text-sm focus:outline-none focus:border-primary mt-1" dir="ltr" />
+                            {/* ── 1. التسليم والوصول ── */}
+                            <div className="px-5 py-4 space-y-4">
+                              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5" />
+                                {lang === "ar" ? "التسليم والوصول" : "Submission & Access"}
+                              </p>
+                              {/* Submission mode */}
+                              <div>
+                                <span className="text-xs font-bold text-foreground">{t.createAssignment.submissionMethod}</span>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {[
+                                    { value: "electronic" as SubmissionMode, label: t.createAssignment.electronicOnly, icon: <Monitor className="w-3.5 h-3.5" /> },
+                                    { value: "paper" as SubmissionMode, label: t.createAssignment.paperOnly, icon: <FileText className="w-3.5 h-3.5" /> },
+                                    { value: "both" as SubmissionMode, label: t.createAssignment.electronicAndPaper, icon: <Layers className="w-3.5 h-3.5" /> },
+                                  ].map(opt => (
+                                    <button key={opt.value} type="button" onClick={() => handleModeChange(opt.value)}
+                                      className={`px-3 py-2 rounded-xl border-2 text-xs font-bold flex items-center gap-1.5 transition-all ${submissionMode === opt.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+                                      {opt.icon}{opt.label}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    )}
+                              {/* Access mode */}
+                              <div>
+                                <span className="text-xs font-bold text-foreground">{t.createAssignment.accessMode}</span>
+                                <div className="flex gap-2 mt-2">
+                                  <button type="button" onClick={() => setAccessMode("public")}
+                                    className={`flex-1 px-3 py-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${accessMode === "public" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+                                    <Globe className="w-3.5 h-3.5" />{t.createAssignment.public}
+                                  </button>
+                                  <button type="button" onClick={() => { setAccessMode("private"); setIsShared(false); }}
+                                    className={`flex-1 px-3 py-2 rounded-xl border-2 text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${accessMode === "private" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+                                    <Lock className="w-3.5 h-3.5" />{t.createAssignment.privateCode}
+                                  </button>
+                                </div>
+                                <AnimatePresence>
+                                  {accessMode === "private" && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                      <div className="mt-2">
+                                        <Label className="text-sm">{t.createAssignment.accessCodeLabel}</Label>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <input value={accessCode} onChange={e => setAccessCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} className="font-mono tracking-widest text-center" dir="ltr" />
+                                          <button type="button" onClick={() => navigator.clipboard.writeText(accessCode)} className="p-2 rounded-lg border border-border hover:bg-primary/10 transition-all" title={t.createAssignment.copyCode}><Copy className="w-4 h-4" /></button>
+                                          <button type="button" onClick={() => setAccessCode(generateAccessCode())} className="p-2 rounded-lg border border-border hover:bg-primary/10 transition-all text-xs whitespace-nowrap">{t.createAssignment.newCode}</button>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                              {/* Deadline */}
+                              <div>
+                                <span className="text-xs font-bold text-foreground">{t.createAssignment.deadlineLabel}</span>
+                                <div className="mt-2">
+                                  {deadline ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm text-foreground bg-muted px-3 py-1.5 rounded-lg flex-1" dir="ltr">{deadline.replace("T", " ")}</span>
+                                      <button type="button" onClick={() => { setDeadlineDraft(deadline); setShowDatePicker(true); }} className="px-3 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10">{lang === "ar" ? "تعديل" : "Edit"}</button>
+                                      <button type="button" onClick={() => setDeadline("")} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"><X className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                  ) : (
+                                    <button type="button" onClick={() => { setDeadlineDraft(""); setShowDatePicker(true); }}
+                                      className="px-4 py-2 rounded-xl border-2 border-dashed border-border text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary transition-all">
+                                      {lang === "ar" ? "+ تحديد موعد التسليم" : "+ Set submission deadline"}
+                                    </button>
+                                  )}
+                                  <AnimatePresence>
+                                    {showDatePicker && (
+                                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                        <div className="mt-2 bg-muted/40 rounded-lg p-3 space-y-2">
+                                          <input type="datetime-local" value={deadlineDraft} onChange={e => setDeadlineDraft(e.target.value)}
+                                            className="w-full px-3 py-2 rounded-lg bg-background border-2 border-border text-sm focus:outline-none focus:border-primary" dir="ltr" />
+                                          <div className="flex gap-2 justify-end">
+                                            <button type="button" onClick={() => setShowDatePicker(false)} className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted">{lang === "ar" ? "إلغاء" : "Cancel"}</button>
+                                            <button type="button" onClick={() => { setDeadline(deadlineDraft); setShowDatePicker(false); }} className="px-4 py-1.5 rounded-md text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90">{lang === "ar" ? "تم" : "OK"}</button>
+                                          </div>
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              </div>
+                            </div>
 
-                    {/* Adaptive */}
-                    <div className="py-3">
-                      <div className={`flex items-center justify-between ${!isAdmin ? "opacity-50" : ""}`}>
-                        <div className="flex items-center gap-2.5">
-                          <Brain className={`w-4 h-4 ${isAdaptive ? "text-violet-500" : "text-muted-foreground"}`} />
-                          <div>
-                            <span className="text-sm font-bold block text-violet-700 dark:text-violet-300">{lang === "ar" ? "الوضع التكيّفي" : "Adaptive Mode"}</span>
-                            <span className="text-[11px] text-muted-foreground">{lang === "ar" ? "كل طالب يحصل على أسئلة حسب مستواه" : "Each student gets questions matched to their level"}</span>
-                            {!isAdmin && <span className="block text-[10px] text-amber-600 font-bold mt-0.5">{lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin approval"}</span>}
-                          </div>
-                        </div>
-                        <button type="button" onClick={() => isAdmin && setIsAdaptive(!isAdaptive)} disabled={!isAdmin}
-                          className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${isAdaptive ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"}`}>
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
-                        </button>
-                      </div>
-                      <AnimatePresence>
-                        {isAdaptive && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                            <div className="mt-3 p-3 rounded-xl border-2 border-primary/20 bg-primary/5 space-y-3">
-                              <div className="flex flex-wrap gap-1.5">
-                                {adaptiveSkills.map((sk, i) => (
-                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground text-xs font-bold">
-                                    {sk}<button type="button" onClick={() => setAdaptiveSkills(adaptiveSkills.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
-                                  </span>
+                            {/* ── 2. النتائج والمحاولات ── */}
+                            <div className="px-5 py-4">
+                              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                <Eye className="w-3.5 h-3.5" />
+                                {lang === "ar" ? "النتائج والمحاولات" : "Results & Attempts"}
+                              </p>
+                              <div className="divide-y divide-border/40">
+                                <div className="flex items-center justify-between py-2.5 first:pt-0">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {showResults ? <Eye className="w-4 h-4 text-green-500 shrink-0" /> : <EyeOff className="w-4 h-4 text-amber-500 shrink-0" />}
+                                    <div>
+                                      <span className="text-sm font-bold block">{t.createAssignment.showResults}</span>
+                                      <span className="text-[11px] text-muted-foreground">{showResults ? t.createAssignment.showResultsOn : t.createAssignment.showResultsOff}</span>
+                                    </div>
+                                  </div>
+                                  <Toggle on={showResults} onChange={() => setShowResults(!showResults)} color="green" />
+                                </div>
+                                <div className={`py-2.5 transition-opacity ${!showResults ? "opacity-40 pointer-events-none select-none" : ""}`}>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span className="text-xs font-bold">{t.createAssignment.resultsRelease}</span>
+                                  </div>
+                                  <div className="flex gap-1.5 flex-wrap">
+                                    {[
+                                      { v: "immediate", label: lang === "ar" ? "فوري" : "Immediate" },
+                                      { v: "after_deadline", label: lang === "ar" ? "بعد الموعد" : "After Deadline" },
+                                      { v: "manual", label: lang === "ar" ? "يدوي" : "Manual" },
+                                    ].map(({ v, label }) => (
+                                      <button key={v} type="button"
+                                        onClick={() => { if (v === "immediate" || v === "after_deadline" || v === "manual") setResultsReleaseMode(v); }}
+                                        className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${resultsReleaseMode === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between py-2.5">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <RotateCcw className={`w-4 h-4 shrink-0 ${allowRetry ? "text-primary" : "text-muted-foreground"}`} />
+                                    <div>
+                                      <span className="text-sm font-bold block">{lang === "ar" ? "السماح بإعادة المحاولة" : "Allow Retry"}</span>
+                                      <span className="text-[11px] text-muted-foreground">{allowRetry ? (lang === "ar" ? "يمكن للطلاب إعادة الواجب" : "Students can retake") : (lang === "ar" ? "محاولة واحدة فقط" : "One attempt only")}</span>
+                                    </div>
+                                  </div>
+                                  <Toggle on={allowRetry} onChange={() => setAllowRetry(!allowRetry)} color="green" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* ── 3. خيارات النشاط ── */}
+                            <div className="px-5 py-4">
+                              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                <Settings2 className="w-3.5 h-3.5" />
+                                {lang === "ar" ? "خيارات النشاط" : "Activity Options"}
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {!isPaper && (
+                                  <div className="p-3 rounded-xl bg-muted/30">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-start gap-1.5 min-w-0">
+                                        <Clock className={`w-4 h-4 shrink-0 mt-0.5 ${examMode ? "text-orange-500" : "text-muted-foreground"}`} />
+                                        <div>
+                                          <span className="text-sm font-bold block leading-tight">{t.createAssignment.examMode}</span>
+                                          <span className="text-[11px] text-muted-foreground">{t.createAssignment.examModeDesc}</span>
+                                        </div>
+                                      </div>
+                                      <Toggle on={examMode} onChange={() => setExamMode(!examMode)} color="orange" />
+                                    </div>
+                                    <AnimatePresence>
+                                      {examMode && (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                          <div className="pt-2 mt-2 border-t border-border/40">
+                                            <Label className="text-xs">{t.createAssignment.examDuration}</Label>
+                                            <input type="number" min="1" max="300" value={examDurationMinutes} onChange={e => setExamDurationMinutes(parseInt(e.target.value) || 30)}
+                                              className="w-28 px-3 py-1.5 rounded-lg bg-background border-2 border-border text-sm focus:outline-none focus:border-primary mt-1" dir="ltr" />
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                )}
+                                <div className={`p-3 rounded-xl bg-muted/30 ${!isAdmin ? "opacity-50" : ""}`}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-1.5 min-w-0">
+                                      <Brain className={`w-4 h-4 shrink-0 mt-0.5 ${isAdaptive ? "text-violet-500" : "text-muted-foreground"}`} />
+                                      <div>
+                                        <span className="text-sm font-bold block leading-tight text-violet-700 dark:text-violet-300">{lang === "ar" ? "الوضع التكيّفي" : "Adaptive Mode"}</span>
+                                        <span className="text-[11px] text-muted-foreground">{lang === "ar" ? "أسئلة حسب مستوى كل طالب" : "Questions matched to each student"}</span>
+                                        {!isAdmin && <span className="block text-[10px] text-amber-600 font-bold mt-0.5">{lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin"}</span>}
+                                      </div>
+                                    </div>
+                                    <button type="button" onClick={() => isAdmin && setIsAdaptive(!isAdaptive)} disabled={!isAdmin}
+                                      className={`relative w-11 h-6 rounded-full transition-colors duration-300 shrink-0 ${isAdaptive ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"}`}>
+                                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
+                                    </button>
+                                  </div>
+                                  <AnimatePresence>
+                                    {isAdaptive && (
+                                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                        <div className="mt-2 p-3 rounded-xl border-2 border-primary/20 bg-primary/5 space-y-3">
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {adaptiveSkills.map((sk, i) => (
+                                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground text-xs font-bold">
+                                                {sk}<button type="button" onClick={() => setAdaptiveSkills(adaptiveSkills.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                                              </span>
+                                            ))}
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <input value={adaptiveSkillInput} onChange={e => setAdaptiveSkillInput(e.target.value)}
+                                              placeholder={lang === "ar" ? "أضف مهارة" : "Add a skill"} className="text-sm flex-1"
+                                              onKeyDown={e => { if (e.key === "Enter" && adaptiveSkillInput.trim()) { e.preventDefault(); if (!adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); } }} />
+                                            <button type="button" onClick={() => { if (adaptiveSkillInput.trim() && !adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); }}
+                                              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold"><Plus className="w-4 h-4" /></button>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <Label className="text-xs font-bold text-violet-700">{lang === "ar" ? "أسئلة لكل طالب:" : "Questions per student:"}</Label>
+                                            <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(parseInt(e.target.value) || 10)} className="w-24 text-sm" />
+                                          </div>
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* ── 4. المشاركة ── */}
+                            {accessMode !== "private" && (
+                              <div className="px-5 py-4">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                  <Globe className="w-3.5 h-3.5" />
+                                  {lang === "ar" ? "المشاركة" : "Sharing"}
+                                </p>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {isShared ? <Globe className="w-4 h-4 text-primary shrink-0" /> : <Lock className="w-4 h-4 text-muted-foreground shrink-0" />}
+                                    <div className="min-w-0">
+                                      <span className="text-sm font-bold block">{lang === "ar" ? (isShared ? "منشور في المكتبة" : "خاص بك") : (isShared ? "Published in Library" : "Private")}</span>
+                                      <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "المعلمون الآخرون يمكنهم استيراده" : "Other teachers can import it") : (lang === "ar" ? "لن يراه أي معلم آخر" : "Not visible to other teachers")}</span>
+                                    </div>
+                                  </div>
+                                  <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="green" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* ── لون الواجب ── */}
+                            <div className="px-5 py-4 space-y-3">
+                              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                                <Star className="w-3.5 h-3.5" />
+                                {lang === "ar" ? "لون الواجب" : "Assignment Color"}
+                              </p>
+                              <div className="flex gap-3 flex-wrap">
+                                {COLOR_THEMES.map(ct => (
+                                  <button key={ct.id} type="button" onClick={() => setColorTheme(ct.id)}
+                                    className={`flex flex-col items-center gap-1.5 transition-all ${colorTheme === ct.id ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"}`}>
+                                    <div className={`w-9 h-9 rounded-xl border-4 transition-all ${colorTheme === ct.id ? "border-foreground shadow-lg" : "border-transparent"}`}
+                                      style={{ backgroundColor: ct.bg }} />
+                                    <span className="text-[10px] font-bold text-muted-foreground">{lang === "ar" ? ct.label : ct.labelEn}</span>
+                                  </button>
                                 ))}
                               </div>
-                              <div className="flex gap-2">
-                                <input value={adaptiveSkillInput} onChange={e => setAdaptiveSkillInput(e.target.value)}
-                                  placeholder={lang === "ar" ? "أضف مهارة" : "Add a skill"} className="text-sm flex-1"
-                                  onKeyDown={e => { if (e.key === "Enter" && adaptiveSkillInput.trim()) { e.preventDefault(); if (!adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); } }} />
-                                <button type="button" onClick={() => { if (adaptiveSkillInput.trim() && !adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); }}
-                                  className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold"><Plus className="w-4 h-4" /></button>
+                            </div>
+
+                            {/* ── التصنيف ── */}
+                            {availableCategories.length > 0 && (
+                              <div className="px-5 py-4 space-y-3">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                                  <Tag className="w-3.5 h-3.5" />
+                                  {lang === "ar" ? "التصنيف" : "Category"}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  <button type="button" onClick={() => setCategoryId(null)}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${!categoryId ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}>
+                                    {lang === "ar" ? "بدون" : "None"}
+                                  </button>
+                                  {availableCategories.map((cat: any) => {
+                                    const colorMap: Record<string, string> = { teal: HASAD_GREEN, blue: "#3b82f6", violet: "#8b5cf6", green: HASAD_GREEN, orange: "#f97316", red: "#ef4444", yellow: "#eab308", pink: "#ec4899", indigo: "#6366f1", rose: "#f43f5e" };
+                                    return (
+                                      <button key={cat.id} type="button" onClick={() => setCategoryId(categoryId === cat.id ? null : cat.id)}
+                                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${categoryId === cat.id ? "bg-foreground text-background border-foreground" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}>
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorMap[cat.color] || HASAD_GREEN }} />{cat.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Label className="text-xs font-bold text-violet-700">{lang === "ar" ? "أسئلة لكل طالب:" : "Questions per student:"}</Label>
-                                <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(parseInt(e.target.value) || 10)} className="w-24 text-sm" />
+                            )}
+
+                            {/* ── نموذج إجابة ورقية ── */}
+                            {(submissionMode === "paper" || submissionMode === "both") && (
+                              <div className="px-5 py-4 space-y-3">
+                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                                  <Image className="w-3.5 h-3.5" />
+                                  {t.createAssignment.modelAnswer}
+                                </p>
+                                <p className="text-muted-foreground text-xs">{t.createAssignment.modelAnswerDesc}</p>
+                                <input type="file" accept="image/*" className="hidden" ref={modelImageRef} onChange={handleModelImageUpload} />
+                                {modelImage ? (
+                                  <div className="relative rounded-lg overflow-hidden border border-primary/30">
+                                    <img src={modelImage} alt="" className="w-full max-h-[150px] object-contain bg-black/5" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-2 justify-between">
+                                      <span className="text-white text-xs font-medium flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-400" />{t.createAssignment.modelUploaded}</span>
+                                      <div className="flex gap-1">
+                                        <button type="button" onClick={() => modelImageRef.current?.click()} className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-white text-[11px] font-bold hover:bg-white/30">{t.createAssignment.change}</button>
+                                        <button type="button" onClick={() => setModelImage(null)} className="p-0.5 bg-red-500/80 backdrop-blur-md rounded text-white hover:bg-red-500"><X className="w-3 h-3" /></button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button type="button" onClick={() => modelImageRef.current?.click()} className="w-full py-4 border-2 border-dashed border-primary/30 rounded-lg hover:border-primary/60 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all flex flex-col items-center gap-1.5">
+                                    <Image className="w-6 h-6 opacity-50" />
+                                    <span className="text-xs font-bold">{t.createAssignment.uploadModel}</span>
+                                    <span className="text-[10px] opacity-70">{t.createAssignment.imageFormats}</span>
+                                  </button>
+                                )}
                               </div>
+                            )}
+
+                            {/* ── الوصف ── */}
+                            <div className="px-5 py-4 space-y-2">
+                              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5" />
+                                {t.createAssignment.descriptionLabel}
+                              </p>
+                              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t.createAssignment.descriptionPlaceholder}
+                                className="w-full px-3 py-2 rounded-lg bg-background border-2 border-border text-sm resize-none focus:outline-none focus:border-primary transition-all min-h-[70px]" />
                             </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
-                  {/* Access mode */}
-                  <div className="p-5 space-y-3">
-                    <h3 className="text-sm font-bold flex items-center gap-2"><Lock className="w-4 h-4 text-primary" />{t.createAssignment.accessMode}</h3>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setAccessMode("public")}
-                        className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-bold flex items-center justify-center gap-2 transition-all ${accessMode === "public" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
-                        <Globe className="w-4 h-4" />{t.createAssignment.public}
-                      </button>
-                      <button type="button" onClick={() => { setAccessMode("private"); setIsShared(false); }}
-                        className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-bold flex items-center justify-center gap-2 transition-all ${accessMode === "private" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
-                        <Lock className="w-4 h-4" />{t.createAssignment.privateCode}
-                      </button>
-                    </div>
-                    <AnimatePresence>
-                      {accessMode === "private" && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <Label className="text-sm">{t.createAssignment.accessCodeLabel}</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <input value={accessCode} onChange={e => setAccessCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} className="font-mono tracking-widest text-center" dir="ltr" />
-                            <button type="button" onClick={() => navigator.clipboard.writeText(accessCode)} className="p-2 rounded-lg border border-border hover:bg-primary/10 transition-all" title={t.createAssignment.copyCode}><Copy className="w-4 h-4" /></button>
-                            <button type="button" onClick={() => setAccessCode(generateAccessCode())} className="p-2 rounded-lg border border-border hover:bg-primary/10 transition-all text-xs whitespace-nowrap">{t.createAssignment.newCode}</button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Deadline */}
-                  <div className="p-5 space-y-3">
-                    <h3 className="text-sm font-bold flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground" />{t.createAssignment.deadlineLabel}</h3>
-                    {deadline ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-foreground bg-muted px-3 py-1.5 rounded-lg flex-1" dir="ltr">{deadline.replace("T", " ")}</span>
-                        <button type="button" onClick={() => { setDeadlineDraft(deadline); setShowDatePicker(true); }} className="px-3 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10">{lang === "ar" ? "تعديل" : "Edit"}</button>
-                        <button type="button" onClick={() => setDeadline("")} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"><X className="w-3.5 h-3.5" /></button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => { setDeadlineDraft(""); setShowDatePicker(true); }}
-                        className="px-4 py-2.5 rounded-xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition-all">
-                        {lang === "ar" ? "+ تحديد موعد التسليم" : "+ Set submission deadline"}
-                      </button>
-                    )}
-                    <AnimatePresence>
-                      {showDatePicker && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <div className="bg-muted/40 rounded-lg p-3 space-y-2">
-                            <input type="datetime-local" value={deadlineDraft} onChange={e => setDeadlineDraft(e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg bg-background border-2 border-border text-sm focus:outline-none focus:border-primary" dir="ltr" />
-                            <div className="flex gap-2 justify-end">
-                              <button type="button" onClick={() => setShowDatePicker(false)} className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted">{lang === "ar" ? "إلغاء" : "Cancel"}</button>
-                              <button type="button" onClick={() => { setDeadline(deadlineDraft); setShowDatePicker(false); }} className="px-4 py-1.5 rounded-md text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90">{lang === "ar" ? "تم" : "OK"}</button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Color theme */}
-                  <div className="p-5 space-y-3">
-                    <h3 className="text-sm font-bold flex items-center gap-2">🎨 {lang === "ar" ? "لون الواجب" : "Assignment Color"}</h3>
-                    <div className="flex gap-3 flex-wrap">
-                      {COLOR_THEMES.map(ct => (
-                        <button key={ct.id} type="button" onClick={() => setColorTheme(ct.id)}
-                          className={`flex flex-col items-center gap-1.5 transition-all ${colorTheme === ct.id ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"}`}>
-                          <div className={`w-10 h-10 rounded-xl border-4 transition-all ${colorTheme === ct.id ? "border-foreground shadow-lg" : "border-transparent"}`}
-                            style={{ backgroundColor: ct.bg }} />
-                          <span className="text-[10px] font-bold text-muted-foreground">{lang === "ar" ? ct.label : ct.labelEn}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Categories */}
-                  {availableCategories.length > 0 && (
-                    <div className="p-5 space-y-3">
-                      <h3 className="text-sm font-bold flex items-center gap-2"><Tag className="w-4 h-4 text-muted-foreground" />{lang === "ar" ? "التصنيف" : "Category"}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setCategoryId(null)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${!categoryId ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}>
-                          {lang === "ar" ? "بدون" : "None"}
-                        </button>
-                        {availableCategories.map((cat: any) => {
-                          const colorMap: Record<string, string> = { teal: HASAD_GREEN, blue: "#3b82f6", violet: "#8b5cf6", green: HASAD_GREEN, orange: "#f97316", red: "#ef4444", yellow: "#eab308", pink: "#ec4899", indigo: "#6366f1", rose: "#f43f5e" };
-                          return (
-                            <button key={cat.id} type="button" onClick={() => setCategoryId(categoryId === cat.id ? null : cat.id)}
-                              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${categoryId === cat.id ? "bg-foreground text-background border-foreground" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}>
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorMap[cat.color] || HASAD_GREEN }} />{cat.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Paper model answer */}
-                  {(submissionMode === "paper" || submissionMode === "both") && (
-                    <div className="p-5 space-y-3">
-                      <h3 className="text-sm font-bold flex items-center gap-2"><Image className="w-4 h-4 text-primary" />{t.createAssignment.modelAnswer}</h3>
-                      <p className="text-muted-foreground text-xs">{t.createAssignment.modelAnswerDesc}</p>
-                      <input type="file" accept="image/*" className="hidden" ref={modelImageRef} onChange={handleModelImageUpload} />
-                      {modelImage ? (
-                        <div className="relative rounded-lg overflow-hidden border border-primary/30">
-                          <img src={modelImage} alt="" className="w-full max-h-[150px] object-contain bg-black/5" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-2 justify-between">
-                            <span className="text-white text-xs font-medium flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-green-400" />{t.createAssignment.modelUploaded}</span>
-                            <div className="flex gap-1">
-                              <button type="button" onClick={() => modelImageRef.current?.click()} className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-white text-[11px] font-bold hover:bg-white/30">{t.createAssignment.change}</button>
-                              <button type="button" onClick={() => setModelImage(null)} className="p-0.5 bg-red-500/80 backdrop-blur-md rounded text-white hover:bg-red-500"><X className="w-3 h-3" /></button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <button type="button" onClick={() => modelImageRef.current?.click()} className="w-full py-4 border-2 border-dashed border-primary/30 rounded-lg hover:border-primary/60 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all flex flex-col items-center gap-1.5">
-                          <Image className="w-6 h-6 opacity-50" />
-                          <span className="text-xs font-bold">{t.createAssignment.uploadModel}</span>
-                          <span className="text-[10px] opacity-70">{t.createAssignment.imageFormats}</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Description */}
-                  <div className="p-5 space-y-2">
-                    <h3 className="text-sm font-bold flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" />{t.createAssignment.descriptionLabel}</h3>
-                    <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t.createAssignment.descriptionPlaceholder}
-                      className="w-full px-3 py-2 rounded-lg bg-background border-2 border-border text-sm resize-none focus:outline-none focus:border-primary transition-all min-h-[70px]" />
-                  </div>
                           </div>
                         </motion.div>
                       )}
