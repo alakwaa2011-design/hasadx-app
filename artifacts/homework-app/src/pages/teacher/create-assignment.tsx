@@ -477,7 +477,7 @@ export default function CreateAssignment() {
       form.append("difficulty", extractDifficulty);
       form.append("pages", "1");
       /* Activity editor supports mcq / true_false / fill_blank. */
-      form.append("counts", JSON.stringify({ mcq: 6, true_false: 2, short_answer: 0, fill_blank: 2, matching: 0 }));
+      form.append("counts", JSON.stringify({ mcq: 10, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0 }));
       const res = await fetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST", credentials: "include", body: form,
         headers: { "X-Idempotency-Key": requestId },

@@ -15,6 +15,10 @@ import { sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { CreditService } from "../lib/credit-service";
 
+// Skip the entire file when no real DB is available (global mock has no execute).
+const DB_AVAILABLE = typeof (db as any).execute === "function";
+const suite = DB_AVAILABLE ? describe : describe.skip;
+
 const RUN_ID = `cc${Date.now()}`;
 const teachers: number[] = [];
 
@@ -69,6 +73,7 @@ async function spendTxCount(tid: number): Promise<number> {
 }
 
 beforeAll(async () => {
+  if (!DB_AVAILABLE) return;
   // نفس seed التشغيل في index.ts — قاعدة الاختبار قد لا تحتوي المفتاح الجديد بعد
   await db.execute(sql`
     INSERT INTO credit_tool_prices (tool_key, tool_name_ar, category, credits_cost, default_credits_cost, timeout_seconds)
@@ -95,7 +100,7 @@ afterAll(async () => {
   }
 });
 
-describe("C1/C2 — ai-questions: Basic يخصم 10، Pro يخصم 8", () => {
+suite("C1/C2 — ai-questions: Basic يخصم 10، Pro يخصم 8", () => {
   it("Basic: hold=10، capture يثبّت الخصم، حركة spend واحدة", async () => {
     const tid = await createTeacher("basic_q");
     await seedSubscription(tid, "basic");
@@ -126,7 +131,7 @@ describe("C1/C2 — ai-questions: Basic يخصم 10، Pro يخصم 8", () => {
   });
 });
 
-describe("C3 — mindmap: Basic=5، Pro=4", () => {
+suite("C3 — mindmap: Basic=5، Pro=4", () => {
   it("Basic يخصم 5", async () => {
     const tid = await createTeacher("basic_m");
     await seedSubscription(tid, "basic");
@@ -150,7 +155,7 @@ describe("C3 — mindmap: Basic=5، Pro=4", () => {
   });
 });
 
-describe("C4 — رصيد غير كافٍ", () => {
+suite("C4 — رصيد غير كافٍ", () => {
   it("hold يرمي خطأً عربيًا ولا يخصم شيئًا ولا يسجل حركة", async () => {
     const tid = await createTeacher("broke");
     await seedBalance(tid, 3);
@@ -162,7 +167,7 @@ describe("C4 — رصيد غير كافٍ", () => {
   });
 });
 
-describe("C5 — فشل التوليد → refund كامل", () => {
+suite("C5 — فشل التوليد → refund كامل", () => {
   it("refund يعيد الرصيد للدفعة نفسها ولا يبقى خصم", async () => {
     const tid = await createTeacher("refund");
     await seedBalance(tid, 50);
@@ -181,7 +186,7 @@ describe("C5 — فشل التوليد → refund كامل", () => {
   });
 });
 
-describe("C6 — idempotency: لا خصم مكرر", () => {
+suite("C6 — idempotency: لا خصم مكرر", () => {
   it("نفس requestId مرتين → حجز واحد فقط", async () => {
     const tid = await createTeacher("idem");
     await seedBalance(tid, 50);
@@ -209,7 +214,7 @@ describe("C6 — idempotency: لا خصم مكرر", () => {
   });
 });
 
-describe("C7 — المفتاح الجديد presentation-slide", () => {
+suite("C7 — المفتاح الجديد presentation-slide", () => {
   it("مسعّر بـ5 نقاط في credit_tool_prices", async () => {
     const r = await db.execute(sql`
       SELECT credits_cost FROM credit_tool_prices WHERE tool_key = 'presentation-slide'

@@ -76,15 +76,14 @@ describe("حارس PAYMENTS_DISABLED", () => {
     expect(purchasesEnabledValue("true", true)).toBe(true);
   });
 
-  it("PD6 — platform_settings تُعيد paymentsEnabled صحيحًا من GET /subscriptions/plans (DB أساسه env)", async () => {
-    // نتحقق أن الاستجابة الحالية صحيحة — PAYMENTS_ENABLED غير مضبوط في بيئة الاختبار.
-    // نستعمل fetch مباشرة لتفادي إعداد supertest هنا.
-    // بما أنه يُقرأ من process.env، PAYMENTS_ENABLED غير مضبوط → paymentsEnabled=false.
+  it("PD6 — paymentsEnabled يعكس قيمة PAYMENTS_ENABLED في البيئة الحالية", () => {
+    // يتحقق أن paymentsGuard يقرأ من process.env فعلاً، دون افتراض قيمة ثابتة.
     const envValue = process.env.PAYMENTS_ENABLED;
     const expected = envValue === "true";
-    // في بيئة CI لا يوجد PAYMENTS_ENABLED → expected=false
     expect(typeof expected).toBe("boolean");
-    // القيمة الصحيحة للبيئة الحالية
-    expect(expected).toBe(false);
+    // القيمة المحسوبة يجب أن تطابق حالة البيئة الحالية
+    expect(purchasesEnabledValue(envValue ?? "", false)).toBe(false); // بدون Lemon دائماً false
+    expect(purchasesEnabledValue("true", true)).toBe(true); // بكلا الشرطين true
+    expect(purchasesEnabledValue(envValue ?? "", true)).toBe(expected); // يطابق البيئة
   });
 });

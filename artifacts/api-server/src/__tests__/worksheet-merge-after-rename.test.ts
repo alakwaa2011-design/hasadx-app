@@ -63,11 +63,21 @@ vi.mock("@workspace/db", () => {
   };
 });
 
+vi.mock("@workspace/billing", () => ({
+  featureAccess: {
+    check: vi.fn(async () => ({ allowed: true, limit: null, used: 0, remaining: null })),
+    increment: vi.fn(async () => ({ allowed: true, limit: null, used: 0, remaining: null })),
+    refund: vi.fn(async () => undefined),
+    getSubscription: vi.fn(async () => ({ planCode: "pro", isAdmin: false })),
+  },
+}));
+
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: { chat: { completions: { create: vi.fn() } } },
 }));
 vi.mock("../lib/anthropic-client", () => ({ anthropic: {}, SONNET_MODEL: "m" }));
 vi.mock("../lib/xp/socket", () => ({
+  awardXpAndNotify: async () => {},
   awardXpInTxAndNotifyAfterCommit: async () => ({ runAfterCommit: async () => {} }),
 }));
 vi.mock("../lib/xp/engine", () => ({ reverseXpIfWithinWindow: async () => {} }));

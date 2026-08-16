@@ -1031,7 +1031,7 @@ function parseJsonLoose(text: string): any {
   return null;
 }
 
-function sanitizeGeneratedQuestions(
+export function sanitizeGeneratedQuestions(
   raw: any[],
   counts: z.infer<typeof aiGenerateBody>["counts"],
 ): z.infer<typeof questionSchema>[] {
@@ -1069,11 +1069,12 @@ function sanitizeGeneratedQuestions(
       const options = rawOpts
         .filter((o: any) => typeof o === "string" && o.trim())
         .map((o: string) => o.trim().slice(0, 300))
-        .slice(0, 6);
-      if (options.length < 2) continue;
-      const correctIndex = typeof q.correctIndex === "number"
-        ? Math.max(0, Math.min(options.length - 1, Math.floor(q.correctIndex)))
-        : 0;
+        .slice(0, 4); // editor supports exactly 4 options (A-D); discard extras
+      if (options.length < 4) continue;
+      if (typeof q.correctIndex !== "number") continue;
+      const rawIdx = Math.floor(q.correctIndex);
+      if (rawIdx < 0 || rawIdx > 3) continue; // correctIndex must be 0-3 for 4-option MCQ
+      const correctIndex = rawIdx;
       out.push({ id, type: "mcq", prompt, options, correctIndex });
       tally.mcq++;
     } else if (type === "true_false" && tally.true_false < cap.true_false) {

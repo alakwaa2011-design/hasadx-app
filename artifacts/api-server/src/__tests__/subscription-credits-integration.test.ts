@@ -17,6 +17,10 @@ import { sql } from "drizzle-orm";
 import { CreditService } from "../lib/credit-service";
 import { checkEligibleForCreditGrant } from "../lib/subscription-utils";
 
+// Skip the entire file when no real DB is available (global mock has no execute).
+const DB_AVAILABLE = typeof (db as any).execute === "function";
+const suite = DB_AVAILABLE ? describe : describe.skip;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const RUN_ID = `t${Date.now()}`;
@@ -132,6 +136,7 @@ const FAR_FUTURE  = new Date(NOW.getTime() + 365 * 86_400_000);
 const T: Record<string, number> = {};
 
 beforeAll(async () => {
+  if (!DB_AVAILABLE) return;
   for (const s of ["s1","s2","s3","s4","s5","s6","s7","s8","s9","s10"]) {
     T[s] = await createTestTeacher(s);
   }
@@ -150,7 +155,7 @@ afterAll(async () => {
 // S1 · subscription_created — no credit grant
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S1 · subscription_created لا يضيف أي رصيد", () => {
+suite("S1 · subscription_created لا يضيف أي رصيد", () => {
   it("لا توجد دفعات أو grants بعد إنشاء الاشتراك فقط", async () => {
     // subscription_created only upserts the subscription row — CreditService is NOT called
     await db.execute(sql`
@@ -179,7 +184,7 @@ describe("S1 · subscription_created لا يضيف أي رصيد", () => {
 // S2 · subscription_payment_success — منح رصيد مرة واحدة
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S2 · subscription_payment_success يضيف رصيداً باستخدام payload.data.id", () => {
+suite("S2 · subscription_payment_success يضيف رصيداً باستخدام payload.data.id", () => {
   it("يضيف 600 رصيد لـ Pro ويسجل invoice_id صحيحاً", async () => {
     const invoiceId = `inv_${RUN_ID}_s2`;
     const subId     = `sub_${RUN_ID}_${T.s2}`;
@@ -217,7 +222,7 @@ describe("S2 · subscription_payment_success يضيف رصيداً باستخد�
 // S3 · webhook مكرر — idempotent
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S3 · إعادة إرسال نفس الـ webhook لا تُكرر المنح", () => {
+suite("S3 · إعادة إرسال نفس الـ webhook لا تُكرر المنح", () => {
   it("نفس invoice_id 3 مرات → grants=1، batches=1، balance=600", async () => {
     const invoiceId = `inv_${RUN_ID}_s3`;
     const subId     = `sub_${RUN_ID}_${T.s3}`;
@@ -247,7 +252,7 @@ describe("S3 · إعادة إرسال نفس الـ webhook لا تُكرر ال
 // S4 · Pro + 900 متبقٍ → يضيف 300 فقط (cap=1200)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S4 · rollover cap — يضيف حتى السقف فقط", () => {
+suite("S4 · rollover cap — يضيف حتى السقف فقط", () => {
   it("Pro + 900 رصيد → تجديد يضيف 300 (cap=1200)", async () => {
     await seedSubBatch(T.s4, 900, FAR_FUTURE);
 
@@ -274,7 +279,7 @@ describe("S4 · rollover cap — يضيف حتى السقف فقط", () => {
 // S5 · Pro + 1200 متبقٍ → credits_granted=0 مسجّل
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S5 · عند السقف — credits_granted=0 مسجّل، إعادة webhook لا تضيف شيئاً", () => {
+suite("S5 · عند السقف — credits_granted=0 مسجّل، إعادة webhook لا تضيف شيئاً", () => {
   it("فاتورتان مختلفتان عند cap=1200 → كلتاهما مسجّلتان بـ 0", async () => {
     await seedSubBatch(T.s5, 1200, FAR_FUTURE);
 
@@ -308,7 +313,7 @@ describe("S5 · عند السقف — credits_granted=0 مسجّل، إعادة 
 // S6 · expires_at الدفعات القديمة لا تتغير
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S6 · تجديد لا يمدد expires_at الدفعات القديمة", () => {
+suite("S6 · تجديد لا يمدد expires_at الدفعات القديمة", () => {
   it("شهر 1 + شهر 2 → دفعتان مستقلتان بـ expires_at مختلفة", async () => {
     const subId   = `sub_${RUN_ID}_${T.s6}`;
     const inv1    = `inv_${RUN_ID}_s6_m1`;
@@ -351,7 +356,7 @@ describe("S6 · تجديد لا يمدد expires_at الدفعات القديم�
 // S7 · Hold ثم فشل → يعود الرصيد للـ batch نفسها
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S7 · Hold ثم فشل أداة AI → يعود الرصيد للـ batch الأصلية", () => {
+suite("S7 · Hold ثم فشل أداة AI → يعود الرصيد للـ batch الأصلية", () => {
   it("amount_remaining يعود لقيمته قبل الـ hold بعد الـ refund", async () => {
     const inv   = `inv_${RUN_ID}_s7`;
     const subId = `sub_${RUN_ID}_${T.s7}`;
@@ -402,7 +407,7 @@ describe("S7 · Hold ثم فشل أداة AI → يعود الرصيد للـ ba
 // S8 · Refund شراء — لا يمس الاشتراك أو المجاني
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S8 · Refund شراء → يُخصم فقط من دفعات الشراء", () => {
+suite("S8 · Refund شراء → يُخصم فقط من دفعات الشراء", () => {
   it("free_balance و subscription_balance لا يتغيران بعد refund الشراء", async () => {
     // Grant 50 free credits
     await CreditService.grantWelcomeCredits(T.s8);
@@ -449,7 +454,7 @@ describe("S8 · Refund شراء → يُخصم فقط من دفعات الشرا
 // S9 · Migration idempotency + consistency
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("S9 · Migration idempotency + balance consistency", () => {
+suite("S9 · Migration idempotency + balance consistency", () => {
   it("seed_completions يحمي من تكرار المنح عند إعادة تشغيل migration", async () => {
     const scRows = await db.execute(sql`
       SELECT COUNT(*)::int AS cnt
@@ -504,7 +509,7 @@ describe("S9 · Migration idempotency + balance consistency", () => {
 //        subscription_payment_success for a future invoice produces no new
 //        grant, no new batch, and no balance change.
 
-describe("S10 · إلغاء الاشتراك", () => {
+suite("S10 · إلغاء الاشتراك", () => {
   // IDs resolved inside the describe so they're visible across all three tests.
   let tid: number;
   let externalSubId: string;

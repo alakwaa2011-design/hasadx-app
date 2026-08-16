@@ -11,6 +11,10 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { CreditService } from "../lib/credit-service";
 
+// Skip the entire file when no real DB is available (global mock has no execute).
+const DB_AVAILABLE = typeof (db as any).execute === "function";
+const suite = DB_AVAILABLE ? describe : describe.skip;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const RUN_ID = `wc${Date.now()}`;
@@ -61,11 +65,12 @@ async function getFreeBalance(tid: number): Promise<number> {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("رصيد الترحيب المجاني — grantWelcomeCredits", () => {
+suite("رصيد الترحيب المجاني — grantWelcomeCredits", () => {
   const tids: number[] = [];
   let originalWelcomeCredits: number | null = null;
 
   beforeAll(async () => {
+    if (!DB_AVAILABLE) return;
     // تأكد أن platform_settings تملك صفًا واحدًا على الأقل مع welcome_credits=50.
     // ضروري لأن DB الاختبار قد تكون فارغة من هذا الجدول.
     const existing = await db.execute(sql`SELECT id, welcome_credits FROM platform_settings ORDER BY id LIMIT 1`);

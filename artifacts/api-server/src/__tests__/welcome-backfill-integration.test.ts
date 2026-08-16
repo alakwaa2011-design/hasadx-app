@@ -17,6 +17,10 @@ import {
   WELCOME_BACKFILL_SEED_KEY,
 } from "../lib/welcome-backfill";
 
+// Skip the entire file when no real DB is available (global mock has no execute).
+const DB_AVAILABLE = typeof (db as any).execute === "function";
+const suite = DB_AVAILABLE ? describe : describe.skip;
+
 const RUN_ID = `wb${Date.now()}`;
 const teachers: number[] = [];
 
@@ -52,6 +56,7 @@ let tHasWelcome: number; // لديه دفعة welcome سابقة
 let tPaidNoWelcome: number; // لديه account برصيد مدفوع، بلا welcome
 
 beforeAll(async () => {
+  if (!DB_AVAILABLE) return;
   // نظافة: أزل المفتاح إن وُجد من تشغيل سابق للاختبارات
   await db.execute(sql`DELETE FROM seed_completions WHERE key = ${WELCOME_BACKFILL_SEED_KEY}`);
 
@@ -88,7 +93,7 @@ afterAll(async () => {
   }
 });
 
-describe("ترحيل نقاط الترحيب — welcome_credits_backfill_v1", () => {
+suite("ترحيل نقاط الترحيب — welcome_credits_backfill_v1", () => {
   it("WB1 — معلم قديم بلا محفظة يحصل على 50 نقطة مرة واحدة", async () => {
     const result = await runWelcomeCreditsBackfill();
     expect(result.applied).toBe(true);
