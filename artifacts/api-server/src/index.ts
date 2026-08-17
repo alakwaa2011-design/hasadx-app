@@ -38,6 +38,7 @@ import { XP_MIGRATION_SQL } from "@workspace/db";
 import { seedXpDefaultsIfNeeded } from "./lib/xp/seed";
 import { bindXpSocket } from "./lib/xp/socket";
 import { startEmailOutboxWorker } from "./lib/xp/email-worker";
+import { startMissingWelcomeCreditsAlertJob } from "./lib/welcome-credits-alert";
 
 const ADMIN_EMAILS = ["alakwaa2011@gmail.com", "marwanakwaa@yahoo.com"];
 
@@ -1196,6 +1197,7 @@ httpServer.listen(port, () => {
       startActivityLogsCleanupJob();
       startOnlineSessionsCleanupJob();
       startEmailOutboxWorker();
+      startMissingWelcomeCreditsAlertJob();
 
       // ── Credits: auto-refund stale holds every 60s ─────────────────────────
       import("./lib/credit-service").then(({ CreditService }) => {

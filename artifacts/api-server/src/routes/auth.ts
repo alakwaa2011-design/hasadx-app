@@ -274,8 +274,15 @@ declare module "express-session" {
  * We check for ANY free batch (active or expired) — welcome credits are one-time only.
  * Idempotency under concurrent calls (OTP / email-link / login races) is guaranteed
  * by the transaction + account lock inside CreditService.grantWelcomeCredits.
+ *
+ * On failure, an immediate admin alert email is sent via the welcome-credits-alert
+ * module so admins are notified without waiting for the daily digest.
  */
-function maybeGrantWelcomeCredits(teacherId: number, log: { warn: (obj: any, msg: string) => void }) {
+function maybeGrantWelcomeCredits(
+  teacherId: number,
+  log: { warn: (obj: any, msg: string) => void },
+  teacher?: { name?: string; email?: string | null },
+) {
   void import("../lib/credit-service").then(async ({ CreditService }) => {
     try {
       const { db: dbInner } = await import("@workspace/db");
@@ -291,6 +298,11 @@ function maybeGrantWelcomeCredits(teacherId: number, log: { warn: (obj: any, msg
       }
     } catch (e) {
       log.warn({ err: e }, "welcome credits grant failed");
+      // Fire an immediate admin alert so the failure is visible without waiting
+      // for the next daily digest run.
+      void import("../lib/welcome-credits-alert").then(({ alertAdminsOnWelcomeGrantFailure }) => {
+        void alertAdminsOnWelcomeGrantFailure(teacherId, teacher?.name, teacher?.email);
+      }).catch(() => {});
     }
   }).catch(() => {});
 }
@@ -538,7 +550,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     void trackLoginDevice(req, teacher, req.log);
     void runAfterCommit();
 
-    maybeGrantWelcomeCredits(teacher.id, req.log);
+    maybeGrantWelcomeCredits(teacher.id, req.log, { name: teacher.name, email: teacher.email });
 
     res.json({
       teacher: {
@@ -1434,7 +1446,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     });
 
     void trackLoginDevice(req, teacher, req.log);
-    maybeGrantWelcomeCredits(teacher.id, req.log);
+    maybeGrantWelcomeCredits(teacher.id, req.log, { name: teacher.name, email: teacher.email });
 
     res.json({
       teacher: {
@@ -1513,7 +1525,7 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
 
     void detectAndSaveCountry(verified.id, req);
     void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "email-verify-link" } });
-    maybeGrantWelcomeCredits(verified.id, req.log);
+    maybeGrantWelcomeCredits(verified.id, req.log, { name: verified.name, email: verified.email });
 
     res.json({
       ok: true,
@@ -1592,7 +1604,7 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
 
     void detectAndSaveCountry(verified.id, req);
     void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "register" } });
-    maybeGrantWelcomeCredits(verified.id, req.log);
+    maybeGrantWelcomeCredits(verified.id, req.log, { name: verified.name, email: verified.email });
 
     res.json({
       teacher: {
