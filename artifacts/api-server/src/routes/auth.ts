@@ -269,6 +269,32 @@ declare module "express-session" {
   }
 }
 
+/**
+ * Non-blocking: grant welcome credits if this teacher has never had a free batch.
+ * We check for ANY free batch (active or expired) — welcome credits are one-time only.
+ * Idempotency under concurrent calls (OTP / email-link / login races) is guaranteed
+ * by the transaction + account lock inside CreditService.grantWelcomeCredits.
+ */
+function maybeGrantWelcomeCredits(teacherId: number, log: { warn: (obj: any, msg: string) => void }) {
+  void import("../lib/credit-service").then(async ({ CreditService }) => {
+    try {
+      const { db: dbInner } = await import("@workspace/db");
+      const { sql: sqlInner } = await import("drizzle-orm");
+      const res2 = await dbInner.execute(sqlInner`
+        SELECT 1 FROM credit_batches
+        WHERE teacher_id = ${teacherId}
+          AND source = 'free'
+        LIMIT 1
+      `);
+      if (res2.rows.length === 0) {
+        await CreditService.grantWelcomeCredits(teacherId);
+      }
+    } catch (e) {
+      log.warn({ err: e }, "welcome credits grant failed");
+    }
+  }).catch(() => {});
+}
+
 function stampTeacherSession(req: any) {
   const ua = req.headers["user-agent"];
   const now = new Date().toISOString();
@@ -512,25 +538,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     void trackLoginDevice(req, teacher, req.log);
     void runAfterCommit();
 
-    // Non-blocking: grant welcome credits if this teacher has never had a free batch.
-    // We check for ANY free batch (active or expired) — welcome credits are one-time only.
-    void import("../lib/credit-service").then(async ({ CreditService }) => {
-      try {
-        const { db: dbInner } = await import("@workspace/db");
-        const { sql: sqlInner } = await import("drizzle-orm");
-        const res2 = await dbInner.execute(sqlInner`
-          SELECT 1 FROM credit_batches
-          WHERE teacher_id = ${teacher.id}
-            AND source = 'free'
-          LIMIT 1
-        `);
-        if (res2.rows.length === 0) {
-          await CreditService.grantWelcomeCredits(teacher.id);
-        }
-      } catch (e) {
-        req.log.warn({ err: e }, "welcome credits grant on login failed");
-      }
-    }).catch(() => {});
+    maybeGrantWelcomeCredits(teacher.id, req.log);
 
     res.json({
       teacher: {
@@ -1426,6 +1434,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     });
 
     void trackLoginDevice(req, teacher, req.log);
+    maybeGrantWelcomeCredits(teacher.id, req.log);
 
     res.json({
       teacher: {
@@ -1504,6 +1513,7 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
 
     void detectAndSaveCountry(verified.id, req);
     void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "email-verify-link" } });
+    maybeGrantWelcomeCredits(verified.id, req.log);
 
     res.json({
       ok: true,
@@ -1582,6 +1592,7 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
 
     void detectAndSaveCountry(verified.id, req);
     void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "register" } });
+    maybeGrantWelcomeCredits(verified.id, req.log);
 
     res.json({
       teacher: {
