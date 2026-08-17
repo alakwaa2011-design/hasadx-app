@@ -56,7 +56,9 @@ vi.mock("@workspace/db", () => {
   }
   const stub = new Proxy({}, { get: () => "stub" });
   const dbObj = {
-    select: () => makeChain([]),
+    /* المسار المصوّر أصبح خلف بوابة مسؤول تقرأ is_admin — نعيد صف مسؤول
+       حتى تختبر هذه الحزمة منطق النقاط نفسه بعد اجتياز البوابة. */
+    select: () => makeChain([{ isAdmin: true }]),
     insert: () => makeChain([]),
     update: () => makeChain([]),
     delete: () => makeChain([]),
@@ -64,12 +66,19 @@ vi.mock("@workspace/db", () => {
   return new Proxy(
     { db: dbObj },
     {
+      has: () => true, // vitest يتحقق بـ`in` من وجود التصدير
       get(target, prop) {
         if (prop in target) return (target as any)[prop];
         return stub;
       },
     },
   );
+});
+
+/* eq الحقيقي يرفض أعمدة الجدول المزيفة في بوابة المسؤول — نستبدله بلا-شيء */
+vi.mock("drizzle-orm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("drizzle-orm")>();
+  return { ...actual, eq: () => ({}) as any };
 });
 
 vi.mock("@workspace/integrations-openai-ai-server", () => ({

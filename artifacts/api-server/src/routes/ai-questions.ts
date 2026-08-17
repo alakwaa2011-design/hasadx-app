@@ -260,8 +260,36 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
   }
 });
 
-/* ── Generate questions WITH AI-generated images (DALL-E 3) ─────────────── */
-router.post("/ai/generate-questions-with-images", checkCredits("ai-questions-images"), async (req, res) => {
+/* ── Admin-only gate for the AI image-generation path ──────────────────────
+   Policy decision: «توليد صورة لكل سؤال» is an internal admin tool only.
+   The gate runs BEFORE checkCredits so a non-admin request is rejected 403
+   with no hold, no capture, and no AI-provider call of any kind. A paid plan
+   (Basic/Pro) is NOT admin — only teachers.is_admin passes. */
+async function requireAdminForImageGen(req: any, res: any, next: any) {
+  if (!req.session?.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول" });
+    return;
+  }
+  try {
+    const [t] = await db
+      .select({ isAdmin: teachersTable.isAdmin })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, req.session.teacherId))
+      .limit(1);
+    if (!t?.isAdmin) {
+      res.status(403).json({ message: "غير مصرح" });
+      return;
+    }
+    next();
+  } catch (err) {
+    /* Fail closed — never let a role-check error open the expensive path. */
+    (req as any).log?.error({ err }, "admin gate check failed");
+    res.status(503).json({ message: "تعذر التحقق من الصلاحيات. حاول مرة أخرى." });
+  }
+}
+
+/* ── Generate questions WITH AI-generated images (admin-only internal tool) ── */
+router.post("/ai/generate-questions-with-images", requireAdminForImageGen, checkCredits("ai-questions-images"), async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول" });
     return;

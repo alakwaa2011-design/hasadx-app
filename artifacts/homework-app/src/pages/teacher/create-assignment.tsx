@@ -1476,7 +1476,10 @@ export default function CreateAssignment() {
                               ))}
                             </div>
                           </div>
-                          {/* Image-per-question toggle */}
+                          {/* Image-per-question toggle — internal admin-only tool.
+                              Hidden entirely for regular teachers (server enforces 403 too). */}
+                          {isAdmin && (
+                          <>
                           <button
                             type="button"
                             onClick={() => setAiWithImages(v => !v)}
@@ -1496,6 +1499,8 @@ export default function CreateAssignment() {
                                 ? "سيُولّد الذكاء الاصطناعي صورة واضحة لكل سؤال تلقائياً — قد يستغرق التوليد دقيقة أو أكثر حسب عدد الأسئلة."
                                 : "AI will generate a clear image for each question automatically — may take a minute or more depending on count."}
                             </p>
+                          )}
+                          </>
                           )}
                           {aiError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-2 text-xs text-red-700 dark:text-red-300">{aiError}</div>}
                           <button type="button" onClick={handleAiGenerate} disabled={aiLoading || !aiTopic.trim()}

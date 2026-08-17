@@ -30,7 +30,8 @@ const mockState = vi.hoisted(() => {
 vi.mock("@workspace/db", () => {
   const stub = new Proxy({}, { get: () => "stub" });
   const dbObj = {
-    select: () => mockState.makeChain([]),
+    /* بوابة المسؤول أمام المسار المصوّر تقرأ is_admin — نعيد صف مسؤول */
+    select: () => mockState.makeChain([{ isAdmin: true }]),
     insert: () => mockState.makeChain([]),
     update: () => mockState.makeChain([]),
     delete: () => mockState.makeChain([]),
@@ -38,6 +39,7 @@ vi.mock("@workspace/db", () => {
   return new Proxy(
     { db: dbObj },
     {
+      has: () => true, // vitest يتحقق بـ`in` من وجود التصدير
       get(target, prop) {
         if (prop in target) return (target as Record<string | symbol, unknown>)[prop];
         return stub;
@@ -52,6 +54,12 @@ vi.mock("../lib/check-credits", () => ({
   refundCredits: async () => {},
   invalidateCreditsSettingsCache: () => {},
 }));
+
+/* eq الحقيقي يرفض أعمدة الجدول المزيفة في بوابة المسؤول — نستبدله بلا-شيء */
+vi.mock("drizzle-orm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("drizzle-orm")>();
+  return { ...actual, eq: () => ({}) as any };
+});
 
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: {
