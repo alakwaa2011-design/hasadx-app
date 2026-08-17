@@ -3607,7 +3607,7 @@ export default function GamePlay() {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           credentials: "include",
-                          body: JSON.stringify({ text: question.optionA, voice: "nova", speed: 0.85 }),
+                          body: JSON.stringify({ text: question.optionA, voice: "nova", speed: 0.85, pin }),
                         });
                         if (!res.ok) throw new Error("tts failed");
                         const blob = await res.blob();

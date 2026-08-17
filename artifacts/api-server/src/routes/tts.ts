@@ -5,6 +5,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { ttsLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { getGame } from "../game/manager";
 
 const router: IRouter = Router();
 
@@ -109,7 +110,24 @@ async function synthesizeAndSend(
 }
 
 router.post("/tts", ttsLimiter, checkCredits("tts"), async (req, res) => {
-  const { text, voice = "nova" } = (req.body || {}) as { text?: unknown; voice?: string };
+  const { text, voice = "nova", pin } = (req.body || {}) as {
+    text?: unknown;
+    voice?: string;
+    pin?: unknown;
+  };
+
+  // Access policy: teachers (charged via checkCredits) OR students inside an
+  // active game (dictation read-aloud) identified by a valid, unfinished PIN.
+  // Anonymous callers with neither are rejected — no free provider cost.
+  const teacherId = (req.session as { teacherId?: number } | undefined)?.teacherId;
+  if (!teacherId) {
+    const game = typeof pin === "string" && pin ? getGame(pin) : undefined;
+    if (!game || game.state === "finished") {
+      // No hold exists here: checkCredits is a no-op without a teacher session.
+      res.status(401).json({ error: "يجب تسجيل الدخول أو الانضمام إلى لعبة نشطة" });
+      return;
+    }
+  }
 
   if (!text || typeof text !== "string" || !text.trim()) {
     await refundCredits(req, "invalid input");
