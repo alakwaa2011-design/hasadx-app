@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const STORAGE_MINIMIZED = "hasad-guide-launcher-minimized";
@@ -94,6 +95,7 @@ function copy(lang: string) {
 export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string }) {
   const isAr = lang === "ar";
   const t = copy(lang);
+  const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const [open, setOpen] = useState(false);
   const [launcherMinimized, setLauncherMinimized] = useState(() => {
@@ -239,6 +241,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
       setMessages((m) => m.slice(0, -1));
     } finally {
       setSending(false);
+      refreshCreditsBalance();
     }
   }
 

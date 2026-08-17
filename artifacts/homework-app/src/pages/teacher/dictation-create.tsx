@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -222,6 +223,7 @@ function estimateReadSeconds(text: string, speed: number): number {
 // ===================== Hooks =====================
 
 function useTtsPreview() {
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [currentSec, setCurrentSec] = useState(0);
@@ -282,6 +284,7 @@ function useTtsPreview() {
           body: JSON.stringify({ text: text.trim(), voice, speed }),
         });
         if (!res.ok) throw new Error("tts failed");
+        refreshCreditsBalance();
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);

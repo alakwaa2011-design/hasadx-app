@@ -8,6 +8,7 @@ import {
   Square, Play, StopCircle,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { Layout } from "@/components/layout";
 import { toast } from "@/components/ui/sonner";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -1518,6 +1519,7 @@ function AiGenerateModal({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generated, setGenerated] = useState<Array<{ q: string; a: string; difficulty: Difficulty; hint?: string | null; selected: boolean }>>([]);
+  const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const generate = async () => {
     if (!topic.trim()) { toast.error("اكتب الموضوع"); return; }
@@ -1530,6 +1532,7 @@ function AiGenerateModal({
       notes: notes.trim() || undefined,
     });
     setGenerating(false);
+    refreshCreditsBalance();
     if (r.error || r.questions.length === 0) {
       toast.error(r.error || "فشل التوليد");
       return;

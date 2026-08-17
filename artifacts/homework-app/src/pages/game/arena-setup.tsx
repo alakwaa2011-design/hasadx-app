@@ -11,6 +11,7 @@ import { toCoverThumb } from "@/data/arena-cover-images";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   ARENA_SECTIONS, HELPERS, buildCustomSection, coverForIndex,
   type ArenaCustomQuestion, type ArenaDifficulty, type ArenaSection,
@@ -1696,6 +1697,7 @@ const COVER_PRESETS: { color: string; gradient: string; label: string }[] = [
 const EDITOR_EMOJIS = ["🎯", "📚", "🌍", "🔬", "⚗️", "🏛️", "🎨", "🎭", "🎮", "🏆", "📖", "🕌", "💡", "🚀", "⚽", "🎵", "🍎", "🌟", "💎", "🦁"];
 
 function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, setCustomQuestions }: CategoryEditorProps) {
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const [mode, setMode] = useState<"saved" | "ephemeral">(initial ? "saved" : "saved");
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? "🎯");
@@ -1744,6 +1746,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       notes: aiNotes.trim() || undefined,
     });
     setAiLoading(false);
+    refreshCreditsBalance();
     if (r.error || r.questions.length === 0) {
       toast.error(r.error || "تعذّر توليد الأسئلة");
       return;

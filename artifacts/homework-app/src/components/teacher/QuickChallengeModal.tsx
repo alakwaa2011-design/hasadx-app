@@ -3,11 +3,13 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Play, Check, Copy, Zap } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
   const { lang } = useI18n();
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const [questionType, setQuestionType] = useState<
     "mcq" | "true_false" | "fill_blank" | "mixed"
   >("mcq");
@@ -69,6 +71,7 @@ export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
       alert(message);
     } finally {
       setLoading(false);
+      refreshCreditsBalance();
     }
   };
 

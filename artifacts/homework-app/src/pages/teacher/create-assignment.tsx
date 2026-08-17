@@ -1075,6 +1075,7 @@ export default function CreateAssignment() {
   }) => {
     const [speaking, setSpeaking] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const refreshCreditsBalance = useRefreshCreditsBalance();
     const previewTts = async () => {
       if (!text.trim()) return;
       if (speaking) {
@@ -1092,6 +1093,7 @@ export default function CreateAssignment() {
           body: JSON.stringify({ text: text.trim(), voice: "nova", speed: 0.85 }),
         });
         if (!res.ok) throw new Error("TTS failed");
+        refreshCreditsBalance();
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);

@@ -4,6 +4,7 @@ import { db, assignmentsTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { ttsLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 
 const router: IRouter = Router();
 
@@ -92,6 +93,9 @@ async function synthesizeAndSend(
       buffers.push(buf);
     }
     const combined = Buffer.concat(buffers);
+    // Capture BEFORE sending: once the client has the audio the provider cost
+    // is spent, so persist the charge first (crash-safe ordering).
+    await captureCredits(req);
     res.set("Content-Type", "audio/mpeg");
     res.set("Content-Length", String(combined.length));
     res.set("Cache-Control", "public, max-age=3600");
@@ -99,19 +103,22 @@ async function synthesizeAndSend(
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
     req.log.error({ err: message }, "TTS error");
+    await refundCredits(req, "tts failed");
     res.status(500).json({ error: "فشل توليد الصوت" });
   }
 }
 
-router.post("/tts", ttsLimiter, async (req, res) => {
-  const { text, voice = "nova" } = req.body;
+router.post("/tts", ttsLimiter, checkCredits("tts"), async (req, res) => {
+  const { text, voice = "nova" } = (req.body || {}) as { text?: unknown; voice?: string };
 
   if (!text || typeof text !== "string" || !text.trim()) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ error: "النص مطلوب" });
     return;
   }
 
   if (text.length > MAX_TEXT_LENGTH) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ error: `النص طويل جداً (الحد ${MAX_TEXT_LENGTH} حرف)` });
     return;
   }

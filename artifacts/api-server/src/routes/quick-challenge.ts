@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { db, assignmentsTable, questionsTable, platformSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createGame, getGame, type GameQuestion } from "../game/manager";
@@ -83,10 +84,18 @@ ${topicLine}
 [{"text":"...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"B","points":1},...]`;
 }
 
-router.post("/quick-challenge/create", async (req, res) => {
+router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (req, res) => {
   const teacherId = req.session?.teacherId;
+  if (!teacherId) {
+    // Teacher-only tool — guests must use /quick-challenge/guest-ai-generate.
+    // No hold exists here: checkCredits is a no-op without a teacher session.
+    res.status(401).json({ message: "يجب تسجيل الدخول" });
+    return;
+  }
 
-  const { questionType = "mcq", topic = "" } = req.body || {};
+  const rawBody = (req.body || {}) as { questionType?: unknown; topic?: unknown };
+  const questionType = typeof rawBody.questionType === "string" ? rawBody.questionType : "mcq";
+  const topic = typeof rawBody.topic === "string" ? rawBody.topic : "";
   const validTypes = ["mcq", "true_false", "fill_blank", "mixed"];
   const type = validTypes.includes(questionType) ? questionType : "mcq";
 
@@ -125,6 +134,7 @@ router.post("/quick-challenge/create", async (req, res) => {
     }
 
     if (questions.length === 0) {
+      await refundCredits(req, "no questions generated");
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد الأسئلة. حاول مرة أخرى." });
       return;
     }
@@ -207,14 +217,17 @@ router.post("/quick-challenge/create", async (req, res) => {
       2
     );
 
-    res.json({
+    const responseBody = {
       pin: game.pin,
       assignmentId,
       title,
       questionCount: gameQuestions.length,
-    });
+    };
+    await captureCredits(req, responseBody);
+    res.json(responseBody);
   } catch (err: any) {
     req.log?.error({ err }, "Quick challenge create error");
+    await refundCredits(req, "quick challenge create failed");
     res.status(500).json({ message: "حدث خطأ أثناء إنشاء التحدي. حاول مرة أخرى." });
   }
 });

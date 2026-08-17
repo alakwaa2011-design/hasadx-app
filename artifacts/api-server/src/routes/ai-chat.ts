@@ -12,6 +12,7 @@ import {
   teachersTable,
 } from "@workspace/db";
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { buildSystemPrompt } from "../lib/ai-system-prompt";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
@@ -182,12 +183,26 @@ const sendBody = z.object({
 });
 
 // POST /api/ai-chat/messages — send a message, get a reply
-router.post("/messages", async (req, res) => {
+router.post("/messages", checkCredits("ai-chat"), async (req, res) => {
+  try {
+    await handleSendMessage(req, res);
+  } catch (err) {
+    // Any unexpected throw (DB failure etc.) must not strand the credit hold.
+    await refundCredits(req, "unexpected error");
+    req.log?.error?.({ err }, "ai-chat message failed");
+    if (!res.headersSent) {
+      res.status(500).json({ error: "server_error", message: "حدث خطأ غير متوقع. حاول مرة أخرى." });
+    }
+  }
+});
+
+async function handleSendMessage(req: any, res: any) {
   const teacherId = await getTeacherId(req, res);
   if (!teacherId) return;
 
   const parsed = sendBody.safeParse(req.body);
   if (!parsed.success) {
+    await refundCredits(req, "invalid input");
     return res.status(400).json({ error: "bad_request", details: parsed.error.message });
   }
   const { message } = parsed.data;
@@ -219,7 +234,10 @@ router.post("/messages", async (req, res) => {
         and(eq(conversations.id, conversationId), eq(conversations.teacherId, teacherId)),
       )
       .limit(1);
-    if (!owned[0]) return res.status(404).json({ error: "conversation_not_found" });
+    if (!owned[0]) {
+      await refundCredits(req, "conversation not found");
+      return res.status(404).json({ error: "conversation_not_found" });
+    }
     const priorCount = await db
       .select({ c: sql<number>`count(*)::int` })
       .from(messages)
@@ -271,6 +289,8 @@ router.post("/messages", async (req, res) => {
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, conversationId!));
       const usageNow = await getTodayUsage(teacherId);
+      // Cached hit — no provider cost, so return the held credits.
+      await refundCredits(req, "cached response — free");
       return res.json({
         conversationId,
         reply: answer,
@@ -340,6 +360,7 @@ router.post("/messages", async (req, res) => {
     console.error("[ai-chat] Anthropic call failed:", err?.message || err);
     // Refund the slot we reserved since no provider work was done.
     await refundSlot(teacherId).catch(() => {});
+    await refundCredits(req, "ai provider error");
     return res.status(502).json({
       error: "ai_provider_error",
       message: "تعذّر الاتصال بالمساعد الذكي حالياً. حاول مرة أخرى بعد قليل.",
@@ -381,7 +402,7 @@ router.post("/messages", async (req, res) => {
   }
 
   const finalUsage = await getTodayUsage(teacherId);
-  res.json({
+  const responseBody = {
     conversationId,
     reply: assistantText,
     cached: false,
@@ -390,8 +411,10 @@ router.post("/messages", async (req, res) => {
       limit: null,
       remaining: null,
     },
-  });
-});
+  };
+  await captureCredits(req, responseBody);
+  res.json(responseBody);
+}
 
 // ============== Admin endpoints ==============
 

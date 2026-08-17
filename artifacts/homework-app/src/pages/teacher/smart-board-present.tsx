@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   Pause, Play, ChevronRight, ChevronLeft, X,
   Pencil, Eraser, Trash2, Volume2, VolumeX, Loader2,
@@ -486,6 +487,7 @@ export default function SmartBoardPresent() {
   const params = useParams<{ id:string }>();
   const [, navigate] = useLocation();
   const { lang } = useI18n();
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const isAr = lang === "ar";
   const ui = {
     loading:           isAr ? "جارٍ تحميل الدرس…"                                              : "Loading lesson…",
@@ -630,6 +632,7 @@ export default function SmartBoardPresent() {
         body: JSON.stringify({ text:text.trim(), voice:voiceRef.current, speed:rate }),
       });
       if (!r.ok) { isPlayingRef.current=false; playFromQueue(); return; }
+      refreshCreditsBalance();
       const blob = await r.blob();
       const au   = new Audio(URL.createObjectURL(blob));
       au.playbackRate = rate;

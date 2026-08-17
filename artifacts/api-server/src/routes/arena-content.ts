@@ -3,6 +3,7 @@ import { db, arenaCategoriesTable, arenaActivitiesTable, arenaQuestionReportsTab
 import { eq, or, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { awardXpAndNotify } from "../lib/xp/socket";
 
 const router: IRouter = Router();
@@ -437,13 +438,14 @@ function parseAiQuestions(text: string): GeneratedQuestion[] {
   return out;
 }
 
-router.post("/arena-content/ai-generate-questions", async (req, res) => {
+router.post("/arena-content/ai-generate-questions", checkCredits("arena-generate"), async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
 
     const sources = await getArenaImportSources();
     if (!sources.ai) {
+      await refundCredits(req, "ai generation disabled");
       return res.status(403).json({ error: "AI generation is currently disabled by the admin" });
     }
 
@@ -488,6 +490,7 @@ router.post("/arena-content/ai-generate-questions", async (req, res) => {
 
     if (questions.length === 0) {
       req.log.warn({ topic: body.topic, raw: raw.slice(0, 400) }, "AI returned no parseable questions");
+      await refundCredits(req, "no parseable questions");
       return res.status(502).json({ error: "تعذّر توليد الأسئلة — حاول مجدداً أو غيّر الموضوع" });
     }
 
@@ -497,12 +500,16 @@ router.post("/arena-content/ai-generate-questions", async (req, res) => {
       if (last) last.difficulty = 800;
     }
 
-    res.json({ questions: questions.slice(0, totalCount) });
+    const responseBody = { questions: questions.slice(0, totalCount) };
+    await captureCredits(req, responseBody);
+    res.json(responseBody);
   } catch (err) {
     if (err instanceof z.ZodError) {
+      await refundCredits(req, "invalid input");
       return res.status(400).json({ error: "Invalid request", details: err.issues });
     }
     req.log.error({ err }, "ai generate arena questions");
+    await refundCredits(req, "arena generation failed");
     res.status(500).json({ error: "Server error" });
   }
 });
