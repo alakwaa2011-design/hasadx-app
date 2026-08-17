@@ -182,14 +182,23 @@ export function checkCredits(toolKey: string) {
         res.status(402).json({ message, code: "INSUFFICIENT_CREDITS", required, balance });
         return;
       }
-      // Any unexpected error must not block the user — fail-open BY DESIGN,
-      // but never silently: log loudly so infra/DB failures that skip billing
-      // are visible in monitoring instead of quietly giving away free usage.
+      // Any unexpected verification/hold error must STOP the request before it
+      // reaches a paid AI provider (fail-closed). Distinct from insufficient
+      // credits (402 above): this is a temporary verification failure (503).
+      // No credits are deducted: CreditService.hold is transactional, so a
+      // thrown hold error means no hold row. One edge remains — a DB error in
+      // the replay-snapshot lookup AFTER an existing hold was found can leave
+      // that pending hold in place; the 60s autoRefundStaleHolds sweeper
+      // refunds it after its timeout, so nothing is permanently lost.
       (req as any).log?.error?.(
         { err, toolKey, teacherId: req.session?.teacherId },
-        "checkCredits fail-open: unexpected error — request allowed WITHOUT hold",
+        "checkCredits fail-closed: unexpected error — request BLOCKED before AI provider",
       );
-      return next();
+      res.status(503).json({
+        code: "CREDITS_CHECK_UNAVAILABLE",
+        message: "تعذر التحقق من رصيد نقاط حصاد حالياً، حاول مرة أخرى بعد قليل.",
+      });
+      return;
     }
   };
 }
