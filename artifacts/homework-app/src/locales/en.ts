@@ -222,8 +222,6 @@ export const en: typeof ar = {
     planNameAr: "Name (Arabic)",
     planNameEn: "Name (English)",
     planDuration: "Plan duration (days)",
-    monthlyAssignments: "Monthly assignments",
-    dailyAiMessages: "Daily AI messages",
     maxStudents: "Max students",
     maxClasses: "Max classes",
     maxTeachers: "Max teachers (schools)",

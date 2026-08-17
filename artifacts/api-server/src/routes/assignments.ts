@@ -210,20 +210,9 @@ router.post("/assignments", async (req, res) => {
     return;
   }
 
-  // ── Subscription gate: enforce monthly homework limit. NULL = unlimited.
-  // We increment FIRST so concurrent requests can't both slip past a near-limit.
+  // Policy 2026-08: manual work creation is never limited by plan quotas.
+  // AI costs are governed exclusively by the Hasad credits system.
   const teacherId = req.session.teacherId;
-  const gate = await featureAccess.increment(teacherId, "create_homework");
-  if (!gate.allowed) {
-    res.status(403).json({
-      message: "لقد وصلت إلى الحد الشهري للواجبات في باقتك الحالية. يرجى ترقية الاشتراك.",
-      reason: gate.reason,
-      limit: gate.limit,
-      used: gate.used,
-      remaining: gate.remaining,
-    });
-    return;
-  }
 
   try {
     const body = CreateAssignmentBody.parse(req.body);
@@ -413,9 +402,6 @@ router.post("/assignments", async (req, res) => {
       },
     });
   } catch (error: unknown) {
-    // Refund the slot we incremented at the top of the handler since the
-    // creation failed and no homework was actually persisted.
-    await featureAccess.refund(teacherId, "create_homework").catch(() => {});
     trackEvent({
       req,
       userId: teacherId,

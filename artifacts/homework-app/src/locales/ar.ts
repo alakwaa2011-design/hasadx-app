@@ -220,8 +220,6 @@ export const ar = {
     planNameAr: "الاسم بالعربية",
     planNameEn: "الاسم بالإنجليزية",
     planDuration: "مدة الباقة (بالأيام)",
-    monthlyAssignments: "الواجبات شهرياً",
-    dailyAiMessages: "رسائل الذكاء يومياً",
     maxStudents: "عدد الطلاب",
     maxClasses: "عدد الصفوف",
     maxTeachers: "عدد المعلمين (للمدارس)",

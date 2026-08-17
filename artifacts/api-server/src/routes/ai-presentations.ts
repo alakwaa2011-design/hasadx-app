@@ -43,11 +43,12 @@ function requireTeacher(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-/* ── Tier-driven daily caps for outline generation. Mirrors the
-   model-routing scheme in ai-tier.ts but expressed as outline-specific
-   limits (decisions documented in task #457). */
+/* ── Tier-driven capabilities for outline generation. Mirrors the
+   model-routing scheme in ai-tier.ts. Policy 2026-08: NO daily outline
+   count — AI usage is governed solely by Hasad credits. The remaining
+   fields are commercial plan capabilities (slide ceiling, densities,
+   Claude access), deliberately preserved. */
 interface OutlineTierConfig {
-  dailyOutlines: number;
   maxSlides: number;
   allowedDensities: Array<"minimal" | "balanced" | "detailed">;
   allowClaude: boolean;
@@ -56,7 +57,6 @@ interface OutlineTierConfig {
 function outlineConfigForTier(tier: AiTier): OutlineTierConfig {
   if (tier === "claude") {
     return {
-      dailyOutlines: 30,
       maxSlides: 30,
       allowedDensities: ["minimal", "balanced", "detailed"],
       allowClaude: true,
@@ -64,7 +64,6 @@ function outlineConfigForTier(tier: AiTier): OutlineTierConfig {
   }
   if (tier === "pro") {
     return {
-      dailyOutlines: 15,
       maxSlides: 20,
       allowedDensities: ["minimal", "balanced", "detailed"],
       allowClaude: false,
@@ -72,7 +71,6 @@ function outlineConfigForTier(tier: AiTier): OutlineTierConfig {
   }
   // Free / standard tier.
   return {
-    dailyOutlines: 3,
     maxSlides: 10,
     allowedDensities: ["balanced"],
     allowClaude: false,
@@ -341,9 +339,11 @@ router.get("/presentations/ai/limits", requireTeacher, async (req, res) => {
     const used = await todaysOutlineCount(teacherId);
     res.json({
       tier,
-      dailyOutlines: cfg.dailyOutlines,
+      // No plan-based daily outline cap (policy 2026-08). Nulls keep the
+      // response shape for older clients while signalling "unlimited".
+      dailyOutlines: null,
       used,
-      remaining: Math.max(0, cfg.dailyOutlines - used),
+      remaining: null,
       maxSlides: cfg.maxSlides,
       allowedDensities: cfg.allowedDensities,
       allowClaude: cfg.allowClaude,
@@ -399,19 +399,9 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       return;
     }
 
-    const used = await todaysOutlineCount(teacherId);
-    if (used >= cfg.dailyOutlines) {
-      await refundCredits(req, "daily limit");
-      res.status(429).json({
-        code: "DAILY_LIMIT_REACHED",
-        limit: cfg.dailyOutlines,
-        message: brief.language === "ar"
-          ? `وصلت للحد اليومي (${cfg.dailyOutlines} مخططات). جرّب غداً أو ارفع الخطة.`
-          : `Daily outline limit reached (${cfg.dailyOutlines}). Try again tomorrow or upgrade.`,
-      });
-      return;
-    }
-
+    /* Policy 2026-08: no plan-based daily outline cap. AI cost is governed
+       solely by Hasad credits (checkCredits above); the per-day counter is
+       still bumped for stats/observability but never denies. */
     const model = modelForTier(tier);
     const hash = briefHash(brief, model);
 

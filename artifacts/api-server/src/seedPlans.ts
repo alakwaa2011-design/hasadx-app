@@ -21,8 +21,10 @@ const PLANS = [
     priceMinor: 0,
     currency: "USD",
     billingPeriodDays: 0,
-    maxHomeworksPerMonth: 3,
-    aiUsageDailyLimit: 20,
+    // Policy 2026-08: no plan-based homework or daily-AI quotas. Manual work
+    // is unlimited on every plan; AI cost is governed by Hasad credits.
+    maxHomeworksPerMonth: null as number | null,
+    aiUsageDailyLimit: null as number | null,
     maxUsers: 1,
     monthlyCredits: 50,
     rolloverCap: null as number | null,
@@ -35,8 +37,8 @@ const PLANS = [
     priceMinor: 499,
     currency: "USD",
     billingPeriodDays: 30,
-    maxHomeworksPerMonth: 20,
-    aiUsageDailyLimit: 50,
+    maxHomeworksPerMonth: null as number | null,
+    aiUsageDailyLimit: null as number | null,
     maxUsers: 1,
     monthlyCredits: 250,
     rolloverCap: 500,
