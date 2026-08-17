@@ -450,4 +450,99 @@ router.get("/summary", async (req, res) => {
   }
 });
 
+// ─── Missing-Welcome Credits ───────────────────────────────────────────────────
+// Returns teachers who have no credit_batches row with source='free',
+// meaning the welcome-credits grant silently failed at login time.
+
+router.get("/missing-welcome", async (req, res) => {
+  try {
+    const { page = "1", pageSize = "50" } = req.query as Record<string, string>;
+    const pg   = Math.max(1, parseInt(page));
+    const size = Math.min(200, Math.max(1, parseInt(pageSize)));
+    const offset = (pg - 1) * size;
+
+    const [rows, countRows] = await Promise.all([
+      db.execute(sql`
+        SELECT t.id, t.name, t.email, t.created_at
+        FROM teachers t
+        WHERE NOT EXISTS (
+          SELECT 1 FROM credit_batches cb
+          WHERE cb.teacher_id = t.id
+            AND cb.source = 'free'
+        )
+        ORDER BY t.created_at DESC
+        LIMIT ${size} OFFSET ${offset}
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int AS total
+        FROM teachers t
+        WHERE NOT EXISTS (
+          SELECT 1 FROM credit_batches cb
+          WHERE cb.teacher_id = t.id
+            AND cb.source = 'free'
+        )
+      `),
+    ]);
+
+    const total = Number((countRows.rows[0] as any)?.total ?? 0);
+    res.json({ rows: rows.rows, total, page: pg, pageSize: size });
+  } catch (err) {
+    console.error("[missing-welcome] query failed:", err);
+    res.status(500).json({ message: "فشل تحميل قائمة المعلمين" });
+  }
+});
+
+// Grant welcome credits to a single teacher (idempotent — safe to retry).
+router.post("/missing-welcome/grant/:id", async (req, res) => {
+  try {
+    const teacherId = parseInt(req.params.id);
+    if (Number.isNaN(teacherId)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    await CreditService.grantWelcomeCredits(teacherId);
+    res.json({ teacherId, ok: true });
+  } catch (err) {
+    console.error("[missing-welcome] single grant failed:", err);
+    res.status(500).json({ message: "فشل منح النقاط" });
+  }
+});
+
+// Grant welcome credits to ALL teachers still missing them (idempotent per teacher).
+router.post("/missing-welcome/grant-all", async (req, res) => {
+  try {
+    const missingRows = await db.execute(sql`
+      SELECT t.id
+      FROM teachers t
+      WHERE NOT EXISTS (
+        SELECT 1 FROM credit_batches cb
+        WHERE cb.teacher_id = t.id
+          AND cb.source = 'free'
+      )
+    `);
+
+    const ids = (missingRows.rows as { id: number }[]).map((r) => r.id);
+    let succeeded = 0;
+    let failed    = 0;
+
+    // Process sequentially to avoid hammering the DB with concurrent locks.
+    for (const id of ids) {
+      try {
+        await CreditService.grantWelcomeCredits(id);
+        succeeded++;
+      } catch (e) {
+        console.error(`[missing-welcome] grant failed for teacher ${id}:`, e);
+        failed++;
+      }
+    }
+
+    res.json({
+      total: ids.length,
+      succeeded,
+      failed,
+      message: `تم منح النقاط لـ ${succeeded} معلم${failed > 0 ? `، فشل ${failed}` : ""}`,
+    });
+  } catch (err) {
+    console.error("[missing-welcome] grant-all failed:", err);
+    res.status(500).json({ message: "فشل تنفيذ المنح الجماعي" });
+  }
+});
+
 export default router;

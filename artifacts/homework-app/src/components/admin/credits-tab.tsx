@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Coins, Settings, Package, Users, BarChart2, Pencil, RotateCcw, X, Check,
   Download, Plus, Trash2, ChevronDown, ChevronUp,
-  RefreshCw, Search, Infinity, Minus,
+  RefreshCw, Search, Infinity, Minus, AlertTriangle, Gift,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { Card, Button, Input } from "@/components/ui-elements";
@@ -103,6 +103,13 @@ interface CreditSettings {
   adminCreditTestMode: boolean;
 }
 
+interface MissingTeacher {
+  id: number;
+  name: string;
+  email: string | null;
+  created_at: string;
+}
+
 interface Summary {
   totalEarned: number;
   totalSpent: number;
@@ -111,6 +118,141 @@ interface Summary {
   operationCount: number;
   refundCount: number;
   topTools: { tool_key: string; total_credits: number }[];
+}
+
+// ─── Missing Welcome Credits Alert ────────────────────────────────────────────
+
+function MissingWelcomeAlert() {
+  const [rows, setRows]           = useState<MissingTeacher[]>([]);
+  const [total, setTotal]         = useState(0);
+  const [loading, setLoading]     = useState(true);
+  const [expanded, setExpanded]   = useState(false);
+  const [grantingAll, setGrantingAll] = useState(false);
+  const [grantingId, setGrantingId]   = useState<number | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiFetch("/api/admin/credits/missing-welcome?pageSize=200")
+      .then((r) => r.json())
+      .then((d) => { setRows(d.rows); setTotal(d.total); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const grantOne = async (id: number) => {
+    setGrantingId(id);
+    try {
+      await apiFetch(`/api/admin/credits/missing-welcome/grant/${id}`, { method: "POST" });
+      toast("تم منح نقاط الترحيب");
+      load();
+    } catch (err: any) {
+      toast(err.message ?? "فشل المنح", { className: "text-red-500" });
+    } finally {
+      setGrantingId(null);
+    }
+  };
+
+  const grantAll = async () => {
+    if (!window.confirm(`منح نقاط الترحيب لـ ${total} معلم؟`)) return;
+    setGrantingAll(true);
+    try {
+      const r = await apiFetch("/api/admin/credits/missing-welcome/grant-all", { method: "POST" });
+      const d = await r.json();
+      toast(d.message);
+      load();
+    } catch (err: any) {
+      toast(err.message ?? "فشل المنح الجماعي", { className: "text-red-500" });
+    } finally {
+      setGrantingAll(false);
+    }
+  };
+
+  // While loading the first time — show nothing to avoid flash
+  if (loading && total === 0) return null;
+  // No missing teachers — no alert needed
+  if (!loading && total === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+          <AlertTriangle size={16} className="shrink-0" />
+          <span className="font-semibold text-sm">
+            {total} معلم{total !== 1 ? "ين" : ""} بلا نقاط ترحيبية
+          </span>
+          <span className="text-xs text-amber-600 dark:text-amber-400">
+            (فشل المنح التلقائي عند تسجيل الدخول)
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={load}
+            className="text-xs h-7 px-2 text-amber-700 dark:text-amber-300"
+          >
+            <RefreshCw size={12} />
+          </Button>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-amber-700 dark:text-amber-300 hover:underline"
+          >
+            {expanded ? "إخفاء القائمة" : "عرض القائمة"}
+          </button>
+          <Button
+            onClick={grantAll}
+            disabled={grantingAll}
+            className="h-7 text-xs gap-1 bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <Gift size={12} />
+            {grantingAll ? "جارٍ المنح…" : `منح الجميع (${total})`}
+          </Button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="overflow-x-auto rounded-lg border border-amber-200 dark:border-amber-700">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-amber-100 dark:bg-amber-800/30 text-amber-800 dark:text-amber-200 text-right">
+                <th className="py-2 px-3 font-medium">المعلم</th>
+                <th className="py-2 px-3 font-medium">البريد الإلكتروني</th>
+                <th className="py-2 px-3 font-medium">تاريخ التسجيل</th>
+                <th className="py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t border-amber-200 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/10">
+                  <td className="py-2 px-3 font-medium">{r.name}</td>
+                  <td className="py-2 px-3 text-muted-foreground text-xs">{r.email ?? "—"}</td>
+                  <td className="py-2 px-3 text-xs text-muted-foreground" dir="ltr">
+                    {new Date(r.created_at).toLocaleDateString("ar", { numberingSystem: "latn" })}
+                  </td>
+                  <td className="py-2 px-3">
+                    <button
+                      onClick={() => grantOne(r.id)}
+                      disabled={grantingId === r.id}
+                      className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 hover:underline disabled:opacity-50"
+                    >
+                      <Gift size={11} />
+                      {grantingId === r.id ? "جارٍ…" : "منح"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {total > rows.length && (
+            <p className="text-xs text-center text-muted-foreground py-2">
+              يُعرض {rows.length} من {total} — استخدم "منح الجميع" لمعالجة الكامل
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Main CreditsTab ──────────────────────────────────────────────────────────
@@ -170,6 +312,9 @@ export function CreditsTab() {
           </div>
         </Card>
       )}
+
+      {/* Alert: teachers missing welcome credits */}
+      <MissingWelcomeAlert />
 
       {/* Sub-tab bar */}
       <div className="flex gap-2 flex-wrap">
