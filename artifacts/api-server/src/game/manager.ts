@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 // Levenshtein distance for fuzzy dictation grading
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
@@ -113,6 +115,9 @@ export interface MysteryBoxSlot {
 export interface GamePlayer {
   socketId: string;
   name: string;
+  /** Random UUID issued at join time. Used as an unforgeable credential for
+   *  the /tts/game endpoint so only genuine participants can request audio. */
+  audioToken: string;
   avatar: string;
   studentId?: number | null;
   studentAccountId?: number | null;
@@ -213,6 +218,17 @@ export interface Game {
   // The teacher can still manually move students into a locked team.
   roomLocked: boolean;
   lockedTeams: Set<string>;
+  /** Caches synthesized dictation audio per question index so repeated listen
+   *  requests within the same question reuse the same Buffer without re-invoking
+   *  the TTS provider.  Cleared whenever the question advances. */
+  dictationAudioCache: Map<number, Buffer>;
+  /** Tracks how many times each player (keyed by audioToken) has listened to
+   *  the current dictation question.  Cleared when the question advances. */
+  dictationListenCounts: Map<string, number>;
+  /** Single-flight synthesis promise per question index.  At most one synthesis
+   *  runs at a time; concurrent requests await this promise.  Cleared when the
+   *  question advances or when synthesis completes/fails. */
+  dictationSynthesisInFlight: Map<number, Promise<Buffer>>;
 }
 
 const games = new Map<string, Game>();
@@ -372,6 +388,9 @@ export function createGame(
     hackEndTimerId: null,
     roomLocked: false,
     lockedTeams: new Set(),
+    dictationAudioCache: new Map(),
+    dictationListenCounts: new Map(),
+    dictationSynthesisInFlight: new Map(),
   };
   games.set(pin, game);
 
@@ -654,6 +673,7 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
   const player: GamePlayer = {
     socketId,
     name,
+    audioToken: randomUUID(),
     avatar,
     studentId: studentId || null,
     studentAccountId: studentAccountId || null,
@@ -966,6 +986,8 @@ export function addBotPlayers(game: Game, count: number): GamePlayer[] {
     const player: GamePlayer = {
       socketId,
       name,
+      // Bots never make TTS requests; a placeholder token satisfies the type.
+      audioToken: `bot-${socketId}`,
       avatar,
       score: 0,
       streak: 0,
@@ -1179,6 +1201,12 @@ export function nextQuestion(game: Game): GameQuestion | null {
   if (game.hackMode) {
     game.mysteryBoxRound += 1;
   }
+  // Clear per-question dictation state so cached audio, listen counts, and
+  // in-flight synthesis promises from the previous question don't bleed into
+  // the next one.
+  game.dictationAudioCache.clear();
+  game.dictationListenCounts.clear();
+  game.dictationSynthesisInFlight.clear();
   console.log(`[GAME ${game.pin}] nextQuestion: index=${game.currentQuestionIndex}, total=${game.questions.length}, state=${game.state}`);
   if (game.currentQuestionIndex >= game.questions.length) {
     game.state = "finished";
@@ -1189,6 +1217,75 @@ export function nextQuestion(game: Game): GameQuestion | null {
   game.questionStartTime = Date.now();
   game.answeredCount = 0;
   return game.questions[game.currentQuestionIndex];
+}
+
+// ── Dictation TTS helpers ─────────────────────────────────────────────────────
+
+/** Look up a player in a game by their audioToken.  Returns undefined when the
+ *  token is unknown, the player is a bot, or the player disconnected. */
+export function getPlayerByToken(game: Game, audioToken: string): GamePlayer | undefined {
+  return Array.from(game.players.values()).find(
+    (p) => !p.isBot && !p.disconnected && p.audioToken === audioToken,
+  );
+}
+
+/** How many times the given player has listened to the current dictation question. */
+export function getDictationListenCount(game: Game, audioToken: string): number {
+  return game.dictationListenCounts.get(audioToken) ?? 0;
+}
+
+/** Increment the listen count for the given player on the current question.
+ *  Must be called synchronously (before any await) to act as an atomic quota
+ *  reservation that concurrent requests cannot bypass. */
+export function incrementDictationListenCount(game: Game, audioToken: string): void {
+  game.dictationListenCounts.set(audioToken, (game.dictationListenCounts.get(audioToken) ?? 0) + 1);
+}
+
+/** Release a previously reserved listen slot (used on synthesis failure). */
+export function decrementDictationListenCount(game: Game, audioToken: string): void {
+  const current = game.dictationListenCounts.get(audioToken);
+  if (current && current > 0) {
+    game.dictationListenCounts.set(audioToken, current - 1);
+  }
+}
+
+/** Return cached dictation audio for a specific question index, or undefined
+ *  if not yet generated.  Callers should pass the index captured before any
+ *  await to avoid question-transition races. */
+export function getCachedDictationAudioByIndex(game: Game, questionIndex: number): Buffer | undefined {
+  return game.dictationAudioCache.get(questionIndex);
+}
+
+/** Store synthesized audio for a specific question index so subsequent requests
+ *  within the same question reuse it without re-invoking the TTS provider. */
+export function cacheDictationAudio(game: Game, questionIndex: number, audio: Buffer): void {
+  game.dictationAudioCache.set(questionIndex, audio);
+}
+
+/** Return the in-flight synthesis promise for a specific question index, or
+ *  undefined if no synthesis is currently running.  Concurrent requests await
+ *  this promise instead of starting a new synthesis (single-flight pattern). */
+export function getInFlightDictationSynthesis(
+  game: Game,
+  questionIndex: number,
+): Promise<Buffer> | undefined {
+  return game.dictationSynthesisInFlight.get(questionIndex);
+}
+
+/** Register a synthesis promise as the in-flight request for a question.
+ *  Must be called synchronously before the first await so concurrent requests
+ *  see it before they would start their own synthesis. */
+export function setInFlightDictationSynthesis(
+  game: Game,
+  questionIndex: number,
+  promise: Promise<Buffer>,
+): void {
+  game.dictationSynthesisInFlight.set(questionIndex, promise);
+}
+
+/** Remove the in-flight synthesis promise for a question (on success or failure). */
+export function clearInFlightDictationSynthesis(game: Game, questionIndex: number): void {
+  game.dictationSynthesisInFlight.delete(questionIndex);
 }
 
 export function isDoublePointsRound(game: Game): boolean {

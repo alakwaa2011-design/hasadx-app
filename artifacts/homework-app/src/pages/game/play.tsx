@@ -1017,6 +1017,9 @@ export default function GamePlay() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const joinedRef = useRef(false);
   const hasJoinedOnceRef = useRef(false);
+  // Unforgeable credential issued by the server on join — sent with /tts/game
+  // requests so the server can verify the caller is a genuine participant.
+  const audioTokenRef = useRef<string>("");
   const tickPlayedRef = useRef(false);
   const pendingQuestionRef = useRef<any>(null);
   // Echoed back on student:submit-answer so the server can reject stale submits
@@ -1148,6 +1151,8 @@ export default function GamePlay() {
           }
           hasJoinedOnceRef.current = true;
           setIsReconnecting(false);
+          // Store the unforgeable per-player audio token for dictation TTS.
+          if (res.audioToken) audioTokenRef.current = res.audioToken;
           setGameTitle(res.title);
           setPlayers(res.players);
           if (res.gameMode) setGameMode(res.gameMode);
@@ -3603,11 +3608,14 @@ export default function GamePlay() {
                       setDictationSpeaking(true);
                       setDictationListenCount(c => c + 1);
                       try {
-                        const res = await fetch(`${API_BASE}/api/tts`, {
+                        const res = await fetch(`${API_BASE}/api/tts/game`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           credentials: "include",
-                          body: JSON.stringify({ text: question.optionA, voice: "nova", speed: 0.85, pin }),
+                          // text and voice are NOT sent — the server resolves
+                          // both from the active game question server-side.
+                          // audioToken is an unforgeable UUID issued at join.
+                          body: JSON.stringify({ pin, audioToken: audioTokenRef.current }),
                         });
                         if (!res.ok) throw new Error("tts failed");
                         const blob = await res.blob();

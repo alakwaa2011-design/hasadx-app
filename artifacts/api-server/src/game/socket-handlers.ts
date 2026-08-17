@@ -1123,6 +1123,8 @@ export function setupGameSocket(io: Server) {
         myTeam: player.teamName,
         myScore: player.score,
         myStreak: player.streak,
+        // Unforgeable per-player credential for the /api/tts/game endpoint.
+        audioToken: player.audioToken,
       };
 
       if (game.state === "question" && !game.hackMode) {

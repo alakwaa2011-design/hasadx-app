@@ -5,7 +5,18 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { ttsLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
-import { getGame } from "../game/manager";
+import {
+  getGame,
+  getPlayerByToken,
+  getDictationListenCount,
+  incrementDictationListenCount,
+  decrementDictationListenCount,
+  getCachedDictationAudioByIndex,
+  cacheDictationAudio,
+  getInFlightDictationSynthesis,
+  setInFlightDictationSynthesis,
+  clearInFlightDictationSynthesis,
+} from "../game/manager.js";
 
 const router: IRouter = Router();
 
@@ -110,24 +121,13 @@ async function synthesizeAndSend(
 }
 
 router.post("/tts", ttsLimiter, checkCredits("tts"), async (req, res) => {
-  const { text, voice = "nova", pin } = (req.body || {}) as {
-    text?: unknown;
-    voice?: string;
-    pin?: unknown;
-  };
-
-  // Access policy: teachers (charged via checkCredits) OR students inside an
-  // active game (dictation read-aloud) identified by a valid, unfinished PIN.
-  // Anonymous callers with neither are rejected — no free provider cost.
-  const teacherId = (req.session as { teacherId?: number } | undefined)?.teacherId;
-  if (!teacherId) {
-    const game = typeof pin === "string" && pin ? getGame(pin) : undefined;
-    if (!game || game.state === "finished") {
-      // No hold exists here: checkCredits is a no-op without a teacher session.
-      res.status(401).json({ error: "يجب تسجيل الدخول أو الانضمام إلى لعبة نشطة" });
-      return;
-    }
+  // Teachers only — unauthenticated callers are blocked here.
+  if (!req.session?.teacherId) {
+    res.status(401).json({ error: "يجب تسجيل الدخول لاستخدام هذه الخدمة" });
+    return;
   }
+
+  const { text, voice = "nova" } = (req.body || {}) as { text?: unknown; voice?: string };
 
   if (!text || typeof text !== "string" || !text.trim()) {
     await refundCredits(req, "invalid input");
@@ -142,6 +142,170 @@ router.post("/tts", ttsLimiter, checkCredits("tts"), async (req, res) => {
   }
 
   await synthesizeAndSend(req, res, text, voice);
+});
+
+// Student dictation TTS — tightly scoped to the CURRENT active dictation
+// question of an active game.  The client never supplies text or voice; the
+// server resolves both from the game state.
+//
+// Authorization: `audioToken` is a random UUID issued per-player at socket
+// join time.  An attacker who only knows the PIN + player name cannot obtain
+// it.  The server looks up the player by token (not by name).
+//
+// Cost controls (all enforced server-side, bypass-proof):
+//
+//   Atomic quota reservation — listen count is incremented SYNCHRONOUSLY,
+//   before any `await`.  Because Node.js is single-threaded, two concurrent
+//   requests from the same token both see the state as of their respective
+//   synchronous setup phase; neither can race past the quota check.
+//
+//   Single-flight synthesis — when no cached audio exists, exactly one
+//   synthesis promise is created and stored synchronously in the game's
+//   in-flight map before the first await.  All other concurrent requests find
+//   it in the map and await it instead of starting their own synthesis.
+//
+//   Question-index pinning — the authorized question index is captured before
+//   any await.  After synthesis, we verify the index is still current before
+//   writing to the cache or accepting the listen-count reservation; if the
+//   question advanced mid-flight the quota is released and the stale audio is
+//   discarded (the player gets a 503 and can retry on the new question).
+//
+//   Cache — first synthesis result is stored in the game; all subsequent
+//   valid requests are served from cache with no provider call.
+//
+//   All maps (cache, counts, in-flight) are cleared when the question advances.
+router.post("/tts/game", ttsLimiter, async (req, res) => {
+  const { pin, audioToken } = (req.body || {}) as {
+    pin?: unknown;
+    audioToken?: unknown;
+  };
+
+  // ── 1. Validate PIN format ──────────────────────────────────────────────
+  if (!pin || typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
+    res.status(400).json({ error: "رمز اللعبة مطلوب" });
+    return;
+  }
+
+  // ── 2. Validate token format ────────────────────────────────────────────
+  const tokenStr = typeof audioToken === "string" ? audioToken.trim() : "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tokenStr)) {
+    res.status(400).json({ error: "بيانات المصادقة مطلوبة" });
+    return;
+  }
+
+  // ── 3. Game must exist ──────────────────────────────────────────────────
+  const game = getGame(pin);
+  if (!game) {
+    res.status(403).json({ error: "لا توجد لعبة نشطة بهذا الرمز" });
+    return;
+  }
+
+  // ── 4. Game must be in the active question phase ────────────────────────
+  if (game.state !== "question") {
+    res.status(403).json({ error: "لا يوجد سؤال نشط حالياً" });
+    return;
+  }
+
+  // ── 5. Current question must be dictation type ──────────────────────────
+  // Capture the question index NOW — before any await — so we can detect
+  // question-advance races after synthesis completes.
+  const authorizedIndex = game.currentQuestionIndex;
+  const currentQuestion = game.questions[authorizedIndex];
+  if (!currentQuestion || currentQuestion.questionType !== "dictation") {
+    res.status(403).json({ error: "السؤال الحالي ليس إملاءً" });
+    return;
+  }
+
+  // ── 6. Validate token against an active player ──────────────────────────
+  const player = getPlayerByToken(game, tokenStr);
+  if (!player) {
+    res.status(403).json({ error: "بيانات المصادقة غير صالحة" });
+    return;
+  }
+
+  // ── 7. Resolve dictation text server-side ───────────────────────────────
+  const text = currentQuestion.optionA?.trim() ?? "";
+  if (!text) {
+    res.status(404).json({ error: "لا يوجد نص إملاء للسؤال الحالي" });
+    return;
+  }
+
+  // ── 8. ATOMIC quota reservation (synchronous, before any await) ─────────
+  // Increment FIRST; if synthesis later fails we decrement to release the slot.
+  // Because this is synchronous, concurrent requests see the incremented value
+  // on their own synchronous checks — no two requests can both see the same
+  // count below maxListens and then both exceed the quota.
+  const maxListens = parseInt(currentQuestion.optionB || "3", 10) || 3;
+  const listensSoFar = getDictationListenCount(game, tokenStr);
+  if (listensSoFar >= maxListens) {
+    res.status(429).json({ error: "تجاوزت الحد المسموح به من الاستماع لهذا السؤال" });
+    return;
+  }
+  incrementDictationListenCount(game, tokenStr); // reserve slot now
+
+  // ── 9. Single-flight: check cache → in-flight → start synthesis ─────────
+  // All checks and promise registration are synchronous (no await yet),
+  // so concurrent requests cannot all independently start synthesis.
+  const cached = getCachedDictationAudioByIndex(game, authorizedIndex);
+  if (cached) {
+    // Already cached — serve immediately, quota already reserved above.
+    res.set("Content-Type", "audio/mpeg");
+    res.set("Content-Length", String(cached.length));
+    res.set("Cache-Control", "no-store");
+    res.send(cached);
+    return;
+  }
+
+  let audioPromise = getInFlightDictationSynthesis(game, authorizedIndex);
+  if (!audioPromise) {
+    // No synthesis running yet — start one and register it synchronously.
+    const voice = "nova"; // fixed server-side; no client influence
+    audioPromise = (async () => {
+      const chunks = chunkText(text);
+      const buffers: Buffer[] = [];
+      for (const c of chunks) buffers.push(await generateChunk(c, voice));
+      return Buffer.concat(buffers);
+    })();
+    setInFlightDictationSynthesis(game, authorizedIndex, audioPromise); // sync
+  }
+  // All other concurrent requests found the in-flight promise and await it here.
+
+  // ── 10. Await synthesis ─────────────────────────────────────────────────
+  let audio: Buffer;
+  try {
+    audio = await audioPromise;
+  } catch (err) {
+    // Release the quota reservation so the player can retry.
+    decrementDictationListenCount(game, tokenStr);
+    clearInFlightDictationSynthesis(game, authorizedIndex);
+    req.log.error({ err: err instanceof Error ? err.message : String(err) }, "Game TTS synthesis error");
+    res.status(500).json({ error: "فشل توليد الصوت" });
+    return;
+  }
+
+  // ── 11. Question-index check after await ────────────────────────────────
+  // If the question advanced while we were synthesizing, the cache/count maps
+  // were already cleared by nextQuestion().  We must NOT write into the new
+  // question's maps.  Release the (now-stale) quota reservation and tell the
+  // client to retry — the question has already changed for them too.
+  if (game.currentQuestionIndex !== authorizedIndex) {
+    // counts were cleared by nextQuestion; no-op decrement is safe
+    decrementDictationListenCount(game, tokenStr);
+    res.status(503).json({ error: "تغيّر السؤال أثناء التحضير، أعد المحاولة" });
+    return;
+  }
+
+  // ── 12. Cache the synthesized audio (once) and clear the in-flight entry ─
+  if (!getCachedDictationAudioByIndex(game, authorizedIndex)) {
+    cacheDictationAudio(game, authorizedIndex, audio);
+  }
+  clearInFlightDictationSynthesis(game, authorizedIndex);
+
+  // ── 13. Respond ─────────────────────────────────────────────────────────
+  res.set("Content-Type", "audio/mpeg");
+  res.set("Content-Length", String(audio.length));
+  res.set("Cache-Control", "no-store");
+  res.send(audio);
 });
 
 // Listening-activity audio for students: synthesizes from the assignment's
