@@ -372,18 +372,28 @@ export const CreditService = {
 
   /** Confirms the hold. `resultJson` (optional) snapshots the successful HTTP
       response body so a replay of the same idempotency key can return the
-      stored result instead of re-running the paid work. */
-  async capture(requestId: string, resultJson?: string): Promise<void> {
+      stored result instead of re-running the paid work.
+
+      Returns `captured: true` only when THIS call transitioned the hold
+      pending → completed. `captured: false` means the hold was no longer
+      pending (already completed, refunded by a sweeper/recovery, or expired) —
+      callers gating "paid work delivered" on capture must re-read the hold
+      status via getHoldStatus() before serving. */
+  async capture(requestId: string, resultJson?: string): Promise<{ captured: boolean }> {
+    let captured = false;
     await db.transaction(async (tx) => {
-      await tx
+      const rows = await tx
         .update(creditHoldsTable)
         .set({ status: "completed", completedAt: new Date(), ...(resultJson !== undefined ? { resultJson } : {}) })
-        .where(and(eq(creditHoldsTable.requestId, requestId), eq(creditHoldsTable.status, "pending")));
+        .where(and(eq(creditHoldsTable.requestId, requestId), eq(creditHoldsTable.status, "pending")))
+        .returning({ id: creditHoldsTable.id });
+      captured = rows.length > 0;
       await tx
         .update(creditTransactionsTable)
         .set({ status: "completed" })
         .where(eq(creditTransactionsTable.requestId, requestId));
     });
+    return { captured };
   },
 
   async refund(requestId: string, reason?: string): Promise<void> {
@@ -473,6 +483,112 @@ export const CreditService = {
         .set({ status: "refunded" })
         .where(eq(creditTransactionsTable.requestId, requestId));
     });
+  },
+
+  /** Lightweight status lookup for recovery paths: which state is a hold in?
+      "none" = no hold row exists for this requestId. */
+  async getHoldStatus(requestId: string): Promise<"none" | "pending" | "completed" | "refunded" | "expired"> {
+    const [row] = await db
+      .select({ status: creditHoldsTable.status })
+      .from(creditHoldsTable)
+      .where(eq(creditHoldsTable.requestId, requestId))
+      .limit(1);
+    if (!row) return "none";
+    return row.status as "pending" | "completed" | "refunded" | "expired";
+  },
+
+  /**
+   * Compensating refund of an ALREADY-CAPTURED hold.
+   *
+   * Scope: recovery paths only — specifically "hold completed but the paid
+   * artifact is DEFINITIVELY missing from storage (NoSuchKey/404)". Not a
+   * general-purpose refund; normal failures must keep using refund() on
+   * pending holds.
+   *
+   * Idempotency: the atomic claim (status='completed' → 'refunded') is the
+   * only gate. A second/concurrent call finds status='refunded' and returns
+   * { compensated: false } without moving any money.
+   */
+  async compensateCapturedHold(requestId: string, reason?: string): Promise<{ compensated: boolean }> {
+    let compensated = false;
+    await db.transaction(async (tx) => {
+      const claimed = await tx
+        .update(creditHoldsTable)
+        .set({ status: "refunded", refundedAt: new Date() })
+        .where(and(eq(creditHoldsTable.requestId, requestId), eq(creditHoldsTable.status, "completed")))
+        .returning();
+      const hold = claimed[0];
+      if (!hold) return;
+
+      const items = await tx
+        .select()
+        .from(creditHoldItemsTable)
+        .where(eq(creditHoldItemsTable.holdId, hold.id));
+
+      if (items.length > 0) {
+        let paidDelta = 0, promoDelta = 0, earnedDelta = 0, subDelta = 0, freeDelta = 0;
+        for (const item of items) {
+          const batchRows = await tx.execute(sql`
+            SELECT source FROM credit_batches WHERE id = ${item.batchId}
+          `);
+          const batchSource = String((batchRows.rows[0] as any)?.source ?? "promo");
+          await tx.execute(sql`
+            UPDATE credit_batches
+            SET amount_remaining = amount_remaining + ${item.amount}, updated_at = NOW()
+            WHERE id = ${item.batchId}
+          `);
+          if (batchSource === "purchased")                              paidDelta   += item.amount;
+          else if (batchSource === "promo" || batchSource === "admin")  promoDelta  += item.amount;
+          else if (batchSource === "earned")                            earnedDelta += item.amount;
+          else if (batchSource === "subscription")                      subDelta    += item.amount;
+          else if (batchSource === "free")                              freeDelta   += item.amount;
+          else promoDelta += item.amount;
+        }
+        await tx.execute(sql`
+          UPDATE credit_accounts
+          SET balance              = balance              + ${hold.creditsHeld},
+              paid_balance         = paid_balance         + ${paidDelta},
+              promo_balance        = promo_balance        + ${promoDelta},
+              earned_balance       = earned_balance       + ${earnedDelta},
+              subscription_balance = subscription_balance + ${subDelta},
+              free_balance         = free_balance         + ${freeDelta},
+              total_spent = GREATEST(0, total_spent - ${hold.creditsHeld}),
+              updated_at = NOW()
+          WHERE teacher_id = ${hold.teacherId}
+        `);
+      } else {
+        const hp = (hold as any).heldPromo  ?? 0;
+        const he = (hold as any).heldEarned ?? 0;
+        const hd = (hold as any).heldPaid   ?? 0;
+        const legacyPromo = hp + he + hd === hold.creditsHeld ? 0 : hold.creditsHeld;
+        await tx.execute(sql`
+          UPDATE credit_accounts
+          SET balance        = balance + ${hold.creditsHeld},
+              promo_balance  = promo_balance  + ${legacyPromo > 0 ? legacyPromo : hp},
+              earned_balance = earned_balance + ${legacyPromo > 0 ? 0 : he},
+              paid_balance   = paid_balance   + ${legacyPromo > 0 ? 0 : hd},
+              total_spent = GREATEST(0, total_spent - ${hold.creditsHeld}),
+              updated_at  = NOW()
+          WHERE teacher_id = ${hold.teacherId}
+        `);
+      }
+
+      await tx.insert(creditTransactionsTable).values({
+        teacherId: hold.teacherId,
+        amount: hold.creditsHeld,
+        type: "compensation",
+        reason: reason ?? "تعويض: ملف مدفوع مفقود من التخزين",
+        toolKey: hold.toolKey,
+        requestId: `comp_${requestId}`,
+        status: "completed",
+      });
+      await tx
+        .update(creditTransactionsTable)
+        .set({ status: "refunded" })
+        .where(eq(creditTransactionsTable.requestId, requestId));
+      compensated = true;
+    });
+    return { compensated };
   },
 
   // ── Subscription credit operations ──────────────────────────────────────────

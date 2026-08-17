@@ -203,6 +203,77 @@ export function checkCredits(toolKey: string) {
   };
 }
 
+// ─── Programmatic hold API (for routes that must decide cache-hit BEFORE holding) ──
+
+/** Thrown by holdCreditsForToolRequest when the teacher's balance is too low. */
+export class InsufficientCreditsError extends Error {
+  required?: number;
+  balance?: number;
+  constructor(message: string, required?: number, balance?: number) {
+    super(message);
+    this.name = "InsufficientCreditsError";
+    this.required = required;
+    this.balance = balance;
+  }
+}
+
+/**
+ * Create a credit hold programmatically with a caller-supplied idempotency
+ * requestId. Applies the exact same policy as the checkCredits middleware:
+ * system-off / admin-test-mode / unlimited-teacher are no-ops (mode "none").
+ *
+ * Unlike the middleware, the CALLER controls when this runs — required for
+ * the TTS cache, where a cache hit must never create a hold at all.
+ *
+ * Throws InsufficientCreditsError (→402) or rethrows unexpected errors
+ * (→ caller must fail closed, 503).
+ */
+export async function holdCreditsForToolRequest(
+  teacherId: number,
+  toolKey: string,
+  requestId: string,
+): Promise<{ mode: "none" | "held"; creditsHeld: number }> {
+  const settings = await getSettings();
+  const isAdminTestMode = settings.adminCreditTestMode && settings.adminId === teacherId;
+  if (!settings.creditsEnabled && !isAdminTestMode) return { mode: "none", creditsHeld: 0 };
+
+  const [teacherRow] = await db
+    .select({ unlimitedCredits: teachersTable.unlimitedCredits })
+    .from(teachersTable)
+    .where(eq(teachersTable.id, teacherId))
+    .limit(1);
+
+  if (teacherRow?.unlimitedCredits) {
+    try {
+      await db.insert(creditTransactionsTable).values({
+        teacherId,
+        amount: 0,
+        type: "unlimited_use",
+        reason: `استخدام غير محدود: ${toolKey}`,
+        toolKey,
+        requestId: randomUUID(),
+        status: "completed",
+        source: "unlimited_bypass",
+      });
+    } catch { /* non-critical */ }
+    return { mode: "none", creditsHeld: 0 };
+  }
+
+  try {
+    const { creditsHeld } = await CreditService.hold(teacherId, toolKey, requestId);
+    return { mode: "held", creditsHeld };
+  } catch (err: any) {
+    if (err?.message?.includes("رصيد غير كافٍ")) {
+      throw new InsufficientCreditsError(
+        err.message,
+        typeof err.required === "number" ? err.required : undefined,
+        typeof err.balance === "number" ? err.balance : undefined,
+      );
+    }
+    throw err;
+  }
+}
+
 // ─── Route helpers ────────────────────────────────────────────────────────────
 
 /** Call after successful AI response to confirm the hold. Pass the response

@@ -25,4 +25,5 @@
 - [Central credits balance query](credits-balance-central-query.md) — one react-query key for نقاط حصاد; every AI call site must invalidate it on settle; no local deduction math.
 - [Welcome credits grant paths](welcome-credits-grant-paths.md) — every session-establishing auth route (login/OTP/link/Google) must call the shared grant helper; idempotency is in the service, not the DB.
 - [checkCredits fail-closed](credits-fail-closed.md) — unexpected verification errors return 503, never next(); guest AI routes stay deliberately uncharged.
+- [TTS audio cache invariants](tts-audio-cache.md) — serve only after confirmed capture ({captured} flag); credit_request_id fences all row writes; compensate only on definitive 404, never on missing key or transient errors.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.

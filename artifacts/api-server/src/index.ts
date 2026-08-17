@@ -44,6 +44,34 @@ const ADMIN_EMAILS = ["alakwaa2011@gmail.com", "marwanakwaa@yahoo.com"];
 
 async function runSchemaMigrations() {
   try {
+    // ── Persistent per-teacher TTS audio cache (metadata only; audio in Object Storage) ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tts_audio_cache (
+        id                SERIAL PRIMARY KEY,
+        teacher_id        INTEGER NOT NULL,
+        cache_key         TEXT NOT NULL,
+        storage_key       TEXT,
+        credit_request_id TEXT NOT NULL,
+        status            TEXT NOT NULL DEFAULT 'pending',
+        size_bytes        INTEGER,
+        error_message     TEXT,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        failed_at         TIMESTAMP,
+        last_used_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT tts_audio_cache_teacher_key_uq UNIQUE (teacher_id, cache_key)
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tts_cache_state (
+        id              INTEGER PRIMARY KEY,
+        last_cleanup_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      INSERT INTO tts_cache_state (id, last_cleanup_at)
+      VALUES (1, NOW() - INTERVAL '25 hours')
+      ON CONFLICT (id) DO NOTHING
+    `);
     // ── Unified analytics & presence (task: realtime analytics) ──
     await db.execute(sql`
       ALTER TABLE activity_logs

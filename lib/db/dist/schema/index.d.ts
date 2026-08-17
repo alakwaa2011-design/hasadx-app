@@ -79,6 +79,7 @@ export * from "./credit-tool-prices";
 export * from "./credit-accounts";
 export * from "./credit-transactions";
 export * from "./credit-holds";
+export * from "./tts-audio-cache";
 export * from "./credit-hold-items";
 export * from "./credit-batches";
 export * from "./subscription-credit-grants";

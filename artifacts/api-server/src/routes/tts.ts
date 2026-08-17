@@ -1,10 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq } from "drizzle-orm";
-import { db, assignmentsTable } from "@workspace/db";
+import { eq, sql as dsql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { db, assignmentsTable, type TtsAudioCache } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { ttsLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
-import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { holdCreditsForToolRequest, InsufficientCreditsError } from "../lib/check-credits";
+import { CreditService } from "../lib/credit-service";
+import * as ttsCache from "../lib/tts-cache";
 import {
   getGame,
   getPlayerByToken,
@@ -91,57 +94,327 @@ async function generateChunk(text: string, voice: string): Promise<Buffer> {
   return Buffer.from(audioData, "base64");
 }
 
-async function synthesizeAndSend(
-  req: Request,
-  res: Response,
-  text: string,
-  voice: string,
-) {
+/* ── Teacher TTS with persistent per-teacher cache (approved plan v1–v5) ─────
+   pending → hold → generate → store(verified) → capture OK → ready → serve
+   Cache hit: NO provider call, NO hold, NO charge. */
+
+function sendAudio(res: Response, buffer: Buffer): void {
+  res.set("Content-Type", "audio/mpeg");
+  res.set("Content-Length", String(buffer.length));
+  res.set("Cache-Control", "private, max-age=3600");
+  res.send(buffer);
+}
+
+const TEMP_ERROR = { error: "تعذر تجهيز الصوت حالياً، حاول مرة أخرى بعد قليل." };
+
+/** Plain uncached synthesis — used by the assignment listening-audio route,
+    which is deliberately uncharged (no credit hold exists on it). */
+async function synthesizeAndSend(req: Request, res: Response, text: string, voice: string) {
   try {
-    const chunks = chunkText(text);
-    const buffers: Buffer[] = [];
-    for (const c of chunks) {
-      const buf = await generateChunk(c, voice);
-      buffers.push(buf);
-    }
-    const combined = Buffer.concat(buffers);
-    // Capture BEFORE sending: once the client has the audio the provider cost
-    // is spent, so persist the charge first (crash-safe ordering).
-    await captureCredits(req);
-    res.set("Content-Type", "audio/mpeg");
-    res.set("Content-Length", String(combined.length));
-    res.set("Cache-Control", "public, max-age=3600");
-    res.send(combined);
+    const combined = await synthesizeFull(text, voice);
+    sendAudio(res, combined);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "unknown";
-    req.log.error({ err: message }, "TTS error");
-    await refundCredits(req, "tts failed");
+    req.log.error({ err: err instanceof Error ? err.message : "unknown" }, "TTS error");
     res.status(500).json({ error: "فشل توليد الصوت" });
   }
 }
 
-router.post("/tts", ttsLimiter, checkCredits("tts"), async (req, res) => {
+async function synthesizeFull(text: string, voice: string): Promise<Buffer> {
+  const chunks = chunkText(text);
+  const buffers: Buffer[] = [];
+  for (const c of chunks) {
+    buffers.push(await generateChunk(c, voice));
+  }
+  return Buffer.concat(buffers);
+}
+
+/** Serve a ready row from Object Storage. Missing file on a ready row is an
+    anomaly (cleanup deletes metadata with the file): drop the row and let the
+    caller start a fresh cycle (approved plan v1 §cleanup). */
+async function serveReadyRow(
+  req: Request,
+  res: Response,
+  row: TtsAudioCache,
+): Promise<"served" | "file_lost" | "transient_error"> {
+  if (!row.storageKey) return "transient_error"; // anomalous ready row — never definitive absence
+  try {
+    const buf = await ttsCache.downloadTtsAudio(row.storageKey);
+    void ttsCache.touchLastUsed(row.id);
+    sendAudio(res, buf);
+    return "served";
+  } catch (err: any) {
+    // GCS download throws 404-coded errors on definitive absence
+    const code = err?.code ?? err?.response?.status;
+    if (code === 404) {
+      // Paid file definitively gone: compensate the captured hold (idempotent)
+      // and flip ready → failed atomically. No auto-regeneration this request;
+      // the failed-state cooldown governs the next manual attempt.
+      req.log.error({ rowId: row.id }, "tts cache: ready row lost its file — compensating");
+      await ttsCache.handleReadyFileLost(row);
+      return "file_lost";
+    }
+    req.log.error({ err, rowId: row.id }, "tts cache: transient storage error on serve");
+    return "transient_error";
+  }
+}
+
+/** Full generation cycle for a pending row THIS request owns. */
+async function runGenerationCycle(
+  req: Request,
+  res: Response,
+  rowId: number,
+  creditRequestId: string,
+  teacherId: number,
+  text: string,
+  voice: string,
+): Promise<void> {
+  // ── hold (after ownership, before any provider call) ──────────────────────
+  let holdMode: "none" | "held";
+  try {
+    const h = await holdCreditsForToolRequest(teacherId, "tts", creditRequestId);
+    holdMode = h.mode;
+  } catch (err) {
+    // No hold was created (hold is transactional). Row must not stay pending.
+    await db.execute(dsql`DELETE FROM tts_audio_cache WHERE id = ${rowId} AND status = 'pending'`);
+    if (err instanceof InsufficientCreditsError) {
+      res.status(402).json({
+        message: err.required !== undefined && err.balance !== undefined
+          ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${err.required} نقطة حصاد، ورصيدك الحالي ${err.balance} نقطة.`
+          : err.message,
+        code: "INSUFFICIENT_CREDITS",
+        required: err.required,
+        balance: err.balance,
+      });
+      return;
+    }
+    req.log.error({ err, teacherId }, "tts: hold failed unexpectedly — fail closed");
+    res.status(503).json({
+      code: "CREDITS_CHECK_UNAVAILABLE",
+      message: "تعذر التحقق من رصيد نقاط حصاد حالياً، حاول مرة أخرى بعد قليل.",
+    });
+    return;
+  }
+
+  // ── generate → store → verify ──────────────────────────────────────────────
+  let combined: Buffer;
+  let storageKey: string;
+  try {
+    combined = await synthesizeFull(text, voice);
+    storageKey = ttsCache.newTtsStorageKey();
+    await ttsCache.uploadTtsAudio(storageKey, combined);
+    // Record the storage key BEFORE capture so recovery can find the file.
+    // Fenced by credit_request_id: if a takeover happened, we lost the lease.
+    const keyWrite = await db.execute(dsql`
+      UPDATE tts_audio_cache SET storage_key = ${storageKey}
+      WHERE id = ${rowId} AND status = 'pending' AND credit_request_id = ${creditRequestId}
+      RETURNING id
+    `);
+    if (keyWrite.rows.length === 0) throw new Error("lost generation ownership before capture");
+    // Verified store: transient verify errors count as generation failure
+    // (pre-capture — refund is unambiguous).
+    if ((await ttsCache.checkTtsFile(storageKey)) !== "exists") {
+      throw new Error("upload verification failed");
+    }
+  } catch (err) {
+    req.log.error({ err: err instanceof Error ? err.message : err }, "TTS generation/store error");
+    if (holdMode === "held") {
+      try { await CreditService.refund(creditRequestId, "tts: فشل التوليد أو التخزين"); } catch { /* sweeper */ }
+    }
+    await ttsCache.markFailed(rowId, creditRequestId, err instanceof Error ? err.message : "generation failed");
+    res.status(500).json({ error: "فشل توليد الصوت" });
+    return;
+  }
+
+  // ── capture (only gate to ready) ───────────────────────────────────────────
+  if (holdMode === "held") {
+    try {
+      const { captured } = await CreditService.capture(creditRequestId);
+      if (!captured) {
+        // Zero-row capture: the hold was no longer pending. Either an
+        // idempotent replay (already completed → serving is paid for) or we
+        // LOST ownership (refunded/expired by orphan recovery or the sweeper)
+        // → serving would be uncharged audio. Decide by re-reading the status.
+        const holdStatus = await CreditService.getHoldStatus(creditRequestId);
+        if (holdStatus !== "completed") {
+          req.log.warn({ rowId, holdStatus }, "tts: capture lost — hold no longer pending, not serving");
+          await tryDeleteTtsAudioSafely(storageKey); // our blob; new owner has its own key
+          res.status(503).json(TEMP_ERROR);
+          return;
+        }
+      }
+    } catch (captureErr) {
+      // UNCERTAIN result — never refund/delete directly (plan v3).
+      req.log.error({ err: captureErr, rowId }, "tts: uncertain capture — resolving via hold status");
+      const row = await ttsCache.getCacheRowById(rowId);
+      const resolution = row
+        ? await ttsCache.resolveUncertainCapture(row)
+        : ({ outcome: "indeterminate" } as const);
+      if (resolution.outcome === "ready") {
+        sendAudio(res, combined); // charge landed; audio is paid for
+        return;
+      }
+      // refunded / compensated / new_cycle / indeterminate → temp error;
+      // row state already correct (or left pending & unservable).
+      res.status(503).json(TEMP_ERROR);
+      return;
+    }
+  }
+
+  // ── ready → serve (capture confirmed; fenced by credit_request_id) ─────────
+  try {
+    const promoted = await ttsCache.markReady(rowId, creditRequestId, storageKey, combined.length);
+    if (!promoted) {
+      // Lease lost between capture and promotion is impossible for a held
+      // capture (takeover requires resolving OUR completed hold first, which
+      // promotes to ready, never takes over). For credits-off cycles a stale
+      // fence just means recovery will settle the row; audio itself is fine.
+      req.log.warn({ rowId }, "tts: ready-promotion matched no row (lazy recovery will settle)");
+    }
+  } catch (err) {
+    // Captured but ready-update failed: recovery promotes it later via the
+    // stored credit_request_id. Serving now is correct — it was paid for.
+    req.log.error({ err, rowId }, "tts: ready-update failed after capture (lazy recovery will promote)");
+  }
+  sendAudio(res, combined);
+  void ttsCache.maybeRunTtsCleanup(req.log);
+}
+
+async function tryDeleteTtsAudioSafely(storageKey: string): Promise<void> {
+  try { await ttsCache.tryDeleteTtsAudio(storageKey); } catch { /* best-effort */ }
+}
+
+router.post("/tts", ttsLimiter, async (req, res) => {
   // Teachers only — unauthenticated callers are blocked here.
-  if (!req.session?.teacherId) {
+  const teacherId = req.session?.teacherId;
+  if (!teacherId) {
     res.status(401).json({ error: "يجب تسجيل الدخول لاستخدام هذه الخدمة" });
     return;
   }
 
   const { text, voice = "nova" } = (req.body || {}) as { text?: unknown; voice?: string };
-
   if (!text || typeof text !== "string" || !text.trim()) {
-    await refundCredits(req, "invalid input");
     res.status(400).json({ error: "النص مطلوب" });
     return;
   }
-
   if (text.length > MAX_TEXT_LENGTH) {
-    await refundCredits(req, "invalid input");
     res.status(400).json({ error: `النص طويل جداً (الحد ${MAX_TEXT_LENGTH} حرف)` });
     return;
   }
 
-  await synthesizeAndSend(req, res, text, voice);
+  const cacheKey = ttsCache.buildTtsCacheKey(text, voice);
+
+  // Bounded state loop: each iteration either serves, errors out, or claims
+  // ownership and generates. Max a few iterations (insert race, orphan resolution).
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const row = await ttsCache.getCacheRow(teacherId, cacheKey);
+
+    if (!row) {
+      const requestId = randomUUID();
+      const won = await ttsCache.tryInsertPending(teacherId, cacheKey, requestId);
+      if (!won) continue; // lost the insert race — re-read state
+      await runGenerationCycle(req, res, won.id, requestId, teacherId, text, voice);
+      return;
+    }
+
+    if (row.status === "ready") {
+      const outcome = await serveReadyRow(req, res, row);
+      if (outcome === "served") return;
+      // file_lost: hold compensated, row is failed — cooldown governs the next
+      // attempt (no automatic regeneration). transient_error: retry later.
+      res.status(503).json(TEMP_ERROR);
+      return;
+    }
+
+    if (row.status === "failed") {
+      const failedAt = row.failedAt ? new Date(row.failedAt).getTime() : 0;
+      if (Date.now() - failedAt < ttsCache.FAILED_COOLDOWN_MS) {
+        res.status(429).json({ error: "تعذر توليد هذا الصوت قبل قليل. انتظر دقائق ثم أعد المحاولة." });
+        return;
+      }
+      const requestId = randomUUID();
+      const won = await ttsCache.tryTakeoverRow(row.id, "failed", requestId);
+      if (!won) continue;
+      await runGenerationCycle(req, res, row.id, requestId, teacherId, text, voice);
+      return;
+    }
+
+    // ── pending ──────────────────────────────────────────────────────────────
+    const ageMs = Date.now() - new Date(row.createdAt).getTime();
+    if (ageMs < ttsCache.PENDING_ORPHAN_MS) {
+      // Fresh pending owned by a concurrent request: wait server-side (no 202 —
+      // the current client treats any non-OK as failure). NO hold, NO charge.
+      const deadline = Date.now() + ttsCache.WAIT_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, ttsCache.WAIT_POLL_MS));
+        const fresh = await ttsCache.getCacheRowById(row.id);
+        if (!fresh) break; // deleted → fresh cycle
+        if (fresh.status === "ready") {
+          const outcome = await serveReadyRow(req, res, fresh);
+          if (outcome === "served") return;
+          res.status(503).json(TEMP_ERROR);
+          return;
+        }
+        if (fresh.status === "failed") { res.status(500).json({ error: "فشل توليد الصوت" }); return; }
+      }
+      res.status(503).json(TEMP_ERROR); // rare: still pending after 60s
+      return;
+    }
+
+    // Orphaned pending (owner crashed): resolve financially first — never
+    // generate or charge before the previous cycle's money state is settled.
+    const resolution = await ttsCache.resolveUncertainCapture(row);
+    if (resolution.outcome === "ready") {
+      const promoted = await ttsCache.getCacheRowById(row.id);
+      const outcome = promoted ? await serveReadyRow(req, res, promoted) : "transient_error";
+      if (outcome === "served") return;
+      res.status(503).json(TEMP_ERROR);
+      return;
+    }
+    if (resolution.outcome === "indeterminate") { res.status(503).json(TEMP_ERROR); return; }
+    if (resolution.outcome === "compensated" || resolution.outcome === "refunded") {
+      // Row is now failed — no automatic retry this request (plan v4).
+      res.status(503).json(TEMP_ERROR);
+      return;
+    }
+    // new_cycle: previous cycle left no financial trace — take over atomically.
+    const requestId = randomUUID();
+    const won = await ttsCache.tryTakeoverRow(
+      row.id, "pending", requestId,
+      dsql`AND created_at < NOW() - INTERVAL '2 minutes'`,
+    );
+    if (!won) continue;
+    await runGenerationCycle(req, res, row.id, requestId, teacherId, text, voice);
+    return;
+  }
+
+  res.status(503).json(TEMP_ERROR);
+});
+
+/* Protected audio retrieval by cache row id — owner-only, ready-only.
+   storage_key is never exposed; the server streams the object itself. */
+router.get("/tts/audio/:id", async (req, res) => {
+  const teacherId = req.session?.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ error: "يجب تسجيل الدخول" });
+    return;
+  }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(404).json({ error: "غير موجود" });
+    return;
+  }
+  const row = await ttsCache.getCacheRowById(id);
+  if (!row || row.teacherId !== teacherId || row.status !== "ready" || !row.storageKey) {
+    res.status(404).json({ error: "غير موجود" }); // same response for exists-but-not-yours
+    return;
+  }
+  try {
+    const buf = await ttsCache.downloadTtsAudio(row.storageKey);
+    void ttsCache.touchLastUsed(row.id);
+    sendAudio(res, buf);
+  } catch {
+    res.status(503).json(TEMP_ERROR);
+  }
 });
 
 // Student dictation TTS — tightly scoped to the CURRENT active dictation
