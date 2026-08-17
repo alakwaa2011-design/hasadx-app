@@ -223,8 +223,6 @@ const PlanPatchSchema = z
     billingPeriodDays: z.number().int().min(0).max(3650).optional(),
     maxStudents: z.number().int().min(0).nullable().optional(),
     maxClasses: z.number().int().min(0).nullable().optional(),
-    maxHomeworksPerMonth: z.number().int().min(0).nullable().optional(),
-    aiUsageDailyLimit: z.number().int().min(0).nullable().optional(),
     maxUsers: z.number().int().min(0).nullable().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),

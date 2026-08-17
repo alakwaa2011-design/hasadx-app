@@ -33,8 +33,6 @@ router.get("/subscriptions/plans", async (req, res) => {
           rolloverCap:          plansTable.rolloverCap,
           maxStudents:          plansTable.maxStudents,
           maxClasses:           plansTable.maxClasses,
-          maxHomeworksPerMonth: plansTable.maxHomeworksPerMonth,
-          aiUsageDailyLimit:    plansTable.aiUsageDailyLimit,
           isActive:             plansTable.isActive,
           sortOrder:            plansTable.sortOrder,
         })

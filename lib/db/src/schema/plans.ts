@@ -22,10 +22,6 @@ export const plansTable = pgTable(
     maxStudents: integer("max_students"),
     /** NULL = unlimited */
     maxClasses: integer("max_classes"),
-    /** NULL = unlimited */
-    maxHomeworksPerMonth: integer("max_homeworks_per_month"),
-    /** Daily AI message limit. NULL = unlimited */
-    aiUsageDailyLimit: integer("ai_usage_daily_limit"),
     /** For school/team plans: extra teacher seats. NULL = unlimited */
     maxUsers: integer("max_users"),
     /** Credits granted each billing period (renewal). NULL = no credits. */

@@ -159,40 +159,6 @@ export declare const plansTable: import("drizzle-orm/pg-core").PgTableWithColumn
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        maxHomeworksPerMonth: import("drizzle-orm/pg-core").PgColumn<{
-            name: "max_homeworks_per_month";
-            tableName: "plans";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        aiUsageDailyLimit: import("drizzle-orm/pg-core").PgColumn<{
-            name: "ai_usage_daily_limit";
-            tableName: "plans";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
         maxUsers: import("drizzle-orm/pg-core").PgColumn<{
             name: "max_users";
             tableName: "plans";

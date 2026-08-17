@@ -3,8 +3,6 @@
  * Add a new feature here, then map it in feature-access.ts.
  */
 export const FEATURES = [
-  "create_homework",
-  "use_ai",
   "add_student",
   "create_class",
   "add_user",
@@ -28,8 +26,6 @@ export interface FeatureAccessResult {
 export interface PlanLimits {
   maxStudents: number | null;
   maxClasses: number | null;
-  maxHomeworksPerMonth: number | null;
-  aiUsageDailyLimit: number | null;
   maxUsers: number | null;
 }
 

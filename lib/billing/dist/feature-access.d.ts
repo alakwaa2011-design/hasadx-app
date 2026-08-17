@@ -37,17 +37,10 @@ declare class FeatureAccessService {
      */
     increment(teacherId: number, feature: Feature): Promise<FeatureAccessResult>;
     private measure;
-    /**
-     * Atomically increments subscription_usage.homeworks_count. If `limit` is
-     * non-null the UPDATE is gated by `< limit`, so the row count tells us if
-     * the increment succeeded.
-     */
-    private atomicMonthlyIncrement;
-    private atomicDailyAiIncrement;
     /** Unconditional monthly counter bump (no limit check). */
     private bumpMonthly;
     /** Refund a previously incremented flow counter (e.g. AI call failed upstream). */
-    refund(teacherId: number, feature: Feature): Promise<void>;
+    refund(_teacherId: number, _feature: Feature): Promise<void>;
 }
 export declare const featureAccess: FeatureAccessService;
 export type { FeatureAccessService };

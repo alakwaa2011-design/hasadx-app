@@ -21,10 +21,6 @@ const PLANS = [
     priceMinor: 0,
     currency: "USD",
     billingPeriodDays: 0,
-    // Policy 2026-08: no plan-based homework or daily-AI quotas. Manual work
-    // is unlimited on every plan; AI cost is governed by Hasad credits.
-    maxHomeworksPerMonth: null as number | null,
-    aiUsageDailyLimit: null as number | null,
     maxUsers: 1,
     monthlyCredits: 50,
     rolloverCap: null as number | null,
@@ -37,8 +33,6 @@ const PLANS = [
     priceMinor: 499,
     currency: "USD",
     billingPeriodDays: 30,
-    maxHomeworksPerMonth: null as number | null,
-    aiUsageDailyLimit: null as number | null,
     maxUsers: 1,
     monthlyCredits: 250,
     rolloverCap: 500,
@@ -51,8 +45,6 @@ const PLANS = [
     priceMinor: 999,
     currency: "USD",
     billingPeriodDays: 30,
-    maxHomeworksPerMonth: null as number | null,
-    aiUsageDailyLimit: null as number | null,
     maxUsers: 1,
     monthlyCredits: 600,
     rolloverCap: 1200,
@@ -70,13 +62,11 @@ export async function seedPlansIfMissing(): Promise<void> {
       await db.execute(sql`
         INSERT INTO plans (
           code, name_ar, name_en, price_minor, currency, billing_period_days,
-          max_students, max_classes, max_homeworks_per_month, ai_usage_daily_limit,
-          max_users, monthly_credits, rollover_cap,
+          max_students, max_classes, max_users, monthly_credits, rollover_cap,
           sort_order, is_active, created_at, updated_at
         ) VALUES (
           ${p.code}, ${p.nameAr}, ${p.nameEn}, ${p.priceMinor}, ${p.currency},
-          ${p.billingPeriodDays}, NULL, NULL,
-          ${p.maxHomeworksPerMonth}, ${p.aiUsageDailyLimit}, ${p.maxUsers},
+          ${p.billingPeriodDays}, NULL, NULL, ${p.maxUsers},
           ${p.monthlyCredits}, ${p.rolloverCap},
           ${p.sortOrder}, true, NOW(), NOW()
         )

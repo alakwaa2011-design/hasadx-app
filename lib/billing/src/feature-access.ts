@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   db,
   plansTable,
@@ -7,7 +7,6 @@ import {
   teachersTable,
   studentsTable,
   teacherClassesTable,
-  aiUsageDaily,
 } from "@workspace/db";
 import { TtlCache } from "./cache";
 import type { Feature, FeatureAccessResult, SubscriptionView } from "./types";
@@ -99,8 +98,6 @@ class FeatureAccessService {
       limits: {
         maxStudents: row.maxStudents,
         maxClasses: row.maxClasses,
-        maxHomeworksPerMonth: row.maxHomeworksPerMonth,
-        aiUsageDailyLimit: row.aiUsageDailyLimit,
         maxUsers: row.maxUsers,
       },
       isAdmin: !!teacher.isAdmin,
@@ -121,8 +118,6 @@ class FeatureAccessService {
         expiresAt: subscriptionsTable.expiresAt,
         maxStudents: plansTable.maxStudents,
         maxClasses: plansTable.maxClasses,
-        maxHomeworksPerMonth: plansTable.maxHomeworksPerMonth,
-        aiUsageDailyLimit: plansTable.aiUsageDailyLimit,
         maxUsers: plansTable.maxUsers,
       })
       .from(subscriptionsTable)
@@ -170,14 +165,7 @@ class FeatureAccessService {
     const sub = await this.getSubscription(teacherId);
     if (sub.isAdmin) return unlimited();
 
-    // Flow counters live in subscription_usage. Resource counters are derived,
-    // so we just delegate to check().
-    if (feature === "create_homework") {
-      return this.atomicMonthlyIncrement(teacherId, "homeworks_count", sub.limits.maxHomeworksPerMonth);
-    }
-    if (feature === "use_ai") {
-      return this.atomicDailyAiIncrement(teacherId, sub.limits.aiUsageDailyLimit);
-    }
+    // Resource counters are derived, so we just delegate to check().
     if (feature === "add_student") {
       // Atomic increment of monthly counter (informational); enforcement is on totals.
       await this.bumpMonthly(teacherId, "students_added_count");
@@ -196,31 +184,6 @@ class FeatureAccessService {
     sub: CachedSubscription,
   ): Promise<{ limit: number | null; used: number }> {
     switch (feature) {
-      case "create_homework": {
-        const limit = sub.limits.maxHomeworksPerMonth;
-        const period = this.currentMonth();
-        const rows = await db
-          .select({ c: subscriptionUsageTable.homeworksCount })
-          .from(subscriptionUsageTable)
-          .where(
-            and(
-              eq(subscriptionUsageTable.teacherId, teacherId),
-              eq(subscriptionUsageTable.periodMonth, period),
-            ),
-          )
-          .limit(1);
-        return { limit, used: rows[0]?.c ?? 0 };
-      }
-      case "use_ai": {
-        const limit = sub.limits.aiUsageDailyLimit;
-        const day = this.todayUtc();
-        const rows = await db
-          .select({ c: aiUsageDaily.messageCount })
-          .from(aiUsageDaily)
-          .where(and(eq(aiUsageDaily.teacherId, teacherId), eq(aiUsageDaily.day, day)))
-          .limit(1);
-        return { limit, used: rows[0]?.c ?? 0 };
-      }
       case "add_student": {
         const limit = sub.limits.maxStudents;
         const rows = await db
@@ -244,82 +207,6 @@ class FeatureAccessService {
     }
   }
 
-  /**
-   * Atomically increments subscription_usage.homeworks_count. If `limit` is
-   * non-null the UPDATE is gated by `< limit`, so the row count tells us if
-   * the increment succeeded.
-   */
-  private async atomicMonthlyIncrement(
-    teacherId: number,
-    column: "homeworks_count",
-    limit: number | null,
-  ): Promise<FeatureAccessResult> {
-    const period = this.currentMonth();
-    const colSql = sql.raw(column);
-    const result = limit === null
-      ? await db.execute(sql`
-          INSERT INTO subscription_usage (teacher_id, period_month, ${colSql}, created_at, updated_at)
-          VALUES (${teacherId}, ${period}, 1, NOW(), NOW())
-          ON CONFLICT (teacher_id, period_month) DO UPDATE
-            SET ${colSql} = subscription_usage.${colSql} + 1, updated_at = NOW()
-          RETURNING ${colSql} AS new_count
-        `)
-      : await db.execute(sql`
-          INSERT INTO subscription_usage (teacher_id, period_month, ${colSql}, created_at, updated_at)
-          VALUES (${teacherId}, ${period}, 1, NOW(), NOW())
-          ON CONFLICT (teacher_id, period_month) DO UPDATE
-            SET ${colSql} = subscription_usage.${colSql} + 1, updated_at = NOW()
-            WHERE subscription_usage.${colSql} < ${limit}
-          RETURNING ${colSql} AS new_count
-        `);
-    const rows = (result as any).rows ?? result;
-    const newCount = Array.isArray(rows) && rows[0] ? Number((rows[0] as any).new_count) : null;
-    if (newCount === null || !Number.isFinite(newCount)) {
-      // Race: limit reached. Compute current `used` for the response.
-      const currentRows = await db
-        .select({ c: subscriptionUsageTable.homeworksCount })
-        .from(subscriptionUsageTable)
-        .where(and(eq(subscriptionUsageTable.teacherId, teacherId), eq(subscriptionUsageTable.periodMonth, period)))
-        .limit(1);
-      return resultFor(limit, currentRows[0]?.c ?? limit ?? 0, this.paymentsEnabled, /*denied*/ true);
-    }
-    return resultFor(limit, newCount, this.paymentsEnabled);
-  }
-
-  private async atomicDailyAiIncrement(
-    teacherId: number,
-    limit: number | null,
-  ): Promise<FeatureAccessResult> {
-    const day = this.todayUtc();
-    const result = limit === null
-      ? await db.execute(sql`
-          INSERT INTO ai_usage_daily (teacher_id, day, message_count, tokens_in, tokens_out, cost_micro_usd)
-          VALUES (${teacherId}, ${day}, 1, 0, 0, 0)
-          ON CONFLICT (teacher_id, day) DO UPDATE
-            SET message_count = ai_usage_daily.message_count + 1
-          RETURNING message_count AS new_count
-        `)
-      : await db.execute(sql`
-          INSERT INTO ai_usage_daily (teacher_id, day, message_count, tokens_in, tokens_out, cost_micro_usd)
-          VALUES (${teacherId}, ${day}, 1, 0, 0, 0)
-          ON CONFLICT (teacher_id, day) DO UPDATE
-            SET message_count = ai_usage_daily.message_count + 1
-            WHERE ai_usage_daily.message_count < ${limit}
-          RETURNING message_count AS new_count
-        `);
-    const rows = (result as any).rows ?? result;
-    const newCount = Array.isArray(rows) && rows[0] ? Number((rows[0] as any).new_count) : null;
-    if (newCount === null || !Number.isFinite(newCount)) {
-      const cur = await db
-        .select({ c: aiUsageDaily.messageCount })
-        .from(aiUsageDaily)
-        .where(and(eq(aiUsageDaily.teacherId, teacherId), eq(aiUsageDaily.day, day)))
-        .limit(1);
-      return resultFor(limit, cur[0]?.c ?? limit ?? 0, this.paymentsEnabled, /*denied*/ true);
-    }
-    return resultFor(limit, newCount, this.paymentsEnabled);
-  }
-
   /** Unconditional monthly counter bump (no limit check). */
   private async bumpMonthly(
     teacherId: number,
@@ -336,22 +223,10 @@ class FeatureAccessService {
   }
 
   /** Refund a previously incremented flow counter (e.g. AI call failed upstream). */
-  async refund(teacherId: number, feature: Feature): Promise<void> {
-    if (feature === "use_ai") {
-      const day = this.todayUtc();
-      await db.execute(sql`
-        UPDATE ai_usage_daily
-        SET message_count = GREATEST(message_count - 1, 0)
-        WHERE teacher_id = ${teacherId} AND day = ${day}
-      `);
-    } else if (feature === "create_homework") {
-      const period = this.currentMonth();
-      await db.execute(sql`
-        UPDATE subscription_usage
-        SET homeworks_count = GREATEST(homeworks_count - 1, 0)
-        WHERE teacher_id = ${teacherId} AND period_month = ${period}
-      `);
-    }
+  async refund(_teacherId: number, _feature: Feature): Promise<void> {
+    // create_homework and use_ai quotas were removed in 2026-08.
+    // Resource features (add_student, create_class) are never incremented,
+    // so there is nothing to refund.
   }
 }
 

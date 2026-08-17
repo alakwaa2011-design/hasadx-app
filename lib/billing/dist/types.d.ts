@@ -2,7 +2,7 @@
  * Catalog of features that go through `featureAccess.check()`.
  * Add a new feature here, then map it in feature-access.ts.
  */
-export declare const FEATURES: readonly ["create_homework", "use_ai", "add_student", "create_class", "add_user"];
+export declare const FEATURES: readonly ["add_student", "create_class", "add_user"];
 export type Feature = (typeof FEATURES)[number];
 export interface FeatureAccessResult {
     /** Whether the action is permitted right now. */
@@ -19,8 +19,6 @@ export interface FeatureAccessResult {
 export interface PlanLimits {
     maxStudents: number | null;
     maxClasses: number | null;
-    maxHomeworksPerMonth: number | null;
-    aiUsageDailyLimit: number | null;
     maxUsers: number | null;
 }
 export interface SubscriptionView {

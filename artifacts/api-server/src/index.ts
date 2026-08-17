@@ -1120,6 +1120,20 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "subscriptions free-plan seed failed");
   }
+
+  // ── Remove deprecated quota columns from plans (2026-08 policy) ───────────
+  // max_homeworks_per_month and ai_usage_daily_limit are no longer used;
+  // manual work is unlimited and AI cost is governed by Hasad credits.
+  try {
+    await db.execute(sql`
+      ALTER TABLE plans
+        DROP COLUMN IF EXISTS max_homeworks_per_month,
+        DROP COLUMN IF EXISTS ai_usage_daily_limit
+    `);
+    logger.info("plans: deprecated quota columns removed");
+  } catch (err) {
+    logger.error(err, "plans: quota column drop failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {
