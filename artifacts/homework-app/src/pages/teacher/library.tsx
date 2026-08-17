@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   Library,
   Upload,
@@ -130,6 +131,7 @@ function fileIcon(fileType: string, name: string) {
 export default function TeacherLibraryPage() {
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const [groups, setGroups] = useState<LibraryGroup[]>([]);
   const [files, setFiles] = useState<LibraryFile[]>([]);
@@ -823,12 +825,20 @@ export default function TeacherLibraryPage() {
       const data = await res.json();
       const qs: ExtractedQuestion[] = Array.isArray(data.questions) ? data.questions : [];
       if (qs.length === 0) throw new Error(T.extractError);
+      if (qs.length < extractCount) {
+        toast.warning(
+          isAr
+            ? `تم استخراج ${qs.length} من أصل ${extractCount} سؤالاً — المحتوى لم يكفِ للعدد المطلوب.`
+            : `Extracted ${qs.length} of ${extractCount} requested questions — the content wasn't enough for more.`
+        );
+      }
       setExtractedQuestions(qs);
       setExtractExpanded(new Set([0]));
     } catch (e: any) {
       toast.error(e.message || T.extractError);
     } finally {
       setExtractLoading(false);
+      refreshCreditsBalance();
     }
   }
 

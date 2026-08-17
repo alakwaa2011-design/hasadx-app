@@ -553,7 +553,16 @@ export default function WorksheetCreate() {
       );
       setLastTheme(chosenThemeF);
       setSettings(s => ({ ...s, template: chosenThemeF }));
-      toast.success(ar ? `تمت إضافة ${generated.length} سؤال من ${pickedFiles.length} ملف` : `Added ${generated.length} questions from ${pickedFiles.length} file(s)`);
+      const requestedTotal = Object.values(aiCounts).reduce((s: number, n) => s + (Number(n) || 0), 0);
+      if (requestedTotal > 0 && generated.length < requestedTotal) {
+        toast.warning(
+          ar
+            ? `استُخرج ${generated.length} من أصل ${requestedTotal} سؤالاً — محتوى الملفات لم يكفِ للعدد المطلوب.`
+            : `Extracted ${generated.length} of ${requestedTotal} requested questions — the files didn't contain enough content.`
+        );
+      } else {
+        toast.success(ar ? `تمت إضافة ${generated.length} سؤال من ${pickedFiles.length} ملف` : `Added ${generated.length} questions from ${pickedFiles.length} file(s)`);
+      }
       setPickedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {

@@ -375,6 +375,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const cfg = outlineConfigForTier(tier);
 
     if (brief.slideCount > cfg.maxSlides) {
+      await refundCredits(req, "plan limit");
       res.status(403).json({
         code: "LIMIT_EXCEEDED",
         kind: "slides",
@@ -386,6 +387,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       return;
     }
     if (!cfg.allowedDensities.includes(brief.density)) {
+      await refundCredits(req, "plan limit");
       res.status(403).json({
         code: "LIMIT_EXCEEDED",
         kind: "density",
@@ -399,6 +401,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
 
     const used = await todaysOutlineCount(teacherId);
     if (used >= cfg.dailyOutlines) {
+      await refundCredits(req, "daily limit");
       res.status(429).json({
         code: "DAILY_LIMIT_REACHED",
         limit: cfg.dailyOutlines,
@@ -491,6 +494,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
         }
       } catch (err) {
         req.log.error({ err }, "Outline completion failed");
+        await refundCredits(req, "ai provider error");
         res.status(502).json({
           message: brief.language === "ar"
             ? "تعذّر الوصول لخدمة الذكاء الاصطناعي. حاول بعد قليل."
@@ -501,6 +505,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     }
 
     if (!outlineRaw || typeof outlineRaw !== "object") {
+      await refundCredits(req, "invalid outline");
       res.status(422).json({
         message: brief.language === "ar"
           ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى."
@@ -554,6 +559,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const parsed = outlineSchema.safeParse(outline);
     if (!parsed.success) {
       req.log.warn({ issues: parsed.error.issues }, "Outline failed strict validation");
+      await refundCredits(req, "invalid outline");
       res.status(422).json({
         message: brief.language === "ar"
           ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى."
@@ -814,6 +820,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
     const teacherId = req.session.teacherId as number;
     const draftId = parseInt(String(req.params.draftId), 10);
     if (!Number.isFinite(draftId)) {
+      await refundCredits(req, "invalid input");
       res.status(400).json({ message: "Bad draftId" });
       return;
     }
@@ -866,12 +873,19 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
         .from(presentationDraftsTable)
         .where(eq(presentationDraftsTable.id, draftId))
         .limit(1);
-      if (!existing) { res.status(404).json({ message: "Not found" }); return; }
+      if (!existing) {
+        await refundCredits(req, "draft not found");
+        res.status(404).json({ message: "Not found" });
+        return;
+      }
       if (existing.teacherId !== teacherId) {
+        await refundCredits(req, "forbidden");
         res.status(403).json({ message: "Forbidden" });
         return;
       }
       if (existing.status === "built" && existing.presentationId) {
+        // Already built — no new AI work happened, return the hold.
+        await refundCredits(req, "already built");
         res.status(200).json({
           presentationId: existing.presentationId,
           warnings: [],
@@ -879,6 +893,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
         });
         return;
       }
+      await refundCredits(req, "invalid draft status");
       res.status(409).json({
         message: "Only approved outlines can be built",
         status: existing.status,
@@ -1037,6 +1052,8 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
           updatedAt: new Date(),
         })
         .where(eq(presentationDraftsTable.id, draftId));
+      // Partial work was produced and kept — capture the hold (AI cost spent).
+      await captureCredits(req);
       res.status(200).json({
         presentationId: deck.id,
         warnings,
@@ -1061,6 +1078,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
           updatedAt: new Date(),
         })
         .where(eq(presentationDraftsTable.id, draftId));
+      await refundCredits(req, "no slides built");
       res.status(500).json({
         message: outline.language === "ar"
           ? "لم تُبنَ أي شريحة. حاول مرة أخرى."

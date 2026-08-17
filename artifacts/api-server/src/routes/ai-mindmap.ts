@@ -23,14 +23,16 @@ router.post("/ai/generate-mindmap", checkCredits("mindmap"), async (req, res) =>
     return;
   }
 
-  const { topic, lang = "ar", depth = "standard" } = req.body;
+  const { topic, lang = "ar", depth = "standard" } = req.body || {};
 
   if (!topic || typeof topic !== "string" || !topic.trim()) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "يجب إدخال موضوع الخريطة الذهنية" });
     return;
   }
 
   if (topic.trim().length > MAX_TOPIC_LENGTH) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({
       message: `الموضوع طويل جداً (الحد الأقصى ${MAX_TOPIC_LENGTH} حرف)`,
     });

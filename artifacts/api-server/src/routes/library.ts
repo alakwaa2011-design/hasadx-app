@@ -13,6 +13,7 @@ import mammoth from "mammoth";
 import JSZip from "jszip";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { LIBRARY_PENDING_UPLOAD_TTL_MS } from "../lib/library-constants";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -621,14 +622,16 @@ const ExtractQuestionsBody = z.object({
   questionType: z.enum(["mcq", "true_false", "fill_blank"]).default("mcq"),
 });
 
-router.post("/library/files/:id/extract-questions", requireAuth, async (req: any, res: Response) => {
+router.post("/library/files/:id/extract-questions", requireAuth, checkCredits("extract_questions_from_source"), async (req: any, res: Response) => {
   const id = parseInt(req.params.id);
   if (!Number.isFinite(id)) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "معرّف غير صالح" });
     return;
   }
   const parsed = ExtractQuestionsBody.safeParse(req.body || {});
   if (!parsed.success) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "بيانات غير صالحة" });
     return;
   }
@@ -639,10 +642,12 @@ router.post("/library/files/:id/extract-questions", requireAuth, async (req: any
       .from(teacherLibraryFilesTable)
       .where(and(eq(teacherLibraryFilesTable.id, id), eq(teacherLibraryFilesTable.teacherId, teacherId)));
     if (!file) {
+      await refundCredits(req, "file not found");
       res.status(404).json({ message: "غير موجود" });
       return;
     }
     if (file.source !== "upload" || !file.objectPath) {
+      await refundCredits(req, "unsupported file source");
       res.status(400).json({ message: "هذه الميزة متاحة للملفات المرفوعة فقط" });
       return;
     }
@@ -655,6 +660,7 @@ router.post("/library/files/:id/extract-questions", requireAuth, async (req: any
       lower.endsWith(".docx") ||
       lower.endsWith(".pptx");
     if (!isSupported) {
+      await refundCredits(req, "unsupported file type");
       res.status(400).json({ message: "نوع الملف غير مدعوم لاستخراج الأسئلة (PDF/DOCX/PPTX فقط)" });
       return;
     }
@@ -666,10 +672,12 @@ router.post("/library/files/:id/extract-questions", requireAuth, async (req: any
       text = await extractTextFromBuffer(buffer, contentType || file.fileType, file.name);
     } catch (e: any) {
       req.log.error({ err: e }, "library extract text error");
+      await refundCredits(req, "text extraction failed");
       res.status(500).json({ message: "تعذر قراءة محتوى الملف" });
       return;
     }
     if (!text || text.length < 30) {
+      await refundCredits(req, "insufficient text");
       res.status(400).json({ message: "لم يتم العثور على نص كافٍ في الملف لاستخراج الأسئلة" });
       return;
     }
@@ -757,6 +765,7 @@ ${jsonShape}`;
     const responseText = completion.choices[0]?.message?.content || "";
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
+      await refundCredits(req, "no json in ai response");
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من استخراج الأسئلة. حاول مرة أخرى." });
       return;
     }
@@ -764,10 +773,12 @@ ${jsonShape}`;
     try {
       raw = JSON.parse(jsonMatch[0]);
     } catch {
+      await refundCredits(req, "json parse failed");
       res.status(500).json({ message: "خطأ في تنسيق الإجابة من الذكاء الاصطناعي. حاول مرة أخرى." });
       return;
     }
     if (!Array.isArray(raw) || raw.length === 0) {
+      await refundCredits(req, "empty extraction");
       res.status(500).json({ message: "لم يتم استخراج أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
@@ -836,12 +847,16 @@ ${jsonShape}`;
     }
 
     if (validQuestions.length === 0) {
+      await refundCredits(req, "no valid questions");
       res.status(500).json({ message: "لم يتم استخراج أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
-    res.json({ questions: validQuestions, sourceFileName: file.name, questionType });
+    const responseBody = { questions: validQuestions, sourceFileName: file.name, questionType };
+    await captureCredits(req, responseBody);
+    res.json(responseBody);
   } catch (err) {
     req.log.error(err, "library extract questions error");
+    await refundCredits(req, "extraction failed");
     res.status(500).json({ message: "خطأ في استخراج الأسئلة" });
   }
 });
@@ -854,9 +869,10 @@ const ExtractQuestionsBulkBody = z.object({
   subject: z.string().max(200).optional(),
 });
 
-router.post("/library/files/extract-questions-bulk", requireAuth, async (req: any, res: Response) => {
+router.post("/library/files/extract-questions-bulk", requireAuth, checkCredits("extract_questions_from_source"), async (req: any, res: Response) => {
   const parsed = ExtractQuestionsBulkBody.safeParse(req.body || {});
   if (!parsed.success) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "بيانات غير صالحة (يجب اختيار ملفين على الأقل)" });
     return;
   }
@@ -870,11 +886,13 @@ router.post("/library/files/extract-questions-bulk", requireAuth, async (req: an
       .where(and(eq(teacherLibraryFilesTable.teacherId, teacherId), sql`${teacherLibraryFilesTable.id} = ANY(${uniqueIds})`));
 
     if (filesRows.length !== uniqueIds.length) {
+      await refundCredits(req, "files not found");
       res.status(404).json({ message: "بعض الملفات غير موجودة" });
       return;
     }
     for (const f of filesRows) {
       if (f.source !== "upload" || !f.objectPath) {
+        await refundCredits(req, "unsupported file source");
         res.status(400).json({ message: `الملف "${f.name}" غير قابل للاستخراج` });
         return;
       }
@@ -887,6 +905,7 @@ router.post("/library/files/extract-questions-bulk", requireAuth, async (req: an
         lower.endsWith(".docx") ||
         lower.endsWith(".pptx");
       if (!isSupported) {
+        await refundCredits(req, "unsupported file type");
         res.status(400).json({ message: `الملف "${f.name}" بصيغة غير مدعومة (PDF/DOCX/PPTX فقط)` });
         return;
       }
@@ -918,6 +937,7 @@ router.post("/library/files/extract-questions-bulk", requireAuth, async (req: an
     );
 
     if (sections.length === 0) {
+      await refundCredits(req, "insufficient text");
       res.status(400).json({ message: "لم يتم العثور على نص كافٍ في أي من الملفات المختارة" });
       return;
     }
@@ -975,6 +995,7 @@ ${combined}
     const responseText = completion.choices[0]?.message?.content || "";
     const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
     if (!jsonMatch) {
+      await refundCredits(req, "no json in ai response");
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من استخراج الأسئلة. حاول مرة أخرى." });
       return;
     }
@@ -982,10 +1003,12 @@ ${combined}
     try {
       raw = JSON.parse(jsonMatch[0]);
     } catch {
+      await refundCredits(req, "json parse failed");
       res.status(500).json({ message: "خطأ في تنسيق الإجابة من الذكاء الاصطناعي. حاول مرة أخرى." });
       return;
     }
     if (!Array.isArray(raw) || raw.length === 0) {
+      await refundCredits(req, "empty extraction");
       res.status(500).json({ message: "لم يتم استخراج أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
@@ -1011,16 +1034,20 @@ ${combined}
       });
 
     if (validQuestions.length === 0) {
+      await refundCredits(req, "no valid questions");
       res.status(500).json({ message: "لم يتم استخراج أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
-    res.json({
+    const responseBody = {
       questions: validQuestions,
       sourceFileNames: sections.map((s) => s.name),
       skippedFileNames: failed,
-    });
+    };
+    await captureCredits(req, responseBody);
+    res.json(responseBody);
   } catch (err) {
     req.log.error(err, "library bulk extract questions error");
+    await refundCredits(req, "extraction failed");
     res.status(500).json({ message: "خطأ في استخراج الأسئلة" });
   }
 });

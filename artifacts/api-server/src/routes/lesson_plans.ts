@@ -358,6 +358,7 @@ router.post("/lesson-plans/ai/generate", requireTeacher, checkCredits("lesson-pl
     const validated = sectionsSchema.safeParse(cleaned);
     if (!validated.success) {
       req.log.warn({ issues: validated.error.issues }, "AI lesson plan failed strict validation");
+      await refundCredits(req, "invalid generator output");
       res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
       return;
     }

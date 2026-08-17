@@ -117,25 +117,29 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
     return;
   }
 
-  const { topic, count, difficulty, subject } = req.body;
+  const { topic, count, difficulty, subject } = req.body || {};
 
   if (!topic || typeof topic !== "string" || !topic.trim()) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "يجب تحديد موضوع الأسئلة" });
     return;
   }
 
   if (topic.length > MAX_TOPIC_LENGTH) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: `الموضوع طويل جداً (الحد الأقصى ${MAX_TOPIC_LENGTH} حرف)` });
     return;
   }
 
   if (subject && (typeof subject !== "string" || subject.length > MAX_SUBJECT_LENGTH)) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: `اسم المادة طويل جداً (الحد الأقصى ${MAX_SUBJECT_LENGTH} حرف)` });
     return;
   }
 
   const parsedCount = parseInt(count, 10);
   if (isNaN(parsedCount) || parsedCount < MIN_QUESTIONS || parsedCount > MAX_QUESTIONS) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: `عدد الأسئلة يجب أن يكون بين ${MIN_QUESTIONS} و ${MAX_QUESTIONS}` });
     return;
   }
@@ -263,19 +267,22 @@ router.post("/ai/generate-questions-with-images", checkCredits("ai-questions-ima
     return;
   }
 
-  const { topic, count, difficulty, subject } = req.body;
+  const { topic, count, difficulty, subject } = req.body || {};
 
   if (!topic || typeof topic !== "string" || !topic.trim()) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "يجب تحديد موضوع الأسئلة" });
     return;
   }
   if (topic.length > MAX_TOPIC_LENGTH) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: `الموضوع طويل جداً (الحد الأقصى ${MAX_TOPIC_LENGTH} حرف)` });
     return;
   }
 
   const parsedCount = parseInt(count, 10);
   if (isNaN(parsedCount) || parsedCount < MIN_QUESTIONS || parsedCount > 20) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: `عدد الأسئلة يجب أن يكون بين 1 و 20 عند توليد الصور` });
     return;
   }
@@ -351,7 +358,9 @@ ${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
     return;
   }
 
-  /* Step 2 — Generate images in parallel (max 6 concurrent to avoid rate limits) */
+  /* Step 2 — Generate images in parallel (max 6 concurrent to avoid rate limits).
+     Wrapped so any unexpected throw (storage init, batch mapping) refunds. */
+  try {
   const storage = new ObjectStorageService();
 
   const generateImage = async (imagePrompt: string): Promise<string | null> => {
@@ -399,32 +408,50 @@ ${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
 
   await captureCredits(req);
   res.json({ questions, failedImages: failedCount });
+  } catch (err) {
+    req.log.error({ err }, "generate-questions-with-images unexpected failure");
+    await refundCredits(req, "unexpected error");
+    if (!res.headersSent) {
+      res.status(500).json({ message: "خطأ غير متوقع أثناء توليد الصور. لم يُخصم رصيدك." });
+    }
+  }
 });
 
-router.post("/ai/extract-questions-from-image", imageUploadLimiter, async (req, res) => {
+router.post("/ai/extract-questions-from-image", imageUploadLimiter, checkCredits("extract_questions_from_source"), async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول" });
     return;
   }
 
-  const [teacher] = await db
-    .select({ isAdmin: teachersTable.isAdmin })
-    .from(teachersTable)
-    .where(eq(teachersTable.id, req.session.teacherId))
-    .limit(1);
+  let teacher: { isAdmin: boolean | null } | undefined;
+  try {
+    [teacher] = await db
+      .select({ isAdmin: teachersTable.isAdmin })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, req.session.teacherId))
+      .limit(1);
+  } catch (err) {
+    req.log.error({ err }, "admin lookup failed in extract-questions-from-image");
+    await refundCredits(req, "db error");
+    res.status(500).json({ message: "خطأ مؤقت. حاول مرة أخرى." });
+    return;
+  }
   if (!teacher?.isAdmin) {
+    await refundCredits(req, "admins only");
     res.status(403).json({ message: "هذه الميزة متاحة للمسؤولين فقط" });
     return;
   }
 
-  const { images, count, difficulty } = req.body;
+  const { images, count, difficulty } = req.body || {};
 
   if (!images || !Array.isArray(images) || images.length === 0) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "يجب رفع صورة واحدة على الأقل" });
     return;
   }
 
   if (images.length > 5) {
+    await refundCredits(req, "invalid input");
     res.status(400).json({ message: "الحد الأقصى 5 صور" });
     return;
   }
@@ -432,10 +459,12 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, async (req, 
   const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
   for (const img of images) {
     if (typeof img !== "string" || !img.startsWith("data:image/")) {
+      await refundCredits(req, "invalid input");
       res.status(400).json({ message: "صيغة الصورة غير صحيحة" });
       return;
     }
     if (img.length > MAX_IMAGE_SIZE) {
+      await refundCredits(req, "invalid input");
       res.status(400).json({ message: "حجم الصورة كبير جداً (الحد الأقصى 10 ميجابايت لكل صورة)" });
       return;
     }
@@ -496,6 +525,7 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, async (req, 
 
     const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
     if (!jsonMatch) {
+      await refundCredits(req, "no json in ai response");
       res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من استخراج الأسئلة. تأكد أن الصور واضحة وحاول مرة أخرى." });
       return;
     }
@@ -504,11 +534,13 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, async (req, 
     try {
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
+      await refundCredits(req, "json parse failed");
       res.status(500).json({ message: "خطأ في تنسيق الإجابة من الذكاء الاصطناعي. حاول مرة أخرى." });
       return;
     }
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
+      await refundCredits(req, "empty extraction");
       res.status(500).json({ message: "لم يتم استخراج أسئلة صالحة. تأكد أن الصور تحتوي على محتوى تعليمي." });
       return;
     }
@@ -533,13 +565,16 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, async (req, 
       });
 
     if (validQuestions.length === 0) {
+      await refundCredits(req, "no valid questions");
       res.status(500).json({ message: "لم يتم استخراج أسئلة صالحة. حاول مرة أخرى." });
       return;
     }
 
+    await captureCredits(req, { questions: validQuestions });
     res.json({ questions: validQuestions });
   } catch (error: unknown) {
     req.log.error({ err: error }, "AI image question extraction error");
+    await refundCredits(req, "extraction failed");
     res.status(500).json({ message: "خطأ في استخراج الأسئلة. يرجى المحاولة مرة أخرى." });
   }
 });

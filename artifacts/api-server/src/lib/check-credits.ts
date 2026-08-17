@@ -182,7 +182,13 @@ export function checkCredits(toolKey: string) {
         res.status(402).json({ message, code: "INSUFFICIENT_CREDITS", required, balance });
         return;
       }
-      // Any unexpected error must not block the user — pass through silently
+      // Any unexpected error must not block the user — fail-open BY DESIGN,
+      // but never silently: log loudly so infra/DB failures that skip billing
+      // are visible in monitoring instead of quietly giving away free usage.
+      (req as any).log?.error?.(
+        { err, toolKey, teacherId: req.session?.teacherId },
+        "checkCredits fail-open: unexpected error — request allowed WITHOUT hold",
+      );
       return next();
     }
   };
