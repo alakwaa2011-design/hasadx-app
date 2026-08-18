@@ -1034,7 +1034,20 @@ export default function CreateAssignment() {
     if (wizardStep === 2 && !canLeaveStep2) { toast.error(blockMessages.no_question); return; }
     if (wizardStep < 3) setWizardStep(s => (s + 1) as 1 | 2 | 3);
   };
-  const goPrev = () => { if (wizardStep > 1) setWizardStep(s => (s - 1) as 1 | 2 | 3); };
+  const goPrev = () => {
+    // في الخطوة الثانية وعند اختيار طريقة، يرجع إلى شاشة اختيار الطريقة أولاً
+    if (wizardStep === 2 && questionMethod !== null && !isPaper) {
+      setQuestionMethod(null);
+      setShowAiPanel(false);
+      setShowImageExtract(false);
+      setAiError("");
+      setExtractError("");
+      setExtractFiles([]);
+      pendingExtractFpRef.current = null;
+      return;
+    }
+    if (wizardStep > 1) setWizardStep(s => (s - 1) as 1 | 2 | 3);
+  };
 
   const STEPS = [
     { num: 1, label: lang === "ar" ? "الأساسيات" : "Basics", Icon: FilePenLine },
@@ -1566,10 +1579,12 @@ export default function CreateAssignment() {
                           {extractCredit?.creditsEnabled && extractCredit.effectiveCost > 0 && (
                             <p className="text-xs font-bold text-primary" data-testid="text-extract-cost">
                               {lang === "ar"
-                                ? (extractCredit.isPro
-                                    ? `سيُستخدم ${extractCredit.effectiveCost} نقاط حصاد في الباقة الاحترافية.`
+                                ? (extractCredit.isPro && extractCredit.effectiveCost < extractCredit.baseCost
+                                    ? `سيُستخدم ${extractCredit.effectiveCost} نقاط حصاد (خصم 20% للاحترافيين، بدلاً من ${extractCredit.baseCost}).`
                                     : `سيُستخدم ${extractCredit.effectiveCost} نقاط حصاد لإنشاء الأسئلة من هذا المصدر.`)
-                                : `${extractCredit.effectiveCost} Hasad credits will be used for this extraction${extractCredit.isPro ? " (Pro price)" : ""}.`}
+                                : (extractCredit.isPro && extractCredit.effectiveCost < extractCredit.baseCost
+                                    ? `${extractCredit.effectiveCost} credits (20% Pro discount, instead of ${extractCredit.baseCost}).`
+                                    : `${extractCredit.effectiveCost} Hasad credits will be used for this extraction.`)}
                             </p>
                           )}
                           {insufficientExtractCredit && extractCredit && (
@@ -1942,6 +1957,17 @@ export default function CreateAssignment() {
                         </button>
                         {showOtherMethods && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2.5">
+                            {/* يدوي — يغلق الأدوات الأخرى ويُبرز المحرر */}
+                            {(showAiPanel || showImageExtract) && (
+                              <button type="button" onClick={() => { setShowAiPanel(false); setShowImageExtract(false); setAiError(""); setExtractError(""); setExtractFiles([]); pendingExtractFpRef.current = null; setShowOtherMethods(false); }}
+                                className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all">
+                                <Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <div className="min-w-0">
+                                  <span className="block text-[13px] font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "إضافة يدوية" : "Write them myself"}</span>
+                                  <span className="block text-[10px] font-bold text-slate-500 truncate">{lang === "ar" ? "أضف الأسئلة والخيارات بنفسك" : "Add questions one by one"}</span>
+                                </div>
+                              </button>
+                            )}
                             {!showAiPanel && (
                               <button type="button" onClick={() => setShowAiPanel(true)}
                                 className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all">
