@@ -46,8 +46,11 @@ export function initGA(): void {
   }
 
   window.dataLayer = window.dataLayer || [];
-  function gtag(...args: unknown[]) {
-    window.dataLayer!.push(args);
+  // مهم: gtag.js لا يعالج إلا كائن `arguments` نفسه — دفع مصفوفة عادية
+  // يُتجاهل بصمت ولا يُرسل أي حدث (السبب السابق لعدم وصول page_view).
+  function gtag(..._args: unknown[]) {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer!.push(arguments);
   }
   window.gtag = window.gtag || gtag;
   window.gtag("js", new Date());
