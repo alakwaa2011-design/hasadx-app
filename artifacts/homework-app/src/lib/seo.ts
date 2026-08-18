@@ -2,12 +2,12 @@
    Updates <title>, meta description, canonical, and the core
    Open Graph / Twitter tags on mount and whenever the inputs change.
    We resolve canonical against window.location at runtime so it works
-   for both the .replit.app preview and the production hasadx.com
+   for both the .replit.app preview and the production hasaadx.com
    domain without hard-coding the host. */
 
 import { useEffect } from "react";
 
-const SITE_ORIGIN = "https://hasadx.com";
+const SITE_ORIGIN = "https://hasaadx.com";
 
 interface SeoInput {
   /** Full page title — appears verbatim in the browser tab and in

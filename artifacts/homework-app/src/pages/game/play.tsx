@@ -4018,9 +4018,9 @@ export default function GamePlay() {
             style={{ background: "rgba(8,11,20,0.45)" }}
           >
             {/* Footer brand — same logo + name as the platform header,
-                clickable to hasadx.com with a short tagline. */}
+                clickable to hasaadx.com with a short tagline. */}
             <a
-              href="https://hasadx.com"
+              href="https://hasaadx.com"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-white/45 hover:text-white/80 active:scale-95 transition-all duration-150 group"
@@ -4054,7 +4054,7 @@ export default function GamePlay() {
                   // Primary share action — opens native share sheet on mobile
                   // (WhatsApp, Telegram, etc. appear automatically in the sheet).
                   // Falls back to clipboard copy on desktop browsers.
-                  const shareUrl = "https://hasadx.com";
+                  const shareUrl = "https://hasaadx.com";
                   const shareText = "جرّب هذا التحدي التفاعلي على حصاد X ✨";
                   if (navigator.share) {
                     navigator.share({ title: "حصاد X", text: shareText, url: shareUrl }).catch(() => {});

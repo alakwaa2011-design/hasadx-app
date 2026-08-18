@@ -1,12 +1,12 @@
 /**
- * Production smoke test — hasadx.com
+ * Production smoke test — hasaadx.com
  *
  * Guards against blank loading-screen regressions where the splash screen
  * stays visible indefinitely because React failed to mount (bad build,
  * missing chunk, runtime crash, etc.).
  *
  * Run against production:
- *   SMOKE_URL=https://hasadx.com pnpm --filter @workspace/homework-app test:smoke
+ *   SMOKE_URL=https://hasaadx.com pnpm --filter @workspace/homework-app test:smoke
  *
  * Run against the local dev server (default):
  *   pnpm --filter @workspace/homework-app test:smoke
@@ -28,7 +28,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 /**
  * Override the target origin with SMOKE_URL to point at production:
- *   SMOKE_URL=https://hasadx.com pnpm test:smoke
+ *   SMOKE_URL=https://hasaadx.com pnpm test:smoke
  */
 const BASE = (process.env.SMOKE_URL ?? "http://localhost:80").replace(/\/$/, "");
 

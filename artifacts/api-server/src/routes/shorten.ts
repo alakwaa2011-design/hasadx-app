@@ -47,7 +47,7 @@ router.get("/g/:pin", (req: Request, res: Response) => {
     ? `${game.assignmentTitle} — انضم إلى اللعبة`
     : "انضم إلى لعبة حصاد";
   const description = `رمز الانضمام: ${pin} | ادخل هذا الرمز على منصة حصاد للانضمام إلى اللعبة.`;
-  const ogImage = "https://hasadx.com/opengraph.jpg";
+  const ogImage = "https://hasaadx.com/opengraph.jpg";
   // Redirect target is the SPA join page (same domain, absolute path)
   const joinPath = `/game/join/${pin}`;
 

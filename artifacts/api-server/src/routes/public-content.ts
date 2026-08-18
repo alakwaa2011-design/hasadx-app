@@ -363,7 +363,7 @@ router.post("/public/ai-generate", async (req, res) => {
 // routes/index.ts, so duplicate handlers here would silently shadow it.
 
 /* GET /s/:shortSlug
-   Short-form social-share page (e.g. hasadx.com/s/eid-quiz-k4x2).
+   Short-form social-share page (e.g. hasaadx.com/s/eid-quiz-k4x2).
    Identical purpose to /api/share/solo/:slug — serves full OG HTML and
    bounces real browsers to the play page. Designed for ASCII-clean URLs
    that look good in WhatsApp/Facebook/X link previews. */
@@ -386,7 +386,7 @@ router.get("/api/s/:shortSlug", async (req, res) => {
     if (!challenge) return res.status(404).type("html").send(`<!DOCTYPE html>
 <html lang="ar" dir="rtl"><head><meta charset="UTF-8"/>
 <title>الرابط غير موجود — حصاد</title>
-<meta http-equiv="refresh" content="3; url=https://hasadx.com/" />
+<meta http-equiv="refresh" content="3; url=https://hasaadx.com/" />
 </head><body style="background:#0d2818;color:#e8b84b;font-family:system-ui,sans-serif;text-align:center;padding:60px">
 <p>لم يُعثر على هذا التحدي.</p></body></html>`);
 

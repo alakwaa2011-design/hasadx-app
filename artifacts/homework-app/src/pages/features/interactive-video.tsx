@@ -28,7 +28,7 @@ export default function FeatureInteractiveVideo() {
       "inLanguage": "ar",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "SAR" },
       "description": "أداة لإضافة أسئلة تفاعلية داخل الفيديوهات التعليمية — يتوقف الفيديو عند كل سؤال وينتظر إجابة الطالب.",
-      "url": "https://hasadx.com/features/interactive-video",
+      "url": "https://hasaadx.com/features/interactive-video",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

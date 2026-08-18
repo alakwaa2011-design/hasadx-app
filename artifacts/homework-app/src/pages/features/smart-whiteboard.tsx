@@ -37,7 +37,7 @@ export default function FeatureSmartWhiteboard() {
       "description": isAr
         ? "سبورة تفاعلية ذكية للفصل الدراسي — يرى الطلاب ما يرسمه المعلم على هواتفهم في الوقت الفعلي."
         : "A smart interactive whiteboard for the classroom — students see what the teacher draws on their phones in real time.",
-      "url": "https://hasadx.com/features/smart-whiteboard",
+      "url": "https://hasaadx.com/features/smart-whiteboard",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

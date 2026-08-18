@@ -28,7 +28,7 @@ export default function FeatureEscapeRoom() {
       "inLanguage": "ar",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "SAR" },
       "description": "لعبة اكتشف السر — نشاط صفي تعليمي تعاوني: يُجيب الطلاب على أسئلة لكشف خلايا تُخفي كلمة أو صورة سرية.",
-      "url": "https://hasadx.com/features/escape-room",
+      "url": "https://hasaadx.com/features/escape-room",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

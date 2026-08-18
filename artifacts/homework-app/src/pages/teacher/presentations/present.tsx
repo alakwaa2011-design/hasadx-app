@@ -724,8 +724,8 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
               maxWidth: 260,
             }}>
               {isAr
-                ? "امسح الرمز أو اكتب الرمز على hasadx.com"
-                : "Scan the code or go to hasadx.com and enter the PIN"}
+                ? "امسح الرمز أو اكتب الرمز على hasaadx.com"
+                : "Scan the code or go to hasaadx.com and enter the PIN"}
             </div>
           </div>
         </div>

@@ -229,7 +229,7 @@ function SceneHook({ phase }: { phase: number }) {
                 className="rounded-lg px-4 py-1.5 text-xs text-gray-500 font-mono"
                 style={{ background: "white", border: "1px solid #ddd" }}
               >
-                hasadx.com
+                hasaadx.com
               </div>
             </div>
             <div className="p-4 flex flex-col gap-3">
@@ -264,7 +264,7 @@ function SceneHook({ phase }: { phase: number }) {
 
 function SceneIphone({ phase }: { phase: number }) {
   const steps = [
-    { label: "افتح Safari وانتقل إلى hasadx.com", active: phase === 1 },
+    { label: "افتح Safari وانتقل إلى hasaadx.com", active: phase === 1 },
     { label: 'اضغط زر المشاركة ⤴️ في الشريط السفلي', active: phase === 2 },
     { label: "اختر «أضف للشاشة الرئيسية»", active: phase === 3 },
     { label: "التطبيق جاهز على شاشتك! ✓", active: phase >= 4 },
@@ -355,7 +355,7 @@ function SceneIphone({ phase }: { phase: number }) {
           >
             <div className="h-16 bg-gray-100 border-b border-gray-200 flex items-end justify-center pb-2 pt-6">
               <div className="rounded-lg px-4 py-1 text-[0.65rem] text-gray-500 font-mono bg-white border border-gray-300">
-                hasadx.com
+                hasaadx.com
               </div>
             </div>
             <div className="flex-1 p-3 flex flex-col gap-3">
@@ -469,7 +469,7 @@ function SceneIphone({ phase }: { phase: number }) {
 
 function SceneAndroid({ phase }: { phase: number }) {
   const steps = [
-    { label: "افتح Chrome وانتقل إلى hasadx.com", active: phase === 1 },
+    { label: "افتح Chrome وانتقل إلى hasaadx.com", active: phase === 1 },
     { label: "اضغط القائمة ⋮ في الزاوية العلوية", active: phase === 2 },
     { label: 'اختر «إضافة إلى الشاشة الرئيسية»', active: phase === 3 },
     { label: "التطبيق جاهز على شاشتك! ✓", active: phase >= 4 },
@@ -558,7 +558,7 @@ function SceneAndroid({ phase }: { phase: number }) {
           >
             <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 pt-1">
               <div className="flex-1 h-8 bg-gray-100 rounded-full flex items-center px-3 text-[0.6rem] text-gray-500 font-mono">
-                hasadx.com
+                hasaadx.com
               </div>
               <div className="w-8 flex justify-center relative ml-1">
                 <motion.div
@@ -762,7 +762,7 @@ function SceneOutro({ phase }: { phase: number }) {
         animate={phase >= 3 ? { scale: 1, opacity: 1 } : { scale: 0.9, opacity: 0 }}
         transition={{ delay: 0.4, type: "spring" }}
       >
-        hasadx.com
+        hasaadx.com
       </motion.div>
     </motion.div>
   );

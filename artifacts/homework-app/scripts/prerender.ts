@@ -23,7 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../dist/public");
 const TEMPLATE_PATH = path.join(DIST_DIR, "index.html");
 
-const SITE = "https://hasadx.com";
+const SITE = "https://hasaadx.com";
 
 // ---------------------------------------------------------------------------
 // Shared layout helpers
@@ -114,7 +114,7 @@ const routes: Route[] = [
       ])}
 
       ${H2("كيف تبدأ؟")}
-      ${P(`سجّل حساباً مجانياً على <a href="${SITE}/register" style="color:#14532d">hasadx.com/register</a>، أنشئ نشاطك الأول، وشارك الرمز مع طلابك.`)}
+      ${P(`سجّل حساباً مجانياً على <a href="${SITE}/register" style="color:#14532d">hasaadx.com/register</a>، أنشئ نشاطك الأول، وشارك الرمز مع طلابك.`)}
     `),
   },
 
@@ -174,7 +174,7 @@ const routes: Route[] = [
       ${P("تدعم حصاد التكامل مع <strong>Google Classroom</strong> و<strong>Microsoft Teams</strong> لاستيراد قوائم الطلاب، نشر الأنشطة، ومزامنة الدرجات مباشرة.")}
 
       ${H2("ابدأ مجاناً")}
-      ${P(`سجّل حساباً مجانياً على <a href="${SITE}/register" style="color:#14532d">hasadx.com/register</a> وابدأ أول نشاط تعليمي في دقائق.`)}
+      ${P(`سجّل حساباً مجانياً على <a href="${SITE}/register" style="color:#14532d">hasaadx.com/register</a> وابدأ أول نشاط تعليمي في دقائق.`)}
     `),
   },
 
@@ -378,7 +378,7 @@ const routes: Route[] = [
       ])}
 
       ${H2("كيف تبدأ؟")}
-      ${P(`سجّل حساباً على <a href="${SITE}/register" style="color:#14532d">hasadx.com/register</a>، ادخل قسم المسابقات الإسلامية، واختر الفئة التي تريد البدء بها.`)}
+      ${P(`سجّل حساباً على <a href="${SITE}/register" style="color:#14532d">hasaadx.com/register</a>، ادخل قسم المسابقات الإسلامية، واختر الفئة التي تريد البدء بها.`)}
 
       ${H2("للمعلمين")}
       ${P("يمكن للمعلمين إنشاء تحديات إسلامية مخصصة لطلابهم، ومتابعة تقدم كل طالب في المسابقات الإسلامية عبر لوحة التحكم.")}

@@ -28,7 +28,7 @@ export default function FeatureWameeth() {
       "inLanguage": "ar",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "SAR" },
       "description": "أداة مسابقات تعليمية تفاعلية مباشرة للفصل الدراسي — يدخل الطلاب برمز PIN ويتنافسون على الإجابة الصحيحة والسريعة.",
-      "url": "https://hasadx.com/features/wameeth",
+      "url": "https://hasaadx.com/features/wameeth",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

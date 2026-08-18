@@ -43,7 +43,7 @@ export default function FeatureGames() {
       "@type": "WebPage",
       "name": "الألعاب التعليمية التفاعلية — منصة حصاد",
       "description": "أكثر من 15 لعبة تعليمية للفصل الدراسي: مسابقات مباشرة وألعاب فردية وتحديات جماعية بواجهة عربية كاملة.",
-      "url": "https://hasadx.com/features/games",
+      "url": "https://hasaadx.com/features/games",
       "inLanguage": "ar",
       "about": { "@type": "Thing", "name": "ألعاب تعليمية تفاعلية" },
     };

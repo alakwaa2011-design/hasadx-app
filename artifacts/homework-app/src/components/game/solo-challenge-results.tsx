@@ -269,7 +269,7 @@ export function SoloChallengeResults({
 
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
   // Share URL strategy:
-  //  1. Prefer /s/:shortSlug — short ASCII URL (e.g. hasadx.com/s/eid-quiz-k4x2)
+  //  1. Prefer /s/:shortSlug — short ASCII URL (e.g. hasaadx.com/s/eid-quiz-k4x2)
   //     handled by the API server, returns OG HTML so FB/WhatsApp show a rich card.
   //  2. Fall back to /api/share/solo/:slug for challenges created before shortSlug
   //     was introduced (both work identically for social-card unfurling).
@@ -787,7 +787,7 @@ export function SoloChallengeResults({
 
         {/* ── HasadX CTA — slim glass card, shown before action buttons ── */}
         <motion.a
-          href="https://hasadx.com"
+          href="https://hasaadx.com"
           target="_blank"
           rel="noopener noreferrer"
           initial={{ opacity: 0, y: 10 }}

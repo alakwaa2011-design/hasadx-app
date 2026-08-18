@@ -39,7 +39,7 @@ export default function FeatureLessonPlanAI() {
       "description": isAr
         ? "أداة توليد خطط دروس احترافية بالذكاء الاصطناعي — أهداف ومراحل وأنشطة وتقييم في دقائق."
         : "AI-powered lesson plan generation tool — objectives, stages, activities, and assessment in minutes.",
-      "url": "https://hasadx.com/features/lesson-plan-ai",
+      "url": "https://hasaadx.com/features/lesson-plan-ai",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

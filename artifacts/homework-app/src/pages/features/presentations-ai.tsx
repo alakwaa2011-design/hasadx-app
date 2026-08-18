@@ -39,7 +39,7 @@ export default function FeaturePresentationsAI() {
       "description": isAr
         ? "منصة لإنشاء عروض تقديمية تفاعلية بالذكاء الاصطناعي — شرائح مع أسئلة واستطلاعات وتفاعل مباشر مع الطلاب."
         : "A platform for creating AI-powered interactive presentations — slides with embedded questions, polls, and live student engagement.",
-      "url": "https://hasadx.com/features/presentations-ai",
+      "url": "https://hasaadx.com/features/presentations-ai",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

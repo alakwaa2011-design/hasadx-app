@@ -1232,7 +1232,7 @@ router.post(
         try {
           fetchRes = await fetch(exportUrl, {
             signal: controller.signal,
-            headers: { "User-Agent": "HasadX/1.0 (+https://hasadx.com)" },
+            headers: { "User-Agent": "HasadX/1.0 (+https://hasaadx.com)" },
           });
         } finally {
           clearTimeout(timer);

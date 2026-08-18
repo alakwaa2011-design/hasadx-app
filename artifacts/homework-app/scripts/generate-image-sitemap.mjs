@@ -15,7 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const COVERS_DIR = resolve(ROOT, "public/arena-covers");
 const OUT_FILE = resolve(ROOT, "public/image-sitemap.xml");
-const BASE_URL = "https://hasadx.com";
+const BASE_URL = "https://hasaadx.com";
 
 // ---------------------------------------------------------------------------
 // Title + caption map keyed by filename stem (no extension).

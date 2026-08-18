@@ -128,7 +128,7 @@ export function generateSoloChallengeOgImage(
         direction="rtl" opacity="0.9">هل تقدر تتغلب عليه؟</text>
   <text x="600" y="594" font-size="16" fill="#507a64"
         text-anchor="middle" font-family="Noto Naskh Arabic"
-        opacity="0.8">hasadx.com</text>
+        opacity="0.8">hasaadx.com</text>
 </svg>`;
 
   const resvg = new Resvg(svg, {

@@ -39,7 +39,7 @@ export default function FeatureWorksheetAI() {
       "description": isAr
         ? "أداة ذكاء اصطناعي لإنشاء أوراق عمل تعليمية احترافية في دقيقة — اختيار متعدد، صح وخطأ، إكمال الفراغ، أسئلة مفتوحة."
         : "An AI tool for creating professional educational worksheets in minutes — multiple choice, true/false, fill-in-the-blank, and open-ended questions.",
-      "url": "https://hasadx.com/features/worksheet-ai",
+      "url": "https://hasaadx.com/features/worksheet-ai",
     };
     const el = Object.assign(document.createElement("script"), {
       type: "application/ld+json",

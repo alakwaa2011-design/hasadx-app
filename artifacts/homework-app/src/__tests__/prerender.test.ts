@@ -19,7 +19,7 @@ import http from "http";
 import { spawn, type ChildProcess } from "child_process";
 
 const DIST = path.resolve(__dirname, "../../../dist/public");
-const SITE = "https://hasadx.com";
+const SITE = "https://hasaadx.com";
 
 // ---------------------------------------------------------------------------
 // Helpers
