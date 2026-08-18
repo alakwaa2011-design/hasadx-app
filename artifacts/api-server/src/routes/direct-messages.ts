@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, directMessagesTable, notificationsTable, teachersTable } from "@workspace/db";
 import { eq, and, or, desc, isNull, sql } from "drizzle-orm";
 import { z } from "zod/v4";
+import { sendEmail, getAppBaseUrl } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -152,14 +153,36 @@ router.post("/direct-messages", async (req, res) => {
     content: parsed.data.content,
   }).returning();
 
-  const recipient = await db.select({ name: teachersTable.name }).from(teachersTable).where(eq(teachersTable.id, recipientId)).limit(1);
+  const recipient = await db.select({ name: teachersTable.name, email: teachersTable.email }).from(teachersTable).where(eq(teachersTable.id, recipientId)).limit(1);
 
   await db.insert(notificationsTable).values({
     teacherId: recipientId,
     type: "direct_message",
-    title: isAdmin ? "رسالة من المسؤول" : `رسالة من ${me[0].name}`,
+    title: isAdmin ? "رسالة من منصة حصاد" : `رسالة من ${me[0].name}`,
     body: parsed.data.content.length > 80 ? parsed.data.content.slice(0, 80) + "…" : parsed.data.content,
   });
+
+  // بريد تنبيهي للمعلم عندما يراسله المسؤول — باسم «منصة حصاد» دون ذكر المرسل.
+  // fire-and-forget: فشل البريد لا يمنع حفظ الرسالة داخل المنصة.
+  if (isAdmin && recipient[0]?.email) {
+    const platformUrl = getAppBaseUrl();
+    const preview = parsed.data.content.length > 400
+      ? parsed.data.content.slice(0, 400) + "…"
+      : parsed.data.content;
+    sendEmail({
+      to: recipient[0].email,
+      subject: "منصة حصاد | لديك رسالة جديدة",
+      html: `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f8faf9;border-radius:12px">
+        <h2 style="color:#1E4D35;margin:0 0 4px">منصة حصاد</h2>
+        <p style="color:#334155;font-size:14px">مرحباً ${recipient[0].name}،</p>
+        <p style="color:#334155;font-size:14px">وصلتك رسالة جديدة داخل المنصة:</p>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;color:#0f172a;font-size:14px;white-space:pre-wrap">${preview.replace(/</g, "&lt;")}</div>
+        <p style="margin-top:16px"><a href="${platformUrl}" style="background:#1E4D35;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;display:inline-block">افتح المنصة للرد</a></p>
+        <p style="color:#94a3b8;font-size:11px;margin-top:18px">هذه رسالة تلقائية من منصة حصاد — يمكنك الرد من داخل المنصة عبر أيقونة الرسائل.</p>
+      </div>`,
+      text: `وصلتك رسالة جديدة في منصة حصاد:\n\n${preview}\n\nللرد ادخل المنصة: ${platformUrl}`,
+    }).catch(() => { /* لا يؤثر على الرسالة */ });
+  }
 
   res.json({
     id: msg.id,
