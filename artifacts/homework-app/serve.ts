@@ -84,7 +84,33 @@ function sendFile(
 // ---------------------------------------------------------------------------
 // Request handler
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Canonical-domain 301: hasadx.com / www.hasadx.com → https://hasaadx.com
+// (path + query preserved; hasaadx.com itself is never redirected — no loop)
+// ---------------------------------------------------------------------------
+const LEGACY_HOSTS = new Set(["hasadx.com", "www.hasadx.com"]);
+const CANONICAL_ORIGIN = "https://hasaadx.com";
+
+function legacyHostOf(req: http.IncomingMessage): string | null {
+  const raw =
+    (req.headers["x-forwarded-host"] as string | undefined) ??
+    req.headers.host ??
+    "";
+  // x-forwarded-host may be a comma-separated chain; first entry is the client-facing host
+  const host = raw.split(",")[0].trim().toLowerCase().replace(/:\d+$/, "");
+  return LEGACY_HOSTS.has(host) ? host : null;
+}
+
 const server = http.createServer((req, res) => {
+  if (legacyHostOf(req)) {
+    res.writeHead(301, {
+      Location: CANONICAL_ORIGIN + (req.url ?? "/"),
+      "Cache-Control": "public, max-age=86400",
+    });
+    res.end();
+    return;
+  }
+
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
 
   // Guard against malformed percent-encoded paths (e.g. /%GG).

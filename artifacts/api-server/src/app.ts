@@ -41,6 +41,18 @@ const app: Express = express();
 app.set("trust proxy", 1);
 app.set("etag", false);
 
+// تحويل 301 دائم من النطاق القديم hasadx.com (وwww) إلى النطاق الرسمي hasaadx.com
+// مع الحفاظ الكامل على المسار وquery string. طلبات hasaadx.com لا تُمس — لا loop.
+const LEGACY_HOSTS = new Set(["hasadx.com", "www.hasadx.com"]);
+app.use((req, res, next) => {
+  const host = (req.hostname || "").toLowerCase();
+  if (LEGACY_HOSTS.has(host)) {
+    res.redirect(301, "https://hasaadx.com" + req.originalUrl);
+    return;
+  }
+  next();
+});
+
 app.use(compression());
 app.use(
   pinoHttp({

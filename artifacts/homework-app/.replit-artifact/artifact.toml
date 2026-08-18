@@ -19,14 +19,8 @@ kind = "web"
 
     [services.production]
     build = [ "pnpm", "--filter", "@workspace/homework-app", "run", "build" ]
-    publicDir = "artifacts/homework-app/dist/public"
-    serve = "static"
-
-    [[services.production.rewrites]]
-    from = "/*"
-    to = "/index.html"
+    run = "pnpm --filter @workspace/homework-app run serve"
 
     [services.env]
     PORT = "18313"
     BASE_PATH = "/"
-    
