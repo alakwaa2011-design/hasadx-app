@@ -914,6 +914,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
       {/* Hasaad Guide is now mounted globally in App.tsx (<GlobalAiAssistant />)
           so it appears on every teacher/organizer page, including those that
           don't use this Layout (mobile flows hit those a lot). */}
+
+      {/* نافذة الرسائل المباشرة مع المسؤول — كانت مستوردة دون تركيب،
+          فكان الضغط على الإشعار/الزر لا يفتح شيئاً */}
+      <DirectMessageDrawer open={dmOpen} onClose={() => setDmOpen(false)} />
     </div>
   );
 }
