@@ -12,7 +12,7 @@
  *   become no-ops in those cases.
  */
 
-const DEFAULT_MEASUREMENT_ID = "G-3W1J3J2YE4";
+const DEFAULT_MEASUREMENT_ID = "G-3WL9J3ZYE4";
 
 export const GA_MEASUREMENT_ID: string =
   (import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined) ||
