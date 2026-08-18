@@ -579,7 +579,13 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       <Languages className="w-4 h-4" />
                     </button>
                     <CreditsChip />
-                    <NotificationBell />
+                    <NotificationBell onDirectMessageClick={() => {
+                      if (isTeacherAdmin) {
+                        setLocation("/teacher/admin?tab=messages");
+                      } else {
+                        setDmOpen(true);
+                      }
+                    }} />
                     <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                       className="p-2.5 text-white hover:bg-white/10 rounded-lg transition-colors"
@@ -627,7 +633,13 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         </button>
                       </>
                     )}
-                    {user && <NotificationBell />}
+                    {user && <NotificationBell onDirectMessageClick={() => {
+                      if (isTeacherAdmin) {
+                        setLocation("/teacher/admin?tab=messages");
+                      } else {
+                        setDmOpen(true);
+                      }
+                    }} />}
                     {!isLoading && !user && !student && (
                       <Link
                         href="/login"
