@@ -90,6 +90,14 @@ function sendFile(
 // ---------------------------------------------------------------------------
 const LEGACY_HOSTS = new Set(["hasadx.com", "www.hasadx.com"]);
 const CANONICAL_ORIGIN = "https://hasaadx.com";
+const INSTAGRAM_PATH = "/instagram";
+const INSTAGRAM_DESTINATION = "/teacher";
+const INSTAGRAM_UTM = {
+  utm_source: "instagram",
+  utm_medium: "organic_profile",
+  utm_campaign: "instagram_profile",
+} as const;
+const INSTAGRAM_UTM_KEYS = new Set(Object.keys(INSTAGRAM_UTM));
 
 function legacyHostOf(req: http.IncomingMessage): string | null {
   const raw =
@@ -112,6 +120,27 @@ const server = http.createServer((req, res) => {
   }
 
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+
+  // Instagram campaign short link: intentionally temporary (302), server-side
+  // only, and canonical-host only. Keep the fixed campaign tags while carrying
+  // through other visitor parameters such as fbclid/gclid.
+  if (url.pathname === INSTAGRAM_PATH) {
+    const destination = new URL(`${CANONICAL_ORIGIN}${INSTAGRAM_DESTINATION}`);
+    for (const [key, value] of Object.entries(INSTAGRAM_UTM)) {
+      destination.searchParams.set(key, value);
+    }
+    url.searchParams.forEach((value, key) => {
+      if (!INSTAGRAM_UTM_KEYS.has(key)) {
+        destination.searchParams.append(key, value);
+      }
+    });
+    res.writeHead(302, {
+      Location: destination.toString(),
+      "Cache-Control": "no-store",
+    });
+    res.end();
+    return;
+  }
 
   // Guard against malformed percent-encoded paths (e.g. /%GG).
   // decodeURIComponent throws URIError on invalid sequences; return 400.
