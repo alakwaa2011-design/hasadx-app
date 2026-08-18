@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, MessageSquare, Users, ChevronRight, ArrowRight } from "lucide-react";
+import { Send, Loader2, MessageSquare, Users, ArrowRight, Plus, Search, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 
@@ -25,12 +25,21 @@ interface DmMessage {
   mine: boolean;
 }
 
+interface TeacherListItem {
+  id: number;
+  name: string;
+  email: string | null;
+}
+
 export function MessagesTab() {
   const { lang } = useI18n();
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>("");
   const [text, setText] = useState("");
+  const [showNewMsg, setShowNewMsg] = useState(false);
+  const [search, setSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const { data: threads = [], isLoading: threadsLoading } = useQuery<TeacherThread[]>({
@@ -41,6 +50,18 @@ export function MessagesTab() {
       return res.json();
     },
     refetchInterval: 15000,
+  });
+
+  const { data: allTeachers = [], isLoading: teachersLoading } = useQuery<TeacherListItem[]>({
+    queryKey: ["admin-teachers-list"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/admin/teachers`, { credentials: "include" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.teachers ?? data).map((t: any) => ({ id: t.id, name: t.name, email: t.email }));
+    },
+    enabled: showNewMsg,
+    staleTime: 60_000,
   });
 
   const { data: messages = [], isLoading: msgsLoading } = useQuery<DmMessage[]>({
@@ -91,6 +112,13 @@ export function MessagesTab() {
     }
   }, [selectedTeacherId, messages.length]);
 
+  useEffect(() => {
+    if (showNewMsg) {
+      setSearch("");
+      setTimeout(() => searchRef.current?.focus(), 50);
+    }
+  }, [showNewMsg]);
+
   function timeStr(iso: string) {
     const d = new Date(iso);
     const today = new Date();
@@ -99,79 +127,171 @@ export function MessagesTab() {
     return d.toLocaleDateString("ar-SA", { day: "numeric", month: "short" });
   }
 
+  function openChat(id: number, name: string) {
+    setSelectedTeacherId(id);
+    setSelectedTeacherName(name);
+    setShowNewMsg(false);
+    setSearch("");
+  }
+
   const totalUnread = threads.reduce((s, t) => s + t.unread_count, 0);
+
+  const filteredTeachers = allTeachers.filter(t =>
+    t.name.toLowerCase().includes(search.toLowerCase()) ||
+    (t.email ?? "").toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]" dir="rtl">
-      <div className={`flex flex-col border border-border rounded-2xl overflow-hidden bg-card ${selectedTeacherId ? "hidden md:flex" : "flex"} w-full md:w-80 shrink-0`}>
+      {/* ── قائمة المحادثات ── */}
+      <div className={`flex flex-col border border-border rounded-2xl overflow-hidden bg-card ${selectedTeacherId && !showNewMsg ? "hidden md:flex" : "flex"} w-full md:w-80 shrink-0`}>
         <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-muted-foreground" />
             <h3 className="font-bold text-sm">{lang === "ar" ? "المحادثات" : "Conversations"}</h3>
           </div>
-          {totalUnread > 0 && (
-            <span className="text-[10px] font-black bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-              {totalUnread}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {totalUnread > 0 && (
+              <span className="text-[10px] font-black bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                {totalUnread}
+              </span>
+            )}
+            {/* زر رسالة جديدة */}
+            <button
+              onClick={() => setShowNewMsg(v => !v)}
+              title={lang === "ar" ? "رسالة جديدة" : "New message"}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${showNewMsg ? "bg-[#1E4D35] text-white" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
+            >
+              {showNewMsg ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {threadsLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : threads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-              <MessageSquare className="w-10 h-10 text-muted-foreground/30 mb-2" />
-              <p className="text-sm font-medium text-muted-foreground">
-                {lang === "ar" ? "لا توجد محادثات بعد" : "No conversations yet"}
-              </p>
-            </div>
+        <AnimatePresence initial={false}>
+          {showNewMsg ? (
+            <motion.div
+              key="new-msg-picker"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
+              {/* حقل البحث */}
+              <div className="px-3 py-2 border-b border-border">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/60 border border-border">
+                  <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <input
+                    ref={searchRef}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder={lang === "ar" ? "ابحث عن معلم…" : "Search teacher…"}
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                  />
+                </div>
+              </div>
+
+              {/* قائمة المعلمين */}
+              <div className="flex-1 overflow-y-auto">
+                {teachersLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredTeachers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center px-4">
+                    <p className="text-sm text-muted-foreground">
+                      {lang === "ar" ? "لا توجد نتائج" : "No results"}
+                    </p>
+                  </div>
+                ) : (
+                  filteredTeachers.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => openChat(t.id, t.name)}
+                      className="w-full text-start px-4 py-3 flex items-center gap-3 border-b border-border/50 last:border-0 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#1E4D35] text-white flex items-center justify-center text-sm font-black shrink-0">
+                        {t.name[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold truncate">{t.name}</p>
+                        {t.email && <p className="text-[11px] text-muted-foreground truncate">{t.email}</p>}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
           ) : (
-            threads.map(thread => (
-              <button
-                key={thread.teacher_id}
-                onClick={() => {
-                  setSelectedTeacherId(thread.teacher_id);
-                  setSelectedTeacherName(thread.teacher_name);
-                }}
-                className={`w-full text-start px-4 py-3 flex items-start gap-3 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/40 ${
-                  selectedTeacherId === thread.teacher_id ? "bg-primary/5" : ""
-                }`}
-              >
-                <div className="w-9 h-9 rounded-full bg-[#1E4D35] text-white flex items-center justify-center text-sm font-black shrink-0">
-                  {thread.teacher_name[0]}
+            <motion.div
+              key="threads-list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1 }}
+              className="flex-1 overflow-y-auto"
+            >
+              {threadsLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <p className={`text-sm truncate ${thread.unread_count > 0 ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}>
-                      {thread.teacher_name}
-                    </p>
-                    <span className="text-[10px] text-muted-foreground/50 shrink-0">
-                      {timeStr(thread.last_message_at)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-1 mt-0.5">
-                    <p className="text-xs text-muted-foreground truncate flex-1">
-                      {thread.last_sender_id !== thread.teacher_id && (
-                        <span className="text-[#1E4D35] font-bold">أنت: </span>
-                      )}
-                      {thread.last_message}
-                    </p>
-                    {thread.unread_count > 0 && (
-                      <span className="text-[10px] font-black bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0">
-                        {thread.unread_count}
-                      </span>
-                    )}
-                  </div>
+              ) : threads.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4 gap-3">
+                  <MessageSquare className="w-10 h-10 text-muted-foreground/30" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {lang === "ar" ? "لا توجد محادثات بعد" : "No conversations yet"}
+                  </p>
+                  <button
+                    onClick={() => setShowNewMsg(true)}
+                    className="text-xs font-bold text-[#1E4D35] hover:underline"
+                  >
+                    {lang === "ar" ? "ابدأ محادثة جديدة ←" : "Start a new conversation →"}
+                  </button>
                 </div>
-              </button>
-            ))
+              ) : (
+                threads.map(thread => (
+                  <button
+                    key={thread.teacher_id}
+                    onClick={() => openChat(thread.teacher_id, thread.teacher_name)}
+                    className={`w-full text-start px-4 py-3 flex items-start gap-3 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/40 ${
+                      selectedTeacherId === thread.teacher_id ? "bg-primary/5" : ""
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-full bg-[#1E4D35] text-white flex items-center justify-center text-sm font-black shrink-0">
+                      {thread.teacher_name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className={`text-sm truncate ${thread.unread_count > 0 ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}>
+                          {thread.teacher_name}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                          {timeStr(thread.last_message_at)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate flex-1">
+                          {thread.last_sender_id !== thread.teacher_id && (
+                            <span className="text-[#1E4D35] font-bold">أنت: </span>
+                          )}
+                          {thread.last_message}
+                        </p>
+                        {thread.unread_count > 0 && (
+                          <span className="text-[10px] font-black bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+                            {thread.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
+      {/* ── نافذة المحادثة ── */}
       {selectedTeacherId ? (
         <div className="flex-1 flex flex-col border border-border rounded-2xl overflow-hidden bg-card min-w-0">
           <div className="px-4 py-3 border-b border-border bg-[#1E4D35] flex items-center gap-3">
@@ -257,6 +377,12 @@ export function MessagesTab() {
             <p className="text-sm font-medium text-muted-foreground">
               {lang === "ar" ? "اختر محادثة لعرضها" : "Select a conversation"}
             </p>
+            <button
+              onClick={() => setShowNewMsg(true)}
+              className="mt-3 text-xs font-bold text-[#1E4D35] hover:underline"
+            >
+              {lang === "ar" ? "أو ابدأ محادثة جديدة ←" : "Or start a new conversation →"}
+            </button>
           </div>
         </div>
       )}
