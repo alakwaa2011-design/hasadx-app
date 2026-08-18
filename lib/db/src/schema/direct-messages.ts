@@ -6,6 +6,7 @@ export const directMessagesTable = pgTable("direct_messages", {
   senderId: integer("sender_id").notNull().references(() => teachersTable.id),
   recipientId: integer("recipient_id").notNull().references(() => teachersTable.id),
   content: text("content").notNull(),
+  imageUrl: text("image_url"),
   readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

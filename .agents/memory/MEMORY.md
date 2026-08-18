@@ -27,4 +27,5 @@
 - [checkCredits fail-closed](credits-fail-closed.md) — unexpected verification errors return 503, never next(); guest AI routes stay deliberately uncharged.
 - [TTS audio cache invariants](tts-audio-cache.md) — serve only after confirmed capture ({captured} flag); credit_request_id fences all row writes; compensate only on definitive 404, never on missing key or transient errors.
 - [Canonical domain redirect](canonical-domain-redirect.md) — prod pages now served by node serve.mjs (compiled from serve.ts — recompile after edits); 301 hasadx.com→hasaadx.com lives there + api-server middleware.
+- [DM read receipts & images](dm-read-receipts-images.md) — one-way receipts by design (teacher never sees admin's readAt); DM images need raster-only allowlist + nosniff/CSP on object serving.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.

@@ -7,8 +7,12 @@ import { sendEmail, getAppBaseUrl } from "../lib/email";
 const router: IRouter = Router();
 
 const sendSchema = z.object({
-  content: z.string().min(1).max(2000),
+  content: z.string().max(2000).default(""),
   recipientId: z.number().int().optional(),
+  // مسار داخلي فقط ("/objects/<id>") من Object Storage — لا روابط خارجية
+  imageUrl: z.string().max(500).regex(/^\/objects\/[A-Za-z0-9._/-]+$/).optional(),
+}).refine(d => d.content.trim().length > 0 || d.imageUrl, {
+  message: "الرسالة فارغة",
 });
 
 async function getAdminId(): Promise<number | null> {
@@ -85,7 +89,10 @@ router.get("/direct-messages", async (req, res) => {
       id: m.id,
       senderId: m.senderId,
       content: m.content,
-      readAt: m.readAt?.toISOString() ?? null,
+      imageUrl: m.imageUrl ?? null,
+      // خصوصية مقصودة: المعلم لا يرى هل قرأ المسؤول رسالته أم لا —
+      // نعيد readAt لرسائل المسؤول فقط (يلزم منطق العدّاد)، ولا نعيده لرسائل المعلم
+      readAt: m.senderId === teacherId ? null : (m.readAt?.toISOString() ?? null),
       createdAt: m.createdAt.toISOString(),
       mine: m.senderId === teacherId,
     })),
@@ -119,6 +126,7 @@ router.get("/direct-messages/:teacherId", async (req, res) => {
     id: m.id,
     senderId: m.senderId,
     content: m.content,
+    imageUrl: m.imageUrl ?? null,
     readAt: m.readAt?.toISOString() ?? null,
     createdAt: m.createdAt.toISOString(),
     mine: m.senderId === myId,
@@ -150,7 +158,8 @@ router.post("/direct-messages", async (req, res) => {
   const [msg] = await db.insert(directMessagesTable).values({
     senderId: teacherId,
     recipientId,
-    content: parsed.data.content,
+    content: parsed.data.content.trim(),
+    imageUrl: parsed.data.imageUrl ?? null,
   }).returning();
 
   const recipient = await db.select({ name: teachersTable.name, email: teachersTable.email }).from(teachersTable).where(eq(teachersTable.id, recipientId)).limit(1);
@@ -159,16 +168,17 @@ router.post("/direct-messages", async (req, res) => {
     teacherId: recipientId,
     type: "direct_message",
     title: isAdmin ? "رسالة من منصة حصاد" : `رسالة من ${me[0].name}`,
-    body: parsed.data.content.length > 80 ? parsed.data.content.slice(0, 80) + "…" : parsed.data.content,
+    body: msg.content
+      ? (msg.content.length > 80 ? msg.content.slice(0, 80) + "…" : msg.content)
+      : "📷 صورة مرفقة",
   });
 
   // بريد تنبيهي للمعلم عندما يراسله المسؤول — باسم «منصة حصاد» دون ذكر المرسل.
   // fire-and-forget: فشل البريد لا يمنع حفظ الرسالة داخل المنصة.
   if (isAdmin && recipient[0]?.email) {
     const platformUrl = getAppBaseUrl();
-    const preview = parsed.data.content.length > 400
-      ? parsed.data.content.slice(0, 400) + "…"
-      : parsed.data.content;
+    const rawPreview = msg.content || "📷 صورة مرفقة — افتح المنصة لعرضها";
+    const preview = rawPreview.length > 400 ? rawPreview.slice(0, 400) + "…" : rawPreview;
     sendEmail({
       to: recipient[0].email,
       subject: "منصة حصاد | لديك رسالة جديدة",
@@ -188,6 +198,7 @@ router.post("/direct-messages", async (req, res) => {
     id: msg.id,
     senderId: msg.senderId,
     content: msg.content,
+    imageUrl: msg.imageUrl ?? null,
     readAt: null,
     createdAt: msg.createdAt.toISOString(),
     mine: true,

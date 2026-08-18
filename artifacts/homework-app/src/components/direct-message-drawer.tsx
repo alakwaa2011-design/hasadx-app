@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Loader2, MessageSquare, ShieldCheck } from "lucide-react";
+import { X, Send, Loader2, MessageSquare, ShieldCheck, ImagePlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -9,9 +9,37 @@ interface DmMessage {
   id: number;
   senderId: number;
   content: string;
+  imageUrl: string | null;
   readAt: string | null;
   createdAt: string;
   mine: boolean;
+}
+
+/** يرفع صورة إلى التخزين ويعيد المسار الداخلي "/objects/<id>" أو null */
+export async function uploadDmImage(file: File): Promise<string | null> {
+  try {
+    const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+    });
+    if (!reqRes.ok) return null;
+    const { uploadURL, objectPath } = await reqRes.json();
+    const putRes = await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!putRes.ok) return null;
+    return objectPath;
+  } catch {
+    return null;
+  }
+}
+
+export function dmImageSrc(objectPath: string): string {
+  return `${API_BASE}/api/storage${objectPath}`;
 }
 
 interface DmData {
@@ -26,8 +54,25 @@ interface Props {
 
 export function DirectMessageDrawer({ open, onClose }: Props) {
   const [text, setText] = useState("");
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  function pickImage(file: File | null) {
+    setUploadError(false);
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    if (file && file.type.startsWith("image/") && file.size <= 10 * 1024 * 1024) {
+      setPendingImage(file);
+      setPendingPreview(URL.createObjectURL(file));
+    } else {
+      setPendingImage(null);
+      setPendingPreview(null);
+      if (file) setUploadError(true);
+    }
+  }
 
   const { data, isLoading } = useQuery<DmData>({
     queryKey: ["dm-teacher"],
@@ -54,12 +99,18 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
   });
 
   const sendMsg = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, image }: { content: string; image: File | null }) => {
+      let imageUrl: string | undefined;
+      if (image) {
+        const objectPath = await uploadDmImage(image);
+        if (!objectPath) throw new Error("فشل رفع الصورة");
+        imageUrl = objectPath;
+      }
       const res = await fetch(`${API_BASE}/api/direct-messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, imageUrl }),
       });
       if (!res.ok) throw new Error("فشل الإرسال");
       return res.json();
@@ -67,8 +118,15 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dm-teacher"] });
       setText("");
+      pickImage(null);
     },
+    onError: () => setUploadError(true),
   });
+
+  const canSend = (text.trim().length > 0 || !!pendingImage) && !sendMsg.isPending;
+  function doSend() {
+    if (canSend) sendMsg.mutate({ content: text.trim(), image: pendingImage });
+  }
 
   useEffect(() => {
     if (open && data?.messages) {
@@ -183,7 +241,17 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                               المسؤول
                             </p>
                           )}
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                          {m.imageUrl && (
+                            <a href={dmImageSrc(m.imageUrl)} target="_blank" rel="noreferrer">
+                              <img
+                                src={dmImageSrc(m.imageUrl)}
+                                alt="صورة مرفقة"
+                                loading="lazy"
+                                className="rounded-lg max-h-52 w-auto mb-1.5 border border-black/10"
+                              />
+                            </a>
+                          )}
+                          {m.content && <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>}
                           <p className={`text-[10px] mt-1 text-end ${m.mine ? "text-white/50" : "text-muted-foreground/50"}`}>
                             {timeStr(m.createdAt)}
                           </p>
@@ -197,14 +265,45 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
             </div>
 
             <div className="p-3 border-t border-border bg-background">
+              {pendingPreview && (
+                <div className="relative inline-block mb-2">
+                  <img src={pendingPreview} alt="معاينة" className="h-16 rounded-lg border border-border" />
+                  <button
+                    onClick={() => pickImage(null)}
+                    className="absolute -top-1.5 -start-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow"
+                    data-testid="btn-remove-dm-image"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              {uploadError && (
+                <p className="text-[11px] text-red-500 mb-1.5">تعذّر إرفاق الصورة — تأكد أنها صورة وأصغر من 10MB</p>
+              )}
               <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => pickImage(e.target.files?.[0] ?? null)}
+                  data-testid="input-dm-image"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  title="إرفاق صورة"
+                  className="p-2.5 rounded-xl border border-input text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0"
+                  data-testid="btn-attach-dm-image"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                </button>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (text.trim()) sendMsg.mutate(text.trim());
+                      doSend();
                     }
                   }}
                   placeholder="اكتب رسالتك للمسؤول…"
@@ -213,8 +312,8 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                   className="flex-1 resize-none rounded-xl border border-input bg-muted/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
                 />
                 <button
-                  onClick={() => { if (text.trim()) sendMsg.mutate(text.trim()); }}
-                  disabled={!text.trim() || sendMsg.isPending}
+                  onClick={doSend}
+                  disabled={!canSend}
                   className="p-2.5 rounded-xl bg-[#1E4D35] text-white disabled:opacity-50 hover:opacity-90 transition-opacity shrink-0"
                 >
                   {sendMsg.isPending

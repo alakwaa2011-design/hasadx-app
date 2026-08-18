@@ -69,8 +69,12 @@ router.post("/storage/uploads/request-image-url", async (req: Request, res: Resp
   }
 
   const { name, size, contentType } = parsed.data;
-  if (!contentType.startsWith("image/")) {
-    res.status(400).json({ error: "Only image files are allowed" });
+  // قائمة صيغ نقطية صارمة — SVG مرفوض لأنه قد يحمل سكربتات (stored XSS)
+  const ALLOWED_IMAGE_TYPES = new Set([
+    "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif",
+  ]);
+  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+    res.status(400).json({ error: "Only raster image files are allowed (JPEG/PNG/WebP/GIF/AVIF/HEIC)" });
     return;
   }
   const MAX_SIZE = 10 * 1024 * 1024;
@@ -216,6 +220,15 @@ async function serveObject(req: Request, res: Response) {
     res.setHeader("Content-Type", contentType);
     if (totalSize > 0) res.setHeader("Content-Length", totalSize);
     res.setHeader("Cache-Control", "private, max-age=3600");
+    // دفاع ضد stored XSS: المحتوى المرفوع من المستخدمين لا يُنفَّذ أبداً كسكربت —
+    // CSP يمنع تنفيذ أي سكربت داخل SVG/HTML مخزن، وnosniff يمنع تخمين النوع
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    // الأنواع النشطة (SVG/HTML/XML) تُنزَّل كملف بدل عرضها في سياق نفس الموقع
+    const ACTIVE_TYPES = /svg|html|xml|javascript/i;
+    if (ACTIVE_TYPES.test(contentType)) {
+      res.setHeader("Content-Disposition", "attachment");
+    }
 
     const stream = objectFile.createReadStream();
     stream.on("error", (err) => {

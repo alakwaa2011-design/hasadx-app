@@ -72,6 +72,10 @@ async function runSchemaMigrations() {
       VALUES (1, NOW() - INTERVAL '25 hours')
       ON CONFLICT (id) DO NOTHING
     `);
+    // ── Direct messages: image attachments ──
+    await db.execute(sql`
+      ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS image_url TEXT
+    `);
     // ── Unified analytics & presence (task: realtime analytics) ──
     await db.execute(sql`
       ALTER TABLE activity_logs

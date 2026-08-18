@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, MessageSquare, Users, ArrowRight, Plus, Search, X } from "lucide-react";
+import { Send, Loader2, MessageSquare, Users, ArrowRight, Plus, Search, X, ImagePlus, CheckCheck, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
+import { uploadDmImage, dmImageSrc } from "@/components/direct-message-drawer";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -20,6 +21,7 @@ interface DmMessage {
   id: number;
   senderId: number;
   content: string;
+  imageUrl: string | null;
   readAt: string | null;
   createdAt: string;
   mine: boolean;
@@ -36,6 +38,10 @@ export function MessagesTab() {
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>("");
   const [text, setText] = useState("");
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showNewMsg, setShowNewMsg] = useState(false);
   const [search, setSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -87,12 +93,18 @@ export function MessagesTab() {
   });
 
   const sendMsg = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, image }: { content: string; image: File | null }) => {
+      let imageUrl: string | undefined;
+      if (image) {
+        const objectPath = await uploadDmImage(image);
+        if (!objectPath) throw new Error("فشل رفع الصورة");
+        imageUrl = objectPath;
+      }
       const res = await fetch(`${API_BASE}/api/direct-messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content, recipientId: selectedTeacherId }),
+        body: JSON.stringify({ content, imageUrl, recipientId: selectedTeacherId }),
       });
       if (!res.ok) throw new Error("فشل الإرسال");
       return res.json();
@@ -101,8 +113,37 @@ export function MessagesTab() {
       queryClient.invalidateQueries({ queryKey: ["dm-admin-conv", selectedTeacherId] });
       queryClient.invalidateQueries({ queryKey: ["dm-admin-threads"] });
       setText("");
+      pickImage(null);
     },
+    onError: () => setUploadError(true),
   });
+
+  function pickImage(file: File | null) {
+    setUploadError(false);
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    if (file && file.type.startsWith("image/") && file.size <= 10 * 1024 * 1024) {
+      setPendingImage(file);
+      setPendingPreview(URL.createObjectURL(file));
+    } else {
+      setPendingImage(null);
+      setPendingPreview(null);
+      if (file) setUploadError(true);
+    }
+  }
+
+  const canSend = (text.trim().length > 0 || !!pendingImage) && !sendMsg.isPending;
+  function doSend() {
+    if (canSend) sendMsg.mutate({ content: text.trim(), image: pendingImage });
+  }
+
+  function readTimeStr(iso: string) {
+    const d = new Date(iso);
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+    const time = d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    if (isToday) return time;
+    return `${d.toLocaleDateString("ar-SA", { day: "numeric", month: "short" })} ${time}`;
+  }
 
   useEffect(() => {
     if (selectedTeacherId && messages.length > 0) {
@@ -330,10 +371,31 @@ export function MessagesTab() {
                         : "bg-muted text-foreground rounded-ss-none"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>
-                    <p className={`text-[10px] mt-1 ${m.mine ? "text-white/50 text-start" : "text-muted-foreground/50 text-end"}`}>
-                      {timeStr(m.createdAt)}
-                    </p>
+                    {m.imageUrl && (
+                      <a href={dmImageSrc(m.imageUrl)} target="_blank" rel="noreferrer">
+                        <img
+                          src={dmImageSrc(m.imageUrl)}
+                          alt="صورة مرفقة"
+                          loading="lazy"
+                          className="rounded-lg max-h-56 w-auto mb-1.5 border border-black/10"
+                        />
+                      </a>
+                    )}
+                    {m.content && <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.content}</p>}
+                    <div className={`flex items-center gap-1 mt-1 ${m.mine ? "text-white/50 justify-start" : "text-muted-foreground/50 justify-end"}`}>
+                      <span className="text-[10px]">{timeStr(m.createdAt)}</span>
+                      {/* إيصال القراءة — يظهر للمسؤول فقط على رسائله */}
+                      {m.mine && (
+                        m.readAt ? (
+                          <span className="flex items-center gap-0.5 text-[#7FD1A8]" title={`قُرئت ${readTimeStr(m.readAt)}`} data-testid={`read-receipt-${m.id}`}>
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            <span className="text-[10px]">قُرئت {readTimeStr(m.readAt)}</span>
+                          </span>
+                        ) : (
+                          <Check className="w-3.5 h-3.5 opacity-60" aria-label="لم تُقرأ بعد" />
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               ))
@@ -342,14 +404,47 @@ export function MessagesTab() {
           </div>
 
           <div className="p-3 border-t border-border">
+            {pendingPreview && (
+              <div className="relative inline-block mb-2">
+                <img src={pendingPreview} alt="معاينة" className="h-16 rounded-lg border border-border" />
+                <button
+                  onClick={() => pickImage(null)}
+                  className="absolute -top-1.5 -start-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow"
+                  data-testid="btn-remove-admin-dm-image"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            {uploadError && (
+              <p className="text-[11px] text-red-500 mb-1.5">
+                {lang === "ar" ? "تعذّر إرفاق الصورة — تأكد أنها صورة وأصغر من 10MB" : "Attachment failed — must be an image under 10MB"}
+              </p>
+            )}
             <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => pickImage(e.target.files?.[0] ?? null)}
+                data-testid="input-admin-dm-image"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title={lang === "ar" ? "إرفاق صورة" : "Attach image"}
+                className="p-2.5 rounded-xl border border-input text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0"
+                data-testid="btn-attach-admin-dm-image"
+              >
+                <ImagePlus className="w-4 h-4" />
+              </button>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (text.trim()) sendMsg.mutate(text.trim());
+                    doSend();
                   }
                 }}
                 placeholder={lang === "ar" ? `اكتب رسالة إلى ${selectedTeacherName}…` : `Message ${selectedTeacherName}…`}
@@ -358,8 +453,8 @@ export function MessagesTab() {
                 className="flex-1 resize-none rounded-xl border border-input bg-muted/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
-                onClick={() => { if (text.trim()) sendMsg.mutate(text.trim()); }}
-                disabled={!text.trim() || sendMsg.isPending}
+                onClick={doSend}
+                disabled={!canSend}
                 className="p-2.5 rounded-xl bg-[#1E4D35] text-white disabled:opacity-50 hover:opacity-90 transition-opacity shrink-0"
               >
                 {sendMsg.isPending
