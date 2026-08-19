@@ -9,7 +9,7 @@ import {
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
-  ArrowLeft, Printer, RotateCcw, LayoutTemplate, ChevronDown, Layers, ArrowUp, ArrowDown
+  ArrowLeft, Printer, Download, RotateCcw, LayoutTemplate, ChevronDown, Layers, ArrowUp, ArrowDown
 } from "lucide-react";
 import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
@@ -1826,8 +1826,9 @@ function PreviewOverlay({
           <button
             onClick={() => printToPdf()}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
+            title={ar ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
           >
-            <Printer className="w-4 h-4" /> {ar ? "طباعة / PDF" : "Print / PDF"}
+            <Download className="w-4 h-4" /> {ar ? "حفظ PDF" : "Save PDF"}
           </button>
         </div>
       </div>

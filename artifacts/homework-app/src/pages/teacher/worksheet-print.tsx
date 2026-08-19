@@ -12,7 +12,7 @@ import {
 } from "./worksheet-themes";
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import QRCode from "react-qr-code";
-import { Loader2, Printer, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon } from "lucide-react";
+import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -780,9 +780,10 @@ export default function WorksheetPrint() {
             onClick={() => printToPdf()}
             className="px-4 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
             style={{ background: BRAND_PRIMARY }}
+            title={uiLang === "ar" ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
           >
-            <Printer className="w-3.5 h-3.5" />
-            {uiLang === "ar" ? "PDF / طباعة" : "PDF / Print"}
+            <Download className="w-3.5 h-3.5" />
+            {uiLang === "ar" ? "حفظ PDF" : "Save PDF"}
           </button>
         </div>
       </div>
@@ -1414,10 +1415,16 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         font-size: ${fontSizePt}pt;
         line-height: 1.85;
         page-break-after: always;
+        break-after: page;
+        break-inside: avoid;
         overflow: visible;
         border-radius: 4px;
       }
-      .ws-page:last-of-type { page-break-after: auto; margin-bottom: 0; }
+      .ws-page:last-of-type {
+        page-break-after: auto;
+        break-after: auto;
+        margin-bottom: 0;
+      }
       .ws-content {
         position: relative;
         z-index: 1;
@@ -1993,13 +2000,20 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
 
       @media print {
         @page { size: A4; margin: 0; }
-        html, body { background: white !important; }
+        html, body, #root {
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+        }
         .no-print { display: none !important; }
         .print-host {
           background: white !important;
           padding: 0 !important;
           margin: 0 !important;
           min-height: auto !important;
+          display: block !important;
+          width: 100% !important;
         }
         .ws-page {
           margin: 0 !important;
@@ -2007,6 +2021,14 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
           border-radius: 0 !important;
           width: 210mm !important;
           min-height: 297mm !important;
+          box-sizing: border-box !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          break-inside: avoid !important;
+        }
+        .ws-page:last-of-type {
+          page-break-after: auto !important;
+          break-after: auto !important;
         }
         /* عند الطباعة نترك بضع بكسلات احتياطاً — أي صفحة يتجاوز ارتفاعها
            297mm ولو بكسراً واحداً تنقسم في PDF إلى صفحة + شريحة مكررة. */
