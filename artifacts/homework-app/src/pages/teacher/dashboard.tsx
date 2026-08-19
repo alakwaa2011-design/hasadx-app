@@ -1711,10 +1711,15 @@ export default function TeacherDashboard() {
                   {t.teacherGame.gameMode}
                 </h3>
               </div>
-              <div className="space-y-5 mb-4">
+              <div className="space-y-6 mb-5">
                 <section>
-                  <p className="text-sm font-black text-foreground mb-2">
+                  <p className="text-base font-black text-foreground">
                     {lang === "ar" ? "لعب مباشر مع المشاركين" : "Direct play with participants"}
+                  </p>
+                  <p className="text-sm leading-relaxed text-muted-foreground font-medium mt-1 mb-3">
+                    {lang === "ar"
+                      ? "مسابقة تفاعلية مباشرة — ينضم المشاركون من أجهزتهم، في الصف أو عن بُعد."
+                      : "A live interactive quiz — participants join from their own devices, in class or remotely."}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -1723,7 +1728,11 @@ export default function TeacherDashboard() {
                     >
                       <User className="w-7 h-7 mx-auto mb-1.5" />
                       <p className="font-black text-sm">{t.teacherGame.soloMode}</p>
-                      <p className="text-xs mt-0.5 opacity-70">{t.teacherGame.soloModeDesc}</p>
+                      <p className="text-sm leading-relaxed mt-1.5 opacity-75">
+                        {lang === "ar"
+                          ? "كل مشارك يتنافس من جهازه ويجمع نقاطه بنفسه."
+                          : "Each participant plays from their own device and earns their own points."}
+                      </p>
                     </button>
                     <button
                       onClick={() => setGameMode("teams")}
@@ -1731,13 +1740,22 @@ export default function TeacherDashboard() {
                     >
                       <UsersRound className="w-7 h-7 mx-auto mb-1.5" />
                       <p className="font-black text-sm">{t.teacherGame.teamMode}</p>
-                      <p className="text-xs mt-0.5 opacity-70">{t.teacherGame.teamModeDesc}</p>
+                      <p className="text-sm leading-relaxed mt-1.5 opacity-75">
+                        {lang === "ar"
+                          ? "يتوزع المشاركون على فرق من أجهزتهم ويتعاونون لصدارة التحدّي."
+                          : "Participants join teams from their devices and work together to lead the challenge."}
+                      </p>
                     </button>
                   </div>
                 </section>
                 <section>
-                  <p className="text-sm font-black text-foreground mb-2">
+                  <p className="text-base font-black text-foreground">
                     {lang === "ar" ? "لعب مرن" : "Flexible play"}
+                  </p>
+                  <p className="text-sm leading-relaxed text-muted-foreground font-medium mt-1 mb-3">
+                    {lang === "ar"
+                      ? "اختر تجربة تُلعب على شاشة واحدة، أو شارك رابطاً يفتح اللعب مباشرة."
+                      : "Choose one-screen play, or share a link that opens the game right away."}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -1745,9 +1763,11 @@ export default function TeacherDashboard() {
                       className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" : "border-border bg-muted/30 text-muted-foreground hover:border-emerald-400"}`}
                     >
                       <School className={`w-7 h-7 mx-auto mb-1.5 ${gameMode === "classroom" ? "text-emerald-500" : ""}`} />
-                      <p className="font-black text-sm">{t.dashboard.classroomMode}</p>
-                      <p className="text-xs mt-0.5 opacity-70">
-                        {lang === "ar" ? "لاعبان أمام الشاشة" : "Two players on screen"}
+                      <p className="font-black text-sm">{lang === "ar" ? "تحدّي الصف" : "Class challenge"}</p>
+                      <p className="text-sm leading-relaxed mt-1.5 opacity-75">
+                        {lang === "ar"
+                          ? "فريقان يتنافسان مباشرةً على الشاشة في الوقت نفسه، ويجمعان النقاط حتى يفوز أحدهما."
+                          : "Two teams compete live on screen at the same time, earning points until one wins."}
                       </p>
                     </button>
                     <button
@@ -1756,8 +1776,10 @@ export default function TeacherDashboard() {
                     >
                       <Zap className={`w-7 h-7 mx-auto mb-1.5 ${gameMode === "independent" ? "text-amber-500" : ""}`} />
                       <p className="font-black text-sm">{lang === "ar" ? "لعبة مستقلة" : "Independent game"}</p>
-                      <p className="text-xs mt-0.5 opacity-70">
-                        {lang === "ar" ? "العب الآن أو شارك الرابط" : "Play now or share the link"}
+                      <p className="text-sm leading-relaxed mt-1.5 opacity-75">
+                        {lang === "ar"
+                          ? "العب الآن بنفسك أو شارك الرابط؛ يفتح اللعب مباشرة لكل شخص."
+                          : "Play now or share the link — it opens a game instantly for every player."}
                       </p>
                     </button>
                   </div>

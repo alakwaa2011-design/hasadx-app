@@ -684,7 +684,12 @@ export default function WameethCreate() {
             <div className="space-y-8 lg:space-y-10">
               {/* Group 1 */}
               <div>
-                <h3 className="font-black text-lg lg:text-xl text-foreground mb-4 lg:mb-5">{ar ? "لعب مباشر مع المشاركين" : "Direct play with participants"}</h3>
+                <h3 className="font-black text-lg lg:text-xl text-foreground">{ar ? "لعب مباشر مع المشاركين" : "Direct play with participants"}</h3>
+                <p className="text-sm lg:text-base text-muted-foreground font-medium leading-relaxed mt-1.5 mb-4 lg:mb-5">
+                  {ar
+                    ? "مسابقة تفاعلية مباشرة — ينضم المشاركون من أجهزتهم، في الصف أو عن بُعد."
+                    : "A live interactive quiz — participants join from their own devices, in class or remotely."}
+                </p>
                 <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
                   <button
                     type="button"
@@ -697,7 +702,7 @@ export default function WameethCreate() {
                   >
                     <User className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
                     <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فردي" : "Solo"}</p>
-                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">{ar ? "كل مشارك يتنافس بمفرده" : "Every participant competes alone"}</p>
+                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">{ar ? "كل مشارك يتنافس من جهازه ويجمع نقاطه بنفسه." : "Each participant plays from their own device and earns their own points."}</p>
                   </button>
 
                   <button
@@ -711,14 +716,19 @@ export default function WameethCreate() {
                   >
                     <UsersRound className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
                     <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فرق" : "Teams"}</p>
-                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">{ar ? "المشاركون يتوزعون على فرق" : "Participants split into teams"}</p>
+                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">{ar ? "يتوزع المشاركون على فرق من أجهزتهم ويتعاونون لصدارة التحدّي." : "Participants join teams from their devices and work together to lead the challenge."}</p>
                   </button>
                 </div>
               </div>
 
               {/* Group 2 */}
               <div>
-                <h3 className="font-black text-lg lg:text-xl text-foreground mb-4 lg:mb-5">{ar ? "لعب مرن" : "Flexible play"}</h3>
+                <h3 className="font-black text-lg lg:text-xl text-foreground">{ar ? "لعب مرن" : "Flexible play"}</h3>
+                <p className="text-sm lg:text-base text-muted-foreground font-medium leading-relaxed mt-1.5 mb-4 lg:mb-5">
+                  {ar
+                    ? "اختر تجربة تُلعب على شاشة واحدة، أو شارك رابطاً يفتح اللعب مباشرة."
+                    : "Choose one-screen play, or share a link that opens the game right away."}
+                </p>
                 <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
                   <button
                     type="button"
@@ -732,11 +742,11 @@ export default function WameethCreate() {
                     )}
                   >
                     <School className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "وميض الصف" : "Class mode"}</p>
-                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">
+                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "تحدّي الصف" : "Class challenge"}</p>
+                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">
                       {classroomEligible.length < 2
-                        ? (ar ? "يحتاج سؤالي اختيار متعدد/صح وخطأ" : "Needs 2 MCQ/true-false questions")
-                        : (ar ? "لاعبان أمام الشاشة" : "Two players in front of the screen")}
+                        ? (ar ? "لا تتوفر أسئلة مناسبة للعب الصف حالياً." : "There are not enough suitable questions for class play yet.")
+                        : (ar ? "فريقان يتنافسان مباشرةً على الشاشة في الوقت نفسه، ويجمعان النقاط حتى يفوز أحدهما." : "Two teams compete live on screen at the same time, earning points until one wins.")}
                     </p>
                   </button>
 
@@ -751,8 +761,8 @@ export default function WameethCreate() {
                   >
                     <Zap className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "independent" ? "text-amber-600" : "text-muted-foreground")} />
                     <p className="font-black text-foreground text-sm lg:text-base">{ar ? "لعبة مستقلة" : "Independent game"}</p>
-                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">
-                      {ar ? "العب بنفسك أو شارك الرابط، ويلعب كل شخص في أي وقت" : "Play by yourself or share the link, and each person plays at any time"}
+                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">
+                      {ar ? "العب الآن بنفسك أو شارك الرابط؛ يفتح اللعب مباشرة لكل شخص." : "Play now or share the link — it opens a game instantly for every player."}
                     </p>
                   </button>
                 </div>
