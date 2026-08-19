@@ -58,7 +58,7 @@ export default function WameethCreate() {
 
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
   const { data: assignments, isLoading: assignmentsLoading } = useListAssignments(
-    user ? { teacherId: user.id, include: "shared" } : undefined,
+    user ? { teacherId: user.id } : undefined,
     { query: { enabled: !!user } as any },
   );
 

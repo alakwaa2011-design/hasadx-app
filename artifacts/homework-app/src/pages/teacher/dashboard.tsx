@@ -91,7 +91,6 @@ import {
   ChevronRight,
   School,
 } from "lucide-react";
-import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
@@ -315,7 +314,7 @@ interface SharedAssignment {
   questionCount: number;
 }
 
-type GameMode = "solo" | "teams" | "classroom";
+type GameMode = "solo" | "teams" | "classroom" | "independent";
 
 /** Games that can be launched from an assignment (live session). Default: وميض */
 type AssignmentLiveGameChoice =
@@ -664,34 +663,67 @@ export default function TeacherDashboard() {
     const assignmentId = gameSetupModal;
     setGameSetupModal(null);
 
-    // ── وضع اللعب داخل الصف: fetch questions → sessionStorage → navigate ──
+    // ── وميض الصف: تحقق من الأسئلة ثم افتح الشاشة المنفصلة برابط ثابت ───────
     if (gameMode === "classroom") {
       setCreatingGameForId(assignmentId);
       try {
-        const res = await fetch(`/api/assignments/${assignmentId}`, { credentials: "include" });
+        const res = await fetch(`${API_BASE_DASH}/api/assignments/${assignmentId}`, { credentials: "include" });
         if (!res.ok) { toast.error(t.dashboard.questionsLoadError); return; }
         const data = await res.json();
-        const assignment = assignments.find((a: { id: number }) => a.id === assignmentId);
         const qs = (data.questions || [])
           .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
-            q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
-          .map((q: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => ({
-            text: q.text,
-            options: [q.optionA, q.optionB, q.optionC, q.optionD],
-            correct: ["A","B","C","D"].indexOf(q.correctAnswer),
-          }));
+            (q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
+            || (q.questionType === "true_false" && q.correctAnswer));
         if (qs.length < 2) {
           toast.error(t.dashboard.wameethMinQuestions);
           return;
         }
-        sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({
-          questions: qs,
-          duration: 20,
-          title: (assignment as { title?: string })?.title,
-        }));
-        setLocation("/game/wameeth/class");
+        const linkRes = await fetch(`${API_BASE_DASH}/api/assignments/${assignmentId}/play-links`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ gameType: "wameeth_class" }),
+        });
+        const link = await linkRes.json();
+        if (!linkRes.ok || !link.token) {
+          throw new Error(link.message || (lang === "ar" ? "تعذّر إنشاء رابط وميض الصف" : "Failed to create class link"));
+        }
+        setLocation(`/game/wameeth/class?token=${encodeURIComponent(link.token)}`);
       } catch {
         toast.error(t.dashboard.genericError);
+      } finally {
+        setCreatingGameForId(null);
+      }
+      return;
+    }
+
+    // ── لعبة مستقلة: رابط ثابت، ثم جلسة جديدة فورية للمعلم ─────────────────
+    if (gameMode === "independent") {
+      setCreatingGameForId(assignmentId);
+      try {
+        const linkRes = await fetch(`${API_BASE_DASH}/api/assignments/${assignmentId}/play-links`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ gameType: "wameeth" }),
+        });
+        const link = await linkRes.json();
+        if (!linkRes.ok || !link.token) {
+          throw new Error(link.message || (lang === "ar" ? "تعذّر إنشاء رابط اللعبة" : "Failed to create game link"));
+        }
+        const startRes = await fetch(`${API_BASE_DASH}/api/play/${encodeURIComponent(link.token)}/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const started = await startRes.json();
+        if (!startRes.ok || !started.playRoute) {
+          throw new Error(started.message || (lang === "ar" ? "تعذّر بدء اللعبة" : "Failed to start game"));
+        }
+        setLocation(
+          `${started.playRoute}?name=${encodeURIComponent(lang === "ar" ? "لاعب" : "Player")}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(link.token)}`,
+        );
+      } catch (err: any) {
+        toast.error(err.message || t.dashboard.genericError);
       } finally {
         setCreatingGameForId(null);
       }
@@ -1679,53 +1711,57 @@ export default function TeacherDashboard() {
                   {t.teacherGame.gameMode}
                 </h3>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <button
-                  onClick={() => setGameMode("solo")}
-                  className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "solo" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-border bg-muted/30 text-muted-foreground hover:border-purple-300"}`}
-                >
-                  <User className="w-7 h-7 mx-auto mb-1.5" />
-                  <p className="font-black text-sm">{t.teacherGame.soloMode}</p>
-                  <p className="text-xs mt-0.5 opacity-70">
-                    {t.teacherGame.soloModeDesc}
+              <div className="space-y-5 mb-4">
+                <section>
+                  <p className="text-sm font-black text-foreground mb-2">
+                    {lang === "ar" ? "لعب مباشر مع المشاركين" : "Direct play with participants"}
                   </p>
-                </button>
-                <button
-                  onClick={() => setGameMode("teams")}
-                  className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-border bg-muted/30 text-muted-foreground hover:border-purple-300"}`}
-                >
-                  <UsersRound className="w-7 h-7 mx-auto mb-1.5" />
-                  <p className="font-black text-sm">{t.teacherGame.teamMode}</p>
-                  <p className="text-xs mt-0.5 opacity-70">
-                    {t.teacherGame.teamModeDesc}
-                  </p>
-                </button>
-                {/* ── وضع اللعب داخل الصف ── */}
-                <button
-                  onClick={() => setGameMode("classroom")}
-                  className={`col-span-2 p-4 rounded-xl border-2 text-center transition-all flex items-center gap-4 ${
-                    gameMode === "classroom"
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                      : "border-border bg-muted/30 text-muted-foreground hover:border-emerald-400"
-                  }`}
-                >
-                  <School className={`w-8 h-8 shrink-0 ${gameMode === "classroom" ? "text-emerald-500" : ""}`} />
-                  <div className="text-start flex-1">
-                    <p className="font-black text-sm">
-                      {t.dashboard.classroomMode}
-                    </p>
-                    <p className="text-xs mt-0.5 opacity-70">
-                      {lang === "ar"
-                        ? "فريقان على السبورة الذكية — شاشتان منفصلتان في نفس الوقت"
-                        : "Two teams on the smart board — two panels at once"}
-                    </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setGameMode("solo")}
+                      className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "solo" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-border bg-muted/30 text-muted-foreground hover:border-purple-300"}`}
+                    >
+                      <User className="w-7 h-7 mx-auto mb-1.5" />
+                      <p className="font-black text-sm">{t.teacherGame.soloMode}</p>
+                      <p className="text-xs mt-0.5 opacity-70">{t.teacherGame.soloModeDesc}</p>
+                    </button>
+                    <button
+                      onClick={() => setGameMode("teams")}
+                      className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "border-border bg-muted/30 text-muted-foreground hover:border-purple-300"}`}
+                    >
+                      <UsersRound className="w-7 h-7 mx-auto mb-1.5" />
+                      <p className="font-black text-sm">{t.teacherGame.teamMode}</p>
+                      <p className="text-xs mt-0.5 opacity-70">{t.teacherGame.teamModeDesc}</p>
+                    </button>
                   </div>
-                  {gameMode === "classroom" && (
-                    <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
-                    </span>
-                  )}
-                </button>
+                </section>
+                <section>
+                  <p className="text-sm font-black text-foreground mb-2">
+                    {lang === "ar" ? "لعب مرن" : "Flexible play"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setGameMode("classroom")}
+                      className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" : "border-border bg-muted/30 text-muted-foreground hover:border-emerald-400"}`}
+                    >
+                      <School className={`w-7 h-7 mx-auto mb-1.5 ${gameMode === "classroom" ? "text-emerald-500" : ""}`} />
+                      <p className="font-black text-sm">{t.dashboard.classroomMode}</p>
+                      <p className="text-xs mt-0.5 opacity-70">
+                        {lang === "ar" ? "لاعبان أمام الشاشة" : "Two players on screen"}
+                      </p>
+                    </button>
+                    <button
+                      onClick={() => setGameMode("independent")}
+                      className={`p-4 rounded-xl border-2 text-center transition-all ${gameMode === "independent" ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" : "border-border bg-muted/30 text-muted-foreground hover:border-amber-400"}`}
+                    >
+                      <Zap className={`w-7 h-7 mx-auto mb-1.5 ${gameMode === "independent" ? "text-amber-500" : ""}`} />
+                      <p className="font-black text-sm">{lang === "ar" ? "لعبة مستقلة" : "Independent game"}</p>
+                      <p className="text-xs mt-0.5 opacity-70">
+                        {lang === "ar" ? "العب الآن أو شارك الرابط" : "Play now or share the link"}
+                      </p>
+                    </button>
+                  </div>
+                </section>
               </div>
               {gameMode === "teams" && (
                 <div className="mb-5 space-y-4">
@@ -1797,7 +1833,7 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
               )}
-              {gameMode !== "classroom" && (
+              {(gameMode === "solo" || gameMode === "teams") && (
                 <div className="mb-5">
                   <ClassSelector
                     value={gameTargetClass}
