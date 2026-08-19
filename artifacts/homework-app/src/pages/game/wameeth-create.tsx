@@ -742,7 +742,7 @@ export default function WameethCreate() {
                     )}
                   >
                     <School className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "تحدّي الصف" : "Class challenge"}</p>
+                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "وميض الصف" : "Wameeth Class"}</p>
                     <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">
                       {classroomEligible.length < 2
                         ? (ar ? "لا تتوفر أسئلة مناسبة للعب الصف حالياً." : "There are not enough suitable questions for class play yet.")

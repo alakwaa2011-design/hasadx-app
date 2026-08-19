@@ -339,152 +339,295 @@ function SettingRow({ icon, label, description, trailing, children }: {
   );
 }
 
-// ─── Idle overlay (with full settings panel) ───────────────────────────────────
+// ─── Idle overlay — Hasad light redesign ─────────────────────────────────────
 function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSettings, onStart, onBlueName, onRedName }: {
   setup: WameethClassSetup; blueName: string; redName: string; blueOnRight: boolean; ar: boolean;
   settings: ClassSettings; onSettings: (s: ClassSettings) => void;
   onStart: () => void; onBlueName: (n: string) => void; onRedName: (n: string) => void;
 }) {
-  const leftColor  = blueOnRight ? "#f87171" : "#60a5fa";
-  const rightColor = blueOnRight ? "#60a5fa" : "#f87171";
+  const leftColor  = blueOnRight ? "#ef4444" : "#3b82f6";
+  const rightColor = blueOnRight ? "#3b82f6" : "#ef4444";
   const leftName   = blueOnRight ? redName   : blueName;
   const rightName  = blueOnRight ? blueName  : redName;
   const leftSet    = blueOnRight ? onRedName : onBlueName;
   const rightSet   = blueOnRight ? onBlueName : onRedName;
 
+  // Hasad brand tokens
+  const G  = "#225739"; // primary green
+  const GL = "#2f684d"; // green-600
+  const GS = "#e0ede5"; // green-100 (soft tint)
+  const BG = "#f7f9f7"; // near-white background
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: [
-        "radial-gradient(ellipse 80% 50% at 50% 0%,rgba(244,201,93,0.13) 0%,transparent 65%)",
-        "linear-gradient(160deg,#060e0a 0%,#0d2118 50%,#060e0a 100%)",
-      ].join(",") }}>
+      style={{ background: BG }}
+    >
+      {/* Top accent bar */}
+      <div className="h-1.5 w-full shrink-0" style={{ background: `linear-gradient(90deg, ${G} 0%, #d4a63a 60%, ${G} 100%)` }} />
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-6 sm:py-8">
-        <div className="w-full max-w-md mx-auto flex flex-col gap-5">
+      <div className="flex-1 overflow-y-auto">
+        <div className="w-full max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5" dir={ar ? "rtl" : "ltr"}>
 
-          {/* Logo */}
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="w-14 h-14 rounded-3xl flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg,rgba(244,201,93,0.22),rgba(212,166,58,0.06))",
-                border: "1.5px solid rgba(244,201,93,0.4)",
-                boxShadow: "0 8px 28px rgba(244,201,93,0.18)",
-              }}>
-              <School className="w-7 h-7 text-yellow-300" />
+          {/* ── Hero header ── */}
+          <div className="flex flex-col items-center gap-3 text-center pt-2">
+            {/* Icon badge */}
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${G}, ${GL})` }}
+            >
+              <School className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-yellow-300 font-black text-2xl sm:text-[26px] tracking-tight leading-tight">
+              <h1
+                className="font-black text-3xl sm:text-[32px] tracking-tight leading-tight"
+                style={{ color: G }}
+              >
                 {ar ? "وميض الصف" : "Wameeth Class"}
               </h1>
-              {setup.title && <p className="text-white/45 text-sm font-bold mt-0.5">{setup.title}</p>}
+              {setup.title && (
+                <p className="text-sm font-semibold mt-1" style={{ color: "#6b7280" }}>
+                  {setup.title}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Team names card */}
-          <div className="rounded-3xl p-4 sm:p-5" style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" }}
-            dir={ar ? "rtl" : "ltr"}>
-            <div className="flex items-center gap-2 mb-3.5 text-white/40 text-[11px] font-black uppercase tracking-widest">
-              <Users className="w-3.5 h-3.5" />
-              {ar ? "أسماء الفريقين" : "Team names"}
+          {/* ── Teams card ── */}
+          <div
+            className="rounded-2xl border p-5 sm:p-6"
+            style={{ background: "#ffffff", borderColor: "#e5e7eb", boxShadow: "0 1px 6px rgba(34,87,57,0.06)" }}
+          >
+            {/* Card header */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: GS }}>
+                <Users className="w-4 h-4" style={{ color: G }} />
+              </div>
+              <span className="text-xs font-black uppercase tracking-widest" style={{ color: G }}>
+                {ar ? "الفريقان" : "Teams"}
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {([
                 { label: ar ? "الفريق الأيسر" : "Left team",  color: leftColor,  val: leftName,  set: leftSet  },
                 { label: ar ? "الفريق الأيمن" : "Right team", color: rightColor, val: rightName, set: rightSet },
-              ].map(({ label, color, val, set }) => (
-                <div key={label} className="flex flex-col gap-1.5 min-w-0">
+              ] as const).map(({ label, color, val, set }) => (
+                <div key={label} className="flex flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
-                    <label className="text-[11px] font-bold truncate" style={{ color }}>{label}</label>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ background: color }}
+                    />
+                    <span className="text-[11px] font-bold" style={{ color }}>
+                      {label}
+                    </span>
                   </div>
-                  <input value={val} onChange={(e) => set(e.target.value)} maxLength={20}
-                    className="rounded-xl px-3 py-2.5 font-black text-sm text-white focus:outline-none focus:ring-2 transition-all"
-                    style={{ background: "rgba(255,255,255,0.07)", border: `1.5px solid ${color}40`, ["--tw-ring-color" as any]: `${color}55` }} />
+                  <input
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                    maxLength={20}
+                    className="rounded-xl px-3.5 py-2.5 font-black text-sm focus:outline-none transition-all"
+                    style={{
+                      background: `${color}0d`,
+                      border: `1.5px solid ${color}40`,
+                      color: "#111827",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = color; e.currentTarget.style.boxShadow = `0 0 0 3px ${color}18`; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = `${color}40`; e.currentTarget.style.boxShadow = "none"; }}
+                  />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Settings card */}
-          <div className="rounded-3xl p-4 sm:p-5 flex flex-col gap-4"
-            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" }}
-            dir={ar ? "rtl" : "ltr"}>
-
-            <div className="flex items-center gap-2 text-white/40 text-[11px] font-black uppercase tracking-widest">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              {ar ? "إعدادات اللعبة" : "Game settings"}
+          {/* ── Settings card ── */}
+          <div
+            className="rounded-2xl border p-5 sm:p-6 flex flex-col gap-5"
+            style={{ background: "#ffffff", borderColor: "#e5e7eb", boxShadow: "0 1px 6px rgba(34,87,57,0.06)" }}
+          >
+            {/* Card header */}
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: GS }}>
+                <SlidersHorizontal className="w-4 h-4" style={{ color: G }} />
+              </div>
+              <span className="text-xs font-black uppercase tracking-widest" style={{ color: G }}>
+                {ar ? "إعدادات اللعبة" : "Game settings"}
+              </span>
             </div>
 
-            {/* Question duration */}
-            <SettingRow icon={<Clock3 className="w-4 h-4" />} label={ar ? "مدة السؤال" : "Duration per question"}>
-              <SegmentedControl
-                layoutId="duration-pill"
-                options={DURATION_OPTIONS}
-                value={settings.duration}
-                onChange={(d) => onSettings({ ...settings, duration: d })}
-                accent="#f4c95d"
-                render={(d) => `${d}${ar ? "ث" : "s"}`}
-              />
-            </SettingRow>
+            {/* ── Duration per question ── */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <Clock3 className="w-4 h-4 shrink-0" style={{ color: "#9ca3af" }} />
+                <span className="text-sm font-bold text-gray-700">{ar ? "مدة السؤال" : "Duration per question"}</span>
+              </div>
+              {/* Duration pill selector */}
+              <div
+                className="flex gap-1.5 p-1.5 rounded-xl flex-wrap"
+                style={{ background: "#f3f4f6", border: "1px solid #e5e7eb" }}
+              >
+                {DURATION_OPTIONS.map((d) => {
+                  const active = d === settings.duration;
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => onSettings({ ...settings, duration: d })}
+                      className="relative flex-1 min-w-[3.2rem] px-3 py-2 rounded-lg text-sm font-black transition-colors"
+                      style={{
+                        color: active ? "#ffffff" : "#6b7280",
+                        background: active ? G : "transparent",
+                        boxShadow: active ? `0 2px 8px rgba(34,87,57,0.3)` : "none",
+                      }}
+                    >
+                      {d}{ar ? "ث" : "s"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-            <div className="h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+            {/* Divider */}
+            <div className="h-px bg-gray-100" />
 
-            {/* Gifts toggle + freeze duration */}
-            <SettingRow
-              icon={<Gift className="w-4 h-4" />}
-              label={ar ? "صناديق الهدايا" : "Gift boxes"}
-              trailing={<Switch on={settings.giftsEnabled} onChange={(v) => onSettings({ ...settings, giftsEnabled: v })} accent="#f4c95d" />}
-            >
+            {/* ── Gift boxes toggle ── */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 shrink-0" style={{ color: "#9ca3af" }} />
+                  <span className="text-sm font-bold text-gray-700">{ar ? "صناديق الهدايا" : "Gift boxes"}</span>
+                </div>
+                {/* Hasad green toggle */}
+                <button
+                  onClick={() => onSettings({ ...settings, giftsEnabled: !settings.giftsEnabled })}
+                  aria-pressed={settings.giftsEnabled}
+                  className="relative w-12 h-6 rounded-full shrink-0 transition-colors duration-200"
+                  style={{
+                    background: settings.giftsEnabled ? G : "#d1d5db",
+                    boxShadow: settings.giftsEnabled ? `0 0 0 3px ${GS}` : "none",
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 flex"
+                    style={{ justifyContent: settings.giftsEnabled ? "flex-end" : "flex-start" }}
+                  >
+                    <motion.span
+                      layout
+                      transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                      className="w-5 h-5 rounded-full bg-white shadow m-0.5"
+                    />
+                  </div>
+                </button>
+              </div>
+
+              {/* Freeze duration (shown only when gifts on) */}
               <AnimatePresence initial={false}>
                 {settings.giftsEnabled && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }} className="overflow-hidden">
-                    <div className="flex items-center gap-2 mb-2 text-white/50 text-[11px] font-bold">
-                      <Timer className="w-3.5 h-3.5" />
-                      {ar ? "مدة التجميد" : "Freeze duration"}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-0.5 flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Snowflake className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-xs font-bold text-gray-500">{ar ? "مدة التجميد" : "Freeze duration"}</span>
+                      </div>
+                      <div
+                        className="flex gap-1.5 p-1.5 rounded-xl flex-wrap"
+                        style={{ background: "#eff6ff", border: "1px solid #dbeafe" }}
+                      >
+                        {FREEZE_DURATION_OPTIONS.map((d) => {
+                          const active = d === settings.freezeDuration;
+                          return (
+                            <button
+                              key={d}
+                              onClick={() => onSettings({ ...settings, freezeDuration: d })}
+                              className="flex-1 min-w-[3rem] px-2.5 py-1.5 rounded-lg text-xs font-black transition-colors flex items-center justify-center gap-1"
+                              style={{
+                                color: active ? "#ffffff" : "#60a5fa",
+                                background: active ? "#3b82f6" : "transparent",
+                                boxShadow: active ? "0 2px 6px rgba(59,130,246,0.3)" : "none",
+                              }}
+                            >
+                              <Snowflake className="w-3 h-3 shrink-0" />
+                              {d}{ar ? "ث" : "s"}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <SegmentedControl
-                      layoutId="freeze-pill"
-                      options={FREEZE_DURATION_OPTIONS}
-                      value={settings.freezeDuration}
-                      onChange={(d) => onSettings({ ...settings, freezeDuration: d })}
-                      accent="#3b82f6"
-                      render={(d) => `🥶 ${d}${ar ? "ث" : "s"}`}
-                    />
                   </motion.div>
                 )}
               </AnimatePresence>
-            </SettingRow>
+            </div>
 
-            <div className="h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+            {/* Divider */}
+            <div className="h-px bg-gray-100" />
 
-            {/* Show correct answer toggle */}
-            <SettingRow
-              icon={settings.showCorrect ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              label={ar ? "إظهار الإجابة الصحيحة" : "Show correct answer"}
-              description={settings.showCorrect
-                ? (ar ? "تظهر للفريق فور الخطأ" : "Revealed immediately after a wrong guess")
-                : (ar ? "لا تُكشف الإجابة — تمنع الغش" : "Hidden — prevents the other team from copying")}
-              trailing={<Switch on={settings.showCorrect} onChange={(v) => onSettings({ ...settings, showCorrect: v })} accent="#f4c95d" />}
-            />
+            {/* ── Show correct answer toggle ── */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <div className="mt-0.5">
+                  {settings.showCorrect
+                    ? <Eye className="w-4 h-4 shrink-0" style={{ color: "#9ca3af" }} />
+                    : <EyeOff className="w-4 h-4 shrink-0" style={{ color: "#9ca3af" }} />}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-bold text-gray-700">{ar ? "إظهار الإجابة الصحيحة" : "Show correct answer"}</span>
+                  <span className="text-[11px] text-gray-400 leading-snug mt-0.5">
+                    {settings.showCorrect
+                      ? (ar ? "تظهر للفريق فور الخطأ" : "Revealed immediately after a wrong guess")
+                      : (ar ? "لا تُكشف الإجابة — تمنع الغش" : "Hidden — prevents the other team from copying")}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => onSettings({ ...settings, showCorrect: !settings.showCorrect })}
+                aria-pressed={settings.showCorrect}
+                className="relative w-12 h-6 rounded-full shrink-0 transition-colors duration-200 mt-0.5"
+                style={{
+                  background: settings.showCorrect ? G : "#d1d5db",
+                  boxShadow: settings.showCorrect ? `0 0 0 3px ${GS}` : "none",
+                }}
+              >
+                <div
+                  className="absolute inset-0 flex"
+                  style={{ justifyContent: settings.showCorrect ? "flex-end" : "flex-start" }}
+                >
+                  <motion.span
+                    layout
+                    transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                    className="w-5 h-5 rounded-full bg-white shadow m-0.5"
+                  />
+                </div>
+              </button>
+            </div>
           </div>
 
-          {/* Summary chips */}
-          <div className="flex gap-1.5 flex-wrap justify-center">
+          {/* ── Summary chips ── */}
+          <div className="flex gap-2 flex-wrap justify-center pb-2">
             {[
-              { icon: <Zap className="w-3 h-3 text-yellow-300" />, text: `${setup.questions.length} ${ar ? "سؤال" : "questions"}` },
-              { icon: <Clock3 className="w-3 h-3 text-white/50" />, text: `${settings.duration}${ar ? "ث" : "s"}/${ar ? "سؤال" : "q"}` },
+              { icon: <Zap className="w-3 h-3" style={{ color: "#d97706" }} />, text: `${setup.questions.length} ${ar ? "سؤال" : "questions"}`, bg: "#fffbeb", border: "#fde68a", textColor: "#92400e" },
+              { icon: <Clock3 className="w-3 h-3" style={{ color: G }} />, text: `${settings.duration}${ar ? "ث" : "s"}/${ar ? "سؤال" : "q"}`, bg: GS, border: "#99c1ab", textColor: G },
               settings.giftsEnabled
-                ? { icon: <Gift className="w-3 h-3 text-amber-300" />, text: `${ar ? "هدايا" : "Gifts"} · 🥶${settings.freezeDuration}${ar ? "ث" : "s"}` }
-                : { icon: <Gift className="w-3 h-3 text-white/30" />, text: ar ? "بلا هدايا" : "No gifts" },
+                ? { icon: <Gift className="w-3 h-3" style={{ color: "#9333ea" }} />, text: `${ar ? "هدايا · تجميد " : "Gifts · freeze "}${settings.freezeDuration}${ar ? "ث" : "s"}`, bg: "#faf5ff", border: "#e9d5ff", textColor: "#6b21a8" }
+                : { icon: <Gift className="w-3 h-3" style={{ color: "#9ca3af" }} />, text: ar ? "بلا هدايا" : "No gifts", bg: "#f9fafb", border: "#e5e7eb", textColor: "#6b7280" },
               settings.showCorrect
-                ? { icon: <Eye className="w-3 h-3 text-white/50" />, text: ar ? "الإجابة ظاهرة" : "Answer shown" }
-                : { icon: <EyeOff className="w-3 h-3 text-white/50" />, text: ar ? "الإجابة مخفية" : "Answer hidden" },
+                ? { icon: <Eye className="w-3 h-3" style={{ color: "#0369a1" }} />, text: ar ? "الإجابة ظاهرة" : "Answer shown", bg: "#f0f9ff", border: "#bae6fd", textColor: "#0369a1" }
+                : { icon: <EyeOff className="w-3 h-3" style={{ color: "#6b7280" }} />, text: ar ? "الإجابة مخفية" : "Answer hidden", bg: "#f9fafb", border: "#e5e7eb", textColor: "#6b7280" },
             ].map((c, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 bg-white/[0.05] border border-white/10 text-white/55 px-3 py-1.5 rounded-full text-[11px] font-bold">
+              <span
+                key={i}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border"
+                style={{ background: c.bg, borderColor: c.border, color: c.textColor }}
+              >
                 {c.icon}{c.text}
               </span>
             ))}
@@ -492,13 +635,22 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
         </div>
       </div>
 
-      {/* Sticky start button */}
-      <div className="shrink-0 px-4 sm:px-5 pb-5 sm:pb-6 pt-3"
-        style={{ background: "linear-gradient(180deg,rgba(6,14,9,0) 0%,rgba(6,14,9,0.85) 35%,rgba(6,14,9,0.85) 100%)" }}>
-        <div className="w-full max-w-md mx-auto">
-          <motion.button whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.015 }} onClick={onStart}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-lg sm:text-xl"
-            style={{ background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)", color: "#1a0e00", boxShadow: "0 10px 36px rgba(244,201,93,0.4)" }}>
+      {/* ── Sticky start button ── */}
+      <div
+        className="shrink-0 px-4 sm:px-6 pb-6 pt-4"
+        style={{ background: "linear-gradient(180deg, rgba(247,249,247,0) 0%, #f7f9f7 30%)" }}
+      >
+        <div className="w-full max-w-lg mx-auto">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.015 }}
+            onClick={onStart}
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-lg sm:text-xl text-white"
+            style={{
+              background: `linear-gradient(135deg, ${GL} 0%, ${G} 100%)`,
+              boxShadow: `0 6px 24px rgba(34,87,57,0.35), 0 1px 0 rgba(255,255,255,0.12) inset`,
+            }}
+          >
             <Sparkles className="w-5 h-5" />
             {ar ? "ابدأ اللعبة" : "Start Game"}
           </motion.button>
