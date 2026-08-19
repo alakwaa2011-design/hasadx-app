@@ -395,7 +395,7 @@ router.get("/api/s/:shortSlug", async (req, res) => {
     const origin = `${proto}://${host}`;
 
     const playUrl   = `${origin}/solo/${encodeURIComponent(challenge.slug)}`;
-    const ogImageUrl = `${origin}/api/share/solo/${encodeURIComponent(challenge.slug)}/og.png`;
+    const ogImageUrl = `https://hasaadx.com/api/share/solo/${encodeURIComponent(challenge.slug)}/og.png`;
     const shortUrl  = `${origin}/s/${encodeURIComponent(shortSlug)}`;
 
     const rawTitle   = challenge.assignmentTitle?.trim() || "تحدي حصاد";
@@ -498,7 +498,7 @@ router.get("/share/solo/:slug", async (req, res) => {
     const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "";
     const origin = `${proto}://${host}`;
     const playUrl = `${origin}/solo/${encodeURIComponent(slug)}`;
-    const ogImageUrl = `${origin}/api/share/solo/${encodeURIComponent(slug)}/og.png`;
+    const ogImageUrl = `https://hasaadx.com/api/share/solo/${encodeURIComponent(slug)}/og.png`;
 
     const rawTitle = challenge?.assignmentTitle?.trim() || "تحدي حصاد";
     const title = escapeHtml(rawTitle);
