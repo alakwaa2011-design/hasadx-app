@@ -4,7 +4,7 @@
 import {
   useEffect, useReducer, useRef, useState, useCallback, useMemo,
 } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
@@ -12,7 +12,7 @@ import {
   Volume2, VolumeX, X as XIcon, Zap, Flame,
   CheckCircle, XCircle, Snowflake, School, Trophy, Crown,
   Gift, EyeOff, Eye, Clock3, Timer, Pause, Play, LogOut,
-  Users, SlidersHorizontal, Sparkles,
+  Users, SlidersHorizontal, Sparkles, Copy, Check, Loader2, AlertCircle,
 } from "lucide-react";
 import {
   playCorrectSound, playWrongSound, playVictoryFanfare,
@@ -943,8 +943,9 @@ function Divider({ state }: { state: WameethClassState }) {
 }
 
 // ─── Main game component ──────────────────────────────────────────────────────
-function WameethClassGame({ setup, blueOnRight, settings, onRematch, onExit, onSettings }: {
+function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch, onExit, onSettings }: {
   setup: WameethClassSetup; blueOnRight: boolean; settings: ClassSettings;
+  shareToken?: string | null;
   onSettings: (s: ClassSettings) => void;
   onRematch: (swap: boolean) => void; onExit: () => void;
 }) {
@@ -963,6 +964,7 @@ function WameethClassGame({ setup, blueOnRight, settings, onRematch, onExit, onS
   const [redName,  setRedName]  = useState(ar ? "الفريق الأحمر" : "Red Team");
   const [muted,  setMuted]      = useState(getIsMuted);
   const [paused, setPaused]     = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     if (paused) return;
@@ -1036,6 +1038,17 @@ function WameethClassGame({ setup, blueOnRight, settings, onRematch, onExit, onS
   const handleUseGift     = useCallback((team: TeamId, g: GiftType) => dispatch({ type:"use-gift",     fromTeam:team, gift:g }), []);
   const handlePickMystery = useCallback((team: TeamId, idx: number)  => dispatch({ type:"pick-mystery", team, idx }), []);
   const handleToggleMute  = () => { const m=toggleMute(); setMuted(m); };
+  const handleCopyClassLink = async () => {
+    if (!shareToken) return;
+    const url = `${window.location.origin}/game/wameeth/class?token=${encodeURIComponent(shareToken)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 1800);
+    } catch {
+      setShareCopied(false);
+    }
+  };
 
   const makePanel = (team: TeamId, name: string) => (
     <TeamPanel team={team} name={name} t={state.teams[team]}
@@ -1072,6 +1085,22 @@ function WameethClassGame({ setup, blueOnRight, settings, onRematch, onExit, onS
           {setup.title || (ar?"وميض الصف":"Wameeth Class")}
         </span>
         <div className="flex items-center gap-1.5">
+          {shareToken && (
+            <button
+              type="button"
+              onClick={handleCopyClassLink}
+              data-testid="button-copy-wameeth-class-link"
+              className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1.5 text-[11px] font-black text-amber-200 hover:bg-amber-300/20 transition-colors flex items-center gap-1.5"
+              aria-label={ar ? "نسخ رابط وميض الصف" : "Copy Wameeth Class link"}
+            >
+              {shareCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">
+                {shareCopied
+                  ? (ar ? "تم النسخ" : "Copied")
+                  : (ar ? "نسخ رابط وميض الصف" : "Copy class link")}
+              </span>
+            </button>
+          )}
           <button onClick={handleToggleMute}
             className="rounded-full border border-white/15 bg-black/40 p-1.5 text-white/60 hover:text-white transition-colors"
             aria-label={muted?"unmute":"mute"}>
@@ -1169,7 +1198,11 @@ export default function WameethClass() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const [, setLocation] = useLocation();
-  const [setup]   = useState<WameethClassSetup | null>(readSetup);
+  const search = useSearch();
+  const shareToken = new URLSearchParams(search).get("token");
+  const [setup, setSetup] = useState<WameethClassSetup | null>(() => shareToken ? null : readSetup());
+  const [loadingSetup, setLoadingSetup] = useState(!!shareToken);
+  const [setupError, setSetupError] = useState("");
   const [round,   setRound]   = useState(0);
   const [swapped, setSwapped] = useState(false);
   const [settings, setSettings] = useState<ClassSettings>(() =>
@@ -1178,7 +1211,52 @@ export default function WameethClass() {
   useEffect(() => {
     try { localStorage.setItem(CLASS_SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
   }, [settings]);
+  useEffect(() => {
+    if (!shareToken) return;
+    let cancelled = false;
+    setLoadingSetup(true);
+    setSetupError("");
+    fetch(`${import.meta.env.VITE_API_URL || ""}/api/play/${encodeURIComponent(shareToken)}/wameeth-class`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || (ar ? "تعذّر تحميل وميض الصف" : "Failed to load Wameeth Class"));
+        if (!cancelled) setSetup(data as WameethClassSetup);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setSetupError(err instanceof Error ? err.message : (ar ? "تعذّر تحميل وميض الصف" : "Failed to load Wameeth Class"));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSetup(false);
+      });
+    return () => { cancelled = true; };
+  }, [ar, shareToken]);
   const blueOnRight = ar !== swapped;
+
+  if (loadingSetup) {
+    return (
+      <Layout>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center" dir={ar ? "rtl" : "ltr"}>
+          <Loader2 className="w-12 h-12 text-amber-400 animate-spin" />
+          <p className="font-black text-lg" data-testid="status-wameeth-class-loading">
+            {ar ? "جارٍ تجهيز وميض الصف..." : "Preparing Wameeth Class..."}
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (setupError) {
+    return (
+      <Layout>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center" dir={ar ? "rtl" : "ltr"}>
+          <AlertCircle className="w-14 h-14 text-red-500" />
+          <h2 className="text-2xl font-black">{ar ? "تعذّر فتح الرابط" : "Could not open link"}</h2>
+          <p className="max-w-sm text-muted-foreground" data-testid="status-wameeth-class-error">{setupError}</p>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!setup) {
     return (
@@ -1204,6 +1282,7 @@ export default function WameethClass() {
       <WameethClassGame
         key={`${round}-${settings.duration}-${settings.giftsEnabled}-${settings.freezeDuration}`}
         setup={{ ...setup, duration: settings.duration }}
+        shareToken={shareToken}
         blueOnRight={blueOnRight}
         settings={settings}
         onSettings={setSettings}

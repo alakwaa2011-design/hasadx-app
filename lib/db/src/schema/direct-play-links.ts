@@ -6,7 +6,7 @@ import { assignmentsTable } from "./assignments";
  * One stable share-link per (assignment, gameType) pair.
  * The token is a 32-char random hex string — not guessable from the assignment ID.
  * Anyone with the token can start a solo game; no login required.
- * Supported gameType values: "wameeth" | "rocket_race"
+ * Supported gameType values: "wameeth" | "wameeth_class" | "rocket_race"
  */
 export const directPlayLinksTable = pgTable(
   "direct_play_links",
@@ -17,7 +17,7 @@ export const directPlayLinksTable = pgTable(
     assignmentId: integer("assignment_id")
       .notNull()
       .references(() => assignmentsTable.id, { onDelete: "cascade" }),
-    gameType: text("game_type").notNull(), // "wameeth" | "rocket_race"
+    gameType: text("game_type").notNull(), // "wameeth" | "wameeth_class" | "rocket_race"
     teacherId: integer("teacher_id")
       .notNull()
       .references(() => teachersTable.id, { onDelete: "cascade" }),

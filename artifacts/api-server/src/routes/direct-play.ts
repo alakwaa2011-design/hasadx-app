@@ -8,14 +8,15 @@
  *   POST /api/assignments/:id/play-links   — teacher creates/fetches a link for a game type
  *   GET  /api/play/:token/info             — public info for the landing page
  *   POST /api/play/:token/start            — public: create solo game session, return PIN
+ *   GET  /api/play/:token/wameeth-class    — public: load split-screen class setup
  *
- * Supported game types: "wameeth" | "rocket_race"
+ * Supported game types: "wameeth" | "wameeth_class" | "rocket_race"
  */
 import { Router, type IRouter } from "express";
 import { randomBytes } from "crypto";
 import { db, assignmentsTable, questionsTable, directPlayLinksTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
-import { createGame, type GameQuestion } from "../game/manager";
+import { createGame, deleteGame, getGame, type GameQuestion } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
 import {
   createRocketGameDirectly,
@@ -25,18 +26,31 @@ import {
 
 const router: IRouter = Router();
 
-// ── Simple IP-based rate limiter for public /start endpoint ──────────────────
+// ── Per-link rate limiter for public /start endpoint ─────────────────────────
 const startBuckets = new Map<string, number[]>();
 const RL_WINDOW_MS = 60 * 1000;
-const RL_MAX = 20; // 20 game starts per IP per minute
+const RL_MAX = 120; // 120 isolated sessions per public link per minute
+const DIRECT_JOIN_GRACE_MS = 90 * 1000;
 
-function checkStartRateLimit(ip: string): boolean {
+function checkStartRateLimit(linkToken: string): boolean {
   const now = Date.now();
-  const prev = (startBuckets.get(ip) ?? []).filter((t) => now - t < RL_WINDOW_MS);
-  if (prev.length >= RL_MAX) { startBuckets.set(ip, prev); return false; }
+  const prev = (startBuckets.get(linkToken) ?? []).filter((t) => now - t < RL_WINDOW_MS);
+  if (prev.length >= RL_MAX) { startBuckets.set(linkToken, prev); return false; }
   prev.push(now);
-  startBuckets.set(ip, prev);
+  startBuckets.set(linkToken, prev);
   return true;
+}
+
+function getDbErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined;
+  const direct = "code" in err ? (err as { code?: unknown }).code : undefined;
+  if (typeof direct === "string") return direct;
+  const cause = "cause" in err ? (err as { cause?: unknown }).cause : undefined;
+  if (cause && typeof cause === "object" && "code" in cause) {
+    const nested = (cause as { code?: unknown }).code;
+    if (typeof nested === "string") return nested;
+  }
+  return undefined;
 }
 
 // Cleanup buckets every 5 minutes to avoid unbounded growth
@@ -49,7 +63,7 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-const SUPPORTED_GAME_TYPES = new Set(["wameeth", "rocket_race"]);
+const SUPPORTED_GAME_TYPES = new Set(["wameeth", "wameeth_class", "rocket_race"]);
 const QUESTION_TYPES = ["mcq", "true_false", "fill_blank", "dictation"] as const;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,6 +120,44 @@ async function loadGameQuestions(assignmentId: number, duration = 20): Promise<G
     readAloud: q.readAloud ?? false,
     difficulty: q.difficulty ?? null,
   }));
+}
+
+type WameethClassQuestion = {
+  text: string;
+  options: string[];
+  correct: number;
+  imageUrl: string | null;
+};
+
+/** Fetch the option-based questions supported by the local split-screen engine. */
+async function loadWameethClassQuestions(assignmentId: number): Promise<WameethClassQuestion[]> {
+  const rows = await db
+    .select()
+    .from(questionsTable)
+    .where(
+      and(
+        eq(questionsTable.assignmentId, assignmentId),
+        sql`${questionsTable.questionType} IN ('mcq','true_false')`,
+      ),
+    );
+
+  return rows.flatMap((q): WameethClassQuestion[] => {
+    if (q.questionType === "true_false") {
+      const options = ["صح", "خطأ"];
+      const correct = q.correctAnswer === "true" || q.correctAnswer === "A" ? 0 : 1;
+      return [{ text: q.text, options, correct, imageUrl: q.imageUrl ?? null }];
+    }
+
+    const options = [q.optionA, q.optionB, q.optionC, q.optionD]
+      .filter((option): option is string => typeof option === "string" && option.trim().length > 0);
+    if (options.length < 2) return [];
+    return [{
+      text: q.text,
+      options,
+      correct: letterToIndex(q.correctAnswer, options),
+      imageUrl: q.imageUrl ?? null,
+    }];
+  });
 }
 
 /** Convert a letter answer to an option index for rocket format. */
@@ -198,12 +250,32 @@ router.post("/assignments/:id/play-links", async (req, res) => {
 
     // Create new token
     const token = randomBytes(16).toString("hex"); // 32-char hex
-    await db.insert(directPlayLinksTable).values({
-      token,
-      assignmentId: id,
-      gameType,
-      teacherId,
-    });
+    try {
+      await db.insert(directPlayLinksTable).values({
+        token,
+        assignmentId: id,
+        gameType,
+        teacherId,
+      });
+    } catch (err) {
+      // A concurrent request may have inserted the same
+      // (assignment, gameType, teacher) tuple after our read. Recover by
+      // returning that stable token instead of surfacing a spurious 500.
+      if (getDbErrorCode(err) !== "23505") throw err;
+      const [racedExisting] = await db
+        .select({ token: directPlayLinksTable.token })
+        .from(directPlayLinksTable)
+        .where(
+          and(
+            eq(directPlayLinksTable.assignmentId, id),
+            eq(directPlayLinksTable.gameType, gameType),
+            eq(directPlayLinksTable.teacherId, teacherId),
+          ),
+        )
+        .limit(1);
+      if (!racedExisting) throw err;
+      return res.json({ token: racedExisting.token });
+    }
 
     return res.json({ token });
   } catch (err) {
@@ -249,20 +321,52 @@ router.get("/play/:token/info", async (req, res) => {
   }
 });
 
+// ── GET /api/play/:token/wameeth-class  (public, no auth) ────────────────────
+// Returns only the setup required by the split-screen engine. The opaque token
+// is the sole public identifier; assignment and teacher IDs are never exposed.
+router.get("/play/:token/wameeth-class", async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token || token.length !== 32 || !/^[0-9a-f]+$/.test(token)) {
+      return res.status(404).json({ message: "الرابط غير صالح" });
+    }
+
+    const [link] = await db
+      .select({
+        assignmentId: directPlayLinksTable.assignmentId,
+        gameType: directPlayLinksTable.gameType,
+        title: assignmentsTable.title,
+      })
+      .from(directPlayLinksTable)
+      .innerJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .where(eq(directPlayLinksTable.token, token))
+      .limit(1);
+
+    if (!link || link.gameType !== "wameeth_class") {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+
+    const questions = await loadWameethClassQuestions(link.assignmentId);
+    if (questions.length < 2) {
+      return res.status(404).json({ message: "لا توجد أسئلة كافية لوميض الصف" });
+    }
+
+    return res.json({
+      title: link.title,
+      duration: 20,
+      questions,
+    });
+  } catch (err) {
+    req.log.error(err, "wameeth-class setup error");
+    return res.status(500).json({ message: "خطأ في تحميل وميض الصف" });
+  }
+});
+
 // ── POST /api/play/:token/start  (public, rate limited) ─────────────────────
 // Creates a fresh solo game session for this visitor and returns the PIN.
 // Each call creates a NEW independent session (no shared state between visitors).
 router.post("/play/:token/start", async (req, res) => {
   try {
-    // Rate limit by IP
-    const ip =
-      (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
-      req.socket.remoteAddress ||
-      "unknown";
-    if (!checkStartRateLimit(ip)) {
-      return res.status(429).json({ message: "طلبات كثيرة جداً. الرجاء الانتظار دقيقة." });
-    }
-
     const { token } = req.params;
     if (!token || token.length !== 32 || !/^[0-9a-f]+$/.test(token)) {
       return res.status(404).json({ message: "الرابط غير صالح" });
@@ -281,6 +385,12 @@ router.post("/play/:token/start", async (req, res) => {
 
     if (!link) return res.status(404).json({ message: "الرابط غير موجود" });
 
+    // Bound session creation by the verified high-entropy public link itself.
+    // This deliberately avoids proxy trust and X-Forwarded-For assumptions.
+    if (!checkStartRateLimit(token)) {
+      return res.status(429).json({ message: "طلبات كثيرة جداً. الرجاء الانتظار دقيقة." });
+    }
+
     const { assignmentId, gameType, title } = link;
 
     if (gameType === "wameeth") {
@@ -295,6 +405,13 @@ router.post("/play/:token/start", async (req, res) => {
         undefined, null, false, null, false,
       );
       startGameFromRest(game.pin);
+      const joinCleanup = setTimeout(() => {
+        const pendingGame = getGame(game.pin);
+        if (pendingGame && pendingGame.players.size === 0) {
+          deleteGame(game.pin);
+        }
+      }, DIRECT_JOIN_GRACE_MS);
+      joinCleanup.unref?.();
       return res.json({
         pin: game.pin,
         gameType: "wameeth",

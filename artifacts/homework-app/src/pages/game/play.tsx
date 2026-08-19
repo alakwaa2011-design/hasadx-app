@@ -868,6 +868,97 @@ function ReconnectingBanner({
   );
 }
 
+function IndependentResults({
+  score,
+  correctCount,
+  totalQuestions,
+  token,
+  lang,
+  dir,
+  onHome,
+}: {
+  score: number;
+  correctCount: number;
+  totalQuestions: number;
+  token: string | null;
+  lang: string;
+  dir: "rtl" | "ltr";
+  onHome: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const ar = lang === "ar";
+  const copyLink = async () => {
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/play/${encodeURIComponent(token)}`,
+      );
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-5"
+      style={{ background: "linear-gradient(160deg,#07150F 0%,#143828 52%,#081710 100%)" }}
+      dir={dir}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="w-full max-w-md rounded-3xl border border-amber-300/25 bg-white/[0.06] p-6 sm:p-8 text-center shadow-2xl backdrop-blur-xl"
+      >
+        <Trophy className="w-16 h-16 text-amber-400 mx-auto mb-4 drop-shadow-[0_0_24px_rgba(251,191,36,0.45)]" />
+        <h1 className="text-3xl sm:text-4xl font-black text-white mb-7" data-testid="text-independent-result-title">
+          {ar ? "نتيجتك" : "Your result"}
+        </h1>
+
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs font-bold text-white/50 mb-1">{ar ? "مجموع النقاط" : "Total points"}</p>
+            <p className="text-3xl font-black text-amber-300" data-testid="text-independent-score">
+              {score.toLocaleString()}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs font-bold text-white/50 mb-1">{ar ? "إجابات صحيحة" : "Correct answers"}</p>
+            <p className="text-3xl font-black text-emerald-300" data-testid="text-independent-correct-count">
+              {correctCount}/{totalQuestions}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {token && (
+            <button
+              type="button"
+              onClick={copyLink}
+              data-testid="button-copy-independent-link-results"
+              className="w-full rounded-2xl bg-amber-400 px-5 py-3.5 font-black text-emerald-950 hover:bg-amber-300 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+              {copied
+                ? (ar ? "تم نسخ الرابط" : "Link copied")
+                : (ar ? "نسخ رابط اللعبة" : "Copy game link")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onHome}
+            data-testid="button-independent-home"
+            className="w-full rounded-2xl border border-white/15 bg-white/[0.06] px-5 py-3 font-bold text-white/75 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            {ar ? "العودة للرئيسية" : "Back to home"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function GamePlay() {
   const [, params] = useRoute("/game/play/:pin");
   const pin = params?.pin || "";
@@ -877,6 +968,7 @@ export default function GamePlay() {
   const avatarParam = searchParams.get("avatar") || "🦁";
   const studentIdParam = searchParams.get("studentId");
   const studentAccountIdParam = searchParams.get("studentAccountId");
+  const independentTokenParam = searchParams.get("token");
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -1039,9 +1131,13 @@ export default function GamePlay() {
      without touching live/multiplayer/classroom flows.
      `solo-challenge-results.tsx` clears the sessionStorage key on
      mount, but the ref keeps the value stable for this game session. */
-  const isSoloRef = useRef(
+  const isSoloChallengeRef = useRef(
     typeof window !== "undefined" &&
       !!sessionStorage.getItem("solo_challenge_slug"),
+  );
+  const isIndependentRef = useRef(searchParams.get("independent") === "1");
+  const isSoloRef = useRef(
+    isSoloChallengeRef.current || isIndependentRef.current,
   );
   const soloTotalQuestionsRef = useRef<number>(0);
   const [soloCorrectCount, setSoloCorrectCount] = useState(0);
@@ -1170,6 +1266,9 @@ export default function GamePlay() {
 
           if (res.gameState === "question" && res.currentQuestion) {
             const q = res.currentQuestion;
+            if (isSoloRef.current && typeof q?.total === "number") {
+              soloTotalQuestionsRef.current = q.total;
+            }
             setQuestion(q);
             setPhase("question");
             const startTime = q.timeRemaining ?? q.duration;
@@ -3124,7 +3223,17 @@ export default function GamePlay() {
             !isSoloRef.current guard below. */}
         {isSoloRef.current && !hackMode && (
           <div className="px-4 pt-4 pb-2 flex items-center justify-between relative z-10">
-            <div className="w-20" />
+            {isIndependentRef.current ? (
+              <div
+                className="w-20 flex items-center gap-1.5 text-amber-300 font-black"
+                data-testid="text-independent-live-score"
+              >
+                <Zap className="w-4 h-4 shrink-0" />
+                <span className="tabular-nums">{myScore.toLocaleString()}</span>
+              </div>
+            ) : (
+              <div className="w-20" />
+            )}
             {/* Platform brand identity — logo icon + "حصاد" wordmark,
                 matching the global layout/auth/home brand block.
                 Clicking returns the player to the home page. */}
@@ -4050,10 +4159,19 @@ export default function GamePlay() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  // Primary share action — opens native share sheet on mobile
-                  // (WhatsApp, Telegram, etc. appear automatically in the sheet).
-                  // Falls back to clipboard copy on desktop browsers.
+                onClick={async () => {
+                  if (isIndependentRef.current && independentTokenParam) {
+                    try {
+                      await navigator.clipboard.writeText(
+                        `${window.location.origin}/play/${encodeURIComponent(independentTokenParam)}`,
+                      );
+                      setShareCopied(true);
+                      window.setTimeout(() => setShareCopied(false), 1800);
+                    } catch {
+                      setShareCopied(false);
+                    }
+                    return;
+                  }
                   const shareUrl = "https://hasaadx.com";
                   const shareText = "جرّب هذا التحدي التفاعلي على حصاد X ✨";
                   if (navigator.share) {
@@ -4063,10 +4181,19 @@ export default function GamePlay() {
                   }
                 }}
                 className="flex items-center gap-1.5 bg-white/[0.07] hover:bg-white/[0.13] border border-white/15 hover:border-[#E8B84B]/40 text-white/75 hover:text-white active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-full"
-                aria-label="مشاركة"
+                aria-label={isIndependentRef.current ? "نسخ رابط اللعبة" : "مشاركة"}
+                data-testid={isIndependentRef.current ? "button-copy-independent-link" : "button-share-solo-challenge"}
               >
-                <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
-                <span>مشاركة</span>
+                {isIndependentRef.current
+                  ? (shareCopied
+                    ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
+                    : <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />)
+                  : <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />}
+                <span>
+                  {isIndependentRef.current
+                    ? (shareCopied ? "تم النسخ" : "نسخ رابط اللعبة")
+                    : "مشاركة"}
+                </span>
               </button>
             </div>
           </div>
@@ -4930,9 +5057,23 @@ export default function GamePlay() {
   }
 
   if (phase === "finished") {
+    if (isIndependentRef.current) {
+      return (
+        <IndependentResults
+          score={myScore}
+          correctCount={soloCorrectCount}
+          totalQuestions={soloTotalQuestionsRef.current || question?.total || 0}
+          token={independentTokenParam}
+          lang={lang}
+          dir={dir}
+          onHome={() => setLocation("/")}
+        />
+      );
+    }
+
     // Solo challenge: render only the simplified solo results page.
     // No podium, no "all players", no PIN-share, no "wait for teacher".
-    if (isSoloRef.current) {
+    if (isSoloChallengeRef.current) {
       return (
         <SoloChallengeResults
           myScore={myScore}

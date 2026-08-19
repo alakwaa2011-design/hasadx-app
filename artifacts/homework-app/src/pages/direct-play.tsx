@@ -5,7 +5,7 @@
  * كل زائر يحصل على جلسة مستقلة لا تتداخل مع الآخرين.
  * يدعم نوعين من الألعاب: وميض (knowledge_race) وسباق الصواريخ (rocket_race).
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -53,6 +53,7 @@ export default function DirectPlayPage() {
   const [playerName, setPlayerName] = useState("");
   const [nameError, setNameError] = useState("");
   const [starting, setStarting] = useState(false);
+  const autoStartedRef = useRef(false);
 
   // تحميل بيانات الرابط
   useEffect(() => {
@@ -100,14 +101,50 @@ export default function DirectPlayPage() {
     }
   };
 
+  // Wameeth independent links skip the landing/name form entirely. Every
+  // request to /start creates a fresh solo session, so visitors never share
+  // game state even when they use the same stable token.
+  useEffect(() => {
+    if (!token || info?.gameType !== "wameeth" || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    setStarting(true);
+
+    fetch(`${API}/api/play/${encodeURIComponent(token)}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "خطأ");
+        const playerName = lang === "ar" ? "لاعب" : "Player";
+        setLocation(
+          `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}`,
+        );
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error
+          ? err.message
+          : lang === "ar"
+            ? "تعذّر بدء اللعبة"
+            : "Failed to start";
+        setLoadError(message);
+        setStarting(false);
+      });
+  }, [info?.gameType, lang, setLocation, token]);
+
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (!info && !loadError) {
+  if ((!info && !loadError) || (info?.gameType === "wameeth" && !loadError)) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
         style={{ background: "linear-gradient(160deg,#0D2118 0%,#1A3A28 50%,#0F2A1C 100%)" }}
       >
-        <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+        <div className="flex flex-col items-center gap-4" dir={dir}>
+          <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+          <p className="text-white/70 font-bold" data-testid="status-independent-starting">
+            {lang === "ar" ? "جارٍ بدء اللعبة..." : "Starting game..."}
+          </p>
+        </div>
       </div>
     );
   }

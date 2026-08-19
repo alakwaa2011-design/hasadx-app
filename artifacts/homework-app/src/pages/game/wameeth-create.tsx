@@ -44,7 +44,7 @@ interface Assignment {
 
 type QuestionSource = "assignment" | "ai" | "manual";
 type Difficulty = "easy" | "medium" | "hard";
-type PlayMode = "solo" | "teams" | "classroom";
+type PlayMode = "solo" | "teams" | "classroom" | "independent";
 
 // Wameedh entry point: prepare a set of questions (from an assignment, AI, or
 // written manually), review it, then pick how to play — solo / teams / class
@@ -222,6 +222,55 @@ export default function WameethCreate() {
   // has no free-text input there, so it is excluded from that mode only.
   const classroomEligible = validQuestions.filter(q => q.type !== "fill_blank");
 
+  const ensureAssignment = async (): Promise<number> => {
+    if (sourceAssignmentId != null) return sourceAssignmentId;
+
+    const res = await fetch(`${API}/api/assignments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        title: title.trim() || (ar ? "وميض" : "Wameeth"),
+        isShared: false,
+        contentKind: "competition",
+        questions: validQuestions.map(q => {
+          if (q.type === "fill_blank") {
+            const alternatives = q.closeAnswers.split(",").map(s => s.trim()).filter(Boolean);
+            const allAnswers = [q.fillAnswer.trim(), ...alternatives].join("|");
+            return { text: q.text, questionType: "fill_blank", correctAnswer: allAnswers, optionA: "", optionB: "", optionC: "", optionD: "" };
+          }
+          if (q.type === "tf") {
+            return { text: q.text, questionType: "true_false", correctAnswer: q.correctAnswer === "A" ? "true" : "false", optionA: ar ? "صح" : "True", optionB: ar ? "خطأ" : "False", optionC: "", optionD: "" };
+          }
+          return { text: q.text, questionType: "mcq", optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD, correctAnswer: q.correctAnswer };
+        }),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || (ar ? "تعذّر تجهيز الأسئلة" : "Failed to prepare questions"));
+    }
+    setSourceAssignmentId(data.id);
+    return data.id as number;
+  };
+
+  const createPlayLink = async (
+    assignmentId: number,
+    gameType: "wameeth" | "wameeth_class",
+  ): Promise<string> => {
+    const res = await fetch(`${API}/api/assignments/${assignmentId}/play-links`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ gameType }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.token) {
+      throw new Error(data.message || (ar ? "تعذّر إنشاء رابط اللعبة" : "Failed to create game link"));
+    }
+    return data.token as string;
+  };
+
   // Start the chosen mode using the exact same prepared question set,
   // regardless of where the questions came from.
   const startGame = async () => {
@@ -238,51 +287,37 @@ export default function WameethCreate() {
     }
     setStarting(true);
 
-    if (mode === "classroom") {
-      const qs = classroomEligible.map(q => q.type === "tf"
-        ? { text: q.text, options: [ar ? "صح" : "True", ar ? "خطأ" : "False"], correct: q.correctAnswer === "A" ? 0 : 1, imageUrl: null }
-        : { text: q.text, options: [q.optionA, q.optionB, q.optionC, q.optionD], correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer), imageUrl: null });
-      sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({ questions: qs, duration: 20, title: title || undefined }));
-      setLocation("/game/wameeth/class");
-      return;
-    }
-
-    // Solo / teams run on the classic PIN engine, which requires a real
-    // assignmentId. Reuse the original one when untouched; otherwise persist
-    // the current (edited/AI-generated/manual) set as a private assignment
-    // first — same create-assignment API used across the app — so the
-    // unchanged game-creation flow can pick it up exactly as it always has.
     try {
-      let assignmentId = sourceAssignmentId;
-      if (assignmentId == null) {
-        const res = await fetch(`${API}/api/assignments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            title: title.trim() || (ar ? "وميض" : "Wameeth"),
-            isShared: false,
-            contentKind: "competition",
-            questions: validQuestions.map(q => {
-              if (q.type === "fill_blank") {
-                // Build pipe-separated accepted-answers string for the game engine
-                const alternatives = q.closeAnswers.split(",").map(s => s.trim()).filter(Boolean);
-                const allAnswers = [q.fillAnswer.trim(), ...alternatives].join("|");
-                return { text: q.text, questionType: "fill_blank", correctAnswer: allAnswers, optionA: "", optionB: "", optionC: "", optionD: "" };
-              }
-              if (q.type === "tf") {
-                // The classic game engine expects "true"/"false" (not "A"/"B") for true_false answers.
-                return { text: q.text, questionType: "true_false", correctAnswer: q.correctAnswer === "A" ? "true" : "false", optionA: ar ? "صح" : "True", optionB: ar ? "خطأ" : "False", optionC: "", optionD: "" };
-              }
-              return { text: q.text, questionType: "mcq", optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD, correctAnswer: q.correctAnswer };
-            }),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || (ar ? "تعذّر تجهيز الأسئلة" : "Failed to prepare questions"));
-        assignmentId = data.id;
+      const assignmentId = await ensureAssignment();
+
+      if (mode === "classroom") {
+        const qs = classroomEligible.map(q => q.type === "tf"
+          ? { text: q.text, options: [ar ? "صح" : "True", ar ? "خطأ" : "False"], correct: q.correctAnswer === "A" ? 0 : 1, imageUrl: null }
+          : { text: q.text, options: [q.optionA, q.optionB, q.optionC, q.optionD], correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer), imageUrl: null });
+        sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({ questions: qs, duration: 20, title: title || undefined }));
+        const token = await createPlayLink(assignmentId, "wameeth_class");
+        setLocation(`/game/wameeth/class?token=${encodeURIComponent(token)}`);
+        return;
       }
 
+      if (mode === "independent") {
+        const token = await createPlayLink(assignmentId, "wameeth");
+        const res = await fetch(`${API}/api/play/${encodeURIComponent(token)}/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (!res.ok || !data.playRoute) {
+          throw new Error(data.message || (ar ? "تعذّر بدء اللعبة" : "Failed to start the game"));
+        }
+        const playerName = ar ? "لاعب" : "Player";
+        setLocation(
+          `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}`,
+        );
+        return;
+      }
+
+      // Solo / teams keep the existing live-game socket flow unchanged.
       const socket = getSocket();
       const validCustomNames = mode === "teams" ? customTeamNames.slice(0, teamCount).map(n => n.trim()) : undefined;
       const hasCustomNames = validCustomNames && validCustomNames.some(n => n.length > 0);
@@ -646,50 +681,82 @@ export default function WameethCreate() {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-4 lg:gap-6">
-              <button
-                type="button"
-                onClick={() => setMode("solo")}
-                className={cn(
-                  "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all",
-                  mode === "solo" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm" : "border-border bg-card hover:border-blue-300",
-                )}
-              >
-                <User className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
-                <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فردي" : "Solo"}</p>
-                <p className="text-[11px] lg:text-xs text-muted-foreground mt-0.5 lg:mt-1">{ar ? "كل طالب يتنافس بمفرده" : "Every student competes alone"}</p>
-              </button>
+            <div className="space-y-8 lg:space-y-10">
+              {/* Group 1 */}
+              <div>
+                <h3 className="font-black text-lg lg:text-xl text-foreground mb-4 lg:mb-5">{ar ? "لعب مباشر مع المشاركين" : "Direct play with participants"}</h3>
+                <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
+                  <button
+                    type="button"
+                    data-testid="playmode-solo"
+                    onClick={() => setMode("solo")}
+                    className={cn(
+                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all hover:-translate-y-1 hover:shadow-md",
+                      mode === "solo" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm" : "border-border bg-card hover:border-blue-300",
+                    )}
+                  >
+                    <User className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
+                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فردي" : "Solo"}</p>
+                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">{ar ? "كل مشارك يتنافس بمفرده" : "Every participant competes alone"}</p>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setMode("teams")}
-                className={cn(
-                  "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all",
-                  mode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-sm" : "border-border bg-card hover:border-purple-300",
-                )}
-              >
-                <UsersRound className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
-                <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فرق" : "Teams"}</p>
-                <p className="text-[11px] lg:text-xs text-muted-foreground mt-0.5 lg:mt-1">{ar ? "الطلاب يتوزعون على فرق" : "Students split into teams"}</p>
-              </button>
+                  <button
+                    type="button"
+                    data-testid="playmode-teams"
+                    onClick={() => setMode("teams")}
+                    className={cn(
+                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all hover:-translate-y-1 hover:shadow-md",
+                      mode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-sm" : "border-border bg-card hover:border-purple-300",
+                    )}
+                  >
+                    <UsersRound className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
+                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فرق" : "Teams"}</p>
+                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">{ar ? "المشاركون يتوزعون على فرق" : "Participants split into teams"}</p>
+                  </button>
+                </div>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => classroomEligible.length >= 2 && setMode("classroom")}
-                disabled={classroomEligible.length < 2}
-                className={cn(
-                  "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                  mode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm" : "border-border bg-card hover:border-emerald-300",
-                )}
-              >
-                <School className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
-                <p className="font-black text-foreground text-sm lg:text-base">{ar ? "وميض الصف" : "Class mode"}</p>
-                <p className="text-[11px] lg:text-xs text-muted-foreground mt-0.5 lg:mt-1">
-                  {classroomEligible.length < 2
-                    ? (ar ? "يحتاج سؤالي اختيار متعدد/صح وخطأ" : "Needs 2 MCQ/true-false questions")
-                    : (ar ? "فريقان على شاشتين بالسبورة" : "Two teams, split-screen board")}
-                </p>
-              </button>
+              {/* Group 2 */}
+              <div>
+                <h3 className="font-black text-lg lg:text-xl text-foreground mb-4 lg:mb-5">{ar ? "لعب مرن" : "Flexible play"}</h3>
+                <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
+                  <button
+                    type="button"
+                    data-testid="playmode-classroom"
+                    onClick={() => classroomEligible.length >= 2 && setMode("classroom")}
+                    disabled={classroomEligible.length < 2}
+                    className={cn(
+                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all",
+                      mode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm hover:-translate-y-1 hover:shadow-md" : "border-border bg-card hover:border-emerald-300 hover:-translate-y-1 hover:shadow-md",
+                      classroomEligible.length < 2 && "opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none hover:border-border"
+                    )}
+                  >
+                    <School className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
+                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "وميض الصف" : "Class mode"}</p>
+                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">
+                      {classroomEligible.length < 2
+                        ? (ar ? "يحتاج سؤالي اختيار متعدد/صح وخطأ" : "Needs 2 MCQ/true-false questions")
+                        : (ar ? "لاعبان أمام الشاشة" : "Two players in front of the screen")}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="playmode-independent"
+                    onClick={() => setMode("independent")}
+                    className={cn(
+                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all hover:-translate-y-1 hover:shadow-md",
+                      mode === "independent" ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20 shadow-sm" : "border-border bg-card hover:border-amber-300",
+                    )}
+                  >
+                    <Zap className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "independent" ? "text-amber-600" : "text-muted-foreground")} />
+                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "لعبة مستقلة" : "Independent game"}</p>
+                    <p className="text-[11px] lg:text-xs text-muted-foreground mt-1 lg:mt-1.5 leading-relaxed">
+                      {ar ? "العب بنفسك أو شارك الرابط، ويلعب كل شخص في أي وقت" : "Play by yourself or share the link, and each person plays at any time"}
+                    </p>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {mode === "teams" && (

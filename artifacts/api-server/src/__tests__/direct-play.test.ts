@@ -15,11 +15,14 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 const dbState = vi.hoisted(() => {
   const queue: unknown[] = [];
   function makeChain(result: unknown): unknown {
-    const p = Promise.resolve(result);
-    return new Proxy(p as object, {
-      get(t: any, prop: string | symbol) {
-        if (["then", "catch", "finally"].includes(prop as string))
-          return t[prop].bind(t);
+    return new Proxy({}, {
+      get(_target, prop: string | symbol) {
+        if (prop === "then") {
+          return (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+            if (result instanceof Error) reject(result);
+            else resolve(result);
+          };
+        }
         return () => makeChain(result);
       },
     });
@@ -45,12 +48,18 @@ vi.mock("@workspace/db", () => {
 // ── Game engine spies ──────────────────────────────────────────────────────
 const gameMocks = vi.hoisted(() => ({
   createGame:              vi.fn(),
+  getGame:                 vi.fn(),
+  deleteGame:              vi.fn(),
   startGameFromRest:       vi.fn(),
   createRocketGameDirectly: vi.fn(),
   startRocketGameFromRest:  vi.fn(),
 }));
 
-vi.mock("../game/manager",        () => ({ createGame:              gameMocks.createGame }));
+vi.mock("../game/manager",        () => ({
+  createGame: gameMocks.createGame,
+  getGame: gameMocks.getGame,
+  deleteGame: gameMocks.deleteGame,
+}));
 vi.mock("../game/socket-handlers", () => ({ startGameFromRest:       gameMocks.startGameFromRest }));
 vi.mock("../game/rocket-handlers", () => ({
   createRocketGameDirectly: gameMocks.createRocketGameDirectly,
@@ -64,6 +73,7 @@ import directPlayRouter from "../routes/direct-play";
 
 function makeApp(session: { teacherId?: number } | null = null) {
   const app = express();
+  app.set("trust proxy", 1);
   app.use(express.json());
   app.use((req: any, _res: any, next: any) => {
     req.session = session ?? {};
@@ -79,12 +89,19 @@ const VALID_TOKEN = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"; // 32 hex chars
 
 const ASSIGNMENT_ROW     = { id: 1, title: "نشاط تجريبي", teacherId: 42 };
 const LINK_ROW_WAMEETH   = { assignmentId: 1, gameType: "wameeth",     title: "نشاط تجريبي" };
+const LINK_ROW_CLASS     = { assignmentId: 1, gameType: "wameeth_class", title: "نشاط تجريبي" };
 const LINK_ROW_ROCKET    = { assignmentId: 1, gameType: "rocket_race", title: "نشاط تجريبي" };
 const Q_COUNT            = [{ count: 5 }];
 const WAMEETH_QS         = [
   { id: 1, text: "Q1", questionType: "mcq",
     optionA: "A1", optionB: "B1", optionC: "C1", optionD: "D1",
     correctAnswer: "B", imageUrl: null, readAloud: false, difficulty: null },
+];
+const WAMEETH_CLASS_QS = [
+  ...WAMEETH_QS,
+  { id: 3, text: "Q3", questionType: "true_false",
+    optionA: "صح", optionB: "خطأ", optionC: null, optionD: null,
+    correctAnswer: "true", imageUrl: null, readAloud: false, difficulty: null },
 ];
 const ROCKET_QS = [
   { id: 2, text: "Q2", questionType: "mcq",
@@ -98,6 +115,7 @@ beforeEach(() => {
   dbState.queue.length = 0;
   vi.clearAllMocks();
   gameMocks.createGame.mockReturnValue({ pin: "111111" });
+  gameMocks.getGame.mockReturnValue(undefined);
   gameMocks.createRocketGameDirectly.mockReturnValue({ pin: "222222", creatorToken: "tok" });
   gameMocks.startRocketGameFromRest.mockReturnValue({ success: true });
 });
@@ -136,6 +154,50 @@ describe("AC-1  GET /info  +  POST /start (وميض) — بلا مصادقة", (
     expect(res.status).toBe(200);
     expect(gameMocks.startGameFromRest).toHaveBeenCalledWith("WMPIN1");
     expect(gameMocks.startRocketGameFromRest).not.toHaveBeenCalled();
+  });
+});
+
+describe("وميض الصف — إعداد عام مباشر بلا مصادقة", () => {
+  it("يعيد إعداد شاشتي اللاعبين فقط لرابط wameeth_class", async () => {
+    push([LINK_ROW_CLASS], WAMEETH_CLASS_QS);
+    const res = await request(makeApp())
+      .get(`/api/play/${VALID_TOKEN}/wameeth-class`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBe("نشاط تجريبي");
+    expect(res.body.duration).toBe(20);
+    expect(res.body.questions).toEqual([
+      {
+        text: "Q1",
+        options: ["A1", "B1", "C1", "D1"],
+        correct: 1,
+        imageUrl: null,
+      },
+      {
+        text: "Q3",
+        options: ["صح", "خطأ"],
+        correct: 0,
+        imageUrl: null,
+      },
+    ]);
+    expect(res.body).not.toHaveProperty("assignmentId");
+  });
+
+  it("يرفض استخدام token لعبة مستقلة لقراءة إعداد وميض الصف", async () => {
+    push([LINK_ROW_WAMEETH]);
+    const res = await request(makeApp())
+      .get(`/api/play/${VALID_TOKEN}/wameeth-class`);
+
+    expect(res.status).toBe(404);
+    expect(dbState.queue.length).toBe(0);
+  });
+
+  it("يرفض token غير صالح قبل أي استعلام", async () => {
+    const res = await request(makeApp())
+      .get(`/api/play/${"z".repeat(32)}/wameeth-class`);
+
+    expect(res.status).toBe(404);
+    expect(dbState.queue.length).toBe(0);
   });
 });
 
@@ -261,6 +323,27 @@ describe("AC-4  الأمان والخصوصية", () => {
     expect(gameMocks.createRocketGameDirectly).not.toHaveBeenCalled();
   });
 
+  it("rate limit مربوط بالرابط نفسه ولا يمكن تجاوزه بتدوير X-Forwarded-For", async () => {
+    const app = makeApp();
+    const rateToken = "c".repeat(32);
+
+    for (let i = 0; i < 120; i++) {
+      push([LINK_ROW_WAMEETH], WAMEETH_QS);
+      const res = await request(app)
+        .post(`/api/play/${rateToken}/start`)
+        .set("X-Forwarded-For", `203.0.113.${(i % 250) + 1}, 198.51.100.${(i % 250) + 1}`);
+      expect(res.status).toBe(200);
+    }
+
+    push([LINK_ROW_WAMEETH]);
+    const blocked = await request(app)
+      .post(`/api/play/${rateToken}/start`)
+      .set("X-Forwarded-For", "192.0.2.99, 198.51.100.250");
+
+    expect(blocked.status).toBe(429);
+    expect(dbState.queue.length).toBe(0);
+  });
+
   it("POST /play-links بلا جلسة معلم → 401، لا DB", async () => {
     const res = await request(makeApp(null))
       .post("/api/assignments/1/play-links")
@@ -329,6 +412,26 @@ describe("AC-5  إنشاء الرابط — idempotent", () => {
       .send({ gameType: "rocket_race" });
     expect(res.status).toBe(200);
     expect(res.body.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(dbState.queue.length).toBe(0);
+  });
+
+  it("سباق إنشاء متزامن → يستعيد token الموجود بعد unique violation بدلاً من 500", async () => {
+    const racedToken = "b".repeat(32);
+    const uniqueViolation = Object.assign(new Error("duplicate key"), { code: "23505" });
+    push(
+      [ASSIGNMENT_ROW],
+      Q_COUNT,
+      [],
+      uniqueViolation,
+      [{ token: racedToken }],
+    );
+
+    const res = await request(makeApp({ teacherId: 42 }))
+      .post("/api/assignments/1/play-links")
+      .send({ gameType: "wameeth_class" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBe(racedToken);
     expect(dbState.queue.length).toBe(0);
   });
 
