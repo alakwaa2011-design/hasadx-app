@@ -1088,7 +1088,7 @@ export default function OrganizerDashboard() {
                       background:
                         "linear-gradient(180deg,#eaf2e6 0%,#dde9d620 100%)",
                       border: "1.5px solid rgba(155,180,140,0.40)",
-                      minHeight: 180,
+                      minHeight: 200,
                       boxShadow:
                         "0 8px 24px -10px rgba(80,110,75,0.30), 0 2px 6px rgba(15,55,32,0.05)",
                     }}
@@ -1108,26 +1108,26 @@ export default function OrganizerDashboard() {
                     />
                     <div className="relative flex flex-col h-full">
                       <div
-                        className="self-start mb-4 transition-transform duration-200 group-hover:scale-110"
+                        className="self-start mb-5 transition-transform duration-200 group-hover:scale-110"
                         style={{
                           filter:
                             "drop-shadow(0 4px 10px rgba(200,154,58,0.50))",
                         }}
                       >
-                        <ArenaIcon size={52} />
+                        <ArenaIcon size={56} />
                       </div>
                       <h3
-                        className="text-[17px] font-black leading-tight mb-1.5 tracking-tight"
+                        className="text-[18px] font-black leading-tight mb-2 tracking-tight"
                         style={{ color: "#103d2a" }}
                       >
                         {lang === "ar" ? "تحدّي حصاد" : "Hasaad Arena"}
                       </h3>
                       <p
-                        className="text-[13px] leading-relaxed"
+                        className="text-[15px] leading-7"
                         style={{ color: "#3a6a4d" }}
                       >
                         {lang === "ar"
-                          ? "مسابقة جماعية بين فريقين أمام الجمهور — مناسبة للحفلات والملتقيات"
+                          ? "مسابقة جماعية حماسية بين فريقين أمام الجمهور، مع أسئلة جاهزة وتجربة مناسبة للحفلات والملتقيات"
                           : "Team vs team in front of an audience — perfect for events"}
                       </p>
                       <div className="mt-auto pt-4 flex items-center justify-between gap-2">
