@@ -1,17 +1,51 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+const applicationDatabaseUrl = process.env.DATABASE_URL;
+const testDatabaseIsolated = process.env.E2E_DATABASE_ISOLATED === "1";
+
+if (!testDatabaseUrl) {
+  throw new Error(
+    "TEST_DATABASE_URL is required for browser tests. Refusing to run E2E fixtures against the application database.",
+  );
+}
+
+if (testDatabaseIsolated) {
+  if (applicationDatabaseUrl !== testDatabaseUrl) {
+    throw new Error("Playwright worker is not connected to TEST_DATABASE_URL.");
+  }
+} else {
+  if (!applicationDatabaseUrl || testDatabaseUrl === applicationDatabaseUrl) {
+    throw new Error(
+      "TEST_DATABASE_URL must be a dedicated database that differs from DATABASE_URL before running browser tests.",
+    );
+  }
+
+  // Playwright workers inherit this marker and the test-only connection below.
+  // They must verify the inherited connection, but should not compare it to the
+  // original application connection a second time.
+  process.env.E2E_DATABASE_ISOLATED = "1";
+}
+
+// Playwright workers inherit this environment, so fixture imports from
+// @workspace/db are pinned to the same isolated database as the API below.
+process.env.DATABASE_URL = testDatabaseUrl;
+
+const apiPort = 5101;
+const appPort = 5102;
+const apiBaseUrl = `http://127.0.0.1:${apiPort}`;
+const appBaseUrl = `http://127.0.0.1:${appPort}`;
+
 /**
  * Playwright configuration for the mobile-shell regression suite.
  *
- * The tests target a running dev environment via the shared Replit proxy
- * (defaults to http://localhost:80). The api-server and homework-app
- * workflows must be running before invoking `pnpm test:e2e`.
+ * Each run starts an isolated API + Vite pair. The API and Playwright fixtures
+ * share TEST_DATABASE_URL, never the application database.
  *
- * The suite is intentionally tiny — it only covers the mobile presentation
- * editor flows that regressed in task #475 (AI outline button, Go-live
- * button, present-mode tap zones, and SlideStage letterboxing). Add new
- * specs sparingly; broader coverage belongs in the API-level vitest
- * suites under `artifacts/api-server/src/__tests__`.
+ * The suite is intentionally targeted: it protects the mobile presentation
+ * editor regressions and public, browser-facing game flows. Add new specs
+ * sparingly; broader coverage belongs in the API-level Vitest suites under
+ * `artifacts/api-server/src/__tests__`.
  */
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -22,7 +56,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:80",
+    baseURL: appBaseUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -34,6 +68,30 @@ export default defineConfig({
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
+      },
+    },
+  ],
+  webServer: [
+    {
+      command: "pnpm --filter @workspace/api-server run dev",
+      url: `${apiBaseUrl}/api/healthz`,
+      timeout: 300_000,
+      reuseExistingServer: false,
+      env: {
+        ...process.env,
+        DATABASE_URL: testDatabaseUrl,
+        PORT: String(apiPort),
+      },
+    },
+    {
+      command: "pnpm --filter @workspace/homework-app run dev",
+      url: appBaseUrl,
+      timeout: 60_000,
+      reuseExistingServer: false,
+      env: {
+        ...process.env,
+        API_PROXY_TARGET: apiBaseUrl,
+        PORT: String(appPort),
       },
     },
   ],
