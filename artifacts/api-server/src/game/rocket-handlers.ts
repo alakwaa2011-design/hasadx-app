@@ -125,6 +125,7 @@ function clearPendingQuestionTimers(pin: string) {
 // ─── State ──────────────────────────────────────────────────────────────────
 
 const rocketGames = new Map<string, RocketGame>();
+let _rocketNs: ReturnType<Server["of"]> | null = null;
 
 const ROCKET_COLORS = [
   "#dc2626", "#2563eb", "#16a34a", "#d97706", "#9333ea",
@@ -443,8 +444,67 @@ setInterval(() => {
 
 // ─── Setup ──────────────────────────────────────────────────────────────────
 
+// ── Headless helpers for REST-initiated direct-play rocket games ─────────────
+
+/**
+ * Create a rocket game without a socket (for the direct-play REST endpoint).
+ * Uses per_player advance mode so each visitor plays at their own pace.
+ * The created game is in "lobby" state; call startRocketGameFromRest to start it.
+ */
+export function createRocketGameDirectly(
+  questions: RocketQuestion[],
+  options: { title?: string; duration?: number; totalDurationSecs?: number } = {},
+): { pin: string; creatorToken: string } {
+  if (rocketGames.size >= 5000) {
+    throw new Error("الخادم وصل إلى الحد الأقصى من الألعاب النشطة.");
+  }
+  const pin = (() => {
+    let p: string;
+    do { p = String(Math.floor(100000 + Math.random() * 900000)); } while (rocketGames.has(p));
+    return p;
+  })();
+  const creatorToken = randomBytes(16).toString("hex");
+  const duration = Math.max(5, Math.min(60, options.duration ?? 20));
+  const totalDurationSecs = Math.max(60, Math.min(900, options.totalDurationSecs ?? 600));
+  const game: RocketGame = {
+    pin,
+    creatorSocketId: "headless",
+    creatorToken,
+    questions,
+    state: "lobby",
+    players: {},
+    pendingPlayers: {},
+    duration,
+    totalDurationSecs,
+    finishOrder: [],
+    title: options.title,
+    advanceMode: "per_player",
+    syncQuestionIdx: 0,
+    phaseSegments: computePhaseSegments(questions.length),
+  };
+  rocketGames.set(pin, game);
+  setTimeout(() => cleanupGame(pin), 3 * 60 * 60 * 1000);
+  logger.info({ pin }, "Rocket game created (headless)");
+  return { pin, creatorToken };
+}
+
+/**
+ * Start a headless rocket game (transitions lobby → countdown → racing).
+ * Called immediately after createRocketGameDirectly so the game is ready
+ * for the first player to join (who arrives via late-join within seconds).
+ */
+export function startRocketGameFromRest(pin: string): { success: boolean; error?: string } {
+  if (!_rocketNs) return { success: false, error: "Socket server not ready" };
+  const game = rocketGames.get(pin);
+  if (!game) return { success: false, error: "Game not found" };
+  if (game.state !== "lobby") return { success: false, error: "Already started" };
+  startRace(_rocketNs, game);
+  return { success: true };
+}
+
 export function setupRocketSocket(io: Server) {
   const rocketNs = io.of("/rocket");
+  _rocketNs = rocketNs;
 
   rocketNs.on("connection", (socket) => {
     logger.debug({ socketId: socket.id }, "Rocket socket connected");

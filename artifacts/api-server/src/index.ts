@@ -646,6 +646,31 @@ async function runSchemaMigrations() {
     logger.error(err, "Solo challenge table migration failed");
   }
 
+  // ── Direct Play Links ─────────────────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS direct_play_links (
+        id            SERIAL PRIMARY KEY,
+        token         TEXT NOT NULL UNIQUE,
+        assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+        game_type     TEXT NOT NULL,
+        teacher_id    INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS direct_play_links_token_idx
+        ON direct_play_links(token)
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS direct_play_links_assignment_game_unique_idx
+        ON direct_play_links(assignment_id, game_type, teacher_id)
+    `);
+    logger.info("Direct play links table ready");
+  } catch (err) {
+    logger.error(err, "Direct play links migration failed");
+  }
+
   // ── Secret Game tables ──
   try {
     await db.execute(sql`

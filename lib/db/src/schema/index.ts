@@ -86,3 +86,4 @@ export * from "./subscription-credit-grants";
 export * from "./credit-packages";
 export * from "./credit-purchases";
 export * from "./webhook-events";
+export * from "./direct-play-links";

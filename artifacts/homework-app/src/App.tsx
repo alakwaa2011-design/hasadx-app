@@ -624,7 +624,7 @@ function Router() {
         <Route path="/public/games" component={PublicGamesPage} />
         <Route path="/guest/create" component={GuestCreatePage} />
         <Route path="/solo/:slug" component={SoloPlayPage} />
-        <Route path="/play/:assignmentId" component={DirectPlayPage} />
+        <Route path="/play/:token" component={DirectPlayPage} />
 
         <Route path="/install-tutorial" component={InstallTutorial} />
         <Route path="/install" component={InstallPage} />

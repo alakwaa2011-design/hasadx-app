@@ -31,3 +31,4 @@
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.
 - [Meta Pixel purchase proof](meta-pixel-purchase-proof.md) — emit Purchase only after a unique server-confirmed payment status, not a subscription return URL or balance change.
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
+- [Direct play links architecture](direct-play-links.md) — token-based share URLs for solo play; wameeth+rocket_race only; rocket uses late-join pattern.
