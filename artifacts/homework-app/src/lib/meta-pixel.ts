@@ -47,13 +47,13 @@ export function initMetaPixel(): void {
   if (initialized || window.__hasadMetaPixelInitialized) return;
 
   if (!window.fbq) {
-    const fbq = ((...args: unknown[]) => {
+    const fbq = function (...args: unknown[]) {
       if (fbq.callMethod) {
-        fbq.callMethod(...args);
+        fbq.callMethod.apply(fbq, args);
       } else {
         fbq.queue.push(arguments);
       }
-    }) as MetaFbq;
+    } as MetaFbq;
     fbq.push = fbq;
     fbq.loaded = true;
     fbq.version = "2.0";
