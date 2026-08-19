@@ -1623,6 +1623,23 @@ export default function TeacherDashboard() {
                   );
                 })}
               </div>
+
+              {/* ── رابط لعب مباشر (وميض فردي) ── */}
+              {assignmentGamePickerId && (
+                <div className="border-t border-border/40 px-4 pb-4 sm:px-5 sm:pb-5 pt-3 flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                  <div className="flex-1 text-center sm:text-start">
+                    <p className="text-sm font-black text-foreground">
+                      {lang === "ar" ? "رابط لعب مباشر" : "Direct play link"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      {lang === "ar"
+                        ? "أي شخص يفتح الرابط يلعب وميضاً فردياً فوراً — بدون تسجيل دخول أو رمز PIN."
+                        : "Anyone with this link plays a solo Wameedh game instantly — no login or PIN."}
+                    </p>
+                  </div>
+                  <DirectPlayLinkButton assignmentId={assignmentGamePickerId} lang={lang} />
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -3946,6 +3963,40 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
   );
 }
 
+/* ── Direct Play Link Button — per-card ── */
+function DirectPlayLinkButton({ assignmentId, lang }: { assignmentId: number; lang: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleClick = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const url = `${window.location.origin}/play/${assignmentId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      import("@/components/ui/sonner").then(({ toast: t }) =>
+        t.error(lang === "ar" ? "تعذّر النسخ" : "Copy failed")
+      );
+    }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      className="text-xs font-bold px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 border-violet-400/50 text-violet-700 bg-violet-50 hover:bg-violet-100 dark:text-violet-400 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 dark:border-violet-500/30"
+      title={lang === "ar" ? "نسخ رابط اللعبة المباشرة" : "Copy direct game link"}
+    >
+      {copied ? (
+        <Check className="w-3.5 h-3.5 text-green-500" />
+      ) : (
+        <Gamepad2 className="w-3.5 h-3.5" />
+      )}
+      {copied
+        ? (lang === "ar" ? "تم النسخ!" : "Copied!")
+        : (lang === "ar" ? "نسخ رابط اللعبة" : "Copy game link")}
+    </button>
+  );
+}
+
 /* ── Assignment Row (compact, expandable) ── */
 function AssignmentRow({
   assignment,
@@ -4182,6 +4233,11 @@ function AssignmentRow({
               </button>
               {/* ── Self Challenge Button ── */}
               <SoloLinkButton assignmentId={assignment.id} lang={lang} />
+
+              {/* ── Direct Play Link Button ── */}
+              {assignment.questionCount > 0 && (
+                <DirectPlayLinkButton assignmentId={assignment.id} lang={lang} />
+              )}
 
               <button
                 onClick={() => onShare(assignment.id)}

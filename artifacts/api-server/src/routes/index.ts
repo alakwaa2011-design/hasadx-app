@@ -69,6 +69,7 @@ import directMessagesRouter from "./direct-messages";
 import parentMessagesRouter from "./parent-messages";
 import whiteboardRouter from "./whiteboard";
 import subscriptionsRouter from "./subscriptions";
+import directPlayRouter from "./direct-play";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,7 @@ router.use(quickChallengeRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(assignmentsRouter);
+router.use(directPlayRouter);
 router.use(submissionsRouter);
 router.use(notificationsRouter);
 router.use(aiQuestionsRouter);

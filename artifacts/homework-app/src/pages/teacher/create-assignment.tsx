@@ -204,6 +204,7 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
 }) {
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [copiedGameLink, setCopiedGameLink] = useState(false);
   const shareUrl = `${window.location.origin}/solve/${publishedInfo.id}`;
 
   const copyShareLink = async () => {
@@ -247,6 +248,34 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
           <Share2 className="w-5 h-5 shrink-0" />
           {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
         </button>
+
+        {/* ── رابط لعب مباشر ── */}
+        {publishedInfo.id && (
+          <button
+            type="button"
+            data-testid="btn-copy-game-link"
+            onClick={async () => {
+              const url = `${window.location.origin}/play/${publishedInfo.id}`;
+              try {
+                await navigator.clipboard.writeText(url);
+                setCopiedGameLink(true);
+                setTimeout(() => setCopiedGameLink(false), 2500);
+              } catch {
+                toast.error(lang === "ar" ? "تعذّر النسخ" : "Copy failed");
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] border-2 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20"
+          >
+            {copiedGameLink ? (
+              <Check className="w-5 h-5 shrink-0 text-green-500" />
+            ) : (
+              <Gamepad2 className="w-5 h-5 shrink-0" />
+            )}
+            {copiedGameLink
+              ? (lang === "ar" ? "تم النسخ!" : "Copied!")
+              : (lang === "ar" ? "نسخ رابط اللعبة المباشرة" : "Copy direct game link")}
+          </button>
+        )}
 
         <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
           <DialogContent dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-md rounded-3xl">
