@@ -2553,24 +2553,24 @@ function CompetitiveTab({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           <Card
             onClick={() => openGameFromCatalog(arenaGame)}
-            className="group p-3 sm:p-4 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
+            className="group p-5 sm:p-6 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
           >
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl flex items-center justify-center shrink-0 overflow-hidden" aria-hidden>
-                {arenaGame.icon}
+            <div className="flex items-center gap-4">
+              <div className="rounded-2xl flex items-center justify-center shrink-0 overflow-hidden" aria-hidden>
+                <ArenaIcon size={56} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                  <h3 className="text-sm sm:text-base font-black text-foreground">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-lg sm:text-xl font-black text-foreground">
                     {arenaGame.title}
                   </h3>
                   {arenaGame.pill && (
-                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                       {arenaGame.pill}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-1 leading-snug">
+                <p className="text-sm sm:text-base text-muted-foreground line-clamp-3 leading-7">
                   {arenaGame.desc}
                 </p>
               </div>
