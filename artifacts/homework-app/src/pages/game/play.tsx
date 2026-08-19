@@ -17,6 +17,8 @@ import {
   Gift,
   Snowflake,
   Sparkles,
+  ShieldCheck,
+  LockKeyhole,
   Heart,
   Volume2,
   VolumeX,
@@ -26,7 +28,6 @@ import {
   Check,
   Pause,
   Bell,
-  Music2,
   Loader2,
   MessageSquare,
   Mic,
@@ -281,34 +282,34 @@ type Phase =
 const POWER_UP_TYPES: GiftType[] = ["freeze", "shield", "mystery", "steal"];
 const POWER_UP_INFO: Record<
   GiftType,
-  { icon: string; nameAr: string; descAr: string; color: string }
+  { icon: React.ElementType; nameAr: string; descAr: string; color: string }
 > = {
   freeze: {
-    icon: "🥶",
+    icon: Snowflake,
     nameAr: "تجميد لاعب",
     descAr: "جمّد أي لاعب لسؤال واحد (مرة واحدة)",
     color: "from-blue-600 to-cyan-700",
   },
   shield: {
-    icon: "🛡️",
+    icon: ShieldCheck,
     nameAr: "درع الحماية",
     descAr: "يحميك من التجميد أو سحب النقاط",
     color: "from-yellow-600 to-amber-600",
   },
   mystery: {
-    icon: "🎁",
+    icon: Gift,
     nameAr: "صندوق المفاجآت",
     descAr: "نقاط إضافية أو مكافأة مفاجئة",
     color: "from-purple-600 to-pink-600",
   },
   give: {
-    icon: "💝",
+    icon: Gift,
     nameAr: "إهداء نقاط",
     descAr: "أهدِ نقاطك لأحد اللاعبين",
     color: "from-green-600 to-emerald-600",
   },
   steal: {
-    icon: "💰",
+    icon: Zap,
     nameAr: "سحب النقاط",
     descAr: "اسحب نقاط من لاعب آخر",
     color: "from-orange-600 to-red-600",
