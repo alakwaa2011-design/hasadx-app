@@ -643,44 +643,44 @@ function HackInstructionsScreen({
     lang === "ar"
       ? [
           {
-            icon: "⚡",
+            icon: Zap,
             title: "أجب بسرعة",
             text: "كلما أجبت أسرع، حصلت على نقاط أكثر.",
           },
           {
-            icon: "📦",
+            icon: Gift,
             title: "افتح الصناديق",
             text: "كل إجابة صحيحة تفتح صندوقاً غامضاً قد يحوي نقاطاً أو مفاجأة.",
           },
           {
-            icon: "🔐",
+            icon: LockKeyhole,
             title: "اخترق زملاءك",
             text: "اختر صندوق الاختراق، ثم خمّن كلمة سر لاعب آخر لسرقة نقاطه.",
           },
           {
-            icon: "🛡️",
+            icon: ShieldCheck,
             title: "احمِ كلمة سرك",
             text: "كلمة سرك السرية فوقها 👈، لا تشاركها مع أحد!",
           },
         ]
       : [
           {
-            icon: "⚡",
+            icon: Zap,
             title: "Answer fast",
             text: "Faster answers earn more points.",
           },
           {
-            icon: "📦",
+            icon: Gift,
             title: "Open mystery boxes",
             text: "Every correct answer unlocks a mystery box — could be points or a twist.",
           },
           {
-            icon: "🔐",
+            icon: LockKeyhole,
             title: "Hack other players",
             text: "Pick the hack box, then guess another player's password to steal their points.",
           },
           {
-            icon: "🛡️",
+            icon: ShieldCheck,
             title: "Protect your password",
             text: "Your secret password is shown above 👆 — never share it!",
           },
@@ -710,12 +710,14 @@ function HackInstructionsScreen({
         <h1 className="text-2xl sm:text-3xl font-black text-green-300 mb-1 font-mono">
           {gameTitle}
         </h1>
-        <p className="text-green-600 text-sm mb-5 font-mono">
-          {">"}{" "}
-          {lang === "ar"
-            ? "كلمة سرك جاهزة. انتظر بدء العملية..."
-            : "Password locked. Awaiting mission start..."}
-        </p>
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-500/35 bg-green-950/45 px-4 py-2 text-sm font-mono text-green-300 shadow-[0_0_22px_rgba(34,197,94,0.12)]">
+          <Loader2 className="h-4 w-4 animate-spin text-green-400" />
+          <span>
+            {lang === "ar"
+              ? "تم تجهيزك — بانتظار المعلم ليبدأ اللعبة..."
+              : "You're ready — waiting for the teacher to start the game..."}
+          </span>
+        </div>
 
         {gameMode === "teams" && myTeam && (
           <motion.div
@@ -768,8 +770,8 @@ function HackInstructionsScreen({
                 transition={{ delay: 0.1 + i * 0.12 }}
                 className="flex items-start gap-3 bg-green-950/30 border border-green-900 rounded-xl p-3"
               >
-                <div className="text-2xl sm:text-3xl shrink-0 leading-none">
-                  {r.icon}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-green-500/30 bg-green-500/10">
+                  <r.icon className="h-5 w-5 text-green-300" strokeWidth={2.25} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-green-200 font-black text-base sm:text-lg leading-snug">
@@ -809,9 +811,9 @@ function HackInstructionsScreen({
           className="text-green-500 text-sm font-mono mt-4"
         >
           {">"}{" "}
-          {lang === "ar"
-            ? "في انتظار إشارة بدء العملية..."
-            : "AWAITING MISSION START..."}
+            {lang === "ar"
+              ? "بانتظار المعلم لبدء اللعبة..."
+              : "WAITING FOR THE TEACHER TO START..."}
         </motion.p>
       </motion.div>
     </div>
@@ -1156,17 +1158,26 @@ export default function GamePlay() {
   const myName = nameParam;
   const myRank = leaderboard.findIndex((e) => e.name === myName) + 1;
 
-  const handleToggleHackMusic = useCallback(() => {
-    const newMuted = toggleHackMusicMuted();
-    setHackMusicMuted(newMuted);
-    if (newMuted) {
-      stopHackMarathonLoop();
-    } else if (hackModeRef.current && !getIsMuted()) {
-      playHackMarathonLoop();
-    }
-  }, []);
-
   const handleToggleMute = useCallback(() => {
+    if (hackModeRef.current) {
+      const newMuted = !(getIsMuted() || getIsHackMusicMuted());
+      if (getIsMuted() !== newMuted) toggleMute();
+      if (getIsHackMusicMuted() !== newMuted) toggleHackMusicMuted();
+      setMuted(newMuted);
+      setHackMusicMuted(newMuted);
+
+      if (newMuted) {
+        stopBackgroundBeat();
+        stopHackMarathonLoop();
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+      } else {
+        playHackMarathonLoop();
+      }
+      return;
+    }
+
     const newMuted = toggleMute();
     setMuted(newMuted);
     // Hack mode never plays the continuous background beat — only the
@@ -2127,42 +2138,24 @@ export default function GamePlay() {
     >
       <button
         onClick={handleToggleMute}
-        title={muted ? (lang === "ar" ? "تشغيل الصوت" : "Unmute") : (lang === "ar" ? "كتم الصوت" : "Mute")}
+        title={
+          (hackMode ? muted || hackMusicMuted : muted)
+            ? lang === "ar" ? "تشغيل الصوت" : "Unmute"
+            : lang === "ar" ? "كتم الصوت" : "Mute"
+        }
+        aria-label={
+          (hackMode ? muted || hackMusicMuted : muted)
+            ? lang === "ar" ? "تشغيل الصوت" : "Unmute"
+            : lang === "ar" ? "كتم الصوت" : "Mute"
+        }
         className="p-3 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 border border-white/20 transition-colors"
       >
-        {muted ? (
+        {hackMode ? muted || hackMusicMuted : muted ? (
           <VolumeX className="w-5 h-5 text-white/60" />
         ) : (
           <Volume2 className="w-5 h-5 text-white" />
         )}
       </button>
-      {hackMode && (
-        <button
-          onClick={handleToggleHackMusic}
-          title={
-            lang === "ar"
-              ? hackMusicMuted
-                ? "تشغيل موسيقى الاختراق"
-                : "كتم موسيقى الاختراق"
-              : hackMusicMuted
-                ? "Unmute hack music"
-                : "Mute hack music"
-          }
-          aria-label={
-            lang === "ar" ? "كتم/تشغيل موسيقى الاختراق" : "Toggle hack music"
-          }
-          className={`p-3 rounded-full backdrop-blur-sm border border-white/20 transition-colors relative ${hackMusicMuted ? "bg-black/40 hover:bg-black/50" : "bg-green-500/30 hover:bg-green-500/45"}`}
-        >
-          <Music2
-            className={`w-5 h-5 ${hackMusicMuted ? "text-white/50" : "text-green-300"}`}
-          />
-          {hackMusicMuted && (
-            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="block w-7 h-0.5 bg-red-400 rotate-45 rounded-full" />
-            </span>
-          )}
-        </button>
-      )}
     </div>
   );
 
@@ -2982,7 +2975,11 @@ export default function GamePlay() {
                 >
                   {hackResult.success ? (
                     <>
-                      <div className="text-7xl mb-4">💰</div>
+                      <div className="mb-4 flex justify-center">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-green-400/45 bg-green-500/10 shadow-[0_0_28px_rgba(74,222,128,0.24)]">
+                          <Zap className="h-10 w-10 text-green-300" strokeWidth={2} />
+                        </div>
+                      </div>
                       <p className="text-green-400 font-black text-2xl mb-2">
                         {lang === "ar" ? "اختراق ناجح!" : "Hack Successful!"}
                       </p>
@@ -2996,7 +2993,7 @@ export default function GamePlay() {
                     </>
                   ) : (
                     <>
-                      <div className="text-7xl mb-4">❌</div>
+                      <XCircle className="mx-auto mb-4 h-16 w-16 text-red-400" strokeWidth={2} />
                       <p className="text-red-400 font-black text-2xl mb-2">
                         {lang === "ar" ? "اختراق فاشل!" : "Hack Failed!"}
                       </p>
@@ -3014,7 +3011,11 @@ export default function GamePlay() {
                 >
                   {boxResult.type === "double" && (
                     <>
-                      <div className="text-7xl mb-4">⚡</div>
+                      <div className="mb-4 flex justify-center">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-300/45 bg-amber-400/10 shadow-[0_0_28px_rgba(251,191,36,0.24)]">
+                          <Zap className="h-10 w-10 text-amber-300" strokeWidth={2} />
+                        </div>
+                      </div>
                       <p className="text-yellow-400 font-black text-2xl">
                         {lang === "ar"
                           ? "×2 ضاعفت رصيدك!"
@@ -3033,7 +3034,11 @@ export default function GamePlay() {
                   )}
                   {boxResult.type === "bonus" && (
                     <>
-                      <div className="text-7xl mb-4">🎉</div>
+                      <div className="mb-4 flex justify-center">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-300/45 bg-violet-400/10 shadow-[0_0_28px_rgba(167,139,250,0.24)]">
+                          <Sparkles className="h-10 w-10 text-violet-200" strokeWidth={2} />
+                        </div>
+                      </div>
                       <p className="text-amber-400 font-black text-2xl">
                         {lang === "ar" ? "مكافأة!" : "Bonus!"}
                       </p>
@@ -3044,7 +3049,11 @@ export default function GamePlay() {
                   )}
                   {boxResult.type === "nothing" && (
                     <>
-                      <div className="text-7xl mb-4">📭</div>
+                      <div className="mb-4 flex justify-center">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/5">
+                          <Gift className="h-10 w-10 text-white/35" strokeWidth={1.8} />
+                        </div>
+                      </div>
                       <p className="text-gray-300 font-black text-2xl">
                         {lang === "ar" ? "لا شيء!" : "Nothing!"}
                       </p>
@@ -3057,7 +3066,11 @@ export default function GamePlay() {
                   )}
                   {boxResult.type === "hack" && (
                     <>
-                      <div className="text-7xl mb-4">🔐</div>
+                      <div className="mb-4 flex justify-center">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-green-400/45 bg-green-500/10 shadow-[0_0_28px_rgba(74,222,128,0.24)]">
+                          <LockKeyhole className="h-10 w-10 text-green-300" strokeWidth={2} />
+                        </div>
+                      </div>
                       <p className="text-green-400 font-black text-2xl">
                         {lang === "ar" ? "صندوق الاختراق!" : "Hack Box!"}
                       </p>
@@ -3073,8 +3086,9 @@ export default function GamePlay() {
                 </motion.div>
               ) : (
                 <>
-                  <p className="text-green-400 font-black text-2xl mb-2">
-                    🎁 {lang === "ar" ? "اختر صندوقك!" : "Pick Your Box!"}
+                  <p className="mb-2 flex items-center justify-center gap-2 text-2xl font-black text-green-400">
+                    <Gift className="h-6 w-6" />
+                    {lang === "ar" ? "اختر صندوقك!" : "Pick Your Box!"}
                   </p>
                   <p className="text-white/40 text-sm mb-8">
                     {lang === "ar" ? "صندوق واحد فقط" : "One box only"}
@@ -3108,7 +3122,11 @@ export default function GamePlay() {
                                 : "border-green-500/60 bg-green-950/40 hover:border-green-400 hover:shadow-[0_0_15px_rgba(74,222,128,0.3)] cursor-pointer"
                           }`}
                       >
-                        {openedBoxIndex === i ? "✨" : "?"}
+                        {openedBoxIndex === i ? (
+                          <Sparkles className="h-8 w-8 text-green-200" strokeWidth={2} />
+                        ) : (
+                          <Gift className="h-8 w-8 text-green-300/85" strokeWidth={1.8} />
+                        )}
                       </motion.button>
                     ))}
                   </div>
@@ -4262,11 +4280,13 @@ export default function GamePlay() {
         >
           <div className="text-center mb-6">
             <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
+              animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.08, 1] }}
               transition={{ repeat: Infinity, duration: 2 }}
-              className="text-7xl mb-3"
+              className="mb-3 flex justify-center"
             >
-              🎁
+              <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-green-400/40 bg-green-500/10 shadow-[0_0_30px_rgba(74,222,128,0.24)]">
+                <Gift className="h-10 w-10 text-green-300" strokeWidth={1.8} />
+              </div>
             </motion.div>
             <h2
               className={`text-3xl font-black mb-2 ${hackMode ? "text-green-300 font-mono" : "text-white"}`}
@@ -4292,7 +4312,7 @@ export default function GamePlay() {
               animate={{ scale: 1 }}
               className="text-center py-8"
             >
-              <div className="text-6xl mb-4">✅</div>
+              <CheckCircle className="mx-auto mb-4 h-14 w-14 text-green-400" strokeWidth={2.25} />
               <p className="text-2xl font-black text-green-600 dark:text-green-400">
                 تم الاختيار!
               </p>
@@ -4307,8 +4327,9 @@ export default function GamePlay() {
             </motion.div>
           ) : giftStep === "selectStealAmount" && chosenGiftType === "steal" ? (
             <div>
-              <p className="text-white font-black text-center mb-4 text-lg">
-                💰 كم نقطة تريد سحبها؟
+              <p className="flex items-center justify-center gap-2 text-center text-lg font-black text-white">
+                <Zap className="h-5 w-5 text-amber-300" />
+                كم نقطة تريد سحبها؟
               </p>
               <div className="space-y-3">
                 {[30, 50, 75].map((amount) => (
@@ -4319,7 +4340,7 @@ export default function GamePlay() {
                     onClick={() => giftRoundSelectStealAmount(amount)}
                     className="w-full p-4 rounded-xl bg-gradient-to-r from-orange-600/80 to-red-600/80 hover:from-orange-500 hover:to-red-500 text-white font-black text-xl flex items-center justify-center gap-3 border border-white/20 shadow-lg"
                   >
-                    <span className="text-2xl">💰</span>
+                    <Zap className="h-5 w-5 text-amber-200" />
                     <span>{amount} نقطة</span>
                   </motion.button>
                 ))}
@@ -4336,10 +4357,17 @@ export default function GamePlay() {
             </div>
           ) : giftStep === "selectPlayer" && chosenGiftType ? (
             <div>
-              <p className="text-white font-black text-center mb-4 text-lg">
-                {chosenGiftType === "steal"
-                  ? `💰 اختر اللاعب لسحب ${stealAmount} نقطة`
-                  : "🥶 اختر اللاعب الذي تريد تجميده"}
+              <p className="flex items-center justify-center gap-2 text-center text-lg font-black text-white">
+                {chosenGiftType === "steal" ? (
+                  <Zap className="h-5 w-5 text-amber-300" />
+                ) : (
+                  <Snowflake className="h-5 w-5 text-cyan-300" />
+                )}
+                <span>
+                  {chosenGiftType === "steal"
+                    ? `اختر اللاعب لسحب ${stealAmount} نقطة`
+                    : "اختر اللاعب الذي تريد تجميده"}
+                </span>
               </p>
               <div className="space-y-2 max-h-[220px] overflow-y-auto">
                 {otherPlayers.map((p) => (
@@ -4376,6 +4404,7 @@ export default function GamePlay() {
               {POWER_UP_TYPES.map((type) => {
                 const reusable = type === "steal" || type === "mystery";
                 const alreadyUsed = usedGiftTypes.has(type) && !reusable;
+                const PowerUpIcon = POWER_UP_INFO[type].icon;
                 return (
                   <motion.button
                     key={type}
@@ -4385,8 +4414,8 @@ export default function GamePlay() {
                     onClick={() => giftRoundSelectGift(type)}
                     className={`relative bg-gradient-to-br ${POWER_UP_INFO[type].color} p-5 rounded-2xl text-center shadow-xl border-2 border-white/20 disabled:opacity-30 disabled:cursor-not-allowed disabled:grayscale`}
                   >
-                    <div className="text-4xl mb-2">
-                      {POWER_UP_INFO[type].icon}
+                    <div className="mb-2 flex justify-center">
+                      <PowerUpIcon className="h-9 w-9 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.22)]" strokeWidth={2.2} />
                     </div>
                     <p className="text-white font-black text-sm">
                       {POWER_UP_INFO[type].nameAr}
@@ -4518,7 +4547,11 @@ export default function GamePlay() {
               >
                 {hackResult.success ? (
                   <>
-                    <div className="text-7xl mb-4">💰</div>
+                    <div className="mb-4 flex justify-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-green-400/45 bg-green-500/10 shadow-[0_0_28px_rgba(74,222,128,0.24)]">
+                        <Zap className="h-10 w-10 text-green-300" strokeWidth={2} />
+                      </div>
+                    </div>
                     <p className="text-green-400 font-black text-2xl mb-2">
                       {lang === "ar" ? "اختراق ناجح!" : "Hack Successful!"}
                     </p>
@@ -4532,7 +4565,7 @@ export default function GamePlay() {
                   </>
                 ) : (
                   <>
-                    <div className="text-7xl mb-4">❌</div>
+                    <XCircle className="mx-auto mb-4 h-16 w-16 text-red-400" strokeWidth={2} />
                     <p className="text-red-400 font-black text-2xl mb-2">
                       {lang === "ar" ? "اختراق فاشل!" : "Hack Failed!"}
                     </p>
@@ -4550,7 +4583,11 @@ export default function GamePlay() {
               >
                 {boxResult.type === "double" && (
                   <>
-                    <div className="text-7xl mb-4">⚡</div>
+                    <div className="mb-4 flex justify-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-300/45 bg-amber-400/10 shadow-[0_0_28px_rgba(251,191,36,0.24)]">
+                        <Zap className="h-10 w-10 text-amber-300" strokeWidth={2} />
+                      </div>
+                    </div>
                     <p className="text-yellow-400 font-black text-2xl">
                       {lang === "ar" ? "×2 ضاعفت رصيدك!" : "×2 Score Doubled!"}
                     </p>
@@ -4567,7 +4604,11 @@ export default function GamePlay() {
                 )}
                 {boxResult.type === "bonus" && (
                   <>
-                    <div className="text-7xl mb-4">🎉</div>
+                    <div className="mb-4 flex justify-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-300/45 bg-violet-400/10 shadow-[0_0_28px_rgba(167,139,250,0.24)]">
+                        <Sparkles className="h-10 w-10 text-violet-200" strokeWidth={2} />
+                      </div>
+                    </div>
                     <p className="text-amber-400 font-black text-2xl">
                       {lang === "ar" ? "مكافأة!" : "Bonus!"}
                     </p>
@@ -4578,7 +4619,11 @@ export default function GamePlay() {
                 )}
                 {boxResult.type === "nothing" && (
                   <>
-                    <div className="text-7xl mb-4">📭</div>
+                    <div className="mb-4 flex justify-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/15 bg-white/5">
+                        <Gift className="h-10 w-10 text-white/35" strokeWidth={1.8} />
+                      </div>
+                    </div>
                     <p className="text-gray-300 font-black text-2xl">
                       {lang === "ar" ? "لا شيء!" : "Nothing!"}
                     </p>
@@ -4591,7 +4636,11 @@ export default function GamePlay() {
                 )}
                 {boxResult.type === "hack" && (
                   <>
-                    <div className="text-7xl mb-4">🔐</div>
+                    <div className="mb-4 flex justify-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-green-400/45 bg-green-500/10 shadow-[0_0_28px_rgba(74,222,128,0.24)]">
+                        <LockKeyhole className="h-10 w-10 text-green-300" strokeWidth={2} />
+                      </div>
+                    </div>
                     <p className="text-green-400 font-black text-2xl">
                       {lang === "ar" ? "صندوق الاختراق!" : "Hack Box!"}
                     </p>
@@ -4607,8 +4656,9 @@ export default function GamePlay() {
               </motion.div>
             ) : (
               <>
-                <p className="text-green-400 font-black text-2xl mb-2">
-                  🎁 {lang === "ar" ? "اختر صندوقك!" : "Pick Your Box!"}
+                <p className="mb-2 flex items-center justify-center gap-2 text-2xl font-black text-green-400">
+                  <Gift className="h-6 w-6" />
+                  {lang === "ar" ? "اختر صندوقك!" : "Pick Your Box!"}
                 </p>
                 <p className="text-white/40 text-sm mb-8">
                   {lang === "ar" ? "صندوق واحد فقط" : "One box only"}
@@ -4640,7 +4690,11 @@ export default function GamePlay() {
                               : "border-green-500/60 bg-green-950/40 hover:border-green-400 hover:shadow-[0_0_15px_rgba(74,222,128,0.3)] cursor-pointer"
                         }`}
                     >
-                      {openedBoxIndex === i ? "✨" : "?"}
+                      {openedBoxIndex === i ? (
+                        <Sparkles className="h-8 w-8 text-green-200" strokeWidth={2} />
+                      ) : (
+                        <Gift className="h-8 w-8 text-green-300/85" strokeWidth={1.8} />
+                      )}
                     </motion.button>
                   ))}
                 </div>
