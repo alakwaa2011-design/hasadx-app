@@ -404,6 +404,10 @@ router.post("/play/:token/start", async (req, res) => {
         questions, 20, true, "solo", 2,
         undefined, null, false, null, false,
       );
+      // Each direct link session is a one-player independent game, so it has
+      // no valid targets for gifts. This must not affect live individual
+      // Wameeth games, which use the same `solo` gameMode.
+      game.giftsEnabled = false;
       startGameFromRest(game.pin);
       const joinCleanup = setTimeout(() => {
         const pendingGame = getGame(game.pin);

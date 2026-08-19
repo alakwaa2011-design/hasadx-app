@@ -32,4 +32,5 @@
 - [Meta Pixel purchase proof](meta-pixel-purchase-proof.md) — emit Purchase only after a unique server-confirmed payment status, not a subscription return URL or balance change.
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
 - [Direct play links architecture](direct-play-links.md) — token-based share URLs for solo play; wameeth+rocket_race only; rocket uses late-join pattern.
+- [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
 - [Browser E2E database isolation](browser-e2e-db-isolation.md) — fixture-writing browser tests must run app and API together on a dedicated test database.

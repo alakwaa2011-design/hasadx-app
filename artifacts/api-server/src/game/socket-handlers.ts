@@ -643,9 +643,11 @@ function endQuestion(io: Server, game: Game) {
   const teamLeaderboard = getTeamLeaderboard(game);
   const distribution = getAnswerDistribution(game);
 
-  // Solo challenge: never trigger a gift round (it caused the extra wait
-  // every 3rd question). Multiplayer behavior is unchanged.
-  const giftRoundNext = game.gameMode === "solo" ? false : shouldStartGiftRound(game);
+  // `solo` means individual competitors in a live Wameeth game; it does not
+  // mean a one-person self challenge. Self challenges and independent links
+  // explicitly disable gifts when the game is created, while live individual
+  // and team games can both receive gift rounds.
+  const giftRoundNext = shouldStartGiftRound(game);
 
   io.to(`game:${game.pin}`).emit("game:question-ended", {
     leaderboard,

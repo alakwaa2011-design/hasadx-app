@@ -965,6 +965,10 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
       preserveOrder,
     );
 
+    // A self challenge has one player and no gift targets. Keep the quick,
+    // uninterrupted flow without accidentally disabling gifts in live
+    // individual Wameeth games, which share the same `solo` gameMode.
+    game.giftsEnabled = false;
     startGameFromRest(game.pin);
 
     await db
