@@ -10,15 +10,19 @@ export const META_PIXEL_ID = "2633775947079857";
 
 declare global {
   interface Window {
-    fbq?: ((...args: unknown[]) => void) & {
-      queue?: unknown[];
-      loaded?: boolean;
-      version?: string;
-    };
-    _fbq?: Window["fbq"];
+    fbq?: MetaFbq;
+    _fbq?: MetaFbq;
     __hasadMetaPixelInitialized?: boolean;
   }
 }
+
+type MetaFbq = ((...args: unknown[]) => void) & {
+      callMethod?: (...args: unknown[]) => void;
+      queue: IArguments[];
+      push?: MetaFbq;
+      loaded?: boolean;
+      version?: string;
+    };
 
 let initialized = false;
 
@@ -44,10 +48,13 @@ export function initMetaPixel(): void {
 
   if (!window.fbq) {
     const fbq = ((...args: unknown[]) => {
-      const queue = fbq.queue ?? [];
-      queue.push(args);
-      fbq.queue = queue;
-    }) as NonNullable<Window["fbq"]>;
+      if (fbq.callMethod) {
+        fbq.callMethod(...args);
+      } else {
+        fbq.queue.push(arguments);
+      }
+    }) as MetaFbq;
+    fbq.push = fbq;
     fbq.loaded = true;
     fbq.version = "2.0";
     fbq.queue = [];
@@ -60,7 +67,12 @@ export function initMetaPixel(): void {
     script.async = true;
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
     script.setAttribute("data-meta-pixel-id", META_PIXEL_ID);
-    document.head.appendChild(script);
+    const firstScript = document.getElementsByTagName("script")[0];
+    if (firstScript?.parentNode) {
+      firstScript.parentNode.insertBefore(script, firstScript);
+    } else {
+      document.head.appendChild(script);
+    }
   }
 
   window.fbq!("init", META_PIXEL_ID);

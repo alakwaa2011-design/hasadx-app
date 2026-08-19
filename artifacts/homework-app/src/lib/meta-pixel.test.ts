@@ -19,7 +19,9 @@ describe("Meta Pixel tracking", () => {
     expect(document.querySelectorAll("script[data-meta-pixel-id]").length).toBe(1);
     expect(document.querySelector("script[data-meta-pixel-id]")?.getAttribute("src"))
       .toBe("https://connect.facebook.net/en_US/fbevents.js");
-    expect(window.fbq?.queue).toEqual([["init", META_PIXEL_ID]]);
+    expect(window.fbq?.queue.map((call) => Array.from(call))).toEqual([
+      ["init", META_PIXEL_ID],
+    ]);
   });
 
   it("tracks PageView for the initial view and SPA navigations", async () => {
@@ -29,7 +31,7 @@ describe("Meta Pixel tracking", () => {
     trackMetaPageView();
     trackMetaPageView();
 
-    expect(window.fbq?.queue).toEqual([
+    expect(window.fbq?.queue.map((call) => Array.from(call))).toEqual([
       ["init", "2633775947079857"],
       ["track", "PageView"],
       ["track", "PageView"],
@@ -53,13 +55,25 @@ describe("Meta Pixel tracking", () => {
     trackMetaPurchaseOnce("server-intent-1");
     trackMetaPurchaseOnce("server-intent-1");
 
-    expect(window.fbq?.queue).toEqual([
+    expect(window.fbq?.queue.map((call) => Array.from(call))).toEqual([
       ["init", "2633775947079857"],
       ["track", "CompleteRegistration"],
       ["track", "InitiateCheckout"],
       ["track", "InitiateCheckout"],
       ["track", "Purchase"],
     ]);
-    expect(window.fbq?.queue?.every((call) => (call as unknown[]).length <= 2)).toBe(true);
+    expect(window.fbq?.queue.every((call) => call.length <= 2)).toBe(true);
+  });
+
+  it("dispatches directly through callMethod after fbevents.js loads", async () => {
+    const { initMetaPixel } = await import("./meta-pixel");
+    initMetaPixel();
+
+    const dispatched: unknown[][] = [];
+    window.fbq!.callMethod = (...args) => dispatched.push(args);
+    window.fbq!("track", "PageView");
+
+    expect(dispatched).toEqual([["track", "PageView"]]);
+    expect(window.fbq?.queue).toHaveLength(1);
   });
 });
