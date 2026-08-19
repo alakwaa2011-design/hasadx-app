@@ -12,8 +12,6 @@ import {
   Home,
   Languages,
   Users,
-  User,
-  UsersRound,
   SkipForward,
   Gift,
   Mic,
@@ -1460,33 +1458,6 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               <SettingCard
                 className={SETTING_CARD_DESKTOP}
                 delay={0.04}
-                icon={
-                  currentGameMode === "teams" ? (
-                    <UsersRound className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />
-                  ) : (
-                    <User className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />
-                  )
-                }
-                title={isAr ? "وضع اللعبة" : "Game mode"}
-                desc={isAr ? "تنافس فردي أو جماعي بالفرق" : "Solo or team competition"}
-              >
-                <span
-                  className="rounded-full border px-4 py-2 text-xs font-black"
-                  style={{ borderColor: P.border, color: P.goldLight, background: "rgba(10,77,38,0.5)" }}
-                >
-                  {currentGameMode === "teams"
-                    ? isAr
-                      ? t.teacherGame.teamMode || "فرق"
-                      : "Teams"
-                    : isAr
-                      ? t.teacherGame.soloMode || "فردي"
-                      : "Solo"}
-                </span>
-              </SettingCard>
-
-              <SettingCard
-                className={SETTING_CARD_DESKTOP}
-                delay={0.06}
                 icon={<SkipForward className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "التنقل بين الأسئلة" : "Question navigation"}
                 desc={isAr ? "انتقال تلقائي أو يدوي بين الأسئلة" : "Auto or manual advance"}
