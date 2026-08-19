@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { InlineQR, GameQRCode } from "@/components/game-qr-code";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { WameethWaitingRoomUI } from "./wameeth-waiting-room-ui";
+import { toast } from "@/components/ui/sonner";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -333,6 +334,7 @@ export default function TeacherGame() {
   const [currentGameMode, setCurrentGameMode] = useState<GameMode>("solo");
   const [pointsEnabled, setPointsEnabled] = useState(true);
   const [giftsEnabled, setGiftsEnabled] = useState(true);
+  const [giftRoundInterval, setGiftRoundInterval] = useState<1 | 3>(3);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [hackMode, setHackMode] = useState(false);
   const hackModeRef = useRef(false);
@@ -374,6 +376,9 @@ export default function TeacherGame() {
           if (res.teamLeaderboard) setTeamLeaderboard(res.teamLeaderboard);
           if (res.pointsEnabled !== undefined) setPointsEnabled(res.pointsEnabled);
           if (res.giftsEnabled !== undefined) setGiftsEnabled(res.giftsEnabled);
+          if (res.giftRoundInterval === 1 || res.giftRoundInterval === 3) {
+            setGiftRoundInterval(res.giftRoundInterval);
+          }
           if (res.ttsEnabled !== undefined) setTtsEnabled(!!res.ttsEnabled);
           if (res.hackMode !== undefined) setHackMode(!!res.hackMode);
 
@@ -798,6 +803,17 @@ export default function TeacherGame() {
     });
   };
 
+  const updateGiftRoundInterval = (interval: 1 | 3) => {
+    const socket = getSocket();
+    socket.emit("teacher:set-gift-round-interval", { pin, interval }, (res: any) => {
+      if (res?.success) {
+        setGiftRoundInterval(res.interval);
+      } else if (res?.error) {
+        toast.error(res.error);
+      }
+    });
+  };
+
   const toggleHackMode = () => {
     const socket = getSocket();
     const newVal = !hackMode;
@@ -1054,6 +1070,7 @@ export default function TeacherGame() {
         currentGameMode={currentGameMode}
         autoAdvance={autoAdvance}
         giftsEnabled={giftsEnabled}
+        giftRoundInterval={giftRoundInterval}
         hackMode={hackMode}
         ttsEnabled={ttsEnabled}
         roomLocked={roomLocked}
@@ -1077,6 +1094,7 @@ export default function TeacherGame() {
         onCopyLink={copyLink}
         onSetAutoAdvance={setAutoAdvance}
         onToggleGifts={toggleGifts}
+        onSetGiftRoundInterval={updateGiftRoundInterval}
         onToggleHackMode={toggleHackMode}
         onToggleTts={toggleTts}
         onToggleRoomLock={toggleRoomLock}

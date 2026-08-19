@@ -169,6 +169,7 @@ export interface GamePlayer {
 }
 
 export type GameState = "lobby" | "question" | "leaderboard" | "gift-round" | "finished";
+export type GiftRoundInterval = 1 | 3;
 
 export interface Game {
   pin: string;
@@ -193,6 +194,7 @@ export interface Game {
   doublePointsRounds: Set<number>;
   pointsEnabled: boolean;
   giftsEnabled: boolean;
+  giftRoundInterval: GiftRoundInterval;
   ttsEnabled: boolean;
   teamScoreAdjustments: Map<string, number>;
   paused: boolean;
@@ -290,7 +292,7 @@ const MYSTERY_OPTIONS = [
   { label: "ربحت 150 نقطة! 🔥", points: 150 },
   { label: "ربحت 120 نقطة! ⭐", points: 120 },
 ];
-const GIFT_ROUND_INTERVAL = 3;
+export const DEFAULT_GIFT_ROUND_INTERVAL: GiftRoundInterval = 3;
 const GIFT_ROUND_DURATION_MS = 20_000;
 
 export const HACK_PASSWORD_POOL = [
@@ -366,6 +368,7 @@ export function createGame(
     doublePointsRounds,
     pointsEnabled: true,
     giftsEnabled: true,
+    giftRoundInterval: DEFAULT_GIFT_ROUND_INTERVAL,
     ttsEnabled: false,
     teamScoreAdjustments: new Map(),
     paused: false,
@@ -740,6 +743,16 @@ export function setGiftsEnabled(pin: string, enabled: boolean): boolean {
   const game = games.get(pin);
   if (!game) return false;
   game.giftsEnabled = enabled;
+  return true;
+}
+
+export function setGiftRoundInterval(pin: string, interval: unknown): boolean {
+  if (interval !== 1 && interval !== 3) return false;
+
+  const game = games.get(pin);
+  if (!game) return false;
+
+  game.giftRoundInterval = interval;
   return true;
 }
 
@@ -1641,7 +1654,7 @@ export function shouldStartGiftRound(game: Game): boolean {
   if (!game.giftsEnabled || game.hackMode) return false;
   const questionNumber = game.currentQuestionIndex + 1;
   if (questionNumber >= game.questions.length) return false;
-  return questionNumber % GIFT_ROUND_INTERVAL === 0;
+  return questionNumber % game.giftRoundInterval === 0;
 }
 
 export function startGiftRound(game: Game): void {

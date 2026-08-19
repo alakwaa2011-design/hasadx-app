@@ -10,6 +10,7 @@ import {
   kickPlayerByName,
   setPointsEnabled,
   setGiftsEnabled,
+  setGiftRoundInterval,
   setTtsEnabled,
   setHackMode,
   generatePasswordChoices,
@@ -1324,6 +1325,7 @@ export function setupGameSocket(io: Server) {
         teamLeaderboard,
         pointsEnabled: game.pointsEnabled,
         giftsEnabled: game.giftsEnabled,
+        giftRoundInterval: game.giftRoundInterval,
         ttsEnabled: game.ttsEnabled,
         hackMode: game.hackMode,
         roomLocked: game.roomLocked,
@@ -2146,6 +2148,35 @@ export function setupGameSocket(io: Server) {
       io.to(`game:${data.pin}`).emit("game:gifts-toggled", { enabled });
       callback?.({ success: true, enabled });
       logger.info({ pin: data.pin, giftsEnabled: enabled }, "Teacher toggled gifts");
+    });
+
+    socket.on("teacher:set-gift-round-interval", (data: PinData & { interval: unknown }, callback?: (res: any) => void) => {
+      const game = getGame(data.pin);
+      if (!game || game.teacherSocketId !== socket.id) {
+        callback?.({ error: "غير مصرح" });
+        return;
+      }
+
+      const teacherId = getTeacherIdFromSocket(socket);
+      if (!teacherId || teacherId !== game.teacherId) {
+        callback?.({ error: "غير مصرح" });
+        return;
+      }
+
+      if (game.hackMode) {
+        callback?.({ error: "لا يمكن تعديل توقيت الهدايا في وضع الاختراق" });
+        return;
+      }
+
+      if (!setGiftRoundInterval(data.pin, data.interval)) {
+        callback?.({ error: "توقيت الهدايا غير صالح" });
+        return;
+      }
+
+      const interval = data.interval as 1 | 3;
+      io.to(`game:${data.pin}`).emit("game:gift-round-interval-changed", { interval });
+      callback?.({ success: true, interval });
+      logger.info({ pin: data.pin, giftRoundInterval: interval }, "Teacher updated gift round interval");
     });
 
     socket.on("teacher:toggle-tts", (data: PinData & { enabled: boolean }, callback?: (res: any) => void) => {

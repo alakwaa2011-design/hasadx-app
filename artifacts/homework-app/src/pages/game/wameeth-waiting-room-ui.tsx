@@ -94,6 +94,7 @@ export interface WameethWaitingRoomUIProps {
   currentGameMode: "solo" | "teams";
   autoAdvance: boolean;
   giftsEnabled: boolean;
+  giftRoundInterval: 1 | 3;
   hackMode: boolean;
   ttsEnabled: boolean;
   roomLocked: boolean;
@@ -122,6 +123,7 @@ export interface WameethWaitingRoomUIProps {
   onCopyLink: () => void;
   onSetAutoAdvance: (v: boolean) => void;
   onToggleGifts: () => void;
+  onSetGiftRoundInterval: (interval: 1 | 3) => void;
   onToggleHackMode: () => void;
   onToggleTts: () => void;
   onToggleRoomLock: () => void;
@@ -925,15 +927,15 @@ function HackSettingCard({
   );
 }
 
-function SegmentedGold({
+function SegmentedGold<T extends string | number | boolean>({
   options,
   value,
   onChange,
   isAr,
 }: {
-  options: readonly { val: boolean; ar: string; en: string }[];
-  value: boolean;
-  onChange: (v: boolean) => void;
+  options: readonly { val: T; ar: string; en: string }[];
+  value: T;
+  onChange: (v: T) => void;
   isAr: boolean;
 }) {
   return (
@@ -968,6 +970,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     currentGameMode,
     autoAdvance,
     giftsEnabled,
+    giftRoundInterval,
     hackMode,
     ttsEnabled,
     roomLocked,
@@ -990,6 +993,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     onCopyLink,
     onSetAutoAdvance,
     onToggleGifts,
+    onSetGiftRoundInterval,
     onToggleHackMode,
     onToggleTts,
     onToggleRoomLock,
@@ -1503,9 +1507,26 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 delay={0.08}
                 icon={<Gift className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "الهدايا" : "Gifts"}
-                desc={isAr ? "هدية لكل ٣ إجابات صحيحة متتالية" : "Gift every 3 correct answers"}
+                desc={
+                  giftRoundInterval === 1
+                    ? isAr ? "هدية بعد كل إجابة صحيحة" : "Gift after every correct answer"
+                    : isAr ? "هدية بعد كل ٣ إجابات صحيحة" : "Gift after every 3 correct answers"
+                }
               >
-                <GoldToggle on={giftsEnabled} onClick={onToggleGifts} disabled={hackMode} dir={dir} large />
+                <div className="flex flex-col items-center gap-3">
+                  <GoldToggle on={giftsEnabled} onClick={onToggleGifts} disabled={hackMode} dir={dir} large />
+                  {giftsEnabled && !hackMode && (
+                    <SegmentedGold
+                      isAr={isAr}
+                      value={giftRoundInterval}
+                      onChange={onSetGiftRoundInterval}
+                      options={[
+                        { val: 1, ar: "كل إجابة", en: "Every answer" },
+                        { val: 3, ar: "كل ٣ إجابات", en: "Every 3 answers" },
+                      ]}
+                    />
+                  )}
+                </div>
               </SettingCard>
 
               <HackSettingCard
