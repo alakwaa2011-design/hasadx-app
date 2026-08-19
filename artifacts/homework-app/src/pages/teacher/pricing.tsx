@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
 import { useCreditsBalance } from "@/components/credits-chip";
+import { trackMetaInitiateCheckout } from "@/lib/meta-pixel";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -158,6 +159,7 @@ export default function PricingPage() {
         throw new Error((err as any).message || p.checkoutError);
       }
       const { checkoutUrl } = await r.json();
+      trackMetaInitiateCheckout("subscription", planCode);
       window.location.href = checkoutUrl;
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
@@ -176,7 +178,11 @@ export default function PricingPage() {
         const err = await r.json().catch(() => ({}));
         throw new Error((err as any).message || p.checkoutError);
       }
-      const { checkoutUrl } = await r.json();
+      const { checkoutUrl, purchaseIntentId } = await r.json();
+      if (purchaseIntentId) {
+        sessionStorage.setItem("hasad:pending-credit-purchase-intent", purchaseIntentId);
+      }
+      trackMetaInitiateCheckout("credits", pkg.id);
       window.location.href = checkoutUrl;
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });

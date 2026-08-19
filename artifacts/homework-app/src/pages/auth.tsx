@@ -27,6 +27,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
 import { captureAcquisition, getAcquisition } from "@/lib/acquisition";
 import { type Country, KUWAIT } from "@/lib/countries";
+import { trackMetaCompleteRegistration } from "@/lib/meta-pixel";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -527,6 +528,9 @@ function LoginForm({
                   const data: AuthResponse = await loginTeacherWithGoogleMutation.mutateAsync({
                     data: { credential: resp.credential },
                   });
+                  if ((data as any).isNewTeacher === true && data.teacher?.id) {
+                    trackMetaCompleteRegistration(data.teacher.id);
+                  }
                   toast.success(lang === "ar" ? "تم تسجيل الدخول بنجاح" : "Logged in successfully");
                   let pendingPublish = false;
                   try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
@@ -735,7 +739,10 @@ function OtpVerifyScreen({
   channel: "email" | "sms";
   lang: string;
   dir: "rtl" | "ltr";
-  onVerified: (teacher: { role: string; isAdmin: boolean }) => void;
+  onVerified: (
+    teacher: { id: number; role: string; isAdmin: boolean },
+    isNewTeacher: boolean,
+  ) => void;
   onBack: () => void;
 }) {
   const [otp, setOtp] = useState("");
@@ -782,7 +789,7 @@ function OtpVerifyScreen({
         setLoading(false);
         return;
       }
-      onVerified(data.teacher);
+      onVerified(data.teacher, data.isNewTeacher === true);
     } catch {
       setError(lang === "ar" ? "تعذّر الاتصال بالخادم" : "Connection error");
       setLoading(false);
@@ -1214,7 +1221,8 @@ export default function Auth() {
           channel={otpPending.channel}
           lang={lang}
           dir={dir}
-          onVerified={(teacher) => {
+          onVerified={(teacher, isNewTeacher) => {
+            if (isNewTeacher) trackMetaCompleteRegistration(teacher.id);
             toast.success(lang === "ar" ? "تم تفعيل حسابك بنجاح 🎉" : "Account verified successfully 🎉");
             postAuthRedirect(teacher.role as TeacherProfileRole, teacher.isAdmin);
           }}

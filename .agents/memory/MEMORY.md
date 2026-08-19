@@ -29,3 +29,4 @@
 - [Canonical domain redirect](canonical-domain-redirect.md) — prod pages now served by node serve.mjs (compiled from serve.ts — recompile after edits); 301 hasadx.com→hasaadx.com lives there + api-server middleware.
 - [DM read receipts & images](dm-read-receipts-images.md) — one-way receipts by design (teacher never sees admin's readAt); DM images need raster-only allowlist + nosniff/CSP on object serving.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.
+- [Meta Pixel purchase proof](meta-pixel-purchase-proof.md) — emit Purchase only after a unique server-confirmed payment status, not a subscription return URL or balance change.

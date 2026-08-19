@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trackPageView } from "@/lib/gtag";
+import { trackMetaPageView } from "@/lib/meta-pixel";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -30,6 +31,11 @@ export function PageViewTracker() {
       // send_page_view: false so we fire this manually).
       try {
         trackPageView(url);
+      } catch {
+        // ignore
+      }
+      try {
+        trackMetaPageView();
       } catch {
         // ignore
       }

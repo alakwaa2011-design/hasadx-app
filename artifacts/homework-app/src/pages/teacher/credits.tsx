@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useCreditsBalance } from "@/components/credits-chip";
+import {
+  trackMetaInitiateCheckout,
+  trackMetaPurchaseOnce,
+} from "@/lib/meta-pixel";
 
 const API = import.meta.env.VITE_API_URL || "";
 async function apiFetch(path: string, opts?: RequestInit) {
@@ -160,10 +164,12 @@ export default function TeacherCreditsPage() {
     loadAll();
     const params = new URLSearchParams(window.location.search);
     const intent = params.get("intent");
+    const returnedFromPurchase = params.get("purchase") === "success";
     const subscribed = params.get("subscribed");
     
-    if (intent) {
-      setPendingIntent(intent);
+    const storedIntent = sessionStorage.getItem("hasad:pending-credit-purchase-intent");
+    if (intent || (returnedFromPurchase && storedIntent)) {
+      setPendingIntent(intent ?? storedIntent);
       setIntentStatus("waiting");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (subscribed === "1") {
@@ -190,6 +196,8 @@ export default function TeacherCreditsPage() {
           if (data.paymentStatus === "completed") {
             setIntentStatus("confirmed");
             clearInterval(pollRef.current!);
+            trackMetaPurchaseOnce(pendingIntent);
+            sessionStorage.removeItem("hasad:pending-credit-purchase-intent");
             loadAll();
             return;
           }
@@ -249,7 +257,11 @@ export default function TeacherCreditsPage() {
         const err = await r.json().catch(() => ({}));
         throw new Error((err as any).message || c.checkoutError);
       }
-      const { checkoutUrl } = await r.json();
+      const { checkoutUrl, purchaseIntentId } = await r.json();
+      if (purchaseIntentId) {
+        sessionStorage.setItem("hasad:pending-credit-purchase-intent", purchaseIntentId);
+      }
+      trackMetaInitiateCheckout("credits", pkg.id);
       window.location.href = checkoutUrl;
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
@@ -282,6 +294,7 @@ export default function TeacherCreditsPage() {
         throw new Error((err as any).message || p.checkoutError);
       }
       const { checkoutUrl } = await r.json();
+      trackMetaInitiateCheckout("subscription", planCode);
       window.location.href = checkoutUrl;
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });

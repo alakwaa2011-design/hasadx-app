@@ -1373,6 +1373,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     const displayName = profile.name?.trim() || email.split("@")[0];
 
     let teacher: typeof teachersTable.$inferSelect | undefined;
+    let isNewTeacher = false;
 
     const byGoogle = await db
       .select()
@@ -1416,6 +1417,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
           })
           .returning();
         teacher = created;
+        isNewTeacher = true;
         void detectAndSaveCountry(teacher.id, req);
       }
     }
@@ -1449,6 +1451,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     maybeGrantWelcomeCredits(teacher.id, req.log, { name: teacher.name, email: teacher.email });
 
     res.json({
+      isNewTeacher,
       teacher: {
         id: teacher.id,
         name: teacher.name,
@@ -1504,6 +1507,9 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
       return;
     }
 
+    // New registrations carry a pending OTP; legacy accounts do not.
+    const isNewTeacher = Boolean(teacher.verificationOtp);
+
     // Mark as verified, clear both token and OTP, establish session
     const [verified] = await db
       .update(teachersTable)
@@ -1529,6 +1535,7 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
 
     res.json({
       ok: true,
+      isNewTeacher,
       teacher: {
         id: verified.id,
         name: verified.name,
@@ -1591,6 +1598,9 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
       return;
     }
 
+    // New registrations carry a pending OTP; legacy accounts do not.
+    const isNewTeacher = Boolean(teacher.verificationOtp);
+
     // Mark as verified and clear OTP
     const [verified] = await db
       .update(teachersTable)
@@ -1607,6 +1617,7 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
     maybeGrantWelcomeCredits(verified.id, req.log, { name: verified.name, email: verified.email });
 
     res.json({
+      isNewTeacher,
       teacher: {
         id: verified.id,
         name: verified.name,

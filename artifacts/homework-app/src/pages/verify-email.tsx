@@ -11,6 +11,7 @@ import { Button } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetCurrentTeacherQueryKey } from "@workspace/api-client-react";
+import { trackMetaCompleteRegistration } from "@/lib/meta-pixel";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -53,6 +54,9 @@ export default function VerifyEmailPage() {
         const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
+          if (data.isNewTeacher === true && data.teacher?.id) {
+            trackMetaCompleteRegistration(data.teacher.id);
+          }
           // Invalidate cached teacher so the session is picked up everywhere
           queryClient.invalidateQueries({ queryKey: getGetCurrentTeacherQueryKey() });
           setState({ kind: "success", role: data.teacher?.role ?? "teacher", name: data.teacher?.name ?? "" });
