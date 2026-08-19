@@ -204,8 +204,6 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
 }) {
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [copiedWameeth, setCopiedWameeth] = useState(false);
-  const [copiedRocket, setCopiedRocket] = useState(false);
   const shareUrl = `${window.location.origin}/solve/${publishedInfo.id}`;
 
   const copyShareLink = async () => {
@@ -249,79 +247,6 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
           <Share2 className="w-5 h-5 shrink-0" />
           {lang === "ar" ? "مشاركة النشاط" : "Share activity"}
         </button>
-
-        {/* ── روابط اللعب المباشر (وميض + صواريخ) ── */}
-        {publishedInfo.id && (
-          <div className="space-y-2">
-            <p className="text-xs font-black text-muted-foreground text-center uppercase tracking-wide">
-              {lang === "ar" ? "رابط لعب فردي مباشر" : "Solo Direct Play Link"}
-            </p>
-            <div className="flex gap-2">
-              {/* وميض */}
-              <button
-                type="button"
-                data-testid="btn-copy-wameeth-link"
-                onClick={async () => {
-                  try {
-                    const res = await fetch(
-                      `/api/assignments/${publishedInfo.id}/play-links`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        credentials: "include",
-                        body: JSON.stringify({ gameType: "wameeth" }),
-                      },
-                    );
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message);
-                    await navigator.clipboard.writeText(
-                      `${window.location.origin}/play/${data.token}`,
-                    );
-                    setCopiedWameeth(true);
-                    setTimeout(() => setCopiedWameeth(false), 2500);
-                  } catch (e: any) {
-                    toast.error(e?.message || (lang === "ar" ? "تعذّر النسخ" : "Copy failed"));
-                  }
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black transition-all active:scale-[0.98] border-2 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20"
-              >
-                {copiedWameeth ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                {copiedWameeth ? "✓" : (lang === "ar" ? "وميض ⌲" : "Wameedh ⌲")}
-              </button>
-              {/* صواريخ */}
-              <button
-                type="button"
-                data-testid="btn-copy-rocket-link"
-                onClick={async () => {
-                  try {
-                    const res = await fetch(
-                      `/api/assignments/${publishedInfo.id}/play-links`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        credentials: "include",
-                        body: JSON.stringify({ gameType: "rocket_race" }),
-                      },
-                    );
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message);
-                    await navigator.clipboard.writeText(
-                      `${window.location.origin}/play/${data.token}`,
-                    );
-                    setCopiedRocket(true);
-                    setTimeout(() => setCopiedRocket(false), 2500);
-                  } catch (e: any) {
-                    toast.error(e?.message || (lang === "ar" ? "تعذّر النسخ" : "Copy failed"));
-                  }
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black transition-all active:scale-[0.98] border-2 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              >
-                {copiedRocket ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                {copiedRocket ? "✓" : (lang === "ar" ? "صواريخ ⌲" : "Rocket ⌲")}
-              </button>
-            </div>
-          </div>
-        )}
 
         <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
           <DialogContent dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-md rounded-3xl">
