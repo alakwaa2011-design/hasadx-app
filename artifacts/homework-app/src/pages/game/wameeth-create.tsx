@@ -16,8 +16,10 @@ import {
 import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import { storeIndependentControlToken } from "@/lib/independent-game-session";
 import {
+  canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
   getWameethSetupPath,
+  type WameethSourceActivity,
 } from "@/lib/wameeth-entry";
 import {
   QuestionCard, emptyQuestion, isValidQ, type Question, type Correct,
@@ -119,7 +121,11 @@ export default function WameethCreate() {
     setAiSubject("");
   };
 
-  const filteredAssignments = (assignments || []).filter((a: Assignment) => {
+  const wameethSourceAssignments = (assignments || []).filter((a: Assignment) =>
+    canUseActivityAsWameethSource(a as unknown as WameethSourceActivity, user?.id ?? -1),
+  );
+
+  const filteredAssignments = wameethSourceAssignments.filter((a: Assignment) => {
     if ((a.questionCount ?? 0) === 0) return false;
     if (!assignSearch.trim()) return true;
     return a.title.toLowerCase().includes(assignSearch.toLowerCase());
@@ -170,7 +176,7 @@ export default function WameethCreate() {
       setQuestions(loaded);
       setSourceAssignmentId(a.id);
       if (!title) setTitle(a.title);
-      toast.success(ar ? `تم استيراد ${loaded.length} سؤال` : `Imported ${loaded.length} questions`);
+      toast.success(ar ? `تم تحميل ${loaded.length} سؤال` : `Loaded ${loaded.length} questions`);
     } catch {
       toast.error(ar ? "حدث خطأ" : "An error occurred");
     } finally {
@@ -190,7 +196,7 @@ export default function WameethCreate() {
       || preloadedAssignmentRef.current === preloadedAssignmentId
     ) return;
 
-    const assignment = (assignments || []).find(
+    const assignment = wameethSourceAssignments.find(
       (item: Assignment) => item.id === preloadedAssignmentId,
     ) as Assignment | undefined;
     preloadedAssignmentRef.current = preloadedAssignmentId;

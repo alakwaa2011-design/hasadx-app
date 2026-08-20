@@ -35,3 +35,4 @@
 - [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
 - [Browser E2E database isolation](browser-e2e-db-isolation.md) — fixture-writing browser tests must run app and API together on a dedicated test database.
 - [Autosave idempotency](autosave-idempotency.md) — generated-content retries use a stable client key and must atomically include every create-side effect.
+- [Shared library Wameeth access](shared-library-wameeth-access.md) — cross-teacher direct play is limited to visibly published activities and only Wameeth class/independent modes.

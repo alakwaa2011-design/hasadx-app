@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // ── Queue-based DB mock (overrides global setup-db-mock.ts) ────────────────
 const dbState = vi.hoisted(() => {
   const queue: unknown[] = [];
+  const insertPayloads: unknown[] = [];
   function makeChain(result: unknown): unknown {
     return new Proxy({}, {
       get(_target, prop: string | symbol) {
@@ -27,7 +28,7 @@ const dbState = vi.hoisted(() => {
       },
     });
   }
-  return { queue, makeChain };
+  return { queue, insertPayloads, makeChain };
 });
 
 vi.mock("@workspace/db", () => {
@@ -35,7 +36,12 @@ vi.mock("@workspace/db", () => {
   return {
     db: {
       select: () => dbState.makeChain(dbState.queue.shift()),
-      insert: () => dbState.makeChain(dbState.queue.shift()),
+      insert: () => ({
+        values: (payload: unknown) => {
+          dbState.insertPayloads.push(payload);
+          return dbState.makeChain(dbState.queue.shift());
+        },
+      }),
       update: () => dbState.makeChain(dbState.queue.shift()),
       delete: () => dbState.makeChain(dbState.queue.shift()),
     },
@@ -69,7 +75,7 @@ vi.mock("../game/rocket-handlers", () => ({
 // ── App builder ────────────────────────────────────────────────────────────
 import express from "express";
 import request from "supertest";
-import directPlayRouter from "../routes/direct-play";
+import directPlayRouter, { canCreateDirectPlayLink } from "../routes/direct-play";
 
 function makeApp(session: { teacherId?: number } | null = null) {
   const app = express();
@@ -88,6 +94,14 @@ function makeApp(session: { teacherId?: number } | null = null) {
 const VALID_TOKEN = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"; // 32 hex chars
 
 const ASSIGNMENT_ROW     = { id: 1, title: "نشاط تجريبي", teacherId: 42 };
+const SHARED_LIBRARY_ASSIGNMENT = {
+  id: 1,
+  title: "نشاط منشور في المكتبة",
+  teacherId: 77,
+  isShared: true,
+  hiddenByAdmin: false,
+  accessMode: "public",
+};
 const LINK_ROW_WAMEETH   = { assignmentId: 1, gameType: "wameeth",     title: "نشاط تجريبي" };
 const LINK_ROW_CLASS     = { assignmentId: 1, gameType: "wameeth_class", title: "نشاط تجريبي" };
 const LINK_ROW_ROCKET    = { assignmentId: 1, gameType: "rocket_race", title: "نشاط تجريبي" };
@@ -113,6 +127,7 @@ function push(...items: unknown[]) { dbState.queue.push(...items); }
 
 beforeEach(() => {
   dbState.queue.length = 0;
+  dbState.insertPayloads.length = 0;
   vi.clearAllMocks();
   gameMocks.createGame.mockReturnValue({ pin: "111111" });
   gameMocks.getGame.mockReturnValue(undefined);
@@ -382,6 +397,96 @@ describe("AC-4  الأمان والخصوصية", () => {
       .post("/api/assignments/1/play-links")
       .send({ gameType: "tug_of_war" });
     expect(res.status).toBe(400);
+    expect(dbState.queue.length).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AC-4b  نشاط المكتبة → وميض الصف / المستقل بلا استيراد
+// ═══════════════════════════════════════════════════════════════════════════
+describe("AC-4b نشاط المكتبة المنشور في وميض", () => {
+  it("يسمح فقط بنشاط مكتبة ظاهر لوميض الصف والمستقل، مع بقاء الأنماط الأخرى للمالك", () => {
+    expect(canCreateDirectPlayLink(SHARED_LIBRARY_ASSIGNMENT, 999, "wameeth")).toBe(true);
+    expect(canCreateDirectPlayLink(SHARED_LIBRARY_ASSIGNMENT, 999, "wameeth_class")).toBe(true);
+    expect(canCreateDirectPlayLink(SHARED_LIBRARY_ASSIGNMENT, 999, "rocket_race")).toBe(false);
+
+    expect(canCreateDirectPlayLink({
+      ...SHARED_LIBRARY_ASSIGNMENT,
+      isShared: false,
+    }, 999, "wameeth")).toBe(false);
+    expect(canCreateDirectPlayLink({
+      ...SHARED_LIBRARY_ASSIGNMENT,
+      hiddenByAdmin: true,
+    }, 999, "wameeth_class")).toBe(false);
+    expect(canCreateDirectPlayLink({
+      ...SHARED_LIBRARY_ASSIGNMENT,
+      accessMode: "private",
+    }, 999, "wameeth")).toBe(false);
+  });
+
+  it("ينشئ رابط وميض الصف للنشاط المنشور باسم المعلم الذي بدأه، بلا استيراد", async () => {
+    push(
+      [SHARED_LIBRARY_ASSIGNMENT],
+      Q_COUNT,
+      [],
+      [],
+    );
+
+    const res = await request(makeApp({ teacherId: 999 }))
+      .post("/api/assignments/1/play-links")
+      .send({ gameType: "wameeth_class" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(dbState.insertPayloads).toHaveLength(1);
+    expect(dbState.insertPayloads[0]).toMatchObject({
+      assignmentId: 1,
+      gameType: "wameeth_class",
+      teacherId: 999,
+    });
+    expect(dbState.queue.length).toBe(0);
+  });
+
+  it("ينشئ رابط اللعبة المستقلة للنشاط المنشور بلا استيراد ثم يبدأ الجلسة", async () => {
+    push(
+      [SHARED_LIBRARY_ASSIGNMENT],
+      Q_COUNT,
+      [],
+      [],
+    );
+
+    const linkResponse = await request(makeApp({ teacherId: 999 }))
+      .post("/api/assignments/1/play-links")
+      .send({ gameType: "wameeth" });
+
+    expect(linkResponse.status).toBe(200);
+    expect(dbState.insertPayloads).toHaveLength(1);
+    expect(dbState.insertPayloads[0]).toMatchObject({
+      assignmentId: 1,
+      gameType: "wameeth",
+      teacherId: 999,
+    });
+
+    push([LINK_ROW_WAMEETH], WAMEETH_QS);
+    const startResponse = await request(makeApp())
+      .post(`/api/play/${VALID_TOKEN}/start`);
+
+    expect(startResponse.status).toBe(200);
+    expect(startResponse.body.playRoute).toBe("/game/play/111111");
+    expect(gameMocks.createGame.mock.results[0]?.value.independentSession).toBe(true);
+    expect(gameMocks.createGame.mock.results[0]?.value.giftsEnabled).toBe(false);
+  });
+
+  it("يرفض إنشاء رابط وميض عندما لا تعيد قاعدة البيانات نشاطاً ظاهراً للمعلم", async () => {
+    push([]);
+
+    const res = await request(makeApp({ teacherId: 999 }))
+      .post("/api/assignments/1/play-links")
+      .send({ gameType: "wameeth" });
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toBe("النشاط غير موجود");
+    expect(dbState.insertPayloads).toEqual([]);
     expect(dbState.queue.length).toBe(0);
   });
 });

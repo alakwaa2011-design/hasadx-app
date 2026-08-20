@@ -643,17 +643,23 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         return;
       }
     }
-    // Other authenticated teachers may view correctAnswer for admin-approved shared
-    // assignments so they can use them in their own games (Tug, Million, etc.).
-    const isApprovedSharedForTeacher =
-      !!req.session.teacherId && !isTeacher && assignment.isShared && assignment.isShareApproved;
-    const canSeeCorrectAnswer = isTeacher || isApprovedSharedForTeacher;
+    // A signed-in teacher can load correct answers from an activity that is
+    // currently visible in the shared library. Wameeth needs those answers to
+    // prepare its local/class flows, but private or admin-hidden content must
+    // never be opened by guessing its ID.
+    const isVisibleSharedForTeacher =
+      !!req.session.teacherId
+      && !isTeacher
+      && assignment.isShared === true
+      && assignment.hiddenByAdmin === false
+      && assignment.accessMode !== "private";
+    const canSeeCorrectAnswer = isTeacher || isVisibleSharedForTeacher;
 
-    // Private assignments require either the owner, an approved-shared viewer,
+    // Private assignments require either the owner, a visible-library viewer,
     // or a valid access code in the X-Access-Code header. Without these we
     // return only a minimal stub so the student frontend can prompt for the
     // code without leaking questions or class targeting.
-    if (assignment.accessMode === "private" && !isTeacher && !isApprovedSharedForTeacher) {
+    if (assignment.accessMode === "private" && !isTeacher && !isVisibleSharedForTeacher) {
       const headerCode = (req.headers["x-access-code"] as string | undefined)?.trim();
       if (!safeAccessCodeEqual(headerCode, assignment.accessCode)) {
         res.status(403).json({

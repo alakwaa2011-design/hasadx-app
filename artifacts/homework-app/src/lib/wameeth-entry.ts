@@ -1,5 +1,29 @@
 export const WAMEETH_SETUP_PATH = "/game/wameeth/create";
 
+export type WameethSourceActivity = {
+  teacherId?: number | null;
+  isShared?: boolean | null;
+  hiddenByAdmin?: boolean | null;
+  accessMode?: string | null;
+};
+
+/**
+ * The setup screen accepts an owned activity or an activity that is visibly
+ * published in the Activities Library. Keeping this guard client-side prevents
+ * a hand-written assignmentId from requesting a private/unpublished activity.
+ */
+export function canUseActivityAsWameethSource(
+  activity: WameethSourceActivity,
+  currentTeacherId: number,
+): boolean {
+  return activity.teacherId === currentTeacherId || (
+    activity.isShared === true
+    && activity.hiddenByAdmin === false
+    && activity.accessMode !== null
+    && activity.accessMode !== "private"
+  );
+}
+
 /**
  * The only teacher-side entry point for creating a Wameeth session.
  * Existing-assignment launchers carry the assignment id so the shared setup

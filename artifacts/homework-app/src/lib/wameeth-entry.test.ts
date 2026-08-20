@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
   getWameethSetupPath,
   WAMEETH_SETUP_PATH,
@@ -26,5 +27,31 @@ describe("Wameeth teacher entry contract", () => {
     expect(getWameethSetupAssignmentId("?assignmentId=0")).toBeNull();
     expect(getWameethSetupAssignmentId("?assignmentId=42x")).toBeNull();
     expect(getWameethSetupAssignmentId("?assignmentId=-42")).toBeNull();
+  });
+
+  it("accepts an owned activity even when it is not shared", () => {
+    expect(canUseActivityAsWameethSource({
+      teacherId: 42,
+      isShared: false,
+      hiddenByAdmin: true,
+      accessMode: "private",
+    }, 42)).toBe(true);
+  });
+
+  it("accepts only a visibly published library activity for another teacher", () => {
+    expect(canUseActivityAsWameethSource({
+      teacherId: 7,
+      isShared: true,
+      hiddenByAdmin: false,
+      accessMode: "public",
+    }, 42)).toBe(true);
+  });
+
+  it.each([
+    ["not shared", { isShared: false, hiddenByAdmin: false, accessMode: "public" }],
+    ["hidden by moderation", { isShared: true, hiddenByAdmin: true, accessMode: "public" }],
+    ["private", { isShared: true, hiddenByAdmin: false, accessMode: "private" }],
+  ])("rejects a foreign activity that is %s", (_reason, activity) => {
+    expect(canUseActivityAsWameethSource({ teacherId: 7, ...activity }, 42)).toBe(false);
   });
 });

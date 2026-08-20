@@ -68,15 +68,56 @@ const QUESTION_TYPES = ["mcq", "true_false", "fill_blank", "dictation"] as const
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Get assignment and check it belongs to the authenticated teacher. */
-async function getTeacherAssignment(assignmentId: number, teacherId: number) {
+type DirectPlayAssignment = {
+  id: number;
+  title: string;
+  teacherId: number;
+  isShared: boolean;
+  hiddenByAdmin: boolean;
+  accessMode: string | null;
+};
+
+/**
+ * Shared library activities may be used by a different teacher only for the
+ * two Wameeth direct-play flows. Other game types retain owner-only behavior.
+ * This mirrors the activity-library visibility rules rather than trusting an
+ * activity ID supplied in a URL.
+ */
+export function canCreateDirectPlayLink(
+  assignment: DirectPlayAssignment,
+  requestingTeacherId: number,
+  gameType: string,
+): boolean {
+  if (assignment.teacherId === requestingTeacherId) return true;
+
+  return (
+    (gameType === "wameeth" || gameType === "wameeth_class")
+    && assignment.isShared === true
+    && assignment.hiddenByAdmin === false
+    && assignment.accessMode !== null
+    && assignment.accessMode !== "private"
+  );
+}
+
+/** Get an activity that the authenticated teacher may use for this game type. */
+async function getPlayableAssignment(
+  assignmentId: number,
+  teacherId: number,
+  gameType: string,
+) {
   const [row] = await db
-    .select({ id: assignmentsTable.id, title: assignmentsTable.title, teacherId: assignmentsTable.teacherId })
+    .select({
+      id: assignmentsTable.id,
+      title: assignmentsTable.title,
+      teacherId: assignmentsTable.teacherId,
+      isShared: assignmentsTable.isShared,
+      hiddenByAdmin: assignmentsTable.hiddenByAdmin,
+      accessMode: assignmentsTable.accessMode,
+    })
     .from(assignmentsTable)
     .where(eq(assignmentsTable.id, assignmentId))
     .limit(1);
-  if (!row) return null;
-  if (row.teacherId !== teacherId) return null; // don't reveal it exists
+  if (!row || !canCreateDirectPlayLink(row, teacherId, gameType)) return null;
   return row;
 }
 
@@ -225,7 +266,7 @@ router.post("/assignments/:id/play-links", async (req, res) => {
       });
     }
 
-    const assignment = await getTeacherAssignment(id, teacherId);
+    const assignment = await getPlayableAssignment(id, teacherId, gameType);
     if (!assignment) return res.status(404).json({ message: "النشاط غير موجود" });
 
     const qCount = await countPlayableQuestions(id);

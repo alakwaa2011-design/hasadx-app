@@ -899,6 +899,7 @@ function IndependentResults({
 }) {
   const [copied, setCopied] = useState(false);
   const ar = lang === "ar";
+  const wrongCount = Math.max(totalQuestions - correctCount, 0);
   const copyLink = async () => {
     if (!token) return;
     try {
@@ -928,7 +929,7 @@ function IndependentResults({
           {ar ? "نتيجتك" : "Your result"}
         </h1>
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <p className="text-xs font-bold text-white/50 mb-1">{ar ? "مجموع النقاط" : "Total points"}</p>
             <p className="text-3xl font-black text-amber-300" data-testid="text-independent-score">
@@ -939,6 +940,12 @@ function IndependentResults({
             <p className="text-xs font-bold text-white/50 mb-1">{ar ? "إجابات صحيحة" : "Correct answers"}</p>
             <p className="text-3xl font-black text-emerald-300" data-testid="text-independent-correct-count">
               {correctCount}/{totalQuestions}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs font-bold text-white/50 mb-1">{ar ? "إجابات خاطئة" : "Wrong answers"}</p>
+            <p className="text-3xl font-black text-rose-300" data-testid="text-independent-wrong-count">
+              {wrongCount}
             </p>
           </div>
         </div>
