@@ -94,6 +94,7 @@ import {
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
+import { PricingContent } from "@/pages/teacher/pricing";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
 import { Card, Button } from "@/components/ui-elements";
@@ -328,7 +329,7 @@ type AssignmentLiveGameChoice =
 /* ── URL-parameter parsing (exported for unit tests) ─────────────────────── */
 
 const DASHBOARD_ALLOWED_TABS = [
-  "overview", "assignments", "shared", "library_homework",
+  "overview", "credits", "assignments", "shared", "library_homework",
   "library_competitions", "competitive", "tools", "videos", "stats", "students",
 ] as const;
 
@@ -835,7 +836,6 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "الباقات" : "Packages",
       shortLabel: lang === "ar" ? "الباقات" : "Packages",
       icon: <CreditCard className="w-4 h-4" />,
-      href: "/teacher/pricing",
     },
     {
       id: "assignments",
@@ -1007,6 +1007,9 @@ export default function TeacherDashboard() {
         )}
         {activeTab === "presentations" && (
           <PresentationsIndex embedded />
+        )}
+        {activeTab === "credits" && (
+          <PricingContent />
         )}
       </motion.div>
     </AnimatePresence>
@@ -1198,16 +1201,26 @@ export default function TeacherDashboard() {
             {(() => {
               const creditsTab = tabs.find((tb) => tb.id === "credits");
               if (!creditsTab) return null;
+              const active = activeTab === "credits";
               return (
                 <button
                   key={creditsTab.id}
-                  onClick={() => creditsTab.href && setLocation(creditsTab.href)}
+                  onClick={() => {
+                    setActiveTab("credits");
+                    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+                  }}
+                  aria-current={active ? "page" : undefined}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
-                  style={{ color: "rgba(30,77,53,0.72)" }}
+                  style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
                   data-testid="sidebar-packages-link"
                 >
-                  <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
-                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{ color: "rgba(30,77,53,0.62)" }}>
+                  {!active && (
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
+                  )}
+                  {active && (
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
+                  )}
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{ color: active ? "#1E4D35" : "rgba(30,77,53,0.62)" }}>
                     {creditsTab.icon}
                   </span>
                   <span className="relative truncate">{creditsTab.label}</span>
@@ -1250,7 +1263,8 @@ export default function TeacherDashboard() {
                 activeTab !== "library_homework" &&
                 activeTab !== "assignments" &&
                 activeTab !== "competitive" &&
-                activeTab !== "stats" && (
+                activeTab !== "stats" &&
+                activeTab !== "credits" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
@@ -1258,7 +1272,7 @@ export default function TeacherDashboard() {
               </div>
               )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
-          {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions", "videos", "presentations", "parent_messages", "stats"].includes(activeTab) && (
+          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "library_competitions", "videos", "presentations", "parent_messages", "stats"].includes(activeTab) && (
           <div
             className={cn(
               "grid grid-cols-3 gap-3",
@@ -1408,7 +1422,7 @@ export default function TeacherDashboard() {
           <div className="mb-3">
             <GuestDraftImportBanner />
           </div>
-          {activeTab !== "assignments" && activeTab !== "competitive" && (
+          {activeTab !== "assignments" && activeTab !== "competitive" && activeTab !== "credits" && (
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             <span className="[&_svg]:w-5 [&_svg]:h-5 text-primary">
               {tabs.find((t) => t.id === activeTab)?.icon}

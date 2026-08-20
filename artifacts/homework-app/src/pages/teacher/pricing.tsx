@@ -103,7 +103,7 @@ const planStyles: Record<string, { card: string; eyebrow: string; icon: string; 
   },
 };
 
-export default function PricingPage() {
+export function PricingContent() {
   const [, setLocation] = useLocation();
   const { t, lang, dir } = useI18n();
   const p = t.pricing;
@@ -221,17 +221,15 @@ export default function PricingPage() {
 
   if (!loading && !pricingPageVisible) {
     return (
-      <Layout>
-        <div dir={dir} className="max-w-2xl mx-auto px-4 py-20 text-center">
-          <div className="rounded-[2rem] border border-border/60 bg-white p-12 shadow-sm">
-            <div className="w-16 h-16 mx-auto bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
-              <Sparkles className="text-emerald-700" size={30} />
-            </div>
-            <h1 className="text-2xl font-extrabold text-emerald-950">{p.unavailableTitle}</h1>
-            <p className="mt-3 text-muted-foreground leading-relaxed max-w-md mx-auto">{p.unavailableBody}</p>
+      <div dir={dir} className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <div className="rounded-[2rem] border border-border/60 bg-white p-12 shadow-sm">
+          <div className="w-16 h-16 mx-auto bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
+            <Sparkles className="text-emerald-700" size={30} />
           </div>
+          <h1 className="text-2xl font-extrabold text-emerald-950">{p.unavailableTitle}</h1>
+          <p className="mt-3 text-muted-foreground leading-relaxed max-w-md mx-auto">{p.unavailableBody}</p>
         </div>
-      </Layout>
+      </div>
     );
   }
 
@@ -301,8 +299,7 @@ export default function PricingPage() {
   };
 
   return (
-    <Layout>
-      <div dir={dir} className="max-w-[1500px] mx-auto pb-20 pt-6 px-4 text-[#153a2b]">
+    <div dir={dir} className="max-w-[1500px] mx-auto pb-20 pt-6 px-4 text-[#153a2b]">
         {/* ── 1) الهيدر الأخضر ── */}
         <section className="relative overflow-hidden rounded-[30px] bg-[#0b4b35] px-6 py-5 text-white shadow-[0_22px_50px_rgba(9,57,39,0.18)] sm:px-8 lg:px-10">
           <div className="absolute -end-20 -top-24 size-72 rounded-full border-[38px] border-[#1b6148] opacity-45" />
@@ -800,7 +797,14 @@ export default function PricingPage() {
             </button>
           </section>
         )}
-      </div>
+    </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Layout>
+      <PricingContent />
     </Layout>
   );
 }
