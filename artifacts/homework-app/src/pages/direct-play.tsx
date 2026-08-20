@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import { storeIndependentControlToken } from "@/lib/independent-game-session";
 import { Loader2, AlertCircle, Play, Target, User, Zap, Rocket } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -116,9 +117,12 @@ export default function DirectPlayPage() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "خطأ");
+        if (!data.pin || !data.controlToken) throw new Error("تعذّر تهيئة جلسة اللعب");
+        storeIndependentControlToken(String(data.pin), String(data.controlToken));
         const playerName = lang === "ar" ? "لاعب" : "Player";
         setLocation(
-          `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}`,
+          `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}&returnTo=${encodeURIComponent("/")}`,
+          { replace: true },
         );
       })
       .catch((err: unknown) => {

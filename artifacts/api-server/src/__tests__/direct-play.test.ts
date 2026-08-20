@@ -143,11 +143,15 @@ describe("AC-1  GET /info  +  POST /start (وميض) — بلا مصادقة", (
     expect(res.body.gameType).toBe("wameeth");
     expect(res.body.pin).toBe("111111");
     expect(res.body.playRoute).toBe("/game/play/111111");
+    expect(res.body.controlToken).toMatch(/^[a-f0-9]{64}$/);
     expect(gameMocks.createGame).toHaveBeenCalledOnce();
     expect(gameMocks.startGameFromRest).toHaveBeenCalledWith("111111");
     // A direct link creates one independent player, so no unusable gift round
     // should interrupt the session. Live individual Wameeth games keep gifts.
     expect(gameMocks.createGame.mock.results[0]?.value.giftsEnabled).toBe(false);
+    expect(gameMocks.createGame.mock.results[0]?.value.independentSession).toBe(true);
+    expect(gameMocks.createGame.mock.results[0]?.value.independentControllerToken)
+      .toBe(res.body.controlToken);
   });
 
   it("startGameFromRest يتلقى PIN الصحيح — بلا خلط مع صواريخ", async () => {

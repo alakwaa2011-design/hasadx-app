@@ -14,6 +14,7 @@ import {
   getRememberedTargetClass,
 } from "@/components/teacher/class-selector";
 import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
+import { storeIndependentControlToken } from "@/lib/independent-game-session";
 import {
   QuestionCard, emptyQuestion, isValidQ, type Question, type Correct,
 } from "@/components/game/question-editor";
@@ -310,9 +311,13 @@ export default function WameethCreate() {
         if (!res.ok || !data.playRoute) {
           throw new Error(data.message || (ar ? "تعذّر بدء اللعبة" : "Failed to start the game"));
         }
+        if (!data.pin || !data.controlToken) {
+          throw new Error(ar ? "تعذّر تهيئة جلسة اللعب" : "Failed to initialize the game session");
+        }
+        storeIndependentControlToken(String(data.pin), String(data.controlToken));
         const playerName = ar ? "لاعب" : "Player";
         setLocation(
-          `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}`,
+          `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}&returnTo=${encodeURIComponent("/game/wameeth/create")}`,
         );
         return;
       }

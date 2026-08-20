@@ -173,6 +173,12 @@ export type GiftRoundInterval = 1 | 3;
 
 export interface Game {
   pin: string;
+  /** Server-only marker for one-player sessions created from a public direct-play link. */
+  independentSession: boolean;
+  /** Capability generated per direct session and required for the sole player to join. */
+  independentControllerToken: string | null;
+  /** The currently authorized socket for this direct session. */
+  independentPlayerSocketId: string | null;
   assignmentId: number;
   assignmentTitle: string;
   teacherSocketId: string;
@@ -198,6 +204,7 @@ export interface Game {
   ttsEnabled: boolean;
   teamScoreAdjustments: Map<string, number>;
   paused: boolean;
+  pausedQuestionRemainingMs: number | null;
   autoAdvanceTimerId: ReturnType<typeof setTimeout> | null;
   pausedAt: number | null;
   botTimers: ReturnType<typeof setTimeout>[];
@@ -347,6 +354,9 @@ export function createGame(
 
   const game: Game = {
     pin,
+    independentSession: false,
+    independentControllerToken: null,
+    independentPlayerSocketId: null,
     assignmentId,
     assignmentTitle,
     teacherSocketId,
@@ -372,6 +382,7 @@ export function createGame(
     ttsEnabled: false,
     teamScoreAdjustments: new Map(),
     paused: false,
+    pausedQuestionRemainingMs: null,
     autoAdvanceTimerId: null,
     pausedAt: null,
     botTimers: [],

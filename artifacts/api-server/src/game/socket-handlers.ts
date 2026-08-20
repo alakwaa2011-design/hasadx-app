@@ -135,6 +135,7 @@ interface JoinGameData {
   name: string;
   avatar?: string;
   studentId?: number;
+  independentControlToken?: string;
 }
 
 interface JoinGameResponse {
@@ -773,7 +774,12 @@ function finishGiftRound(io: Server, game: Game) {
   }
 }
 
-function scheduleQuestionTimeout(io: Server, game: Game, questionIndex: number) {
+function scheduleQuestionTimeout(
+  io: Server,
+  game: Game,
+  questionIndex: number,
+  timeoutMs: number = game.questionDuration * 1000,
+) {
   clearQuestionTimeout(game);
 
   game.currentTimeoutId = setTimeout(() => {
@@ -787,7 +793,7 @@ function scheduleQuestionTimeout(io: Server, game: Game, questionIndex: number) 
     }
 
     endQuestion(io, currentGame);
-  }, game.questionDuration * 1000);
+  }, Math.max(1, timeoutMs));
 }
 
 function getTeacherIdFromSocket(socket: Socket): number | null {
@@ -1029,6 +1035,14 @@ export function setupGameSocket(io: Server) {
         callback?.({ error: "كود اللعبة غير صحيح" });
         return;
       }
+      if (
+        game.independentSession &&
+        (!data.independentControlToken ||
+          data.independentControlToken !== game.independentControllerToken)
+      ) {
+        callback?.({ error: "جلسة اللعب غير صالحة" });
+        return;
+      }
 
       logActivity({
         userId: studentAccountId ?? studentId ?? null,
@@ -1102,10 +1116,40 @@ export function setupGameSocket(io: Server) {
         }
       }
 
-      const player = addPlayer(pin, socket.id, trimmedName, avatar || "🦁", verifiedStudentId, verifiedStudentAccountId);
+      let player: GamePlayer | null;
+      if (game.independentSession && game.players.size > 0) {
+        if (game.players.size !== 1) {
+          callback?.({ error: "جلسة اللعب غير صالحة" });
+          return;
+        }
+        const [oldSocketId, existingPlayer] = Array.from(game.players.entries())[0];
+        if (existingPlayer.isBot) {
+          callback?.({ error: "جلسة اللعب غير صالحة" });
+          return;
+        }
+        if (oldSocketId !== socket.id) {
+          game.players.delete(oldSocketId);
+          existingPlayer.socketId = socket.id;
+          game.players.set(socket.id, existingPlayer);
+        }
+        existingPlayer.disconnected = false;
+        player = existingPlayer;
+      } else {
+        player = addPlayer(
+          pin,
+          socket.id,
+          trimmedName,
+          avatar || "🦁",
+          verifiedStudentId,
+          verifiedStudentAccountId,
+        );
+      }
       if (!player) {
         callback?.({ error: "هذا الاسم مستخدم بالفعل، اختر اسماً آخر" });
         return;
+      }
+      if (game.independentSession) {
+        game.independentPlayerSocketId = socket.id;
       }
 
       socket.join(`game:${pin}`);
@@ -1480,6 +1524,10 @@ export function setupGameSocket(io: Server) {
 
       if (game.state === "question") {
         game.pausedAt = Date.now();
+        game.pausedQuestionRemainingMs = Math.max(
+          0,
+          game.questionDuration * 1000 - (game.pausedAt - game.questionStartTime),
+        );
         clearQuestionTimeout(game);
       }
 
@@ -1492,17 +1540,128 @@ export function setupGameSocket(io: Server) {
       if (!game.paused) return;
 
       game.paused = false;
-      io.to(`game:${game.pin}`).emit("game:resumed", { state: game.state });
+      let remainingMs: number | undefined;
 
       if (game.state === "leaderboard" && game.autoAdvance) {
         scheduleAutoAdvance(io, game);
       } else if (game.state === "question" && game.pausedAt !== null) {
-        const pausedMs = Date.now() - game.pausedAt;
-        game.questionStartTime = game.questionStartTime + pausedMs;
+        remainingMs = game.pausedQuestionRemainingMs ?? game.questionDuration * 1000;
+        game.questionStartTime =
+          Date.now() - (game.questionDuration * 1000 - remainingMs);
         game.pausedAt = null;
-        scheduleQuestionTimeout(io, game, game.currentQuestionIndex);
+        game.pausedQuestionRemainingMs = null;
+        scheduleQuestionTimeout(io, game, game.currentQuestionIndex, remainingMs);
       }
+      io.to(`game:${game.pin}`).emit("game:resumed", { state: game.state, remainingMs });
     });
+
+    const getIndependentGameControlledByPlayer = (pin: string) => {
+      const game = getGame(pin);
+      if (
+        !game ||
+        !game.independentSession ||
+        game.independentPlayerSocketId !== socket.id ||
+        game.players.size !== 1
+      ) return null;
+      const player = game.players.get(socket.id);
+      if (!player || player.isBot || player.disconnected) return null;
+      return game;
+    };
+
+    socket.on(
+      "independent:pause-game",
+      (data: PinData, callback?: (result: { ok?: true; error?: string }) => void) => {
+        const game = getIndependentGameControlledByPlayer(data.pin);
+        if (!game) {
+          callback?.({ error: "غير مصرح بالتحكم في هذه اللعبة" });
+          return;
+        }
+        if (game.state === "finished" || game.paused) {
+          callback?.({ ok: true });
+          return;
+        }
+
+        game.paused = true;
+        if (game.autoAdvanceTimerId) {
+          clearTimeout(game.autoAdvanceTimerId);
+          game.autoAdvanceTimerId = null;
+        }
+        if (game.state === "question") {
+          game.pausedAt = Date.now();
+          game.pausedQuestionRemainingMs = Math.max(
+            0,
+            game.questionDuration * 1000 - (game.pausedAt - game.questionStartTime),
+          );
+          clearQuestionTimeout(game);
+        }
+
+        io.to(`game:${game.pin}`).emit("game:paused", { state: game.state });
+        callback?.({ ok: true });
+      },
+    );
+
+    socket.on(
+      "independent:resume-game",
+      (data: PinData, callback?: (result: { ok?: true; error?: string }) => void) => {
+        const game = getIndependentGameControlledByPlayer(data.pin);
+        if (!game) {
+          callback?.({ error: "غير مصرح بالتحكم في هذه اللعبة" });
+          return;
+        }
+        if (!game.paused) {
+          callback?.({ ok: true });
+          return;
+        }
+
+        game.paused = false;
+        let remainingMs: number | undefined;
+
+        if (game.state === "leaderboard" && game.autoAdvance) {
+          scheduleAutoAdvance(io, game);
+        } else if (game.state === "question" && game.pausedAt !== null) {
+          remainingMs = game.pausedQuestionRemainingMs ?? game.questionDuration * 1000;
+          game.questionStartTime =
+            Date.now() - (game.questionDuration * 1000 - remainingMs);
+          game.pausedAt = null;
+          game.pausedQuestionRemainingMs = null;
+          scheduleQuestionTimeout(io, game, game.currentQuestionIndex, remainingMs);
+        }
+        io.to(`game:${game.pin}`).emit("game:resumed", {
+          state: game.state,
+          remainingMs,
+        });
+        callback?.({ ok: true });
+      },
+    );
+
+    socket.on(
+      "independent:end-game",
+      (data: PinData, callback?: (result: { ok?: true; error?: string }) => void) => {
+        const game = getIndependentGameControlledByPlayer(data.pin);
+        if (!game) {
+          callback?.({ error: "غير مصرح بالتحكم في هذه اللعبة" });
+          return;
+        }
+
+        clearQuestionTimeout(game);
+        if (game.autoAdvanceTimerId) clearTimeout(game.autoAdvanceTimerId);
+        if (game.giftRoundTimerId) clearTimeout(game.giftRoundTimerId);
+        if (game.hackEndTimerId) clearTimeout(game.hackEndTimerId);
+        game.botTimers.forEach(clearTimeout);
+        game.autoAdvanceTimerId = null;
+        game.giftRoundTimerId = null;
+        game.hackEndTimerId = null;
+        game.botTimers = [];
+        game.paused = false;
+        game.state = "finished";
+
+        callback?.({ ok: true });
+        emitLeaderboardData(io, game, "game:finished", {
+          totalQuestions: game.questions.length,
+        });
+        game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
+      },
+    );
 
     socket.on("student:submit-answer", (data: SubmitAnswerData) => {
       const game = getGame(data.pin);

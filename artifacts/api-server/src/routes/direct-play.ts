@@ -404,6 +404,8 @@ router.post("/play/:token/start", async (req, res) => {
         questions, 20, true, "solo", 2,
         undefined, null, false, null, false,
       );
+      game.independentSession = true;
+      game.independentControllerToken = randomBytes(32).toString("hex");
       // Each direct link session is a one-player independent game, so it has
       // no valid targets for gifts. This must not affect live individual
       // Wameeth games, which use the same `solo` gameMode.
@@ -421,6 +423,7 @@ router.post("/play/:token/start", async (req, res) => {
         gameType: "wameeth",
         playRoute: `/game/play/${game.pin}`,
         questionCount: questions.length,
+        controlToken: game.independentControllerToken,
       });
 
     } else if (gameType === "rocket_race") {

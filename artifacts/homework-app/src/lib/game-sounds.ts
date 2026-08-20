@@ -21,7 +21,7 @@ function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
-  if (audioCtx.state === "suspended") {
+  if (audioCtx.state === "suspended" && !isMuted) {
     audioCtx.resume();
   }
   return audioCtx;
@@ -749,6 +749,13 @@ export function toggleMute(): boolean {
   }
   if (engineGain) {
     engineGain.gain.value = isMuted ? 0 : 0.06;
+  }
+  if (isMuted) {
+    stopBackgroundBeat();
+    stopHackMarathonLoop();
+    void audioCtx?.suspend().catch(() => {});
+  } else {
+    void audioCtx?.resume().catch(() => {});
   }
   return isMuted;
 }

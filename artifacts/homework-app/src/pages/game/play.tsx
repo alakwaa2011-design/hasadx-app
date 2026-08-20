@@ -26,7 +26,11 @@ import {
   Share2,
   Copy,
   Check,
+  Play,
   Pause,
+  ArrowLeft,
+  ArrowRight,
+  LogOut,
   Bell,
   Loader2,
   MessageSquare,
@@ -80,6 +84,11 @@ import { AvatarDisplay } from "@/components/avatar-display";
 import { SoloChallengeResults } from "@/components/game/solo-challenge-results";
 import AudioPlayer from "@/components/AudioPlayer";
 import { resolveImageUrl } from "@/lib/image-url";
+import { toast } from "@/components/ui/sonner";
+import {
+  clearIndependentControlToken,
+  getIndependentControlToken,
+} from "@/lib/independent-game-session";
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const WOOMEEZ_FLASH_STYLES = `
@@ -972,6 +981,15 @@ export default function GamePlay() {
   const studentIdParam = searchParams.get("studentId");
   const studentAccountIdParam = searchParams.get("studentAccountId");
   const independentTokenParam = searchParams.get("token");
+  const independentControlToken = getIndependentControlToken(pin);
+  const independentReturnTo =
+    searchParams.get("returnTo") === "/game/wameeth/create"
+      ? "/game/wameeth/create"
+      : "/";
+  const independentExitTo =
+    independentReturnTo === "/game/wameeth/create"
+      ? "/teacher/games"
+      : "/";
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -1050,6 +1068,7 @@ export default function GamePlay() {
   const [freezeUsed, setFreezeUsed] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [independentExitAction, setIndependentExitAction] = useState<"back" | "home" | null>(null);
   const [gameTtsEnabled, setGameTtsEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [giftRoundTimeLeft, setGiftRoundTimeLeft] = useState(0);
@@ -1191,6 +1210,60 @@ export default function GamePlay() {
     }
   }, []);
 
+  const copyIndependentLink = useCallback(async () => {
+    if (!independentTokenParam) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/play/${encodeURIComponent(independentTokenParam)}`,
+      );
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 1800);
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy the link");
+    }
+  }, [independentTokenParam, lang]);
+
+  const toggleIndependentPause = useCallback(() => {
+    const socket = getSocket();
+    const event = isPaused ? "independent:resume-game" : "independent:pause-game";
+    socket.emit(event, { pin }, (result: { ok?: true; error?: string }) => {
+      if (result?.error) {
+        toast.error(result.error);
+      }
+    });
+  }, [isPaused, pin]);
+
+  const leaveIndependentGame = useCallback((destination: "back" | "home") => {
+    const navigateAway = () => {
+      cleanupAudio();
+      disconnectSocket();
+      clearIndependentControlToken(pin);
+      setIndependentExitAction(null);
+      if (destination === "back") {
+        setLocation(independentReturnTo, { replace: true });
+      } else {
+        setLocation(independentExitTo, { replace: true });
+      }
+    };
+
+    const socket = getSocket();
+    let navigated = false;
+    const finish = () => {
+      if (navigated) return;
+      navigated = true;
+      navigateAway();
+    };
+    socket.emit(
+      "independent:end-game",
+      { pin },
+      (result: { ok?: true; error?: string }) => {
+        if (result?.error) toast.error(result.error);
+        finish();
+      },
+    );
+    window.setTimeout(finish, 800);
+  }, [independentExitTo, independentReturnTo, pin, setLocation]);
+
   const stopSpeech = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
@@ -1242,6 +1315,7 @@ export default function GamePlay() {
           studentAccountId: studentAccountIdParam
             ? parseInt(studentAccountIdParam)
             : undefined,
+          independentControlToken: independentControlToken ?? undefined,
         },
         (res: any) => {
           if (res.error) {
@@ -1656,10 +1730,27 @@ export default function GamePlay() {
     socket.on("game:paused", () => {
       setIsPaused(true);
       if (timerRef.current) clearInterval(timerRef.current);
+      stopBackgroundBeat();
     });
 
-    socket.on("game:resumed", () => {
+    socket.on("game:resumed", (data?: { remainingMs?: number }) => {
       setIsPaused(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (!hackModeRef.current) {
+        if (typeof data?.remainingMs === "number") {
+          setTimeLeft(Math.max(0, data.remainingMs / 1000));
+        }
+        timerRef.current = setInterval(() => {
+          setTimeLeft((previous) => {
+            if (previous <= 0.1) {
+              if (timerRef.current) clearInterval(timerRef.current);
+              return 0;
+            }
+            return previous - 0.1;
+          });
+        }, 100);
+        if (!getIsMuted()) startBackgroundBeat();
+      }
     });
 
     socket.on("game:teacher-message", (data: { message: string }) => {
@@ -2132,32 +2223,186 @@ export default function GamePlay() {
     playNotificationSoundByType(value);
   };
 
-  const MuteButton = () => (
-    <div
-      className={`fixed top-4 ${lang === "ar" ? "right-4" : "left-4"} z-50 flex items-center gap-2`}
-    >
-      <button
-        onClick={handleToggleMute}
-        title={
-          (hackMode ? muted || hackMusicMuted : muted)
-            ? lang === "ar" ? "تشغيل الصوت" : "Unmute"
-            : lang === "ar" ? "كتم الصوت" : "Mute"
-        }
-        aria-label={
-          (hackMode ? muted || hackMusicMuted : muted)
-            ? lang === "ar" ? "تشغيل الصوت" : "Unmute"
-            : lang === "ar" ? "كتم الصوت" : "Mute"
-        }
-        className="p-3 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 border border-white/20 transition-colors"
-      >
-        {hackMode ? muted || hackMusicMuted : muted ? (
-          <VolumeX className="w-5 h-5 text-white/60" />
-        ) : (
-          <Volume2 className="w-5 h-5 text-white" />
-        )}
-      </button>
-    </div>
-  );
+  const MuteButton = () => {
+    const soundMuted = hackMode ? muted || hackMusicMuted : muted;
+    if (isIndependentRef.current) {
+      const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
+      const controlClass =
+        "w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 border";
+
+      return (
+        <>
+          <div className="fixed top-3 inset-x-3 z-[70] flex justify-center pointer-events-none" dir={dir}>
+            <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-white/15 bg-[#07150F]/80 p-1.5 shadow-2xl backdrop-blur-xl">
+              <button
+                type="button"
+                onClick={() => setIndependentExitAction("back")}
+                className={`${controlClass} border-white/10 bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white`}
+                title={lang === "ar" ? "رجوع" : "Back"}
+                aria-label={lang === "ar" ? "رجوع" : "Back"}
+                data-testid="button-independent-back"
+              >
+                <BackArrow className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={copyIndependentLink}
+                className={`${controlClass} border-amber-300/25 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20`}
+                title={lang === "ar" ? "نسخ رابط اللعبة" : "Copy game link"}
+                aria-label={lang === "ar" ? "نسخ رابط اللعبة" : "Copy game link"}
+                data-testid="button-copy-independent-link"
+              >
+                {shareCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+              </button>
+              <button
+                type="button"
+                onClick={toggleIndependentPause}
+                className={`${controlClass} ${
+                  isPaused
+                    ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/25"
+                    : "border-orange-300/25 bg-orange-400/10 text-orange-300 hover:bg-orange-400/20"
+                }`}
+                title={isPaused
+                  ? (lang === "ar" ? "استئناف اللعبة" : "Resume game")
+                  : (lang === "ar" ? "إيقاف مؤقت" : "Pause game")}
+                aria-label={isPaused
+                  ? (lang === "ar" ? "استئناف اللعبة" : "Resume game")
+                  : (lang === "ar" ? "إيقاف مؤقت" : "Pause game")}
+                data-testid="button-toggle-independent-pause"
+              >
+                {isPaused ? <Play className="w-5 h-5 fill-current" /> : <Pause className="w-5 h-5 fill-current" />}
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleMute}
+                className={`${controlClass} border-white/10 bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white`}
+                title={soundMuted
+                  ? (lang === "ar" ? "تشغيل الصوت" : "Unmute")
+                  : (lang === "ar" ? "كتم الصوت" : "Mute")}
+                aria-label={soundMuted
+                  ? (lang === "ar" ? "تشغيل الصوت" : "Unmute")
+                  : (lang === "ar" ? "كتم الصوت" : "Mute")}
+                data-testid="button-independent-sound"
+              >
+                {soundMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIndependentExitAction("home")}
+                className={`${controlClass} border-red-300/25 bg-red-500/10 text-red-300 hover:bg-red-500/20`}
+                title={lang === "ar" ? "الخروج النهائي" : "Exit game"}
+                aria-label={lang === "ar" ? "الخروج النهائي" : "Exit game"}
+                data-testid="button-independent-exit"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {isPaused && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-[#07150F]/75 p-5 backdrop-blur-md"
+                dir={dir}
+                data-testid="overlay-independent-paused"
+              >
+                <motion.div
+                  initial={{ scale: 0.9, y: 12 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="w-full max-w-sm rounded-3xl border border-orange-300/25 bg-[#102A1E] p-7 text-center shadow-2xl"
+                >
+                  <Pause className="w-14 h-14 text-orange-300 mx-auto mb-4" />
+                  <h2 className="text-2xl font-black text-white">
+                    {lang === "ar" ? "اللعبة متوقفة مؤقتاً" : "Game paused"}
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-white/60">
+                    {lang === "ar" ? "تم تجميد السؤال والمؤقت حتى تستأنف اللعب." : "The question and timer are frozen until you resume."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={toggleIndependentPause}
+                    className="mt-6 w-full rounded-2xl bg-emerald-500 px-5 py-3.5 font-black text-white shadow-lg hover:bg-emerald-400 active:scale-[0.98] transition-all"
+                    data-testid="button-resume-independent-overlay"
+                  >
+                    {lang === "ar" ? "متابعة اللعب" : "Resume game"}
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {independentExitAction && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-5 backdrop-blur-md"
+                dir={dir}
+              >
+                <motion.div
+                  initial={{ scale: 0.92, y: 16 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#102A1E] p-7 text-center shadow-2xl"
+                >
+                  <LogOut className="w-12 h-12 text-red-300 mx-auto mb-4" />
+                  <h2 className="text-xl font-black text-white">
+                    {independentExitAction === "back"
+                      ? (lang === "ar" ? "الرجوع من اللعبة؟" : "Go back from the game?")
+                      : (lang === "ar" ? "إنهاء اللعبة والخروج؟" : "End and exit the game?")}
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-white/60">
+                    {lang === "ar" ? "سيتم إنهاء هذه الجولة ولن تُحفظ إجاباتها المتبقية." : "This round will end and remaining answers will not be saved."}
+                  </p>
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIndependentExitAction(null)}
+                      className="rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3 font-bold text-white/80 hover:bg-white/10"
+                    >
+                      {lang === "ar" ? "إلغاء" : "Cancel"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => leaveIndependentGame(independentExitAction)}
+                      className="rounded-2xl bg-red-500 px-4 py-3 font-black text-white hover:bg-red-400"
+                      data-testid="button-confirm-independent-exit"
+                    >
+                      {lang === "ar" ? "تأكيد" : "Confirm"}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      );
+    }
+
+    return (
+      <div className={`fixed top-4 ${lang === "ar" ? "right-4" : "left-4"} z-50 flex items-center gap-2`}>
+        <button
+          onClick={handleToggleMute}
+          title={soundMuted
+            ? (lang === "ar" ? "تشغيل الصوت" : "Unmute")
+            : (lang === "ar" ? "كتم الصوت" : "Mute")}
+          aria-label={soundMuted
+            ? (lang === "ar" ? "تشغيل الصوت" : "Unmute")
+            : (lang === "ar" ? "كتم الصوت" : "Mute")}
+          className="p-3 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 border border-white/20 transition-colors"
+        >
+          {soundMuted ? (
+            <VolumeX className="w-5 h-5 text-white/60" />
+          ) : (
+            <Volume2 className="w-5 h-5 text-white" />
+          )}
+        </button>
+      </div>
+    );
+  };
 
   const SoundPickerButton = () => {
     // Hidden per user request: the notification-sound picker (bell/ring/whistle)
@@ -4201,7 +4446,7 @@ export default function GamePlay() {
                 }}
                 className="flex items-center gap-1.5 bg-white/[0.07] hover:bg-white/[0.13] border border-white/15 hover:border-[#E8B84B]/40 text-white/75 hover:text-white active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-full"
                 aria-label={isIndependentRef.current ? "نسخ رابط اللعبة" : "مشاركة"}
-                data-testid={isIndependentRef.current ? "button-copy-independent-link" : "button-share-solo-challenge"}
+                data-testid={isIndependentRef.current ? "button-copy-independent-link-footer" : "button-share-solo-challenge"}
               >
                 {isIndependentRef.current
                   ? (shareCopied
