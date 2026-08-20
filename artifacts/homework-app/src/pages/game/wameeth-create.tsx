@@ -670,103 +670,83 @@ export default function WameethCreate() {
           </>
         ) : (
           /* ─── Step 2: play mode ─────────────────────────────────────── */
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8 max-w-3xl lg:max-w-4xl mx-auto">
-            <div className="flex items-center gap-3 lg:gap-4 mb-2">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 lg:space-y-5 max-w-3xl lg:max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 lg:gap-4">
               <button type="button" onClick={() => setStep("prepare")} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                 <BackIcon className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
                 <h2 className="font-black text-xl lg:text-2xl text-foreground">{ar ? "اختر طريقة اللعب" : "Choose play mode"}</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{ar ? `${validQuestions.length} سؤال جاهز` : `${validQuestions.length} questions ready`}</p>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{ar ? `${validQuestions.length} سؤال جاهز — اختر النمط ثم ابدأ` : `${validQuestions.length} questions ready — choose a mode and start`}</p>
               </div>
             </div>
 
-            <div className="space-y-8 lg:space-y-10">
-              {/* Group 1 */}
-              <div>
-                <h3 className="font-black text-lg lg:text-xl text-foreground">{ar ? "لعب مباشر مع المشاركين" : "Direct play with participants"}</h3>
-                <p className="text-sm lg:text-base text-muted-foreground font-medium leading-relaxed mt-1.5 mb-4 lg:mb-5">
-                  {ar
-                    ? "مسابقة تفاعلية مباشرة — ينضم المشاركون من أجهزتهم، في الصف أو عن بُعد."
-                    : "A live interactive quiz — participants join from their own devices, in class or remotely."}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <button
+                type="button"
+                data-testid="playmode-solo"
+                onClick={() => setMode("solo")}
+                className={cn(
+                  "relative min-h-[136px] sm:min-h-[148px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+                  mode === "solo" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md shadow-blue-500/10" : "border-border bg-card hover:border-blue-300",
+                )}
+              >
+                <User className={cn("w-6 h-6 sm:w-7 sm:h-7 mb-2 transition-colors", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
+                <p className="font-black text-foreground text-sm sm:text-base">{ar ? "فردي" : "Solo"}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed line-clamp-2">{ar ? "يتنافس كل مشارك من جهازه ويجمع نقاطه بنفسه." : "Each participant competes from their device and earns their own points."}</p>
+                {mode === "solo" && <Check className="absolute top-3 end-3 w-4 h-4 text-blue-600" />}
+              </button>
+
+              <button
+                type="button"
+                data-testid="playmode-teams"
+                onClick={() => setMode("teams")}
+                className={cn(
+                  "relative min-h-[136px] sm:min-h-[148px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50",
+                  mode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-md shadow-purple-500/10" : "border-border bg-card hover:border-purple-300",
+                )}
+              >
+                <UsersRound className={cn("w-6 h-6 sm:w-7 sm:h-7 mb-2 transition-colors", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
+                <p className="font-black text-foreground text-sm sm:text-base">{ar ? "الفريق" : "Teams"}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed line-clamp-2">{ar ? "يتعاون المشاركون ضمن فرق لصدارة التحدّي." : "Participants collaborate in teams to lead the challenge."}</p>
+                {mode === "teams" && <Check className="absolute top-3 end-3 w-4 h-4 text-purple-600" />}
+              </button>
+
+              <button
+                type="button"
+                data-testid="playmode-classroom"
+                onClick={() => classroomEligible.length >= 2 && setMode("classroom")}
+                disabled={classroomEligible.length < 2}
+                className={cn(
+                  "relative min-h-[136px] sm:min-h-[148px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
+                  mode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-md shadow-emerald-500/10" : "border-border bg-card hover:border-emerald-300",
+                  classroomEligible.length < 2 && "opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none hover:border-border",
+                )}
+              >
+                <School className={cn("w-6 h-6 sm:w-7 sm:h-7 mb-2 transition-colors", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
+                <p className="font-black text-foreground text-sm sm:text-base">{ar ? "الصف" : "Class"}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed line-clamp-2">
+                  {classroomEligible.length < 2
+                    ? (ar ? "لا توجد أسئلة مناسبة للعب الصف حالياً." : "Not enough suitable questions for class play.")
+                    : (ar ? "فريقان يتنافسان مباشرة على شاشة واحدة." : "Two teams compete live on one screen.")}
                 </p>
-                <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
-                  <button
-                    type="button"
-                    data-testid="playmode-solo"
-                    onClick={() => setMode("solo")}
-                    className={cn(
-                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all hover:-translate-y-1 hover:shadow-md",
-                      mode === "solo" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm" : "border-border bg-card hover:border-blue-300",
-                    )}
-                  >
-                    <User className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فردي" : "Solo"}</p>
-                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">{ar ? "كل مشارك يتنافس من جهازه ويجمع نقاطه بنفسه." : "Each participant plays from their own device and earns their own points."}</p>
-                  </button>
+                {mode === "classroom" && <Check className="absolute top-3 end-3 w-4 h-4 text-emerald-600" />}
+              </button>
 
-                  <button
-                    type="button"
-                    data-testid="playmode-teams"
-                    onClick={() => setMode("teams")}
-                    className={cn(
-                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all hover:-translate-y-1 hover:shadow-md",
-                      mode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-sm" : "border-border bg-card hover:border-purple-300",
-                    )}
-                  >
-                    <UsersRound className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "فرق" : "Teams"}</p>
-                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">{ar ? "يتوزع المشاركون على فرق من أجهزتهم ويتعاونون لصدارة التحدّي." : "Participants join teams from their devices and work together to lead the challenge."}</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Group 2 */}
-              <div>
-                <h3 className="font-black text-lg lg:text-xl text-foreground">{ar ? "لعب مرن" : "Flexible play"}</h3>
-                <p className="text-sm lg:text-base text-muted-foreground font-medium leading-relaxed mt-1.5 mb-4 lg:mb-5">
-                  {ar
-                    ? "اختر تجربة تُلعب على شاشة واحدة، أو شارك رابطاً يفتح اللعب مباشرة."
-                    : "Choose one-screen play, or share a link that opens the game right away."}
-                </p>
-                <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
-                  <button
-                    type="button"
-                    data-testid="playmode-classroom"
-                    onClick={() => classroomEligible.length >= 2 && setMode("classroom")}
-                    disabled={classroomEligible.length < 2}
-                    className={cn(
-                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all",
-                      mode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm hover:-translate-y-1 hover:shadow-md" : "border-border bg-card hover:border-emerald-300 hover:-translate-y-1 hover:shadow-md",
-                      classroomEligible.length < 2 && "opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none hover:border-border"
-                    )}
-                  >
-                    <School className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "وميض الصف" : "Wameeth Class"}</p>
-                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">
-                      {classroomEligible.length < 2
-                        ? (ar ? "لا تتوفر أسئلة مناسبة للعب الصف حالياً." : "There are not enough suitable questions for class play yet.")
-                        : (ar ? "فريقان يتنافسان مباشرةً على الشاشة في الوقت نفسه، ويجمعان النقاط حتى يفوز أحدهما." : "Two teams compete live on screen at the same time, earning points until one wins.")}
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    data-testid="playmode-independent"
-                    onClick={() => setMode("independent")}
-                    className={cn(
-                      "p-5 lg:p-7 rounded-2xl border-2 text-center transition-all hover:-translate-y-1 hover:shadow-md",
-                      mode === "independent" ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20 shadow-sm" : "border-border bg-card hover:border-amber-300",
-                    )}
-                  >
-                    <Zap className={cn("w-7 h-7 lg:w-8 lg:h-8 mx-auto mb-2 lg:mb-3 transition-colors", mode === "independent" ? "text-amber-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm lg:text-base">{ar ? "لعبة مستقلة" : "Independent game"}</p>
-                    <p className="text-sm lg:text-base text-muted-foreground font-medium mt-1.5 lg:mt-2 leading-relaxed">
-                      {ar ? "العب الآن بنفسك أو شارك الرابط؛ يفتح اللعب مباشرة لكل شخص." : "Play now or share the link — it opens a game instantly for every player."}
-                    </p>
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                data-testid="playmode-independent"
+                onClick={() => setMode("independent")}
+                className={cn(
+                  "relative min-h-[136px] sm:min-h-[148px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50",
+                  mode === "independent" ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20 shadow-md shadow-amber-500/10" : "border-border bg-card hover:border-amber-300",
+                )}
+              >
+                <Zap className={cn("w-6 h-6 sm:w-7 sm:h-7 mb-2 transition-colors", mode === "independent" ? "text-amber-600" : "text-muted-foreground")} />
+                <p className="font-black text-foreground text-sm sm:text-base">{ar ? "مستقلة" : "Independent"}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed line-clamp-2">{ar ? "العب مباشرة أو شارك رابطاً يفتح اللعب فوراً." : "Play now or share a link that opens the game instantly."}</p>
+                {mode === "independent" && <Check className="absolute top-3 end-3 w-4 h-4 text-amber-600" />}
+              </button>
             </div>
 
             {mode === "teams" && (
@@ -820,10 +800,11 @@ export default function WameethCreate() {
               type="button"
               onClick={startGame}
               disabled={!mode || starting}
-              className="w-full flex items-center justify-center gap-2 py-4 lg:py-5 rounded-2xl font-black text-base lg:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 active:scale-95 disabled:opacity-50"
+              data-testid="start-wameeth-game"
+              className="sticky bottom-3 z-10 w-full flex items-center justify-center gap-2 py-3.5 lg:py-4 rounded-2xl font-black text-base lg:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-xl shadow-primary/25 hover:shadow-primary/35 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
             >
               {starting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" fill="currentColor" />}
-              {ar ? "ابدأ اللعبة" : "Start game"}
+              {starting ? (ar ? "جارٍ بدء اللعبة..." : "Starting game...") : mode ? (ar ? "ابدأ اللعبة الآن" : "Start game now") : (ar ? "اختر نمط اللعب للبدء" : "Choose a mode to start")}
             </button>
           </motion.div>
         )}
