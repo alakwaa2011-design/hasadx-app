@@ -8,9 +8,14 @@ const originalEnv = {
 };
 
 afterEach(() => {
-  process.env.APP_BASE_URL = originalEnv.appBaseUrl;
-  process.env.REPLIT_DOMAINS = originalEnv.replitDomains;
-  process.env.REPLIT_DEV_DOMAIN = originalEnv.replitDevDomain;
+  if (originalEnv.appBaseUrl === undefined) delete process.env.APP_BASE_URL;
+  else process.env.APP_BASE_URL = originalEnv.appBaseUrl;
+
+  if (originalEnv.replitDomains === undefined) delete process.env.REPLIT_DOMAINS;
+  else process.env.REPLIT_DOMAINS = originalEnv.replitDomains;
+
+  if (originalEnv.replitDevDomain === undefined) delete process.env.REPLIT_DEV_DOMAIN;
+  else process.env.REPLIT_DEV_DOMAIN = originalEnv.replitDevDomain;
 });
 
 describe("getAppBaseUrl", () => {

@@ -11,3 +11,4 @@ Canonical domain is https://hasaadx.com; legacy hasadx.com + www.hasadx.com get 
 - API routes: early middleware in `artifacts/api-server/src/app.ts` before compression/helmet/cors, using `req.hostname` (trust proxy=1).
 - artifact.toml prod changed from `serve = "static"` to `run = pnpm run serve`; edits must go through verifyAndReplaceArtifactToml.
 - Never redirect hasaadx.com itself; Lemon Squeezy webhook stays at https://hasaadx.com/api/webhooks/lemonsqueezy.
+- Email links use `getAppBaseUrl`; it must treat `.replit.app` and `.replit.dev` values as non-canonical and return `https://hasaadx.com`, otherwise email buttons bypass the browser redirect.
