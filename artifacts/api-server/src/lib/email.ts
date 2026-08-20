@@ -102,9 +102,29 @@ export async function sendEmail(
 }
 
 export function getAppBaseUrl(): string {
-  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, "");
+  const canonicalUrl = "https://hasaadx.com";
+  const stripTrailingSlash = (value: string) => value.replace(/\/$/, "");
+  const isReplitHost = (value: string) => {
+    try {
+      const hostname = new URL(value).hostname.toLowerCase();
+      return hostname === "replit.app" ||
+        hostname.endsWith(".replit.app") ||
+        hostname === "replit.dev" ||
+        hostname.endsWith(".replit.dev");
+    } catch {
+      return false;
+    }
+  };
+
+  if (process.env.APP_BASE_URL) {
+    const configured = stripTrailingSlash(process.env.APP_BASE_URL.trim());
+    return isReplitHost(configured) ? canonicalUrl : configured;
+  }
   const domains = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
-  if (domains) return `https://${domains}`;
+  if (domains) {
+    const configured = `https://${domains}`;
+    return isReplitHost(configured) ? canonicalUrl : stripTrailingSlash(configured);
+  }
   const dev = process.env.REPLIT_DEV_DOMAIN;
   if (dev) return `https://${dev}`;
   return "http://localhost:5000";
