@@ -1,0 +1,1 @@
+const n="wameeth-independent-control:";function o(e,t){window.sessionStorage.setItem(`${n}${e}`,t)}function r(e){try{return window.sessionStorage.getItem(`${n}${e}`)}catch{return null}}function s(e){try{window.sessionStorage.removeItem(`${n}${e}`)}catch{}}export{s as c,r as g,o as s};
