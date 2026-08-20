@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,10 @@ import {
 } from "@/components/teacher/class-selector";
 import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import { storeIndependentControlToken } from "@/lib/independent-game-session";
+import {
+  getWameethSetupAssignmentId,
+  getWameethSetupPath,
+} from "@/lib/wameeth-entry";
 import {
   QuestionCard, emptyQuestion, isValidQ, type Question, type Correct,
 } from "@/components/game/question-editor";
@@ -76,6 +80,10 @@ export default function WameethCreate() {
   const [assignSearch, setAssignSearch] = useState("");
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [loadingAssignment, setLoadingAssignment] = useState(false);
+  const preloadedAssignmentId = getWameethSetupAssignmentId(
+    typeof window === "undefined" ? "" : window.location.search,
+  );
+  const preloadedAssignmentRef = useRef<number | null>(null);
 
   // AI generation
   const [aiTopic, setAiTopic] = useState("");
@@ -95,10 +103,10 @@ export default function WameethCreate() {
   // post-login redirect back here so they don't lose their place.
   useEffect(() => {
     if (!authLoading && !user) {
-      const backTo = encodeURIComponent("/game/wameeth/create");
-      setLocation(`/login?redirect=${backTo}`);
+      const backTo = encodeURIComponent(getWameethSetupPath(preloadedAssignmentId));
+      setLocation(`/login?returnTo=${backTo}`);
     }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, preloadedAssignmentId, setLocation]);
 
   const resetSource = () => {
     setSource(null);
@@ -169,6 +177,39 @@ export default function WameethCreate() {
       setLoadingAssignment(false);
     }
   };
+
+  // Every teacher entry that already knows an assignment lands here. Loading
+  // it in this one place ensures all play modes, including Independent, use
+  // the same play-link and control-token initialization.
+  useEffect(() => {
+    if (
+      !preloadedAssignmentId
+      || !user
+      || assignmentsLoading
+      || loadingAssignment
+      || preloadedAssignmentRef.current === preloadedAssignmentId
+    ) return;
+
+    const assignment = (assignments || []).find(
+      (item: Assignment) => item.id === preloadedAssignmentId,
+    ) as Assignment | undefined;
+    preloadedAssignmentRef.current = preloadedAssignmentId;
+
+    if (!assignment) {
+      toast.error(ar ? "تعذّر العثور على الواجب المحدد" : "The selected assignment was not found");
+      return;
+    }
+
+    setSource("assignment");
+    void handleSelectAssignment(assignment);
+  }, [
+    ar,
+    assignments,
+    assignmentsLoading,
+    loadingAssignment,
+    preloadedAssignmentId,
+    user,
+  ]);
 
   // Same AI endpoint used by the solo-challenge creator — always returns MCQ.
   const generateWithAI = async () => {
@@ -360,7 +401,7 @@ export default function WameethCreate() {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir={dir}>
+    <div className="min-h-screen bg-background" dir={dir} data-testid="wameeth-setup">
       {/* Header */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
@@ -496,6 +537,7 @@ export default function WameethCreate() {
                               <button
                                 key={a.id}
                                 type="button"
+                                data-testid={`wameeth-assignment-${a.id}`}
                                 disabled={loadingAssignment}
                                 onClick={() => handleSelectAssignment(a)}
                                 className={cn(

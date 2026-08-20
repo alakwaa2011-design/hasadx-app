@@ -12,6 +12,10 @@ import { GlobalAiAssistant } from "@/components/ai-assistant";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { HeartbeatTracker } from "@/components/heartbeat-tracker";
 import { NavTracker } from "@/lib/nav-history";
+import {
+  getWameethSetupAssignmentId,
+  getWameethSetupPath,
+} from "@/lib/wameeth-entry";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
@@ -263,7 +267,8 @@ function DarkLoadingFallback() {
 function WameethRedirect() {
   const [, setLocation] = useLocation();
   useEffect(() => {
-    setLocation("/game/wameeth/create");
+    const assignmentId = getWameethSetupAssignmentId(window.location.search);
+    setLocation(getWameethSetupPath(assignmentId), { replace: true });
   }, [setLocation]);
   return <LoadingFallback />;
 }

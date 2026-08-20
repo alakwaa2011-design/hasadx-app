@@ -103,6 +103,7 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import {
   BarChart,
   Bar,
@@ -419,18 +420,13 @@ export default function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "content" | "other">("ai-tools");
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  // Kept only as a safe fallback for an already-open legacy modal. All active
+  // Wameeth launchers now navigate directly to the shared setup route below.
   const [gameSetupModal, setGameSetupModal] = useState<number | null>(null);
   const [gameTargetClass, setGameTargetClass] = useState<string>(() => getRememberedTargetClass());
   const [gameMode, setGameMode] = useState<GameMode>("solo");
   const [teamCount, setTeamCount] = useState(2);
-  const [customTeamNames, setCustomTeamNames] = useState<string[]>([
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
+  const [customTeamNames, setCustomTeamNames] = useState<string[]>(["", "", "", "", "", ""]);
   /** Assignment ID awaiting live-game choice (وميض default), then branch to setup / navigate */
   const [assignmentGamePickerId, setAssignmentGamePickerId] = useState<number | null>(
     null,
@@ -605,10 +601,7 @@ export default function TeacherDashboard() {
 
   // فتح إعداد وميض مباشرة (بدون المرور بنافذة اختيار اللعبة)
   const openWameethSetup = (assignmentId: number) => {
-    setGameMode("solo");
-    setTeamCount(2);
-    setCustomTeamNames(["", "", "", "", "", ""]);
-    setGameSetupModal(assignmentId);
+    setLocation(getWameethSetupPath(assignmentId));
   };
 
   const handleAssignmentGameChoice = (choice: AssignmentLiveGameChoice) => {
@@ -617,10 +610,7 @@ export default function TeacherDashboard() {
     setAssignmentGamePickerId(null);
 
     if (choice === "knowledge_race") {
-      setGameMode("solo");
-      setTeamCount(2);
-      setCustomTeamNames(["", "", "", "", "", ""]);
-      setGameSetupModal(id);
+      setLocation(getWameethSetupPath(id));
       return;
     }
     if (choice === "tug_of_war") {
@@ -659,106 +649,10 @@ export default function TeacherDashboard() {
     }
   };
 
-  const confirmStartGame = async () => {
-    if (!gameSetupModal) return;
-    const assignmentId = gameSetupModal;
-    setGameSetupModal(null);
-
-    // ── وميض الصف: تحقق من الأسئلة ثم افتح الشاشة المنفصلة برابط ثابت ───────
-    if (gameMode === "classroom") {
-      setCreatingGameForId(assignmentId);
-      try {
-        const res = await fetch(`${API_BASE_DASH}/api/assignments/${assignmentId}`, { credentials: "include" });
-        if (!res.ok) { toast.error(t.dashboard.questionsLoadError); return; }
-        const data = await res.json();
-        const qs = (data.questions || [])
-          .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
-            (q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
-            || (q.questionType === "true_false" && q.correctAnswer));
-        if (qs.length < 2) {
-          toast.error(t.dashboard.wameethMinQuestions);
-          return;
-        }
-        const linkRes = await fetch(`${API_BASE_DASH}/api/assignments/${assignmentId}/play-links`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ gameType: "wameeth_class" }),
-        });
-        const link = await linkRes.json();
-        if (!linkRes.ok || !link.token) {
-          throw new Error(link.message || (lang === "ar" ? "تعذّر إنشاء رابط وميض الصف" : "Failed to create class link"));
-        }
-        setLocation(`/game/wameeth/class?token=${encodeURIComponent(link.token)}`);
-      } catch {
-        toast.error(t.dashboard.genericError);
-      } finally {
-        setCreatingGameForId(null);
-      }
-      return;
+  const confirmStartGame = () => {
+    if (gameSetupModal != null) {
+      setLocation(getWameethSetupPath(gameSetupModal));
     }
-
-    // ── لعبة مستقلة: رابط ثابت، ثم جلسة جديدة فورية للمعلم ─────────────────
-    if (gameMode === "independent") {
-      setCreatingGameForId(assignmentId);
-      try {
-        const linkRes = await fetch(`${API_BASE_DASH}/api/assignments/${assignmentId}/play-links`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ gameType: "wameeth" }),
-        });
-        const link = await linkRes.json();
-        if (!linkRes.ok || !link.token) {
-          throw new Error(link.message || (lang === "ar" ? "تعذّر إنشاء رابط اللعبة" : "Failed to create game link"));
-        }
-        const startRes = await fetch(`${API_BASE_DASH}/api/play/${encodeURIComponent(link.token)}/start`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        const started = await startRes.json();
-        if (!startRes.ok || !started.playRoute) {
-          throw new Error(started.message || (lang === "ar" ? "تعذّر بدء اللعبة" : "Failed to start game"));
-        }
-        setLocation(
-          `${started.playRoute}?name=${encodeURIComponent(lang === "ar" ? "لاعب" : "Player")}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(link.token)}`,
-        );
-      } catch (err: any) {
-        toast.error(err.message || t.dashboard.genericError);
-      } finally {
-        setCreatingGameForId(null);
-      }
-      return;
-    }
-
-    // ── وضع مباشر عادي (فردي / فرق) ──────────────────────────────────────
-    setCreatingGameForId(assignmentId);
-    const socket = getSocket();
-    const validCustomNames =
-      gameMode === "teams"
-        ? customTeamNames.slice(0, teamCount).map((n) => n.trim())
-        : undefined;
-    const hasCustomNames =
-      validCustomNames && validCustomNames.some((n) => n.length > 0);
-    socket.emit(
-      "teacher:create-game",
-      {
-        assignmentId,
-        gameMode,
-        teamCount: gameMode === "teams" ? teamCount : undefined,
-        customTeamNames: hasCustomNames ? validCustomNames : undefined,
-        targetClass: gameTargetClass || undefined,
-      },
-      (res: { pin?: string; error?: string }) => {
-        setCreatingGameForId(null);
-        if (res.error) {
-          toast.error(res.error);
-          disconnectSocket();
-          return;
-        }
-        setLocation(`/teacher/game/${res.pin}`);
-      },
-    );
   };
 
   // Admin-controlled feature flag for the Google Classroom integration.
@@ -2182,10 +2076,8 @@ function CompetitiveTab({
     if (game.available === false) return;
     const { type } = game;
     if (type === "knowledge_race") {
-      // وميض now always starts from its own question-prep flow (choose
-      // assignment / AI / manual, then pick a play mode) instead of the
-      // legacy "pick an assignment" modal below.
-      setLocation("/game/wameeth/create");
+      // One canonical setup owns question selection and all Wameeth modes.
+      setLocation(getWameethSetupPath());
       return;
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");

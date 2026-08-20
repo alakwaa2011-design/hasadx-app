@@ -5,6 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import { useState, useEffect, useRef } from "react";
 import jsQR from "jsqr";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import {
   FileText,
   Gamepad2,
@@ -236,29 +237,8 @@ function WameethQuickStartModal({
 
   const handleStart = () => {
     if (selected === null || loading) return;
-    setLoading(true);
-    setError(null);
-    const socket = getSocket();
-    let remembered = "";
-    try { remembered = localStorage.getItem("hasad:lastTargetClass") || ""; } catch {}
-    socket.emit(
-      "teacher:create-game",
-      { assignmentId: selected, gameMode: "classic", targetClass: remembered || undefined },
-      (res: { pin?: string; error?: string }) => {
-        setLoading(false);
-        if (res.error || !res.pin) {
-          setError(
-            res.error ||
-              (lang === "ar"
-                ? "حدث خطأ. حاول مرة أخرى."
-                : "An error occurred. Please try again."),
-          );
-          disconnectSocket();
-          return;
-        }
-        setLocation(`/teacher/game/${res.pin}`);
-      },
-    );
+    onClose();
+    setLocation(getWameethSetupPath(selected));
   };
 
   return (

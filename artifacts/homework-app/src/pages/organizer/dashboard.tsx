@@ -69,6 +69,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 
 interface OrganizerCard {
   href: string;
@@ -177,29 +178,11 @@ export default function OrganizerDashboard() {
     };
   }, []);
 
-  // Launch a shared contest as a generic solo game and jump the organizer
-  // straight into the live host screen. Mirrors the helper used on the
-  // SharedContent page so behaviour stays consistent.
+  // Shared contests use the same Wameeth question review, mode picker, and
+  // independent-session initialization as every other teacher launch point.
   const launchSharedContest = (assignmentId: number) => {
     if (launchingId !== null) return;
-    setLaunchingId(assignmentId);
-    const socket = getSocket();
-    socket.emit(
-      "teacher:create-game",
-      { assignmentId, gameMode: "solo" },
-      (res: { pin?: string; error?: string }) => {
-        setLaunchingId(null);
-        if (res?.error || !res?.pin) {
-          toast.error(
-            res?.error ||
-              (lang === "ar" ? "تعذّر بدء المسابقة" : "Failed to start"),
-          );
-          disconnectSocket();
-          return;
-        }
-        setLocation(`/teacher/game/${res.pin}`);
-      },
-    );
+    setLocation(getWameethSetupPath(assignmentId));
   };
 
   // Secondary game tiles. The hero arena card is rendered separately above.

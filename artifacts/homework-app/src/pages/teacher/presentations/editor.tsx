@@ -72,6 +72,7 @@ import {
   ACTIVITY_TYPE_LABELS,
 } from "@/lib/presentation-hasad-activities";
 import { getSocket } from "@/lib/socket";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -707,31 +708,11 @@ export default function PresentationEditor() {
     }
   }, [activeIdx, activeSlide, creatingSlideActivity, isAr]);
 
-  /** Launch Wameeth live game via socket for an already-created assignment. */
+  /** Open the shared Wameeth setup for an already-created assignment. */
   const handleLaunchWameeth = useCallback((assignmentId: number) => {
     if (launchingWameeth) return;
-    setLaunchingWameeth(true);
-    const gameTab = window.open("", "_blank", "noopener");
-    const socket = getSocket();
-    socket.emit(
-      "teacher:create-game",
-      { assignmentId, gameMode: "solo" },
-      (res: { pin?: string; error?: string }) => {
-        setLaunchingWameeth(false);
-        if (res.error || !res.pin) {
-          gameTab?.close();
-          toast.error(res.error ?? (isAr ? "تعذّر بدء وميض" : "Could not start Wameeth"));
-          return;
-        }
-        const target = `/teacher/game/${res.pin}`;
-        if (gameTab) {
-          gameTab.location.href = target;
-        } else {
-          window.open(target, "_blank", "noopener");
-        }
-      },
-    );
-  }, [isAr, launchingWameeth]);
+    window.open(getWameethSetupPath(assignmentId), "_blank", "noopener");
+  }, [launchingWameeth]);
 
   const undo = useCallback(() => {
     const h = historyRef.current;

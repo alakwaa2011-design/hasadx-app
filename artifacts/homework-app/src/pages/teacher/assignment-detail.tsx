@@ -14,6 +14,7 @@ import { toast } from "@/components/ui/sonner";
 import { fileToBase64 } from "@/lib/utils";
 import { getSuggestions } from "@/lib/suggestions";
 import { resolveImageUrl } from "@/lib/image-url";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -1219,12 +1220,11 @@ export default function TeacherAssignmentDetail() {
               <div className="border-t border-border/50 bg-card px-5 sm:px-7 py-3 flex items-center gap-2 flex-wrap">
                 {assignment.questions && assignment.questions.some((q) => q.optionA && q.optionB) && (
                   <Button
-                    onClick={() => { setGameMode("solo"); setTeamCount(2); setShowGameSetup(true); }}
-                    disabled={isCreatingGame}
+                    onClick={() => setLocation(getWameethSetupPath(id))}
                     className="gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0 shadow-md shadow-purple-500/20"
                   >
                     <Gamepad2 className="w-4 h-4" />
-                    {isCreatingGame ? t.assignmentDetail.creatingGame : t.assignmentDetail.liveGame}
+                    {t.assignmentDetail.liveGame}
                   </Button>
                 )}
                 <Button onClick={startEditingAssignment} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
@@ -2052,27 +2052,7 @@ export default function TeacherAssignmentDetail() {
                 </button>
                 <button onClick={() => {
                   setShowGameSetup(false);
-                  setIsCreatingGame(true);
-                  const socket = getSocket();
-                  const validCustomNames = gameMode === "teams"
-                    ? customTeamNames.slice(0, teamCount).map(n => n.trim())
-                    : [];
-                  const hasCustomNames = validCustomNames.some(n => n.length > 0);
-                  socket.emit("teacher:create-game", {
-                    assignmentId: id,
-                    gameMode,
-                    teamCount: gameMode === "teams" ? teamCount : undefined,
-                    customTeamNames: hasCustomNames ? validCustomNames : undefined,
-                    targetClass: gameTargetClass || undefined,
-                  }, (res: { pin?: string; error?: string }) => {
-                    setIsCreatingGame(false);
-                    if (res.error) {
-                      toast.error(res.error);
-                      disconnectSocket();
-                      return;
-                    }
-                    setLocation(`/teacher/game/${res.pin}`);
-                  });
+                  setLocation(getWameethSetupPath(id));
                 }}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-black shadow-lg shadow-green-500/20 hover:shadow-xl transition-all flex items-center justify-center gap-2">
                   <Gamepad2 className="w-5 h-5" />

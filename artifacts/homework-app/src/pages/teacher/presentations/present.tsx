@@ -22,6 +22,7 @@ import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 
 type GameQuestion = { prompt: string; options: string[]; correctIndex: number };
 type HasadGameEl = SlideElement & { questions?: GameQuestion[]; prompt?: string; topic?: string; gameKind?: string; accentColor?: string };
@@ -435,9 +436,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       createWameethSession(assignmentId, true);
       return;
     }
-    /* wheel currently runs through Wameeth-compatible questions until a
-       dedicated wheel route exists for presentation launch. */
-    createWameethSession(assignmentId, false);
+    if (gameType === "knowledge_race") {
+      window.open(getWameethSetupPath(assignmentId), "_blank", "noopener");
+      return;
+    }
+    /* Wheel still uses Wameeth-compatible questions from presentations, so
+       send it through the canonical Wameeth setup instead of creating a
+       parallel session directly. */
+    window.open(getWameethSetupPath(assignmentId), "_blank", "noopener");
   }, [activeActivityEl, createWameethSession, isLaunchingActivity]);
 
   /** Confirm the game-mode selection and launch the appropriate game session.
@@ -466,38 +472,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       return;
     }
 
-    /* solo / teams — use the socket to create a game session then open
-       the teacher console in the pre-opened tab. */
-    const gameTab = window.open("", "_blank", "noopener");
-    setIsLaunchingActivity(true);
-    const socket = getSocket();
-    socket.emit(
-      "teacher:create-game",
-      {
-        assignmentId: activeActivityEl.assignmentId,
-        gameMode: selectedGameMode,
-        teamCount: selectedGameMode === "teams" ? selectedTeamCount : undefined,
-      },
-      (res: { pin?: string; error?: string }) => {
-        setIsLaunchingActivity(false);
-        if (res.error || !res.pin) {
-          gameTab?.close();
-          disconnectSocket();
-          alert(isAr ? "تعذّر إنشاء اللعبة. حاول مرة أخرى." : "Could not create game session. Please try again.");
-          return;
-        }
-        /* Show the PIN overlay on the slide so students can join without
-           the teacher switching windows. The teacher console still opens
-           in the background tab as before. */
-        setActivePin(res.pin);
-        setActiveGamePin(res.pin);
-        if (gameTab) {
-          gameTab.location.href = `/teacher/game/${encodeURIComponent(res.pin)}`;
-        } else {
-          setLocation(`/teacher/game/${encodeURIComponent(res.pin)}`);
-        }
-      },
-    );
+    // Wameeth's play mode and session setup live in one place. The new tab
+    // preserves presentation behavior without duplicating socket setup here.
+    window.open(getWameethSetupPath(activeActivityEl.assignmentId), "_blank", "noopener");
   }, [activeActivityEl, isLaunchingActivity, selectedGameMode, selectedTeamCount, isAr, setLocation]);
 
   if (isLoading) {

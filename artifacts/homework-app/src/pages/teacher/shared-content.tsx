@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { cn } from "@/lib/utils";
+import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import { ActivitiesLibraryMarketplace } from "@/components/teacher/activities-library-marketplace";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -404,29 +405,11 @@ export default function SharedContentPage({
     return map[type] || type;
   };
 
-  // Wameedh ("وميض") is the default live-quiz launcher — gameMode="classic"
-  // resolves to the standard solo flow on the server. Teams mode is exposed
-  // as a non-prominent secondary option per row so the organizer can switch
-  // without leaving the library.
-  // No class is pre-selected by default — the teacher can assign one from
-  // the game lobby if needed. Class preferences are NOT stored on the shared
-  // assignment so each teacher manages their own context locally.
-  const launchAsGame = (id: number, gameMode: "classic" | "teams" = "classic") => {
-    setLaunchingIds((s) => new Set(s).add(id));
-    const socket = getSocket();
-    socket.emit(
-      "teacher:create-game",
-      { assignmentId: id, gameMode, targetClass: undefined },
-      (res: { pin?: string; error?: string }) => {
-        setLaunchingIds((s) => { const n = new Set(s); n.delete(id); return n; });
-        if (res?.error || !res?.pin) {
-          toast.error(res?.error || (lang === "ar" ? "تعذّر بدء المسابقة" : "Failed to start"));
-          disconnectSocket();
-          return;
-        }
-        setLocation(`/teacher/game/${res.pin}`);
-      },
-    );
+  // All library rows use the same Wameeth setup as dashboard and assignment
+  // entries. The optional legacy mode argument is intentionally ignored so
+  // the teacher chooses the mode only once, from the shared setup page.
+  const launchAsGame = (id: number, _gameMode?: "classic" | "teams") => {
+    setLocation(getWameethSetupPath(id));
   };
 
   const copyLink = (id: number) => {
