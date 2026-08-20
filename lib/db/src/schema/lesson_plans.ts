@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, jsonb, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 
 /* Lesson plan generator (مولّد خطط الدروس).
@@ -40,17 +40,27 @@ import { teachersTable } from "./teachers";
        footerNote?: string;
      }
 */
-export const lessonPlansTable = pgTable("lesson_plans", {
-  id: serial("id").primaryKey(),
-  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id),
-  title: text("title").notNull(),
-  language: text("language").notNull().default("ar"),
-  gradeLevel: text("grade_level"),
-  subject: text("subject"),
-  durationMinutes: integer("duration_minutes"),
-  sections: jsonb("sections").notNull(),
-  settings: jsonb("settings").notNull(),
-  isShared: boolean("is_shared").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const lessonPlansTable = pgTable(
+  "lesson_plans",
+  {
+    id: serial("id").primaryKey(),
+    teacherId: integer("teacher_id").notNull().references(() => teachersTable.id),
+    clientRequestId: text("client_request_id"),
+    title: text("title").notNull(),
+    language: text("language").notNull().default("ar"),
+    gradeLevel: text("grade_level"),
+    subject: text("subject"),
+    durationMinutes: integer("duration_minutes"),
+    sections: jsonb("sections").notNull(),
+    settings: jsonb("settings").notNull(),
+    isShared: boolean("is_shared").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("lesson_plans_teacher_client_request_uidx").on(
+      table.teacherId,
+      table.clientRequestId,
+    ),
+  ],
+);

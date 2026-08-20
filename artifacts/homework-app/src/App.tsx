@@ -127,6 +127,8 @@ const WorksheetPrint = lazy(() => import("@/pages/teacher/worksheet-print"));
 const WorksheetGrade = lazy(() => import("@/pages/teacher/worksheet-grade"));
 const WorksheetReport = lazy(() => import("@/pages/teacher/worksheet-report"));
 const MindMapCreate = lazy(() => import("@/pages/teacher/mindmap-create"));
+const MindMapsList = lazy(() => import("@/pages/teacher/mindmaps-list"));
+const MindMapView = lazy(() => import("@/pages/teacher/mindmap-view"));
 const LessonPlanCreate = lazy(() => import("@/pages/teacher/lesson-plan-create"));
 const LessonPlanPrint = lazy(() => import("@/pages/teacher/lesson-plan-print"));
 const FlagsSetup = lazy(() => import("@/pages/game/flags-setup"));
@@ -477,6 +479,8 @@ function Router() {
         <Route path="/teacher/worksheets/:id/grade" component={WorksheetGrade} />
         <Route path="/teacher/assignments/:id/grade" component={WorksheetGrade} />
         <Route path="/teacher/worksheets/:id/report" component={WorksheetReport} />
+        <Route path="/teacher/mindmaps/:id" component={MindMapView} />
+        <Route path="/teacher/mindmaps" component={MindMapsList} />
         <Route path="/teacher/mindmap/create" component={MindMapCreate} />
         <Route path="/teacher/lesson-plans/create" component={LessonPlanCreate} />
         <Route path="/teacher/lesson-plans/:id/print" component={LessonPlanPrint} />

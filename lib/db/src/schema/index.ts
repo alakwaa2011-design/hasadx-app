@@ -87,3 +87,4 @@ export * from "./credit-packages";
 export * from "./credit-purchases";
 export * from "./webhook-events";
 export * from "./direct-play-links";
+export * from "./mind-maps";

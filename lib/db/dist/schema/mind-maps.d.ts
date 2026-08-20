@@ -1,10 +1,25 @@
-export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "worksheets";
+import { z } from "zod/v4";
+/**
+ * Teacher-owned mind maps.
+ *
+ * Shape of `map` (jsonb):
+ *   {
+ *     center: string;          // central node label (non-empty)
+ *     branches: Array<{
+ *       label:    string;      // branch label (non-empty)
+ *       icon:     string;      // emoji or icon identifier
+ *       color:    string;      // CSS colour string (e.g. "#4F46E5")
+ *       children: string[];    // leaf labels
+ *     }>;
+ *   }
+ */
+export declare const mindMapsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "mind_maps";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "worksheets";
+            tableName: "mind_maps";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -21,7 +36,7 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         teacherId: import("drizzle-orm/pg-core").PgColumn<{
             name: "teacher_id";
-            tableName: "worksheets";
+            tableName: "mind_maps";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -38,7 +53,7 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         clientRequestId: import("drizzle-orm/pg-core").PgColumn<{
             name: "client_request_id";
-            tableName: "worksheets";
+            tableName: "mind_maps";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -55,7 +70,24 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         title: import("drizzle-orm/pg-core").PgColumn<{
             name: "title";
-            tableName: "worksheets";
+            tableName: "mind_maps";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        topic: import("drizzle-orm/pg-core").PgColumn<{
+            name: "topic";
+            tableName: "mind_maps";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -72,7 +104,7 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         language: import("drizzle-orm/pg-core").PgColumn<{
             name: "language";
-            tableName: "worksheets";
+            tableName: "mind_maps";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -87,99 +119,31 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        gradeLevel: import("drizzle-orm/pg-core").PgColumn<{
-            name: "grade_level";
-            tableName: "worksheets";
+        depth: import("drizzle-orm/pg-core").PgColumn<{
+            name: "depth";
+            tableName: "mind_maps";
             dataType: "string";
             columnType: "PgText";
             data: string;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        subject: import("drizzle-orm/pg-core").PgColumn<{
-            name: "subject";
-            tableName: "worksheets";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        questions: import("drizzle-orm/pg-core").PgColumn<{
-            name: "questions";
-            tableName: "worksheets";
-            dataType: "json";
-            columnType: "PgJsonb";
-            data: unknown;
-            driverParam: unknown;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        settings: import("drizzle-orm/pg-core").PgColumn<{
-            name: "settings";
-            tableName: "worksheets";
-            dataType: "json";
-            columnType: "PgJsonb";
-            data: unknown;
-            driverParam: unknown;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        isShared: import("drizzle-orm/pg-core").PgColumn<{
-            name: "is_shared";
-            tableName: "worksheets";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
             notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        linkedAssignmentId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "linked_assignment_id";
-            tableName: "worksheets";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: false;
+        map: import("drizzle-orm/pg-core").PgColumn<{
+            name: "map";
+            tableName: "mind_maps";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -191,7 +155,7 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "worksheets";
+            tableName: "mind_maps";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -208,7 +172,7 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         updatedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "updated_at";
-            tableName: "worksheets";
+            tableName: "mind_maps";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -226,4 +190,18 @@ export declare const worksheetsTable: import("drizzle-orm/pg-core").PgTableWithC
     };
     dialect: "pg";
 }>;
-//# sourceMappingURL=worksheets.d.ts.map
+export declare const insertMindMapSchema: z.ZodObject<{
+    teacherId: z.ZodInt;
+    clientRequestId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    title: z.ZodString;
+    language: z.ZodOptional<z.ZodString>;
+    topic: z.ZodString;
+    depth: z.ZodOptional<z.ZodString>;
+    map: z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>;
+}, {
+    out: {};
+    in: {};
+}>;
+export type InsertMindMap = z.infer<typeof insertMindMapSchema>;
+export type MindMap = typeof mindMapsTable.$inferSelect;
+//# sourceMappingURL=mind-maps.d.ts.map

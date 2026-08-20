@@ -16,6 +16,7 @@ import {
 } from "./worksheet-themes";
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { createClientRequestId } from "@/lib/client-request-id";
 import { toast } from "@/components/ui/sonner";
 import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -180,6 +181,18 @@ interface WorksheetRow {
   ownerIsAdmin?: boolean;
 }
 
+interface WorksheetSavePayload {
+  title: string;
+  language: "ar" | "en";
+  gradeLevel: string | null;
+  subject: string | null;
+  questions: Question[];
+  settings: Settings;
+  smartGrading: boolean;
+}
+
+type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
+
 const newId = () => `q_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 const typeLabel = (t: QType, ar: boolean) => {
@@ -262,6 +275,7 @@ export default function WorksheetCreate() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
+  const [clientRequestId] = useState(createClientRequestId);
 
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
   const _teacherProfile = useMemo(() => loadTeacherProfile(), []);
@@ -337,11 +351,42 @@ export default function WorksheetCreate() {
   const [savedRows, setSavedRows] = useState<WorksheetRow[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const editingIdRef = useRef<number | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
+  const [autoSaveError, setAutoSaveError] = useState("");
   const [smartGrading, setSmartGrading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [canvasEditorOpen, setCanvasEditorOpen] = useState(false);
+  const saveInFlightRef = useRef(false);
+  const saveBlockedRef = useRef(false);
+  const contentOperationInFlightRef = useRef(false);
+  const retryWorksheetPayloadRef = useRef<WorksheetSavePayload | null>(null);
+
+  const latestWorksheetRef = useRef({
+    title,
+    contentLang,
+    subject,
+    gradeLevel,
+    questions,
+    settings,
+    smartGrading,
+  });
+  useEffect(() => {
+    latestWorksheetRef.current = {
+      title,
+      contentLang,
+      subject,
+      gradeLevel,
+      questions,
+      settings,
+      smartGrading,
+    };
+  }, [title, contentLang, subject, gradeLevel, questions, settings, smartGrading]);
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
@@ -436,7 +481,112 @@ export default function WorksheetCreate() {
      balance (header chip + credits page) after each attempt settles. */
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
+  const persistWorksheetPayload = async (
+    payload: WorksheetSavePayload,
+    automatic: boolean,
+    retrying = false,
+  ): Promise<number | null> => {
+    if (saveInFlightRef.current) return null;
+    if (saveBlockedRef.current && !retrying) {
+      toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
+      return null;
+    }
+    saveInFlightRef.current = true;
+    if (automatic) {
+      setAutoSaveStatus("saving");
+      setAutoSaveError("");
+    } else {
+      setSaving(true);
+    }
+
+    try {
+      const currentId = editingIdRef.current;
+      const url = currentId ? `${API_BASE}/api/worksheets/${currentId}` : `${API_BASE}/api/worksheets`;
+      const method = currentId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, clientRequestId }),
+      });
+      if (!res.ok) {
+        const responseError = await res.json().catch(() => ({}));
+        const message = responseError.message || (ar ? "تعذّر الحفظ" : "Save failed");
+        saveBlockedRef.current = true;
+        retryWorksheetPayloadRef.current = payload;
+        setAutoSaveStatus("error");
+        setAutoSaveError(message);
+        if (!automatic) toast.error(message);
+        return null;
+      }
+
+      const responseData = await res.json();
+      const row = Array.isArray(responseData) ? responseData[0] : responseData;
+      const savedId = Number(row?.id ?? currentId);
+      if (!Number.isFinite(savedId) || savedId <= 0) {
+        throw new Error(ar ? "لم يُرجع الخادم معرّف الحفظ" : "The server did not return a saved id");
+      }
+
+      editingIdRef.current = savedId;
+      setEditingId(savedId);
+      saveBlockedRef.current = false;
+      retryWorksheetPayloadRef.current = null;
+      if (retrying) {
+        const restored = {
+          title: payload.title,
+          contentLang: payload.language,
+          subject: payload.subject ?? "",
+          gradeLevel: payload.gradeLevel ?? "",
+          questions: payload.questions,
+          settings: payload.settings,
+          smartGrading: !!payload.smartGrading,
+        };
+        setTitle(restored.title);
+        setContentLang(restored.contentLang);
+        setSubject(restored.subject);
+        setGradeLevel(restored.gradeLevel);
+        setQuestions(restored.questions);
+        setSettings(restored.settings);
+        setSmartGrading(restored.smartGrading);
+        latestWorksheetRef.current = restored;
+      }
+      setAutoSaveStatus("saved");
+      setAutoSaveError("");
+
+      if (row?.gradingVersioned) {
+        toast.info(ar
+          ? "تم إنشاء نسخة تصحيح جديدة — نتائج الأوراق المصححة سابقاً محفوظة كما هي"
+          : "A new grading version was created — previously graded results are preserved");
+      }
+      if (!automatic) toast.success(ar ? "تم الحفظ" : "Saved");
+      return savedId;
+    } catch (error) {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : (ar ? "حدث خطأ في الاتصال" : "Network error");
+      saveBlockedRef.current = true;
+      retryWorksheetPayloadRef.current = payload;
+      setAutoSaveStatus("error");
+      setAutoSaveError(message);
+      if (!automatic) toast.error(message);
+      return null;
+    } finally {
+      saveInFlightRef.current = false;
+      if (!automatic) setSaving(false);
+    }
+  };
+
+  const retryAutoSave = () => {
+    const payload = retryWorksheetPayloadRef.current;
+    if (!payload) return;
+    void persistWorksheetPayload(payload, true, true);
+  };
+
   const generateWithAI = async () => {
+    if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
+      toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
+      return;
+    }
     if (!aiTopic.trim()) {
       toast.error(ar ? "اكتب موضوع الورقة" : "Add a topic first");
       return;
@@ -449,6 +599,7 @@ export default function WorksheetCreate() {
       toast.error(ar ? `العدد الإجمالي يتجاوز ${aiMaxTotal}` : `Total exceeds ${aiMaxTotal} questions`);
       return;
     }
+    contentOperationInFlightRef.current = true;
     setGenerating(true);
     try {
       const res = await fetch(`${API_BASE}/api/worksheets/ai/generate`, {
@@ -476,28 +627,53 @@ export default function WorksheetCreate() {
         toast.error(ar ? "لم يُرجع المولّد أي أسئلة" : "Generator returned no questions");
         return;
       }
-      setQuestions(prev => [...generated, ...prev]);
-      if (!title.trim()) setTitle(aiTopic.trim().slice(0, 80));
+      const current = latestWorksheetRef.current;
+      const nextQuestions = [...generated, ...current.questions];
+      const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 80);
       const lastTheme = getLastTheme();
       const chosenTheme = selectTheme(
-        subject.trim() || null,
-        gradeLevel.trim() || null,
-        contentLang as "ar" | "en",
+        current.subject.trim() || null,
+        current.gradeLevel.trim() || null,
+        current.contentLang,
         generated.length,
         lastTheme,
       );
+      const nextSettings = { ...current.settings, template: chosenTheme };
+
+      setQuestions(nextQuestions);
+      if (!current.title.trim()) setTitle(nextTitle);
       setLastTheme(chosenTheme);
-      setSettings(s => ({ ...s, template: chosenTheme }));
+      setSettings(nextSettings);
+      latestWorksheetRef.current = {
+        ...current,
+        title: nextTitle,
+        questions: nextQuestions,
+        settings: nextSettings,
+      };
       toast.success(ar ? `تمت إضافة ${generated.length} سؤال` : `Added ${generated.length} questions`);
+      await persistWorksheetPayload({
+        title: nextTitle,
+        language: current.contentLang,
+        gradeLevel: current.gradeLevel.trim() || null,
+        subject: current.subject.trim() || null,
+        questions: nextQuestions,
+        settings: nextSettings,
+        smartGrading: current.smartGrading,
+      }, true);
     } catch {
       toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
     } finally {
+      contentOperationInFlightRef.current = false;
       setGenerating(false);
       refreshCreditsBalance();
     }
   };
 
   const extractFromFile = async () => {
+    if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
+      toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
+      return;
+    }
     if (pickedFiles.length === 0) {
       toast.error(ar ? "اختر ملفًا واحدًا على الأقل" : "Pick at least one file");
       return;
@@ -510,6 +686,7 @@ export default function WorksheetCreate() {
       toast.error(ar ? `العدد الإجمالي يتجاوز ${aiMaxTotal}` : `Total exceeds ${aiMaxTotal} questions`);
       return;
     }
+    contentOperationInFlightRef.current = true;
     setExtracting(true);
     try {
       const fd = new FormData();
@@ -538,21 +715,30 @@ export default function WorksheetCreate() {
         toast.error(ar ? "لم يستخرج المولّد أي أسئلة" : "Generator returned no questions");
         return;
       }
-      setQuestions(prev => [...generated, ...prev]);
-      if (!title.trim()) {
-        const baseName = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
-        setTitle(baseName);
-      }
+      const current = latestWorksheetRef.current;
+      const nextQuestions = [...generated, ...current.questions];
+      const fallbackTitle = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
+      const nextTitle = current.title.trim() || fallbackTitle;
       const lastThemeF = getLastTheme();
       const chosenThemeF = selectTheme(
-        subject.trim() || null,
-        gradeLevel.trim() || null,
-        contentLang as "ar" | "en",
+        current.subject.trim() || null,
+        current.gradeLevel.trim() || null,
+        current.contentLang,
         generated.length,
         lastThemeF,
       );
+      const nextSettings = { ...current.settings, template: chosenThemeF };
+
+      setQuestions(nextQuestions);
+      if (!current.title.trim()) setTitle(nextTitle);
       setLastTheme(chosenThemeF);
-      setSettings(s => ({ ...s, template: chosenThemeF }));
+      setSettings(nextSettings);
+      latestWorksheetRef.current = {
+        ...current,
+        title: nextTitle,
+        questions: nextQuestions,
+        settings: nextSettings,
+      };
       const requestedTotal = Object.values(aiCounts).reduce((s: number, n) => s + (Number(n) || 0), 0);
       if (requestedTotal > 0 && generated.length < requestedTotal) {
         toast.warning(
@@ -565,9 +751,19 @@ export default function WorksheetCreate() {
       }
       setPickedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      await persistWorksheetPayload({
+        title: nextTitle,
+        language: current.contentLang,
+        gradeLevel: current.gradeLevel.trim() || null,
+        subject: current.subject.trim() || null,
+        questions: nextQuestions,
+        settings: nextSettings,
+        smartGrading: current.smartGrading,
+      }, true);
     } catch {
       toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
     } finally {
+      contentOperationInFlightRef.current = false;
       setExtracting(false);
       refreshCreditsBalance();
     }
@@ -601,45 +797,15 @@ export default function WorksheetCreate() {
       toast.error(err);
       return null;
     }
-    setSaving(true);
-    try {
-      const payload = {
-        title: title.trim(),
-        language: contentLang,
-        gradeLevel: gradeLevel.trim() || null,
-        subject: subject.trim() || null,
-        questions,
-        settings,
-        smartGrading,
-      };
-      const url = editingId ? `${API_BASE}/api/worksheets/${editingId}` : `${API_BASE}/api/worksheets`;
-      const method = editingId ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.message || (ar ? "تعذّر الحفظ" : "Save failed"));
-        return null;
-      }
-      const row = await res.json();
-      setEditingId(row.id);
-      if (row.gradingVersioned) {
-        toast.info(ar
-          ? "تم إنشاء نسخة تصحيح جديدة — نتائج الأوراق المصححة سابقاً محفوظة كما هي"
-          : "A new grading version was created — previously graded results are preserved");
-      }
-      toast.success(ar ? "تم الحفظ" : "Saved");
-      return row.id as number;
-    } catch {
-      toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
-      return null;
-    } finally {
-      setSaving(false);
-    }
+    return persistWorksheetPayload({
+      title: title.trim(),
+      language: contentLang,
+      gradeLevel: gradeLevel.trim() || null,
+      subject: subject.trim() || null,
+      questions,
+      settings,
+      smartGrading,
+    }, false);
   };
 
   const saveAndPreview = async () => {
@@ -801,7 +967,7 @@ export default function WorksheetCreate() {
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button 
                    onClick={generateWithAI}
-                   disabled={generating || extracting}
+                   disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"}
                    className="flex-1 h-14 text-lg font-black rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                    {generating ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar?"جارٍ التوليد...":"Generating..."}</> : <><Sparkles className="w-5 h-5"/> {ar?"توليد الأسئلة":"Generate Questions"}</>}
@@ -839,7 +1005,7 @@ export default function WorksheetCreate() {
                 </label>
                 
                 {pickedFiles.length > 0 && (
-                   <button onClick={extractFromFile} disabled={extracting || generating} className="h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-md">
+                   <button onClick={extractFromFile} disabled={extracting || generating || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-md">
                      {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {ar ? "استخراج" : "Extract"}</>}
                    </button>
                 )}
@@ -1269,6 +1435,37 @@ export default function WorksheetCreate() {
                 {ar ? "فتح صفحة التصحيح" : "Open grading page"}
               </button>
             )}
+            {autoSaveStatus !== "idle" && (
+              <div
+                data-testid="status-worksheet-autosave"
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold",
+                  autoSaveStatus === "error"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-primary/10 text-primary",
+                )}
+              >
+                {autoSaveStatus === "saving" && <Loader2 className="w-4 h-4 animate-spin" />}
+                {autoSaveStatus === "saved" && <Check className="w-4 h-4" />}
+                {autoSaveStatus === "error" && <X className="w-4 h-4" />}
+                <span>
+                  {autoSaveStatus === "saving" && (ar ? "جارٍ حفظ التوليد تلقائياً…" : "Saving generated content…")}
+                  {autoSaveStatus === "saved" && (ar ? "تم حفظ التوليد تلقائياً" : "Generated content saved")}
+                  {autoSaveStatus === "error" && (autoSaveError || (ar ? "فشل الحفظ التلقائي" : "Auto-save failed"))}
+                </span>
+                {autoSaveStatus === "error" && (
+                  <button
+                    type="button"
+                    onClick={retryAutoSave}
+                    data-testid="button-retry-worksheet-autosave"
+                    className="inline-flex items-center gap-1 rounded-lg border border-destructive/30 bg-background px-2 py-1 hover:bg-destructive/5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    {ar ? "إعادة المحاولة" : "Retry"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
@@ -1280,7 +1477,7 @@ export default function WorksheetCreate() {
                 }
                 setCanvasEditorOpen(true);
               }}
-              disabled={!canSave}
+              disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
               className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors"
             >
               <Layers className="w-4 h-4 text-primary" />
@@ -1300,7 +1497,7 @@ export default function WorksheetCreate() {
                 }
                 setPreviewing(true);
               }}
-              disabled={!canSave}
+              disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
               className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-amber-600 border-amber-600/30"
             >
               <Eye className="w-4 h-4" />
@@ -1309,7 +1506,7 @@ export default function WorksheetCreate() {
 
             <button
               onClick={() => saveWorksheet()}
-              disabled={!canSave || saving}
+              disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
               className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-primary border-primary/30"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -1319,7 +1516,7 @@ export default function WorksheetCreate() {
 
           <button
             onClick={saveAndPreview}
-            disabled={!canSave || saving}
+            disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
             className="w-full sm:w-auto flex-shrink-0 h-14 px-8 md:px-14 text-lg font-black rounded-2xl bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 text-primary-foreground transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Printer className="w-6 h-6" />}

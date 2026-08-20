@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import {
@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { createClientRequestId } from "@/lib/client-request-id";
 import { motion, AnimatePresence } from "framer-motion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -40,6 +41,18 @@ interface LessonPlan {
   steps: LessonStep[];
   summary: { voiceText: string; boardActions: BoardAction[] };
   keyPoints?: string[];
+}
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+interface WhiteboardSavePayload {
+  topic: string;
+  plan: LessonPlan;
+  subject: string;
+  gradeLevel: string;
+  depth: "brief" | "standard" | "detailed";
+  language: string;
+  clientRequestId: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -394,13 +407,109 @@ export default function SmartBoardNew() {
   const [error, setError] = useState("");
   const [plan, setPlan] = useState<LessonPlan | null>(null);
   const [saving, setSaving] = useState(false);
+  const savedIdRef = useRef<number | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState("");
+  const [clientRequestId] = useState(createClientRequestId);
+  const saveInFlightRef = useRef(false);
+  const saveBlockedRef = useRef(false);
+  const generationInFlightRef = useRef(false);
+  const retryPlanPayloadRef = useRef<WhiteboardSavePayload | null>(null);
 
   /* Server charges credits for AI generation — refresh the shared balance. */
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
+  async function persistPlan(
+    nextPlan: LessonPlan,
+    preparingPresentation = false,
+    retrying = false,
+    exactPayload?: WhiteboardSavePayload,
+  ): Promise<number | null> {
+    if (saveInFlightRef.current) return null;
+    if (saveBlockedRef.current && !retrying) {
+      setSaveError(isAr ? "أعد محاولة حفظ الدرس الحالي أولاً" : "Retry saving the current lesson first");
+      return null;
+    }
+    const payload: WhiteboardSavePayload = exactPayload ?? {
+      topic: nextPlan.topic,
+      plan: nextPlan,
+      subject,
+      gradeLevel,
+      depth,
+      language: lang,
+      clientRequestId,
+    };
+    saveInFlightRef.current = true;
+    if (preparingPresentation) setSaving(true);
+    setSaveStatus("saving");
+    setSaveError("");
+
+    try {
+      const currentId = savedIdRef.current;
+      const response = await fetch(
+        currentId
+          ? `${API_BASE}/api/whiteboard/lessons/${currentId}`
+          : `${API_BASE}/api/whiteboard/lessons`,
+        {
+          method: currentId ? "PUT" : "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      const responseData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = responseData.message ?? (isAr ? "تعذّر حفظ الدرس" : "Could not save the lesson");
+        saveBlockedRef.current = true;
+        retryPlanPayloadRef.current = payload;
+        setSaveStatus("error");
+        setSaveError(message);
+        return null;
+      }
+
+      const nextId = Number(responseData.id ?? currentId);
+      if (!Number.isFinite(nextId) || nextId <= 0) {
+        throw new Error(isAr ? "لم يُرجع الخادم معرّف الحفظ" : "The server did not return a saved id");
+      }
+
+      savedIdRef.current = nextId;
+      saveBlockedRef.current = false;
+      retryPlanPayloadRef.current = null;
+      if (retrying) {
+        setPlan(payload.plan);
+        setTopic(payload.topic);
+        setSubject(payload.subject);
+        setGradeLevel(payload.gradeLevel);
+        setDepth(payload.depth);
+      }
+      setSaveStatus("saved");
+      setSaveError("");
+      return nextId;
+    } catch (saveFailure) {
+      saveBlockedRef.current = true;
+      retryPlanPayloadRef.current = payload;
+      setSaveStatus("error");
+      setSaveError(
+        saveFailure instanceof Error && saveFailure.message
+          ? saveFailure.message
+          : (isAr ? "تعذّر الاتصال أثناء الحفظ" : "Could not connect while saving"),
+      );
+      return null;
+    } finally {
+      saveInFlightRef.current = false;
+      if (preparingPresentation) setSaving(false);
+    }
+  }
+
   async function generate() {
+    if (saveBlockedRef.current || saveInFlightRef.current || generationInFlightRef.current) {
+      setSaveError(isAr ? "أعد محاولة حفظ الدرس الحالي أولاً" : "Retry saving the current lesson first");
+      return;
+    }
     if (!topic.trim()) { setError(isAr ? "اكتب موضوع الدرس أولاً" : "Enter a lesson topic first"); return; }
-    setError(""); setLoading(true); setPlan(null);
+    generationInFlightRef.current = true;
+    setError("");
+    setLoading(true);
     try {
       const r = await fetch(`${API_BASE}/api/whiteboard/generate`, {
         method: "POST", credentials: "include",
@@ -410,48 +519,61 @@ export default function SmartBoardNew() {
       const d = await r.json();
       if (!r.ok) { setError(d.message ?? (isAr ? "حدث خطأ" : "An error occurred")); return; }
       setPlan(d.plan);
+      await persistPlan(d.plan);
     } catch {
       setError(isAr ? "تعذّر الاتصال بالخادم" : "Could not connect to server");
     } finally {
+      generationInFlightRef.current = false;
       setLoading(false);
       refreshCreditsBalance();
     }
   }
 
   async function startPresent() {
-    if (!plan) return;
-    setSaving(true);
-    try {
-      const r = await fetch(`${API_BASE}/api/whiteboard/lessons`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: plan.topic, plan, subject, gradeLevel, depth, language: lang }),
-      });
-      const d = await r.json();
-      if (!r.ok) { alert(d.message ?? (isAr ? "خطأ في الحفظ" : "Save error")); return; }
-      navigate(`/teacher/smart-board/present/${d.id}`);
-    } catch {
-      alert(isAr ? "تعذّر الحفظ" : "Could not save");
-    } finally {
-      setSaving(false);
-    }
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
+    const id = await persistPlan(plan, true);
+    if (id) navigate(`/teacher/smart-board/present/${id}`);
   }
 
-  const updateIntroVoice     = (v: string) => plan && setPlan({ ...plan, intro: { ...plan.intro, voiceText: v } });
-  const updateIntroActions   = (a: BoardAction[]) => plan && setPlan({ ...plan, intro: { ...plan.intro, boardActions: a } });
-  const updateSummaryVoice   = (v: string) => plan && setPlan({ ...plan, summary: { ...plan.summary, voiceText: v } });
-  const updateSummaryActions = (a: BoardAction[]) => plan && setPlan({ ...plan, summary: { ...plan.summary, boardActions: a } });
+  const markPlanDirty = () => {
+    if (saveBlockedRef.current || saveInFlightRef.current) return;
+    setSaveStatus("idle");
+    setSaveError("");
+  };
+
+  const updateIntroVoice = (v: string) => {
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
+    setPlan({ ...plan, intro: { ...plan.intro, voiceText: v } });
+    markPlanDirty();
+  };
+  const updateIntroActions = (a: BoardAction[]) => {
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
+    setPlan({ ...plan, intro: { ...plan.intro, boardActions: a } });
+    markPlanDirty();
+  };
+  const updateSummaryVoice = (v: string) => {
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
+    setPlan({ ...plan, summary: { ...plan.summary, voiceText: v } });
+    markPlanDirty();
+  };
+  const updateSummaryActions = (a: BoardAction[]) => {
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
+    setPlan({ ...plan, summary: { ...plan.summary, boardActions: a } });
+    markPlanDirty();
+  };
 
   function updateStep(idx: number, patch: Partial<LessonStep>) {
-    if (!plan) return;
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
     const steps = [...plan.steps];
     steps[idx] = { ...steps[idx], ...patch };
     setPlan({ ...plan, steps });
+    markPlanDirty();
   }
 
   function deleteStep(idx: number) {
-    if (!plan) return;
+    if (!plan || saveBlockedRef.current || saveInFlightRef.current) return;
     setPlan({ ...plan, steps: plan.steps.filter((_, i) => i !== idx) });
+    markPlanDirty();
   }
 
   return (
@@ -498,7 +620,7 @@ export default function SmartBoardNew() {
                   placeholder={isAr ? "مثال: جمع الكسور المتشابهة وغير المتشابهة، قانون نيوتن الثالث..." : "e.g. Adding fractions, Newton's third law, photosynthesis..."}
                   rows={2}
                   className="w-full bg-transparent border-none p-4 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none resize-none leading-relaxed"
-                  disabled={loading}
+                  disabled={loading || saveStatus === "error"}
                 />
               </div>
 
@@ -508,7 +630,7 @@ export default function SmartBoardNew() {
                     <BookOpen size={14} className="text-emerald-500"/> {isAr ? "المادة" : "Subject"}
                   </label>
                   <select 
-                    value={subject} onChange={e => setSubject(e.target.value)} disabled={loading}
+                    value={subject} onChange={e => setSubject(e.target.value)} disabled={loading || saveStatus === "error"}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
                   >
                     <option value="">{isAr ? "اختر المادة" : "Select subject"}</option>
@@ -520,7 +642,7 @@ export default function SmartBoardNew() {
                     <Users size={14} className="text-emerald-500"/> {isAr ? "الصف الدراسي" : "Grade"}
                   </label>
                   <select 
-                    value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} disabled={loading}
+                    value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} disabled={loading || saveStatus === "error"}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
                   >
                     <option value="">{isAr ? "اختر الصف" : "Select grade"}</option>
@@ -532,7 +654,7 @@ export default function SmartBoardNew() {
                     <Clock size={14} className="text-emerald-500"/> {isAr ? "عمق الشرح" : "Depth"}
                   </label>
                   <select 
-                    value={depth} onChange={e => setDepth(e.target.value as any)} disabled={loading}
+                    value={depth} onChange={e => setDepth(e.target.value as any)} disabled={loading || saveStatus === "error"}
                     className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-400 transition-all cursor-pointer appearance-none"
                   >
                     <option value="brief">{isAr ? "موجز (~١٠ دقائق)" : "Brief (~10 min)"}</option>
@@ -549,7 +671,7 @@ export default function SmartBoardNew() {
               )}
 
               <button
-                onClick={generate} disabled={loading || !topic.trim()}
+                onClick={generate} disabled={loading || saveStatus === "saving" || saveStatus === "error" || !topic.trim()}
                 className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-3.5 font-black shadow-md shadow-emerald-600/10 transition-all hover:-translate-y-0.5 mt-2"
               >
                 {loading ? (
@@ -563,7 +685,9 @@ export default function SmartBoardNew() {
 
           {/* Generated plan */}
           {plan && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className={`space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
+              saveStatus === "saving" || saveStatus === "error" ? "pointer-events-none select-none opacity-70" : ""
+            }`}>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between mt-8 mb-4 px-2">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex items-center justify-center shrink-0">
@@ -613,9 +737,42 @@ export default function SmartBoardNew() {
         {/* Floating Action Bar */}
         {plan && (
           <div className="fixed bottom-0 inset-x-0 z-30 p-4 bg-gradient-to-t from-[#f4f7f5] via-[#f4f7f5]/90 to-transparent dark:from-[#0B100E] dark:via-[#0B100E]/90 pb-6 pointer-events-none animate-in fade-in slide-in-from-bottom-8 duration-500">
-            <div className="max-w-2xl mx-auto pointer-events-auto">
+            <div className="max-w-2xl mx-auto pointer-events-auto space-y-2">
+              {saveStatus !== "idle" && (
+                <div
+                  data-testid="status-smart-board-autosave"
+                  className={`flex flex-wrap items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold backdrop-blur ${
+                    saveStatus === "error"
+                      ? "border-red-200 bg-red-50/95 text-red-700 dark:border-red-800 dark:bg-red-900/80 dark:text-red-200"
+                      : "border-emerald-100 bg-white/95 text-emerald-700 dark:border-emerald-800 dark:bg-[#15201B]/95 dark:text-emerald-300"
+                  }`}
+                >
+                  {saveStatus === "saving" && <Loader2 size={16} className="animate-spin" />}
+                  {saveStatus === "saved" && <CheckCircle2 size={16} />}
+                  {saveStatus === "error" && <X size={16} />}
+                  <span>
+                    {saveStatus === "saving" && (isAr ? "جارٍ حفظ الدرس تلقائياً…" : "Saving lesson automatically…")}
+                    {saveStatus === "saved" && (isAr ? "تم حفظ الدرس تلقائياً" : "Lesson saved automatically")}
+                    {saveStatus === "error" && (saveError || (isAr ? "فشل الحفظ التلقائي" : "Auto-save failed"))}
+                  </span>
+                  {saveStatus === "error" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const payload = retryPlanPayloadRef.current;
+                        if (payload) void persistPlan(payload.plan, false, true, payload);
+                      }}
+                      data-testid="button-retry-smart-board-autosave"
+                      className="rounded-lg border border-red-200 bg-white px-2 py-1 hover:bg-red-50 dark:border-red-700 dark:bg-[#15201B] dark:hover:bg-red-900/30"
+                    >
+                      {isAr ? "إعادة المحاولة" : "Retry"}
+                    </button>
+                  )}
+                </div>
+              )}
               <button
-                onClick={startPresent} disabled={saving}
+                onClick={startPresent} disabled={saving || loading || saveStatus === "saving" || saveStatus === "error"}
+                data-testid="button-start-smart-board-presentation"
                 className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white rounded-2xl py-4 font-black text-lg shadow-xl shadow-emerald-600/25 transition-all hover:-translate-y-1"
               >
                 {saving ? (

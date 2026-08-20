@@ -151,6 +151,7 @@ const settingsSchema = z.object({
 });
 
 const upsertBody = z.object({
+  clientRequestId: z.string().uuid().optional(),
   title: z.string().min(2).max(200),
   language: z.enum(["ar", "en"]).default("ar"),
   gradeLevel: z.string().max(50).nullish(),
@@ -220,51 +221,61 @@ function worksheetToGradingData(questions: WorksheetQuestion[], language: "ar" |
   return { rows, answerKey: answerKey.slice(0, 8000) };
 }
 
-/** Create the hidden internal assignment for a worksheet. Returns its id. */
-async function createLinkedAssignment(opts: {
+type WorksheetTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+type LinkedAssignmentOptions = {
   teacherId: number;
   title: string;
   subject: string | null;
   language: "ar" | "en";
   questions: WorksheetQuestion[];
-}): Promise<number> {
+};
+
+/** Create the hidden internal assignment inside the caller's transaction. */
+async function createLinkedAssignmentInTx(
+  tx: WorksheetTransaction,
+  opts: LinkedAssignmentOptions,
+): Promise<number> {
   const { rows, answerKey } = worksheetToGradingData(opts.questions, opts.language);
   const totalPoints = rows.reduce((s, r) => s + r.points, 0);
-  return db.transaction(async (tx) => {
-    const [assignment] = await tx
-      .insert(assignmentsTable)
-      .values({
-        title: opts.title,
-        subject: opts.subject,
-        description: null,
-        // No access code at all: worksheet grading is gated purely by the
-        // owner's teacher session (see the source==='worksheet' branch in
-        // submit-image). private + NULL code means the public access-code
-        // path rejects everyone — students can never reach this assignment.
-        submissionMode: "paper",
-        accessMode: "private",
-        accessCode: null,
-        showResults: true,
-        teacherId: opts.teacherId,
-        totalPoints,
-        aiGradingInstructions: answerKey,
-        isShared: false,
-        isShareApproved: true,
-        contentKind: "homework",
-        source: "worksheet",
-      })
-      .returning({ id: assignmentsTable.id });
-    await tx.insert(questionsTable).values(
-      rows.map((r) => ({
-        assignmentId: assignment.id,
-        questionType: "open" as const,
-        text: r.text.slice(0, 2000),
-        correctAnswer: null,
-        points: r.points,
-      })),
-    );
-    return assignment.id;
-  });
+  const [assignment] = await tx
+    .insert(assignmentsTable)
+    .values({
+      title: opts.title,
+      subject: opts.subject,
+      description: null,
+      // No access code at all: worksheet grading is gated purely by the
+      // owner's teacher session (see the source==='worksheet' branch in
+      // submit-image). private + NULL code means the public access-code
+      // path rejects everyone — students can never reach this assignment.
+      submissionMode: "paper",
+      accessMode: "private",
+      accessCode: null,
+      showResults: true,
+      teacherId: opts.teacherId,
+      totalPoints,
+      aiGradingInstructions: answerKey,
+      isShared: false,
+      isShareApproved: true,
+      contentKind: "homework",
+      source: "worksheet",
+    })
+    .returning({ id: assignmentsTable.id });
+  await tx.insert(questionsTable).values(
+    rows.map((r) => ({
+      assignmentId: assignment.id,
+      questionType: "open" as const,
+      text: r.text.slice(0, 2000),
+      correctAnswer: null,
+      points: r.points,
+    })),
+  );
+  return assignment.id;
+}
+
+/** Create the hidden internal assignment for an existing worksheet. */
+async function createLinkedAssignment(opts: LinkedAssignmentOptions): Promise<number> {
+  return db.transaction((tx) => createLinkedAssignmentInTx(tx, opts));
 }
 
 /** True when the linked assignment already has graded submissions. */
@@ -451,6 +462,7 @@ router.post("/worksheets", requireTeacher, async (req, res) => {
         .insert(worksheetsTable)
         .values({
           teacherId,
+          clientRequestId: body.clientRequestId ?? null,
           title: body.title,
           language: body.language,
           gradeLevel: body.gradeLevel ?? null,
@@ -458,37 +470,52 @@ router.post("/worksheets", requireTeacher, async (req, res) => {
           questions: body.questions,
           settings: body.settings,
         })
+        .onConflictDoNothing({
+          target: [worksheetsTable.teacherId, worksheetsTable.clientRequestId],
+        })
         .returning();
+      if (!inserted) {
+        if (!body.clientRequestId) {
+          throw new Error("Worksheet insert conflict without a client request id");
+        }
+        const [existing] = await tx
+          .select()
+          .from(worksheetsTable)
+          .where(and(
+            eq(worksheetsTable.teacherId, teacherId),
+            eq(worksheetsTable.clientRequestId, body.clientRequestId),
+          ))
+          .limit(1);
+        if (!existing) {
+          throw new Error("Idempotent worksheet replay could not find its original row");
+        }
+        return { row: existing, runAfterCommit: () => undefined };
+      }
+      let row = inserted;
+      if (body.smartGrading) {
+        const linkedAssignmentId = await createLinkedAssignmentInTx(tx, {
+          teacherId,
+          title: body.title,
+          subject: body.subject ?? null,
+          language: body.language,
+          questions: body.questions,
+        });
+        [row] = await tx
+          .update(worksheetsTable)
+          .set({ linkedAssignmentId })
+          .where(eq(worksheetsTable.id, inserted.id))
+          .returning();
+      }
       const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
         teacherId,
         actionKey: "worksheet.generate",
-        refId: `worksheet:${inserted.id}`,
-        reason: inserted.title,
+        refId: `worksheet:${row.id}`,
+        reason: row.title,
       });
-      return { row: inserted, runAfterCommit: xp.runAfterCommit };
+      return { row, runAfterCommit: xp.runAfterCommit };
     });
     void runAfterCommit();
-
-    let finalRow = row;
-    if (body.smartGrading) {
-      const link = await ensureGradingLink({
-        worksheetId: row.id,
-        currentLinkId: null,
-        smartGrading: true,
-        teacherId,
-        title: body.title,
-        subject: body.subject ?? null,
-        language: body.language,
-        questions: body.questions,
-      });
-      const [updated] = await db
-        .update(worksheetsTable)
-        .set({ linkedAssignmentId: link.id })
-        .where(eq(worksheetsTable.id, row.id))
-        .returning();
-      finalRow = updated;
-    }
-    res.status(201).json(finalRow);
+    res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {
       req.log.warn({ issues: err.issues }, "Worksheet create validation failed");

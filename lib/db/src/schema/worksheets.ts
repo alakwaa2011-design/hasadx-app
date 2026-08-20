@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, jsonb, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 
 /* Worksheet generator (مولّد ورقة العمل).
@@ -34,21 +34,31 @@ import { teachersTable } from "./teachers";
        showWatermark?: boolean;     // big faint Hasad watermark behind content (default true)
      }
 */
-export const worksheetsTable = pgTable("worksheets", {
-  id: serial("id").primaryKey(),
-  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id),
-  title: text("title").notNull(),
-  language: text("language").notNull().default("ar"),
-  gradeLevel: text("grade_level"),
-  subject: text("subject"),
-  questions: jsonb("questions").notNull(),
-  settings: jsonb("settings").notNull(),
-  isShared: boolean("is_shared").notNull().default(false),
-  /** When smart paper grading is enabled, points at the internal
-   *  behind-the-scenes assignment that powers the existing grading engine.
-   *  NULL = grading not enabled. The linked assignment has source='worksheet'
-   *  and is hidden from the teacher's normal assignment lists. */
-  linkedAssignmentId: integer("linked_assignment_id"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const worksheetsTable = pgTable(
+  "worksheets",
+  {
+    id: serial("id").primaryKey(),
+    teacherId: integer("teacher_id").notNull().references(() => teachersTable.id),
+    clientRequestId: text("client_request_id"),
+    title: text("title").notNull(),
+    language: text("language").notNull().default("ar"),
+    gradeLevel: text("grade_level"),
+    subject: text("subject"),
+    questions: jsonb("questions").notNull(),
+    settings: jsonb("settings").notNull(),
+    isShared: boolean("is_shared").notNull().default(false),
+    /** When smart paper grading is enabled, points at the internal
+     *  behind-the-scenes assignment that powers the existing grading engine.
+     *  NULL = grading not enabled. The linked assignment has source='worksheet'
+     *  and is hidden from the teacher's normal assignment lists. */
+    linkedAssignmentId: integer("linked_assignment_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("worksheets_teacher_client_request_uidx").on(
+      table.teacherId,
+      table.clientRequestId,
+    ),
+  ],
+);

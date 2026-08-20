@@ -120,6 +120,7 @@ const settingsSchema = z.object({
 });
 
 const upsertBody = z.object({
+  clientRequestId: z.string().uuid().optional(),
   title: z.string().min(2).max(200),
   language: z.enum(["ar", "en"]).default("ar"),
   gradeLevel: z.string().max(50).nullish(),
@@ -219,6 +220,7 @@ router.post("/lesson-plans", requireTeacher, async (req, res) => {
         .insert(lessonPlansTable)
         .values({
           teacherId,
+          clientRequestId: body.clientRequestId ?? null,
           title: body.title,
           language: body.language,
           gradeLevel: body.gradeLevel ?? null,
@@ -227,7 +229,27 @@ router.post("/lesson-plans", requireTeacher, async (req, res) => {
           sections: body.sections,
           settings: body.settings,
         })
+        .onConflictDoNothing({
+          target: [lessonPlansTable.teacherId, lessonPlansTable.clientRequestId],
+        })
         .returning();
+      if (!inserted) {
+        if (!body.clientRequestId) {
+          throw new Error("Lesson-plan insert conflict without a client request id");
+        }
+        const [existing] = await tx
+          .select()
+          .from(lessonPlansTable)
+          .where(and(
+            eq(lessonPlansTable.teacherId, teacherId),
+            eq(lessonPlansTable.clientRequestId, body.clientRequestId),
+          ))
+          .limit(1);
+        if (!existing) {
+          throw new Error("Idempotent lesson-plan replay could not find its original row");
+        }
+        return { row: existing, runAfterCommit: () => undefined };
+      }
       const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
         teacherId,
         actionKey: "lesson_plan.generate",

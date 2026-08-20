@@ -222,6 +222,7 @@ async function runSchemaMigrations() {
       CREATE TABLE IF NOT EXISTS worksheets (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id),
+        client_request_id TEXT,
         title TEXT NOT NULL,
         language TEXT NOT NULL DEFAULT 'ar',
         grade_level TEXT,
@@ -235,12 +236,18 @@ async function runSchemaMigrations() {
     `);
     await db.execute(sql`
       ALTER TABLE worksheets
-        ADD COLUMN IF NOT EXISTS linked_assignment_id INTEGER
+        ADD COLUMN IF NOT EXISTS linked_assignment_id INTEGER,
+        ADD COLUMN IF NOT EXISTS client_request_id TEXT
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS worksheets_teacher_client_request_uidx
+        ON worksheets(teacher_id, client_request_id)
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS lesson_plans (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id),
+        client_request_id TEXT,
         title TEXT NOT NULL,
         language TEXT NOT NULL DEFAULT 'ar',
         grade_level TEXT,
@@ -252,6 +259,14 @@ async function runSchemaMigrations() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE lesson_plans
+        ADD COLUMN IF NOT EXISTS client_request_id TEXT
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS lesson_plans_teacher_client_request_uidx
+        ON lesson_plans(teacher_id, client_request_id)
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS islamic_events (
@@ -399,6 +414,33 @@ async function runSchemaMigrations() {
       UPDATE platform_settings
       SET social_links = '[{"id":"instagram","url":"https://www.instagram.com/hasaadxapp","enabled":true,"order":1},{"id":"twitter","url":"","enabled":false,"order":2},{"id":"facebook","url":"","enabled":false,"order":3},{"id":"tiktok","url":"","enabled":false,"order":4},{"id":"youtube","url":"","enabled":false,"order":5},{"id":"snapchat","url":"","enabled":false,"order":6},{"id":"threads","url":"","enabled":false,"order":7},{"id":"linkedin","url":"","enabled":false,"order":8},{"id":"whatsapp","url":"","enabled":false,"order":9}]'::jsonb
       WHERE jsonb_array_length(social_links) = 0
+    `);
+    // ── Mind maps — teacher-owned saved mind maps ────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS mind_maps (
+        id          SERIAL PRIMARY KEY,
+        teacher_id  INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        client_request_id TEXT,
+        title       TEXT NOT NULL,
+        topic       TEXT NOT NULL,
+        language    TEXT NOT NULL DEFAULT 'ar',
+        depth       TEXT NOT NULL DEFAULT 'standard',
+        map         JSONB NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS mind_maps_teacher_idx
+        ON mind_maps(teacher_id, updated_at DESC)
+    `);
+    await db.execute(sql`
+      ALTER TABLE mind_maps
+        ADD COLUMN IF NOT EXISTS client_request_id TEXT
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS mind_maps_teacher_client_request_uidx
+        ON mind_maps(teacher_id, client_request_id)
     `);
     logger.info("Schema migrations applied");
   } catch (err) {
@@ -888,6 +930,7 @@ async function runSchemaMigrations() {
       CREATE TABLE IF NOT EXISTS whiteboard_sessions (
         id                  SERIAL PRIMARY KEY,
         teacher_id          INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        client_request_id   TEXT,
         student_account_id  INTEGER,
         question            TEXT NOT NULL,
         image_url           TEXT,
@@ -899,6 +942,14 @@ async function runSchemaMigrations() {
         language            TEXT NOT NULL DEFAULT 'ar',
         created_at          TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE whiteboard_sessions
+        ADD COLUMN IF NOT EXISTS client_request_id TEXT
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS whiteboard_sessions_teacher_client_request_uidx
+        ON whiteboard_sessions(teacher_id, client_request_id)
     `);
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS whiteboard_sessions_teacher_idx

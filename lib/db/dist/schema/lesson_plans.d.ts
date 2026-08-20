@@ -36,6 +36,23 @@ export declare const lessonPlansTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        clientRequestId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "client_request_id";
+            tableName: "lesson_plans";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         title: import("drizzle-orm/pg-core").PgColumn<{
             name: "title";
             tableName: "lesson_plans";

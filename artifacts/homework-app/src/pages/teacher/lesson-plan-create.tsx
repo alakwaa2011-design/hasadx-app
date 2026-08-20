@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { createClientRequestId } from "@/lib/client-request-id";
 import { toast } from "sonner";
 import { LessonPlanPrintView, type PlanData } from "@/pages/teacher/lesson-plan-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -157,6 +158,18 @@ interface PlanRow {
   ownerName?: string | null;
   ownerIsAdmin?: boolean;
 }
+
+interface PlanSavePayload {
+  title: string;
+  language: "ar" | "en";
+  subject: string | null;
+  gradeLevel: string | null;
+  durationMinutes: number;
+  sections: Sections;
+  settings: Settings;
+}
+
+type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
 
 const blankSections = (): Sections => ({
   objectives: [],
@@ -309,6 +322,7 @@ export default function LessonPlanCreate() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
+  const [clientRequestId] = useState(createClientRequestId);
 
   const _lpPrefs = useMemo(() => loadLpPrefs(), []);
   const _isEditMode = useMemo(() => {
@@ -405,11 +419,42 @@ export default function LessonPlanCreate() {
   const [loadingSaved, setLoadingSaved] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
+  const [autoSaveError, setAutoSaveError] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const editingIdRef = useRef<number | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const saveInFlightRef = useRef(false);
+  const saveBlockedRef = useRef(false);
+  const contentOperationInFlightRef = useRef(false);
+  const retryPlanPayloadRef = useRef<PlanSavePayload | null>(null);
   
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPicker, setShowPicker] = useState<{ sectionIdx: number } | null>(null);
+
+  const latestPlanRef = useRef({
+    title,
+    contentLang,
+    subject,
+    gradeLevel,
+    durationMinutes,
+    sections,
+    settings,
+  });
+  useEffect(() => {
+    latestPlanRef.current = {
+      title,
+      contentLang,
+      subject,
+      gradeLevel,
+      durationMinutes,
+      sections,
+      settings,
+    };
+  }, [title, contentLang, subject, gradeLevel, durationMinutes, sections, settings]);
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
 
   const editLoadDirtyRef = useRef(false);
   useEffect(() => {
@@ -532,11 +577,110 @@ export default function LessonPlanCreate() {
      balance (header chip + credits page) after each attempt settles. */
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
+  async function persistPlanPayload(
+    payload: PlanSavePayload,
+    automatic: boolean,
+    retrying = false,
+  ): Promise<number | null> {
+    if (saveInFlightRef.current) return null;
+    if (saveBlockedRef.current && !retrying) {
+      toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
+      return null;
+    }
+    saveInFlightRef.current = true;
+    if (automatic) {
+      setAutoSaveStatus("saving");
+      setAutoSaveError("");
+    } else {
+      setSaving(true);
+    }
+
+    try {
+      const currentId = editingIdRef.current;
+      const url = currentId
+        ? `${API_BASE}/api/lesson-plans/${currentId}`
+        : `${API_BASE}/api/lesson-plans`;
+      const method = currentId ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, clientRequestId }),
+      });
+      const responseData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = responseData?.message || t.saveError;
+        saveBlockedRef.current = true;
+        retryPlanPayloadRef.current = payload;
+        setAutoSaveStatus("error");
+        setAutoSaveError(message);
+        if (!automatic) toast.error(message);
+        return null;
+      }
+
+      const row = Array.isArray(responseData) ? responseData[0] : responseData;
+      const savedId = Number(row?.id ?? currentId);
+      if (!Number.isFinite(savedId) || savedId <= 0) {
+        throw new Error(ar ? "لم يُرجع الخادم معرّف الحفظ" : "The server did not return a saved id");
+      }
+
+      editingIdRef.current = savedId;
+      setEditingId(savedId);
+      saveBlockedRef.current = false;
+      retryPlanPayloadRef.current = null;
+      if (retrying) {
+        const restored = {
+          title: payload.title,
+          contentLang: payload.language,
+          subject: payload.subject ?? "",
+          gradeLevel: payload.gradeLevel ?? "",
+          durationMinutes: payload.durationMinutes ?? 45,
+          sections: payload.sections,
+          settings: payload.settings,
+        };
+        setTitle(restored.title);
+        setContentLang(restored.contentLang);
+        setSubject(restored.subject);
+        setGradeLevel(restored.gradeLevel);
+        setDurationMinutes(restored.durationMinutes);
+        setSections(restored.sections);
+        setSettings(restored.settings);
+        latestPlanRef.current = restored;
+      }
+      setAutoSaveStatus("saved");
+      setAutoSaveError("");
+      if (!automatic) toast.success(t.saved);
+      return savedId;
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : t.saveError;
+      saveBlockedRef.current = true;
+      retryPlanPayloadRef.current = payload;
+      setAutoSaveStatus("error");
+      setAutoSaveError(message);
+      if (!automatic) toast.error(message);
+      return null;
+    } finally {
+      saveInFlightRef.current = false;
+      if (!automatic) setSaving(false);
+    }
+  }
+
+  function retryAutoSave() {
+    const payload = retryPlanPayloadRef.current;
+    if (!payload) return;
+    void persistPlanPayload(payload, true, true);
+  }
+
   async function handleGenerate() {
+    if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
+      toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
+      return;
+    }
     if (!aiTopic.trim()) {
       toast.error(t.topicRequired);
       return;
     }
+    contentOperationInFlightRef.current = true;
     setGenerating(true);
     try {
       const r = await fetch(`${API_BASE}/api/lesson-plans/ai/generate`, {
@@ -559,22 +703,46 @@ export default function LessonPlanCreate() {
         return;
       }
       if (data?.sections) {
-        setSections(data.sections);
+        const current = latestPlanRef.current;
+        const nextSections = { ...blankSections(), ...data.sections };
+        const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 200);
+        setSections(nextSections);
+        if (!current.title.trim()) setTitle(nextTitle);
+        latestPlanRef.current = {
+          ...current,
+          title: nextTitle,
+          sections: nextSections,
+        };
         toast.success(ar ? "تم توليد الخطة" : "Plan generated");
+        await persistPlanPayload({
+          title: nextTitle,
+          language: current.contentLang,
+          subject: current.subject.trim() || null,
+          gradeLevel: current.gradeLevel.trim() || null,
+          durationMinutes: current.durationMinutes,
+          sections: cleanSections(nextSections),
+          settings: current.settings,
+        }, true);
       }
     } catch {
       toast.error(t.aiError);
     } finally {
+      contentOperationInFlightRef.current = false;
       setGenerating(false);
       refreshCreditsBalance();
     }
   }
 
   async function extractFromFiles() {
+    if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
+      toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
+      return;
+    }
     if (pickedFiles.length === 0) {
       toast.error(ar ? "اختر ملفًا واحدًا على الأقل" : "Pick at least one file");
       return;
     }
+    contentOperationInFlightRef.current = true;
     setExtracting(true);
     try {
       const fd = new FormData();
@@ -598,18 +766,34 @@ export default function LessonPlanCreate() {
         return;
       }
       if (data?.sections) {
-        setSections(data.sections);
-        if (!title.trim()) {
-          const baseName = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
-          setTitle(baseName);
-        }
+        const current = latestPlanRef.current;
+        const nextSections = { ...blankSections(), ...data.sections };
+        const fallbackTitle = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
+        const nextTitle = current.title.trim() || fallbackTitle;
+        setSections(nextSections);
+        if (!current.title.trim()) setTitle(nextTitle);
+        latestPlanRef.current = {
+          ...current,
+          title: nextTitle,
+          sections: nextSections,
+        };
         toast.success(ar ? `تم توليد الخطة من ${pickedFiles.length} ملف` : `Plan generated from ${pickedFiles.length} file(s)`);
         setPickedFiles([]);
         if (fileInputRef.current) fileInputRef.current.value = "";
+        await persistPlanPayload({
+          title: nextTitle,
+          language: current.contentLang,
+          subject: current.subject.trim() || null,
+          gradeLevel: current.gradeLevel.trim() || null,
+          durationMinutes: current.durationMinutes,
+          sections: cleanSections(nextSections),
+          settings: current.settings,
+        }, true);
       }
     } catch {
       toast.error(t.aiError);
     } finally {
+      contentOperationInFlightRef.current = false;
       setExtracting(false);
       refreshCreditsBalance();
     }
@@ -620,40 +804,16 @@ export default function LessonPlanCreate() {
       toast.error(t.titleRequired);
       return;
     }
-    setSaving(true);
-    try {
-      const payload = {
-        title: title.trim(),
-        language: contentLang,
-        subject: subject.trim() || null,
-        gradeLevel: gradeLevel.trim() || null,
-        durationMinutes,
-        sections: cleanSections(sections),
-        settings,
-      };
-      const url = editingId
-        ? `${API_BASE}/api/lesson-plans/${editingId}`
-        : `${API_BASE}/api/lesson-plans`;
-      const method = editingId ? "PUT" : "POST";
-      const r = await fetch(url, {
-        method,
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        toast.error(data?.message || t.saveError);
-        return;
-      }
-      toast.success(t.saved);
-      const savedId = editingId ?? data.id;
-      setLocation(`/teacher/lesson-plans/${savedId}/print`);
-    } catch {
-      toast.error(t.saveError);
-    } finally {
-      setSaving(false);
-    }
+    const savedId = await persistPlanPayload({
+      title: title.trim(),
+      language: contentLang,
+      subject: subject.trim() || null,
+      gradeLevel: gradeLevel.trim() || null,
+      durationMinutes,
+      sections: cleanSections(sections),
+      settings,
+    }, false);
+    if (savedId) setLocation(`/teacher/lesson-plans/${savedId}/print`);
   }
 
   async function handleDelete(id: number) {
@@ -852,13 +1012,13 @@ export default function LessonPlanCreate() {
               )}
 
               <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-2">
-                <button onClick={handleGenerate} disabled={generating || extracting} className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 btn-bounce" data-testid="btn-generate">
+                <button onClick={handleGenerate} disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 btn-bounce" data-testid="btn-generate">
                   {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
                   {t.generate}
                 </button>
                 
                 {pickedFiles.length > 0 && (
-                  <button onClick={extractFromFiles} disabled={generating || extracting} className="flex-1 py-3.5 rounded-2xl bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 font-black text-sm flex items-center justify-center gap-2 shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 btn-bounce">
+                  <button onClick={extractFromFiles} disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="flex-1 py-3.5 rounded-2xl bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 font-black text-sm flex items-center justify-center gap-2 shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 btn-bounce">
                     {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                     {ar ? "استخراج من الملفات" : "Extract from files"}
                   </button>
@@ -1005,20 +1165,52 @@ export default function LessonPlanCreate() {
         
         {/* Bottom Sticky Action Bar */}
         <div className="fixed bottom-0 inset-x-0 z-40 bg-white/80 dark:bg-[#111A16]/80 backdrop-blur-xl border-t border-emerald-100 dark:border-emerald-900/30 p-4">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-            <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors shadow-sm" data-testid="btn-print-settings">
-              <SettingsIcon className="w-5 h-5"/>
-              <span className="hidden sm:inline">{t.settingsHead}</span>
-            </button>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setPreviewing(true)} className="px-5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-black text-sm transition-colors shadow-sm flex items-center gap-2" data-testid="btn-preview">
-                 <Eye className="w-5 h-5"/>
-                 <span className="hidden sm:inline">{t.preview}</span>
+          <div className="max-w-4xl mx-auto flex flex-col gap-2">
+            {autoSaveStatus !== "idle" && (
+              <div
+                data-testid="status-lesson-plan-autosave"
+                className={`self-center flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold ${
+                  autoSaveStatus === "error"
+                    ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300"
+                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                }`}
+              >
+                {autoSaveStatus === "saving" && <Loader2 className="w-4 h-4 animate-spin" />}
+                {autoSaveStatus === "saved" && <CheckCircle2 className="w-4 h-4" />}
+                {autoSaveStatus === "error" && <X className="w-4 h-4" />}
+                <span>
+                  {autoSaveStatus === "saving" && (ar ? "جارٍ حفظ التوليد تلقائياً…" : "Saving generated plan…")}
+                  {autoSaveStatus === "saved" && (ar ? "تم حفظ التوليد تلقائياً" : "Generated plan saved")}
+                  {autoSaveStatus === "error" && (autoSaveError || t.saveError)}
+                </span>
+                {autoSaveStatus === "error" && (
+                  <button
+                    type="button"
+                    onClick={retryAutoSave}
+                    data-testid="button-retry-lesson-plan-autosave"
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2 py-1 text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-[#15201B] dark:text-red-300"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    {ar ? "إعادة المحاولة" : "Retry"}
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <button onClick={() => setShowSettingsModal(true)} disabled={autoSaveStatus === "saving" || autoSaveStatus === "error"} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors shadow-sm disabled:opacity-50" data-testid="btn-print-settings">
+                <SettingsIcon className="w-5 h-5"/>
+                <span className="hidden sm:inline">{t.settingsHead}</span>
               </button>
-              <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all disabled:opacity-50 btn-bounce" data-testid="btn-save">
-                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                 {t.save}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setPreviewing(true)} disabled={autoSaveStatus === "saving" || autoSaveStatus === "error"} className="px-5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-black text-sm transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50" data-testid="btn-preview">
+                   <Eye className="w-5 h-5"/>
+                   <span className="hidden sm:inline">{t.preview}</span>
+                </button>
+                <button onClick={handleSave} disabled={saving || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="px-8 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all disabled:opacity-50 btn-bounce" data-testid="btn-save">
+                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                   {t.save}
+                </button>
+              </div>
             </div>
           </div>
         </div>

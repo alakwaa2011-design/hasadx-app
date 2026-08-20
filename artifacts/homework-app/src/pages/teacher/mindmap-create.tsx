@@ -10,9 +10,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { createClientRequestId } from "@/lib/client-request-id";
 
 const BRAND_GREEN = "#225739";
-const API_BASE = "";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 /* ── Colour palette for branches — works on light background ────────── */
 const PALETTE = [
@@ -32,8 +33,8 @@ const BG_LIGHT2 = "#F0F5F1";
 const GRID_DOT  = "#CBD5E1";
 
 /* ── Types ───────────────────────────────────────────────────────────── */
-interface MindMapBranch { label: string; icon: string; color: string; children: string[] }
-interface MindMap { center: string; branches: MindMapBranch[] }
+export interface MindMapBranch { label: string; icon: string; color: string; children: string[] }
+export interface MindMap { center: string; branches: MindMapBranch[] }
 
 /* ── Layout constants (balanced left/right tree — no overlap possible) ── */
 const H_GAP1 = 130;   // centre edge → branch pill
@@ -345,6 +346,51 @@ export default function MindMapCreate() {
      (header chip + credits page) after each attempt settles. */
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [clientRequestId] = useState(createClientRequestId);
+  const savedIdRef = useRef<number | null>(null);
+  const lastGenRef = useRef<{ topic: string; lang: string; depth: string; map: MindMap } | null>(null);
+  const generationInFlightRef = useRef(false);
+  const saveBlockedRef = useRef(false);
+
+  const saveMap = useCallback(async (t: string, l: string, d: string, m: MindMap): Promise<boolean> => {
+    setSaveStatus("saving");
+    try {
+      const payload = {
+        title: m.center || t,
+        topic: t,
+        language: l,
+        depth: d,
+        map: m,
+        clientRequestId,
+      };
+      const currentId = savedIdRef.current;
+      const res = await fetch(
+        currentId ? `${API_BASE}/api/mindmaps/${currentId}` : `${API_BASE}/api/mindmaps`,
+        {
+        method: currentId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+        },
+      );
+      if (!res.ok) throw new Error("Save failed");
+      const row = await res.json();
+      const nextId = Number(row?.id ?? currentId);
+      if (!Number.isInteger(nextId) || nextId <= 0) {
+        throw new Error("Saved mind map id is missing");
+      }
+      savedIdRef.current = nextId;
+      saveBlockedRef.current = false;
+      setSaveStatus("saved");
+      return true;
+    } catch {
+      saveBlockedRef.current = true;
+      setSaveStatus("error");
+      return false;
+    }
+  }, [clientRequestId]);
+
   /* ── Generate ─────────────────────────────────────────────────────── */
   const generate = useCallback(async (overrideTopic?: string) => {
     const t = (overrideTopic ?? topic).trim();
@@ -353,7 +399,14 @@ export default function MindMapCreate() {
       textareaRef.current?.focus();
       return;
     }
+    if (generationInFlightRef.current) return;
+    if (saveBlockedRef.current) {
+      toast.error(isAr ? "أعد محاولة حفظ الخريطة الحالية أولاً" : "Retry saving the current map first");
+      return;
+    }
+    generationInFlightRef.current = true;
     setLoading(true);
+    setSaveStatus("idle");
     try {
       const r = await fetch(`${API_BASE}/api/ai/generate-mindmap`, {
         method: "POST",
@@ -367,13 +420,16 @@ export default function MindMapCreate() {
         return;
       }
       setMap(data as MindMap);
+      lastGenRef.current = { topic: t, lang, depth, map: data as MindMap };
+      await saveMap(t, lang, depth, data as MindMap);
     } catch {
       toast.error(isAr ? "خطأ في الشبكة، يرجى المحاولة مجدداً" : "Network error, please try again");
     } finally {
+      generationInFlightRef.current = false;
       setLoading(false);
       refreshCreditsBalance();
     }
-  }, [topic, lang, depth, isAr, refreshCreditsBalance]);
+  }, [topic, lang, depth, isAr, refreshCreditsBalance, saveMap]);
 
   const handleExample = (ex: string) => { setTopic(ex); generate(ex); };
 
@@ -517,13 +573,23 @@ export default function MindMapCreate() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setLang(l => l === "ar" ? "en" : "ar")}
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800/60 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
-        >
-          <Globe className="w-4 h-4" />
-          <span className="mt-0.5">{lang === "ar" ? "English" : "عربي"}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLocation("/teacher/mindmaps")}
+            data-testid="btn-view-library"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800/60 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+          >
+            <Layers className="w-4 h-4" />
+            <span className="hidden sm:inline mt-0.5">{isAr ? "مكتبتي" : "Library"}</span>
+          </button>
+          <button
+            onClick={() => setLang(l => l === "ar" ? "en" : "ar")}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800/60 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            <span className="mt-0.5">{lang === "ar" ? "English" : "عربي"}</span>
+          </button>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
@@ -580,7 +646,7 @@ export default function MindMapCreate() {
 
                 <button
                   type="submit"
-                  disabled={loading || !topic.trim()}
+                  disabled={loading || saveStatus === "error" || !topic.trim()}
                   data-testid="btn-generate"
                   className="w-full sm:w-auto h-12 px-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shrink-0"
                 >
@@ -637,6 +703,46 @@ export default function MindMapCreate() {
               className="w-full"
             >
               <div className="bg-white dark:bg-[#15201B] rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 p-2 sm:p-4">
+                <div className="flex items-center justify-between mb-4 px-2" data-testid="save-status-container">
+                  {saveStatus === 'saving' && (
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-bold" data-testid="status-saving">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{isAr ? "جاري الحفظ..." : "Saving..."}</span>
+                    </div>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-bold" data-testid="status-saved">
+                      <CheckCheck className="w-5 h-5" />
+                      <span>{isAr ? "تم الحفظ تلقائياً" : "Saved automatically"}</span>
+                    </div>
+                  )}
+                  {saveStatus === 'error' && (
+                    <div className="flex items-center gap-2 text-red-500 text-sm font-bold" data-testid="status-error">
+                      <span>{isAr ? "تعذّر حفظ الخريطة" : "Failed to save map"}</span>
+                      <button
+                        type="button"
+                        data-testid="btn-retry-save"
+                        onClick={() => {
+                          if (lastGenRef.current) {
+                            void saveMap(lastGenRef.current.topic, lastGenRef.current.lang, lastGenRef.current.depth, lastGenRef.current.map);
+                          }
+                        }}
+                        className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                      >
+                        {isAr ? "إعادة المحاولة" : "Retry"}
+                      </button>
+                    </div>
+                  )}
+                  {saveStatus === 'idle' && <div />}
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/teacher/mindmaps")}
+                    className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+                  >
+                    <span>{isAr ? "عرض كل الخرائط" : "View all maps"}</span>
+                    <ArrowLeft className={`w-4 h-4 ${isAr ? "" : "rotate-180"}`} />
+                  </button>
+                </div>
                 <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-[#F8FAFC]">
                   <MindMapSVG map={map} isAr={isAr} />
                 </div>

@@ -270,6 +270,7 @@ router.post("/whiteboard/generate", requireTeacher, checkCredits("whiteboard"), 
 
 // ── POST /api/whiteboard/lessons ──────────────────────────────────────────────
 const saveLessonBody = z.object({
+  clientRequestId: z.string().uuid().optional(),
   topic: z.string().min(1).max(500),
   plan: z.record(z.any()),
   subject: z.string().max(100).optional(),
@@ -284,10 +285,12 @@ router.post("/whiteboard/lessons", requireTeacher, async (req, res) => {
     const teacherId = req.session.teacherId as number;
     const result = await db.execute(sql`
       INSERT INTO whiteboard_sessions
-        (teacher_id, question, plan, subject, grade_level, level, language)
+        (teacher_id, client_request_id, question, plan, subject, grade_level, level, language)
       VALUES
-        (${teacherId}, ${body.topic}, ${JSON.stringify(body.plan)}::jsonb,
+        (${teacherId}, ${body.clientRequestId ?? null}, ${body.topic}, ${JSON.stringify(body.plan)}::jsonb,
          ${body.subject ?? null}, ${body.gradeLevel ?? null}, ${body.depth ?? null}, ${body.language})
+      ON CONFLICT (teacher_id, client_request_id)
+      DO UPDATE SET client_request_id = EXCLUDED.client_request_id
       RETURNING id, created_at
     `);
     const row = (result.rows ?? result as any)[0];
@@ -391,7 +394,11 @@ router.put("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
     const result = await db.execute(sql`
       UPDATE whiteboard_sessions
       SET plan     = ${JSON.stringify(body.plan)}::jsonb,
-          question = ${body.topic}
+          question = ${body.topic},
+          subject = ${body.subject ?? null},
+          grade_level = ${body.gradeLevel ?? null},
+          level = ${body.depth ?? null},
+          language = ${body.language}
       WHERE id = ${id} AND teacher_id = ${teacherId}
       RETURNING id
     `);
