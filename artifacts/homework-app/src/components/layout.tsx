@@ -550,12 +550,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     >
                       {lang === "ar" ? "كيف تعمل؟" : "How it works?"}
                     </a>
-                    <a
-                      href="/#join"
-                      className="px-3 py-1.5 text-sm font-semibold text-primary hover:text-primary/80 rounded-md transition-colors"
-                    >
-                      {lang === "ar" ? "لديك رمز؟" : "Have a code?"}
-                    </a>
                     <SocialLinksBar
                       links={theme.socialLinks.filter(link => link.id !== "instagram")}
                       variant="icon"
