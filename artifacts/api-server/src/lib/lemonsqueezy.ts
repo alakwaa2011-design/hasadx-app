@@ -65,6 +65,8 @@ export async function createCheckout(opts: {
     data: {
       type: "checkouts",
       attributes: {
+        // يتجاوز لغة المتصفح وإعداد المتجر لكل Checkout يُنشأ من حصاد.
+        checkout_options: { locale: "en" },
         checkout_data: {
           // بيانات المعلم تملأ الحقول مسبقًا (قابلة للتعديل في صفحة الدفع)
           ...(opts.email ? { email: opts.email } : {}),

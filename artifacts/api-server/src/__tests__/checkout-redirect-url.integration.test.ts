@@ -11,10 +11,6 @@
  */
 import { describe, it, expect, beforeAll, afterAll, vi, type MockInstance } from "vitest";
 
-const RUN_INTEGRATION =
-  !!process.env.TEST_DATABASE_URL &&
-  process.env.DATABASE_URL === process.env.TEST_DATABASE_URL;
-
 // ─── اختبار frontendOrigin() — لا يحتاج قاعدة بيانات ───────────────────────
 
 describe("frontendOrigin() — يجرّد أي path زائد من FRONTEND_URL", () => {
@@ -72,7 +68,7 @@ function restore(key: string, val: string | undefined) {
 /** صورة payload الـ POST الذي يُرسله Checkout لـ LS API */
 let capturedBody: any = null;
 
-describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests (no real LS call)", () => {
+describe("Checkout redirect_url — payload unit tests (no real LS call)", () => {
   let fetchSpy: MockInstance | null = null;
 
   beforeAll(() => {
@@ -107,7 +103,7 @@ describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests 
     restore("FRONTEND_URL", envBackup.frontendUrl);
   });
 
-  it("credits/checkout — payload يتضمن redirect_url وcountry=KW وemail وname وcustom.user_id", async () => {
+  it("credits/checkout — payload يتضمن locale=en وredirect_url وcountry=KW وemail وname وcustom.user_id", async () => {
     const { createCheckout } = await import("../lib/lemonsqueezy");
     capturedBody = null;
     const { checkoutUrl } = await createCheckout({
@@ -120,8 +116,11 @@ describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests 
 
     const cd = capturedBody?.data?.attributes?.checkout_data;
     const po = capturedBody?.data?.attributes?.product_options;
+    const co = capturedBody?.data?.attributes?.checkout_options;
 
     expect(checkoutUrl).toBe("https://pay.lemonsqueezy.com/test/fake-checkout-url");
+    // locale في checkout_options يتجاوز لغة المتصفح وإعداد المتجر.
+    expect(co?.locale).toBe("en");
     // redirect_url في product_options
     expect(po?.redirect_url).toBe("https://example.hasad.app/teacher/credits?purchase=success");
     // بيانات المعلم في checkout_data
@@ -149,7 +148,9 @@ describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests 
 
     const cdBasic = capturedBody?.data?.attributes?.checkout_data;
     const poBasic = capturedBody?.data?.attributes?.product_options;
+    const coBasic = capturedBody?.data?.attributes?.checkout_options;
 
+    expect(coBasic?.locale).toBe("en");
     expect(poBasic?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
     expect(cdBasic?.billing_address?.country).toBe("KW");
     expect(cdBasic?.custom?.user_id).toBe("42");
@@ -171,7 +172,9 @@ describe.skipIf(!RUN_INTEGRATION)("Checkout redirect_url — payload unit tests 
 
     const cdPro = capturedBody?.data?.attributes?.checkout_data;
     const poPro = capturedBody?.data?.attributes?.product_options;
+    const coPro = capturedBody?.data?.attributes?.checkout_options;
 
+    expect(coPro?.locale).toBe("en");
     expect(poPro?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
     expect(capturedBody?.data?.relationships?.variant?.data?.id).toBe("2017697");
     expect(cdPro?.custom?.user_id).toBe("55");
