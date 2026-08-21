@@ -1076,6 +1076,7 @@ export default function GamePlay() {
   const [shareCopied, setShareCopied] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [independentExitAction, setIndependentExitAction] = useState<"back" | "home" | null>(null);
+  const [isEndingIndependentGame, setIsEndingIndependentGame] = useState(false);
   const [gameTtsEnabled, setGameTtsEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [giftRoundTimeLeft, setGiftRoundTimeLeft] = useState(0);
@@ -1150,6 +1151,14 @@ export default function GamePlay() {
   const hackWrongAnswerRef = useRef(false);
   const hackModeRef = useRef(false);
   const hackStepRef = useRef<string | null>(null);
+  // A modal can appear while an answer response or the next-question event is
+  // still in flight. Keep this outside React state so input is blocked
+  // immediately, before the underlying answer buttons can receive another tap.
+  const independentExitPendingRef = useRef(false);
+  // iOS/Android can dispatch a trailing synthetic click after a control tap.
+  // Ignore answer input for that short hand-off so a copy/pause tap cannot
+  // become an answer on the question underneath.
+  const independentControlInputUntilRef = useRef(0);
 
   /* ── Solo challenge mode ──────────────────────────────────────────
      When the player came in via /solo/:slug, sessionStorage carries
@@ -1240,12 +1249,29 @@ export default function GamePlay() {
     });
   }, [isPaused, pin]);
 
+  const openIndependentExitDialog = useCallback((destination: "back" | "home") => {
+    independentExitPendingRef.current = true;
+    setIndependentExitAction(destination);
+  }, []);
+
+  const cancelIndependentExit = useCallback(() => {
+    // Keep the dialog mounted through pointer-up/click. Removing it during
+    // pointer-down exposes an answer button beneath the same physical tap on
+    // mobile browsers.
+    window.setTimeout(() => {
+      independentExitPendingRef.current = false;
+      setIndependentExitAction(null);
+    }, 350);
+  }, []);
+
   const leaveIndependentGame = useCallback((destination: "back" | "home") => {
+    if (isEndingIndependentGame) return;
+    setIsEndingIndependentGame(true);
     const navigateAway = () => {
       cleanupAudio();
       disconnectSocket();
       clearIndependentControlToken(pin);
-      setIndependentExitAction(null);
+      independentExitPendingRef.current = false;
       if (destination === "back") {
         setLocation(independentReturnTo, { replace: true });
       } else {
@@ -1269,7 +1295,7 @@ export default function GamePlay() {
       },
     );
     window.setTimeout(finish, 800);
-  }, [independentExitTo, independentReturnTo, pin, setLocation]);
+  }, [independentExitTo, independentReturnTo, isEndingIndependentGame, pin, setLocation]);
 
   const stopSpeech = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -1441,6 +1467,7 @@ export default function GamePlay() {
     });
 
     socket.on("game:question", (q: any) => {
+      if (independentExitPendingRef.current) return;
       // Solo challenge: track total/correct for the simplified results card.
       if (isSoloRef.current && typeof q?.total === "number") {
         soloTotalQuestionsRef.current = q.total;
@@ -1700,6 +1727,7 @@ export default function GamePlay() {
     });
 
     socket.on("game:finished", (data: any) => {
+      if (independentExitPendingRef.current) return;
       stopSpeech();
       if (timerRef.current) clearInterval(timerRef.current);
       setLeaderboard(data.leaderboard);
@@ -2183,7 +2211,12 @@ export default function GamePlay() {
 
   const submitAnswer = useCallback(
     (answer: string) => {
-      if (selectedAnswerRef.current) return;
+      if (
+        selectedAnswerRef.current ||
+        isPaused ||
+        independentExitPendingRef.current ||
+        Date.now() < independentControlInputUntilRef.current
+      ) return;
       selectedAnswerRef.current = answer;
       setSelectedAnswer(answer);
       const socket = getSocket();
@@ -2209,7 +2242,7 @@ export default function GamePlay() {
         }
       }, 500);
     },
-    [pin, answerResult],
+    [pin, answerResult, isPaused],
   );
 
   const NOTIF_SOUND_OPTIONS: {
@@ -2236,14 +2269,41 @@ export default function GamePlay() {
       const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
       const controlClass =
         "w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 border";
+      const runControlOnPointerDown = (
+        event: React.PointerEvent<HTMLButtonElement>,
+        action: () => void,
+      ) => {
+        event.preventDefault();
+        event.stopPropagation();
+        independentControlInputUntilRef.current = Date.now() + 1200;
+        action();
+      };
+      const runControlOnClick = (
+        event: React.MouseEvent<HTMLButtonElement>,
+        action: () => void,
+      ) => {
+        event.preventDefault();
+        event.stopPropagation();
+        // A pointer interaction was already handled at pointer-down. A click
+        // with detail 0 comes from keyboard activation, so still support it.
+        if (event.detail === 0) {
+          independentControlInputUntilRef.current = Date.now() + 1200;
+          action();
+        }
+      };
 
       return (
         <>
-          <div className="fixed top-3 inset-x-3 z-[70] flex justify-center pointer-events-none" dir={dir}>
-            <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-white/15 bg-[#07150F]/80 p-1.5 shadow-2xl backdrop-blur-xl">
+          <div className="fixed top-3 inset-x-3 z-[100] flex justify-center" dir={dir}>
+            <div className="flex items-center gap-1.5 rounded-2xl border border-white/15 bg-[#07150F]/80 p-1.5 shadow-2xl backdrop-blur-xl">
               <button
                 type="button"
-                onClick={() => setIndependentExitAction("back")}
+                onPointerDown={(event) =>
+                  runControlOnPointerDown(event, () => openIndependentExitDialog("back"))
+                }
+                onClick={(event) =>
+                  runControlOnClick(event, () => openIndependentExitDialog("back"))
+                }
                 className={`${controlClass} border-white/10 bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white`}
                 title={lang === "ar" ? "رجوع" : "Back"}
                 aria-label={lang === "ar" ? "رجوع" : "Back"}
@@ -2253,7 +2313,10 @@ export default function GamePlay() {
               </button>
               <button
                 type="button"
-                onClick={copyIndependentLink}
+                onPointerDown={(event) =>
+                  runControlOnPointerDown(event, copyIndependentLink)
+                }
+                onClick={(event) => runControlOnClick(event, copyIndependentLink)}
                 className={`${controlClass} border-amber-300/25 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20`}
                 title={lang === "ar" ? "نسخ رابط اللعبة" : "Copy game link"}
                 aria-label={lang === "ar" ? "نسخ رابط اللعبة" : "Copy game link"}
@@ -2263,7 +2326,10 @@ export default function GamePlay() {
               </button>
               <button
                 type="button"
-                onClick={toggleIndependentPause}
+                onPointerDown={(event) =>
+                  runControlOnPointerDown(event, toggleIndependentPause)
+                }
+                onClick={(event) => runControlOnClick(event, toggleIndependentPause)}
                 className={`${controlClass} ${
                   isPaused
                     ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/25"
@@ -2281,7 +2347,10 @@ export default function GamePlay() {
               </button>
               <button
                 type="button"
-                onClick={handleToggleMute}
+                onPointerDown={(event) =>
+                  runControlOnPointerDown(event, handleToggleMute)
+                }
+                onClick={(event) => runControlOnClick(event, handleToggleMute)}
                 className={`${controlClass} border-white/10 bg-white/[0.07] text-white/80 hover:bg-white/[0.14] hover:text-white`}
                 title={soundMuted
                   ? (lang === "ar" ? "تشغيل الصوت" : "Unmute")
@@ -2295,7 +2364,12 @@ export default function GamePlay() {
               </button>
               <button
                 type="button"
-                onClick={() => setIndependentExitAction("home")}
+                onPointerDown={(event) =>
+                  runControlOnPointerDown(event, () => openIndependentExitDialog("home"))
+                }
+                onClick={(event) =>
+                  runControlOnClick(event, () => openIndependentExitDialog("home"))
+                }
                 className={`${controlClass} border-red-300/25 bg-red-500/10 text-red-300 hover:bg-red-500/20`}
                 title={lang === "ar" ? "الخروج النهائي" : "Exit game"}
                 aria-label={lang === "ar" ? "الخروج النهائي" : "Exit game"}
@@ -2312,7 +2386,7 @@ export default function GamePlay() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[60] flex items-center justify-center bg-[#07150F]/75 p-5 backdrop-blur-md"
+                className="fixed inset-0 z-[90] flex items-center justify-center bg-[#07150F]/75 p-5 backdrop-blur-md"
                 dir={dir}
                 data-testid="overlay-independent-paused"
               >
@@ -2330,7 +2404,10 @@ export default function GamePlay() {
                   </p>
                   <button
                     type="button"
-                    onClick={toggleIndependentPause}
+                    onPointerDown={(event) =>
+                      runControlOnPointerDown(event, toggleIndependentPause)
+                    }
+                    onClick={(event) => runControlOnClick(event, toggleIndependentPause)}
                     className="mt-6 w-full rounded-2xl bg-emerald-500 px-5 py-3.5 font-black text-white shadow-lg hover:bg-emerald-400 active:scale-[0.98] transition-all"
                     data-testid="button-resume-independent-overlay"
                   >
@@ -2347,8 +2424,9 @@ export default function GamePlay() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-5 backdrop-blur-md"
+                className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-5 backdrop-blur-md"
                 dir={dir}
+                onPointerDown={(event) => event.stopPropagation()}
               >
                 <motion.div
                   initial={{ scale: 0.92, y: 16 }}
@@ -2367,15 +2445,24 @@ export default function GamePlay() {
                   <div className="mt-6 grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setIndependentExitAction(null)}
+                      onPointerDown={(event) =>
+                        runControlOnPointerDown(event, cancelIndependentExit)
+                      }
+                      onClick={(event) => runControlOnClick(event, cancelIndependentExit)}
                       className="rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3 font-bold text-white/80 hover:bg-white/10"
                     >
                       {lang === "ar" ? "إلغاء" : "Cancel"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => leaveIndependentGame(independentExitAction)}
-                      className="rounded-2xl bg-red-500 px-4 py-3 font-black text-white hover:bg-red-400"
+                      onPointerDown={(event) =>
+                        runControlOnPointerDown(event, () => leaveIndependentGame(independentExitAction))
+                      }
+                      onClick={(event) =>
+                        runControlOnClick(event, () => leaveIndependentGame(independentExitAction))
+                      }
+                      disabled={isEndingIndependentGame}
+                      className="rounded-2xl bg-red-500 px-4 py-3 font-black text-white hover:bg-red-400 disabled:cursor-wait disabled:opacity-60"
                       data-testid="button-confirm-independent-exit"
                     >
                       {lang === "ar" ? "تأكيد" : "Confirm"}
