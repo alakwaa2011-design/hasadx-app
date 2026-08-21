@@ -530,6 +530,13 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       {lang === "ar" ? "الألعاب" : "Games"}
                     </a>
                     <a
+                      href="/#tools"
+                      className="px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {lang === "ar" ? "أدوات المعلم" : "Teacher tools"}
+                    </a>
+                    <a
                       href="/public/games"
                       className="px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground rounded-md transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
@@ -543,6 +550,12 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     >
                       {lang === "ar" ? "كيف تعمل؟" : "How it works?"}
                     </a>
+                    <a
+                      href="/#join"
+                      className="px-3 py-1.5 text-sm font-semibold text-primary hover:text-primary/80 rounded-md transition-colors"
+                    >
+                      {lang === "ar" ? "لديك رمز؟" : "Have a code?"}
+                    </a>
                     <SocialLinksBar
                       links={theme.socialLinks.filter(link => link.id !== "instagram")}
                       variant="icon"
@@ -551,10 +564,17 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     <div className="flex gap-2 flex-row-reverse">
                       <Link
                         href="/login"
-                        className="inline-flex items-center gap-1.5 px-5 py-2 text-base font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
                       >
                         <LogIn className="w-4 h-4" />
                         {lang === "ar" ? "تسجيل الدخول" : "Login"}
+                      </Link>
+                      <Link
+                        href="/register?role=teacher"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
+                      >
+                        <GraduationCap className="w-4 h-4" />
+                        {lang === "ar" ? "ابدأ مجاناً" : "Start free"}
                       </Link>
                     </div>
                   </div>
@@ -641,13 +661,22 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       }
                     }} />}
                     {!isLoading && !user && !student && (
-                      <Link
-                        href="/login"
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
-                      >
-                        <LogIn className="w-3.5 h-3.5" />
-                        {lang === "ar" ? "تسجيل الدخول" : "Login"}
-                      </Link>
+                      <>
+                        <a
+                          href="/#join"
+                          className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold text-[hsl(145,45%,27%)] rounded-lg border border-[hsl(145,35%,80%)] bg-white hover:bg-muted transition-colors"
+                        >
+                          <Gamepad2 className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "رمز" : "Code"}
+                        </a>
+                        <Link
+                          href="/register?role=teacher"
+                          className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
+                        >
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "ابدأ" : "Start"}
+                        </Link>
+                      </>
                     )}
                     <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
