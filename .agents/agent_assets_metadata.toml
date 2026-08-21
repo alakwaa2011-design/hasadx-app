@@ -782,3 +782,17 @@ uri = "file://hasad-platform-knowledge.md"
 type = "text"
 title = "وثيقة منصة حصاد — Knowledge Base"
 description = "وثيقة شاملة عن منصة حصاد جاهزة للنسخ ومشاركتها مع أي ذكاء اصطناعي"
+
+[[outputs]]
+id = "sdBHY9QlMqqvAIg16IMXC"
+uri = "file://screenshots/homepage-mobile-390x844-final.jpg"
+type = "image"
+title = "Homepage review — mobile 390×844"
+description = "Final mobile view showing the compact single-column hero and code-join card."
+
+[[outputs]]
+id = "MHIkFhGJVmNJr1Z_qqUnd"
+uri = "file://screenshots/homepage-desktop-1440x900-final.jpg"
+type = "image"
+title = "Homepage review — desktop 1440×900"
+description = "Final desktop view showing the two-column hero, product preview, and horizontal join bar."

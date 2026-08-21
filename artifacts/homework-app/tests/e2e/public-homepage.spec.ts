@@ -26,6 +26,9 @@ test.describe("Public homepage", () => {
     await expect(
       page.getByText("لديك رمز لعبة أو مسابقة؟", { exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "أو ابدأ تجربة كضيف", exact: true }),
+    ).toHaveAttribute("href", "/guest/create");
   });
 
   test("renders the redesigned landing in English LTR", async ({ page }) => {
@@ -45,6 +48,9 @@ test.describe("Public homepage", () => {
     await expect(
       page.getByText("Have a game or quiz code?", { exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Or start as a guest", exact: true }),
+    ).toHaveAttribute("href", "/guest/create");
 
     const pinInputs = page.locator('#join input[inputmode="numeric"]');
     await expect(pinInputs).toHaveCount(6);

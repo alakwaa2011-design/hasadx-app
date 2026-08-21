@@ -1641,13 +1641,20 @@ export default function Home() {
   const gameCards = allGameCards.filter((g) => g.visible);
 
   const heroQuizChoices: { badge: string; label: string; correct?: boolean }[] =
-    [
-      { badge: "أ", label: "التكاثف", correct: true },
-      { badge: "ب", label: "التبخر" },
-      { badge: "ج", label: "الهطول" },
-      { badge: "د", label: "الجريان السطحي" },
-    ];
-  const heroFeatures = [
+    lang === "ar"
+      ? [
+          { badge: "أ", label: "التكاثف", correct: true },
+          { badge: "ب", label: "التبخر" },
+          { badge: "ج", label: "الهطول" },
+          { badge: "د", label: "الجريان السطحي" },
+        ]
+      : [
+          { badge: "A", label: "Condensation", correct: true },
+          { badge: "B", label: "Evaporation" },
+          { badge: "C", label: "Precipitation" },
+          { badge: "D", label: "Runoff" },
+        ];
+  const heroFeatures = lang === "ar" ? [
     {
       title: "مسابقات مباشرة",
       desc: "سؤال، وقت، ترتيب، وتفاعل لحظي داخل الصف.",
@@ -1663,6 +1670,25 @@ export default function Home() {
     {
       title: "كود  من 6 أرقام",
       desc: "واضح وسريع ليستخدمه الطالب دائمًا دون تعقيد.",
+      Icon: Users,
+      tone: "bg-[hsl(220,75%,95%)] text-[hsl(220,55%,42%)]",
+    },
+  ] : [
+    {
+      title: "Live quizzes",
+      desc: "Questions, timing, rankings, and instant participation.",
+      Icon: Trophy,
+      tone: "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]",
+    },
+    {
+      title: "Assignments and tests",
+      desc: "Create faster and follow progress from one place.",
+      Icon: ClipboardList,
+      tone: "bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)]",
+    },
+    {
+      title: "Six-digit join code",
+      desc: "A simple, familiar way for students to enter.",
       Icon: Users,
       tone: "bg-[hsl(220,75%,95%)] text-[hsl(220,55%,42%)]",
     },
@@ -1875,12 +1901,13 @@ export default function Home() {
               transition={{ duration: 0.55, ease: "easeOut" }}
               style={{
                 position: "relative",
-                maxWidth: "1200px",
-                margin: "clamp(16px,3vh,28px) auto 12px",
-                textAlign: "center",
+                maxWidth: "1240px",
+                margin: "clamp(12px,2vh,24px) auto 12px",
                 padding: "16px 20px 0",
               }}
+              className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12"
             >
+              <div className="text-center lg:text-start">
               {/* Badge */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.92 }}
@@ -1925,7 +1952,7 @@ export default function Home() {
                 style={{
                   fontSize: "clamp(28px,5.5vw,64px)",
                   lineHeight: 1.25,
-                  margin: "0 auto clamp(12px,2vh,18px)",
+                  margin: "0 0 clamp(12px,2vh,18px)",
                   color: "#103d2a",
                   fontWeight: 900,
                   maxWidth: "820px",
@@ -1992,7 +2019,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, ease: "easeOut", delay: 0.42 }}
-                className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row"
+                className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start"
               >
                 <Link
                   href="/register?role=teacher"
@@ -2014,17 +2041,89 @@ export default function Home() {
                   />
                 </a>
               </motion.div>
+              </div>
+
+              <div className="relative mx-auto hidden w-full max-w-[560px] lg:block">
+                <div className="overflow-hidden rounded-[28px] border border-[hsl(145,30%,84%)] bg-white shadow-[0_28px_64px_rgba(43,83,59,0.16)]">
+                  <div className="flex items-center justify-between border-b border-[hsl(145,30%,90%)] bg-[#f7faf7] px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#1b6b3f]">
+                      <Presentation className="h-4 w-4" />
+                      {lang === "ar" ? "عرض تفاعلي" : "Interactive presentation"}
+                    </div>
+                    <span className="rounded-lg bg-[#0b4b35] px-2.5 py-1 text-[10px] font-bold text-white">
+                      {lang === "ar" ? "مشاركة" : "Share"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[74px_1fr] bg-[#f5f7f4]">
+                    <div className="space-y-2 border-e border-[hsl(145,30%,88%)] p-2.5">
+                      {[1, 2, 3, 4].map((slide) => (
+                        <div
+                          key={slide}
+                          className={`flex h-11 items-center justify-center rounded-lg text-[10px] font-black ${
+                            slide === 1
+                              ? "bg-[#0b4b35] text-white"
+                              : "border border-[hsl(145,30%,84%)] bg-white text-[#6b8877]"
+                          }`}
+                        >
+                          {slide}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-4">
+                      <div className="rounded-2xl bg-[#0b4b35] px-5 py-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+                        <p className="text-[10px] font-bold text-[#e6c585]">
+                          {lang === "ar" ? "علوم · الصف الرابع" : "Science · Grade 4"}
+                        </p>
+                        <h2 className="mt-2 text-2xl font-black text-white">
+                          {lang === "ar" ? "دورة الماء" : "The water cycle"}
+                        </h2>
+                        <p className="mt-2 text-xs text-white/70">
+                          {lang === "ar"
+                            ? "التبخر · التكاثف · الهطول"
+                            : "Evaporation · Condensation · Precipitation"}
+                        </p>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {heroQuizChoices.map((choice) => (
+                          <div
+                            key={choice.badge}
+                            className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-xs font-bold ${
+                              choice.correct
+                                ? "border-[#63ba82] bg-[#ebf8ed] text-[#0b4b35]"
+                                : "border-[hsl(145,25%,86%)] bg-white text-[#486655]"
+                            }`}
+                          >
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] shadow-sm">
+                              {choice.badge}
+                            </span>
+                            {choice.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-px border-t border-[hsl(145,30%,88%)] bg-[hsl(145,30%,88%)]">
+                    {heroFeatures.map((feature) => (
+                      <div key={feature.title} className="bg-white px-3 py-3 text-center">
+                        <feature.Icon className={`mx-auto h-4 w-4 ${feature.tone.split(" ")[1]}`} />
+                        <p className="mt-1 text-[10px] font-black text-[#1b4b35]">{feature.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </motion.section>
 
             {/* ===== JOIN CARD ===== */}
             <motion.section
               id="join"
+              className="scroll-mt-24"
               initial={{ opacity: 0, y: 32 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.55, ease: "easeOut", delay: 0.08 }}
               style={{
-                maxWidth: "640px",
+                maxWidth: "1200px",
                 margin: "0 auto clamp(16px,2.5vh,24px)",
                 padding: "0 clamp(12px,3vw,20px)",
               }}
@@ -2034,7 +2133,7 @@ export default function Home() {
                   background: "#fff",
                   borderRadius: "clamp(22px,4vw,36px)",
                   padding:
-                    "clamp(26px,4.5vw,44px) clamp(18px,4vw,36px) clamp(22px,3.5vw,32px)",
+                    "clamp(18px,3vw,30px) clamp(18px,4vw,36px) clamp(18px,2.5vw,26px)",
                   boxShadow: "0 18px 50px rgba(22,73,47,0.12)",
                   border: "1px solid rgba(27,107,63,0.08)",
                   position: "relative",
@@ -2082,7 +2181,8 @@ export default function Home() {
                 </button>
 
                 {joinTab === "pin" ? (
-                  <>
+                  <div className="lg:grid lg:grid-cols-[minmax(230px,0.7fr)_minmax(420px,1.3fr)] lg:items-center lg:gap-8">
+                    <div className="lg:pe-6">
                     <h2
                       style={{
                         textAlign: "center",
@@ -2102,7 +2202,7 @@ export default function Home() {
                         textAlign: "center",
                         fontSize: "clamp(12px,1.5vw,15px)",
                         color: "#1b6b3f",
-                        margin: "8px 0 clamp(20px,3vw,28px)",
+                        margin: "8px 0 clamp(12px,2vw,18px)",
                         fontWeight: 600,
                       }}
                     >
@@ -2111,13 +2211,15 @@ export default function Home() {
                         : "Enter the code and join the challenge now."}
                     </p>
 
+                    </div>
+                    <div>
                     {/* 6 individual digit boxes — bigger, more prominent */}
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "center",
                         gap: "clamp(6px,1.6vw,14px)",
-                        marginBottom: "clamp(18px,3vw,26px)",
+                        marginBottom: "clamp(12px,2vw,18px)",
                         direction: "ltr",
                       }}
                     >
@@ -2241,7 +2343,7 @@ export default function Home() {
                           : "0 4px 12px rgba(184,144,15,0.22)",
                         transition: "opacity 0.2s ease, box-shadow 0.2s ease",
                         direction: dir,
-                        marginBottom: "clamp(12px,2.5vw,20px)",
+                        marginBottom: "clamp(8px,1.5vw,12px)",
                       }}
                     >
                       {lang === "ar" ? "← انضمام الآن" : "Join now →"}
@@ -2259,7 +2361,8 @@ export default function Home() {
                         ? "ليس لديك كود؟ استكشف الفعاليات أو تواصل مع المعلم"
                         : "No code? Explore activities or contact your teacher."}
                     </p>
-                  </>
+                    </div>
+                  </div>
                 ) : (
                   /* QR Scanner View */
                   <div
@@ -2530,7 +2633,7 @@ export default function Home() {
         {/* -------------- AI INTERACTIVE PRESENTATIONS PROMO -------------- */}
         <section
           dir={dir}
-          className="border-t border-border/60 bg-[#fbfcf8] py-16 sm:py-20"
+          className="border-t border-border/60 bg-[#fbfcf8] py-12 sm:py-16"
         >
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -2544,7 +2647,7 @@ export default function Home() {
               >
                 {/* Label — matches other sections */}
                 <p className="text-sm font-black text-[hsl(145,55%,32%)] mb-2">
-                  {lang === "ar" ? "١. الفكرة والإنشاء (Idea & Create)" : "1. Idea & Create"}
+                  {lang === "ar" ? "١. أنشئ" : "1. Create"}
                 </p>
 
                 <h2 className="font-display-display text-[1.95rem] sm:text-[2.45rem] font-black text-foreground leading-tight mb-4">
@@ -2766,7 +2869,7 @@ export default function Home() {
           id="present-section"
           dir={dir}
         >
-          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
               <div className="relative">
                 <div className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[#e6c585] via-[#d4ad5f] to-[#c89a47] p-5 shadow-[0_30px_70px_rgba(150,108,40,0.22)]">
@@ -2848,7 +2951,7 @@ export default function Home() {
 
               <div className="space-y-4">
                 <p className="text-sm font-black text-[hsl(38,75%,38%)]">
-                  {lang === "ar" ? "٢. العرض (Present)" : "2. Present"}
+                  {lang === "ar" ? "٢. اعرض" : "2. Present"}
                 </p>
                 <h2 className="font-display-display text-[1.95rem] font-black text-foreground sm:text-[2.45rem]">
                   {lang === "ar"
@@ -2886,12 +2989,12 @@ export default function Home() {
                   ].map((b) => (
                     <div
                       key={b.t}
-                      className="rounded-[22px] border border-border/70 bg-white p-4 shadow-sm"
+                      className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white p-3 shadow-sm"
                     >
-                      <div className={`inline-flex rounded-xl p-2 ${b.c}`}>
+                      <div className={`inline-flex shrink-0 rounded-xl p-2 ${b.c}`}>
                         <b.Icon className="h-4 w-4" />
                       </div>
-                      <p className="mt-3 text-sm font-black text-foreground">
+                      <p className="text-sm font-black text-foreground">
                         {b.t}
                       </p>
                     </div>
@@ -2911,7 +3014,7 @@ export default function Home() {
               "linear-gradient(135deg,#1E4D35 0%,#265E42 55%,#2d7050 100%)",
           }}
         >
-          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -2921,21 +3024,8 @@ export default function Home() {
             >
               {/* Copy + CTA */}
               <div className="text-white">
-                <div
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-4"
-                  style={{
-                    background: "rgba(232,168,14,0.18)",
-                    color: "#E8A80E",
-                    border: "1px solid rgba(232,168,14,0.45)",
-                  }}
-                >
-                  <Swords className="w-3.5 h-3.5" />
-                  {lang === "ar"
-                    ? "للحفلات والملتقيات · ليست للواجبات"
-                    : "For events and gatherings · not for assignments"}
-                </div>
                 <h2 className="font-display-display text-[2rem] sm:text-[2.6rem] font-black leading-tight">
-                  <span style={{ color: "#E8A80E" }}>{lang === "ar" ? "٣. التفاعل (Interact)" : "3. Interact"}</span><br/><span style={{ color: "#E8A80E", fontSize: "0.7em" }}>{lang === "ar" ? "تحدي حصاد" : "Hasad Challenge"}</span>
+                  <span style={{ color: "#E8A80E" }}>{lang === "ar" ? "٣. تفاعل" : "3. Interact"}</span><br/><span style={{ color: "#E8A80E", fontSize: "0.7em" }}>{lang === "ar" ? "تحدي حصاد" : "Hasad Challenge"}</span>
                   <span className="block text-white/95 mt-1">
                     {lang === "ar" ? "مسابقة جماعية بين فريقين أمام الجمهور" : "A live team competition for every audience"}
                   </span>
@@ -3149,25 +3239,26 @@ export default function Home() {
           className="border-t border-border/60 bg-[#fbfcf8]"
           id="tools"
           aria-labelledby="tools-heading"
+          style={{ scrollMarginTop: "6rem" }}
         >
-          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <div className="max-w-2xl">
               <p className="text-sm font-black text-[hsl(145,55%,32%)]">
-                {lang === "ar" ? "خدمات أساسية في حصاد" : "Core Hasad tools"}
+                {lang === "ar" ? "أدوات المعلم" : "Teacher tools"}
               </p>
               <h2 className="mt-2 font-display-display text-[1.95rem] font-black text-foreground sm:text-[2.45rem]">
                 {lang === "ar"
-                  ? "كل ما يحتاجه المعلم في منصة واحدة"
-                  : "Everything a teacher needs in one platform"}
+                  ? "أدوات عملية لكل درس"
+                  : "Practical tools for every lesson"}
               </h2>
               <p className="mt-3 text-[1rem] leading-8 text-muted-foreground">
                 {lang === "ar"
-                  ? "مسابقات، اختبارات، أنشطة، فيديو تفاعلي، وسبورة مباشرة — كلها داخل تجربة واحدة."
-                  : "Quizzes, tests, activities, interactive video, and a live whiteboard — all in one connected experience."}
+                  ? "أنشئ نشاطاً، شاركه، وتابع أثره من تجربة واحدة واضحة."
+                  : "Create an activity, share it, and follow its impact from one clear experience."}
               </p>
             </div>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {tools.map((tool, i) => {
                 const tones = [
                   "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]",
@@ -3179,17 +3270,17 @@ export default function Home() {
                 return (
                   <div
                     key={tool.title}
-                    className="soft-card rounded-[26px] p-6 transition hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(43,83,59,0.10)]"
+                      className="soft-card rounded-2xl p-4 transition hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(43,83,59,0.10)]"
                   >
                     <div
-                      className={`inline-flex rounded-2xl p-3 ${tones[i % tones.length]}`}
+                      className={`inline-flex rounded-xl p-2.5 ${tones[i % tones.length]}`}
                     >
                       <tool.Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="mt-4 text-[1.08rem] font-black text-foreground">
+                    <h3 className="mt-3 text-[0.95rem] font-black text-foreground">
                       {tool.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                    <p className="mt-1.5 hidden text-sm leading-6 text-muted-foreground sm:block">
                       {tool.desc}
                     </p>
                   </div>
@@ -3213,8 +3304,8 @@ export default function Home() {
                 padding: "0 clamp(12px,3vw,20px)",
               }}
             >
-              <div
-                className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5"
+          <div
+            className="grid grid-cols-3 gap-2.5 sm:gap-5"
                 style={{
                   background: "rgba(255,255,255,0.65)",
                   border: "1px solid rgba(27,107,63,0.10)",
@@ -3244,13 +3335,6 @@ export default function Home() {
                     tintBg: "rgba(215,165,29,0.12)",
                     title: lang === "ar" ? "تفاعل وتحفيز" : "Engagement and motivation",
                     desc: lang === "ar" ? "تجارب تفاعلية تعزز التعلم وتحفز المشاركة" : "Interactive experiences that encourage learning and participation",
-                  },
-                  {
-                    Icon: Puzzle,
-                    tint: "#2563eb",
-                    tintBg: "rgba(37,99,235,0.10)",
-                    title: lang === "ar" ? "كل شيء في مكان واحد" : "Everything in one place",
-                    desc: lang === "ar" ? "أدوات متكاملة لإدارة التعليم والفعاليات بسهولة" : "Connected tools for teaching and event management",
                   },
                 ].map((f, idx) => (
                   <motion.div
@@ -3294,6 +3378,7 @@ export default function Home() {
                       {f.title}
                     </h4>
                     <p
+                      className="hidden sm:block"
                       style={{
                         margin: 0,
                         fontSize: "clamp(10px,1.2vw,13px)",
@@ -3311,7 +3396,7 @@ export default function Home() {
 
         </section>
 
-        <section className="bg-white py-8">
+        <section className="bg-white py-6">
           {/* ===== WHO IS THIS FOR ===== */}
             <motion.section
               initial={{ opacity: 0, y: 28 }}
@@ -3328,7 +3413,7 @@ export default function Home() {
               {/* Role cards — Teacher / [Organizer] / Student.
                   When organizer is disabled: 2-column grid (teacher + student).
                   When enabled: 3-column grid including organizer. */}
-              <div className={`grid gap-2.5 sm:gap-5 items-stretch ${platformSettings.organizerEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
+              <div className={`hidden grid gap-2.5 sm:gap-5 items-stretch ${platformSettings.organizerEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
                 {(() => {
                   const allRoleCards = [
                     {
@@ -3485,13 +3570,22 @@ export default function Home() {
                 })()}
               </div>
             </motion.section>
-
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 text-sm font-bold">
+              {platformSettings.organizerEnabled && (
+                <Link href="/register?role=organizer" className="text-[#0b4b35] underline-offset-4 hover:underline">
+                  {lang === "ar" ? "تنظم فعالية؟ ابدأ مسابقة" : "Organizing an event? Start a competition"}
+                </Link>
+              )}
+              <Link href="/student/login" className="text-[#0b4b35] underline-offset-4 hover:underline">
+                {lang === "ar" ? "طالب؟ سجّل الدخول" : "Student? Sign in"}
+              </Link>
+            </div>
         </section>
         {/* -------------- READY QUIZZES (preserved) -------------- */}
         <ReadyQuizzesSection lang={lang} dir={dir} />
 
         {/* -------------- FLOW + LIVE STATS -------------- */}
-        <section id="how-it-works" className="border-t border-border/60">
+        <section id="how-it-works" className="hidden border-t border-border/60">
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
               <div className="soft-card rounded-[30px] p-6 sm:p-8">
@@ -3597,13 +3691,13 @@ export default function Home() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm font-black text-[hsl(145,55%,32%)]">
-                  ألعاب تعليمية
+                  {lang === "ar" ? "ألعاب تعليمية" : "Learning games"}
                 </p>
                 <h2 className="mt-2 font-display-display text-[1.95rem] font-black text-foreground sm:text-[2.45rem]">
-                  العب وتعلّم — مجاناً للجميع
+                  {lang === "ar" ? "العب وتعلّم — مجاناً للجميع" : "Play and learn — free for everyone"}
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  ألعاب جاهزة للاستخدام فورًا بدون تسجيل.
+                  {lang === "ar" ? "ألعاب جاهزة للاستخدام فورًا بدون تسجيل." : "Ready-to-play games with no sign-in required."}
                 </p>
               </div>
               <Link
@@ -3611,12 +3705,12 @@ export default function Home() {
                 className="inline-flex items-center gap-2 self-start rounded-xl border border-[hsl(145,30%,82%)] bg-white px-4 py-2.5 text-xs font-black text-[hsl(145,45%,24%)] hover:bg-[hsl(145,30%,96%)] sm:self-auto"
               >
                 <Globe className="h-3.5 w-3.5" />
-                كل الألعاب
+                {lang === "ar" ? "كل الألعاب" : "All games"}
               </Link>
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
-              {gameCards.slice(0, 8).map((game, i) => (
+              {gameCards.slice(0, 4).map((game, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 12 }}
@@ -3648,7 +3742,7 @@ export default function Home() {
                       </p>
                     )}
                     <div className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[hsl(145,55%,32%)] transition group-hover:gap-2">
-                      العب الآن
+                      {lang === "ar" ? "العب الآن" : "Play now"}
                       <ChevronIcon className="h-3.5 w-3.5" />
                     </div>
                   </button>
@@ -3665,31 +3759,40 @@ export default function Home() {
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-2xl">
                   <p className="text-sm font-black text-[#a6e8c0]">
-                    الخطوة التالية
+                    {lang === "ar" ? "الخطوة التالية" : "Your next step"}
                   </p>
                   <h3 className="mt-3 font-display-display text-[1.95rem] font-black leading-[1.35] sm:text-[2.6rem]">
-                    ابدأ تجربة تفاعلية تجعل طلابك ينتظرون الحصة القادمة
+                    {lang === "ar"
+                      ? "ابدأ أول تجربة تعليمية تفاعلية لك اليوم"
+                      : "Start your first interactive learning experience today"}
                   </h3>
                   <p className="mt-4 text-[0.98rem] leading-8 text-white/78">
-                    أنشئ مسابقة أو واجبًا أو فيديو تفاعليًا، وشارك الطلاب بكود
-                    من 6 أرقام، ثم تابع الأثر من أول سؤال إلى آخر نتيجة.
+                    {lang === "ar"
+                      ? "أنشئ المحتوى، اعرضه، وشارك المتعلمين من مكان واحد."
+                      : "Create the content, present it, and engage learners from one place."}
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <Link
-                    href="/guest/create"
+                    href="/register?role=teacher"
                     className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-7 text-base font-black text-[#1f4732] shadow-[0_18px_38px_rgba(0,0,0,0.22)] transition hover:bg-white/92"
                   >
                     <Zap className="h-5 w-5 fill-current" />
-                    ابدأ أول تجربة الآن
+                    {lang === "ar" ? "أنشئ حسابك مجاناً" : "Create your free account"}
                   </Link>
                   <Link
                     href="/public/games"
                     className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-white/35 bg-transparent px-7 text-base font-black text-white transition hover:bg-white/10"
                   >
                     <Trophy className="h-5 w-5" />
-                    شاهد المسابقات الجاهزة
+                    {lang === "ar" ? "شاهد المسابقات الجاهزة" : "Browse ready quizzes"}
+                  </Link>
+                  <Link
+                    href="/guest/create"
+                    className="inline-flex w-full items-center justify-center gap-2 px-5 py-1 text-sm font-bold text-white/80 underline decoration-white/35 underline-offset-4 transition hover:text-white"
+                  >
+                    {lang === "ar" ? "أو ابدأ تجربة كضيف" : "Or start as a guest"}
                   </Link>
                 </div>
               </div>
