@@ -1863,7 +1863,7 @@ export default function Home() {
                 dur: 10,
                 delay: 0.6,
               },
-            ].map((d, i) => (
+            ].slice(0, 3).map((d, i) => (
               /* Perf fix: dropped the infinite y-axis animation. Eight
                  background icons re-painting at 60 fps were combining
                  with the header's backdrop-blur to choke mouse moves
@@ -1872,7 +1872,7 @@ export default function Home() {
               <motion.div
                 key={i}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.1 }}
+                animate={{ opacity: 0.055 }}
                 transition={{ duration: 1.2, delay: d.delay }}
                 style={{
                   position: "absolute",
@@ -1901,11 +1901,11 @@ export default function Home() {
               transition={{ duration: 0.55, ease: "easeOut" }}
               style={{
                 position: "relative",
-                maxWidth: "1240px",
-                margin: "clamp(12px,2vh,24px) auto 12px",
+                maxWidth: "1320px",
+                margin: "clamp(12px,2vh,24px) auto clamp(24px,2vw,32px)",
                 padding: "16px 20px 0",
               }}
-              className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12"
+              className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-10"
             >
               <div className="text-center lg:text-start">
               {/* Badge */}
@@ -2043,7 +2043,7 @@ export default function Home() {
               </motion.div>
               </div>
 
-              <div className="relative mx-auto hidden w-full max-w-[560px] lg:block">
+              <div className="relative mx-auto hidden w-full max-w-[650px] lg:block">
                 <div className="overflow-hidden rounded-[28px] border border-[hsl(145,30%,84%)] bg-white shadow-[0_28px_64px_rgba(43,83,59,0.16)]">
                   <div className="flex items-center justify-between border-b border-[hsl(145,30%,90%)] bg-[#f7faf7] px-4 py-3">
                     <div className="flex items-center gap-2 text-xs font-black text-[#1b6b3f]">
@@ -2133,7 +2133,7 @@ export default function Home() {
                   background: "#fff",
                   borderRadius: "clamp(22px,4vw,36px)",
                   padding:
-                    "clamp(18px,3vw,30px) clamp(18px,4vw,36px) clamp(18px,2.5vw,26px)",
+                    "clamp(16px,2vw,24px) clamp(18px,4vw,36px) clamp(14px,1.8vw,20px)",
                   boxShadow: "0 18px 50px rgba(22,73,47,0.12)",
                   border: "1px solid rgba(27,107,63,0.08)",
                   position: "relative",
@@ -2202,7 +2202,7 @@ export default function Home() {
                         textAlign: "center",
                         fontSize: "clamp(12px,1.5vw,15px)",
                         color: "#1b6b3f",
-                        margin: "8px 0 clamp(12px,2vw,18px)",
+                        margin: "8px 0 clamp(10px,1.5vw,12px)",
                         fontWeight: 600,
                       }}
                     >
@@ -2219,7 +2219,7 @@ export default function Home() {
                         display: "flex",
                         justifyContent: "center",
                         gap: "clamp(6px,1.6vw,14px)",
-                        marginBottom: "clamp(12px,2vw,18px)",
+                        marginBottom: "clamp(10px,1.5vw,12px)",
                         direction: "ltr",
                       }}
                     >
@@ -2326,7 +2326,7 @@ export default function Home() {
                       onClick={handlePinJoin}
                       disabled={!pin.trim()}
                       style={{
-                        width: "100%",
+                        width: "min(100%, 510px)",
                         border: "none",
                         borderRadius: "clamp(14px,2.5vw,22px)",
                         padding: "clamp(13px,2.5vw,19px)",
@@ -2343,7 +2343,7 @@ export default function Home() {
                           : "0 4px 12px rgba(184,144,15,0.22)",
                         transition: "opacity 0.2s ease, box-shadow 0.2s ease",
                         direction: dir,
-                        marginBottom: "clamp(8px,1.5vw,12px)",
+                        margin: "0 auto clamp(6px,1vw,8px)",
                       }}
                     >
                       {lang === "ar" ? "← انضمام الآن" : "Join now →"}
@@ -2353,7 +2353,7 @@ export default function Home() {
                         textAlign: "center",
                         fontSize: "clamp(11px,1.3vw,13.5px)",
                         color: "#1b6b3f",
-                        margin: "clamp(8px,1.5vw,12px) 0 0",
+                        margin: "clamp(6px,1vw,8px) 0 0",
                         fontWeight: 600,
                       }}
                     >

@@ -796,3 +796,10 @@ uri = "file://screenshots/homepage-desktop-1440x900-final.jpg"
 type = "image"
 title = "Homepage review — desktop 1440×900"
 description = "Final desktop view showing the two-column hero, product preview, and horizontal join bar."
+
+[[outputs]]
+id = "9hRLelf8w7O8zVWW7TxUu"
+uri = "file://screenshots/homepage-desktop-1440x900-hero-tuned.jpg"
+type = "image"
+title = "Hero tuned — desktop 1440×900"
+description = "Final desktop review showing the adjusted headline wrapping, larger product preview, quieter background ornaments, and balanced join bar."
