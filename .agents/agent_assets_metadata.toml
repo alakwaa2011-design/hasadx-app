@@ -831,3 +831,17 @@ uri = "file://screenshots/join-card-desktop-compact.jpg"
 type = "image"
 title = "Join card — compact desktop 1440×900"
 description = "Updated public homepage preview showing the compact horizontal join strip on desktop."
+
+[[outputs]]
+id = "ZmmQovqjQvlGim9P1oz2h"
+uri = "file://screenshots/join-card-pin-only-mobile.jpg"
+type = "image"
+title = "Join card — PIN only mobile 390×844"
+description = "Final mobile preview with the secondary text removed and balanced bottom spacing."
+
+[[outputs]]
+id = "yVQwH_ngN5zh4rdkYumKx"
+uri = "file://screenshots/join-card-pin-only-desktop.jpg"
+type = "image"
+title = "Join card — PIN only desktop 1440×900"
+description = "Final desktop preview with the compact horizontal join card and balanced spacing."

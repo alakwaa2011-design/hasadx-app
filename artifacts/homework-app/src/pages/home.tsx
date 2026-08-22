@@ -2158,7 +2158,7 @@ export default function Home() {
                   background: "#fff",
                   borderRadius: "clamp(22px,4vw,36px)",
                   padding:
-                    "clamp(12px,1.6vw,20px) clamp(16px,3.5vw,32px) clamp(10px,1.2vw,14px)",
+                    "clamp(12px,1.6vw,20px) clamp(16px,3.5vw,32px) clamp(12px,1.2vw,16px)",
                   boxShadow: "0 18px 50px rgba(22,73,47,0.12)",
                   border: "1px solid rgba(27,107,63,0.08)",
                   position: "relative",
@@ -2374,25 +2374,6 @@ export default function Home() {
                     >
                       {lang === "ar" ? "← انضمام الآن" : "Join now →"}
                     </button>
-                    <p
-                      style={{
-                        textAlign: "center",
-                        fontSize: "clamp(11px,1.3vw,13.5px)",
-                        color: "#1b6b3f",
-                        margin: "clamp(2px,0.5vw,4px) 0 0",
-                        fontWeight: 600,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      <Link
-                        href="/public/games"
-                        className="underline-offset-2 transition hover:text-[#16492f] hover:underline"
-                      >
-                        {lang === "ar"
-                          ? "ليس لديك كود؟ استكشف الفعاليات أو تواصل مع المعلم"
-                          : "No code? Explore activities or contact your teacher."}
-                      </Link>
-                    </p>
                     </div>
                   </div>
                 ) : (
