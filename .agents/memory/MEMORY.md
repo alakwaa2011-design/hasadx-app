@@ -41,3 +41,4 @@
 - [Nested page landmarks](nested-page-landmarks.md) — inspect the page-local content landmark for visual order when the layout shell also renders a main landmark.
 - [Library visibility flags](library-visibility-flags.md) — trusted list responses can omit moderation fields; normalize only at that response boundary, never by relaxing general access checks.
 - [AI credit denial UX coverage](ai-credit-denial-ux-coverage.md) — enumerate clients from server checkCredits routes; never infer the paid AI inventory from feature labels alone.
+- [Activity library responsive controls](activity-library-responsive-controls.md) — the marketplace renders shared filters; mobile controls must reuse its callbacks rather than recreate filtering or queries.

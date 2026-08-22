@@ -1,0 +1,176 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+
+vi.mock("wouter", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+}));
+
+vi.mock("@/lib/activity-cover", () => ({
+  ActivityCover: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  formatUseCount: (value: number | undefined) => String(value ?? 0),
+  resolveCoverKind: () => "assignment",
+  resolveSubjectTheme: () => "science",
+}));
+
+import {
+  ActivitiesLibraryMarketplace,
+  type ActivitiesLibraryMarketplaceProps,
+} from "./activities-library-marketplace";
+
+const assignment = {
+  id: 1,
+  title: "نشاط العلوم",
+  type: "mcq",
+  questionCount: 12,
+  teacherId: 2,
+  teacherName: "معلم",
+  subject: "علوم",
+  targetClass: "السادس",
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
+
+function makeProps(overrides: Partial<ActivitiesLibraryMarketplaceProps> = {}): ActivitiesLibraryMarketplaceProps {
+  return {
+    embedded: true,
+    lang: "ar",
+    dir: "rtl",
+    assignments: [assignment],
+    questions: [],
+    videoLessons: [],
+    filteredAssignments: [assignment],
+    filteredQuestions: [],
+    filteredVideos: [],
+    popularIds: new Set(),
+    newIds: new Set(),
+    currentTeacherId: 1,
+    isAdmin: false,
+    showHidden: false,
+    onShowHiddenChange: vi.fn(),
+    search: "",
+    onSearchChange: vi.fn(),
+    subjectFilter: "",
+    onSubjectFilterChange: vi.fn(),
+    gradeFilter: "",
+    onGradeFilterChange: vi.fn(),
+    sortBy: "newest",
+    onSortByChange: vi.fn(),
+    allSubjects: ["علوم"],
+    allGrades: ["السادس"],
+    activeTab: "assignments",
+    onActiveTabChange: vi.fn(),
+    onClearFilters: vi.fn(),
+    onPresentations: vi.fn(),
+    launchAsGame: vi.fn(),
+    importAssignment: vi.fn(),
+    copyLink: vi.fn(),
+    dismissAssignment: vi.fn(),
+    importQuestion: vi.fn(),
+    dismissQuestion: vi.fn(),
+    importVideo: vi.fn(),
+    launchingIds: new Set(),
+    importingIds: new Set(),
+    importedIds: new Set(),
+    importingQIds: new Set(),
+    importedQIds: new Set(),
+    importingVIds: new Set(),
+    importedVIds: new Set(),
+    dismissingIds: new Set(),
+    t: {
+      sharedContent: {
+        tabAssignments: "الواجبات",
+        tabQuestions: "الأسئلة",
+        searchPlaceholder: "بحث",
+        importAssignment: "استيراد",
+        copyLink: "نسخ الرابط",
+      },
+    },
+    ...overrides,
+  };
+}
+
+let container: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      totalActivities: 1,
+      contributingTeachers: 1,
+      totalUses: 2,
+      newThisWeek: 0,
+      assignmentUses: { 1: 2 },
+      videoUses: {},
+      presentationUses: 0,
+      questionUsesTracked: false,
+    }),
+  }));
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+function buttonWithText(root: ParentNode, text: string) {
+  return Array.from(root.querySelectorAll("button")).find(
+    button => button.textContent?.trim() === text,
+  ) as HTMLButtonElement;
+}
+
+describe("ActivitiesLibraryMarketplace mobile controls", () => {
+  it("يخفي عمود سطح المكتب ويعرض لوحة الفلاتر المرتبطة بحالات المكتبة نفسها", async () => {
+    const props = makeProps();
+    await act(async () => {
+      root.render(<ActivitiesLibraryMarketplace {...props} />);
+    });
+
+    expect(container.querySelector("aside")?.className).toContain("hidden");
+    expect(container.querySelector("aside")?.className).toContain("lg:flex");
+    expect(container.querySelector('input[aria-label="البحث في مكتبة الأنشطة"]')).not.toBeNull();
+    expect(container.querySelector('select[aria-label="الفرز"]')).not.toBeNull();
+
+    const search = container.querySelector('input[aria-label="البحث في مكتبة الأنشطة"]') as HTMLInputElement;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(search, "علوم");
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(props.onSearchChange).toHaveBeenCalledWith("علوم");
+
+    await act(async () => buttonWithText(container, "تصفية").click());
+    const sheet = document.querySelector('[role="dialog"]') as HTMLElement;
+    expect(sheet.textContent).toContain("تصفية الأنشطة");
+    expect(sheet.textContent).toContain("نوع النشاط");
+    expect(sheet.textContent).toContain("المادة الدراسية");
+    expect(sheet.textContent).toContain("المرحلة / الصف");
+
+    await act(async () => buttonWithText(sheet, "علوم").click());
+    expect(props.onSubjectFilterChange).toHaveBeenCalledWith("علوم");
+
+    const sort = container.querySelector('select[aria-label="الفرز"]') as HTMLSelectElement;
+    await act(async () => {
+      sort.value = "questions";
+      sort.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(props.onSortByChange).toHaveBeenCalledWith("questions");
+
+    await act(async () => buttonWithText(sheet, "فيديو").click());
+    expect(props.onActiveTabChange).toHaveBeenCalledWith("videos");
+
+    await act(async () => buttonWithText(sheet, "السادس").click());
+    expect(props.onGradeFilterChange).toHaveBeenCalledWith("السادس");
+
+    await act(async () => buttonWithText(sheet, "إعادة ضبط").click());
+    expect(props.onClearFilters).toHaveBeenCalledTimes(1);
+
+    await act(async () => buttonWithText(sheet, "عرض النتائج").click());
+    expect(document.body.textContent).not.toContain("تصفية الأنشطة");
+  });
+});

@@ -32,8 +32,18 @@ import {
   LayoutGrid,
   List,
   ChevronLeft,
+  SlidersHorizontal,
+  Check,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   ActivityCover,
   formatUseCount,
@@ -213,6 +223,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   const [statsError,    setStatsError]    = useState(false);
   const [openMenuId,    setOpenMenuId]    = useState<string | null>(null);
   const [viewMode,      setViewMode]      = useState<"grid" | "list">("grid");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -345,6 +356,21 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     { id: "presentation",ar: "عروض تفاعلية",     en: "Presentations",icon: <Presentation className="w-3.5 h-3.5"/> },
   ];
 
+  const applyTypeFilter = (id: TypeChip) => {
+    setTypeChip(id);
+    if (id === "video") onActiveTabChange("videos");
+    else if (id === "interactive") onActiveTabChange("questions");
+    else if (id === "presentation") onPresentations();
+    else onActiveTabChange("assignments");
+  };
+
+  const clearMobileFilters = () => {
+    onClearFilters();
+    setTypeChip("all");
+    setCategoryTab("all");
+  };
+
+  const activeFilterCount = [subjectFilter, gradeFilter, typeChip !== "all"].filter(Boolean).length;
   const hasFilters = !!(search || subjectFilter || gradeFilter || typeChip !== "all" || categoryTab !== "all");
 
   /* ──────────────────────────────────── render helpers ──────────────────────── */
@@ -486,7 +512,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   /* ──────────────────────────────────── sidebar ──────────────────────────────── */
   const sidebar = (
     <aside
-      className="shrink-0 border-s flex flex-col"
+      className="hidden shrink-0 border-s lg:flex lg:flex-col"
       style={{
         width: 260,
         background: C.sidebar,
@@ -535,13 +561,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             <button
               key={f.id}
               type="button"
-              onClick={() => {
-                setTypeChip(f.id);
-                if (f.id === "video")        onActiveTabChange("videos");
-                else if (f.id === "interactive") onActiveTabChange("questions");
-                else if (f.id === "presentation") onPresentations();
-                else onActiveTabChange("assignments");
-              }}
+              onClick={() => applyTypeFilter(f.id)}
               className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] transition-all"
               style={{
                 fontFamily: "inherit",
@@ -642,7 +662,204 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         {sidebar}
 
         {/* Main */}
-        <main style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "28px 32px" }}>
+        <main className="flex-1 min-w-0 overflow-y-auto px-4 py-5 pb-24 sm:px-6 lg:px-8 lg:py-7 lg:pb-8">
+          {/* Mobile-only library header and compact controls. The desktop
+              sidebar remains the source of the same controls above lg. */}
+          <div className="mb-5 lg:hidden">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm" style={{ background: C.primary }}>
+                <BookText className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-xl font-black leading-tight" style={{ color: C.text }}>
+                {isAr ? "مكتبة الأنشطة" : "Activities Library"}
+              </h1>
+            </div>
+
+            <div className="relative mt-4">
+              <Search className={cn("pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2", isAr ? "right-3.5" : "left-3.5")} style={{ color: C.muted }} />
+              <input
+                aria-label={isAr ? "البحث في مكتبة الأنشطة" : "Search activities library"}
+                value={search}
+                onChange={e => onSearchChange(e.target.value)}
+                placeholder={isAr ? "ابحث عن نشاط..." : "Search activities..."}
+                className={cn("min-h-12 w-full rounded-2xl border bg-white py-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15", isAr ? "pr-10 pl-10" : "pl-10 pr-10")}
+                style={{ borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
+              />
+              {search && (
+                <button type="button" aria-label={isAr ? "مسح البحث" : "Clear search"} onClick={() => onSearchChange("")} className={cn("absolute top-1/2 -translate-y-1/2 p-2", isAr ? "left-1.5" : "right-1.5")} style={{ color: C.muted }}>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFilterSheetOpen(true)}
+                className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border bg-white px-3 text-sm font-extrabold transition-colors active:scale-[0.98]"
+                style={{ borderColor: activeFilterCount > 0 ? C.primary : C.border, color: C.primary }}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span>{isAr ? "تصفية" : "Filters"}</span>
+                {activeFilterCount > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-black text-white" style={{ background: C.primary }}>
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              <label className="relative flex min-h-11 flex-1 items-center">
+                <span className="sr-only">{isAr ? "الفرز" : "Sort"}</span>
+                <select
+                  aria-label={isAr ? "الفرز" : "Sort"}
+                  value={sortBy}
+                  onChange={e => onSortByChange(e.target.value as "newest" | "questions")}
+                  className="min-h-11 w-full appearance-none rounded-2xl border bg-white px-3 text-center text-sm font-bold outline-none"
+                  style={{ borderColor: C.border, color: C.text, fontFamily: "inherit" }}
+                >
+                  <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
+                  <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+            <SheetContent
+              side="bottom"
+              dir={dir}
+              className="h-[min(86vh,680px)] max-h-[86vh] overflow-y-auto rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:hidden"
+              style={{ background: C.bg, color: C.text }}
+            >
+              <SheetHeader className="pe-8 text-start">
+                <SheetTitle style={{ color: C.text }}>{isAr ? "تصفية الأنشطة" : "Filter activities"}</SheetTitle>
+                <SheetDescription style={{ color: C.muted }}>
+                  {isAr ? "اختر ما تريد عرضه ثم اضغط عرض النتائج." : "Choose what to show, then apply the results."}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-6 py-5">
+                <section aria-labelledby="mobile-type-filter">
+                  <h2 id="mobile-type-filter" className="mb-3 text-xs font-black" style={{ color: C.muted }}>
+                    {isAr ? "نوع النشاط" : "Activity type"}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    {typeFilters.map(f => {
+                      const active = typeChip === f.id;
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => applyTypeFilter(f.id)}
+                          aria-pressed={active}
+                          className="flex min-h-11 items-center gap-2 rounded-xl border px-3 text-start text-xs font-bold transition-colors"
+                          style={{
+                            borderColor: active ? C.primary : C.border,
+                            background: active ? C.soft : C.card,
+                            color: active ? C.primary : C.muted,
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          <span style={{ color: active ? C.primary : C.muted }}>{f.icon}</span>
+                          <span className="min-w-0 flex-1 truncate">{isAr ? f.ar : f.en}</span>
+                          {active && <Check className="h-3.5 w-3.5 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section aria-labelledby="mobile-subject-filter">
+                  <h2 id="mobile-subject-filter" className="mb-3 text-xs font-black" style={{ color: C.muted }}>
+                    {isAr ? "المادة الدراسية" : "Subject"}
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {(isAr ? ["الكل", ...allSubjects] : ["All", ...allSubjects]).map((subject, index) => {
+                      const isAll = index === 0;
+                      const active = isAll ? !subjectFilter : subjectFilter === subject;
+                      return (
+                        <button
+                          key={`${subject}-${index}`}
+                          type="button"
+                          onClick={() => onSubjectFilterChange(isAll || active ? "" : subject)}
+                          aria-pressed={active}
+                          className="min-h-11 rounded-xl border px-3 text-xs font-bold transition-colors"
+                          style={{
+                            borderColor: active ? C.primary : C.border,
+                            background: active ? C.soft : C.card,
+                            color: active ? C.primary : C.muted,
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          {subject}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section aria-labelledby="mobile-grade-filter">
+                  <h2 id="mobile-grade-filter" className="mb-3 text-xs font-black" style={{ color: C.muted }}>
+                    {isAr ? "المرحلة / الصف" : "Grade"}
+                  </h2>
+                  <input
+                    aria-label={isAr ? "المرحلة أو الصف" : "Grade"}
+                    value={gradeFilter}
+                    onChange={e => onGradeFilterChange(e.target.value)}
+                    list="lib-grades-mobile"
+                    placeholder={isAr ? "اختر أو اكتب الصف..." : "Choose or type a grade..."}
+                    className="min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#225739]/15"
+                    style={{ borderColor: C.border, color: C.text, fontFamily: "inherit" }}
+                  />
+                  <datalist id="lib-grades-mobile">{allGrades.map(g => <option key={g} value={g} />)}</datalist>
+                  {allGrades.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {allGrades.map(grade => {
+                        const active = gradeFilter === grade;
+                        return (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => onGradeFilterChange(active ? "" : grade)}
+                            aria-pressed={active}
+                            className="min-h-11 rounded-xl border px-3 text-xs font-bold transition-colors"
+                            style={{
+                              borderColor: active ? C.primary : C.border,
+                              background: active ? C.soft : C.card,
+                              color: active ? C.primary : C.muted,
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            {active && <Check className="me-1 inline h-3 w-3" />}
+                            {grade}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 border-t pt-4">
+                <button
+                  type="button"
+                  onClick={clearMobileFilters}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border bg-white px-3 text-sm font-extrabold"
+                  style={{ borderColor: C.border, color: C.muted, fontFamily: "inherit" }}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {isAr ? "إعادة ضبط" : "Reset"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterSheetOpen(false)}
+                  className="min-h-12 rounded-2xl px-3 text-sm font-extrabold text-white shadow-sm"
+                  style={{ background: C.primary, fontFamily: "inherit" }}
+                >
+                  {isAr ? "عرض النتائج" : "Show results"}
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
 
           {/* Stats bar */}
           <div
@@ -723,8 +940,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           )}
 
           {/* Category tabs + view toggle */}
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex gap-1 rounded-2xl border bg-white p-1" style={{ borderColor: C.border }}>
+          <div className="mb-4 flex items-center justify-between gap-2 overflow-x-auto">
+            <div className="flex shrink-0 gap-1 rounded-2xl border bg-white p-1" style={{ borderColor: C.border }}>
               {categoryTabs.map(tab => (
                 <button
                   key={tab.id}
@@ -766,7 +983,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {activeTab === "assignments" && (
             displayAssignments.length > 0
               ? viewMode === "grid"
-                ? <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
+                ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
                     {displayAssignments.map((a, i) => renderAssignmentCard(a, i))}
                   </div>
                 : <div className="flex flex-col gap-2.5">
@@ -778,7 +995,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {/* Content — Videos */}
           {activeTab === "videos" && (
             displayVideos.length > 0
-              ? <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
+              ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
                   {displayVideos.map((v, i) => (
                     <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                       className="group flex flex-col overflow-hidden rounded-2xl border bg-white hover:-translate-y-1 hover:shadow-md transition-all"
