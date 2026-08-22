@@ -12,6 +12,11 @@ const checkout = vi.hoisted(() => ({
   beginSubscriptionCheckout: vi.fn(),
   getEligibleUpgradePlans: vi.fn(),
 }));
+const overlay = vi.hoisted(() => ({
+  openLemonSqueezyOverlay: vi.fn(),
+  subscribeToLemonSqueezyEvents: vi.fn(),
+}));
+const creditsBalance = vi.hoisted(() => ({ refresh: vi.fn() }));
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/teacher/create-assignment", navigation.setLocation],
@@ -26,6 +31,10 @@ vi.mock("@/lib/i18n", () => ({
 }));
 
 vi.mock("@/lib/credits-checkout", () => checkout);
+vi.mock("@/lib/lemon-squeezy-overlay", () => overlay);
+vi.mock("@/components/credits-chip", () => ({
+  useRefreshCreditsBalance: () => creditsBalance.refresh,
+}));
 
 import { InsufficientCreditsDialog } from "./insufficient-credits-dialog";
 
@@ -42,6 +51,7 @@ const PLANS = [
 
 let container: HTMLDivElement;
 let root: Root;
+let lemonEventHandler: ((event: { event?: string } | "close") => void) | null = null;
 
 beforeEach(() => {
   navigation.setLocation.mockReset();
@@ -51,6 +61,15 @@ beforeEach(() => {
   checkout.beginCreditPackageCheckout.mockReset();
   checkout.beginSubscriptionCheckout.mockReset();
   checkout.getEligibleUpgradePlans.mockReset();
+  overlay.openLemonSqueezyOverlay.mockReset();
+  overlay.subscribeToLemonSqueezyEvents.mockReset();
+  creditsBalance.refresh.mockReset();
+  overlay.openLemonSqueezyOverlay.mockResolvedValue(undefined);
+  lemonEventHandler = null;
+  overlay.subscribeToLemonSqueezyEvents.mockImplementation((listener: (event: { event?: string } | "close") => void) => {
+    lemonEventHandler = listener;
+    return () => { lemonEventHandler = null; };
+  });
   checkout.beginCreditPackageCheckout.mockResolvedValue(undefined);
   checkout.beginSubscriptionCheckout.mockResolvedValue(undefined);
   container = document.createElement("div");
@@ -129,7 +148,9 @@ describe("InsufficientCreditsDialog", () => {
     await flush();
 
     expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledTimes(1);
-    expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledWith(2, "تعذر بدء الدفع");
+    expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledWith(2, "تعذر بدء الدفع", expect.objectContaining({
+      redirect: expect.any(Function),
+    }));
     expect(navigation.setLocation).not.toHaveBeenCalled();
   });
 
@@ -171,9 +192,10 @@ describe("InsufficientCreditsDialog", () => {
     await flush();
 
     expect(checkout.beginSubscriptionCheckout).toHaveBeenCalledTimes(1);
-    expect(checkout.beginSubscriptionCheckout).toHaveBeenCalledWith("pro", "تعذر بدء الدفع", {
+    expect(checkout.beginSubscriptionCheckout).toHaveBeenCalledWith("pro", "تعذر بدء الدفع", expect.objectContaining({
       snapshotCreditBalance: true,
-    });
+      redirect: expect.any(Function),
+    }));
   });
 
   it("تعود للرسالة الأولى وتغلق بلا طلب دفع أو تغيير مسار", async () => {
@@ -246,9 +268,10 @@ describe("InsufficientCreditsDialog", () => {
     await flush();
 
     expect(checkout.beginCreditPackageCheckout).not.toHaveBeenCalled();
-    expect(checkout.beginSubscriptionCheckout).toHaveBeenCalledWith("pro", "تعذر بدء الدفع", {
+    expect(checkout.beginSubscriptionCheckout).toHaveBeenCalledWith("pro", "تعذر بدء الدفع", expect.objectContaining({
       snapshotCreditBalance: true,
-    });
+      redirect: expect.any(Function),
+    }));
   });
 
   it("يؤكد حزمة النقاط فقط بعد الرجوع من اختيار باقة اشتراك", async () => {
@@ -274,7 +297,9 @@ describe("InsufficientCreditsDialog", () => {
     await flush();
 
     expect(checkout.beginSubscriptionCheckout).not.toHaveBeenCalled();
-    expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledWith(1, "تعذر بدء الدفع");
+    expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledWith(1, "تعذر بدء الدفع", expect.objectContaining({
+      redirect: expect.any(Function),
+    }));
   });
 
   it("لا يعرض باقات الاشتراك عندما يخفيها مصدر الباقات", async () => {
@@ -294,5 +319,38 @@ describe("InsufficientCreditsDialog", () => {
     expect(document.querySelector('[data-testid="subscription-plan-pro"]')).toBeNull();
     expect(buttonWithText(document, "المتابعة إلى الدفع الآمن").disabled).toBe(true);
     expect(checkout.beginSubscriptionCheckout).not.toHaveBeenCalled();
+  });
+
+  it("يفتح Overlay الرسمي ويحافظ على الاختيار بعد إغلاقه ويحدّث الرصيد من الخادم بعد النجاح", async () => {
+    checkout.fetchCreditPackages.mockResolvedValue({ packages: PACKAGES, purchasesEnabled: true });
+    checkout.beginCreditPackageCheckout.mockImplementation(async (
+      _packageId: number,
+      _fallback: string,
+      options: { redirect: (url: string) => Promise<void> },
+    ) => options.redirect("https://checkout.example/credits"));
+    await renderAndOpen();
+
+    await act(async () => buttonWithText(document, "شراء نقاط").click());
+    await flush();
+    await act(async () => (document.querySelector('[data-testid="credit-package-2"]') as HTMLButtonElement).click());
+    await act(async () => buttonWithText(document, "المتابعة إلى الدفع الآمن").click());
+    await flush();
+
+    expect(overlay.openLemonSqueezyOverlay).toHaveBeenCalledWith("https://checkout.example/credits");
+    expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain("اختر حزمة نقاط");
+
+    await act(async () => lemonEventHandler?.("close"));
+    expect(document.body.textContent).toContain("اختر حزمة نقاط");
+
+    await act(async () => buttonWithText(document, "المتابعة إلى الدفع الآمن").click());
+    await flush();
+    expect(overlay.openLemonSqueezyOverlay).toHaveBeenCalledTimes(2);
+    expect(checkout.beginCreditPackageCheckout).toHaveBeenCalledTimes(1);
+
+    await act(async () => lemonEventHandler?.({ event: "Checkout.Success" }));
+    await act(async () => lemonEventHandler?.("close"));
+    expect(creditsBalance.refresh).toHaveBeenCalledOnce();
+    expect(document.body.textContent).toContain("تم استلام عملية الدفع");
   });
 });

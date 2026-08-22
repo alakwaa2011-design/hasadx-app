@@ -24,6 +24,11 @@ import {
   type SubscriptionPlan,
 } from "@/lib/credits-checkout";
 import {
+  openLemonSqueezyOverlay,
+  subscribeToLemonSqueezyEvents,
+} from "@/lib/lemon-squeezy-overlay";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -59,8 +64,14 @@ export function InsufficientCreditsDialog() {
   const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const isOpenRef = useRef(false);
   const checkoutInFlightRef = useRef(false);
+  const overlayOpenRef = useRef(false);
+  const checkoutSucceededRef = useRef(false);
+  const pendingCheckoutUrlRef = useRef<string | null>(null);
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const isAr = lang === "ar";
   const locale = isAr ? "ar-EG-u-nu-latn" : "en-US";
 
@@ -86,6 +97,11 @@ export function InsufficientCreditsDialog() {
     setSelectedPlanCode(null);
     setOptionsError(null);
     setCheckoutError(null);
+    setOverlayOpen(false);
+    setCheckoutSuccess(false);
+    overlayOpenRef.current = false;
+    checkoutSucceededRef.current = false;
+    pendingCheckoutUrlRef.current = null;
   };
 
   const backToNotice = () => {
@@ -94,6 +110,9 @@ export function InsufficientCreditsDialog() {
     setSelectedPlanCode(null);
     setOptionsError(null);
     setCheckoutError(null);
+    setCheckoutSuccess(false);
+    checkoutSucceededRef.current = false;
+    pendingCheckoutUrlRef.current = null;
   };
 
   const openPackages = async () => {
@@ -102,6 +121,9 @@ export function InsufficientCreditsDialog() {
     setSelectedPlanCode(null);
     setOptionsError(null);
     setCheckoutError(null);
+    setCheckoutSuccess(false);
+    checkoutSucceededRef.current = false;
+    pendingCheckoutUrlRef.current = null;
     if (packages !== null) return;
 
     setIsLoadingOptions(true);
@@ -122,6 +144,9 @@ export function InsufficientCreditsDialog() {
     setSelectedPlanCode(null);
     setOptionsError(null);
     setCheckoutError(null);
+    setCheckoutSuccess(false);
+    checkoutSucceededRef.current = false;
+    pendingCheckoutUrlRef.current = null;
     if (plans !== null) return;
 
     setIsLoadingOptions(true);
@@ -141,6 +166,32 @@ export function InsufficientCreditsDialog() {
     }
   };
 
+  useEffect(() => subscribeToLemonSqueezyEvents((event) => {
+    if (!overlayOpenRef.current) return;
+
+    if (typeof event === "object" && event?.event === "Checkout.Success") {
+      // This is only a UI signal. The balance is always refreshed from the
+      // server; the browser never grants or calculates credits.
+      checkoutSucceededRef.current = true;
+      refreshCreditsBalance();
+      return;
+    }
+
+    // Lemon.js emits "close" when its official checkout overlay closes.
+    // Preserve the selection so reopening does not create another checkout.
+    const eventName = typeof event === "object" ? event?.event : event;
+    if (eventName === "close" || eventName === "Checkout.Closed") {
+      overlayOpenRef.current = false;
+      checkoutInFlightRef.current = false;
+      setOverlayOpen(false);
+      setCheckingOut(false);
+      if (checkoutSucceededRef.current) {
+        setCheckoutSuccess(true);
+        pendingCheckoutUrlRef.current = null;
+      }
+    }
+  }), [refreshCreditsBalance]);
+
   const confirmCheckout = async () => {
     const selectedPackage = packages?.find((pkg) => pkg.id === selectedPackageId);
     const selectedPlan = plans?.find((plan) => plan.code === selectedPlanCode);
@@ -156,14 +207,28 @@ export function InsufficientCreditsDialog() {
     checkoutInFlightRef.current = true;
     setCheckingOut(true);
     setCheckoutError(null);
+    setCheckoutSuccess(false);
+    checkoutSucceededRef.current = false;
     try {
-      if (step === "packages" && selectedPackage) {
-        await beginCreditPackageCheckout(selectedPackage.id, t.pricing.checkoutError);
+      const openOverlay = async (checkoutUrl: string) => {
+        pendingCheckoutUrlRef.current = checkoutUrl;
+        await openLemonSqueezyOverlay(checkoutUrl);
+      };
+
+      if (pendingCheckoutUrlRef.current) {
+        await openOverlay(pendingCheckoutUrlRef.current);
+      } else if (step === "packages" && selectedPackage) {
+        await beginCreditPackageCheckout(selectedPackage.id, t.pricing.checkoutError, {
+          redirect: openOverlay,
+        });
       } else if (step === "plans" && selectedPlan) {
         await beginSubscriptionCheckout(selectedPlan.code, t.pricing.checkoutError, {
           snapshotCreditBalance: true,
+          redirect: openOverlay,
         });
       }
+      overlayOpenRef.current = true;
+      setOverlayOpen(true);
     } catch (error) {
       checkoutInFlightRef.current = false;
       setCheckingOut(false);
@@ -197,7 +262,7 @@ export function InsufficientCreditsDialog() {
 
   return (
     <Dialog
-      open={detail !== null}
+      open={detail !== null && !overlayOpen}
       onOpenChange={(open) => {
         if (!open) close();
       }}
@@ -297,6 +362,9 @@ export function InsufficientCreditsDialog() {
                         onClick={() => {
                           setSelectedPackageId(pkg.id);
                           setCheckoutError(null);
+                          setCheckoutSuccess(false);
+                          checkoutSucceededRef.current = false;
+                          pendingCheckoutUrlRef.current = null;
                         }}
                         className={`relative flex min-h-48 flex-col items-center justify-center rounded-2xl border px-4 py-5 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#225739] focus-visible:ring-offset-2 ${
                           selected
@@ -351,6 +419,9 @@ export function InsufficientCreditsDialog() {
                           onClick={() => {
                             setSelectedPlanCode(plan.code);
                             setCheckoutError(null);
+                            setCheckoutSuccess(false);
+                            checkoutSucceededRef.current = false;
+                            pendingCheckoutUrlRef.current = null;
                           }}
                           className={`relative flex min-h-48 flex-col items-center justify-center rounded-2xl border px-4 py-5 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#225739] focus-visible:ring-offset-2 ${
                             selected
@@ -390,6 +461,13 @@ export function InsufficientCreditsDialog() {
             {!isLoadingOptions && !optionsError && (
               <div className="mt-5 space-y-3 border-t border-border pt-4">
                 {checkoutError && <p role="alert" className="text-center text-sm font-bold text-red-600">{checkoutError}</p>}
+                {checkoutSuccess && (
+                  <p role="status" className="text-center text-sm font-bold text-[#225739]">
+                    {isAr
+                      ? "تم استلام عملية الدفع. يجري تحديث رصيدك من الخادم."
+                      : "Payment received. Your server balance is refreshing."}
+                  </p>
+                )}
                 {!((step === "packages" && purchasesEnabled) || (step === "plans" && pricingPageVisible && paymentsEnabled)) && (
                   <p className="text-center text-sm font-bold text-muted-foreground">{t.pricing.paymentsDisabled}</p>
                 )}

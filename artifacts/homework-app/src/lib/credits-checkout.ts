@@ -115,7 +115,7 @@ export function getEligibleUpgradePlans(
 export async function beginCreditPackageCheckout(
   packageId: number,
   fallbackError: string,
-  options: { redirect?: (checkoutUrl: string) => void } = {},
+  options: { redirect?: (checkoutUrl: string) => void | Promise<void> } = {},
 ) {
   const response = await creditsApiFetch("/api/credits/checkout", {
     method: "POST",
@@ -128,7 +128,8 @@ export async function beginCreditPackageCheckout(
     sessionStorage.setItem("hasad:pending-credit-purchase-intent", purchaseIntentId);
   }
   trackMetaInitiateCheckout("credits", packageId);
-  (options.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
+  await (options.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
+  return checkoutUrl as string;
 }
 
 export async function beginSubscriptionCheckout(
@@ -136,7 +137,7 @@ export async function beginSubscriptionCheckout(
   fallbackError: string,
   options: {
     snapshotCreditBalance?: boolean;
-    redirect?: (checkoutUrl: string) => void;
+    redirect?: (checkoutUrl: string) => void | Promise<void>;
   } = {},
 ) {
   if (options.snapshotCreditBalance) {
@@ -162,5 +163,6 @@ export async function beginSubscriptionCheckout(
 
   const { checkoutUrl } = await response.json();
   trackMetaInitiateCheckout("subscription", planCode);
-  (options.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
+  await (options.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
+  return checkoutUrl as string;
 }
