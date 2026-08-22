@@ -25,6 +25,21 @@ export function canUseActivityAsWameethSource(
 }
 
 /**
+ * Class and independent Wameeth may use a visible library activity directly.
+ * The live solo and teams modes create a teacher-owned session, so a foreign
+ * library activity must be imported before those modes can start.
+ */
+export function requiresImportedCopyForLiveWameeth(
+  activity: WameethSourceActivity,
+  currentTeacherId: number,
+): boolean {
+  return (
+    activity.teacherId !== currentTeacherId
+    && canUseActivityAsWameethSource(activity, currentTeacherId)
+  );
+}
+
+/**
  * The only teacher-side entry point for creating a Wameeth session.
  * Existing-assignment launchers carry the assignment id so the shared setup
  * can load its questions before the teacher chooses a play mode.

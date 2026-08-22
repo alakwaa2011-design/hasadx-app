@@ -19,8 +19,17 @@ import {
   canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
   getWameethSetupPath,
+  requiresImportedCopyForLiveWameeth,
   type WameethSourceActivity,
 } from "@/lib/wameeth-entry";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   QuestionCard, emptyQuestion, isValidQ, type Question, type Correct,
 } from "@/components/game/question-editor";
@@ -47,6 +56,10 @@ interface Assignment {
   id: number;
   title: string;
   questionCount?: number;
+  teacherId?: number | null;
+  isShared?: boolean | null;
+  hiddenByAdmin?: boolean | null;
+  accessMode?: string | null;
 }
 
 type QuestionSource = "assignment" | "ai" | "manual";
@@ -86,6 +99,9 @@ export default function WameethCreate() {
     typeof window === "undefined" ? "" : window.location.search,
   );
   const preloadedAssignmentRef = useRef<number | null>(null);
+  const importingLibraryAssignmentRef = useRef(false);
+  const [showImportPrompt, setShowImportPrompt] = useState(false);
+  const [importingLibraryAssignment, setImportingLibraryAssignment] = useState(false);
 
   // AI generation
   const [aiTopic, setAiTopic] = useState("");
@@ -122,7 +138,14 @@ export default function WameethCreate() {
   };
 
   const wameethSourceAssignments = (assignments || []).filter((a: Assignment) =>
-    canUseActivityAsWameethSource(a as unknown as WameethSourceActivity, user?.id ?? -1),
+    // The trusted assignments endpoint already excludes admin-hidden shared
+    // rows, but it does not serialize hiddenByAdmin in its list response.
+    // Normalize only that omitted field here so visibly published library
+    // activities remain available for the allowed Wameeth flows.
+    canUseActivityAsWameethSource(
+      { ...a, hiddenByAdmin: a.hiddenByAdmin ?? false },
+      user?.id ?? -1,
+    ),
   );
 
   const filteredAssignments = wameethSourceAssignments.filter((a: Assignment) => {
@@ -269,6 +292,42 @@ export default function WameethCreate() {
   // وميض الصف only supports tap-to-pick options on screen — fill-in-the-blank
   // has no free-text input there, so it is excluded from that mode only.
   const classroomEligible = validQuestions.filter(q => q.type !== "fill_blank");
+  const sourceNeedsImportForLiveGame =
+    sourceAssignmentId === selectedAssignment?.id
+    && !!selectedAssignment
+    && requiresImportedCopyForLiveWameeth(
+      { ...selectedAssignment, hiddenByAdmin: selectedAssignment.hiddenByAdmin ?? false },
+      user?.id ?? -1,
+    );
+
+  const importLibraryActivityAndOpen = async () => {
+    if (
+      !selectedAssignment
+      || !sourceNeedsImportForLiveGame
+      || importingLibraryAssignmentRef.current
+    ) return;
+
+    importingLibraryAssignmentRef.current = true;
+    setImportingLibraryAssignment(true);
+    try {
+      const res = await fetch(`${API}/api/assignments/${selectedAssignment.id}/import`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok || !Number.isInteger(data.id) || data.id <= 0) {
+        throw new Error(data.message || (ar ? "خطأ في الاستيراد" : "Import failed"));
+      }
+
+      setShowImportPrompt(false);
+      setLocation(getWameethSetupPath(data.id));
+    } catch (err: any) {
+      toast.error(err.message || (ar ? "خطأ في الاستيراد" : "Import failed"));
+    } finally {
+      importingLibraryAssignmentRef.current = false;
+      setImportingLibraryAssignment(false);
+    }
+  };
 
   const ensureAssignment = async (): Promise<number> => {
     if (sourceAssignmentId != null) return sourceAssignmentId;
@@ -331,6 +390,10 @@ export default function WameethCreate() {
       toast.error(ar
         ? "وميض الصف يدعم فقط اختيار متعدد وصح/خطأ — أضف سؤالين على الأقل من هذين النوعين"
         : "Class mode only supports MCQ and true/false — add at least 2 of those types");
+      return;
+    }
+    if ((mode === "solo" || mode === "teams") && sourceNeedsImportForLiveGame) {
+      setShowImportPrompt(true);
       return;
     }
     setStarting(true);
@@ -408,6 +471,37 @@ export default function WameethCreate() {
 
   return (
     <div className="min-h-screen bg-background" dir={dir} data-testid="wameeth-setup">
+      <Dialog open={showImportPrompt} onOpenChange={setShowImportPrompt}>
+        <DialogContent className="max-w-md rounded-2xl p-6 text-start" dir="rtl">
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-xl font-black text-foreground">
+              استورد النشاط لتبدأ اللعب
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm leading-7 text-muted-foreground">
+              هذا النشاط موجود في مكتبة حصاد ولم يُضف إلى أنشطتك بعد. استورده أولاً، ثم يمكنك تشغيله من أنشطتك واستخدامه في الألعاب.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-2 sm:flex-row-reverse sm:justify-start sm:space-x-0">
+            <button
+              type="button"
+              onClick={() => void importLibraryActivityAndOpen()}
+              disabled={importingLibraryAssignment}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {importingLibraryAssignment && <Loader2 className="h-4 w-4 animate-spin" />}
+              استيراد النشاط إلى أنشطتي
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocation("/teacher/library/homework")}
+              disabled={importingLibraryAssignment}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              العودة إلى المكتبة
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Header */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">

@@ -3,6 +3,7 @@ import {
   canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
   getWameethSetupPath,
+  requiresImportedCopyForLiveWameeth,
   WAMEETH_SETUP_PATH,
 } from "./wameeth-entry";
 
@@ -53,5 +54,24 @@ describe("Wameeth teacher entry contract", () => {
     ["private", { isShared: true, hiddenByAdmin: false, accessMode: "private" }],
   ])("rejects a foreign activity that is %s", (_reason, activity) => {
     expect(canUseActivityAsWameethSource({ teacherId: 7, ...activity }, 42)).toBe(false);
+  });
+
+  it("requires importing only a valid foreign library activity for live modes", () => {
+    const visibleLibraryActivity = {
+      teacherId: 7,
+      isShared: true,
+      hiddenByAdmin: false,
+      accessMode: "public",
+    };
+
+    expect(requiresImportedCopyForLiveWameeth(visibleLibraryActivity, 42)).toBe(true);
+    expect(requiresImportedCopyForLiveWameeth({
+      ...visibleLibraryActivity,
+      teacherId: 42,
+    }, 42)).toBe(false);
+    expect(requiresImportedCopyForLiveWameeth({
+      ...visibleLibraryActivity,
+      hiddenByAdmin: true,
+    }, 42)).toBe(false);
   });
 });
