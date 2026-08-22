@@ -420,14 +420,20 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
   if (!loading && assignments.length === 0) return null;
 
   return (
-    <section className="py-16 sm:py-20" dir={dir}>
+    <section className="order-8 py-12 sm:py-16" dir={dir} style={{ order: 8 }}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
+          className="flex flex-col gap-4 mb-7 sm:flex-row sm:items-end sm:justify-between"
         >
           <div>
+            <p className="mb-2 text-sm font-black text-[hsl(145,55%,32%)]">
+              {lang === "ar" ? "لا تريد البدء من الصفر؟" : "Don't want to start from scratch?"}
+            </p>
+            <p className="mb-3 text-base font-bold text-muted-foreground">
+              {lang === "ar" ? "ابدأ من فكرة جاهزة أو اصنع تجربتك الخاصة" : "Start with a ready idea or create your own experience"}
+            </p>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold mb-3 border border-amber-500/15">
               <Zap className="w-3.5 h-3.5" />
               {lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library"}
@@ -1698,39 +1704,45 @@ export default function Home() {
       title: "المسابقات التفاعلية",
       desc: "أسئلة حية، مؤقت، ولوحة نتائج تبقي الصف متحمسًا.",
       Icon: Trophy,
+      href: "/teacher/new",
     },
     {
       title: "الأنشطة التعليمية",
       desc: "أنشطة قصيرة أو ممتدة تخدم الدرس اليومي بسهولة.",
       Icon: Sparkles,
+      href: "/teacher/new",
     },
     {
       title: "الواجبات المنظمة",
       desc: "إنشاء وتسليم ومتابعة داخل تجربة أوضح للمعلم.",
       Icon: FileText,
+      href: "/teacher/new/assignment",
     },
     {
       title: "الاختبارات السريعة",
       desc: "نتائج أسرع وقياس فوري للفهم والمشاركة.",
       Icon: ClipboardList,
+      href: "/teacher/new",
     },
     {
       title: "الفيديو التفاعلي",
       desc: "اعرض الفيديو ثم أظهر سؤالًا مباشرًا كما يراه الطالب.",
       Icon: Camera,
+      href: "/teacher/video-lesson/new",
     },
     {
       title: "مساعد الذكاء الاصطناعي",
       desc: "ولّد أسئلتك تلقائيًا من الدرس بثوانٍ وحسّن صياغتك.",
       Icon: Brain,
+      href: "/teacher/new",
     },
   ] : [
-    { title: "Interactive quizzes", desc: "Live questions, timers, and results that keep every class engaged.", Icon: Trophy },
-    { title: "Learning activities", desc: "Short or extended activities that support everyday teaching.", Icon: Sparkles },
-    { title: "Organized assignments", desc: "Create, assign, and follow up from a clearer teacher experience.", Icon: FileText },
-    { title: "Quick tests", desc: "Faster results and an immediate view of understanding and participation.", Icon: ClipboardList },
-    { title: "Interactive video", desc: "Show a video and place a direct question at the exact learning moment.", Icon: Camera },
-    { title: "AI assistant", desc: "Generate questions from your lesson in seconds and refine your wording.", Icon: Brain },
+    { title: "Interactive quizzes", desc: "Live questions, timers, and results that keep every class engaged.", Icon: Trophy, href: "/teacher/new" },
+    { title: "Learning activities", desc: "Short or extended activities that support everyday teaching.", Icon: Sparkles, href: "/teacher/new" },
+    { title: "Organized assignments", desc: "Create, assign, and follow up from a clearer teacher experience.", Icon: FileText, href: "/teacher/new/assignment" },
+    { title: "Quick tests", desc: "Faster results and an immediate view of understanding and participation.", Icon: ClipboardList, href: "/teacher/new" },
+    { title: "Interactive video", desc: "Show a video and place a direct question at the exact learning moment.", Icon: Camera, href: "/teacher/video-lesson/new" },
+    { title: "AI assistant", desc: "Generate questions from your lesson in seconds and refine your wording.", Icon: Brain, href: "/teacher/new" },
   ];
   const videoChoices = lang === "ar" ? [
     { badge: "A", label: "عندما ترتفع حرارة الشمس" },
@@ -1745,16 +1757,22 @@ export default function Home() {
   ];
   const flowSteps = [
     {
-      title: "أنشئ النشاط خلال دقائق",
-      desc: "ابدأ من مسابقة أو واجب أو اختبار أو فيديو تفاعلي جاهز للتخصيص.",
+      title: lang === "ar" ? "١. أنشئ" : "1. Create",
+      desc: lang === "ar"
+        ? "حوّل فكرة الدرس إلى نشاط أو واجب أو عرض جاهز للتخصيص."
+        : "Turn a lesson idea into an activity, assignment, or deck you can customize.",
     },
     {
-      title: "انسخ الرابط أو رقم الكود وشاركه مع طلابك",
-      desc: "يدخل الطالب من الرابط مباشرةً أو بكود من 6 أرقام بدون تسجيل.",
+      title: lang === "ar" ? "٢. اعرض" : "2. Present",
+      desc: lang === "ar"
+        ? "اعرض المحتوى بطريقة تفاعلية، ثم شاركه برابط واحد."
+        : "Present the content interactively, then share it with one link.",
     },
     {
-      title: "تابع التفاعل والنتائج",
-      desc: "شاهد المشاركة والتقدّم والتسليمات من لوحة واضحة ومباشرة.",
+      title: lang === "ar" ? "٣. تفاعل" : "3. Engage",
+      desc: lang === "ar"
+        ? "تابع المشاركة والنتائج والتسليمات من لوحة واضحة."
+        : "Follow participation, results, and submissions from one clear dashboard.",
     },
   ];
   return (
@@ -1768,12 +1786,17 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <main className="overflow-hidden bg-background font-display" dir={dir}>
+      <main
+        className="flex flex-col overflow-hidden bg-background font-display"
+        dir={dir}
+        style={{ display: "flex", flexDirection: "column" }}
+      >
         {/* -------------- NEW LANDING DESIGN -------------- */}
         <div
           dir={dir}
-          className="landing-grid-bg"
+          className="landing-grid-bg order-1"
           style={{
+            order: 1,
             paddingBottom: "clamp(24px,4vh,48px)",
             position: "relative",
             overflow: "hidden",
@@ -2632,8 +2655,9 @@ export default function Home() {
 
         {/* -------------- AI INTERACTIVE PRESENTATIONS PROMO -------------- */}
         <section
+          className="order-5 border-t border-border/60 bg-[#fbfcf8] py-12 sm:py-16"
           dir={dir}
-          className="border-t border-border/60 bg-[#fbfcf8] py-12 sm:py-16"
+          style={{ order: 5 }}
         >
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -2865,9 +2889,10 @@ export default function Home() {
 
         {/* -------------- INTERACTIVE VIDEO (text-only — visual moved to hero) -------------- */}
         <section
-          className="border-t border-border/60 bg-[#fbfcf8]"
+          className="order-6 border-t border-border/60 bg-[#fbfcf8]"
           id="present-section"
           dir={dir}
+          style={{ order: 6 }}
         >
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
@@ -3007,9 +3032,10 @@ export default function Home() {
 
         {/* -------------- HASAAD CHALLENGE (group / audience competition) -------------- */}
         <section
-          className="border-t border-border/60"
+          className="order-7 border-t border-border/60"
           dir={dir}
           style={{
+            order: 7,
             background:
               "linear-gradient(135deg,#1E4D35 0%,#265E42 55%,#2d7050 100%)",
           }}
@@ -3236,10 +3262,10 @@ export default function Home() {
 
         {/* -------------- TOOLS -------------- */}
         <section
-          className="border-t border-border/60 bg-[#fbfcf8]"
+          className="order-3 border-t border-border/60 bg-[#fbfcf8]"
           id="tools"
           aria-labelledby="tools-heading"
-          style={{ scrollMarginTop: "6rem" }}
+          style={{ order: 3, scrollMarginTop: "6rem" }}
         >
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <div className="max-w-2xl">
@@ -3248,13 +3274,13 @@ export default function Home() {
               </p>
               <h2 className="mt-2 font-display-display text-[1.95rem] font-black text-foreground sm:text-[2.45rem]">
                 {lang === "ar"
-                  ? "أدوات عملية لكل درس"
-                  : "Practical tools for every lesson"}
+                  ? "أدوات حصاد الذكية للمعلم"
+                  : "Hasad's smart tools for teachers"}
               </h2>
               <p className="mt-3 text-[1rem] leading-8 text-muted-foreground">
                 {lang === "ar"
-                  ? "أنشئ نشاطاً، شاركه، وتابع أثره من تجربة واحدة واضحة."
-                  : "Create an activity, share it, and follow its impact from one clear experience."}
+                  ? "خطط لدرسك، اصنع محتواك، وشارك المتعلمين من مكان واحد."
+                  : "Plan lessons, create content, and engage learners from one place."}
               </p>
             </div>
 
@@ -3268,12 +3294,13 @@ export default function Home() {
                   "bg-[hsl(160,55%,93%)] text-[hsl(160,55%,28%)]",
                 ];
                 return (
-                  <div
+                  <Link
+                    href={tool.href}
                     key={tool.title}
-                      className="soft-card rounded-2xl p-4 transition hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(43,83,59,0.10)]"
+                    className="soft-card group rounded-2xl p-4 transition hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(43,83,59,0.10)]"
                   >
                     <div
-                      className={`inline-flex rounded-xl p-2.5 ${tones[i % tones.length]}`}
+                      className={`inline-flex rounded-xl p-2.5 transition group-hover:scale-105 ${tones[i % tones.length]}`}
                     >
                       <tool.Icon className="h-5 w-5" />
                     </div>
@@ -3283,14 +3310,27 @@ export default function Home() {
                     <p className="mt-1.5 hidden text-sm leading-6 text-muted-foreground sm:block">
                       {tool.desc}
                     </p>
-                  </div>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[hsl(145,55%,32%)]">
+                      {lang === "ar" ? "استكشف الأداة" : "Explore tool"}
+                      <ArrowLeft className={`h-3.5 w-3.5 transition group-hover:translate-x-0.5 ${lang === "ar" ? "" : "rotate-180"}`} />
+                    </span>
+                  </Link>
                 );
               })}
+            </div>
+            <div className="mt-5 text-center">
+              <Link
+                href="/teacher/new"
+                className="inline-flex items-center gap-2 rounded-xl border border-[hsl(145,30%,82%)] bg-white px-5 py-2.5 text-sm font-black text-[hsl(145,45%,24%)] transition hover:border-[hsl(145,55%,45%)] hover:bg-[hsl(145,30%,96%)]"
+              >
+                {lang === "ar" ? "استكشف جميع أدوات المعلم" : "Explore all teacher tools"}
+                <ArrowLeft className={`h-4 w-4 ${lang === "ar" ? "" : "rotate-180"}`} />
+              </Link>
             </div>
           </div>
         </section>
 
-        <section className="border-t border-border/60 bg-[#fbfcf8] py-8">
+        <section className="order-11 hidden border-t border-border/60 bg-[#fbfcf8] py-8">
           {/* ===== FEATURES GRID ===== */}
             <motion.section
               initial={{ opacity: 0, y: 28 }}
@@ -3396,7 +3436,7 @@ export default function Home() {
 
         </section>
 
-        <section className="bg-white py-6">
+        <section className="hidden bg-white py-6">
           {/* ===== WHO IS THIS FOR ===== */}
             <motion.section
               initial={{ opacity: 0, y: 28 }}
@@ -3585,15 +3625,15 @@ export default function Home() {
         <ReadyQuizzesSection lang={lang} dir={dir} />
 
         {/* -------------- FLOW + LIVE STATS -------------- */}
-        <section id="how-it-works" className="hidden border-t border-border/60">
-          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        <section id="how-it-works" className="order-4 border-t border-border/60 bg-[#fbfcf8]" style={{ order: 4 }}>
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
             <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
               <div className="soft-card rounded-[30px] p-6 sm:p-8">
                 <p className="text-sm font-black text-[hsl(145,55%,32%)]">
-                  كيف يعمل حصاد
+                  {lang === "ar" ? "مسار حصاد" : "The Hasad path"}
                 </p>
                 <h3 className="mt-2 font-display-display text-[1.85rem] font-black text-foreground sm:text-[2.25rem]">
-                  من الفكرة إلى التفاعل في ثلاث خطوات
+                  {lang === "ar" ? "أنشئ ← اعرض ← تفاعل" : "Create ← Present ← Engage"}
                 </h3>
                 <div className="mt-7 space-y-4">
                   {flowSteps.map((step, i) => (
@@ -3686,7 +3726,7 @@ export default function Home() {
         </section>
 
         {/* -------------- GAMES -------------- */}
-        <section id="games" className="border-t border-border/60 bg-[#fbfcf8]">
+        <section id="games" className="order-10 border-t border-border/60 bg-[#fbfcf8]" style={{ order: 10 }}>
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -3753,7 +3793,7 @@ export default function Home() {
         </section>
 
         {/* -------------- FINAL CTA -------------- */}
-        <section className="border-t border-border/60">
+        <section className="order-11 border-t border-border/60" style={{ order: 11 }}>
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="cta-panel rounded-[34px] p-7 text-white shadow-[0_28px_70px_rgba(26,54,40,0.22)] sm:p-10 lg:p-12">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

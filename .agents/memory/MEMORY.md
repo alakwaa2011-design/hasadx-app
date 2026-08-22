@@ -38,3 +38,4 @@
 - [Shared library Wameeth access](shared-library-wameeth-access.md) — cross-teacher direct play is limited to visibly published activities and only Wameeth class/independent modes.
 - [Independent game control isolation](independent-game-control-isolation.md) — treat control taps as immediate actions and fence question events while an exit dialog is active.
 - [Google login session persistence](google-login-session-persistence.md) — Google callback responses must persist the server session before navigation; never hard-reload the app from the callback.
+- [Nested page landmarks](nested-page-landmarks.md) — inspect the page-local content landmark for visual order when the layout shell also renders a main landmark.
