@@ -206,33 +206,47 @@ describe("Checkout redirect_url — payload unit tests (no real LS call)", () =>
 // ─── اختبار سلوك الواجهة (لا يحتاج قاعدة بيانات) ──────────────────────────
 
 describe("واجهة Checkout — فتح نفس التبويب (لا window.open)", () => {
-  it("credits.tsx: يستخدم window.location.href لا window.open لفتح Checkout", async () => {
+  it("طبقة Checkout المشتركة تستخدم window.location.href، وتستدعيها صفحة النقاط", async () => {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
     const root = path.resolve(import.meta.dirname, "../../../../");
-    const src = await fs.readFile(
+    const [creditsSrc, checkoutSrc] = await Promise.all([
+      fs.readFile(
       path.join(root, "artifacts/homework-app/src/pages/teacher/credits.tsx"),
       "utf8"
-    );
+      ),
+      fs.readFile(
+        path.join(root, "artifacts/homework-app/src/lib/credits-checkout.ts"),
+        "utf8"
+      ),
+    ]);
     // يجب أن يوجد window.location.href = checkoutUrl (أو assign)
-    expect(src).toMatch(/window\.location\.(?:href|assign)\s*[\(=]/);
+    expect(checkoutSrc).toMatch(/window\.location\.(?:href|assign)\s*[\(=]/);
+    expect(creditsSrc).toContain("beginCreditPackageCheckout");
     // يجب ألا يفتح النافذة في _blank بعد الحصول على checkoutUrl
-    const openLines = src.split("\n").filter(
+    const openLines = checkoutSrc.split("\n").filter(
       (l) => l.includes("window.open") && l.includes("checkoutUrl")
     );
     expect(openLines.length).toBe(0);
   });
 
-  it("pricing.tsx: يستخدم window.location.href لا window.open لفتح Checkout الاشتراك", async () => {
+  it("طبقة Checkout المشتركة تستخدم window.location.href، وتستدعيها صفحة الباقات", async () => {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
     const root = path.resolve(import.meta.dirname, "../../../../");
-    const src = await fs.readFile(
+    const [pricingSrc, checkoutSrc] = await Promise.all([
+      fs.readFile(
       path.join(root, "artifacts/homework-app/src/pages/teacher/pricing.tsx"),
       "utf8"
-    );
-    expect(src).toMatch(/window\.location\.(?:href|assign)\s*[\(=]/);
-    const openLines = src.split("\n").filter(
+      ),
+      fs.readFile(
+        path.join(root, "artifacts/homework-app/src/lib/credits-checkout.ts"),
+        "utf8"
+      ),
+    ]);
+    expect(checkoutSrc).toMatch(/window\.location\.(?:href|assign)\s*[\(=]/);
+    expect(pricingSrc).toContain("beginSubscriptionCheckout");
+    const openLines = checkoutSrc.split("\n").filter(
       (l) => l.includes("window.open") && l.includes("checkoutUrl")
     );
     expect(openLines.length).toBe(0);

@@ -40,16 +40,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
 import { useCreditsBalance } from "@/components/credits-chip";
-import { trackMetaInitiateCheckout } from "@/lib/meta-pixel";
-
-const API = import.meta.env.VITE_API_URL || "";
-async function apiFetch(path: string, opts?: RequestInit) {
-  return fetch(`${API}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-}
+import {
+  beginCreditPackageCheckout,
+  beginSubscriptionCheckout,
+  creditsApiFetch as apiFetch,
+} from "@/lib/credits-checkout";
 
 interface Plan {
   id: number;
@@ -150,17 +145,7 @@ export function PricingContent() {
   const handleUpgrade = async (planCode: string) => {
     setCheckingOut(planCode);
     try {
-      const r = await apiFetch("/api/subscriptions/checkout", {
-        method: "POST",
-        body: JSON.stringify({ planCode }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error((err as any).message || p.checkoutError);
-      }
-      const { checkoutUrl } = await r.json();
-      trackMetaInitiateCheckout("subscription", planCode);
-      window.location.href = checkoutUrl;
+      await beginSubscriptionCheckout(planCode, p.checkoutError);
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setCheckingOut(null);
@@ -170,20 +155,7 @@ export function PricingContent() {
   const handleBuyPack = async (pkg: Pkg) => {
     setBuyingId(pkg.id);
     try {
-      const r = await apiFetch("/api/credits/checkout", {
-        method: "POST",
-        body: JSON.stringify({ packageId: pkg.id }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error((err as any).message || p.checkoutError);
-      }
-      const { checkoutUrl, purchaseIntentId } = await r.json();
-      if (purchaseIntentId) {
-        sessionStorage.setItem("hasad:pending-credit-purchase-intent", purchaseIntentId);
-      }
-      trackMetaInitiateCheckout("credits", pkg.id);
-      window.location.href = checkoutUrl;
+      await beginCreditPackageCheckout(pkg.id, p.checkoutError);
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setBuyingId(null);

@@ -418,12 +418,15 @@ describe("صفحة النقاط /teacher/credits", () => {
 describe("سلامة مسار الدفع والنصوص المعتمدة", () => {
   const creditsSrc = readFileSync(path.join(__dirname_, "credits.tsx"), "utf8");
   const pricingSrc = readFileSync(path.join(__dirname_, "pricing.tsx"), "utf8");
+  const checkoutSrc = readFileSync(path.join(__dirname_, "../../lib/credits-checkout.ts"), "utf8");
 
   it("Checkout يبقى في نفس التبويب: window.location.href موجود وwindow.open غير موجود", () => {
-    expect(creditsSrc).toContain("window.location.href");
-    expect(pricingSrc).toContain("window.location.href");
-    expect(creditsSrc).not.toContain("window.open");
-    expect(pricingSrc).not.toContain("window.open");
+    expect(checkoutSrc).toContain("window.location.href");
+    expect(checkoutSrc).not.toContain("window.open");
+    expect(creditsSrc).toContain("beginCreditPackageCheckout");
+    expect(creditsSrc).toContain("beginSubscriptionCheckout");
+    expect(pricingSrc).toContain("beginCreditPackageCheckout");
+    expect(pricingSrc).toContain("beginSubscriptionCheckout");
   });
 
   it("لا نافذة تأكيد قبل Checkout: الشراء/الترقية يبدآن مباشرة", () => {

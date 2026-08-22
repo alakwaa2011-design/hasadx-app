@@ -11,18 +11,13 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useCreditsBalance } from "@/components/credits-chip";
 import {
-  trackMetaInitiateCheckout,
   trackMetaPurchaseOnce,
 } from "@/lib/meta-pixel";
-
-const API = import.meta.env.VITE_API_URL || "";
-async function apiFetch(path: string, opts?: RequestInit) {
-  return fetch(`${API}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-}
+import {
+  beginCreditPackageCheckout,
+  beginSubscriptionCheckout,
+  creditsApiFetch as apiFetch,
+} from "@/lib/credits-checkout";
 
 interface Pkg {
   id: number;
@@ -249,20 +244,7 @@ export default function TeacherCreditsPage() {
   const buy = async (pkg: Pkg) => {
     setBuyingId(pkg.id);
     try {
-      const r = await apiFetch("/api/credits/checkout", {
-        method: "POST",
-        body: JSON.stringify({ packageId: pkg.id }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error((err as any).message || c.checkoutError);
-      }
-      const { checkoutUrl, purchaseIntentId } = await r.json();
-      if (purchaseIntentId) {
-        sessionStorage.setItem("hasad:pending-credit-purchase-intent", purchaseIntentId);
-      }
-      trackMetaInitiateCheckout("credits", pkg.id);
-      window.location.href = checkoutUrl;
+      await beginCreditPackageCheckout(pkg.id, c.checkoutError);
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setBuyingId(null);
@@ -272,30 +254,9 @@ export default function TeacherCreditsPage() {
   const upgrade = async (planCode: string) => {
     setCheckingOut(planCode);
     try {
-      // Snapshot current balance before leaving so the return-polling can detect
-      // *new* credits rather than treating existing credits as confirmation.
-      try {
-        const balRes = await apiFetch("/api/credits/me");
-        if (balRes.ok) {
-          const balData = await balRes.json();
-          sessionStorage.setItem(
-            "subCheckoutBalanceSnapshot",
-            String(Number(balData?.balance ?? 0)),
-          );
-        }
-      } catch { /* non-fatal — polling falls back to baseline=-1 */ }
-
-      const r = await apiFetch("/api/subscriptions/checkout", {
-        method: "POST",
-        body: JSON.stringify({ planCode }),
+      await beginSubscriptionCheckout(planCode, p.checkoutError, {
+        snapshotCreditBalance: true,
       });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error((err as any).message || p.checkoutError);
-      }
-      const { checkoutUrl } = await r.json();
-      trackMetaInitiateCheckout("subscription", planCode);
-      window.location.href = checkoutUrl;
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setCheckingOut(null);

@@ -63,4 +63,25 @@ describe("creditAwareFetch", () => {
 
     window.removeEventListener(INSUFFICIENT_CREDITS_EVENT, listener);
   });
+
+  it("لا يبلغ النافذة عن استجابة ناجحة أو خطأ شبكة عام", async () => {
+    const listener = vi.fn();
+    window.addEventListener(INSUFFICIENT_CREDITS_EVENT, listener);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ questions: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })),
+    );
+    await expect(creditAwareFetch("/api/ai/generate-questions")).resolves.toHaveProperty("status", 200);
+    expect(listener).not.toHaveBeenCalled();
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network unavailable")));
+    await expect(creditAwareFetch("/api/ai/generate-questions")).rejects.toThrow("Network unavailable");
+    expect(listener).not.toHaveBeenCalled();
+
+    window.removeEventListener(INSUFFICIENT_CREDITS_EVENT, listener);
+  });
 });
