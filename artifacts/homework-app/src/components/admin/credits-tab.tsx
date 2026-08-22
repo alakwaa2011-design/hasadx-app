@@ -516,7 +516,6 @@ export function BalancesPanel() {
   const [rows, setRows] = useState<TeacherBalance[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [adjusting, setAdjusting] = useState<TeacherBalance | null>(null);
   const [delta, setDelta] = useState("");
@@ -551,12 +550,12 @@ export function BalancesPanel() {
 
   const load = useCallback(() => {
     setLoading(true);
-    apiFetch(`/api/admin/credits/teachers?page=${page}&pageSize=30${q ? `&q=${encodeURIComponent(q)}` : ""}`)
+    apiFetch(`/api/admin/credits/teachers?pageSize=all${q ? `&q=${encodeURIComponent(q)}` : ""}`)
       .then((r) => r.json())
       .then((d) => { setRows(d.rows); setTotal(d.total); })
       .catch(() => toast("فشل تحميل الأرصدة", { className: "text-red-500" }))
       .finally(() => setLoading(false));
-  }, [q, page]);
+  }, [q]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -665,15 +664,14 @@ export function BalancesPanel() {
     );
   };
 
-  const totalPages = Math.ceil(total / 30);
-
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute right-3 top-2.5 text-muted-foreground" />
-          <Input className="pr-8" placeholder="بحث باسم أو بريد…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+          <Input className="pr-8" placeholder="بحث باسم أو بريد…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        <span className="self-center text-xs text-muted-foreground">{total} معلّمًا</span>
         <Button variant="ghost" onClick={load}><RefreshCw size={14} /></Button>
         <Button variant="ghost" onClick={() => setBulkOpen(true)}>تعديل جماعي</Button>
       </div>
@@ -745,13 +743,6 @@ export function BalancesPanel() {
               </tbody>
             </table>
           </div>
-          {totalPages > 1 && (
-            <div className="flex gap-2 justify-center">
-              <Button variant="ghost" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>السابق</Button>
-              <span className="text-sm self-center">{page} / {totalPages}</span>
-              <Button variant="ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>التالي</Button>
-            </div>
-          )}
         </>
       )}
 

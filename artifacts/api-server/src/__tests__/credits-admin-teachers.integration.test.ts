@@ -75,4 +75,15 @@ describe.skipIf(!RUN_INTEGRATION)("GET /api/admin/credits/teachers", () => {
     const sorted = [...balances].sort((x, y) => y - x);
     expect(balances).toEqual(sorted);
   });
+
+  it("يعيد جميع المعلمين المطابقين عند pageSize=all بلا تقسيم إلى صفحات", async () => {
+    const res = await request(app)
+      .get(`/api/admin/credits/teachers?pageSize=all&q=${RUN_ID}-t`)
+      .expect(200);
+
+    expect(res.body.page).toBe(1);
+    expect(Number(res.body.total)).toBe(1);
+    expect(res.body.rows).toHaveLength(1);
+    expect(res.body.rows[0].id).toBe(teacherId);
+  });
 });

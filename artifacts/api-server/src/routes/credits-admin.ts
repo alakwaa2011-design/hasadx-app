@@ -80,6 +80,7 @@ router.patch("/tool-prices/:toolKey", async (req, res) => {
 router.get("/teachers", async (req, res) => {
   try {
     const { q, page = "1", pageSize = "30" } = req.query as Record<string, string>;
+    const allTeachers = pageSize === "all";
     const pg = Math.max(1, parseInt(page));
     const size = Math.min(100, Math.max(1, parseInt(pageSize)));
     const offset = (pg - 1) * size;
@@ -118,12 +119,13 @@ router.get("/teachers", async (req, res) => {
     let countQuery = db.select({ total: sql<number>`COUNT(*)::int` }).from(teachersTable).$dynamic();
     if (searchWhere) countQuery = countQuery.where(searchWhere);
 
+    const rowsQuery = baseQuery.orderBy(desc(sql`COALESCE(ca.balance, 0)`));
     const [rows, [{ total }]] = await Promise.all([
-      baseQuery.orderBy(desc(sql`COALESCE(ca.balance, 0)`)).limit(size).offset(offset),
+      allTeachers ? rowsQuery : rowsQuery.limit(size).offset(offset),
       countQuery,
     ]);
 
-    res.json({ rows, total, page: pg, pageSize: size });
+    res.json({ rows, total, page: allTeachers ? 1 : pg, pageSize: allTeachers ? total : size });
   } catch (err) {
     res.status(500).json({ message: "فشل تحميل أرصدة المعلمين" });
   }
