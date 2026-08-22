@@ -29,7 +29,11 @@ import { resolveImageUrl } from "@/lib/image-url";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useCreditsBalance, useRefreshCreditsBalance } from "@/components/credits-chip";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
 import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
 import {
@@ -393,7 +397,6 @@ export default function CreateAssignment() {
   /* Central balance source — same react-query cache as the header chip and
      the credits page. The server is the only source of truth; after any AI
      operation settles we invalidate this query instead of doing local math. */
-  const { data: centralBalance, refetch: refetchCentralBalance } = useCreditsBalance();
   const refreshCreditsBalance = useRefreshCreditsBalance();
   /* Same-source duplicate guard: fingerprint of the last successful
      extraction in this editor session. */
@@ -508,7 +511,7 @@ export default function CreateAssignment() {
       /* With a typed template, generate exactly the prepared slot count so the
          template structure (count + type order) is preserved 1:1. */
       const requestCount = hasNonMcq ? slotTypes.length : aiCount;
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const res = await creditAwareFetch(`${API_BASE}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({
           topic: aiTopic,
@@ -520,7 +523,10 @@ export default function CreateAssignment() {
       });
       let data: any;
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
-      if (!res.ok) throw new Error(data.message || t.createAssignment.generateError);
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || t.createAssignment.generateError);
+      }
       if (!Array.isArray(data.questions) || data.questions.length === 0) throw new Error(t.createAssignment.noQuestionsGenerated);
       const generated = (data.questions as CreateQuestionBody[]).map(q => ({
         ...q,
@@ -576,20 +582,9 @@ export default function CreateAssignment() {
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (!cancelled && d && typeof d.effectiveCost === "number") setExtractCredit(d); })
       .catch(() => {});
-    /* Also refresh the central balance so the guard uses a current number. */
-    void refetchCentralBalance();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showImageExtract]);
-
-  /* Guard reads the CENTRAL balance (same source as the header chip); the
-     tool-price response only provides cost/creditsEnabled/isPro. Falls back
-     to the tool-price snapshot if the central query hasn't resolved yet. */
-  const extractGuardBalance = centralBalance?.balance ?? extractCredit?.balance;
-  const insufficientExtractCredit =
-    !!extractCredit?.creditsEnabled &&
-    typeof extractGuardBalance === "number" &&
-    extractGuardBalance < extractCredit.effectiveCost;
 
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
@@ -610,21 +605,13 @@ export default function CreateAssignment() {
       form.append("pages", "1");
       /* Activity editor supports mcq / true_false / fill_blank. */
       form.append("counts", JSON.stringify({ mcq: 10, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0 }));
-      const res = await fetch(`${API_BASE}/api/worksheets/ai/extract`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST", credentials: "include", body: form,
         headers: { "X-Idempotency-Key": requestId },
       });
       let data: Record<string, unknown>;
       try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
-      if (res.status === 402) {
-        const required = typeof data.required === "number" ? data.required : extractCredit?.effectiveCost;
-        const bal = typeof data.balance === "number" ? data.balance : extractGuardBalance;
-        throw new Error(
-          lang === "ar"
-            ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${required ?? "?"} نقطة حصاد، ورصيدك الحالي ${bal ?? "?"} نقطة.`
-            : `Insufficient balance: ${required ?? "?"} credits needed, you have ${bal ?? "?"}.`,
-        );
-      }
+      if (isInsufficientCreditsResponse(res)) return;
       if (res.status === 409) {
         /* Terminal replay of this attempt's key — server refused to re-run.
            Each click already gets a fresh UUID, so just surface the message. */
@@ -658,15 +645,6 @@ export default function CreateAssignment() {
   const handleExtractFromSource = async () => {
     if (extractFiles.length === 0 || extractLoading || extractBusyRef.current) return;
     setExtractError("");
-    /* Insufficient balance: never start generation (server re-checks too). */
-    if (insufficientExtractCredit && extractCredit) {
-      setExtractError(
-        lang === "ar"
-          ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractGuardBalance ?? extractCredit.balance} نقطة.`
-          : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractGuardBalance ?? extractCredit.balance}.`,
-      );
-      return;
-    }
     /* Same source extracted again while its questions are still in the
        editor → explicit replace / add / cancel choice, no silent charge. */
     const fingerprint = await fingerprintFilesContent(extractFiles);
@@ -1587,19 +1565,6 @@ export default function CreateAssignment() {
                                     : `${extractCredit.effectiveCost} Hasad credits will be used for this extraction.`)}
                             </p>
                           )}
-                          {insufficientExtractCredit && extractCredit && (
-                            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-lg p-2.5 space-y-1.5" data-testid="extract-insufficient-credit">
-                              <p className="text-xs text-amber-800 dark:text-amber-200 font-bold">
-                                {lang === "ar"
-                                  ? `لا يكفي رصيدك لإتمام هذه العملية. تحتاج إلى ${extractCredit.effectiveCost} نقطة حصاد، ورصيدك الحالي ${extractGuardBalance ?? extractCredit.balance} نقطة.`
-                                  : `Insufficient balance: ${extractCredit.effectiveCost} credits needed, you have ${extractGuardBalance ?? extractCredit.balance}.`}
-                              </p>
-                              <button type="button" onClick={() => setLocation("/teacher/credits")}
-                                className="text-xs font-bold text-primary underline underline-offset-2">
-                                {lang === "ar" ? "شراء نقاط" : "Buy credits"}
-                              </button>
-                            </div>
-                          )}
                           {extractError && <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-700">{extractError}</div>}
                           {dupChoiceOpen ? (
                             <div className="bg-background border-2 border-primary/25 rounded-xl p-3 space-y-2" data-testid="extract-dup-choice">
@@ -1624,7 +1589,7 @@ export default function CreateAssignment() {
                               </div>
                             </div>
                           ) : (
-                          <button type="button" onClick={handleExtractFromSource} disabled={extractLoading || extractFiles.length === 0 || insufficientExtractCredit} data-testid="btn-extract-source"
+                          <button type="button" onClick={handleExtractFromSource} disabled={extractLoading || extractFiles.length === 0} data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري القراءة والتوليد..." : "Reading & generating..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج وأنشئ الأسئلة" : "Extract & create questions"}</>}
                           </button>

@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Play, Check, Copy, Zap } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -51,15 +55,17 @@ export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/quick-challenge/create`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/quick-challenge/create`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ questionType, topic }),
       });
       const data = await res.json();
-      if (!res.ok)
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
         throw new Error(data.message || (lang === "ar" ? "خطأ" : "Error"));
+      }
       setResult(data);
     } catch (err: unknown) {
       const message =

@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import * as LucideIcons from "lucide-react";
 
 const BRAND_GREEN = "#225739";
@@ -85,7 +89,7 @@ export function SmartAddSlideDialog({
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/presentations/ai/single-slide`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/presentations/ai/single-slide`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -97,6 +101,7 @@ export function SmartAddSlideDialog({
         }),
       });
       if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.message || `HTTP ${res.status}`);
       }

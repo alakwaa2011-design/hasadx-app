@@ -11,6 +11,10 @@ import {
 import { toast } from "sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { createClientRequestId } from "@/lib/client-request-id";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 
 const BRAND_GREEN = "#225739";
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -408,7 +412,7 @@ export default function MindMapCreate() {
     setLoading(true);
     setSaveStatus("idle");
     try {
-      const r = await fetch(`${API_BASE}/api/ai/generate-mindmap`, {
+      const r = await creditAwareFetch(`${API_BASE}/api/ai/generate-mindmap`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -416,6 +420,7 @@ export default function MindMapCreate() {
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
+        if (isInsufficientCreditsResponse(r)) return;
         toast.error((data as { message?: string }).message ?? (isAr ? "فشل التوليد" : "Generation failed"));
         return;
       }

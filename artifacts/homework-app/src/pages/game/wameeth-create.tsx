@@ -10,6 +10,10 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
+import {
   ClassSelector,
   getRememberedTargetClass,
 } from "@/components/teacher/class-selector";
@@ -245,14 +249,17 @@ export default function WameethCreate() {
     if (!aiTopic.trim()) { toast.error(ar ? "أدخل الموضوع أولاً" : "Enter a topic first"); return; }
     setAiGenerating(true);
     try {
-      const res = await fetch(`${API}/api/ai/generate-questions`, {
+      const res = await creditAwareFetch(`${API}/api/ai/generate-questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ topic: aiTopic.trim(), subject: aiSubject.trim(), count: aiCount, difficulty: aiDifficulty }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || (ar ? "فشل التوليد" : "Generation failed"));
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || (ar ? "فشل التوليد" : "Generation failed"));
+      }
       const generated: Question[] = (data.questions || []).map((q: any) => ({
         ...emptyQuestion("mcq"),
         text: q.text || "",

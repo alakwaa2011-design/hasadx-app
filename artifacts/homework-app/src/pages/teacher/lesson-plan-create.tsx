@@ -13,6 +13,10 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { createClientRequestId } from "@/lib/client-request-id";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { toast } from "sonner";
 import { LessonPlanPrintView, type PlanData } from "@/pages/teacher/lesson-plan-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -683,7 +687,7 @@ export default function LessonPlanCreate() {
     contentOperationInFlightRef.current = true;
     setGenerating(true);
     try {
-      const r = await fetch(`${API_BASE}/api/lesson-plans/ai/generate`, {
+      const r = await creditAwareFetch(`${API_BASE}/api/lesson-plans/ai/generate`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -699,6 +703,7 @@ export default function LessonPlanCreate() {
       });
       const data = await r.json();
       if (!r.ok) {
+        if (isInsufficientCreditsResponse(r)) return;
         toast.error(data?.message || t.aiError);
         return;
       }
@@ -755,13 +760,14 @@ export default function LessonPlanCreate() {
       fd.append("pedagogy", aiPedagogy);
       if (aiNotes.trim()) fd.append("notes", aiNotes.trim());
 
-      const res = await fetch(`${API_BASE}/api/lesson-plans/ai/extract`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/lesson-plans/ai/extract`, {
         method: "POST",
         credentials: "include",
         body: fd,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
         toast.error(data?.message || t.aiError);
         return;
       }

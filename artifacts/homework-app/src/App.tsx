@@ -9,6 +9,7 @@ import { DarkModeProvider } from "@/lib/dark-mode";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { GlobalAiAssistant } from "@/components/ai-assistant";
+import { InsufficientCreditsDialog } from "@/components/insufficient-credits-dialog";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { HeartbeatTracker } from "@/components/heartbeat-tracker";
 import { NavTracker } from "@/lib/nav-history";
@@ -674,6 +675,7 @@ function App() {
                 <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                   <Router />
                   <GlobalAiAssistant />
+                  <InsufficientCreditsDialog />
                   <PageViewTracker />
                   <HeartbeatTracker />
                   <NavTracker />

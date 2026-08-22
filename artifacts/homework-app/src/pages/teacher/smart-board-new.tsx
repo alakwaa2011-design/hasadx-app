@@ -9,6 +9,10 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { createClientRequestId } from "@/lib/client-request-id";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { motion, AnimatePresence } from "framer-motion";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -511,13 +515,17 @@ export default function SmartBoardNew() {
     setError("");
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/api/whiteboard/generate`, {
+      const r = await creditAwareFetch(`${API_BASE}/api/whiteboard/generate`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: topic.trim(), subject, gradeLevel, depth, language: lang }),
       });
       const d = await r.json();
-      if (!r.ok) { setError(d.message ?? (isAr ? "حدث خطأ" : "An error occurred")); return; }
+      if (!r.ok) {
+        if (isInsufficientCreditsResponse(r)) return;
+        setError(d.message ?? (isAr ? "حدث خطأ" : "An error occurred"));
+        return;
+      }
       setPlan(d.plan);
       await persistPlan(d.plan);
     } catch {

@@ -16,6 +16,10 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { QuestionCard, emptyQuestion, isValidQ, type Question, type Correct } from "@/components/game/question-editor";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -117,14 +121,17 @@ export default function SoloChallengeCreatePage() {
     if (!topic.trim()) { toast.error("أدخل الموضوع أولاً"); return; }
     setGenerating(true);
     try {
-      const res = await fetch(`${API}/api/ai/generate-questions`, {
+      const res = await creditAwareFetch(`${API}/api/ai/generate-questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ topic: topic.trim(), subject: subject.trim(), count, difficulty }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "فشل التوليد");
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || "فشل التوليد");
+      }
       const generated: Question[] = (data.questions || []).map((q: any) => ({
         text: q.text || "",
         type: "mcq" as const,

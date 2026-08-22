@@ -2,6 +2,10 @@ import type {
   ArenaDifficulty, ArenaQuestion, ArenaSection, ArenaSubCategory, ArenaCover,
 } from "@/data/arena-questions";
 import { coverForIndex } from "@/data/arena-questions";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -136,7 +140,7 @@ export async function aiGenerateArenaQuestions(input: {
   notes?: string;
 }): Promise<{ questions: AiGeneratedQuestion[]; error?: string }> {
   try {
-    const r = await fetch(`${API_BASE}/api/arena-content/ai-generate-questions`, {
+    const r = await creditAwareFetch(`${API_BASE}/api/arena-content/ai-generate-questions`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -144,6 +148,7 @@ export async function aiGenerateArenaQuestions(input: {
     });
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
+      if (isInsufficientCreditsResponse(r)) return { questions: [] };
       return { questions: [], error: j?.error || `HTTP ${r.status}` };
     }
     const j = await r.json();

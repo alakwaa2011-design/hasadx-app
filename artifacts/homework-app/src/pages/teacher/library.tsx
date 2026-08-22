@@ -20,6 +20,10 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
+import {
   Library,
   Upload,
   Link as LinkIcon,
@@ -813,13 +817,14 @@ export default function TeacherLibraryPage() {
       if (extractBulkTargets) {
         body.fileIds = extractBulkTargets.map((f) => f.id);
       }
-      const res = await fetch(url, {
+      const res = await creditAwareFetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...body, questionType: extractQuestionType }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (isInsufficientCreditsResponse(res)) return;
         throw new Error(err.message || T.extractError);
       }
       const data = await res.json();

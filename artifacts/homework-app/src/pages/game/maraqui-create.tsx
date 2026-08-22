@@ -9,6 +9,10 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -177,7 +181,7 @@ export default function MaraquiCreate() {
     if (!aiTopic.trim()) { toast.error(isRtl ? "أدخل موضوع الأسئلة" : "Enter a topic"); return; }
     setAiLoadingStage(stageIdx);
     try {
-      const res = await fetch(`${API_BASE}/api/ai/generate-questions`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/ai/generate-questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -188,7 +192,10 @@ export default function MaraquiCreate() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Error");
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || "Error");
+      }
       const converted: MCQQuestion[] = data.questions.map((q: {
         text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string;
       }) => ({

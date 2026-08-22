@@ -4,6 +4,10 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiPresentationBuilder } from "./builder";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -424,7 +428,7 @@ export default function NewPresentationPage() {
     }, 3500);
 
     try {
-      const r1 = await fetch(`${API_BASE}/api/presentations/ai/outline`, {
+      const r1 = await creditAwareFetch(`${API_BASE}/api/presentations/ai/outline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -443,6 +447,11 @@ export default function NewPresentationPage() {
         }),
       });
       if (!r1.ok) {
+        if (isInsufficientCreditsResponse(r1)) {
+          clearInterval(t);
+          setQuickPhase("form");
+          return;
+        }
         const e = await r1.json().catch(() => ({}));
         throw new Error(
           (e as { message?: string }).message ||
@@ -463,13 +472,18 @@ export default function NewPresentationPage() {
       }
 
       setStatusMsg(isAr ? "بناء الشرائح…" : "Building slides…");
-      const r3 = await fetch(`${API_BASE}/api/presentations/ai/build/${draftId}`, {
+      const r3 = await creditAwareFetch(`${API_BASE}/api/presentations/ai/build/${draftId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ coverEmoji: "📚" }),
       });
       if (!r3.ok) {
+        if (isInsufficientCreditsResponse(r3)) {
+          clearInterval(t);
+          setQuickPhase("form");
+          return;
+        }
         const e = await r3.json().catch(() => ({}));
         throw new Error(
           (e as { message?: string }).message ||

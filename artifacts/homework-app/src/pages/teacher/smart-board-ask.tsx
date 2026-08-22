@@ -7,6 +7,10 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { motion } from "framer-motion";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -98,13 +102,16 @@ export default function SmartBoardAsk() {
     if (!q.trim() && !imageB64) return;
     setLoading(true); setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/whiteboard/ask`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/whiteboard/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ question: q.trim(), imageBase64: imageB64 }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error();
+      }
       const plan = await res.json();
       sessionStorage.setItem("whiteboard_ask_plan", JSON.stringify(plan));
       navigate("/teacher/smart-board/present/ask");

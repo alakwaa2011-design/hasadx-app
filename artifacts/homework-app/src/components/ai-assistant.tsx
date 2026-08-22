@@ -13,6 +13,10 @@ import {
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const STORAGE_MINIMIZED = "hasad-guide-launcher-minimized";
@@ -216,7 +220,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     setInput("");
     setMessages((m) => [...m, { role: "user", content: text }]);
     try {
-      const r = await fetch(`${API_BASE}/api/ai-chat/messages`, {
+      const r = await creditAwareFetch(`${API_BASE}/api/ai-chat/messages`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -224,6 +228,10 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
       });
       const data = await r.json();
       if (!r.ok) {
+        if (isInsufficientCreditsResponse(r)) {
+          setMessages((m) => m.slice(0, -1));
+          return;
+        }
         setError(data.message || data.error || t.errorGeneric);
         setMessages((m) => m.slice(0, -1));
         if (data.usage) setUsage(data.usage);

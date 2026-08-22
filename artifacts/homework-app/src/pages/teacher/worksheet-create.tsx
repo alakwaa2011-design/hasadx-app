@@ -17,6 +17,10 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { createClientRequestId } from "@/lib/client-request-id";
+import {
+  creditAwareFetch,
+  isInsufficientCreditsResponse,
+} from "@/lib/credit-aware-fetch";
 import { toast } from "@/components/ui/sonner";
 import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -602,7 +606,7 @@ export default function WorksheetCreate() {
     contentOperationInFlightRef.current = true;
     setGenerating(true);
     try {
-      const res = await fetch(`${API_BASE}/api/worksheets/ai/generate`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/generate`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -618,6 +622,7 @@ export default function WorksheetCreate() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (isInsufficientCreditsResponse(res)) return;
         toast.error(err.message || (ar ? "تعذّر التوليد" : "Generation failed"));
         return;
       }
@@ -699,13 +704,14 @@ export default function WorksheetCreate() {
       if (aiTopic.trim()) fd.append("topicHint", aiTopic.trim());
       fd.append("counts", JSON.stringify(aiCounts));
 
-      const res = await fetch(`${API_BASE}/api/worksheets/ai/extract`, {
+      const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST",
         credentials: "include",
         body: fd,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (isInsufficientCreditsResponse(res)) return;
         toast.error(err.message || (ar ? "تعذّر الاستخراج" : "Extraction failed"));
         return;
       }
