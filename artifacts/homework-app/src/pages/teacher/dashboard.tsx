@@ -740,7 +740,7 @@ export default function TeacherDashboard() {
     {
       id: "library_homework",
       label: t.dashboard.activitiesLibrary,
-      shortLabel: t.dashboard.activitiesShort,
+      shortLabel: t.dashboard.activitiesLibrary,
       icon: <BookOpen className="w-4 h-4" />,
     },
     {
@@ -1338,7 +1338,7 @@ export default function TeacherDashboard() {
       >
         {tabs
           .filter((tab) =>
-            ["overview", "assignments", "competitive", "tools", "islamic"].includes(tab.id),
+            ["overview", "assignments", "library_homework", "competitive", "tools"].includes(tab.id),
           )
           .map((tab) => {
             const active = activeTab === tab.id;
@@ -1351,7 +1351,7 @@ export default function TeacherDashboard() {
                 }}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1 py-3 px-0.5 transition-all relative",
+                  "min-w-0 flex-1 flex flex-col items-center justify-center gap-1 py-3 px-0.5 transition-all relative",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -1375,7 +1375,7 @@ export default function TeacherDashboard() {
                 </span>
                 <span
                   className={cn(
-                    "text-[11px] leading-none",
+                    "max-w-full text-center text-[10px] leading-tight whitespace-normal break-words",
                     active ? "font-bold" : "font-semibold",
                   )}
                 >

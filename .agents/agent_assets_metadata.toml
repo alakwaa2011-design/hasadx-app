@@ -845,3 +845,10 @@ uri = "file://screenshots/join-card-pin-only-desktop.jpg"
 type = "image"
 title = "Join card — PIN only desktop 1440×900"
 description = "Final desktop preview with the compact horizontal join card and balanced spacing."
+
+[[outputs]]
+id = "0fnKq5wBJJE6j32LZHyqx"
+uri = "file://screenshots/teacher-mobile-nav-390x844-authenticated.jpg"
+type = "image"
+title = "لقطة شريط المعلم على الهاتف — 390×844"
+description = "لقطة تحقق بصري للنسخة المصادق عليها محلياً: العناصر الخمسة مرتبة من اليمين إلى اليسار، مع ظهور مكتبة الأنشطة دون قص. تم الاعتماد على استجابات قراءة محلية فقط دون إنشاء حساب أو بيانات."
