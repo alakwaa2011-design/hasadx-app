@@ -656,13 +656,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     }} />}
                     {!isLoading && !user && !student && (
                       <>
-                        <a
-                          href="/#join"
-                          className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold text-[hsl(145,45%,27%)] rounded-lg border border-[hsl(145,35%,80%)] bg-white hover:bg-muted transition-colors"
-                        >
-                          <Gamepad2 className="w-3.5 h-3.5" />
-                          {lang === "ar" ? "رمز" : "Code"}
-                        </a>
                         <Link
                           href="/register?role=teacher"
                           className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
