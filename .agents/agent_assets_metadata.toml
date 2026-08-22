@@ -803,3 +803,17 @@ uri = "file://screenshots/homepage-desktop-1440x900-hero-tuned.jpg"
 type = "image"
 title = "Hero tuned — desktop 1440×900"
 description = "Final desktop review showing the adjusted headline wrapping, larger product preview, quieter background ornaments, and balanced join bar."
+
+[[outputs]]
+id = "ZKEKDZMFHNuRoPs6p6zT5"
+uri = "file://screenshots/home-tools-mobile.jpg"
+type = "image"
+title = "Homepage tools — mobile 390×844"
+description = "Final public homepage preview showing the mobile landing layout and join card at 390×844."
+
+[[outputs]]
+id = "3OgsexwL50wznsDD0oiTk"
+uri = "file://screenshots/home-tools-desktop.jpg"
+type = "image"
+title = "Homepage tools — desktop 1440×900"
+description = "Final public homepage preview showing the two-column hero and join card at 1440×900."

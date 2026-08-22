@@ -12,6 +12,8 @@ import {
   Brain,
   Trophy,
   Camera,
+  Video,
+  Pencil,
   BookOpen,
   ArrowLeft,
   ArrowRight,
@@ -1701,48 +1703,48 @@ export default function Home() {
   ];
   const tools = lang === "ar" ? [
     {
-      title: "المسابقات التفاعلية",
-      desc: "أسئلة حية، مؤقت، ولوحة نتائج تبقي الصف متحمسًا.",
-      Icon: Trophy,
-      href: "/teacher/new",
+      title: "مولّد خطة الدرس",
+      desc: "حوّل أهداف الدرس إلى خطة واضحة قابلة للتخصيص.",
+      Icon: BookOpen,
+      href: "/teacher/lesson-plans/create",
     },
     {
-      title: "الأنشطة التعليمية",
-      desc: "أنشطة قصيرة أو ممتدة تخدم الدرس اليومي بسهولة.",
-      Icon: Sparkles,
-      href: "/teacher/new",
+      title: "مولّد الخريطة الذهنية",
+      desc: "حوّل أي موضوع إلى خريطة ذهنية بصرية في لحظات.",
+      Icon: Brain,
+      href: "/teacher/mindmap/create",
     },
     {
-      title: "الواجبات المنظمة",
-      desc: "إنشاء وتسليم ومتابعة داخل تجربة أوضح للمعلم.",
+      title: "ورقة عمل",
+      desc: "صمّم ورقة عمل احترافية للطباعة بمساعدة الذكاء الاصطناعي.",
       Icon: FileText,
-      href: "/teacher/new/assignment",
+      href: "/teacher/worksheets/create",
     },
     {
-      title: "الاختبارات السريعة",
-      desc: "نتائج أسرع وقياس فوري للفهم والمشاركة.",
-      Icon: ClipboardList,
-      href: "/teacher/new",
+      title: "عرض تفاعلي",
+      desc: "أنشئ عرضاً تفاعلياً يجمع الشرائح والأسئلة والأنشطة.",
+      Icon: Presentation,
+      href: "/teacher/presentations/new",
     },
     {
-      title: "الفيديو التفاعلي",
-      desc: "اعرض الفيديو ثم أظهر سؤالًا مباشرًا كما يراه الطالب.",
-      Icon: Camera,
+      title: "درس فيديو",
+      desc: "أضف أسئلة إلى لحظات محددة داخل الفيديو.",
+      Icon: Video,
       href: "/teacher/video-lesson/new",
     },
     {
-      title: "مساعد الذكاء الاصطناعي",
-      desc: "ولّد أسئلتك تلقائيًا من الدرس بثوانٍ وحسّن صياغتك.",
-      Icon: Brain,
-      href: "/teacher/new",
+      title: "السبورة الذكية",
+      desc: "اطرح سؤالاً أو فكرة ودع السبورة الذكية تعرضها أمام طلابك.",
+      Icon: Pencil,
+      href: "/teacher/smart-board",
     },
   ] : [
-    { title: "Interactive quizzes", desc: "Live questions, timers, and results that keep every class engaged.", Icon: Trophy, href: "/teacher/new" },
-    { title: "Learning activities", desc: "Short or extended activities that support everyday teaching.", Icon: Sparkles, href: "/teacher/new" },
-    { title: "Organized assignments", desc: "Create, assign, and follow up from a clearer teacher experience.", Icon: FileText, href: "/teacher/new/assignment" },
-    { title: "Quick tests", desc: "Faster results and an immediate view of understanding and participation.", Icon: ClipboardList, href: "/teacher/new" },
-    { title: "Interactive video", desc: "Show a video and place a direct question at the exact learning moment.", Icon: Camera, href: "/teacher/video-lesson/new" },
-    { title: "AI assistant", desc: "Generate questions from your lesson in seconds and refine your wording.", Icon: Brain, href: "/teacher/new" },
+    { title: "Lesson plan generator", desc: "Turn lesson goals into a clear, customizable plan.", Icon: BookOpen, href: "/teacher/lesson-plans/create" },
+    { title: "Mind map generator", desc: "Turn any topic into a visual mind map in moments.", Icon: Brain, href: "/teacher/mindmap/create" },
+    { title: "Worksheet", desc: "Design a polished, printable worksheet with AI support.", Icon: FileText, href: "/teacher/worksheets/create" },
+    { title: "Interactive presentation", desc: "Create a deck that combines slides, questions, and activities.", Icon: Presentation, href: "/teacher/presentations/new" },
+    { title: "Video lesson", desc: "Add questions at specific moments inside a video.", Icon: Video, href: "/teacher/video-lesson/new" },
+    { title: "Smart board", desc: "Ask a question or share an idea on a live smart board.", Icon: Pencil, href: "/teacher/smart-board" },
   ];
   const videoChoices = lang === "ar" ? [
     { badge: "A", label: "عندما ترتفع حرارة الشمس" },
@@ -3621,9 +3623,6 @@ export default function Home() {
               </Link>
             </div>
         </section>
-        {/* -------------- READY QUIZZES (preserved) -------------- */}
-        <ReadyQuizzesSection lang={lang} dir={dir} />
-
         {/* -------------- FLOW + LIVE STATS -------------- */}
         <section id="how-it-works" className="order-4 border-t border-border/60 bg-[#fbfcf8]" style={{ order: 4 }}>
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
