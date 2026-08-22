@@ -658,10 +658,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       <>
                         <Link
                           href="/register?role=teacher"
-                          className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
+                          className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold whitespace-nowrap bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
                         >
                           <GraduationCap className="w-3.5 h-3.5" />
-                          {lang === "ar" ? "ابدأ" : "Start"}
+                          {lang === "ar" ? "ابدأ مجاناً" : "Start"}
                         </Link>
                       </>
                     )}
