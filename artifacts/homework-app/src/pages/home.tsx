@@ -2244,8 +2244,9 @@ export default function Home() {
                       style={{
                         display: "flex",
                         justifyContent: "center",
+                        width: "min(100%, 510px)",
                         gap: "clamp(6px,1.6vw,14px)",
-                         marginBottom: "clamp(6px,1vw,10px)",
+                        margin: "0 auto clamp(6px,1vw,10px)",
                         direction: "ltr",
                       }}
                     >
@@ -2259,7 +2260,9 @@ export default function Home() {
                           maxLength={1}
                           value={slotVal}
                           style={{
-                            width: "clamp(44px,10vw,72px)",
+                             width: "auto",
+                             minWidth: "44px",
+                             flex: "1 1 0",
                             height: "clamp(54px,12.5vw,84px)",
                             borderRadius: "clamp(12px,2vw,18px)",
                             border: `2.5px solid ${slotVal ? "#b88712" : "#e9c870"}`,
