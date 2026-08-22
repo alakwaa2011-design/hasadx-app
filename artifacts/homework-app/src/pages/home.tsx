@@ -2158,7 +2158,7 @@ export default function Home() {
                   background: "#fff",
                   borderRadius: "clamp(22px,4vw,36px)",
                   padding:
-                    "clamp(16px,2vw,24px) clamp(18px,4vw,36px) clamp(14px,1.8vw,20px)",
+                    "clamp(12px,1.6vw,20px) clamp(16px,3.5vw,32px) clamp(10px,1.2vw,14px)",
                   boxShadow: "0 18px 50px rgba(22,73,47,0.12)",
                   border: "1px solid rgba(27,107,63,0.08)",
                   position: "relative",
@@ -2227,8 +2227,9 @@ export default function Home() {
                         textAlign: "center",
                         fontSize: "clamp(12px,1.5vw,15px)",
                         color: "#1b6b3f",
-                        margin: "8px 0 clamp(10px,1.5vw,12px)",
+                         margin: "4px 0 clamp(6px,1vw,10px)",
                         fontWeight: 600,
+                         lineHeight: 1.4,
                       }}
                     >
                       {lang === "ar"
@@ -2244,7 +2245,7 @@ export default function Home() {
                         display: "flex",
                         justifyContent: "center",
                         gap: "clamp(6px,1.6vw,14px)",
-                        marginBottom: "clamp(10px,1.5vw,12px)",
+                         marginBottom: "clamp(6px,1vw,10px)",
                         direction: "ltr",
                       }}
                     >
@@ -2354,7 +2355,7 @@ export default function Home() {
                         width: "min(100%, 510px)",
                         border: "none",
                         borderRadius: "clamp(14px,2.5vw,22px)",
-                        padding: "clamp(13px,2.5vw,19px)",
+                         padding: "clamp(12px,2.2vw,17px)",
                         fontSize: "clamp(14px,2vw,20px)",
                         fontWeight: 900,
                         cursor: pin.trim() ? "pointer" : "default",
@@ -2368,7 +2369,7 @@ export default function Home() {
                           : "0 4px 12px rgba(184,144,15,0.22)",
                         transition: "opacity 0.2s ease, box-shadow 0.2s ease",
                         direction: dir,
-                        margin: "0 auto clamp(6px,1vw,8px)",
+                         margin: "0 auto",
                       }}
                     >
                       {lang === "ar" ? "← انضمام الآن" : "Join now →"}
@@ -2378,13 +2379,19 @@ export default function Home() {
                         textAlign: "center",
                         fontSize: "clamp(11px,1.3vw,13.5px)",
                         color: "#1b6b3f",
-                        margin: "clamp(6px,1vw,8px) 0 0",
+                        margin: "clamp(2px,0.5vw,4px) 0 0",
                         fontWeight: 600,
+                        lineHeight: 1.35,
                       }}
                     >
-                      {lang === "ar"
-                        ? "ليس لديك كود؟ استكشف الفعاليات أو تواصل مع المعلم"
-                        : "No code? Explore activities or contact your teacher."}
+                      <Link
+                        href="/public/games"
+                        className="underline-offset-2 transition hover:text-[#16492f] hover:underline"
+                      >
+                        {lang === "ar"
+                          ? "ليس لديك كود؟ استكشف الفعاليات أو تواصل مع المعلم"
+                          : "No code? Explore activities or contact your teacher."}
+                      </Link>
                     </p>
                     </div>
                   </div>
@@ -2618,40 +2625,6 @@ export default function Home() {
               </div>
             </motion.section>
 
-            {/* ===== DISCOVER MORE ===== */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-              dir={dir}
-              style={{
-                textAlign: "center",
-                fontSize: "clamp(12px,1.5vw,16px)",
-                color: "#1b6b3f",
-                fontWeight: 600,
-                margin: "clamp(8px,1.5vh,14px) 0 clamp(16px,3vh,28px)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "4px",
-              }}
-              onClick={() =>
-                document
-                  .getElementById("tools")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              {lang === "ar" ? "اكتشف المزيد" : "Discover more"}
-              <ChevronDown
-                style={{
-                  width: "1.1em",
-                  height: "1.1em",
-                  display: "inline-block",
-                }}
-              />
-            </motion.div>
           </div>
         </div>
 

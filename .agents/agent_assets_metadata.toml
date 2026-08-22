@@ -817,3 +817,17 @@ uri = "file://screenshots/home-tools-desktop.jpg"
 type = "image"
 title = "Homepage tools — desktop 1440×900"
 description = "Final public homepage preview showing the two-column hero and join card at 1440×900."
+
+[[outputs]]
+id = "KoKcBCur6aJYTmkiPLTF0"
+uri = "file://screenshots/join-card-mobile-compact.jpg"
+type = "image"
+title = "Join card — compact mobile 390×844"
+description = "Updated public homepage preview showing the compact join card on mobile, with six PIN fields, join button, and secondary link."
+
+[[outputs]]
+id = "GRhM0jzqtKayoWS-KFMOp"
+uri = "file://screenshots/join-card-desktop-compact.jpg"
+type = "image"
+title = "Join card — compact desktop 1440×900"
+description = "Updated public homepage preview showing the compact horizontal join strip on desktop."
