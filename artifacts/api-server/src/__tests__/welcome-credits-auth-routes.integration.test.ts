@@ -29,12 +29,18 @@ const RUN_INTEGRATION =
 
 const RUN_ID = `war${Date.now()}`;
 const PASSWORD = "secret123";
+let mostRecentSession: { save: ReturnType<typeof vi.fn> } | null = null;
 
 function makeApp() {
   const app = express();
   app.use(express.json());
   app.use((req: any, _res, next) => {
-    req.session = { cookie: {} };
+    const session = {
+      cookie: {},
+      save: vi.fn((callback: (error?: unknown) => void) => callback()),
+    };
+    mostRecentSession = session;
+    req.session = session;
     req.log = { info: () => {}, warn: () => {}, error: () => {} };
     next();
   });
@@ -181,6 +187,7 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
 
     const res = await request(app).post("/api/auth/google").send({ credential: "mock-token" });
     expect(res.status).toBe(200);
+    expect(mostRecentSession?.save).toHaveBeenCalledOnce();
     const tid = Number(res.body.teacher.id);
     tids.push(tid);
 

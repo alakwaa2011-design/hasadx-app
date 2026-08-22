@@ -469,6 +469,7 @@ interface LoginFormProps {
   lang: string;
   dir: "rtl" | "ltr";
   onOptPhoneChange: (v: string) => void;
+  onGoogleAuthenticated: (teacher: AuthResponse["teacher"]) => void;
 }
 
 function LoginForm({
@@ -481,6 +482,7 @@ function LoginForm({
   iconPositionClass, inputPaddingClass, pickerRef,
   gulfCountries, arabCountries, worldCountries, filteredCountries,
   t, lang, dir, onOptPhoneChange,
+  onGoogleAuthenticated,
 }: LoginFormProps) {
   const loginTeacherWithGoogleMutation = useLoginTeacherWithGoogle();
   return (
@@ -532,25 +534,10 @@ function LoginForm({
                     trackMetaCompleteRegistration(data.teacher.id);
                   }
                   toast.success(lang === "ar" ? "تم تسجيل الدخول بنجاح" : "Logged in successfully");
-                  let pendingPublish = false;
-                  try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
-                  // Route by role so organizers land on /organizer.
-                  // Admins are sent to their last-used surface when remembered.
-                  const role = data.teacher.role;
-                  const isAdmin = data.teacher.isAdmin;
-                  let target: string;
-                  if (pendingPublish) {
-                    target = "guest/create";
-                  } else if (isAdmin || role === "admin") {
-                    const lastPath = getAdminLastSurfacePath();
-                    // Strip leading slash because BASE_URL already ends with one.
-                    target = (lastPath ?? "/teacher").replace(/^\//, "");
-                  } else if (role === "organizer") {
-                    target = "organizer";
-                  } else {
-                    target = "teacher";
-                  }
-                  window.location.href = `${import.meta.env.BASE_URL}${target}`;
+                  // Use the same in-app redirect as password login. A hard page
+                  // reload here could abort the Google response before its session
+                  // cookie was committed by the server.
+                  onGoogleAuthenticated(data.teacher);
                 } catch (err) {
                   const message = err instanceof Error ? err.message : "";
                   toast.error(message || (lang === "ar" ? "تعذّر تسجيل الدخول" : "Login failed"));
@@ -1460,6 +1447,9 @@ export default function Auth() {
                 lang={lang}
                 dir={dir}
                 onOptPhoneChange={setOptPhoneValue}
+                onGoogleAuthenticated={(teacher) =>
+                  postAuthRedirect(teacher.role ?? null, teacher.isAdmin ?? null)
+                }
               />
 
               {/* Register / Login switch — full-width outlined green button */}

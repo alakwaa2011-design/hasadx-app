@@ -318,6 +318,23 @@ function stampTeacherSession(req: any) {
   req.session.lastSeenAt = now;
 }
 
+/**
+ * Persist a newly-established session before the client is allowed to navigate.
+ * Google Identity callbacks can trigger an immediate navigation in the browser;
+ * relying on express-session's response-finish save risks losing that session.
+ */
+async function persistSession(req: any): Promise<void> {
+  const save = req.session?.save;
+  if (typeof save !== "function") return;
+
+  await new Promise<void>((resolve, reject) => {
+    save.call(req.session, (error: unknown) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
+
 /** Fire-and-forget: detect country from IP and update the teacher record. Never throws. */
 async function detectAndSaveCountry(teacherId: number, req: any): Promise<void> {
   try {
@@ -1435,6 +1452,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     delete req.session.studentAccountId;
     req.session.teacherId = teacher.id;
     stampTeacherSession(req);
+    await persistSession(req);
 
     await db
       .update(teachersTable)
