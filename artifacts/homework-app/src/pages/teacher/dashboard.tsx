@@ -3194,7 +3194,7 @@ function StudentsInlineTab({ lang, setLocation }: { lang: string; setLocation: (
           style={{ background: "#225739", color: "#FCFAF8" }}
         >
           <Users className="w-4 h-4" />
-          {"Manage"}
+          {isAr ? "إدارة" : "Manage"}
         </button>
       </div>
 
