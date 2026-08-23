@@ -673,11 +673,11 @@ export default function WheelCreate() {
                     <h2 className="mt-3 text-xl sm:text-2xl font-black text-foreground">{ar ? "أسئلة العجلة جاهزة" : "Wheel questions are ready"}</h2>
                     <p className="mt-1 text-sm text-muted-foreground max-w-lg">{ar ? "أسئلتك محفوظة وجاهزة للعب. يمكنك معاينتها وتعديلها عند الحاجة." : "Your questions are saved and ready to play. Review or edit them whenever you need."}</p>
                     <div className="mt-5 grid w-full max-w-xl grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button type="button" onClick={() => setSegmentsEditorOpen(true)} className="min-h-12 px-4 rounded-xl bg-card hover:bg-primary/5 text-primary text-sm font-black border border-primary/30 flex items-center justify-center gap-2 transition-colors">
+                      <button type="button" onClick={() => setSegmentsEditorOpen(open => !open)} className="min-h-12 px-4 rounded-xl bg-card hover:bg-primary/5 text-primary text-sm font-black border border-primary/30 flex items-center justify-center gap-2 transition-colors">
                         <Edit3 className="w-4 h-4" />
-                        {ar ? "معاينة وتعديل الأسئلة" : "Review & edit questions"}
+                        {segmentsEditorOpen ? (ar ? "إخفاء الأسئلة" : "Hide questions") : (ar ? "معاينة وتعديل الأسئلة" : "Review & edit questions")}
                       </button>
-                      <button type="button" onClick={() => addManualSegment("question")} className="min-h-12 px-4 rounded-xl text-sm font-black text-white flex items-center justify-center gap-2 shadow-sm transition-transform hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>
+                      <button type="button" onClick={() => addManualSegment("question")} className="min-h-12 px-4 rounded-xl bg-card hover:bg-primary/5 text-primary text-sm font-black border border-primary/30 flex items-center justify-center gap-2 transition-colors">
                         <Plus className="w-4 h-4" />
                         {ar ? "إضافة سؤال" : "Add question"}
                       </button>
@@ -753,7 +753,7 @@ export default function WheelCreate() {
 
               {segments.length >= 2 && (
                 <div className="flex justify-end pt-1">
-                  <button type="button" onClick={() => setSetupStep("settings")} className="px-7 py-3 rounded-2xl text-white font-black shadow-md flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5" style={{ background: BRAND_PRIMARY }}>
+                  <button type="button" onClick={() => setSetupStep("settings")} className="px-8 py-3.5 rounded-2xl text-white text-base font-black shadow-md flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5" style={{ background: BRAND_PRIMARY }}>
                     {ar ? "التالي" : "Next"}{ar ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                   </button>
                 </div>
@@ -764,7 +764,10 @@ export default function WheelCreate() {
               <section className="rounded-3xl p-5 sm:p-7 border border-primary/15" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}0d, ${BRAND_GOLD}14)` }}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div><p className="text-xs font-black tracking-wide uppercase" style={{ color: BRAND_PRIMARY }}>{ar ? "العجلة جاهزة" : "Wheel ready"}</p><h2 className="text-xl sm:text-2xl font-black text-foreground mt-1">{title || (ar ? "أضف عنواناً للعبة" : "Add a game title")}</h2><p className="text-sm text-muted-foreground mt-1">{ar ? `${segments.length} قطاعات · ${config.teamCount} فرق` : `${segments.length} segments · ${config.teamCount} teams`}</p></div>
-                  <button type="button" onClick={() => setSetupStep("source")} className="px-4 py-2.5 rounded-xl font-bold text-sm bg-card border border-border hover:border-primary/40">{ar ? "تعديل الأسئلة" : "Edit questions"}</button>
+                  <button type="button" onClick={() => setSetupStep("source")} className="px-4 py-2.5 rounded-xl font-bold text-sm bg-card border border-border hover:border-primary/40 flex items-center gap-1.5">
+                    {ar ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+                    {ar ? "السابق: الأسئلة" : "Back: questions"}
+                  </button>
                 </div>
               </section>
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
