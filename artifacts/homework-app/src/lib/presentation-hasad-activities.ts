@@ -39,6 +39,34 @@ export type CreatedHasadActivity = {
   url: string | undefined;
 };
 
+/** Normalize a stored/suggested assignment activity type to the presentation
+ * metadata that drives both editor controls and present-mode launching.
+ * Unknown library activity types intentionally fall back to Wameeth, which is
+ * the broadest compatible launcher for presentation questions. */
+export function getHasadActivityLaunchDetails(
+  activityType: string | null | undefined,
+  assignmentId: number,
+): Pick<CreatedHasadActivity, "activityType" | "gameType" | "url"> {
+  const normalizedType: HasadSlideActivityType =
+    activityType === "tug_war" || activityType === "rocket_race" || activityType === "quick_quiz"
+      ? activityType
+      : "quick_quiz";
+
+  return {
+    activityType: normalizedType,
+    gameType: normalizedType === "tug_war"
+      ? "tug_of_war"
+      : normalizedType === "rocket_race"
+        ? "rocket_race"
+        : "knowledge_race",
+    url: normalizedType === "tug_war"
+      ? `/game/tug/create?assignmentId=${assignmentId}`
+      : normalizedType === "rocket_race"
+        ? `/game/rocket/create?assignmentId=${assignmentId}`
+        : undefined,
+  };
+}
+
 // ── Activity type labels used in the inspector UI ────────────────────────────
 export const ACTIVITY_TYPE_LABELS: Record<string, { ar: string; en: string; emoji: string }> = {
   tug_war:    { ar: "شد الحبل",  en: "Tug of War",  emoji: "🪢" },
@@ -267,22 +295,11 @@ export async function createHasadActivityFromSlide(
       ? serverType
       : type;
 
-  const gameType: CreatedHasadActivity["gameType"] =
-    finalType === "tug_war" ? "tug_of_war"
-    : finalType === "rocket_race" ? "rocket_race"
-    : "knowledge_race";
+  const launchDetails = getHasadActivityLaunchDetails(finalType, assignmentId);
 
   return {
     assignmentId,
-    activityType: finalType,
-    gameType,
+    ...launchDetails,
     title,
-    /* tug_war / rocket_race: direct URL (their setup pages read ?assignmentId).
-       quick_quiz: undefined — must be launched via socket in the editor. */
-    url: finalType === "tug_war"
-      ? `/game/tug/create?assignmentId=${assignmentId}`
-      : finalType === "rocket_race"
-        ? `/game/rocket/create?assignmentId=${assignmentId}`
-        : undefined,
   };
 }

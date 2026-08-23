@@ -73,6 +73,7 @@ import {
   type HasadSlideActivityType,
   unsupportedHasadActivityLabel,
   getRecommendedHasadActivityType,
+  getHasadActivityLaunchDetails,
   slideSupportsRocketRace,
   ACTIVITY_TYPE_LABELS,
 } from "@/lib/presentation-hasad-activities";
@@ -725,12 +726,13 @@ export default function PresentationEditor() {
       pure client-side linking, no server mutation and no AI/credit cost. */
   const handleLinkExistingActivity = useCallback((sug: ActivitySuggestion) => {
     if (readOnlyRef.current) return;
+    const launchDetails = getHasadActivityLaunchDetails(sug.activityType, sug.id);
     const hasadElement: SlideElement = {
       id: genId("ha"),
       kind: "hasad-activity",
       assignmentId: sug.id,
       assignmentTitle: sug.title,
-      gameType: "knowledge_race",
+      gameType: launchDetails.gameType,
       x: 100,
       y: 100,
       w: 1000,
@@ -746,8 +748,8 @@ export default function PresentationEditor() {
         return {
           ...s,
           linkedActivityId: String(sug.id),
-          linkedActivityType: "quick_quiz",
-          linkedActivityUrl: undefined,
+          linkedActivityType: launchDetails.activityType,
+          linkedActivityUrl: launchDetails.url,
           activityCreationStatus: "created",
           elements: existing ? s.elements : [...(s.elements ?? []), hasadElement],
         };
