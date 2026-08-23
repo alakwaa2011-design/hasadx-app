@@ -10,6 +10,8 @@ import { toast } from "@/components/ui/sonner";
 import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
 import { QuestionCard, emptyQuestion, isValidQ, type Question, type Correct } from "@/components/game/question-editor";
 import { useGetCurrentTeacher, useListAssignments } from "@workspace/api-client-react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -19,6 +21,9 @@ export interface UnifiedQuestionSourceFlowProps {
   gameIcon: React.ReactNode;
   accentColor?: string;
   accentClass?: string;
+  /** Tug only: keeps Escape Room on its existing source-flow presentation. */
+  tugPresentation?: boolean;
+  header?: React.ReactNode;
   minQuestions: number;
   maxQuestions: number;
   onComplete: (data: {
@@ -36,6 +41,8 @@ export function UnifiedQuestionSourceFlow({
   gameIcon,
   accentColor,
   accentClass,
+  tugPresentation = false,
+  header,
   minQuestions,
   maxQuestions,
   onComplete,
@@ -86,6 +93,16 @@ export function UnifiedQuestionSourceFlow({
   const [aiCount, setAiCount] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsCompactViewport(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   // ─── Helpers ───
   const goBack = () => setViewState("menu");
@@ -297,39 +314,143 @@ export function UnifiedQuestionSourceFlow({
     </button>
   );
 
-  return (
-    <div className="w-full max-w-4xl lg:max-w-6xl mx-auto space-y-6 lg:space-y-8" dir={dir}>
-      {/* Header & Step Indicator */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-card border border-border/60 shadow-sm mb-4 text-foreground">
-          {gameIcon}
-        </div>
-        <h1 className="text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">{gameTitle}</h1>
-        <p className="text-muted-foreground text-sm max-w-xl mx-auto font-medium">{gameDescription}</p>
-
-        <div className="mt-8 flex justify-center">
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border/60 rounded-2xl shadow-sm">
-            {[
-              { label: ar ? "الأسئلة" : "Questions", active: true },
-              { label: ar ? "إعدادات اللعبة" : "Game Settings", active: false },
-              { label: ar ? "البدء" : "Start", active: false },
-            ].map((s, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <div className="w-4 h-px bg-border/60 mx-1" />}
-                <div
-                  className={cn(
-                    "px-3 py-1.5 text-xs lg:text-sm font-bold rounded-xl transition-colors",
-                    s.active ? "bg-muted/80 text-foreground shadow-sm border border-border/60" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  style={s.active && accentColor ? { backgroundColor: `${accentColor}15`, color: accentColor, borderColor: `${accentColor}40` } : {}}
-                >
-                  {s.label}
-                </div>
-              </React.Fragment>
-            ))}
+  const AssignmentPicker = ({ inOverlay = false }: { inOverlay?: boolean }) => (
+    <div className={cn(
+      "flex min-h-0 flex-col",
+      inOverlay ? "h-[min(680px,82vh)]" : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8"
+    )}>
+      <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", inOverlay ? "px-1 pb-4" : "mb-6")}>
+        <div className="flex items-center gap-3">
+          <BackBtn />
+          <div>
+            <h2 className="text-xl font-black text-foreground">{ar ? "اختر واجباً" : "Choose an assignment"}</h2>
+            <p className="text-sm text-muted-foreground">{ar ? "سنستخدم أسئلة الواجب كما هي" : "Its questions will be used as they are"}</p>
           </div>
         </div>
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={assignSearch}
+            onChange={e => setAssignSearch(e.target.value)}
+            placeholder={ar ? "ابحث في الواجبات..." : "Search assignments..."}
+            className="w-full rounded-xl border border-border/60 bg-muted/50 py-2 ps-9 pe-4 text-sm transition-shadow focus:outline-none focus:ring-1"
+            style={accentColor ? { '--tw-ring-color': accentColor } as any : {}}
+          />
+        </div>
       </div>
+
+      <div className={cn("min-h-0 flex-1 space-y-2 overflow-y-auto custom-scrollbar", inOverlay ? "px-1" : "mb-6 pr-2")}>
+        {assignmentsLoading ? (
+          <div className="flex h-full items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : filteredAssignments.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-sm font-medium text-muted-foreground">
+            {ar ? "لا توجد واجبات مطابقة" : "No assignments found"}
+          </div>
+        ) : (
+          filteredAssignments.map((a: any) => (
+            <button
+              key={a.id}
+              onClick={() => handleSelectAssignment(a)}
+              disabled={assignLoading}
+              className={cn(
+                "flex w-full items-center justify-between rounded-2xl border p-3.5 text-start transition-all",
+                selectedAssignId === a.id ? "border-[#0B4B35] bg-[#0B4B35]/5 shadow-sm" : "border-border/50 bg-background hover:border-[#0B4B35]/35 hover:bg-[#0B4B35]/[0.025]"
+              )}
+            >
+              <div className="min-w-0">
+                <h3 className="truncate font-bold text-foreground">{a.title}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                  {a.subject && <span>{a.subject}</span>}
+                  <span>{a.questionCount || 0} {ar ? "أسئلة" : "questions"}</span>
+                </div>
+              </div>
+              <div className={cn(
+                "ms-3 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+                selectedAssignId === a.id ? "border-[#0B4B35] bg-[#0B4B35] text-white" : "border-border"
+              )}>
+                {selectedAssignId === a.id && (assignLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />)}
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+
+      <div className={cn(
+        "mt-4 border-t border-border/60 pt-3",
+        inOverlay && "sticky bottom-0 bg-background pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      )}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 text-xs text-muted-foreground">
+            {selectedAssignId === loadedAssignId && selectedAssignQs.length > 0
+              ? <span className="font-bold text-[#0B4B35]">{selectedAssignTitle} · {selectedAssignQs.length} {ar ? "أسئلة جاهزة" : "questions ready"}</span>
+              : <span>{ar ? "اختر واجباً للمتابعة" : "Choose an assignment to continue"}</span>}
+          </div>
+          <SubmitBtn
+            onClick={handleAssignComplete}
+            disabled={selectedAssignId == null || selectedAssignId !== loadedAssignId || selectedAssignQs.length < minQuestions || assignLoading}
+            label={ar ? "متابعة إلى الإعدادات" : "Continue to settings"}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const assignmentView = tugPresentation ? (
+    isCompactViewport ? (
+      <Sheet open onOpenChange={(open) => { if (!open) goBack(); }}>
+        <SheetContent side="bottom" className="rounded-t-[1.75rem] border-[#0B4B35]/15 px-4 pt-5" dir={dir}>
+          <SheetTitle className="sr-only">{ar ? "اختيار واجب موجود" : "Choose an assignment"}</SheetTitle>
+          <SheetDescription className="sr-only">{ar ? "ابحث عن واجب واختره لاستيراد أسئلته." : "Search for an assignment and select it to import its questions."}</SheetDescription>
+          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted" />
+          <AssignmentPicker inOverlay />
+        </SheetContent>
+      </Sheet>
+    ) : (
+      <Dialog open onOpenChange={(open) => { if (!open) goBack(); }}>
+        <DialogContent className="max-w-2xl rounded-3xl border-[#0B4B35]/15 p-6" dir={dir}>
+          <DialogTitle className="sr-only">{ar ? "اختيار واجب موجود" : "Choose an assignment"}</DialogTitle>
+          <DialogDescription className="sr-only">{ar ? "ابحث عن واجب واختره لاستيراد أسئلته." : "Search for an assignment and select it to import its questions."}</DialogDescription>
+          <AssignmentPicker inOverlay />
+        </DialogContent>
+      </Dialog>
+    )
+  ) : <AssignmentPicker />;
+
+  return (
+    <div className={cn("w-full mx-auto space-y-6 lg:space-y-8", tugPresentation ? "max-w-2xl" : "max-w-4xl lg:max-w-6xl")} dir={dir}>
+      {/* Header & Step Indicator */}
+      {header ?? (
+        <div className="mb-10 text-center">
+          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
+            {gameIcon}
+          </div>
+          <h1 className="mb-2 text-2xl font-black tracking-tight text-foreground lg:text-3xl">{gameTitle}</h1>
+          <p className="mx-auto max-w-xl text-sm font-medium text-muted-foreground">{gameDescription}</p>
+
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-card px-3 py-2 shadow-sm">
+              {[
+                { label: ar ? "الأسئلة" : "Questions", active: true },
+                { label: ar ? "إعدادات اللعبة" : "Game Settings", active: false },
+                { label: ar ? "البدء" : "Start", active: false },
+              ].map((s, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <div className="mx-1 h-px w-4 bg-border/60" />}
+                  <div
+                    className={cn(
+                      "rounded-xl px-3 py-1.5 text-xs font-bold transition-colors lg:text-sm",
+                      s.active ? "border border-border/60 bg-muted/80 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    style={s.active && accentColor ? { backgroundColor: `${accentColor}15`, color: accentColor, borderColor: `${accentColor}40` } : {}}
+                  >
+                    {s.label}
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <AnimatePresence mode="wait">
@@ -341,7 +462,7 @@ export function UnifiedQuestionSourceFlow({
           transition={{ duration: 0.2 }}
         >
           {viewState === "menu" && (
-            <div className="grid sm:grid-cols-2 gap-4 lg:gap-6 max-w-3xl mx-auto">
+            <div className={cn("grid gap-4 mx-auto", tugPresentation ? "sm:grid-cols-2" : "max-w-3xl sm:grid-cols-2 lg:gap-6")}>
               {[
                 {
                   id: "assignment" as const,
@@ -387,7 +508,8 @@ export function UnifiedQuestionSourceFlow({
                     setViewState(opt.id);
                   }}
                   className={cn(
-                    "group p-6 lg:p-8 bg-card border-2 border-border/60 rounded-3xl text-start transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden",
+                    "group relative overflow-hidden rounded-2xl border bg-card p-5 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg",
+                    !tugPresentation && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
                     opt.hoverBorder
                   )}
                 >
@@ -402,77 +524,7 @@ export function UnifiedQuestionSourceFlow({
           )}
 
           {viewState === "assignment" && (
-            <div className="bg-card border border-border/60 rounded-3xl p-5 lg:p-8 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <BackBtn />
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground">{ar ? "من واجب موجود" : "From an assignment"}</h2>
-                    <p className="text-sm text-muted-foreground">{ar ? "اختر واجباً لاستيراد أسئلته" : "Select an assignment to import questions"}</p>
-                  </div>
-                </div>
-                <div className="relative w-full sm:max-w-xs">
-                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    value={assignSearch}
-                    onChange={e => setAssignSearch(e.target.value)}
-                    placeholder={ar ? "ابحث في الواجبات..." : "Search assignments..."}
-                    className="w-full bg-muted/50 border border-border/60 rounded-xl ps-9 pe-4 py-2 text-sm focus:outline-none focus:ring-1 focus:border-transparent transition-shadow"
-                    style={accentColor ? { '--tw-ring-color': accentColor } as any : {}}
-                  />
-                </div>
-              </div>
-
-              <div className="h-[350px] overflow-y-auto pr-2 space-y-3 mb-6 custom-scrollbar">
-                {assignmentsLoading ? (
-                  <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                ) : filteredAssignments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm font-medium">
-                    {ar ? "لا توجد واجبات مطابقة" : "No assignments found"}
-                  </div>
-                ) : (
-                  filteredAssignments.map((a: any) => (
-                    <button
-                      key={a.id}
-                      onClick={() => handleSelectAssignment(a)}
-                      disabled={assignLoading}
-                      className={cn(
-                        "w-full text-start p-4 rounded-xl border-2 transition-all flex items-center justify-between group",
-                        selectedAssignId === a.id
-                          ? (!accentColor && "border-primary bg-primary/5")
-                          : "border-border/40 bg-muted/20 hover:bg-muted hover:border-border/60"
-                      )}
-                      style={selectedAssignId === a.id && accentColor ? { borderColor: accentColor, backgroundColor: `${accentColor}10` } : {}}
-                    >
-                      <div>
-                        <h3 className="font-bold text-foreground">{a.title}</h3>
-                        <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground mt-1.5">
-                          <span className="bg-muted px-2 py-0.5 rounded-md border border-border/50">{ar ? "الأسئلة:" : "Questions:"} {a.questionCount || 0}</span>
-                          {a.subject && (
-                            <span className="bg-muted px-2 py-0.5 rounded-md border border-border/50">{a.subject}</span>
-                          )}
-                        </div>
-                      </div>
-                      {selectedAssignId === a.id && (
-                        <div
-                          className={cn("w-6 h-6 rounded-full flex items-center justify-center shrink-0", !accentColor && "bg-primary text-primary-foreground")}
-                          style={accentColor ? { backgroundColor: accentColor, color: '#fff' } : {}}
-                        >
-                          {assignLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        </div>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-              <div className="flex justify-end pt-4 border-t border-border/60">
-                <SubmitBtn
-                  onClick={handleAssignComplete}
-                  disabled={selectedAssignId == null || selectedAssignId !== loadedAssignId || selectedAssignQs.length < minQuestions || assignLoading}
-                  label={ar ? "متابعة" : "Continue"}
-                />
-              </div>
-            </div>
+            assignmentView
           )}
 
           {viewState === "bank" && (

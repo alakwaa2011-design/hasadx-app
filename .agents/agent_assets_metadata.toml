@@ -873,3 +873,17 @@ uri = "file://screenshots/tug-source-mobile-final.jpg"
 type = "image"
 title = "شد الحبل — اختيار مصدر الأسئلة (الجوال)"
 description = "المعاينة النهائية المتجاوبة بعد اكتمال التحقق."
+
+[[outputs]]
+id = "4swq10tlvtxt7T7xnYDVm"
+uri = "file://screenshots/tug-redesign-source-desktop.jpg"
+type = "image"
+title = "شد الحبل — إعداد المصادر على سطح المكتب"
+description = "الرأس المختصر، الفرق، مسار الإعداد، ومصادر الأسئلة الأربع."
+
+[[outputs]]
+id = "vP9ZPR1Wv_UW_YlvklvUG"
+uri = "file://screenshots/tug-redesign-final-mobile.jpg"
+type = "image"
+title = "شد الحبل — إعداد المصادر على الجوال"
+description = "المعاينة النهائية على عرض 390×844 من دون تمرير أفقي."

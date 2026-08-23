@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Clock, Swords, ArrowRight,
+  Play, Clock, Swords, ArrowRight, Link2, Users, ListChecks, Monitor, Smartphone, CircleCheck,
   Check, X, Loader2, FileText, BookOpen,
   GraduationCap, Trash2, Search,
 } from "lucide-react";
@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -66,6 +67,7 @@ export default function TugCreate() {
   const [questionCount, setQuestionCount] = useState(10);
   const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
+  const [readyOpen, setReadyOpen] = useState(false);
   // Activity title carried into Class Mode's top banner (assignment title when known).
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
 
@@ -136,6 +138,17 @@ export default function TugCreate() {
           setLocation(`/game/tug/play/${res.pin}?creator=1`);
         }
       });
+  };
+
+  const startClassMode = () => {
+    if (questions.length < 2) {
+      toast.error(ar ? "وضع الصف يحتاج سؤالين على الأقل" : "Class Mode needs at least 2 questions");
+      return;
+    }
+    try {
+      sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration, title: sourceTitle || undefined }));
+    } catch { /* storage full/blocked — navigation will show the setup prompt */ }
+    setLocation("/game/tug/class");
   };
 
   // Bank
@@ -233,8 +246,40 @@ export default function TugCreate() {
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
             gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط المنافسة وابدأ اللعب." : "Prepare questions, configure the competition, then start."}
-            gameIcon={<Swords className="h-8 w-8 text-[#225739]" />}
-            accentColor="#225739"
+            gameIcon={<Link2 className="h-8 w-8 text-[#0B4B35]" />}
+            accentColor="#0B4B35"
+            tugPresentation
+            header={
+              <div className="rounded-3xl border border-[#0B4B35]/10 bg-white px-4 py-4 shadow-sm sm:px-6" dir={dir}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0B4B35] text-white shadow-sm">
+                      <Link2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h1 className="text-lg font-black text-[#0B4B35] sm:text-xl">{ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}</h1>
+                      <p className="mt-0.5 text-xs font-medium text-slate-500">{ar ? "حضّر المنافسة في ثلاث خطوات قصيرة" : "Prepare the match in three quick steps"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 rounded-2xl bg-[#FAF8F0] px-3 py-2" style={{ direction: "ltr" }}>
+                    <span className="flex items-center gap-1.5 text-xs font-black text-red-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-red-500" />{ar ? "الأحمر" : "Red"}</span>
+                    <Link2 className="h-4 w-4 text-[#D9AA25]" />
+                    <span className="flex items-center gap-1.5 text-xs font-black text-blue-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-blue-500" />{ar ? "الأزرق" : "Blue"}</span>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-[#FAF8F0] p-1">
+                  {[
+                    { label: ar ? "الأسئلة" : "Questions", active: true },
+                    { label: ar ? "إعدادات اللعبة" : "Settings", active: false },
+                    { label: ar ? "الاستعداد والبدء" : "Ready", active: false },
+                  ].map((step) => (
+                    <div key={step.label} className={`flex min-w-0 items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-[11px] font-bold sm:text-xs ${step.active ? "bg-[#0B4B35] text-white shadow-sm" : "text-slate-400"}`}>
+                      {step.active && <CircleCheck className="h-3.5 w-3.5 shrink-0" />}{step.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            }
             minQuestions={2}
             maxQuestions={20}
             onComplete={({ questions: prepared, sourceTitle: title, source }) => {
@@ -252,137 +297,36 @@ export default function TugCreate() {
 
   return (
     <Layout>
-      {/* ── Light premium background with subtle green tint ── */}
-      <div className="min-h-screen" dir={dir} style={{ background: "#f4fbf7" }}>
-
-        {/* ══════════════════════════════════════════════════════
-            HERO SECTION
-        ══════════════════════════════════════════════════════ */}
-        <div className="relative overflow-hidden"
-          style={{ background: "linear-gradient(180deg, #c8e8d4 0%, #daeee3 40%, #eef8f3 100%)" }}>
-
-          {/* Stadium spotlight glares — top corners, very subtle */}
-          <div className="absolute top-0 left-0 w-72 h-72 pointer-events-none"
-            style={{ background: "radial-gradient(circle at top left, rgba(255,255,255,0.55) 0%, transparent 60%)" }} />
-          <div className="absolute top-0 right-0 w-72 h-72 pointer-events-none"
-            style={{ background: "radial-gradient(circle at top right, rgba(255,255,255,0.55) 0%, transparent 60%)" }} />
-
-          {/* Tug-of-war crowd silhouettes — left side */}
-          <svg className="absolute left-0 bottom-0 h-20 opacity-[0.08] pointer-events-none hidden sm:block"
-            viewBox="0 0 280 80" style={{ width: 280 }}>
-            {[0, 55, 110, 165].map((x) => (
-              <g key={x} fill="#166534" transform={`translate(${x}, 0)`}>
-                <circle cx={22} cy={12} r={9} />
-                <rect x={14} y={22} width={16} height={22} rx={4} />
-                <line x1={30} y1={28} x2={52} y2={32} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-                <line x1={8} y1={28} x2={0} y2={34} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-                <line x1={18} y1={44} x2={14} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-                <line x1={26} y1={44} x2={30} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-              </g>
-            ))}
-          </svg>
-
-          {/* Tug-of-war crowd silhouettes — right side (mirrored) */}
-          <svg className="absolute right-0 bottom-0 h-20 opacity-[0.08] pointer-events-none hidden sm:block"
-            viewBox="0 0 280 80" style={{ width: 280, transform: "scaleX(-1)" }}>
-            {[0, 55, 110, 165].map((x) => (
-              <g key={x} fill="#166534" transform={`translate(${x}, 0)`}>
-                <circle cx={22} cy={12} r={9} />
-                <rect x={14} y={22} width={16} height={22} rx={4} />
-                <line x1={30} y1={28} x2={52} y2={32} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-                <line x1={8} y1={28} x2={0} y2={34} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-                <line x1={18} y1={44} x2={14} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-                <line x1={26} y1={44} x2={30} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
-              </g>
-            ))}
-          </svg>
-
-          {/* Rope curve — left edge decoration */}
-          <svg className="absolute left-0 inset-y-0 h-full w-20 opacity-[0.07] pointer-events-none hidden lg:block"
-            viewBox="0 0 80 200" preserveAspectRatio="none">
-            <path d="M80,10 Q-10,60 20,100 Q-10,140 80,190" stroke="#166534" strokeWidth="5" fill="none" strokeLinecap="round" />
-          </svg>
-          {/* Rope curve — right edge */}
-          <svg className="absolute right-0 inset-y-0 h-full w-20 opacity-[0.07] pointer-events-none hidden lg:block"
-            viewBox="0 0 80 200" preserveAspectRatio="none">
-            <path d="M0,10 Q90,60 60,100 Q90,140 0,190" stroke="#166534" strokeWidth="5" fill="none" strokeLinecap="round" />
-          </svg>
-
-          {/* Hero content */}
-          <div className="relative max-w-[1100px] mx-auto px-4 sm:px-8 pt-8 pb-8">
-
-            {/* Team blocks + rope — direction:ltr to fix physical positions regardless of page RTL */}
-            <div className="flex items-center justify-between mb-5" style={{ direction: "ltr" }}>
-
-              {/* Red team — physical LEFT */}
-              <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}
-                className="flex items-center gap-3">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
-                  style={{
-                    background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                    boxShadow: "0 4px 14px rgba(220,38,38,0.25)",
-                  }}>
-                  💪
+        <div className="min-h-screen bg-[#FAF8F0]" dir={dir}>
+          <div className="mx-auto max-w-3xl px-4 pb-2 pt-5 sm:px-6">
+            <div className="rounded-3xl border border-[#0B4B35]/10 bg-white px-4 py-4 shadow-sm sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0B4B35] text-white">
+                    <Link2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-black text-[#0B4B35] sm:text-xl">{ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}</h1>
+                    <p className="mt-0.5 text-xs font-medium text-slate-500">{ar ? "اضبط المنافسة ثم انتقل لبدء اللعب" : "Set the match, then get ready to start"}</p>
+                  </div>
                 </div>
-                <div style={{ direction: dir }}>
-                  <p className="font-black text-red-700 text-sm sm:text-base leading-tight">
-                    {ar ? "الفريق الأحمر" : "Red Team"}
-                  </p>
-                  <p className="text-red-400 text-xs mt-0.5">{ar ? "المنافس الثاني" : "Team 2"}</p>
+                <div className="flex items-center justify-between gap-2 rounded-2xl bg-[#FAF8F0] px-3 py-2" style={{ direction: "ltr" }}>
+                  <span className="flex items-center gap-1.5 text-xs font-black text-red-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-red-500" />{ar ? "الأحمر" : "Red"}</span>
+                  <Link2 className="h-4 w-4 text-[#D9AA25]" />
+                  <span className="flex items-center gap-1.5 text-xs font-black text-blue-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-blue-500" />{ar ? "الأزرق" : "Blue"}</span>
                 </div>
-              </motion.div>
-
-              {/* Center: rope knot + title */}
-              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center flex-1 px-4">
-                {/* Rope lines extending from knot */}
-                <div className="flex items-center mb-3 w-full max-w-xs">
-                  <div className="flex-1 h-0.5 rounded-full"
-                    style={{ background: "linear-gradient(to left, rgba(22,163,74,0.35), transparent)" }} />
-                  <span className="text-5xl sm:text-6xl mx-3">🪢</span>
-                  <div className="flex-1 h-0.5 rounded-full"
-                    style={{ background: "linear-gradient(to right, rgba(22,163,74,0.35), transparent)" }} />
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 text-center leading-tight mb-1"
-                  style={{ direction: dir }}>
-                  {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
-                </h1>
-                <p className="text-sm text-gray-500 text-center" style={{ direction: dir }}>
-                  {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
-                </p>
-              </motion.div>
-
-              {/* Blue team — physical RIGHT */}
-              <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}
-                className="flex items-center gap-3 flex-row-reverse">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
-                  style={{
-                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                    boxShadow: "0 4px 14px rgba(59,130,246,0.25)",
-                  }}>
-                  💪
-                </div>
-                <div style={{ direction: dir }} className="text-end">
-                  <p className="font-black text-blue-700 text-sm sm:text-base leading-tight">
-                    {ar ? "الفريق الأزرق" : "Blue Team"}
-                  </p>
-                  <p className="text-blue-400 text-xs mt-0.5">{ar ? "المنافس الأول" : "Team 1"}</p>
-                </div>
-              </motion.div>
+              </div>
             </div>
           </div>
-        </div>
         {/* ══════════════════════════════════════════════════════
             MAIN CONTENT
         ══════════════════════════════════════════════════════ */}
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 pb-8">
+          <div className="mx-auto max-w-3xl px-4 py-5 pb-8 sm:px-6">
           <div className="mb-6 flex justify-center">
-            <div className="flex items-center gap-1.5 rounded-2xl border border-[#225739]/15 bg-white px-3 py-2 shadow-sm">
-              <span className="rounded-xl px-3 py-1.5 text-xs font-bold text-[#225739]">{ar ? "الأسئلة" : "Questions"}</span>
-              <span className="h-px w-4 bg-[#225739]/20" />
-              <span className="rounded-xl bg-[#225739]/10 px-3 py-1.5 text-xs font-black text-[#225739] ring-1 ring-[#225739]/20">{ar ? "إعدادات اللعبة" : "Game settings"}</span>
-              <span className="h-px w-4 bg-[#225739]/20" />
-              <span className="rounded-xl px-3 py-1.5 text-xs font-bold text-gray-400">{ar ? "البدء" : "Start"}</span>
+              <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-[#0B4B35]/10 bg-white p-1 shadow-sm">
+                <span className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-[11px] font-bold text-[#0B4B35] sm:text-xs"><CircleCheck className="h-3.5 w-3.5" />{ar ? "الأسئلة" : "Questions"}</span>
+                <span className="rounded-xl bg-[#0B4B35] px-2 py-2 text-center text-[11px] font-black text-white shadow-sm sm:text-xs">{ar ? "إعدادات اللعبة" : "Settings"}</span>
+                <span className="rounded-xl px-2 py-2 text-center text-[11px] font-bold text-slate-400 sm:text-xs">{ar ? "الاستعداد والبدء" : "Ready"}</span>
             </div>
           </div>
 
@@ -445,7 +389,7 @@ export default function TugCreate() {
               {/* Question count row */}
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">📋</span>
+                  <ListChecks className="h-4 w-4 text-gray-400" />
                   <span className="text-sm font-bold text-gray-700">{ar ? "عدد الأسئلة" : "Question count"}</span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -616,12 +560,12 @@ export default function TugCreate() {
             </motion.div>
           </div>
 
-          {/* ── CREATE ROOM BUTTON — wide, centered ── */}
+          {/* ── Ready checkpoint — launch is still deferred to the next action. ── */}
           <div className="flex justify-center mb-5">
             <motion.button
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
               whileTap={{ scale: 0.99 }}
-              onClick={handleCreate}
+              onClick={() => setReadyOpen(true)}
               disabled={creating || questions.length === 0}
               className="flex items-center justify-center gap-3 font-black text-lg text-white transition-all"
               style={{
@@ -629,9 +573,9 @@ export default function TugCreate() {
                 height: 64,
                 borderRadius: 18,
                 background: questions.length > 0
-                  ? "linear-gradient(135deg, #22c55e 0%, #16a34a 55%, #047857 100%)"
+                  ? "#0B4B35"
                   : "#d1d5db",
-                boxShadow: questions.length > 0 ? "0 6px 20px rgba(22,163,74,0.32)" : "none",
+                boxShadow: questions.length > 0 ? "0 6px 20px rgba(11,75,53,0.2)" : "none",
                 cursor: questions.length > 0 ? "pointer" : "not-allowed",
               }}
             >
@@ -641,54 +585,19 @@ export default function TugCreate() {
                 <>
                   <Play className="w-5 h-5" fill="currentColor" />
                   {ar
-                    ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} أسئلة)` : "أنشئ الغرفة"
-                    : questions.length > 0 ? `Create Room (${questions.length} Qs)` : "Create Room"}
+                    ? questions.length > 0 ? "إلى الاستعداد والبدء" : "أضف أسئلة أولاً"
+                    : questions.length > 0 ? "Continue to ready" : "Add questions first"}
                 </>
               )}
-            </motion.button>
-          </div>
-
-          {/* ── CLASS MODE — one screen, no phones: hand the prepared questions
-                 to the local engine via sessionStorage and go ── */}
-          <div className="flex justify-center mb-5">
-            <motion.button
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => {
-                if (questions.length < 2) {
-                  // Class mode gives each team ALL questions in its own random
-                  // order — 2+ ensures the teams never open on the same one.
-                  toast.error(ar ? "وضع الصف يحتاج سؤالين على الأقل" : "Class Mode needs at least 2 questions");
-                  return;
-                }
-                try {
-                  sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration, title: sourceTitle || undefined }));
-                } catch { /* storage full/blocked — navigation will show the setup prompt */ }
-                setLocation("/game/tug/class");
-              }}
-              disabled={questions.length === 0}
-              className="flex items-center justify-center gap-3 font-black text-base transition-all"
-              style={{
-                width: "min(820px, 100%)",
-                height: 56,
-                borderRadius: 18,
-                background: questions.length > 0 ? "#ffffff" : "#f1f5f9",
-                border: questions.length > 0 ? `2px solid ${BLUE}` : "2px solid #e2e8f0",
-                color: questions.length > 0 ? BLUE : "#94a3b8",
-                boxShadow: questions.length > 0 ? "0 4px 14px rgba(59,91,219,0.18)" : "none",
-                cursor: questions.length > 0 ? "pointer" : "not-allowed",
-              }}
-            >
-              🏫 {ar ? "وضع الصف — شاشة واحدة بدون جوالات" : "Class Mode — one screen, no phones"}
             </motion.button>
           </div>
 
           {/* ── BOTTOM INFO STRIP ── */}
           <div className="flex flex-wrap justify-center gap-3">
             {[
-              { icon: "🔒", text: ar ? "اللعبة خاصة بالغرفة" : "Private room" },
-              { icon: "🏆", text: ar ? "يفوز الفريق الذي يصل أولاً للنهاية" : "First team to finish wins" },
-              { icon: "🔗", text: ar ? "يمكنك مشاركة رابط الغرفة مع الطلاب" : "Share room link with students" },
+              { icon: <Users className="h-4 w-4" />, text: ar ? "تتحدد الفرق عند الدخول" : "Teams are set when players join" },
+              { icon: <Swords className="h-4 w-4" />, text: ar ? "يفوز من يصل للنهاية أولاً" : "First team to finish wins" },
+              { icon: <Link2 className="h-4 w-4" />, text: ar ? "يُنشأ الرابط بعد البدء" : "A share link is created when you start" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
                 style={{
@@ -696,7 +605,7 @@ export default function TugCreate() {
                   border: "1.5px solid #e5eee9",
                   boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                 }}>
-                <span className="text-base">{item.icon}</span>
+                <span className="text-[#0B4B35]">{item.icon}</span>
                 <span className="text-xs font-medium text-gray-500">{item.text}</span>
               </div>
             ))}
@@ -704,6 +613,70 @@ export default function TugCreate() {
 
         </div>
       </div>
+
+      <Dialog open={readyOpen} onOpenChange={setReadyOpen}>
+        <DialogContent className="max-w-xl overflow-hidden rounded-3xl border-0 p-0" dir={dir}>
+          <DialogTitle className="sr-only">{ar ? "شد الحبل جاهز" : "Tug of War is ready"}</DialogTitle>
+          <DialogDescription className="sr-only">{ar ? "ملخص الإعداد وخيارات بدء اللعبة." : "Setup summary and options for starting the game."}</DialogDescription>
+          <div className="bg-[#0B4B35] px-6 py-6 text-white">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#D9AA25]">
+              <CircleCheck className="h-4 w-4" />
+              {ar ? "الاستعداد والبدء" : "Ready to start"}
+            </div>
+            <h2 className="mt-2 text-2xl font-black">{ar ? "شد الحبل جاهز" : "Tug of War is ready"}</h2>
+            <p className="mt-1 text-sm font-medium text-white/75">{ar ? "راجع الإعدادات ثم اختر طريقة بدء المنافسة." : "Review the setup, then choose how to start the match."}</p>
+          </div>
+
+          <div className="space-y-5 bg-[#FAF8F0] p-5 sm:p-6">
+            <div className="flex items-center justify-between rounded-2xl border border-[#0B4B35]/10 bg-white px-4 py-3" style={{ direction: "ltr" }}>
+              <span className="flex items-center gap-2 text-sm font-black text-red-700" style={{ direction: dir }}><span className="h-2.5 w-2.5 rounded-full bg-red-500" />{ar ? "الفريق الأحمر" : "Red Team"}</span>
+              <Link2 className="h-5 w-5 text-[#D9AA25]" />
+              <span className="flex items-center gap-2 text-sm font-black text-blue-700" style={{ direction: dir }}><span className="h-2.5 w-2.5 rounded-full bg-blue-500" />{ar ? "الفريق الأزرق" : "Blue Team"}</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-2xl bg-white px-2 py-3 shadow-sm">
+                <p className="text-lg font-black text-[#0B4B35]">{questions.length}</p>
+                <p className="text-[11px] font-bold text-slate-500">{ar ? "أسئلة" : "questions"}</p>
+              </div>
+              <div className="rounded-2xl bg-white px-2 py-3 shadow-sm">
+                <p className="text-lg font-black text-[#0B4B35]">{duration}{ar ? "ث" : "s"}</p>
+                <p className="text-[11px] font-bold text-slate-500">{ar ? "لكل سؤال" : "per question"}</p>
+              </div>
+              <div className="rounded-2xl bg-white px-2 py-3 shadow-sm">
+                <p className="truncate text-sm font-black text-[#0B4B35]">{autoAdvance ? (ar ? "تلقائي" : "Auto") : (ar ? "يدوي" : "Manual")}</p>
+                <p className="text-[11px] font-bold text-slate-500">{ar ? "التقدم" : "progress"}</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#0B4B35]/10 bg-white px-4 py-3">
+              <p className="text-xs font-bold text-slate-500">{ar ? "مصدر الأسئلة" : "Question source"}</p>
+              <p className="mt-0.5 truncate text-sm font-black text-slate-800">{sourceTitle || (ar ? "مجموعة أسئلة مختارة" : "Prepared question set")}</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={startClassMode}
+                disabled={creating}
+                className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 border-[#0B4B35]/20 bg-white px-4 text-sm font-black text-[#0B4B35] transition-colors hover:bg-[#0B4B35]/5 disabled:opacity-60"
+              >
+                <Monitor className="h-5 w-5" />
+                {ar ? "وضع الصف" : "Class mode"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={creating}
+                className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#0B4B35] px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-[#083d2c] disabled:opacity-60"
+              >
+                {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Smartphone className="h-5 w-5" />}
+                {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "ابدأ اللعبة" : "Start game")}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Bank modal ── */}
       <AnimatePresence>
