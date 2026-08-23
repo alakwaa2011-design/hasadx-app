@@ -173,7 +173,7 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
     const floatingCard = container.querySelector(".fixed");
     expect(floatingCard).toBeTruthy();
     expect(floatingCard?.textContent).toContain("Assignment A");
-    expect(floatingCard?.textContent).toContain("questions ready for the game");
+    expect(floatingCard?.textContent).toContain("Questions are ready");
     expect(buttonContaining("Continue").disabled).toBe(false);
   });
 });

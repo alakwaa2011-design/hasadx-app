@@ -322,7 +322,7 @@ export function UnifiedQuestionSourceFlow({
     <div className={cn(
       "flex min-h-0 flex-col",
       inOverlay ? "h-[min(680px,82vh)]" : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8",
-      floatingAssignmentContinue && assignmentReady && "pb-28 sm:pb-6"
+      floatingAssignmentContinue && assignmentReady && "pb-40 sm:pb-8"
     )}>
       <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", inOverlay ? "px-1 pb-4" : "mb-6")}>
         <div className="flex items-center gap-3">
@@ -384,18 +384,28 @@ export function UnifiedQuestionSourceFlow({
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 rounded-2xl border border-[#0B4B35]/20 bg-white p-3 shadow-[0_16px_40px_rgba(11,75,53,0.22)] sm:inset-x-auto sm:bottom-6 sm:w-[min(28rem,calc(100vw-3rem))]"
-          style={{ insetInlineStart: "max(1rem, env(safe-area-inset-left))" }}
+          className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-3xl border border-[#0B4B35]/25 bg-white p-4 shadow-[0_18px_48px_rgba(11,75,53,0.28)] sm:bottom-6 sm:left-1/2 sm:w-[min(32rem,calc(100vw-3rem))] sm:-translate-x-1/2"
         >
-          <div className="flex items-center gap-3" dir={dir}>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B4B35]/10 text-sm font-black text-[#0B4B35]">
-              <Check className="h-5 w-5" />
+          <div className="space-y-3" dir={dir}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0B4B35]/10 text-sm font-black text-[#0B4B35]">
+                <Check className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-[#0B4B35]">{ar ? "الأسئلة جاهزة للعبة" : "Questions are ready"}</p>
+                <p className="truncate text-sm font-bold text-foreground">{selectedAssignTitle}</p>
+                <p className="text-xs font-medium text-muted-foreground">{selectedAssignQs.length} {ar ? "أسئلة مختارة" : "questions selected"}</p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-black text-foreground">{selectedAssignTitle}</p>
-              <p className="text-xs font-medium text-muted-foreground">{selectedAssignQs.length} {ar ? "أسئلة جاهزة للعبة" : "questions ready for the game"}</p>
-            </div>
-            <SubmitBtn onClick={handleAssignComplete} disabled={assignLoading} label={ar ? "متابعة" : "Continue"} />
+            <button
+              type="button"
+              onClick={handleAssignComplete}
+              disabled={assignLoading}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#0B4B35] px-5 text-base font-black text-white shadow-[0_8px_18px_rgba(11,75,53,0.24)] transition hover:bg-[#083d2c] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ChevronLeft className="h-5 w-5" />
+              {ar ? "متابعة إلى إعدادات الغرفة" : "Continue to room settings"}
+            </button>
           </div>
         </motion.div>
       ) : (
