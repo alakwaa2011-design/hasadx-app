@@ -35,6 +35,7 @@ const apiPort = 5101;
 const appPort = 5102;
 const apiBaseUrl = `http://127.0.0.1:${apiPort}`;
 const appBaseUrl = `http://127.0.0.1:${appPort}`;
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
 
 /**
  * Playwright configuration for the mobile-shell regression suite.
@@ -61,13 +62,40 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "off",
     ignoreHTTPSErrors: true,
+    // CI normally uses Playwright's downloaded browser. Local recovery can
+    // explicitly opt into the managed Chromium binary when that cache is gone.
+    ...(chromiumExecutablePath
+      ? { launchOptions: { executablePath: chromiumExecutablePath } }
+      : {}),
   },
   projects: [
     {
       name: "mobile-portrait",
+      testIgnore: /escape-setup\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
+      },
+    },
+    // Escape setup owns database-backed fixtures, so its two viewports run in
+    // dedicated projects rather than sharing a worker with legacy specs that
+    // close their own database pool during cleanup.
+    {
+      name: "mobile-escape-setup",
+      testMatch: /escape-setup\.spec\.ts/,
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "desktop-escape-setup",
+      testMatch: /escape-setup\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 800 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
       },
     },
   ],
