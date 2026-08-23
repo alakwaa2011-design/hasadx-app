@@ -152,9 +152,37 @@ export function unsupportedHasadActivityLabel(
     : "This suggested activity will be supported soon";
 }
 
+// ── Library suggestions (task #980) ──────────────────────────────────────────
+export type ActivitySuggestion = {
+  id: number;
+  title: string;
+  subject: string | null;
+  questionCount: number;
+  isOwn: boolean;
+  ownerName: string | null;
+  contentKind: string | null;
+  activityType: string | null;
+  createdAt: string;
+};
+
+/** Read-only relevance search over the teacher's library + shared library. */
+export async function fetchActivitySuggestions(
+  q: string,
+  limit = 5,
+): Promise<ActivitySuggestion[]> {
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  const res = await fetch(`/api/presentation-activities/suggestions?${params}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("SUGGESTIONS_FAILED");
+  const data = (await res.json().catch(() => ({}))) as { suggestions?: ActivitySuggestion[] };
+  return Array.isArray(data.suggestions) ? data.suggestions : [];
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 export async function createHasadActivityFromSlide(
   slide: Slide,
+  presentationId: number | string,
 ): Promise<CreatedHasadActivity> {
   const type = getRecommendedActivityType(slide);
   if (type !== "tug_war" && type !== "quick_quiz") {
@@ -170,20 +198,20 @@ export async function createHasadActivityFromSlide(
   const gameType: CreatedHasadActivity["gameType"] =
     type === "tug_war" ? "tug_of_war" : "knowledge_race";
 
-  const res = await fetch("/api/assignments", {
+  /* Idempotent server endpoint: the stable client key is presentation-scoped
+     ("presId:slideId") because AI-generated decks reuse deterministic slide
+     ids (s1, s2, …) across different presentations. Replays (double-click,
+     retry after network error, re-open editor) return the existing
+     assignment instead of creating a duplicate. */
+  const res = await fetch("/api/presentation-activities", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      slideKey: `${presentationId}:${slide.id}`,
       title,
       subject: "عروض تفاعلية",
       description: "تم إنشاؤه تلقائيًا من شريحة عرض تفاعلي في حصاد.",
-      submissionMode: "electronic",
-      accessMode: "public",
-      showResults: true,
-      isShared: false,
-      contentKind: "competition",
-      fromPresentationSlide: slide.id,
       activityType: type,
       questions: toAssignmentQuestions(questions),
     }),

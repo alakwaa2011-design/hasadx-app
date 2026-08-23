@@ -9,7 +9,7 @@ import {
   type Slide,
   type SlideElement,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,8 @@ import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/cl
 import {
   canCreateHasadActivityFromSlide,
   createHasadActivityFromSlide,
+  fetchActivitySuggestions,
+  type ActivitySuggestion,
   unsupportedHasadActivityLabel,
   ACTIVITY_TYPE_LABELS,
 } from "@/lib/presentation-hasad-activities";
@@ -665,7 +667,7 @@ export default function PresentationEditor() {
       prev.map((s, i) => i === activeIdx ? { ...s, activityCreationStatus: "creating" } : s),
     );
     try {
-      const created = await createHasadActivityFromSlide(activeSlide);
+      const created = await createHasadActivityFromSlide(activeSlide, id);
       const hasadElement: SlideElement = {
         id: genId("ha"),
         kind: "hasad-activity",
@@ -706,13 +708,48 @@ export default function PresentationEditor() {
     } finally {
       setCreatingSlideActivity(false);
     }
-  }, [activeIdx, activeSlide, creatingSlideActivity, isAr]);
+  }, [activeIdx, activeSlide, creatingSlideActivity, isAr, id]);
 
   /** Open the shared Wameeth setup for an already-created assignment. */
   const handleLaunchWameeth = useCallback((assignmentId: number) => {
     if (launchingWameeth) return;
     window.open(getWameethSetupPath(assignmentId), "_blank", "noopener");
   }, [launchingWameeth]);
+
+  /** Link an existing library activity (suggestion) to the active slide —
+      pure client-side linking, no server mutation and no AI/credit cost. */
+  const handleLinkExistingActivity = useCallback((sug: ActivitySuggestion) => {
+    if (readOnlyRef.current) return;
+    const hasadElement: SlideElement = {
+      id: genId("ha"),
+      kind: "hasad-activity",
+      assignmentId: sug.id,
+      assignmentTitle: sug.title,
+      gameType: "knowledge_race",
+      x: 100,
+      y: 100,
+      w: 1000,
+      h: 480,
+    } as unknown as SlideElement;
+
+    mutateSlides((prev) =>
+      prev.map((s, i) => {
+        if (i !== activeIdx) return s;
+        const existing = (s.elements ?? []).some(
+          (el) => el.kind === "hasad-activity" && (el as { assignmentId?: number }).assignmentId === sug.id,
+        );
+        return {
+          ...s,
+          linkedActivityId: String(sug.id),
+          linkedActivityType: "quick_quiz",
+          linkedActivityUrl: undefined,
+          activityCreationStatus: "created",
+          elements: existing ? s.elements : [...(s.elements ?? []), hasadElement],
+        };
+      }),
+    );
+    toast.success(isAr ? "تم ربط النشاط بالشريحة" : "Activity linked to slide");
+  }, [activeIdx, isAr]);
 
   const undo = useCallback(() => {
     const h = historyRef.current;
@@ -1906,6 +1943,8 @@ export default function PresentationEditor() {
                 creatingSlideActivity={creatingSlideActivity}
                 onLaunchWameeth={handleLaunchWameeth}
                 launchingWameeth={launchingWameeth}
+                onLinkExistingActivity={handleLinkExistingActivity}
+                deckTitle={data.title ?? ""}
                 onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
                 onOpenImageSearch={() => setImageSearchOpen(true)}
                 uploading={uploading}
@@ -1977,6 +2016,7 @@ export default function PresentationEditor() {
             creatingSlideActivity={creatingSlideActivity}
             onLaunchWameeth={handleLaunchWameeth}
             launchingWameeth={launchingWameeth}
+            onLinkExistingActivity={handleLinkExistingActivity}
             onPresent={(fromCurrent) => {
               /* Mobile browsers block `window.open` for non-direct
                  user gestures (and especially after any async work),
@@ -3500,6 +3540,8 @@ function Inspector({
   creatingSlideActivity,
   onLaunchWameeth,
   launchingWameeth,
+  onLinkExistingActivity,
+  deckTitle,
 }: {
   isAr: boolean;
   readOnly: boolean;
@@ -3529,6 +3571,8 @@ function Inspector({
   creatingSlideActivity?: boolean;
   onLaunchWameeth?: (assignmentId: number) => void;
   launchingWameeth?: boolean;
+  onLinkExistingActivity?: (sug: ActivitySuggestion) => void;
+  deckTitle?: string;
 }) {
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
@@ -3916,6 +3960,18 @@ function Inspector({
                   </span>
                 )}
               </div>
+
+              {/* ── Library suggestions: link an existing activity instead of
+                     creating a new one (read-only search, no AI cost) ── */}
+              {!linkedId && onLinkExistingActivity && (
+                <SlideActivitySuggestions
+                  slide={slide}
+                  deckTitle={deckTitle}
+                  isAr={isAr}
+                  readOnly={readOnly}
+                  onLink={onLinkExistingActivity}
+                />
+              )}
 
               {/* ── State: activity already created ── */}
               {linkedId && isWameeth ? (
@@ -4406,6 +4462,75 @@ function Inspector({
    can also rehearse the attached questions in a preview modal and
    fix typos / wrong answers inline; edits are written back to the
    underlying element via onUpdateEl. */
+/** Suggestions card shown on AI activity slides before an activity is
+    linked — surfaces matching activities from the teacher's library and
+    the shared library for one-click linking (task #980). */
+function SlideActivitySuggestions({
+  slide,
+  deckTitle,
+  isAr,
+  readOnly,
+  onLink,
+}: {
+  slide: Slide | undefined;
+  deckTitle?: string;
+  isAr: boolean;
+  readOnly: boolean;
+  onLink: (sug: ActivitySuggestion) => void;
+}) {
+  const q = useMemo(() => {
+    const slideTitle = (slide?.elements ?? []).find(
+      (el) => el.kind === "text" && typeof el.text === "string" && el.text.trim(),
+    )?.text?.trim() ?? "";
+    return [slideTitle, deckTitle ?? ""].filter(Boolean).join(" ").slice(0, 200);
+  }, [slide, deckTitle]);
+
+  const enabled = q.trim().length >= 2;
+  const { data, isLoading } = useQuery({
+    queryKey: ["presentation-activity-suggestions", q],
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: 1,
+    queryFn: () => fetchActivitySuggestions(q, 4),
+  });
+
+  if (!enabled || isLoading || !data || data.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[10px] font-bold text-muted-foreground">
+        {isAr ? "أو اربط نشاطاً جاهزاً من مكتبتك:" : "Or link a ready activity from your library:"}
+      </div>
+      {data.map((sug) => (
+        <div
+          key={sug.id}
+          className="flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1.5"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[11px] font-bold">{sug.title}</div>
+            <div className="text-[9px] text-muted-foreground">
+              {sug.questionCount} {isAr ? "سؤال" : "questions"}
+              {" · "}
+              {sug.isOwn
+                ? (isAr ? "مكتبتي" : "My library")
+                : (sug.ownerName ?? (isAr ? "المكتبة المشتركة" : "Shared library"))}
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => onLink(sug)}
+            className="shrink-0 rounded-md px-2 py-1 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: BRAND_GREEN }}
+          >
+            {isAr ? "ربط ⚡" : "Link ⚡"}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function HasadGameInspector({
   el, onUpdateEl, disabled, isAr, deckTheme,
 }: {
@@ -6229,6 +6354,7 @@ function MobileShell({
   onOpenSessions, onGoLive, onExport, onBack,
   onCreateSlideHasadActivity, creatingSlideActivity,
   onLaunchWameeth, launchingWameeth,
+  onLinkExistingActivity,
 }: {
   isAr: boolean;
   dir: "rtl" | "ltr";
@@ -6278,6 +6404,7 @@ function MobileShell({
   creatingSlideActivity: boolean;
   onLaunchWameeth: (assignmentId: number) => void;
   launchingWameeth: boolean;
+  onLinkExistingActivity?: (sug: ActivitySuggestion) => void;
 }) {
   const BG = "#F6F4EE";
   const BRAND_SOFT = "#EAF2EC";
@@ -6606,6 +6733,8 @@ function MobileShell({
                   creatingSlideActivity={creatingSlideActivity}
                   onLaunchWameeth={onLaunchWameeth}
                   launchingWameeth={launchingWameeth}
+                  onLinkExistingActivity={onLinkExistingActivity}
+                  deckTitle={title}
                 />
               )}
             </div>

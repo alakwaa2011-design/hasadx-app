@@ -58,6 +58,7 @@ import activityRouter from "./activity";
 import analyticsRouter from "./analytics";
 import presentationsRouter from "./presentations";
 import aiPresentationsRouter from "./ai-presentations";
+import presentationActivitiesRouter from "./presentation-activities";
 import presentationSessionsRouter from "./presentation-sessions";
 import studentTimelineRouter from "./student-timeline";
 import classroomRouter from "./classroom";
@@ -136,6 +137,7 @@ router.use(analyticsRouter);
 // the literal /presentations/drafts and /presentations/ai/* paths
 // match before falling into presentationsRouter's GET /:id handler.
 router.use(aiPresentationsRouter);
+router.use(presentationActivitiesRouter);
 router.use(presentationsRouter);
 router.use(presentationSessionsRouter);
 router.use(studentTimelineRouter);
