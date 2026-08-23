@@ -1151,7 +1151,7 @@ export default function TugPlay() {
           >
             {phase === "lobby" && isCreator && (
               <TugActionButton
-                label={startingGame ? "..." : (lang === "ar" ? "ابدأ اللعبة!" : "Start Game!")}
+                label={startingGame ? "..." : (lang === "ar" ? "ابدأ التحدي" : "Start challenge")}
                 onClick={handleStart}
                 disabled={startingGame || players.length < 1}
               />

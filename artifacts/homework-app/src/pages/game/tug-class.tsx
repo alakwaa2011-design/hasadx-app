@@ -736,7 +736,7 @@ function ClassGame({
   const [state, dispatch] = useReducer(
     classReducer,
     undefined,
-    () => createClassState(setup.questions, setup.duration),
+    () => classReducer(createClassState(setup.questions, setup.duration), { type: "start" }),
   );
   const [goFlash, setGoFlash] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -1252,44 +1252,6 @@ function ClassGame({
         )}
       </div>
 
-      {/* Start overlay (idle) */}
-      {state.status === "idle" && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md rounded-3xl border border-amber-300/25 bg-[#0d1b3e]/95 p-6 text-center text-white shadow-2xl"
-            style={{ direction: ar ? "rtl" : "ltr" }}>
-            <div className="mb-2 text-5xl">🪢</div>
-            <h1 className="mb-1 text-2xl font-black">{ar ? "وضع الصف" : "Class Mode"}</h1>
-            <p className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border border-amber-300/35 bg-black/30 px-4 py-1 text-sm font-black text-amber-200" title={title}>
-              📖 {title}
-            </p>
-            <p className="mb-4 text-sm font-bold text-white/65 leading-relaxed">
-              {ar
-                ? `اعرض الشاشة أمام الصف وقسّم الطلاب لفريقين: الأزرق ${blueOnRight ? "يمين" : "يسار"} الشاشة والأحمر ${blueOnRight ? "يسارها" : "يمينها"}. كلا الفريقين يلعب كل الأسئلة، لكن بترتيب عشوائي مختلف ومؤقت ووتيرة مستقلة!`
-                : `Show this screen to the class and split students into two teams: blue on the ${blueOnRight ? "right" : "left"}, red on the ${blueOnRight ? "left" : "right"}. Both teams play all the questions — each in its own random order, timer and pace!`}
-            </p>
-            <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-xs font-black text-white/70">
-              <span className="rounded-full bg-white/10 px-3 py-1">
-                📚 {state.questions.length} {ar ? "سؤالاً لكل فريق" : "questions per team"}
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-1">
-                🔀 {ar ? "بترتيب عشوائي مختلف" : "different random order"}
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-1">⏱ {setup.duration} {ar ? "ثانية/سؤال" : "sec/question"}</span>
-            </div>
-            <motion.button whileTap={{ scale: 0.97 }}
-              onClick={() => dispatch({ type: "start" })}
-              className="w-full rounded-2xl py-3.5 text-lg font-black"
-              style={{
-                background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
-                color: "#1a2e1a",
-                boxShadow: "0 14px 32px rgba(217,165,33,0.5), inset 0 2px 0 rgba(255,255,255,0.32)",
-              }}>
-              🚀 {ar ? "ابدأ اللعبة" : "Start Game"}
-            </motion.button>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }

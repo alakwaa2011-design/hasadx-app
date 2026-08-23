@@ -659,19 +659,33 @@ export default function TugCreate() {
                 type="button"
                 onClick={startClassMode}
                 disabled={creating}
-                className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 border-[#0B4B35]/20 bg-white px-4 text-sm font-black text-[#0B4B35] transition-colors hover:bg-[#0B4B35]/5 disabled:opacity-60"
+                className="flex min-h-[7.25rem] flex-col items-start justify-center gap-2 rounded-2xl bg-[#0B4B35] px-5 text-start text-white shadow-sm transition-colors hover:bg-[#083d2c] disabled:opacity-60"
               >
-                <Monitor className="h-5 w-5" />
-                {ar ? "وضع الصف" : "Class mode"}
+                <span className="flex items-center gap-2 text-base font-black">
+                  <Monitor className="h-5 w-5" />
+                  {ar ? "وضع الصف" : "Class mode"}
+                </span>
+                <span className="text-xs font-medium text-white/75">
+                  {ar ? "فريقان على شاشة العرض نفسها" : "Two teams on the same display"}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#0B4B35] px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-[#083d2c] disabled:opacity-60"
+                className="flex min-h-[7.25rem] flex-col items-start justify-center gap-2 rounded-2xl border-2 border-[#0B4B35]/20 bg-white px-5 text-start text-[#0B4B35] transition-colors hover:bg-[#0B4B35]/5 disabled:opacity-60"
               >
-                {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Smartphone className="h-5 w-5" />}
-                {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "ابدأ اللعبة" : "Start game")}
+                <span className="flex items-center gap-2 text-base font-black">
+                  {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Smartphone className="h-5 w-5" />}
+                  {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "إنشاء غرفة لعب مباشر" : "Create live game room")}
+                </span>
+                {!creating && (
+                  <span className="text-xs font-medium text-slate-500">
+                    {ar
+                      ? "شارك الرابط أو رمز الدخول أو QR لينضم المشاركون من أجهزتهم."
+                      : "Share the link, access code, or QR so players can join from their devices."}
+                  </span>
+                )}
               </button>
             </div>
           </div>
