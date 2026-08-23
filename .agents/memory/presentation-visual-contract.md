@@ -12,3 +12,5 @@ Automatic web-image lookup is opt-in: only an explicit `imagePlan` for a photo o
 When comparing an initial outline with its one corrective retry, always choose a non-fatal retry over a fatal initial result; compare feedback counts only when both candidates are complete.
 
 On mobile previews, an outline request can be abandoned around 80 seconds. A second LLM call is therefore only justified for a fatal outline, never for non-fatal normalization feedback. Preserve numbered teaching steps rather than dropping them merely because they lack a source field.
+
+Keep `gameQuestions` lightweight in outline generation: one assessment slide with at most three questions. Large per-slide question banks can exhaust the provider output budget before the required deck JSON closes, which surfaces as an incomplete outline.

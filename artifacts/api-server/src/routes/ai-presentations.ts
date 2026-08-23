@@ -608,6 +608,14 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
        refuses to invent filler, so failure here means the provider did not
        produce a complete teaching outline after its one corrective retry. */
     if (report.fatal) {
+      req.log.warn({
+        teacherId,
+        tier,
+        requestedSlides: brief.slideCount,
+        returnedSlides: outline.slides.length,
+        objectives: outline.objectives.length,
+        feedback: report.feedback.slice(0, 12),
+      }, "Outline incomplete after sanitization");
       await refundCredits(req, "incomplete outline");
       res.status(422).json({
         message: brief.language === "ar"

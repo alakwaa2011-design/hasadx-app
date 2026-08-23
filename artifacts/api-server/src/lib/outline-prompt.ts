@@ -112,7 +112,7 @@ const STRATEGY_INSTRUCTIONS_AR: Partial<Record<EducationalStrategy, string>> = {
 كرّر هذه الدورة 1-2 مرة خلال العرض بين شرائح المحتوى:
   [فكر] kind: interactive, interactionHint: "activity" — سؤال للتفكير الفردي. talkingPoints[0] = "فكّر بمفردك: ...". لا gameQuestions.
   [زاوج] kind: interactive, interactionHint: "discussion" — نشاط ثنائي. talkingPoints[0] = "ناقش إجابتك مع زميلك ...". لا gameQuestions.
-  [شارك] kind: interactive, interactionHint: "poll" أو "quiz" — مشاركة جماعية. gameQuestions مطلوبة (5 أسئلة على الأقل).`,
+  [شارك] kind: interactive, interactionHint: "poll" أو "quiz" — مشاركة جماعية. إن احتجت أسئلة، أضف 1-3 أسئلة فقط.`,
 
   problem_based: `التعلم القائم على المشكلات — التعلم عبر حل مشكلة واقعية:
 [1] المشكلة: kind: callout أو visual-hero — عرض مشكلة أو سيناريو واقعي مثير. لا تبدأ بشرح نظري.
@@ -120,7 +120,7 @@ const STRATEGY_INSTRUCTIONS_AR: Partial<Record<EducationalStrategy, string>> = {
 [3] الفرضيات: kind: interactive, interactionHint: "discussion" — الطلاب يقترحون حلولاً. لا gameQuestions.
 [4] المحتوى: شرائح تعليمية تبني المعرفة اللازمة للحل.
 [5] الحل: kind: steps أو concept-card — تقديم الحل المنطقي.
-[6] التقييم: kind: interactive, interactionHint: "quiz" مع gameQuestions (5-8 أسئلة).`,
+  [6] التقييم: kind: interactive, interactionHint: "quiz" مع 1-3 gameQuestions فقط عند الحاجة.`,
 
   project_based: `التعلم القائم على المشاريع:
 [1] تعريف المشروع: kind: visual-hero أو concept-card — وصف المشروع وهدفه.
@@ -186,14 +186,14 @@ const STRATEGY_INSTRUCTIONS_AR: Partial<Record<EducationalStrategy, string>> = {
 [K — ماذا أعرف؟] شريحة أولى بعد title: kind: interactive, interactionHint: "activity". talkingPoints[0] = "اكتب كل ما تعرفه عن [الموضوع]". لا gameQuestions.
 [W — ماذا أريد أن أعرف؟] شريحة ثانية: kind: interactive, interactionHint: "discussion". talkingPoints[0] = "ما الأسئلة التي تريد إجابتها؟". لا gameQuestions.
 [المحتوى] شرائح تعليمية متنوعة تجيب على أسئلة [W] بشكل مباشر.
-[L — ماذا تعلمت؟] شريحة ختامية: kind: interactive, interactionHint: "quiz" مع gameQuestions (5-8 أسئلة تعكس ما تعلموه فعليًا).
+[L — ماذا تعلمت؟] شريحة ختامية: kind: interactive, interactionHint: "quiz" مع 1-3 gameQuestions تعكس ما تعلموه فعليًا.
 احرص على ترتيب K → W → محتوى → L بشكل واضح لا يُخلّ.`,
 
   "5e_model": `نموذج 5E — دورة التعلم الاستكشافي (الترتيب إلزامي):
 [E1 الإثارة Engage] أول شريحة بعد title: kind: interactive, interactionHint: "activity" أو "poll". سؤال أو موقف يثير فضول الطلاب. لا gameQuestions.
 [E2 الاستكشاف Explore] شريحة نشاط استكشافي: kind: interactive, interactionHint: "discussion". لا gameQuestions.
 [E3 الشرح Explain] 2-4 شرائح محتوى تعليمي (concept-card, steps, formula, visual-hero, stat…).
-[E4 التعمق Elaborate] شريحة تطبيق وتوسيع: kind: interactive, interactionHint: "quiz" مع gameQuestions (5+ أسئلة).
+[E4 التعمق Elaborate] شريحة تطبيق وتوسيع: kind: interactive, interactionHint: "quiz" مع 1-3 gameQuestions.
 [E5 التقييم Evaluate] شريحة تقييم ختامية: kind: interactive, interactionHint: "poll" مع gameQuestions.
 الترتيب الإلزامي: E1 → E2 → E3 → E4 → E5.`,
 };
@@ -225,7 +225,7 @@ const STRATEGY_INSTRUCTIONS_EN: Partial<Record<EducationalStrategy, string>> = {
 Repeat this cycle 1-2 times amid content slides:
   [Think] kind: interactive, interactionHint: "activity" — individual thinking question. No gameQuestions.
   [Pair]  kind: interactive, interactionHint: "discussion" — pair discussion. No gameQuestions.
-  [Share] kind: interactive, interactionHint: "poll" or "quiz" — whole-class sharing. gameQuestions required (≥5).`,
+  [Share] kind: interactive, interactionHint: "poll" or "quiz" — whole-class sharing. If questions help, include only 1–3.`,
 
   problem_based: `Problem-Based Learning — learning by solving a real problem:
 [1] Problem: kind: callout or visual-hero — present a compelling real-world problem. Don't start with theory.
@@ -233,7 +233,7 @@ Repeat this cycle 1-2 times amid content slides:
 [3] Hypotheses: kind: interactive, interactionHint: "discussion". No gameQuestions.
 [4] Content: educational slides building needed knowledge.
 [5] Solution: kind: steps or concept-card.
-[6] Assessment: kind: interactive, interactionHint: "quiz" with gameQuestions.`,
+  [6] Assessment: kind: interactive, interactionHint: "quiz" with 1–3 gameQuestions only when useful.`,
 
   project_based: `Project-Based Learning:
 [1] Project intro: kind: visual-hero or concept-card.
@@ -299,14 +299,14 @@ No gameQuestions on these slides.`,
 [K — What I Know] First slide after title: kind: interactive, interactionHint: "activity". No gameQuestions.
 [W — What I Want to Know] Second slide: kind: interactive, interactionHint: "discussion". No gameQuestions.
 [Content] Educational slides that directly answer the [W] questions.
-[L — What I Learned] Final slide: kind: interactive, interactionHint: "quiz" with gameQuestions (5-8 questions reflecting what was learned).
+[L — What I Learned] Final slide: kind: interactive, interactionHint: "quiz" with 1–3 gameQuestions reflecting what was learned.
 Strict order: K → W → content → L.`,
 
   "5e_model": `5E Instructional Model — inquiry learning cycle (order is mandatory):
 [E1 Engage] First slide after title: kind: interactive, interactionHint: "activity" or "poll". Sparks curiosity. No gameQuestions.
 [E2 Explore] Exploratory activity: kind: interactive, interactionHint: "discussion". No gameQuestions.
 [E3 Explain] 2-4 content slides (concept-card, steps, formula, visual-hero, stat…).
-[E4 Elaborate] Application slide: kind: interactive, interactionHint: "quiz" with gameQuestions (≥5).
+[E4 Elaborate] Application slide: kind: interactive, interactionHint: "quiz" with 1–3 gameQuestions.
 [E5 Evaluate] Final assessment: kind: interactive, interactionHint: "poll" with gameQuestions.
 Mandatory order: E1 → E2 → E3 → E4 → E5.`,
 };
@@ -864,16 +864,16 @@ Kind selection by topic category (MANDATORY — analyze the topic first, then ch
    render and run it. We keep the underlying `gameSuggestion` field
    for backward compatibility but instruct the model to leave it
    null — the slide's identity is the questions themselves. */
-const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuestions) — إلزامي على كل شريحة تفاعلية:
-⚠️ القاعدة الإلزامية: كل شريحة يكون فيها interactionHint = "quiz" أو "activity" يجب أن تحتوي على gameQuestions. لا يُقبل تركها فارغة.
-- أنتج أسئلة فقط على الشرائح التي تستفيد فعلاً من نشاط أو مسابقة صفية (مراجعة، تطبيق مفهوم، اختبار سريع، استراحة محفّزة). اضبط interactionHint = "quiz" أو "activity" على هذه الشرائح.
+const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuestions) — خفيفة ومحددة:
+⚠️ مخطط العرض ليس بنك أسئلة. استخدم gameQuestions على شريحة تقييم أو اختبار واحدة فقط عند الحاجة، وبحد أقصى 3 أسئلة. بقية الأنشطة تكون activity أو discussion من دون gameQuestions.
+- أنتج أسئلة فقط على الشريحة التي تستفيد فعلاً من اختبار قصير أو تطبيق مفهوم. استخدم activity أو discussion للأسئلة المفتوحة.
 - لا تنتج أسئلة على شرائح العنوان أو الخاتمة أو الشرح النظري البحت.
-- في عرض من 8 شرائح: 1-3 شرائح نشاط كحد أقصى. لا تكدّسها.
+- في عرض من 8 شرائح: 1-3 شرائح نشاط كحد أقصى. لا تكدّسها، ولا تجعل أكثر من شريحة واحدة تحوي gameQuestions.
 - لا تذكر اسم أي لعبة من ألعاب المنصة (كاهوت، عجلة، مليون، …) في عنوان الشريحة أو نقاط الحديث أو نص السؤال. الشريحة تعرض السؤال والإجابات مباشرة.
 - اترك gameSuggestion = null دائماً.
 
-شكل gameQuestions — الزامي على الشرائح التفاعلية:
-- مصفوفة من 5 إلى 8 أسئلة جاهزة للعرض الفوري (لا أقل من 5 حتى تكفي جلسة نشاط كاملة).
+شكل gameQuestions — اختياري على شريحة الاختبار الوحيدة:
+- مصفوفة من سؤال واحد إلى 3 أسئلة قصيرة فقط.
 - كل سؤال: { "prompt": "سؤال واضح مرتبط بموضوع الشريحة", "options": ["خيار حقيقي كامل","خيار حقيقي كامل","خيار حقيقي كامل","خيار حقيقي كامل"], "correctIndex": 0 }
 - إذا كان السؤال اختياراً متعدداً: يجب أن يحتوي على 4 خيارات حقيقية مكتوبة بالكامل وإجابة صحيحة محددة. لا تستخدم أبداً: "خيار 1"، "خيار 2"، "خ1"، "أ"، "ب"، أو أي placeholder.
 - لا تكتب "شارك إجابتك بكلمة واحدة" أو صياغة مفتوحة داخل سؤال اختيار متعدد. إذا كان المطلوب إجابة مفتوحة، لا تنتج gameQuestions واجعل interactionHint = "discussion" أو "activity" بدون خيارات.
@@ -882,16 +882,16 @@ const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuest
 - الأسئلة تعكس محتوى الشريحة حرفياً — لا أسئلة عامة أو مستوردة من موضوع آخر.
 - لا تنتج gameQuestions على الشرائح غير التفاعلية.`;
 
-const GAMES_RULES_EN = `Activity questions (gameQuestions) — REQUIRED on every interactive slide:
-⚠️ MANDATORY RULE: every slide with interactionHint = "quiz" or "activity" MUST include gameQuestions. Empty is not accepted.
-- Only produce questions on slides that genuinely benefit from a class activity (review, application, quick quiz, energiser). Set interactionHint = "quiz" or "activity" on those slides.
+const GAMES_RULES_EN = `Activity questions (gameQuestions) — lightweight and targeted:
+⚠️ The outline is not a question bank. Use gameQuestions on only one assessment/quiz slide when helpful, with at most 3 questions. Other interactive slides use activity or discussion without gameQuestions.
+- Only produce questions on the one slide that genuinely benefits from a quick check or concept application. Use activity or discussion for open responses.
 - Do NOT produce questions on title, closure, or pure-explanation slides.
-- In an 8-slide deck: at most 1–3 activity slides. Don't stuff them.
+- In an 8-slide deck: at most 1–3 activity slides. Don't stuff them, and only one may contain gameQuestions.
 - Do NOT mention the name of any platform game (Kahoot, Wheel, Millionaire, …) anywhere in the slide title, talking points, or question text. The slide displays the question and answers directly.
 - Always leave gameSuggestion = null.
 
-gameQuestions shape — mandatory on interactive slides:
-- Array of 5–8 ready-to-display questions (no fewer than 5 — enough for a complete activity session).
+gameQuestions shape — optional on the one quiz slide:
+- Array of 1–3 short, ready-to-display questions only.
 - Each: { "prompt": "clear question tied to the slide topic", "options": ["full real option","full real option","full real option","full real option"], "correctIndex": 0 }
 - For multiple choice: always provide 4 real, fully written options and one correct answer. Never use placeholders such as "Option 1", "Option 2", "A", "B", or generic labels.
 - Do not write "Share your answer in one word" or any open-answer wording inside a multiple-choice question. If it is open-ended, do not emit gameQuestions; use interactionHint = "discussion" or "activity" without options.
@@ -968,7 +968,7 @@ const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — حصة �
 قواعد إلزامية:
 - ابدأ بـ title وأنهِ بـ closure فقط؛ ما بينهما اختَر بحرية حسب الموضوع.
 - استخدم 1-3 شرائح تفاعلية فقط في العرض القصير، موزعة في أماكن منطقية.
-- كل شريحة interactionHint="quiz" أو interactionHint="poll" يجب أن تحتوي على gameQuestions (5-8 أسئلة).
+- شريحة quiz أو poll واحدة فقط يمكن أن تحتوي على gameQuestions (1-3 أسئلة)؛ بقية الأنشطة تكون مفتوحة.
 - شرائح interactionHint="activity" و"discussion" المفتوحة لا تحتوي على gameQuestions.
 - لا تضع أكثر من 2 شريحة interactive متتالية.
 - لا تستخدم objectives إلا إذا كانت ضرورية فعلاً.`;
@@ -987,7 +987,7 @@ Choose a short structure that fits the topic:
 Mandatory rules:
 - Start with title and end with closure only; choose the middle freely based on the topic.
 - Use only 1-3 interactive slides in a short deck, placed where they make sense.
-- Every slide with interactionHint="quiz" or interactionHint="poll" MUST include gameQuestions (5-8 questions).
+- Only one quiz or poll slide may include gameQuestions (1–3 questions); keep other activities open-ended.
 - Open activity/discussion slides do NOT include gameQuestions.
 - Never place more than 2 interactive slides in a row.
 - Do not use objectives unless truly useful.`;
@@ -1046,11 +1046,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       "gameSuggestion": "tug|rocket|wheel|millionaire|hack|kahoot|null",
       "activityType": "word_cloud|discussion_wall|live_poll|quick_quiz|tug_war|wheel_spin|rocket_race|millionaire_quiz|hack_challenge|null",
       "strategyStage": "...|null",
-      "gameQuestions": [
-        { "prompt": "...", "options": ["...","...","...","..."], "correctIndex": 0 },
-        { "prompt": "...", "options": ["...","...","...","..."], "correctIndex": 2 },
-        { "prompt": "...", "options": ["...","...","...","..."], "correctIndex": 1 }
-      ],
+      "gameQuestions": [],
       "slideTheme": null,
       "slideType": "title|concept|visualHero|process|comparison|timeline|workedExample|quote|misconception|activity|quiz|summary",
       "layoutVariant": "classic|poster|editorial|staggered",
