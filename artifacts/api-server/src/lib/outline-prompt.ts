@@ -642,7 +642,7 @@ export function densityLimits(d: OutlineDensity): DensityLimits {
       return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 16, allowSubtitle: true };
     case "balanced":
     default:
-      return { minPoints: 3, maxPoints: 4, maxWordsPerPoint: 9, allowSubtitle: false };
+      return { minPoints: 3, maxPoints: 4, maxWordsPerPoint: 14, allowSubtitle: false };
   }
 }
 
@@ -676,7 +676,7 @@ const DENSITY_RULES_AR: Record<OutlineDensity, string> = {
   minimal:
     "كثافة قليلة: 2-3 نقاط لكل شريحة، كل نقطة ≤ 6 كلمات. عناوين قصيرة كشعارات. أكثر من شريحة لكل فكرة بدلاً من تكديس النصوص.",
   balanced:
-    "كثافة متوسطة: 3-4 نقاط لكل شريحة، كل نقطة ≤ 9 كلمات بأسلوب عناوين. ممنوع الفقرات الطويلة. كل شريحة فكرة واحدة فقط.",
+    "كثافة متوسطة: 3-4 نقاط لكل شريحة، كل نقطة جملة معلوماتية مكتملة المعنى ≤ 14 كلمة. ممنوع الفقرات الطويلة. كل شريحة فكرة واحدة فقط.",
   detailed:
     "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 16 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة جملة مكثّفة تحمل معلومة كاملة — لا نصف جملة ولا فقرة.",
 };
@@ -684,10 +684,35 @@ const DENSITY_RULES_EN: Record<OutlineDensity, string> = {
   minimal:
     "Minimal density: 2-3 points per slide, each ≤ 6 words. Headline-style only. Use more slides instead of cramming text.",
   balanced:
-    "Balanced density: 3-4 points per slide, each ≤ 9 words in headline style. NO paragraphs. Each slide = one idea.",
+    "Balanced density: 3-4 points per slide, each a complete informative statement ≤ 14 words. NO paragraphs. Each slide = one idea.",
   detailed:
-    "Detailed density: 3-5 points per slide, each ≤ 12 words. `subtitle` allowed only on the title slide. Every point is one short line, never a paragraph.",
+    "Detailed density: 3-5 points per slide, each ≤ 16 words. `subtitle` allowed only on the title slide. Every point is one short line, never a paragraph.",
 };
+
+/* Full-lesson depth contract (Aug 2026). The teacher feedback was that
+   generated decks read like decorated summaries: two definitions and a
+   recap. Every slide must now carry an explicit pedagogical role and the
+   deck must cover explanation + worked example/practice + assessment, or
+   guardrails reject it as a summary. */
+const LESSON_DEPTH_AR = `العرض مادة حصة كاملة يقدّمها المعلم — وليس ملخصاً مزيّناً:
+- عيّن لكل شريحة دورها التربوي في حقل pedagogicalRole:
+  hook (تهيئة أو سؤال استكشافي يربط بالمعرفة السابقة)، objective (هدف التعلم أو سؤال الدرس المحوري)، explain (شرح مفهوم أو قاعدة مع تمثيل بصري)، example (مثال محلّل خطوة بخطوة، لا مجرد تعريف)، misconception (مقارنة أو تنبيه على خطأ/لبس شائع)، practice (تدريب موجّه «جرّب بنفسك» مع الإجابة أو خطوات الحل)، activity (نشاط أو سؤال تفاعلي صفي)، assess (تقويم سريع يتحقق من الفهم بتطبيق جديد)، summary (خلاصة منظمة تجمع الأفكار)، extension (تحدٍّ اختياري يوسّع الحصة).
+- التسلسل المرجعي حيثما ناسب الموضوع: غلاف → تهيئة → هدف → شرح المفهوم الأول بمثال → شرح المفهوم الثاني/القاعدة → مثال محلّل → مقارنة أو خطأ شائع → تدريب موجّه → نشاط تفاعلي → تقويم → خلاصة → تحدٍّ اختياري. لا يلزم حرفياً في كل موضوع، لكن ممنوع أن يقف العرض عند تعريفين وخلاصة.
+- في كل عرض من 8 شرائح فأكثر يجب أن يوجد على الأقل: explain واحد، وexample أو practice أو activity واحد، وassess واحد. غياب أحدها يجعل العرض ملخصاً مرفوضاً.
+- لا تكرر الدور نفسه في أكثرية الشرائح؛ كل شريحة وظيفة تعليمية مختلفة.
+- كل مثال يكتب كاملاً ومحلّلاً ومرتبطاً بالمفهوم الذي قبله، وخطوات الحل أو الإعراب تظهر داخل talkingPoints — لا عناوين مبهمة ولا مناطق يملؤها المعلم لاحقاً.
+- التدريب الموجّه يتضمن السؤال ومعه الإجابة أو خطوات الوصول إليها.
+- درس اللغة: أمثلة عربية محلّلة بإعرابها أو مخطط علاقة (fallback: coloredExample أو relationshipMap) — لا صور تجميلية بدل الشرح. درس العلوم: تسلسل عملية أو مخطط توضيحي عند فائدته. درس التاريخ/السيرة: خط زمني أو اقتباس أو صورة حقيقية ذات سياق.`;
+
+const LESSON_DEPTH_EN = `The deck is a full teachable lesson, not a decorated summary:
+- Set pedagogicalRole on every slide:
+  hook (opener/exploratory question linking prior knowledge), objective (learning goal or the lesson's driving question), explain (concept/rule explanation with a visual), example (step-by-step worked example, not a definition), misconception (comparison or common-mistake alert), practice (guided "try it yourself" including the answer or solution steps), activity (class activity or interactive question), assess (quick check with a fresh application), summary (organized recap), extension (optional challenge).
+- Reference sequence where it fits the topic: cover → hook → objective → first concept with example → second concept/rule → worked example → comparison/misconception → guided practice → interactive activity → assessment → summary → optional extension. Not every topic needs all of them, but a deck must never stop at two definitions and a recap.
+- Every deck of 8+ slides MUST include at least one explain, one example/practice/activity, and one assess. Missing any of these makes the deck a rejected summary.
+- Never repeat the same role on the majority of slides; each slide serves a different teaching function.
+- Every example is written out fully, analysed, and tied to the concept before it; solution steps appear inside talkingPoints — no vague labels, no fill-in-later areas.
+- Guided practice includes the question AND its answer or the steps to reach it.
+- Language lessons: analysed example sentences with parsing or a relationship map (fallback: coloredExample or relationshipMap) — never decorative photos instead of explanation. Science: process sequences or diagrams where they teach. History/biography: timeline, quote, or a real contextual image.`;
 
 /* Designer-grade system prompt. Stable so the response stays cacheable
    on (brief-hash, model). */
@@ -1049,6 +1074,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       "gameQuestions": [],
       "slideTheme": null,
       "slideType": "title|concept|visualHero|process|comparison|timeline|workedExample|quote|misconception|activity|quiz|summary",
+      "pedagogicalRole": "hook|objective|explain|example|practice|misconception|activity|assess|summary|extension",
       "layoutVariant": "classic|poster|editorial|staggered",
       "imagePlan": { "reason": "...", "imageQuery": "...", "mediaType": "photo|illustration", "placement": "background|side", "fallback": "diagram|timeline|coloredExample|relationshipMap|icon" },
       "visualDirection": { "icon": "lightbulb|target|chart|...", "shape": "rect|circle|line|arrow|divider", "layoutHint": "..." },
@@ -1060,7 +1086,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   const designerPrinciples = ar
     ? [
         `كل شريحة لها فكرة واحدة فقط. لا تخلط فكرتين على نفس الشريحة.`,
-        `talkingPoints بأسلوب عناوين قصيرة — وليس جملاً كاملة. تخيّل أنها تظهر على شاشة كبيرة وتُقرأ من آخر الصف.`,
+        `talkingPoints جمل معلوماتية قصيرة مكتملة المعنى تُقرأ من آخر الصف — كل نقطة معلومة محددة أو مثال كامل، لا عنوان مبهم ولا فقرة طويلة.`,
         `نوّع الـ kind: على عرض من 6 شرائح ≥ 4 أنواع مختلفة، 8 شرائح ≥ 5 أنواع، 10+ شرائح ≥ 6 أنواع.`,
         `ابدأ بـ title، أنهِ بـ closure. ضع stat أو quote عند وجود رقم لافت أو حكمة لإضفاء إيقاع بصري.`,
         `استخدم visualDirection.icon من المفردات: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask. اختر ما يناسب فكرة الشريحة بدقة.`,
@@ -1069,7 +1095,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       ]
     : [
         `One idea per slide. Never mix two ideas on the same slide.`,
-        `talkingPoints are short headlines — NOT full sentences. Imagine they appear on a big screen, readable from the back row.`,
+        `talkingPoints are short, complete, information-bearing statements readable from the back row — each carries a specific fact or full example, never a vague label, never a paragraph.`,
         `Vary kind: 6-slide deck ≥ 4 different kinds, 8-slide ≥ 5 kinds, 10+ slide ≥ 6 kinds.`,
         `Start with title, end with closure. Drop in stat or quote when a striking number or wise line exists, to add visual rhythm.`,
         `Use visualDirection.icon from this vocabulary: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask. Pick the one that best fits the slide's idea.`,
@@ -1089,6 +1115,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `المحتوى يجب أن يكون عميقاً حقيقياً: كل نقطة في talkingPoints تحمل معلومة محددة أو مثالاً أو دليلاً أو تفصيلاً — لا تسميات عامة. مثال خاطئ: "أهمية البعث" — مثال صحيح: "البعث يجعل الإنسان محاسَباً على كل فعل صغير وكبير". إذا الفكرة غنية اجعلها شريحتين بدلاً من تكثيفها في نقطتين فارغتين.`,
         `عدد النقاط: استخدم دائماً الحد الأعلى المسموح به من كثافة العرض المختارة (detailed: 5 نقاط، balanced: 4 نقاط، minimal: 3 نقاط) — لا تكتفِ بالحد الأدنى إلا إذا لم يكن للشريحة ما يكفي.`,
         `ممنوع وضع شريحة تفاعلية (kind: "interactive") كثاني شريحة في العرض — يجب أن يسبقها محتوى حقيقي ومعلومات أولاً.`,
+        `عيّن pedagogicalRole لكل شريحة، وتحقق قبل الإجابة أن العرض يضم شرحاً (explain) ومثالاً أو تطبيقاً (example/practice/activity) وتقويماً (assess) على الأقل.`,
         `إذا ذكرت رقماً أو إحصائية، أضف حقل source يقترح المرجع. وإلا اترك source فارغاً.`,
         togglesLine,
         `ممنوع استخدام العبارات التالية: ${banned.map((p) => `"${p}"`).join("، ")}.`,
@@ -1105,6 +1132,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `Avoid generic predictable slide titles like: Introduction, Importance, Steps, Comparison, Summary, Activity, Key Idea, Note. Write topic-specific titles that carry a concrete idea or question directly tied to the subject matter.`,
         `Content must be deep enough for the lesson: examples, precise details, application cases, common mistakes, or evidence as appropriate. Do not settle for shallow generic points.`,
         `NEVER place an interactive slide (kind: "interactive") as the second slide — real content and information must come first.`,
+        `Set pedagogicalRole on every slide and verify before answering that the deck contains at least one explain, one example/practice/activity, and one assess.`,
         `If you cite a number/fact, add a "source" field suggesting a reference. Otherwise leave it empty.`,
         togglesLine,
         `NEVER use these phrases: ${banned.map((p) => `"${p}"`).join(", ")}.`,
@@ -1138,6 +1166,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     "",
     ar ? "تخطيطات الشرائح المتاحة" : "AVAILABLE LAYOUTS",
     layoutRules,
+    "",
+    ar ? "عمق الحصة الكاملة" : "FULL LESSON DEPTH",
+    ar ? LESSON_DEPTH_AR : LESSON_DEPTH_EN,
     "",
     ar ? "ألعاب حصاد الحية" : "HASAAD LIVE GAMES",
     gamesRules,

@@ -95,6 +95,12 @@ export interface SanitizedSlide {
      unknown values fall through to the deck's default theme. */
   slideTheme?: string;
   slideType?: SanitizedSlideType;
+  /* Full-lesson depth (Aug 2026) — the teaching function of the slide.
+     The sanitizer always sets it: explicit model value when valid,
+     otherwise derived from slideType/kind/interactionHint so older
+     outlines still map. Optional so stored outlines predating the field
+     keep type-checking. */
+  pedagogicalRole?: SanitizedPedagogicalRole;
   layoutVariant?: SanitizedLayoutVariant;
   imagePlan?: SanitizedImagePlan | null;
   visualDirection: SanitizedVisualDirection;
@@ -160,6 +166,50 @@ const ALLOWED_IMAGE_PLACEMENTS = new Set<NonNullable<SanitizedImagePlan["placeme
 const ALLOWED_IMAGE_FALLBACKS = new Set<SanitizedImageFallback>([
   "diagram", "timeline", "coloredExample", "relationshipMap", "icon", "none",
 ]);
+
+export type SanitizedPedagogicalRole =
+  | "hook" | "objective" | "explain" | "example" | "practice"
+  | "misconception" | "activity" | "assess" | "summary" | "extension";
+
+const ALLOWED_PEDAGOGICAL_ROLES = new Set<SanitizedPedagogicalRole>([
+  "hook", "objective", "explain", "example", "practice",
+  "misconception", "activity", "assess", "summary", "extension",
+]);
+
+const ROLE_FOR_SLIDE_TYPE: Record<SanitizedSlideType, SanitizedPedagogicalRole> = {
+  title: "hook",
+  concept: "explain",
+  visualHero: "explain",
+  process: "explain",
+  comparison: "misconception",
+  timeline: "explain",
+  workedExample: "example",
+  quote: "explain",
+  misconception: "misconception",
+  activity: "activity",
+  quiz: "assess",
+  summary: "summary",
+};
+
+function derivePedagogicalRole(
+  kind: string,
+  slideType: SanitizedSlideType | undefined,
+  interactionHint: SanitizedInteractionHint,
+): SanitizedPedagogicalRole {
+  if (slideType) return ROLE_FOR_SLIDE_TYPE[slideType];
+  switch (kind) {
+    case "title": return "hook";
+    case "objectives": return "objective";
+    case "closure": return "summary";
+    case "steps":
+    case "formula": return "example";
+    case "comparison":
+    case "callout": return "misconception";
+    case "interactive":
+      return interactionHint === "quiz" || interactionHint === "poll" ? "assess" : "activity";
+    default: return "explain";
+  }
+}
 
 const KIND_FOR_SLIDE_TYPE: Partial<Record<SanitizedSlideType, string>> = {
   title: "title",
@@ -539,7 +589,9 @@ export function sanitizeOutline(
       for (const q of rawQs) {
         if (cleaned.length >= 12) break;
         const qr = asRecord(q);
-        const qPrompt = clipStr(qr.prompt, 500);
+        /* Models interchangeably emit `prompt` or `question` for the MCQ
+           text — normalize both instead of silently dropping the set. */
+        const qPrompt = clipStr(qr.prompt, 500) || clipStr(qr.question, 500);
         if (!qPrompt) continue;
         const optsIn = asArray(qr.options).map((o) => clipStr(o, 200)).filter(Boolean);
         if (optsIn.length < 2 || optsIn.length > 6) continue;
@@ -608,6 +660,11 @@ export function sanitizeOutline(
       imagePlan = candidate;
     }
 
+    const roleRaw = clipStr((slide as RawRecord).pedagogicalRole, 20);
+    const pedagogicalRole = ALLOWED_PEDAGOGICAL_ROLES.has(roleRaw as SanitizedPedagogicalRole)
+      ? roleRaw as SanitizedPedagogicalRole
+      : derivePedagogicalRole(kind, slideType, interactionHint);
+
     const out: SanitizedSlide = {
       index: i + 1,
       kind,
@@ -616,6 +673,7 @@ export function sanitizeOutline(
       talkingPoints,
       interactionHint,
       gameSuggestion,
+      pedagogicalRole,
       visualDirection,
     };
     if (subtitle) out.subtitle = subtitle;
@@ -655,6 +713,40 @@ export function sanitizeOutline(
   const objectivesCount = kinds.filter((k) => k === "objectives").length;
   if (objectivesCount > 1) {
     feedback.push("Objectives slide used more than once. Use it only when genuinely necessary.");
+  }
+
+  /* Full-lesson depth (Aug 2026): a normal lesson of 8+ slides must behave
+     like a teachable lesson, not a decorated summary. Missing core
+     pedagogical roles, or one role dominating the deck, is fatal so the
+     single corrective retry (no extra charge) rebuilds the plan.
+
+     Fatality is scoped to plain "explain" lessons: quick recaps, contests,
+     review/interactive formats, and educational strategies (SCAMPER, six
+     hats, …) legitimately concentrate one role or skip parts of the arc,
+     so for those the same findings stay advisory feedback only. */
+  let structuralFatal = false;
+  const fullLessonContract =
+    brief.presentationKind === "explain" &&
+    (!brief.educationalStrategy || brief.educationalStrategy === "none");
+  if (slides.length >= 8) {
+    const roles = slides.map((s) => s.pedagogicalRole);
+    const missingRoles: string[] = [];
+    if (!roles.includes("explain")) missingRoles.push("explain");
+    if (!roles.some((role) => role === "example" || role === "practice" || role === "activity")) {
+      missingRoles.push("example/practice/activity");
+    }
+    if (!roles.includes("assess")) missingRoles.push("assess");
+    if (missingRoles.length > 0) {
+      if (fullLessonContract) structuralFatal = true;
+      feedback.push(`Deck reads like a summary, not a lesson: missing core pedagogical role(s): ${missingRoles.join(", ")}. Rebuild with explanation, a worked example or guided practice, and a quick assessment.`);
+    }
+    const roleCounts = new Map<string, number>();
+    for (const role of roles) roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+    const topRole = [...roleCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (topRole && topRole[1] > Math.floor(slides.length / 2)) {
+      if (fullLessonContract) structuralFatal = true;
+      feedback.push(`Pedagogical role "${topRole[0]}" repeats on ${topRole[1]}/${slides.length} slides. Give each slide a distinct teaching function.`);
+    }
   }
 
   /* Teaching flow — must cover every slide index exactly once across
@@ -715,7 +807,7 @@ export function sanitizeOutline(
     slides,
   };
 
-  const fatal = slides.length === 0 || objectives.length < 2 || hasIncompleteSlide;
+  const fatal = slides.length === 0 || objectives.length < 2 || hasIncompleteSlide || structuralFatal;
   if (fatal) feedback.push("Outline is too sparse after sanitization.");
 
   return { outline, report: { feedback, fatal } };

@@ -98,8 +98,8 @@ interface ImportResult {
 function inferQuickSlideCount(topic: string, subject: string, grade: string): number {
   const text = `${topic} ${subject} ${grade}`.toLowerCase();
   if (/وحدة|مشروع|مراجعة شاملة|اختبار|نهائي|unit|project|comprehensive|exam|final/.test(text)) return 12;
-  if (/مقدمة|تعريف|مدخل|نشاط|quick|intro|overview|starter/.test(text)) return 6;
-  return 9;
+  if (/مقدمة|تعريف|مدخل|نشاط|quick|intro|overview|starter/.test(text)) return 8;
+  return 10;
 }
 
 const IMPORT_ACCEPT = ".pdf,.pptx,.ppt,.docx,.doc,.jpg,.jpeg,.png,.webp";

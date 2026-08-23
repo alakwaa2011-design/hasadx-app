@@ -74,7 +74,9 @@ function outlineConfigForTier(tier: AiTier): OutlineTierConfig {
   }
   // Free / standard tier.
   return {
-    maxSlides: 10,
+    /* 12 so the default full-lesson length (10-12 slides) fits the free
+       plan; the lesson-depth contract needs room for practice + assess. */
+    maxSlides: 12,
     allowedDensities: ["balanced"],
     allowClaude: false,
   };
@@ -164,6 +166,12 @@ const outlineSlideCardSchema = z.object({
     "workedExample", "quote", "misconception", "activity", "quiz", "summary",
   ]).optional(),
   layoutVariant: z.enum(["classic", "poster", "editorial", "staggered"]).optional(),
+  /* Full-lesson depth — the slide's teaching function. Optional so older
+     saved outlines keep validating; the sanitizer derives it when absent. */
+  pedagogicalRole: z.enum([
+    "hook", "objective", "explain", "example", "practice",
+    "misconception", "activity", "assess", "summary", "extension",
+  ]).optional(),
   imagePlan: z.object({
     reason: z.string().max(140).optional(),
     imageQuery: z.string().max(180).optional(),
@@ -245,7 +253,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
   // v3: reverted per-slide color variety — ONE deck theme, null per slide.
   //     Added structural layout personality per deck instead (May 2026).
   //     Bump this constant whenever DESIGN_RULES or system prompt changes.
-  const PROMPT_VERSION = "v4-visual-director-contract";
+  const PROMPT_VERSION = "v5-full-lesson-depth";
   const obj = {
     _pv: PROMPT_VERSION,
     m: model,
@@ -326,7 +334,10 @@ async function runOutlineCompletion(opts: {
        so every call failed and the request hit the 120s proxy abort.
        Verified fix: reasoning_effort "minimal" + a 16k budget returns a
        complete valid outline in ~50s. */
-    max_completion_tokens: isGpt5 ? 16000 : 4000,
+    /* 8000 for gpt-4o-mini: the full-lesson contract asks for 10-12
+       content-complete slides; the old 4000 budget truncated the JSON
+       mid-object on decks past ~8 rich slides. */
+    max_completion_tokens: isGpt5 ? 16000 : 8000,
     ...(isGpt5 ? { reasoning_effort: "minimal" as const } : {}),
     messages: [
       { role: "system" as const, content: opts.system },

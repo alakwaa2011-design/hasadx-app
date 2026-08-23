@@ -174,8 +174,9 @@ describe("policy: no plan-based daily outline cap for AI presentations", () => {
     expect(res.status).toBe(200);
     expect(res.body.dailyOutlines).toBeNull();
     expect(res.body.remaining).toBeNull();
-    // Commercial capabilities preserved for the free tier:
-    expect(res.body.maxSlides).toBe(10);
+    // Commercial capabilities preserved for the free tier (12 since the
+    // full-lesson default of 10-12 slides must fit the free plan):
+    expect(res.body.maxSlides).toBe(12);
     expect(res.body.allowedDensities).toEqual(["balanced"]);
     expect(res.body.allowClaude).toBe(false);
   });

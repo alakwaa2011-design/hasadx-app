@@ -16,3 +16,7 @@ On mobile previews, an outline request can be abandoned around 80 seconds. A sec
 Keep `gameQuestions` lightweight in outline generation: one assessment slide with at most three questions. Large per-slide question banks can exhaust the provider output budget before the required deck JSON closes, which surfaces as an incomplete outline.
 
 Outline density limits are soft quality targets, not data-loss rules. Preserve useful longer points and sparse-but-meaningful slides; reject only empty or placeholder content. **Why:** a complete nine-slide response was previously rejected solely for having two or one useful points on two slides.
+
+Full-lesson depth contract: every outline slide carries a pedagogical role, and a normal lesson of 8+ slides must cover explanation + example/practice + assessment with no single role dominating. **Why:** teachers received decorated summaries (two definitions and a recap) that could not carry a real lesson. **How to apply:** these violations are fatal ONLY for plain explain lessons — quick recaps, contests, and educational strategies (SCAMPER, six hats…) legitimately concentrate one role, so the same findings stay advisory there or valid decks 422. Normal-lesson defaults are 10–12 slides; a client-inferred count must never exceed the free-plan slide cap or teachers hit LIMIT_EXCEEDED. Fuller decks need a bigger model output budget or JSON truncates mid-object.
+
+Game question MCQs arrive with `prompt` or `question` keys interchangeably — normalize both in the sanitizer or complete question sets are silently dropped.

@@ -133,18 +133,23 @@ function smartSlideCount(
   duration: PresentationBriefDurationMinutes,
   density: PresentationBriefDensity,
 ): number {
-  if (kind === "quick") return 6;
+  /* Full lessons default to 10-12 slides so the deck can hold the whole
+     teaching arc (hook → explain → example → practice → assess → summary).
+     Shorter counts stay only where there is an objective reason (quick
+     recap, contest, very short period). Never exceed 12 — the free plan
+     cap — so no teacher hits LIMIT_EXCEEDED from an inferred count. */
+  if (kind === "quick") return 8;
   if (kind === "contest") return duration >= 45 ? 12 : 8;
-  if (kind === "interactive" || kind === "review") return duration >= 45 ? 10 : 8;
-  if (density === "detailed" || duration >= 60) return 14;
-  if (duration <= 15) return 6;
-  return 10;
+  if (kind === "interactive" || kind === "review") return duration >= 45 ? 11 : 10;
+  if (density === "detailed" || duration >= 60) return 12;
+  if (duration <= 15) return 8;
+  return 11;
 }
 
 const DEFAULT_PREFS: Required<SavedPrefs> = {
   language: "ar",
   presentationKind: "explain",
-  slideCount: 8,
+  slideCount: 10,
   durationMinutes: 45,
   languageLevel: "medium",
   density: "balanced",
@@ -187,7 +192,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     "explain",
   );
   const [slideCount, setSlideCount] = useState<number>(
-    initial?.slideCount ?? localPrefs.slideCount ?? 8,
+    initial?.slideCount ?? localPrefs.slideCount ?? 10,
   );
   const [durationMinutes, setDurationMinutes] = useState<PresentationBriefDurationMinutes>(
     (initial?.durationMinutes as PresentationBriefDurationMinutes) ??
