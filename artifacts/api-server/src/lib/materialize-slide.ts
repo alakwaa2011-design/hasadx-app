@@ -61,6 +61,46 @@ const IMG_GUTTER = 32;
    better than an inline column. */
 const HERO_KINDS = new Set(["visual-hero", "title", "stat", "quote"]);
 
+function addVisualFallback(
+  slide: MaterializedSlide,
+  card: OutlineCard,
+  palette: ReturnType<typeof paletteForTheme>,
+  lang: Lang,
+): void {
+  const fallback = card.imagePlan?.fallback;
+  if (!fallback || fallback === "none") return;
+  const isRtl = lang === "ar";
+  const x = isRtl ? 48 : CANVAS_W - 308;
+  const accent = palette.accent;
+  const surface = palette.surface;
+  slide.elements.unshift(
+    {
+      id: `${slide.id}-fallback-panel`,
+      kind: "shape",
+      shape: "rect",
+      x, y: 122, w: 260, h: 420,
+      bgColor: surface,
+      borderColor: accent,
+      borderWidth: 3,
+    },
+    {
+      id: `${slide.id}-fallback-orb`,
+      kind: "shape",
+      shape: fallback === "relationshipMap" ? "circle" : "rect",
+      x: x + 42, y: 174, w: 176, h: fallback === "timeline" ? 14 : 176,
+      bgColor: palette.accentSoft,
+    },
+    {
+      id: `${slide.id}-fallback-icon`,
+      kind: "icon",
+      iconName: fallback === "timeline" ? "Clock" : fallback === "coloredExample" ? "Highlighter" : fallback === "relationshipMap" ? "GitBranch" : "Sparkles",
+      x: x + 85, y: fallback === "timeline" ? 220 : 215, w: 90, h: 90,
+      color: accent,
+    },
+  );
+  slide.visualFallback = fallback;
+}
+
 /* Bump small body fonts so 30-something readers in a classroom can
    actually skim a slide from the back row. Anything ≤ 24 pt gets
    roughly +3, capped at +4, to avoid blowing up titles that are
@@ -200,6 +240,10 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
         objectFit: "cover",
         imageBorderRadius: 24,
       });
+    } else {
+      /* A requested image must never degrade into a text-only slide. Keep
+         the deck self-contained with a deterministic, topic-directed visual. */
+      addVisualFallback(out.slide, input.card, palette, input.lang);
     }
 
     /* Slightly larger body type for classroom readability. Runs after
@@ -209,20 +253,43 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
 
     return { slide: out.slide, warnings: out.warnings };
   } catch (err) {
-    /* Fallback: emit a minimal title-only slide so the deck can still
-       open in the editor. The teacher sees a warning explaining the
-       slot is empty and can re-author by hand. */
+    /* Last-resort fallback: preserve a readable slide with a meaningful
+       visual anchor, rather than silently replacing a failed layout with
+       a title-only blank. */
     const msg = err instanceof Error ? err.message : "unknown";
+    const fallback = input.card.imagePlan?.fallback ?? "icon";
     return {
       slide: {
         id: `s${input.card.index}`,
         layout: input.card.kind,
         notes: input.card.purpose,
+        background: palette.cssGrad,
+        designFamily: input.card.designFamily,
+        slideType: input.card.slideType,
+        layoutVariant: input.card.layoutVariant,
+        imagePlan: input.card.imagePlan,
+        visualFallback: fallback,
         elements: [
+          {
+            id: `s${input.card.index}-fallback-panel`,
+            kind: "shape",
+            shape: "rect",
+            x: input.lang === "ar" ? 48 : 932, y: 120, w: 300, h: 480,
+            bgColor: palette.surface,
+            borderColor: palette.accent,
+            borderWidth: 3,
+          },
+          {
+            id: `s${input.card.index}-fallback-icon`,
+            kind: "icon",
+            iconName: fallback === "timeline" ? "Clock" : fallback === "relationshipMap" ? "GitBranch" : "Sparkles",
+            x: input.lang === "ar" ? 150 : 1034, y: 260, w: 96, h: 96,
+            color: palette.accent,
+          },
           {
             id: `s${input.card.index}-fallback-title`,
             kind: "text",
-            x: 80, y: 240, w: 1120, h: 120,
+            x: input.lang === "ar" ? 392 : 80, y: 240, w: 720, h: 120,
             text: input.card.title,
             fontSize: 52,
             fontWeight: "700",

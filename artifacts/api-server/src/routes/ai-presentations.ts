@@ -16,6 +16,7 @@ import {
   presentationsTable,
 } from "@workspace/db";
 import { buildOneSlide } from "../lib/materialize-slide";
+import { findWebImagesBatch } from "../lib/web-image-search";
 import { slideSchema, slidesSchema } from "./presentations";
 import type { OutlineCard, Density, Lang } from "@workspace/slide-templates";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -31,6 +32,7 @@ import {
   sanitizeOutline,
   buildRetryMessage,
   sanitizeText,
+  shouldAdoptCorrectiveOutline,
 } from "../lib/outline-guardrails";
 
 const router: IRouter = Router();
@@ -113,6 +115,14 @@ const outlineSlideKindSchema = z.enum([
   "stat", "quote", "callout",
 ]);
 
+function isOutlinePlaceholder(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized === "..." ||
+    normalized === "…" ||
+    /^\.{2,}$/.test(normalized) ||
+    /^(todo|tbd|lorem ipsum|نص تجريبي|ضع النص هنا)$/.test(normalized);
+}
+
 const outlineSlideCardSchema = z.object({
   index: z.number().int().min(1).max(30),
   kind: outlineSlideKindSchema,
@@ -148,6 +158,18 @@ const outlineSlideCardSchema = z.object({
     "royal", "noor", "sage", "sand", "obsidian",
     "linen", "mist", "clay", "pine", "ink",
   ]).nullable().optional(),
+  slideType: z.enum([
+    "title", "concept", "visualHero", "process", "comparison", "timeline",
+    "workedExample", "quote", "misconception", "activity", "quiz", "summary",
+  ]).optional(),
+  layoutVariant: z.enum(["classic", "poster", "editorial", "staggered"]).optional(),
+  imagePlan: z.object({
+    reason: z.string().max(140).optional(),
+    imageQuery: z.string().max(180).optional(),
+    mediaType: z.enum(["photo", "illustration", "diagram", "chart", "icon"]).optional(),
+    placement: z.enum(["background", "side", "none"]).optional(),
+    fallback: z.enum(["diagram", "timeline", "coloredExample", "relationshipMap", "icon", "none"]).default("icon"),
+  }).nullable().optional(),
   visualDirection: z.object({
     icon: z.string().max(80).optional(),
     shape: z.enum(["rect", "circle", "line", "arrow", "divider"]).optional(),
@@ -163,12 +185,43 @@ const outlineSchema = z.object({
   density: z.enum(["minimal", "balanced", "detailed"]),
   totalEstimatedMinutes: z.number().int().min(1).max(240),
   objectives: z.array(z.string().min(1).max(140)).min(2).max(6),
+  designBrief: z.object({
+    designFamily: z.enum(["editorial", "scientific", "narrative", "practical", "reflective"]),
+    visualMotif: z.string().max(100).optional(),
+  }).optional(),
   teachingFlow: z.array(z.object({
     stage: z.enum(["opener", "concept", "practice", "closure"]),
     slideIndices: z.array(z.number().int().min(1).max(30)).min(1),
     estimatedMinutes: z.number().int().min(1).max(240),
   })).length(4),
   slides: z.array(outlineSlideCardSchema).min(3).max(30),
+}).superRefine((outline, ctx) => {
+  for (const [index, slide] of outline.slides.entries()) {
+    for (const [field, value] of [
+      ["title", slide.title],
+      ["purpose", slide.purpose],
+      ...slide.talkingPoints.map((point, pointIndex) => [`talkingPoints.${pointIndex}`, point] as const),
+    ] as Array<[string, string]>) {
+      if (isOutlinePlaceholder(value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slides", index, field],
+          message: "Placeholder content cannot be saved in an outline",
+        });
+      }
+    }
+    if (
+      slide.imagePlan?.imageQuery &&
+      (slide.imagePlan.mediaType === "photo" || slide.imagePlan.mediaType === "illustration") &&
+      slide.imagePlan.fallback === "none"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["slides", index, "imagePlan", "fallback"],
+        message: "A searched image requires a deterministic visual fallback",
+      });
+    }
+  }
 });
 
 const patchBody = z.object({
@@ -191,7 +244,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
   // v3: reverted per-slide color variety — ONE deck theme, null per slide.
   //     Added structural layout personality per deck instead (May 2026).
   //     Bump this constant whenever DESIGN_RULES or system prompt changes.
-  const PROMPT_VERSION = "v3-deck-theme-consistency";
+  const PROMPT_VERSION = "v4-visual-director-contract";
   const obj = {
     _pv: PROMPT_VERSION,
     m: model,
@@ -205,6 +258,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
     lvl: brief.languageLevel,
     den: brief.density,
     tg: brief.toggles,
+    es: brief.educationalStrategy ?? "none",
     nt: normalizeForHash(brief.notes ?? ""),
   };
   return crypto.createHash("sha256").update(JSON.stringify(obj)).digest("hex");
@@ -453,6 +507,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const DEADLINE_MS = 110_000;
     const remainingMs = () => Math.max(1_000, DEADLINE_MS - (Date.now() - startedAt));
 
+    let providerRetried = false;
     if (!outlineRaw) {
       try {
         await reserveOutlineSlot(teacherId);
@@ -481,6 +536,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
           tokensIn += second.tokensIn;
           tokensOut += second.tokensOut;
           outlineRaw = parseJsonLoose(second.text);
+          providerRetried = true;
         }
       } catch (err) {
         req.log.error({ err }, "Outline completion failed");
@@ -510,7 +566,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
        one corrective retry with feedback to the model. Skipped when
        we served from cache (no provider call to retry against). */
     if (
-      !usedCache && report.feedback.length > 0 && !report.fatal &&
+       !usedCache && report.feedback.length > 0 && !providerRetried &&
       /* Skip the quality retry when a second provider call would push
          the request past the 120s proxy abort. Sanitize already
          repaired the outline, so serving the first attempt is far
@@ -518,7 +574,9 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       Date.now() - startedAt < RETRY_BUDGET_MS
     ) {
       try {
-        // Corrective retry — counts against the daily quota.
+        // The request already owns one credit hold. This is the single
+        // permitted corrective replan; it never invokes checkCredits again.
+        providerRetried = true;
         await reserveOutlineSlot(teacherId);
         const retry = await runOutlineCompletion({
           tier,
@@ -531,9 +589,10 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
         const retried = parseJsonLoose(retry.text);
         if (retried && typeof retried === "object") {
           const second = sanitizeOutline(retried, brief);
-          // Adopt the retry only if it has FEWER feedback issues; else
-          // keep the first attempt so we don't regress quality.
-          if (second.report.feedback.length < report.feedback.length && !second.report.fatal) {
+          // A complete retry always rescues an incomplete first attempt.
+          // When both are complete, only adopt a retry that needs fewer
+          // normalizations so the deck does not regress in quality.
+          if (shouldAdoptCorrectiveOutline(report, second.report)) {
             outline = second.outline;
             report = second.report;
           }
@@ -543,9 +602,20 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       }
     }
 
-    /* Validate against the strict Zod schema. Sanitize already padded
-       talking points and rebuilt the flow, so failure here means the
-       model produced something we genuinely can't recover from. */
+    /* Validate against the strict Zod schema. Sanitization deliberately
+       refuses to invent filler, so failure here means the provider did not
+       produce a complete teaching outline after its one corrective retry. */
+    if (report.fatal) {
+      await refundCredits(req, "incomplete outline");
+      res.status(422).json({
+        message: brief.language === "ar"
+          ? "لم يكتمل مخطط العرض بعد المحاولة التصحيحية. عدّل الموضوع أو أعد المحاولة."
+          : "The outline remained incomplete after its corrective retry. Adjust the brief and try again.",
+        feedback: report.feedback.slice(0, 8),
+      });
+      return;
+    }
+
     const parsed = outlineSchema.safeParse(outline);
     if (!parsed.success) {
       req.log.warn({ issues: parsed.error.issues }, "Outline failed strict validation");
@@ -895,6 +965,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
       language: Lang;
       density: Density;
       slides: OutlineCard[];
+      designBrief?: { designFamily?: OutlineCard["designFamily"] };
     };
     const brief = draft.brief as {
       language: Lang;
@@ -909,6 +980,28 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
     const skipped: number[] = [];
     const total = outline.slides.length;
     let cancelled = false;
+
+    /* Search only cards that deliberately request a real photo/illustration.
+       Search failures resolve to null by contract; the materializer then
+       draws the card's requested educational fallback instead of a blank
+       text panel. */
+    const imageQueries = outline.slides.map((card) => {
+      const plan = card.imagePlan;
+      return plan?.placement !== "none" &&
+        (plan?.mediaType === "photo" || plan?.mediaType === "illustration")
+        ? plan.imageQuery ?? null
+        : null;
+    });
+    let imageHits: Awaited<ReturnType<typeof findWebImagesBatch>>;
+    try {
+      imageHits = await findWebImagesBatch(imageQueries, {
+        concurrency: 3,
+        timeoutMs: 6_000,
+      });
+    } catch (err) {
+      req.log.warn({ err }, "Presentation image batch failed; using visual fallbacks");
+      imageHits = imageQueries.map(() => null);
+    }
 
     /* Insert the empty deck UP-FRONT so we can persist slides
        incrementally and so a cancellation mid-build retains whatever
@@ -953,12 +1046,18 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
           cancelled = true;
           break;
         }
-        const card = outline.slides[i];
+        const rawCard = outline.slides[i];
+        const card: OutlineCard = {
+          ...rawCard,
+          designFamily: rawCard.designFamily ?? outline.designBrief?.designFamily,
+        };
         const out = buildOneSlide({
           card,
           themeKey,
           density: outline.density,
           lang: outline.language,
+          backgroundImageUrl: imageHits[i]?.url,
+          imagePlacement: card.imagePlan?.placement,
         });
         out.warnings.forEach((w) => warnings.push(`#${card.index}: ${w}`));
 

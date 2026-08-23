@@ -14,7 +14,7 @@ import { buildOneSlide } from "../lib/materialize-slide";
 import type { OutlineCard } from "@workspace/slide-templates";
 
 describe("buildOneSlide() — fallback path", () => {
-  it("returns a title-only slide when the template throws", () => {
+  it("returns a readable slide with a visual fallback when the template throws", () => {
     const card: OutlineCard = {
       index: 7,
       kind: "concept-card",
@@ -31,12 +31,17 @@ describe("buildOneSlide() — fallback path", () => {
       lang: "en",
     });
 
-    // One title-only text element pinned to the card title.
+    // The last-resort layout preserves a visual anchor instead of an empty
+    // title-only slide.
     expect(out.slide.id).toBe("s7");
     expect(out.slide.layout).toBe("concept-card");
-    expect(out.slide.elements).toHaveLength(1);
-    const el = out.slide.elements[0];
-    expect(el.kind).toBe("text");
+    expect(out.slide.visualFallback).toBe("icon");
+    expect(out.slide.imagePlan).toBeUndefined();
+    expect(out.slide.elements).toHaveLength(3);
+    expect(out.slide.elements.some((el) => el.kind === "shape")).toBe(true);
+    expect(out.slide.elements.some((el) => el.kind === "icon")).toBe(true);
+    const el = out.slide.elements.find((item) => item.kind === "text");
+    expect(el).toBeDefined();
     expect((el as { text: string }).text).toBe("Hello world");
 
     // The fallback warning surfaces the underlying error message.

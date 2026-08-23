@@ -17,6 +17,18 @@ export interface GuardrailReport {
   fatal: boolean;
 }
 
+/** A complete corrective outline is always preferable to an incomplete
+ *  first attempt. For two complete candidates, retain the one requiring
+ *  fewer normalizations so retries cannot make a usable deck noisier. */
+export function shouldAdoptCorrectiveOutline(
+  current: GuardrailReport,
+  candidate: GuardrailReport,
+): boolean {
+  return !candidate.fatal && (
+    current.fatal || candidate.feedback.length < current.feedback.length
+  );
+}
+
 export type SanitizedInteractionHint =
   | "poll" | "quiz" | "discussion" | "activity" | null;
 
@@ -24,6 +36,22 @@ export interface SanitizedVisualDirection {
   icon?: string;
   shape?: "rect" | "circle" | "line" | "arrow" | "divider";
   layoutHint?: string;
+}
+
+export type SanitizedDesignFamily =
+  | "editorial" | "scientific" | "narrative" | "practical" | "reflective";
+export type SanitizedSlideType =
+  | "title" | "concept" | "visualHero" | "process" | "comparison" | "timeline"
+  | "workedExample" | "quote" | "misconception" | "activity" | "quiz" | "summary";
+export type SanitizedLayoutVariant = "classic" | "poster" | "editorial" | "staggered";
+export type SanitizedImageFallback =
+  | "diagram" | "timeline" | "coloredExample" | "relationshipMap" | "icon" | "none";
+export interface SanitizedImagePlan {
+  reason?: string;
+  imageQuery?: string;
+  mediaType?: "photo" | "illustration" | "diagram" | "chart" | "icon";
+  placement?: "background" | "side" | "none";
+  fallback?: SanitizedImageFallback;
 }
 
 export type SanitizedGameSuggestion =
@@ -58,6 +86,9 @@ export interface SanitizedSlide {
      the 15-theme registry. Validated against `isKnownThemeKey`;
      unknown values fall through to the deck's default theme. */
   slideTheme?: string;
+  slideType?: SanitizedSlideType;
+  layoutVariant?: SanitizedLayoutVariant;
+  imagePlan?: SanitizedImagePlan | null;
   visualDirection: SanitizedVisualDirection;
   source?: string;
 }
@@ -73,6 +104,7 @@ export interface SanitizedOutline {
   density: OutlineDensity;
   totalEstimatedMinutes: number;
   objectives: string[];
+  designBrief?: { designFamily: SanitizedDesignFamily; visualMotif?: string };
   teachingFlow: SanitizedFlowEntry[];
   slides: SanitizedSlide[];
 }
@@ -101,10 +133,48 @@ const ALLOWED_ACTIVITY_TYPES = new Set([
 const ALLOWED_SHAPE = new Set<SanitizedVisualDirection["shape"]>([
   "rect", "circle", "line", "arrow", "divider",
 ]);
+const ALLOWED_DESIGN_FAMILIES = new Set<SanitizedDesignFamily>([
+  "editorial", "scientific", "narrative", "practical", "reflective",
+]);
+const ALLOWED_SLIDE_TYPES = new Set<SanitizedSlideType>([
+  "title", "concept", "visualHero", "process", "comparison", "timeline",
+  "workedExample", "quote", "misconception", "activity", "quiz", "summary",
+]);
+const ALLOWED_LAYOUT_VARIANTS = new Set<SanitizedLayoutVariant>([
+  "classic", "poster", "editorial", "staggered",
+]);
+const ALLOWED_MEDIA_TYPES = new Set<NonNullable<SanitizedImagePlan["mediaType"]>>([
+  "photo", "illustration", "diagram", "chart", "icon",
+]);
+const ALLOWED_IMAGE_PLACEMENTS = new Set<NonNullable<SanitizedImagePlan["placement"]>>([
+  "background", "side", "none",
+]);
+const ALLOWED_IMAGE_FALLBACKS = new Set<SanitizedImageFallback>([
+  "diagram", "timeline", "coloredExample", "relationshipMap", "icon", "none",
+]);
+
+const KIND_FOR_SLIDE_TYPE: Partial<Record<SanitizedSlideType, string>> = {
+  title: "title",
+  concept: "concept-card",
+  visualHero: "visual-hero",
+  process: "steps",
+  comparison: "comparison",
+  timeline: "timeline",
+  workedExample: "formula",
+  quote: "quote",
+  misconception: "callout",
+  activity: "interactive",
+  quiz: "interactive",
+  summary: "closure",
+};
 
 function isPlaceholderText(text: string): boolean {
   const s = text.trim().toLowerCase();
   return (
+    s === "..." ||
+    s === "…" ||
+    /^\.{2,}$/.test(s) ||
+    /^(todo|tbd|lorem ipsum|نص تجريبي|ضع النص هنا)$/.test(s) ||
     /^خيار\s*\d+$/.test(s) ||
     /^الخيار\s*\d+$/.test(s) ||
     /^option\s*\d+$/.test(s) ||
@@ -271,6 +341,17 @@ export function sanitizeOutline(
   const feedback: string[] = [];
   const lim = densityLimits(brief.density);
   const r = asRecord(raw);
+  const designBriefRaw = asRecord(r.designBrief);
+  const familyRaw = clipStr(designBriefRaw.designFamily, 30);
+  const designBrief = ALLOWED_DESIGN_FAMILIES.has(familyRaw as SanitizedDesignFamily)
+    ? {
+        designFamily: familyRaw as SanitizedDesignFamily,
+        visualMotif: clipStr(designBriefRaw.visualMotif, 100) || undefined,
+      }
+    : undefined;
+  if (familyRaw && !designBrief) {
+    feedback.push(`Unknown designFamily "${familyRaw}" — choose a supported visual family.`);
+  }
 
   /* Objectives — drop banned, exact-dedup, similarity-dedup, cap to 6. */
   const objSeen = new Set<string>();
@@ -296,13 +377,32 @@ export function sanitizeOutline(
      titles, drop talking-points violating length / banned / numbers. */
   const titleSeen = new Set<string>();
   const slidesIn = asArray(r.slides).slice(0, brief.slideCount);
+  let hasIncompleteSlide = slidesIn.length < brief.slideCount;
+  if (hasIncompleteSlide) {
+    feedback.push(`Outline has ${slidesIn.length}/${brief.slideCount} required slides.`);
+  }
   const slides: SanitizedSlide[] = slidesIn.map((s, i): SanitizedSlide => {
     const slide = asRecord(s);
     const kindRaw = typeof slide.kind === "string" ? slide.kind : "";
-    const kind = ALLOWED_KINDS.has(kindRaw) ? kindRaw : "concept-card";
+    const slideTypeRaw = clipStr(slide.slideType, 30);
+    const slideType = ALLOWED_SLIDE_TYPES.has(slideTypeRaw as SanitizedSlideType)
+      ? slideTypeRaw as SanitizedSlideType
+      : undefined;
+    const kind = ALLOWED_KINDS.has(kindRaw)
+      ? kindRaw
+      : slideType
+        ? KIND_FOR_SLIDE_TYPE[slideType] ?? "concept-card"
+        : "concept-card";
+    if (!ALLOWED_KINDS.has(kindRaw) && !slideType) {
+      feedback.push(`Slide ${i + 1}: missing or unknown kind — provide kind and slideType explicitly.`);
+    }
 
     const titleRaw = clipStr(slide.title, 80);
     let title = titleRaw || (brief.language === "ar" ? `شريحة ${i + 1}` : `Slide ${i + 1}`);
+    if (!titleRaw || isPlaceholderText(titleRaw)) {
+      hasIncompleteSlide = true;
+      feedback.push(`Slide ${i + 1}: title is missing or a placeholder.`);
+    }
     if (titleSeen.has(title.toLowerCase())) {
       title = `${title} (${i + 1})`;
       feedback.push(`Slide ${i + 1} title duplicated → suffixed.`);
@@ -312,14 +412,22 @@ export function sanitizeOutline(
     }
     titleSeen.add(title.toLowerCase());
 
-    const purpose = clipStr(slide.purpose, 140) || "—";
+    const purposeRaw = clipStr(slide.purpose, 140);
+    const purpose = purposeRaw || "—";
+    if (!purposeRaw || isPlaceholderText(purposeRaw)) {
+      hasIncompleteSlide = true;
+      feedback.push(`Slide ${i + 1}: purpose is missing or a placeholder.`);
+    }
     const subtitle = lim.allowSubtitle ? (clipStr(slide.subtitle, 80) || undefined) : undefined;
     const sourceField = clipStr(slide.source, 200) || undefined;
     const slideHasSource = !!sourceField;
 
     const tpRaw = asArray(slide.talkingPoints)
       .map((p) => clipStr(p, 140))
-      .filter((p) => p.length > 0);
+      .filter((p) => p.length > 0 && !isPlaceholderText(p));
+    if (asArray(slide.talkingPoints).length !== tpRaw.length) {
+      feedback.push(`Slide ${i + 1}: placeholder or empty talking point removed.`);
+    }
     const tpDeduped = dedupeBySimilarity(tpRaw, (kept, dropped) => {
       feedback.push(`Slide ${i + 1}: talking point dropped (near-duplicate of "${kept}"): "${dropped}"`);
     });
@@ -341,8 +449,10 @@ export function sanitizeOutline(
         return true;
       });
     if (talkingPoints.length > lim.maxPoints) talkingPoints = talkingPoints.slice(0, lim.maxPoints);
-    while (talkingPoints.length < lim.minPoints) {
-      talkingPoints.push("...");
+    const minimumPoints = kind === "title" ? 0 : lim.minPoints;
+    if (talkingPoints.length < minimumPoints) {
+      hasIncompleteSlide = true;
+      feedback.push(`Slide ${i + 1}: incomplete content (${talkingPoints.length}/${minimumPoints} required points); regenerate this slide instead of padding it.`);
     }
 
     /* interactionHint enforcement vs brief toggles.
@@ -447,6 +557,41 @@ export function sanitizeOutline(
       feedback.push(`Slide ${i + 1}: unknown slideTheme "${rawTheme}" — using deck default.`);
     }
 
+    const layoutRaw = clipStr(slide.layoutVariant, 20);
+    const layoutVariant = ALLOWED_LAYOUT_VARIANTS.has(layoutRaw as SanitizedLayoutVariant)
+      ? layoutRaw as SanitizedLayoutVariant
+      : undefined;
+    if (layoutRaw && !layoutVariant) {
+      feedback.push(`Slide ${i + 1}: unknown layoutVariant "${layoutRaw}".`);
+    }
+
+    const rawImagePlan = asRecord(slide.imagePlan);
+    let imagePlan: SanitizedImagePlan | undefined;
+    if (Object.keys(rawImagePlan).length > 0) {
+      const mediaTypeRaw = clipStr(rawImagePlan.mediaType, 20);
+      const placementRaw = clipStr(rawImagePlan.placement, 20);
+      const fallbackRaw = clipStr(rawImagePlan.fallback, 30);
+      const imageQuery = clipStr(rawImagePlan.imageQuery, 180);
+      const candidate: SanitizedImagePlan = {
+        reason: clipStr(rawImagePlan.reason, 140) || undefined,
+        imageQuery: imageQuery || undefined,
+        mediaType: ALLOWED_MEDIA_TYPES.has(mediaTypeRaw as NonNullable<SanitizedImagePlan["mediaType"]>)
+          ? mediaTypeRaw as NonNullable<SanitizedImagePlan["mediaType"]>
+          : undefined,
+        placement: ALLOWED_IMAGE_PLACEMENTS.has(placementRaw as NonNullable<SanitizedImagePlan["placement"]>)
+          ? placementRaw as NonNullable<SanitizedImagePlan["placement"]>
+          : undefined,
+        fallback: ALLOWED_IMAGE_FALLBACKS.has(fallbackRaw as SanitizedImageFallback)
+          ? fallbackRaw as SanitizedImageFallback
+          : "icon",
+      };
+      if (candidate.imageQuery && !["photo", "illustration"].includes(candidate.mediaType ?? "")) {
+        feedback.push(`Slide ${i + 1}: imageQuery requires mediaType photo or illustration; search was disabled.`);
+        delete candidate.imageQuery;
+      }
+      imagePlan = candidate;
+    }
+
     const out: SanitizedSlide = {
       index: i + 1,
       kind,
@@ -460,6 +605,9 @@ export function sanitizeOutline(
     if (subtitle) out.subtitle = subtitle;
     if (sourceField) out.source = sourceField;
     if (slideTheme) out.slideTheme = slideTheme;
+    if (slideType) out.slideType = slideType;
+    if (layoutVariant) out.layoutVariant = layoutVariant;
+    if (imagePlan) out.imagePlan = imagePlan;
     if (gameQuestions && gameQuestions.length > 0) out.gameQuestions = gameQuestions;
     const rawActivityType = clipStr((slide as RawRecord).activityType, 40);
     if (rawActivityType && ALLOWED_ACTIVITY_TYPES.has(rawActivityType)) out.activityType = rawActivityType;
@@ -546,11 +694,12 @@ export function sanitizeOutline(
     density: brief.density,
     totalEstimatedMinutes,
     objectives,
+    ...(designBrief ? { designBrief } : {}),
     teachingFlow,
     slides,
   };
 
-  const fatal = slides.length === 0 || objectives.length < 2;
+  const fatal = slides.length === 0 || objectives.length < 2 || hasIncompleteSlide;
   if (fatal) feedback.push("Outline is too sparse after sanitization.");
 
   return { outline, report: { feedback, fatal } };

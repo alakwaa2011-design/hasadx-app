@@ -62,6 +62,14 @@ vi.mock("../lib/check-credits", () => ({
   invalidateCreditsSettingsCache: () => {},
 }));
 
+vi.mock("../lib/web-image-search", () => ({
+  findWebImagesBatch: vi.fn(async (queries: Array<string | null | undefined>) =>
+    queries.map((query) => query
+      ? { url: `https://images.example.test/${encodeURIComponent(query)}.jpg`, title: query, source: "test" }
+      : null),
+  ),
+}));
+
 vi.mock("../lib/materialize-slide", async (importOriginal) => {
   const orig = await importOriginal<typeof import("../lib/materialize-slide")>();
   return {
@@ -89,6 +97,7 @@ import express from "express";
 import request from "supertest";
 import router from "../routes/ai-presentations";
 import { buildOneSlide } from "../lib/materialize-slide";
+import { findWebImagesBatch } from "../lib/web-image-search";
 import type { OutlineCard } from "@workspace/slide-templates";
 
 type Session = { teacherId?: number };
@@ -117,6 +126,7 @@ beforeEach(() => {
   mockState.queue.length = 0;
   mockState.setCalls.length = 0;
   vi.mocked(buildOneSlide).mockClear();
+  vi.mocked(findWebImagesBatch).mockClear();
 });
 
 const fixedOutline = {
@@ -139,6 +149,15 @@ const fixedOutline = {
       purpose: "Explain the core concept",
       talkingPoints: ["Point A", "Point B"],
       interactionHint: null,
+      slideType: "concept",
+      layoutVariant: "editorial",
+      imagePlan: {
+        reason: "A fraction bar makes the comparison concrete",
+        imageQuery: "fraction bars educational illustration",
+        mediaType: "illustration",
+        placement: "side",
+        fallback: "coloredExample",
+      },
       visualDirection: {},
     },
     {
@@ -151,6 +170,36 @@ const fixedOutline = {
       visualDirection: {},
     },
   ] satisfies OutlineCard[],
+};
+
+const editableOutline = {
+  language: "en" as const,
+  density: "balanced" as const,
+  totalEstimatedMinutes: 30,
+  objectives: ["Understand the idea", "Use it in an example"],
+  teachingFlow: [
+    { stage: "opener" as const, slideIndices: [1], estimatedMinutes: 4 },
+    { stage: "concept" as const, slideIndices: [2], estimatedMinutes: 12 },
+    { stage: "practice" as const, slideIndices: [3], estimatedMinutes: 10 },
+    { stage: "closure" as const, slideIndices: [3], estimatedMinutes: 4 },
+  ],
+  slides: [1, 2, 3].map((index) => ({
+    index,
+    kind: index === 1 ? "title" as const : "concept-card" as const,
+    title: `Editable slide ${index}`,
+    purpose: "Keep the lesson clear",
+    talkingPoints: ["Specific teaching point"],
+    interactionHint: null,
+    visualDirection: {},
+    ...(index === 2 ? {
+      imagePlan: {
+        reason: "A concrete illustration helps",
+        imageQuery: "fraction bars illustration",
+        mediaType: "illustration" as const,
+        placement: "side" as const,
+      },
+    } : {}),
+  })),
 };
 
 describe("ai-presentations.ts — POST /presentations/ai/build/:draftId", () => {
@@ -207,6 +256,19 @@ describe("ai-presentations.ts — POST /presentations/ai/build/:draftId", () => 
 
     // The materializer should have been invoked once per outline card.
     expect(buildOneSlide).toHaveBeenCalledTimes(3);
+    expect(findWebImagesBatch).toHaveBeenCalledWith(
+      [null, "fraction bars educational illustration", null],
+      expect.objectContaining({ concurrency: 3, timeoutMs: 6_000 }),
+    );
+    expect(buildOneSlide).toHaveBeenCalledWith(expect.objectContaining({
+      card: expect.objectContaining({
+        slideType: "concept",
+        layoutVariant: "editorial",
+        imagePlan: expect.objectContaining({ fallback: "coloredExample" }),
+      }),
+      backgroundImageUrl: "https://images.example.test/fraction%20bars%20educational%20illustration.jpg",
+      imagePlacement: "side",
+    }));
 
     // The bad card is reported in skipped[] and produces both the
     // forwarded materializer warning AND the route-level skip warning.
@@ -277,6 +339,29 @@ describe("ai-presentations.ts — POST /presentations/ai/build/:draftId", () => 
       .send({});
     expect(res.status).toBe(409);
     expect(res.body.status).toBe("draft");
+  });
+
+  it("normalizes edited image plans and rejects placeholder outline edits", async () => {
+    const existing = { id: 42, teacherId: 1, status: "draft" };
+    const saved = { ...existing, outline: editableOutline };
+    pushQueue([existing], [saved]);
+
+    const res = await request(makeApp({ teacherId: 1 }))
+      .patch("/api/presentations/drafts/42")
+      .send({ outline: editableOutline });
+
+    expect(res.status).toBe(200);
+    const outlineUpdate = mockState.setCalls.find((call) => "outline" in call) as {
+      outline: { slides: Array<{ imagePlan?: { fallback?: string } }> };
+    };
+    expect(outlineUpdate.outline.slides[1].imagePlan?.fallback).toBe("icon");
+
+    const invalid = structuredClone(editableOutline);
+    invalid.slides[1].talkingPoints = ["TODO"];
+    const rejected = await request(makeApp({ teacherId: 1 }))
+      .patch("/api/presentations/drafts/42")
+      .send({ outline: invalid });
+    expect(rejected.status).toBe(400);
   });
 
   it("returns the existing presentationId when the draft is already built", async () => {

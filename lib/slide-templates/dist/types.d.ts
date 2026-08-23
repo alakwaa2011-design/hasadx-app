@@ -2,6 +2,16 @@ export type Lang = "ar" | "en";
 export type Density = "minimal" | "balanced" | "detailed";
 export type SlideKind = "title" | "objectives" | "concept-card" | "comparison" | "visual-hero" | "steps" | "interactive" | "closure" | "timeline" | "formula" | "stat" | "quote" | "callout";
 export type InteractionHint = "poll" | "quiz" | "discussion" | "activity" | null;
+export type DesignFamily = "editorial" | "scientific" | "narrative" | "practical" | "reflective";
+export type SlideType = "title" | "concept" | "visualHero" | "process" | "comparison" | "timeline" | "workedExample" | "quote" | "misconception" | "activity" | "quiz" | "summary";
+export type LayoutVariant = "classic" | "poster" | "editorial" | "staggered";
+export type ImagePlan = {
+    reason?: string;
+    imageQuery?: string;
+    mediaType?: "photo" | "illustration" | "diagram" | "chart" | "icon";
+    placement?: "background" | "side" | "none";
+    fallback?: "diagram" | "timeline" | "coloredExample" | "relationshipMap" | "icon" | "none";
+};
 export interface OutlineCard {
     index: number;
     kind: SlideKind;
@@ -15,6 +25,14 @@ export interface OutlineCard {
     activityType?: string | null;
     strategyStage?: string | null;
     slideTheme?: string | null;
+    /** Deck-level identity, stamped onto every card at build time. */
+    designFamily?: DesignFamily;
+    /** Semantic slide role; optional so saved pre-director outlines still work. */
+    slideType?: SlideType;
+    /** Explicit template atmosphere override; otherwise chosen deterministically. */
+    layoutVariant?: LayoutVariant;
+    /** Optional search/fallback instruction. No plan means no automatic image lookup. */
+    imagePlan?: ImagePlan | null;
     visualDirection: {
         icon?: string;
         shape?: "rect" | "circle" | "line" | "arrow" | "divider";
@@ -138,6 +156,12 @@ export interface MaterializedSlide {
     linkedActivityType?: string | null;
     linkedActivityUrl?: string | null;
     activityCreationStatus?: "idle" | "creating" | "created" | "unsupported" | "failed" | null;
+    designFamily?: DesignFamily;
+    slideType?: SlideType;
+    layoutVariant?: LayoutVariant;
+    imagePlan?: ImagePlan | null;
+    /** Which deterministic educational visual was drawn when a planned image was unavailable. */
+    visualFallback?: ImagePlan["fallback"];
     elements: Element[];
 }
 export interface MaterializeResult {

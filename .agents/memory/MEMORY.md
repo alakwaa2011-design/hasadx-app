@@ -43,3 +43,4 @@
 - [AI credit denial UX coverage](ai-credit-denial-ux-coverage.md) — enumerate clients from server checkCredits routes; never infer the paid AI inventory from feature labels alone.
 - [Activity library responsive controls](activity-library-responsive-controls.md) — the marketplace renders shared filters; mobile controls must reuse its callbacks rather than recreate filtering or queries.
 - [Shared checkout flow](shared-checkout-flow.md) — all credit and subscription entry points use one client helper so payment intent, analytics, balance snapshots, and same-tab redirects stay aligned.
+- [Presentation visual contract](presentation-visual-contract.md) — real-image search is opt-in and every planned image has a deterministic teaching fallback.

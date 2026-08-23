@@ -932,6 +932,22 @@ Color theme is a deck-wide concern — not a per-slide decision.
 
 Mandatory: slideTheme = null on every single slide. No exceptions.`;
 
+const DIRECTOR_CONTRACT_AR = `عقدة القرار التصميمي — أرجعها كما هي في JSON:
+- designBrief على مستوى العرض: { designFamily, visualMotif }. اختر designFamily واحداً فقط: editorial للغة والأدب، scientific للعلوم، narrative للتاريخ والسير، practical للمهارات والتطبيقات، reflective للقيم والنصوص.
+- لكل شريحة أرجع slideType يصف دورها: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
+- اختر layoutVariant مختلفاً عند اختلاف دور الشريحة: classic, poster, editorial, staggered. لا تكرر المتغير نفسه ثلاث مرات متتالية.
+- imagePlan اختياري. ضعه فقط عندما تضيف صورة حقيقية فهماً لا تستطيع الأشكال والأيقونات تقديمه (ظاهرة، مكان تاريخي، كائن، تجربة). الشكل: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
+- لا تطلب صورة زخرفية أو عامة. عندما يكون الرسم التعليمي أو المثال الملون أو العلاقة أو الخط الزمني أفضل، استخدم imagePlan=null، أو خطة بلا imageQuery مع fallback مناسب: diagram, timeline, coloredExample, relationshipMap, icon.
+- لا تنشئ صوراً بالذكاء الاصطناعي، ولا تضع URL أو base64 في الرد.`;
+
+const DIRECTOR_CONTRACT_EN = `Design-decision contract — return it in the JSON:
+- deck-level designBrief: { designFamily, visualMotif }. Choose exactly one: editorial for language/literature, scientific for science, narrative for history/biography, practical for skills/application, reflective for values/texts.
+- Each slide has a semantic slideType: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
+- Choose layoutVariant by slide role: classic, poster, editorial, staggered. Do not repeat one variant three times in a row.
+- imagePlan is optional. Add it only when a real image teaches something that shapes/icons cannot (a phenomenon, historical place, object, or experiment): { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
+- Never request generic decorative images. When a diagram, colored example, relationship, or timeline teaches better, use imagePlan=null or a plan without imageQuery and a fallback: diagram, timeline, coloredExample, relationshipMap, icon.
+- Do not generate AI images and never return a URL or base64 string.`;
+
 /* ── Quick Mode: mandatory interactive structure injected when
    presentationKind === "quick". Forces the model to distribute
    interactive slides (warm-up poll → MCQ quiz → closing poll)
@@ -988,6 +1004,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   const layoutRules = ar ? LAYOUT_RULES_AR : LAYOUT_RULES_EN;
   const gamesRules = ar ? GAMES_RULES_AR : GAMES_RULES_EN;
   const designRules = ar ? DESIGN_RULES_AR : DESIGN_RULES_EN;
+  const directorContract = ar ? DIRECTOR_CONTRACT_AR : DIRECTOR_CONTRACT_EN;
   const quickModeRules = brief.presentationKind === "quick"
     ? (ar ? QUICK_MODE_RULES_AR : QUICK_MODE_RULES_EN)
     : null;
@@ -1007,6 +1024,10 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   "language": "${brief.language}",
   "density": "${brief.density}",
   "totalEstimatedMinutes": ${brief.durationMinutes},
+  "designBrief": {
+    "designFamily": "editorial|scientific|narrative|practical|reflective",
+    "visualMotif": "..."
+  },
   "objectives": ["...", "..."],
   "teachingFlow": [
     { "stage": "opener",   "slideIndices": [1],     "estimatedMinutes": N },
@@ -1031,6 +1052,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         { "prompt": "...", "options": ["...","...","...","..."], "correctIndex": 1 }
       ],
       "slideTheme": null,
+      "slideType": "title|concept|visualHero|process|comparison|timeline|workedExample|quote|misconception|activity|quiz|summary",
+      "layoutVariant": "classic|poster|editorial|staggered",
+      "imagePlan": { "reason": "...", "imageQuery": "...", "mediaType": "photo|illustration", "placement": "background|side", "fallback": "diagram|timeline|coloredExample|relationshipMap|icon" },
       "visualDirection": { "icon": "lightbulb|target|chart|...", "shape": "rect|circle|line|arrow|divider", "layoutHint": "..." },
       "source": "..."
     }
@@ -1062,6 +1086,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `اللغة: العربية الفصحى المبسّطة، أسلوب طبيعي للمعلم العربي (ليس ترجمة من الإنجليزية)، مستوى لغوي ${levelLabel}.`,
         densityRule,
         ...designerPrinciples,
+        directorContract,
         `قسّم العرض إلى 4 مراحل وظيفية حسب منطق الموضوع، وليس قالباً ثابتاً. استخدم مفاتيح stage التقنية نفسها فقط: opener, concept, practice, closure، لكن اجعل توزيع الشرائح يعكس بنية العرض التي اخترتها. كل index لشريحة يجب أن يظهر في exactly one stage.`,
         `كل شريحة لها purpose واحد فقط. ممنوع تكرار العنوان عبر الشرائح.`,
         `ممنوع أن تكون عناوين الشرائح عامة ومتوقعة مثل: مقدمة، أهمية، خطوات، مقارنة، خلاصة، نشاط، فكرة محورية، ملاحظة. اكتب عناوين موضوعية تحمل معلومة أو سؤالاً محدداً من صميم الموضوع.`,
@@ -1078,6 +1103,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `Language: ${brief.language === "en" ? "natural classroom English" : "Arabic"}, language level ${levelLabel}.`,
         densityRule,
         ...designerPrinciples,
+        directorContract,
         `Split the deck into 4 functional stages based on the topic's logic, not a fixed template. Use the same technical stage keys only: opener, concept, practice, closure, but distribute slides according to the narrative structure you chose. Every slide index appears in exactly one stage.`,
         `Each slide has exactly one purpose. Never repeat a title across slides.`,
         `Avoid generic predictable slide titles like: Introduction, Importance, Steps, Comparison, Summary, Activity, Key Idea, Note. Write topic-specific titles that carry a concrete idea or question directly tied to the subject matter.`,

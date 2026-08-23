@@ -26,6 +26,40 @@ export type SlideKind =
 
 export type InteractionHint = "poll" | "quiz" | "discussion" | "activity" | null;
 
+/* Additive presentation-director contract. The legacy `kind` remains the
+   rendering source of truth, while these fields explain the decision behind
+   it and let the build route fetch media only when it is genuinely useful. */
+export type DesignFamily =
+  | "editorial"
+  | "scientific"
+  | "narrative"
+  | "practical"
+  | "reflective";
+
+export type SlideType =
+  | "title"
+  | "concept"
+  | "visualHero"
+  | "process"
+  | "comparison"
+  | "timeline"
+  | "workedExample"
+  | "quote"
+  | "misconception"
+  | "activity"
+  | "quiz"
+  | "summary";
+
+export type LayoutVariant = "classic" | "poster" | "editorial" | "staggered";
+
+export type ImagePlan = {
+  reason?: string;
+  imageQuery?: string;
+  mediaType?: "photo" | "illustration" | "diagram" | "chart" | "icon";
+  placement?: "background" | "side" | "none";
+  fallback?: "diagram" | "timeline" | "coloredExample" | "relationshipMap" | "icon" | "none";
+};
+
 export interface OutlineCard {
   index: number;
   kind: SlideKind;
@@ -53,6 +87,14 @@ export interface OutlineCard {
      distinct instead of all wearing the deck's single theme.
      Optional — leave undefined to inherit the deck theme. */
   slideTheme?: string | null;
+  /** Deck-level identity, stamped onto every card at build time. */
+  designFamily?: DesignFamily;
+  /** Semantic slide role; optional so saved pre-director outlines still work. */
+  slideType?: SlideType;
+  /** Explicit template atmosphere override; otherwise chosen deterministically. */
+  layoutVariant?: LayoutVariant;
+  /** Optional search/fallback instruction. No plan means no automatic image lookup. */
+  imagePlan?: ImagePlan | null;
   visualDirection: {
     icon?: string;
     shape?: "rect" | "circle" | "line" | "arrow" | "divider";
@@ -204,6 +246,12 @@ export interface MaterializedSlide {
   linkedActivityType?: string | null;
   linkedActivityUrl?: string | null;
   activityCreationStatus?: "idle" | "creating" | "created" | "unsupported" | "failed" | null;
+  designFamily?: DesignFamily;
+  slideType?: SlideType;
+  layoutVariant?: LayoutVariant;
+  imagePlan?: ImagePlan | null;
+  /** Which deterministic educational visual was drawn when a planned image was unavailable. */
+  visualFallback?: ImagePlan["fallback"];
   elements: Element[];
 }
 

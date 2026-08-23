@@ -316,6 +316,17 @@ const slideSchema = z.object({
   linkedActivityType: z.string().max(40).nullable().optional(),
   linkedActivityUrl: z.string().max(500).nullable().optional(),
   activityCreationStatus: z.enum(["idle", "creating", "created", "unsupported", "failed"]).nullable().optional(),
+  designFamily: z.enum(["editorial", "scientific", "narrative", "practical", "reflective"]).optional(),
+  slideType: z.enum(["title", "concept", "visualHero", "process", "comparison", "timeline", "workedExample", "quote", "misconception", "activity", "quiz", "summary"]).optional(),
+  layoutVariant: z.enum(["classic", "poster", "editorial", "staggered"]).optional(),
+  imagePlan: z.object({
+    reason: z.string().max(140).optional(),
+    imageQuery: z.string().max(180).optional(),
+    mediaType: z.enum(["photo", "illustration", "diagram", "chart", "icon"]).optional(),
+    placement: z.enum(["background", "side", "none"]).optional(),
+    fallback: z.enum(["diagram", "timeline", "coloredExample", "relationshipMap", "icon", "none"]).optional(),
+  }).nullable().optional(),
+  visualFallback: z.enum(["diagram", "timeline", "coloredExample", "relationshipMap", "icon", "none"]).optional(),
   elements: z.array(elementSchema).max(80).default([]),
 });
 

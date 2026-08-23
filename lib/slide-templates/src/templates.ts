@@ -1,7 +1,7 @@
 import type {
   Element, MaterializeOptions, MaterializeResult, OutlineCard,
   TextElement, IconElement, ShapeElement, ActivityElement, HasadGameElement,
-  ThemePalette, Density, Lang,
+  ThemePalette, Density, Lang, SlideKind,
 } from "./types";
 import { resolveIcon, defaultIconForKind } from "./icons";
 
@@ -96,8 +96,37 @@ function hashText(s: string): number {
 
 function variantFor(card: OutlineCard): VisualVariant {
   const variants: VisualVariant[] = ["classic", "poster", "editorial", "staggered"];
+  if (card.layoutVariant && variants.includes(card.layoutVariant)) {
+    return card.layoutVariant;
+  }
+  const familyVariants: Record<NonNullable<OutlineCard["designFamily"]>, VisualVariant[]> = {
+    editorial: ["editorial", "poster"],
+    scientific: ["classic", "staggered"],
+    narrative: ["poster", "editorial"],
+    practical: ["classic", "staggered"],
+    reflective: ["editorial", "classic"],
+  };
+  const choices = card.designFamily ? familyVariants[card.designFamily] : variants;
   const seed = hashText(`${card.index}|${card.kind}|${card.title}|${card.purpose}|${card.visualDirection.layoutHint ?? ""}`);
-  return variants[seed % variants.length];
+  return choices[seed % choices.length];
+}
+
+function kindForSlideType(card: OutlineCard): SlideKind {
+  switch (card.slideType) {
+    case "concept": return "concept-card";
+    case "visualHero": return "visual-hero";
+    case "process": return "steps";
+    case "workedExample": return "formula";
+    case "misconception": return "callout";
+    case "activity":
+    case "quiz": return "interactive";
+    case "summary": return "closure";
+    case "title":
+    case "comparison":
+    case "timeline":
+    case "quote": return card.slideType;
+    default: return card.kind;
+  }
 }
 
 function addAtmosphere(seed: string, els: Element[], palette: ThemePalette, variant: VisualVariant): void {
@@ -1234,22 +1263,27 @@ function tplCallout(o: MaterializeOptions, warnings: string[]): Element[] {
 export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
   const warnings: string[] = [];
   const seed = opts.idSeed ?? `s${opts.card.index}`;
+  /* slideType is a semantic alias added after `kind`. Resolve it only when
+     present, so old saved outlines take exactly their historical path. */
+  const effectiveKind = kindForSlideType(opts.card);
+  const card = effectiveKind === opts.card.kind ? opts.card : { ...opts.card, kind: effectiveKind };
+  const effectiveOpts = card === opts.card ? opts : { ...opts, card };
 
   let elements: Element[];
-  switch (opts.card.kind) {
-    case "title":         elements = tplTitle(opts, warnings); break;
-    case "objectives":    elements = tplObjectives(opts, warnings); break;
-    case "concept-card":  elements = tplConceptCard(opts, warnings); break;
-    case "comparison":    elements = tplComparison(opts, warnings); break;
-    case "visual-hero":   elements = tplVisualHero(opts, warnings); break;
-    case "steps":         elements = tplSteps(opts, warnings); break;
-    case "interactive":   elements = tplInteractive(opts, warnings); break;
-    case "closure":       elements = tplClosure(opts, warnings); break;
-    case "timeline":      elements = tplTimeline(opts, warnings); break;
-    case "formula":       elements = tplFormula(opts, warnings); break;
-    case "stat":          elements = tplStat(opts, warnings); break;
-    case "quote":         elements = tplQuote(opts, warnings); break;
-    case "callout":       elements = tplCallout(opts, warnings); break;
+  switch (card.kind) {
+    case "title":         elements = tplTitle(effectiveOpts, warnings); break;
+    case "objectives":    elements = tplObjectives(effectiveOpts, warnings); break;
+    case "concept-card":  elements = tplConceptCard(effectiveOpts, warnings); break;
+    case "comparison":    elements = tplComparison(effectiveOpts, warnings); break;
+    case "visual-hero":   elements = tplVisualHero(effectiveOpts, warnings); break;
+    case "steps":         elements = tplSteps(effectiveOpts, warnings); break;
+    case "interactive":   elements = tplInteractive(effectiveOpts, warnings); break;
+    case "closure":       elements = tplClosure(effectiveOpts, warnings); break;
+    case "timeline":      elements = tplTimeline(effectiveOpts, warnings); break;
+    case "formula":       elements = tplFormula(effectiveOpts, warnings); break;
+    case "stat":          elements = tplStat(effectiveOpts, warnings); break;
+    case "quote":         elements = tplQuote(effectiveOpts, warnings); break;
+    case "callout":       elements = tplCallout(effectiveOpts, warnings); break;
     default: {
       /* Defensive — outline schema enforces the kind enum, this is
          forward-compat only. */
@@ -1258,32 +1292,36 @@ export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
           ? `نوع شريحة غير معروف، استخدمنا تخطيط القالب البسيط`
           : `Unknown slide kind — fell back to the basic concept-card layout`,
       );
-      elements = tplConceptCard(opts, warnings);
+      elements = tplConceptCard(effectiveOpts, warnings);
     }
   }
 
   /* Speaker notes — concatenate purpose + interaction hint so the
      teacher sees the AI rationale without us inserting it into the
      visual canvas. */
-  const noteLines = [opts.card.purpose];
-  if (opts.card.interactionHint) {
+  const noteLines = [card.purpose];
+  if (card.interactionHint) {
     noteLines.push(
       opts.lang === "ar"
         ? `اقتراح تفاعل: ${opts.card.interactionHint}`
         : `Suggested interaction: ${opts.card.interactionHint}`,
     );
   }
-  if (opts.card.source) noteLines.push(opts.card.source);
+  if (card.source) noteLines.push(card.source);
 
   return {
     slide: {
       id: seed,
-      layout: opts.card.kind,
+      layout: card.kind,
       notes: noteLines.join("\n").slice(0, 4000),
-      activityType: opts.card.activityType ?? null,
-      gameSuggestion: opts.card.gameSuggestion ?? null,
-      strategyStage: opts.card.strategyStage ?? null,
-      activityCreationStatus: opts.card.activityType || opts.card.gameSuggestion ? "idle" : null,
+      activityType: card.activityType ?? null,
+      gameSuggestion: card.gameSuggestion ?? null,
+      strategyStage: card.strategyStage ?? null,
+      activityCreationStatus: card.activityType || card.gameSuggestion ? "idle" : null,
+      designFamily: card.designFamily,
+      slideType: card.slideType,
+      layoutVariant: card.layoutVariant ?? variantFor(card),
+      imagePlan: card.imagePlan,
       elements,
     },
     warnings,
