@@ -4,13 +4,14 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Clock,
+  Play, Clock, Swords, ArrowRight,
   Check, X, Loader2, FileText, BookOpen,
   GraduationCap, Trash2, Search,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
 import { toast } from "@/components/ui/sonner";
+import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -64,6 +65,7 @@ export default function TugCreate() {
   const [targetClass, setTargetClass] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
   const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
+  const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
   // Activity title carried into Class Mode's top banner (assignment title when known).
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
 
@@ -110,6 +112,7 @@ export default function TugCreate() {
         if (qs.length > 0) {
           setQuestions(qs);
           if (typeof data.title === "string" && data.title.trim()) setSourceTitle(data.title.trim());
+          setSetupStep("settings");
           toast.success(ar ? `تم تحميل ${qs.length} سؤال من العرض!` : `Loaded ${qs.length} questions!`);
         }
       } catch { /* ignore */ }
@@ -222,6 +225,30 @@ export default function TugCreate() {
   }, {});
 
   const optionLetters = ["أ", "ب", "ج", "د"];
+
+  if (setupStep === "questions") {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-[#faf8f0] px-4 py-8 sm:px-6 sm:py-10" dir={dir}>
+          <UnifiedQuestionSourceFlow
+            gameTitle={ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
+            gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط المنافسة وابدأ اللعب." : "Prepare questions, configure the competition, then start."}
+            gameIcon={<Swords className="h-8 w-8 text-[#225739]" />}
+            accentColor="#225739"
+            minQuestions={2}
+            maxQuestions={20}
+            onComplete={({ questions: prepared, sourceTitle: title, source }) => {
+              setQuestions(prepared);
+              setQuestionCount(prepared.length);
+              setSourceTitle(title);
+              setSelectedSource(source === "bank" ? "bank" : "assignment");
+              setSetupStep("settings");
+            }}
+          />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -349,11 +376,20 @@ export default function TugCreate() {
             MAIN CONTENT
         ══════════════════════════════════════════════════════ */}
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 pb-8">
+          <div className="mb-6 flex justify-center">
+            <div className="flex items-center gap-1.5 rounded-2xl border border-[#225739]/15 bg-white px-3 py-2 shadow-sm">
+              <span className="rounded-xl px-3 py-1.5 text-xs font-bold text-[#225739]">{ar ? "الأسئلة" : "Questions"}</span>
+              <span className="h-px w-4 bg-[#225739]/20" />
+              <span className="rounded-xl bg-[#225739]/10 px-3 py-1.5 text-xs font-black text-[#225739] ring-1 ring-[#225739]/20">{ar ? "إعدادات اللعبة" : "Game settings"}</span>
+              <span className="h-px w-4 bg-[#225739]/20" />
+              <span className="rounded-xl px-3 py-1.5 text-xs font-bold text-gray-400">{ar ? "البدء" : "Start"}</span>
+            </div>
+          </div>
 
           {/* Two-column grid.
               In RTL: first child → physical RIGHT (Settings), second → physical LEFT (Source).
               This matches the reference image layout. */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <div className="grid grid-cols-1 gap-5 mb-5 max-w-3xl mx-auto">
 
             {/* ── SETTINGS CARD — first child (RIGHT in RTL) ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
@@ -448,9 +484,37 @@ export default function TugCreate() {
               )}
             </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="rounded-3xl bg-white p-4 sm:p-5"
+              style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.05)" }}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-black text-[#225739]">
+                    {questions.length}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-gray-800">{ar ? "الأسئلة جاهزة للإعداد" : "Questions ready for setup"}</p>
+                    <p className="truncate text-xs text-gray-500">{sourceTitle || (ar ? "مجموعة أسئلة مختارة" : "Prepared question set")}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSetupStep("questions")}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#225739]/25 px-4 text-sm font-bold text-[#225739] transition-colors hover:bg-emerald-50"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  {ar ? "تغيير المصدر" : "Change source"}
+                </button>
+              </div>
+            </motion.div>
+
             {/* ── SOURCE CARD — second child (LEFT in RTL) ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-              className="bg-white rounded-3xl p-6 sm:p-7 flex flex-col"
+              className="hidden bg-white rounded-3xl p-6 sm:p-7 flex flex-col"
               style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
 
               <h2 className="text-base font-black text-gray-800 mb-4">

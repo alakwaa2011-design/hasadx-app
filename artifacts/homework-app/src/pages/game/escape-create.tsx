@@ -9,12 +9,13 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Clock, Check, X, Loader2, FileText, BookOpen, Trash2, Search, Lock, KeyRound,
+  Clock, Check, X, Loader2, FileText, BookOpen, Trash2, Search, Lock, KeyRound, LockKeyhole, ArrowRight,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { ESCAPE_CLASS_SETUP_KEY } from "@/lib/escape-engine";
+import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GOLD = "#d9a521";
@@ -65,6 +66,7 @@ export default function EscapeCreate() {
   const [creating, setCreating] = useState(false);
   const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
+  const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
 
   // Bank modal
   const [bankOpen, setBankOpen] = useState(false);
@@ -103,6 +105,7 @@ export default function EscapeCreate() {
           setQuestions(qs);
           setSelectedSource("assignment");
           if (typeof data.title === "string" && data.title.trim()) setSourceTitle(data.title.trim());
+          setSetupStep("settings");
           toast.success(ar ? `تم تحميل ${qs.length} سؤال!` : `Loaded ${qs.length} questions!`);
         }
       } catch { /* ignore */ }
@@ -236,6 +239,29 @@ export default function EscapeCreate() {
   const optionLetters = ["أ", "ب", "ج", "د"];
   const ready = questions.length >= 3;
 
+  if (setupStep === "questions") {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-[#faf8f0] px-4 py-8 sm:px-6 sm:py-10" dir={dir}>
+          <UnifiedQuestionSourceFlow
+            gameTitle={ar ? "أنشئ غرفة الهروب" : "Create Escape Room"}
+            gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط القبو وابدأ التحدي." : "Prepare questions, configure the room, then start."}
+            gameIcon={<LockKeyhole className="h-8 w-8 text-[#8a6515]" />}
+            accentColor="#8a6515"
+            minQuestions={3}
+            maxQuestions={30}
+            onComplete={({ questions: prepared, sourceTitle: title, source }) => {
+              setQuestions(prepared);
+              setSourceTitle(title);
+              setSelectedSource(source === "bank" ? "bank" : "assignment");
+              setSetupStep("settings");
+            }}
+          />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="min-h-screen" dir={dir} style={{ background: "#faf7ef" }}>
@@ -293,7 +319,16 @@ export default function EscapeCreate() {
 
         {/* ══ MAIN ══ */}
         <div className="mx-auto max-w-[1100px] px-4 py-6 pb-8 sm:px-6">
-          <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="mb-6 flex justify-center">
+            <div className="flex items-center gap-1.5 rounded-2xl border border-[#8a6515]/15 bg-white px-3 py-2 shadow-sm">
+              <span className="rounded-xl px-3 py-1.5 text-xs font-bold text-[#8a6515]">{ar ? "الأسئلة" : "Questions"}</span>
+              <span className="h-px w-4 bg-[#8a6515]/20" />
+              <span className="rounded-xl bg-[#8a6515]/10 px-3 py-1.5 text-xs font-black text-[#8a6515] ring-1 ring-[#8a6515]/20">{ar ? "إعدادات اللعبة" : "Game settings"}</span>
+              <span className="h-px w-4 bg-[#8a6515]/20" />
+              <span className="rounded-xl px-3 py-1.5 text-xs font-bold text-gray-400">{ar ? "البدء" : "Start"}</span>
+            </div>
+          </div>
+          <div className="mb-5 grid grid-cols-1 gap-5 max-w-3xl mx-auto">
 
             {/* ── SETTINGS ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
@@ -413,9 +448,37 @@ export default function EscapeCreate() {
               </div>
             </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="rounded-3xl bg-white p-4 sm:p-5"
+              style={{ border: "1.5px solid #ece5d3", boxShadow: "0 2px 14px rgba(0,0,0,0.05)" }}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-sm font-black text-[#8a6515]">
+                    {questions.length}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-gray-800">{ar ? "الأسئلة جاهزة للإعداد" : "Questions ready for setup"}</p>
+                    <p className="truncate text-xs text-gray-500">{sourceTitle || (ar ? "مجموعة أسئلة مختارة" : "Prepared question set")}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSetupStep("questions")}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#8a6515]/25 px-4 text-sm font-bold text-[#8a6515] transition-colors hover:bg-amber-50"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  {ar ? "تغيير المصدر" : "Change source"}
+                </button>
+              </div>
+            </motion.div>
+
             {/* ── SOURCE ── */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-              className="flex flex-col rounded-3xl bg-white p-6 sm:p-7"
+              className="hidden flex flex-col rounded-3xl bg-white p-6 sm:p-7"
               style={{ border: "1.5px solid #ece5d3", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
               <h2 className="mb-4 text-base font-black text-gray-800">
                 {ar ? "اختر مصدر الأسئلة" : "Question Source"}

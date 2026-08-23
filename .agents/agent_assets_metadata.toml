@@ -852,3 +852,24 @@ uri = "file://screenshots/teacher-mobile-nav-390x844-authenticated.jpg"
 type = "image"
 title = "لقطة شريط المعلم على الهاتف — 390×844"
 description = "لقطة تحقق بصري للنسخة المصادق عليها محلياً: العناصر الخمسة مرتبة من اليمين إلى اليسار، مع ظهور مكتبة الأنشطة دون قص. تم الاعتماد على استجابات قراءة محلية فقط دون إنشاء حساب أو بيانات."
+
+[[outputs]]
+id = "TeoJZic7BcTHJeNVnkQXI"
+uri = "file://screenshots/tug-source-desktop.jpg"
+type = "image"
+title = "شد الحبل — اختيار مصدر الأسئلة (سطح المكتب)"
+description = "مرحلة المصادر الأربع والمسار: الأسئلة ← إعدادات اللعبة ← البدء."
+
+[[outputs]]
+id = "eiyq9VjCnwmDNLj1E0Yit"
+uri = "file://screenshots/escape-source-mobile.jpg"
+type = "image"
+title = "غرفة الهروب — اختيار مصدر الأسئلة (الجوال)"
+description = "معاينة RTL متجاوبة لمرحلة المصادر الأربع على عرض 390px."
+
+[[outputs]]
+id = "PlT0VIioNeO8_F4La4mM6"
+uri = "file://screenshots/tug-source-mobile-final.jpg"
+type = "image"
+title = "شد الحبل — اختيار مصدر الأسئلة (الجوال)"
+description = "المعاينة النهائية المتجاوبة بعد اكتمال التحقق."
