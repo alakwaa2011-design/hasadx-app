@@ -580,6 +580,12 @@ export default function WheelCreate() {
     }
   };
 
+  const returnToQuestions = () => {
+    setSegmentsEditorOpen(false);
+    setSetupStep("source");
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+
   const filteredBankQuestions = bankSearch.trim()
     ? bankQuestions.filter(question =>
       question.text.includes(bankSearch)
@@ -712,7 +718,7 @@ export default function WheelCreate() {
                 )}
               </AnimatePresence>
 
-              {(segmentsEditorOpen || activeSource === "manual") && (
+              {(segmentsEditorOpen || (activeSource === "manual" && segments.length === 0)) && (
                 <Card className="p-3 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div><h2 className="font-black text-foreground">{activeSource === "assignment" ? (ar ? `معاينة وتعديل أسئلة الواجب (${segments.length})` : `Review & edit assignment questions (${segments.length})`) : (ar ? `تحرير القطاعات (${segments.length})` : `Edit segments (${segments.length})`)}</h2><p className="text-xs text-muted-foreground mt-1">{ar ? "تظل النقاط والمكافآت جزءاً من اللعبة كما هي." : "Points and bonuses remain part of the game."}</p></div>
@@ -764,7 +770,7 @@ export default function WheelCreate() {
               <section className="rounded-3xl p-5 sm:p-7 border border-primary/15" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}0d, ${BRAND_GOLD}14)` }}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div><p className="text-xs font-black tracking-wide uppercase" style={{ color: BRAND_PRIMARY }}>{ar ? "العجلة جاهزة" : "Wheel ready"}</p><h2 className="text-xl sm:text-2xl font-black text-foreground mt-1">{title || (ar ? "أضف عنواناً للعبة" : "Add a game title")}</h2><p className="text-sm text-muted-foreground mt-1">{ar ? `${segments.length} قطاعات · ${config.teamCount} فرق` : `${segments.length} segments · ${config.teamCount} teams`}</p></div>
-                  <button type="button" onClick={() => setSetupStep("source")} className="px-4 py-2.5 rounded-xl font-bold text-sm bg-card border border-border hover:border-primary/40 flex items-center gap-1.5">
+                  <button type="button" onClick={returnToQuestions} className="px-4 py-2.5 rounded-xl font-bold text-sm bg-card border border-border hover:border-primary/40 flex items-center gap-1.5">
                     {ar ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
                     {ar ? "السابق: الأسئلة" : "Back: questions"}
                   </button>
