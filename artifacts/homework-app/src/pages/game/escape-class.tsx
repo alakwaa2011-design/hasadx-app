@@ -15,7 +15,7 @@ import {
 } from "@/lib/escape-engine";
 import {
   EscapeSoundEngine, EscapeGameView, EscapeEndStats, VaultBackdrop,
-  TreasureBurst, ESCAPE_BG, GOLD, LOCK_META,
+  TreasureBurst, ESCAPE_BG, GOLD,
 } from "@/components/game/escape-shared";
 
 export interface EscapeSetup {
@@ -186,43 +186,32 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
         </div>
       )}
 
-      {/* ── Briefing overlay (idle) — mission story before the door slams ── */}
+      {/* ── Class start gate — also provides the tap needed to unlock sound ── */}
       {state.status === "idle" && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md rounded-3xl border border-amber-300/25 bg-[#0d1626]/95 p-6 text-center shadow-2xl"
+            className="w-full max-w-md rounded-3xl border border-white/15 bg-[#101c2b]/95 p-5 text-center shadow-2xl sm:p-6"
             style={{ direction: ar ? "rtl" : "ltr" }}>
-            <div className="mb-2 text-5xl">🔐</div>
-            <h1 className="mb-1 text-2xl font-black">{ar ? "غرفة الهروب — وضع الصف" : "Escape Room — Class Mode"}</h1>
-            <p className="mx-auto mb-3 w-fit max-w-full truncate rounded-full border border-amber-300/35 bg-black/30 px-4 py-1 text-sm font-black text-amber-200" title={title}>
-              📖 {title}
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B4B35] text-3xl shadow-lg">🏫</div>
+            <p className="mb-1 text-sm font-black text-emerald-200">{ar ? "وضع الصف" : "Class mode"}</p>
+            <h1 className="mb-2 text-2xl font-black text-white">{ar ? "استعدوا للتحدي" : "Get ready for the challenge"}</h1>
+            <p className="mx-auto mb-4 max-w-sm text-sm font-bold leading-relaxed text-white/70">
+              {ar ? "اعرض اللعبة على الشاشة، وتعاونوا لاختيار الإجابة الصحيحة معاً." : "Show the game on the main screen and answer each question together."}
             </p>
-            <p className="mb-3 text-sm font-bold leading-relaxed text-white/70">
-              {ar
-                ? `الباب أُغلق خلفكم وأمامكم ${setup.lockCount} أقفال تحرس كنز المعرفة. أجيبوا صحيحاً لتفكيك كل قفل — وكل خطأ يُطلق الإنذار ويسرق 15 ثانية! لديكم ${minutes} دقائق فقط… الصف كله فريق واحد.`
-                : `The door just sealed behind you. ${setup.lockCount} locks guard the treasure of knowledge. Answer right to break each lock — every mistake trips the alarm and steals 15 seconds! You have ${minutes} minutes. The whole class is one crew.`}
-            </p>
-            <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-xs font-black text-white/70">
-              <span className="rounded-full bg-white/10 px-3 py-1">📚 {setup.questions.length} {ar ? "سؤالاً" : "questions"}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">🔒 {setup.lockCount} {ar ? "أقفال" : "locks"}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">⏱ {minutes} {ar ? "دقيقة" : "min"}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">🗝️ {setup.hints} {ar ? "مفاتيح مساعدة" : "hint keys"}</span>
-            </div>
-            {/* Lock preview chain */}
-            <div className="mb-4 flex items-center justify-center gap-2 text-lg">
-              {state.locks.map((l, i) => (
-                <span key={i} title={ar ? LOCK_META[l.type].ar : LOCK_META[l.type].en}>{LOCK_META[l.type].icon}</span>
-              ))}
+            <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-xs font-black text-white/75">
+              <span className="rounded-full bg-white/10 px-3 py-1.5">📚 {setup.questions.length} {ar ? "سؤال" : "questions"}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5">🔒 {setup.lockCount} {ar ? "أقفال" : "locks"}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5">⏱ {minutes} {ar ? "دقائق" : "min"}</span>
             </div>
             <motion.button whileTap={{ scale: 0.97 }}
               onClick={() => { getSound().playStart(); dispatch({ type: "start" }); }}
-              className="w-full rounded-2xl py-3.5 text-lg font-black text-[#1a2e1a]"
+              className="w-full rounded-2xl bg-[#0B4B35] py-3.5 text-lg font-black text-white shadow-[0_12px_28px_rgba(11,75,53,0.36)] transition-colors hover:bg-[#083d2c]"
               style={{
-                background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
-                boxShadow: "0 14px 32px rgba(217,165,33,0.5), inset 0 2px 0 rgba(255,255,255,0.32)",
+                boxShadow: "0 12px 28px rgba(11,75,53,0.36)",
               }}>
-              🚪 {ar ? "أغلقوا الباب — ابدأوا الهروب!" : "Seal the door — start the escape!"}
+              {ar ? "ابدأ التحدي" : "Start challenge"}
             </motion.button>
+            <p className="mt-3 text-xs font-medium text-white/45">{ar ? "كل إجابة خاطئة تخصم 15 ثانية من الوقت." : "Each wrong answer costs 15 seconds."}</p>
           </motion.div>
         </div>
       )}

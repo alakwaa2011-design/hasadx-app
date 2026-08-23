@@ -150,4 +150,30 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/assignments/202", { credentials: "include" });
     expect(fetchMock).toHaveBeenCalledWith("/api/assignments/303", { credentials: "include" });
   });
+
+  it("reveals the fixed continue card when an Escape Room assignment is ready", async () => {
+    const onComplete = vi.fn();
+    await act(async () => {
+      root.render(
+        <UnifiedQuestionSourceFlow
+          gameTitle="Escape Room"
+          gameDescription="Test description"
+          gameIcon={null}
+          minQuestions={2}
+          maxQuestions={20}
+          floatingAssignmentContinue
+          onComplete={onComplete}
+        />,
+      );
+    });
+
+    await click(buttonContaining("From an assignment"));
+    await click(buttonContaining("Assignment A"));
+
+    const floatingCard = container.querySelector(".fixed");
+    expect(floatingCard).toBeTruthy();
+    expect(floatingCard?.textContent).toContain("Assignment A");
+    expect(floatingCard?.textContent).toContain("questions ready for the game");
+    expect(buttonContaining("Continue").disabled).toBe(false);
+  });
 });

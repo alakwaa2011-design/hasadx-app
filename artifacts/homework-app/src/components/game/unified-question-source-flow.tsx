@@ -23,6 +23,8 @@ export interface UnifiedQuestionSourceFlowProps {
   accentClass?: string;
   /** Tug only: keeps Escape Room on its existing source-flow presentation. */
   tugPresentation?: boolean;
+  /** Escape Room: reveals a fixed continue card as soon as an assignment is ready. */
+  floatingAssignmentContinue?: boolean;
   header?: React.ReactNode;
   minQuestions: number;
   maxQuestions: number;
@@ -42,6 +44,7 @@ export function UnifiedQuestionSourceFlow({
   accentColor,
   accentClass,
   tugPresentation = false,
+  floatingAssignmentContinue = false,
   header,
   minQuestions,
   maxQuestions,
@@ -177,6 +180,7 @@ export function UnifiedQuestionSourceFlow({
     })).slice(0, maxQuestions);
     onComplete({ questions: qList, sourceTitle: selectedAssignTitle, source: "assignment" });
   };
+  const assignmentReady = selectedAssignId === loadedAssignId && selectedAssignQs.length >= minQuestions;
 
   // ─── Bank Logic ───
   useEffect(() => {
@@ -317,7 +321,8 @@ export function UnifiedQuestionSourceFlow({
   const AssignmentPicker = ({ inOverlay = false }: { inOverlay?: boolean }) => (
     <div className={cn(
       "flex min-h-0 flex-col",
-      inOverlay ? "h-[min(680px,82vh)]" : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8"
+      inOverlay ? "h-[min(680px,82vh)]" : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8",
+      floatingAssignmentContinue && assignmentReady && "pb-28 sm:pb-6"
     )}>
       <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", inOverlay ? "px-1 pb-4" : "mb-6")}>
         <div className="flex items-center gap-3">
@@ -375,23 +380,43 @@ export function UnifiedQuestionSourceFlow({
         )}
       </div>
 
-      <div className={cn(
-        "mt-4 border-t border-border/60 pt-3",
-        inOverlay && "sticky bottom-0 bg-background pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-      )}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 text-xs text-muted-foreground">
-            {selectedAssignId === loadedAssignId && selectedAssignQs.length > 0
-              ? <span className="font-bold text-[#0B4B35]">{selectedAssignTitle} · {selectedAssignQs.length} {ar ? "أسئلة جاهزة" : "questions ready"}</span>
-              : <span>{ar ? "اختر واجباً للمتابعة" : "Choose an assignment to continue"}</span>}
+      {floatingAssignmentContinue && assignmentReady ? (
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 rounded-2xl border border-[#0B4B35]/20 bg-white p-3 shadow-[0_16px_40px_rgba(11,75,53,0.22)] sm:inset-x-auto sm:bottom-6 sm:w-[min(28rem,calc(100vw-3rem))]"
+          style={{ insetInlineStart: "max(1rem, env(safe-area-inset-left))" }}
+        >
+          <div className="flex items-center gap-3" dir={dir}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B4B35]/10 text-sm font-black text-[#0B4B35]">
+              <Check className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black text-foreground">{selectedAssignTitle}</p>
+              <p className="text-xs font-medium text-muted-foreground">{selectedAssignQs.length} {ar ? "أسئلة جاهزة للعبة" : "questions ready for the game"}</p>
+            </div>
+            <SubmitBtn onClick={handleAssignComplete} disabled={assignLoading} label={ar ? "متابعة" : "Continue"} />
           </div>
-          <SubmitBtn
-            onClick={handleAssignComplete}
-            disabled={selectedAssignId == null || selectedAssignId !== loadedAssignId || selectedAssignQs.length < minQuestions || assignLoading}
-            label={ar ? "متابعة إلى الإعدادات" : "Continue to settings"}
-          />
+        </motion.div>
+      ) : (
+        <div className={cn(
+          "mt-4 border-t border-border/60 pt-3",
+          inOverlay && "sticky bottom-0 bg-background pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        )}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 text-xs text-muted-foreground">
+              {assignmentReady
+                ? <span className="font-bold text-[#0B4B35]">{selectedAssignTitle} · {selectedAssignQs.length} {ar ? "أسئلة جاهزة" : "questions ready"}</span>
+                : <span>{ar ? "اختر واجباً للمتابعة" : "Choose an assignment to continue"}</span>}
+            </div>
+            <SubmitBtn
+              onClick={handleAssignComplete}
+              disabled={!assignmentReady || assignLoading}
+              label={ar ? "متابعة إلى الإعدادات" : "Continue to settings"}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
