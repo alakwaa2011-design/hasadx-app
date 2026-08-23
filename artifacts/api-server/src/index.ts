@@ -1267,6 +1267,18 @@ const io = new Server(httpServer, {
   path: "/api/socket.io",
 });
 
+// The root namespace intentionally combines the independent realtime game
+// modules below. It currently has 14 static connection handlers, while each
+// socket receives their corresponding event/disconnect handlers. Keep a
+// finite ceiling above that known baseline so unexpected registrations still
+// warn instead of disabling EventEmitter leak detection altogether.
+const SOCKET_LISTENER_BUDGET = 16;
+io.sockets.setMaxListeners(SOCKET_LISTENER_BUDGET);
+io.use((socket, next) => {
+  socket.setMaxListeners(SOCKET_LISTENER_BUDGET);
+  next();
+});
+
 io.engine.use(sessionMiddleware);
 
 setupGameSocket(io);

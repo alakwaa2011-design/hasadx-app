@@ -52,6 +52,11 @@ interface EscapeSession {
 
 const sessions = new Map<string, EscapeSession>();
 
+// Socket.IO server instances outlive module reloads in development. Mark the
+// instance itself so setup remains idempotent even if this module is evaluated
+// again, instead of stacking another global `connection` listener each time.
+const ESCAPE_SOCKET_SETUP = Symbol.for("hasad.escape-socket-setup");
+
 const ESCAPE_SESSION_TTL_MS = 3 * 60 * 60 * 1000;
 setInterval(() => {
   const now = Date.now();
@@ -127,6 +132,10 @@ function findPlayerBySocket(socketId: string): { session: EscapeSession; player:
 }
 
 export function setupEscapeSocket(io: Server) {
+  const guardedIo = io as Server & { [key: symbol]: unknown };
+  if (guardedIo[ESCAPE_SOCKET_SETUP]) return;
+  guardedIo[ESCAPE_SOCKET_SETUP] = true;
+
   io.on("connection", (socket: Socket) => {
 
     // ── Teacher creates the vault session ──
