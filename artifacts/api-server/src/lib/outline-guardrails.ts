@@ -29,6 +29,14 @@ export function shouldAdoptCorrectiveOutline(
   );
 }
 
+/** Corrective provider calls are reserved for outlines that cannot be used.
+ *  Normalization notes (for example, a generic title or an omitted visual
+ *  preference) are safe to materialize and must not add another long LLM
+ *  request to the teacher's wait time. */
+export function needsCorrectiveOutlineRetry(report: GuardrailReport): boolean {
+  return report.fatal;
+}
+
 export type SanitizedInteractionHint =
   | "poll" | "quiz" | "discussion" | "activity" | null;
 
@@ -439,8 +447,11 @@ export function sanitizeOutline(
           return false;
         }
         if (hasDigit(p) && !slideHasSource) {
-          feedback.push(`Slide ${i + 1}: numeric talking point dropped (no source)`);
-          return false;
+          /* Numbers are common in worked examples and ordered teaching
+             steps. Keep legitimate model content instead of accidentally
+             turning a full slide into an empty one; the teacher can still
+             review it in the outline editor. */
+          feedback.push(`Slide ${i + 1}: numeric talking point retained without a cited source.`);
         }
         if (wordsOf(p) > lim.maxWordsPerPoint) {
           feedback.push(`Slide ${i + 1}: talking point exceeds ${lim.maxWordsPerPoint} words for ${brief.density}.`);

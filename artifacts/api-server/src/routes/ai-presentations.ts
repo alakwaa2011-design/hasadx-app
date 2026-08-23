@@ -32,6 +32,7 @@ import {
   sanitizeOutline,
   buildRetryMessage,
   sanitizeText,
+  needsCorrectiveOutlineRetry,
   shouldAdoptCorrectiveOutline,
 } from "../lib/outline-guardrails";
 
@@ -562,11 +563,12 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
 
     let { outline, report } = sanitizeOutline(outlineRaw, brief);
 
-    /* If the guardrails reported issues AND we still have budget, try
-       one corrective retry with feedback to the model. Skipped when
-       we served from cache (no provider call to retry against). */
+    /* Retry only an outline that cannot be used. Non-fatal normalization
+       notes are safe to surface in the editable draft; retrying them makes
+       teachers wait for a second long model call and can cause mobile
+       clients to abandon an otherwise usable request. */
     if (
-       !usedCache && report.feedback.length > 0 && !providerRetried &&
+       !usedCache && needsCorrectiveOutlineRetry(report) && !providerRetried &&
       /* Skip the quality retry when a second provider call would push
          the request past the 120s proxy abort. Sanitize already
          repaired the outline, so serving the first attempt is far

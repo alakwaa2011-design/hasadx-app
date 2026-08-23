@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   sanitizeOutline,
+  needsCorrectiveOutlineRetry,
   shouldAdoptCorrectiveOutline,
   type SanitizedDesignFamily,
   type SanitizedSlideType,
@@ -115,5 +116,32 @@ describe("presentation visual contract fixtures", () => {
       { fatal: false, feedback: ["one issue"] },
       { fatal: false, feedback: ["one issue", "another issue"] },
     )).toBe(false);
+  });
+
+  it("does not make teachers wait for a second call for non-fatal cleanup", () => {
+    expect(needsCorrectiveOutlineRetry({
+      fatal: false,
+      feedback: ["Slide 2: generic slide title", "Teaching flow rebuilt from default split."],
+    })).toBe(false);
+    expect(needsCorrectiveOutlineRetry({
+      fatal: true,
+      feedback: ["Outline has 4/5 required slides."],
+    })).toBe(true);
+  });
+
+  it("keeps numbered educational content instead of making the slide empty", () => {
+    const raw = fixedLesson("دورة الماء", "scientific", [
+      "title", "visualHero", "process", "workedExample", "summary",
+    ]);
+    raw.slides[2].talkingPoints = [
+      "1. يتبخر الماء بفعل حرارة الشمس",
+      "2. يتكاثف بخار الماء في طبقات الجو",
+      "3. يعود الماء هطولاً إلى سطح الأرض",
+    ];
+
+    const result = sanitizeOutline(raw, { ...baseBrief, topic: "دورة الماء", subject: "العلوم" });
+
+    expect(result.report.fatal).toBe(false);
+    expect(result.outline.slides[2].talkingPoints).toHaveLength(3);
   });
 });
