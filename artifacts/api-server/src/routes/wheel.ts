@@ -59,6 +59,7 @@ const segmentSchema = z.object({
   explanation: z.string().max(800).optional().nullable(),
   points: z.number().int().min(0).max(2000),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  imageUrl: z.string().max(2000).optional().nullable(),
   kind: z.enum(["question", "bonus"]).default("question"),
   bonusType: z.enum(["double", "skip", "swap", "lucky", "lose"]).optional(),
 });

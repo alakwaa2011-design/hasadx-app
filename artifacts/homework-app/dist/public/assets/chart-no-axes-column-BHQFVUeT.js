@@ -1,0 +1,1 @@
+import{at as o}from"./index-TEOgLAb8.js";const t=[["path",{d:"M5 21v-6",key:"1hz6c0"}],["path",{d:"M12 21V3",key:"1lcnhd"}],["path",{d:"M19 21V9",key:"unv183"}]],c=o("chart-no-axes-column",t);export{c as C};
