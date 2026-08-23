@@ -9,7 +9,7 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Clock, Check, X, Loader2, FileText, BookOpen, Trash2, Search, Lock, KeyRound, LockKeyhole, ArrowRight, Monitor, Smartphone,
+  Clock, Check, X, Loader2, FileText, BookOpen, Trash2, Search, Lock, KeyRound, LockKeyhole, Monitor, Smartphone, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket } from "@/lib/socket";
@@ -332,109 +332,91 @@ export default function EscapeCreate() {
 
           <div className="space-y-5">
             <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-              className="rounded-3xl border border-[#0B4B35]/10 bg-white p-4 shadow-sm sm:p-6">
-              <div className="mb-5">
-                <h2 className="text-lg font-black text-gray-900">{ar ? "إعدادات القبو" : "Vault settings"}</h2>
+              className="rounded-3xl border border-[#0B4B35]/10 bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-4">
+                <h2 className="text-lg font-black text-gray-900">{ar ? "إعدادات غرفة الهروب" : "Escape Room settings"}</h2>
                 <p className="mt-1 text-sm font-medium text-gray-500">{ar ? "اختر إعدادات الجولة بما يناسب صفك." : "Set up the round to suit your class."}</p>
               </div>
 
-              <div className="space-y-3">
-                <section className="rounded-2xl border border-[#0B4B35]/10 bg-[#0B4B35]/[0.025] p-4">
-                  <div className="mb-3 flex items-center gap-2">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <section className="rounded-2xl border border-[#0B4B35]/10 bg-[#0B4B35]/[0.025] p-3.5">
+                  <div className="mb-2.5 flex items-center gap-2">
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0B4B35]/10 text-[#0B4B35]"><Clock className="h-4 w-4" /></span>
                     <div>
                       <h3 className="text-sm font-black text-gray-800">{ar ? "زمن الهروب" : "Escape time"}</h3>
                       <p className="text-xs font-medium text-gray-500">{ar ? "الوقت الكلي للجولة" : "Total time for the round"}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[5, 8, 10, 15].map(m => (
-                      <button key={m} type="button" onClick={() => setTotalMinutes(m)}
-                        className="min-h-11 rounded-xl border text-sm font-black transition-colors"
-                        style={{ background: totalMinutes === m ? "#0B4B35" : "#fff", borderColor: totalMinutes === m ? "#0B4B35" : "#dce8e3", color: totalMinutes === m ? "#fff" : "#52615b" }}>
-                        {m}<span className="ms-0.5 text-[10px]">{ar ? "د" : "m"}</span>
+                  <div className="flex min-h-11 overflow-hidden rounded-xl border border-[#0B4B35]/15 bg-white text-[#0B4B35] focus-within:border-[#0B4B35] focus-within:ring-2 focus-within:ring-[#0B4B35]/15">
+                    <input
+                      type="number"
+                      min={2}
+                      max={30}
+                      value={totalMinutes}
+                      onChange={e => {
+                        const value = e.target.valueAsNumber;
+                        if (Number.isFinite(value)) setTotalMinutes(value);
+                      }}
+                      onBlur={() => setTotalMinutes(current => Math.max(2, Math.min(30, current)))}
+                      className="min-w-0 flex-1 bg-transparent px-3 text-center text-sm font-black outline-none"
+                      aria-label={ar ? "زمن الهروب بالدقائق" : "Escape time in minutes"}
+                    />
+                    <div className="flex w-10 shrink-0 flex-col border-s border-[#0B4B35]/15">
+                      <button type="button" onClick={() => setTotalMinutes(current => Math.min(30, current + 1))}
+                        disabled={totalMinutes >= 30}
+                        className="flex flex-1 items-center justify-center border-b border-[#0B4B35]/15 transition hover:bg-[#0B4B35]/5 disabled:cursor-not-allowed disabled:opacity-35"
+                        aria-label={ar ? "زيادة الوقت" : "Increase time"}>
+                        <ChevronUp className="h-3.5 w-3.5" />
                       </button>
-                    ))}
-                    <label className="flex min-h-11 items-center justify-center gap-1 rounded-xl border bg-white px-1 text-xs font-black"
-                      style={{ borderColor: ![5, 8, 10, 15].includes(totalMinutes) ? "#0B4B35" : "#dce8e3", color: ![5, 8, 10, 15].includes(totalMinutes) ? "#0B4B35" : "#64748b" }}>
-                      <input type="number" min={2} max={30} value={totalMinutes}
-                        onChange={e => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) setTotalMinutes(Math.max(2, Math.min(30, v))); }}
-                        className="w-7 bg-transparent text-center text-xs font-black outline-none"
-                        aria-label={ar ? "زمن مخصص بالدقائق" : "Custom time in minutes"} />
-                      <span>{ar ? "د" : "m"}</span>
-                    </label>
+                      <button type="button" onClick={() => setTotalMinutes(current => Math.max(2, current - 1))}
+                        disabled={totalMinutes <= 2}
+                        className="flex flex-1 items-center justify-center transition hover:bg-[#0B4B35]/5 disabled:cursor-not-allowed disabled:opacity-35"
+                        aria-label={ar ? "تقليل الوقت" : "Decrease time"}>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <span className="flex items-center border-s border-[#0B4B35]/15 px-3 text-xs font-bold text-[#0B4B35]/70">{ar ? "دقيقة" : "min"}</span>
                   </div>
                 </section>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <section className="rounded-2xl border border-[#0B4B35]/10 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#d9a521]/15 text-[#8a6515]"><Lock className="h-4 w-4" /></span>
-                      <div>
-                        <h3 className="text-sm font-black text-gray-800">{ar ? "عدد الأقفال" : "Locks"}</h3>
-                        <p className="text-xs font-medium text-gray-500">{ar ? "مراحل الهروب" : "Escape stages"}</p>
-                      </div>
+                <section className="rounded-2xl border border-[#0B4B35]/10 bg-white p-3.5">
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#d9a521]/15 text-[#8a6515]"><Lock className="h-4 w-4" /></span>
+                    <div>
+                      <h3 className="text-sm font-black text-gray-800">{ar ? "عدد الأقفال" : "Locks"}</h3>
+                      <p className="text-xs font-medium text-gray-500">{ar ? "مراحل الهروب" : "Escape stages"}</p>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[3, 4, 5].map(n => (
-                        <button key={n} type="button" onClick={() => setLockCount(n)}
-                          className="min-h-10 rounded-xl border text-sm font-black transition-colors"
-                          style={{ background: lockCount === n ? "#0B4B35" : "#f8faf9", borderColor: lockCount === n ? "#0B4B35" : "#dce8e3", color: lockCount === n ? "#fff" : "#52615b" }}>
-                          {n}
-                        </button>
-                      ))}
-                      <label className="flex min-h-10 items-center justify-center rounded-xl border bg-white text-xs font-black"
-                        style={{ borderColor: ![3, 4, 5].includes(lockCount) ? "#0B4B35" : "#dce8e3", color: ![3, 4, 5].includes(lockCount) ? "#0B4B35" : "#64748b" }}>
-                        <input type="number" min={2} max={6} value={lockCount}
-                          onChange={e => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) setLockCount(Math.max(2, Math.min(6, v))); }}
-                          className="w-7 bg-transparent text-center text-xs font-black outline-none"
-                          aria-label={ar ? "عدد أقفال مخصص" : "Custom lock count"} />
-                      </label>
-                    </div>
-                  </section>
+                  </div>
+                  <select value={lockCount} onChange={e => setLockCount(Number(e.target.value))}
+                    className="min-h-11 w-full rounded-xl border border-[#0B4B35]/15 bg-white px-3 text-sm font-black text-[#0B4B35] outline-none transition focus:border-[#0B4B35] focus:ring-2 focus:ring-[#0B4B35]/15"
+                    aria-label={ar ? "عدد الأقفال" : "Lock count"}>
+                    {[2, 3, 4, 5, 6].map(count => (
+                      <option key={count} value={count}>{count} {ar ? "أقفال" : "locks"}</option>
+                    ))}
+                  </select>
+                </section>
 
-                  <section className="rounded-2xl border border-[#0B4B35]/10 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700"><KeyRound className="h-4 w-4" /></span>
-                      <div>
-                        <h3 className="text-sm font-black text-gray-800">{ar ? "مفاتيح المساعدة" : "Hint keys"}</h3>
-                        <p className="text-xs font-medium text-gray-500">{ar ? "تزيل خيارين خاطئين" : "Removes two wrong answers"}</p>
-                      </div>
+                <section className="rounded-2xl border border-[#0B4B35]/10 bg-white p-3.5">
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700"><KeyRound className="h-4 w-4" /></span>
+                    <div>
+                      <h3 className="text-sm font-black text-gray-800">{ar ? "مفاتيح المساعدة" : "Hint keys"}</h3>
+                      <p className="text-xs font-medium text-gray-500">{ar ? "تزيل خيارين خاطئين" : "Removes two wrong answers"}</p>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[0, 1, 2, 3].map(n => (
-                        <button key={n} type="button" onClick={() => setHints(n)}
-                          className="min-h-10 rounded-xl border text-sm font-black transition-colors"
-                          style={{ background: hints === n ? "#0B4B35" : "#f8faf9", borderColor: hints === n ? "#0B4B35" : "#dce8e3", color: hints === n ? "#fff" : "#52615b" }}>
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                </div>
+                  </div>
+                  <select value={hints} onChange={e => setHints(Number(e.target.value))}
+                    className="min-h-11 w-full rounded-xl border border-[#0B4B35]/15 bg-white px-3 text-sm font-black text-[#0B4B35] outline-none transition focus:border-[#0B4B35] focus:ring-2 focus:ring-[#0B4B35]/15"
+                    aria-label={ar ? "مفاتيح المساعدة" : "Hint keys"}>
+                    {[0, 1, 2, 3].map(count => (
+                      <option key={count} value={count}>{count} {ar ? "مفاتيح" : "keys"}</option>
+                    ))}
+                  </select>
+                </section>
               </div>
 
               <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
                 <span className="mt-0.5 text-base">🚨</span>
                 <p className="text-xs font-bold leading-relaxed">{ar ? "كل إجابة خاطئة تُطلق الإنذار وتخصم 15 ثانية من وقت الهروب." : "Every wrong answer trips the alarm and burns 15 seconds of escape time."}</p>
-              </div>
-            </motion.section>
-
-            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-              className="rounded-3xl border border-[#0B4B35]/10 bg-white p-4 shadow-sm sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0B4B35]/10 text-sm font-black text-[#0B4B35]">{questions.length}</div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-gray-800">{ar ? "الأسئلة جاهزة" : "Questions are ready"}</p>
-                    <p className="truncate text-xs font-medium text-gray-500">{sourceTitle || (ar ? "مجموعة أسئلة مختارة" : "Prepared question set")}</p>
-                  </div>
-                </div>
-                <button type="button" onClick={() => setSetupStep("questions")}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#0B4B35]/20 px-4 text-sm font-bold text-[#0B4B35] transition-colors hover:bg-[#0B4B35]/5">
-                  <ArrowRight className="h-4 w-4" />
-                  {ar ? "تغيير الأسئلة" : "Change questions"}
-                </button>
               </div>
             </motion.section>
 
@@ -445,20 +427,20 @@ export default function EscapeCreate() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <motion.button type="button" whileTap={{ scale: 0.99 }} onClick={startClassMode} disabled={!ready}
-                  className="group relative flex min-h-40 flex-col items-start justify-between overflow-hidden rounded-3xl bg-[#0B4B35] p-5 text-start text-white shadow-[0_12px_28px_rgba(11,75,53,0.25)] transition hover:bg-[#083d2c] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+                  className="group relative flex min-h-44 flex-col items-center justify-center overflow-hidden rounded-3xl bg-[#0B4B35] p-6 text-center text-white shadow-[0_12px_28px_rgba(11,75,53,0.25)] transition hover:bg-[#083d2c] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
                   <span className="absolute -end-4 -top-5 text-8xl text-white/[0.08]">🏫</span>
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white"><Monitor className="h-5 w-5" /></span>
-                  <span>
+                  <span className="mt-3 max-w-xs">
                     <span className="block text-lg font-black">{ar ? "وضع الصف" : "Class mode"}</span>
                     <span className="mt-1 block text-sm font-medium leading-relaxed text-white/80">{ar ? "شاشة واحدة، والصف كله يتعاون للإجابة." : "One display, with the whole class answering together."}</span>
                   </span>
                 </motion.button>
 
                 <motion.button type="button" whileTap={{ scale: 0.99 }} onClick={startDeviceMode} disabled={creating || !ready}
-                  className="flex min-h-40 flex-col items-start justify-between rounded-3xl border-2 border-[#0B4B35]/15 bg-white p-5 text-start text-[#0B4B35] shadow-sm transition hover:border-[#0B4B35]/35 hover:bg-[#0B4B35]/[0.025] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400">
+                  className="flex min-h-44 flex-col items-center justify-center rounded-3xl border-2 border-[#0B4B35]/15 bg-white p-6 text-center text-[#0B4B35] shadow-sm transition hover:border-[#0B4B35]/35 hover:bg-[#0B4B35]/[0.025] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400">
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0B4B35]/10"><Smartphone className="h-5 w-5" /></span>
-                  <span>
-                    <span className="flex items-center gap-2 text-lg font-black">{creating && <Loader2 className="h-4 w-4 animate-spin" />}{creating ? (ar ? "جاري إنشاء الغرفة..." : "Creating room...") : (ar ? "وضع الأجهزة" : "Device mode")}</span>
+                  <span className="mt-3 max-w-xs">
+                    <span className="flex items-center justify-center gap-2 text-lg font-black">{creating && <Loader2 className="h-4 w-4 animate-spin" />}{creating ? (ar ? "جاري إنشاء الغرفة..." : "Creating room...") : (ar ? "وضع الأجهزة" : "Device mode")}</span>
                     <span className="mt-1 block text-sm font-medium leading-relaxed text-slate-500">{ar ? "كل طالب يلعب ويجيب على الأسئلة من جهازه." : "Each student plays and answers from their own device."}</span>
                   </span>
                 </motion.button>
