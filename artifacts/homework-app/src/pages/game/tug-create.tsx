@@ -616,44 +616,14 @@ export default function TugCreate() {
 
       <Dialog open={readyOpen} onOpenChange={setReadyOpen}>
         <DialogContent className="max-w-xl overflow-hidden rounded-3xl border-0 p-0" dir={dir}>
-          <DialogTitle className="sr-only">{ar ? "شد الحبل جاهز" : "Tug of War is ready"}</DialogTitle>
-          <DialogDescription className="sr-only">{ar ? "ملخص الإعداد وخيارات بدء اللعبة." : "Setup summary and options for starting the game."}</DialogDescription>
+          <DialogTitle className="sr-only">{ar ? "طريقة اللعب" : "How to play"}</DialogTitle>
+          <DialogDescription className="sr-only">{ar ? "اختر طريقة بدء منافسة شد الحبل." : "Choose how to start the tug-of-war match."}</DialogDescription>
           <div className="bg-[#0B4B35] px-6 py-6 text-white">
-            <div className="flex items-center gap-2 text-sm font-bold text-[#D9AA25]">
-              <CircleCheck className="h-4 w-4" />
-              {ar ? "الاستعداد والبدء" : "Ready to start"}
-            </div>
-            <h2 className="mt-2 text-2xl font-black">{ar ? "شد الحبل جاهز" : "Tug of War is ready"}</h2>
-            <p className="mt-1 text-sm font-medium text-white/75">{ar ? "راجع الإعدادات ثم اختر طريقة بدء المنافسة." : "Review the setup, then choose how to start the match."}</p>
+            <h2 className="text-2xl font-black">{ar ? "طريقة اللعب" : "How to play"}</h2>
+            <p className="mt-1 text-sm font-medium text-white/75">{ar ? "اختر طريقة بدء المنافسة." : "Choose how to start the match."}</p>
           </div>
 
-          <div className="space-y-5 bg-[#FAF8F0] p-5 sm:p-6">
-            <div className="flex items-center justify-between rounded-2xl border border-[#0B4B35]/10 bg-white px-4 py-3" style={{ direction: "ltr" }}>
-              <span className="flex items-center gap-2 text-sm font-black text-red-700" style={{ direction: dir }}><span className="h-2.5 w-2.5 rounded-full bg-red-500" />{ar ? "الفريق الأحمر" : "Red Team"}</span>
-              <Link2 className="h-5 w-5 text-[#D9AA25]" />
-              <span className="flex items-center gap-2 text-sm font-black text-blue-700" style={{ direction: dir }}><span className="h-2.5 w-2.5 rounded-full bg-blue-500" />{ar ? "الفريق الأزرق" : "Blue Team"}</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl bg-white px-2 py-3 shadow-sm">
-                <p className="text-lg font-black text-[#0B4B35]">{questions.length}</p>
-                <p className="text-[11px] font-bold text-slate-500">{ar ? "أسئلة" : "questions"}</p>
-              </div>
-              <div className="rounded-2xl bg-white px-2 py-3 shadow-sm">
-                <p className="text-lg font-black text-[#0B4B35]">{duration}{ar ? "ث" : "s"}</p>
-                <p className="text-[11px] font-bold text-slate-500">{ar ? "لكل سؤال" : "per question"}</p>
-              </div>
-              <div className="rounded-2xl bg-white px-2 py-3 shadow-sm">
-                <p className="truncate text-sm font-black text-[#0B4B35]">{autoAdvance ? (ar ? "تلقائي" : "Auto") : (ar ? "يدوي" : "Manual")}</p>
-                <p className="text-[11px] font-bold text-slate-500">{ar ? "التقدم" : "progress"}</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#0B4B35]/10 bg-white px-4 py-3">
-              <p className="text-xs font-bold text-slate-500">{ar ? "مصدر الأسئلة" : "Question source"}</p>
-              <p className="mt-0.5 truncate text-sm font-black text-slate-800">{sourceTitle || (ar ? "مجموعة أسئلة مختارة" : "Prepared question set")}</p>
-            </div>
-
+          <div className="bg-[#FAF8F0] p-5 sm:p-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
