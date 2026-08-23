@@ -14,3 +14,5 @@ When comparing an initial outline with its one corrective retry, always choose a
 On mobile previews, an outline request can be abandoned around 80 seconds. A second LLM call is therefore only justified for a fatal outline, never for non-fatal normalization feedback. Preserve numbered teaching steps rather than dropping them merely because they lack a source field.
 
 Keep `gameQuestions` lightweight in outline generation: one assessment slide with at most three questions. Large per-slide question banks can exhaust the provider output budget before the required deck JSON closes, which surfaces as an incomplete outline.
+
+Outline density limits are soft quality targets, not data-loss rules. Preserve useful longer points and sparse-but-meaningful slides; reject only empty or placeholder content. **Why:** a complete nine-slide response was previously rejected solely for having two or one useful points on two slides.

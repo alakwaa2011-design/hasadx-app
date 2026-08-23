@@ -454,16 +454,21 @@ export function sanitizeOutline(
           feedback.push(`Slide ${i + 1}: numeric talking point retained without a cited source.`);
         }
         if (wordsOf(p) > lim.maxWordsPerPoint) {
-          feedback.push(`Slide ${i + 1}: talking point exceeds ${lim.maxWordsPerPoint} words for ${brief.density}.`);
-          return false;
+          /* Density is a presentation preference, not a reason to erase
+             otherwise useful teaching content. The prompt is asked for
+             concise points, but the editor can still render a longer point
+             safely within the schema limit. */
+          feedback.push(`Slide ${i + 1}: long talking point retained (${brief.density} prefers ≤${lim.maxWordsPerPoint} words).`);
         }
         return true;
       });
     if (talkingPoints.length > lim.maxPoints) talkingPoints = talkingPoints.slice(0, lim.maxPoints);
-    const minimumPoints = kind === "title" ? 0 : lim.minPoints;
-    if (talkingPoints.length < minimumPoints) {
+    /* A useful single point is a valid slide. Treat only an empty
+       non-title slide as incomplete — forcing model output to meet a
+       density quota was causing otherwise complete outlines to be rejected. */
+    if (kind !== "title" && talkingPoints.length === 0) {
       hasIncompleteSlide = true;
-      feedback.push(`Slide ${i + 1}: incomplete content (${talkingPoints.length}/${minimumPoints} required points); regenerate this slide instead of padding it.`);
+      feedback.push(`Slide ${i + 1}: incomplete content (no usable talking points); regenerate this slide instead of padding it.`);
     }
 
     /* interactionHint enforcement vs brief toggles.

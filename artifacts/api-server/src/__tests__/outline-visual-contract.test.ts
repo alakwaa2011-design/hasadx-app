@@ -144,4 +144,22 @@ describe("presentation visual contract fixtures", () => {
     expect(result.report.fatal).toBe(false);
     expect(result.outline.slides[2].talkingPoints).toHaveLength(3);
   });
+
+  it("keeps a complete outline when a slide is sparse or has a longer useful point", () => {
+    const raw = fixedLesson("دورة الماء", "scientific", [
+      "title", "visualHero", "process", "workedExample", "summary",
+    ]);
+    raw.slides[1].talkingPoints = [
+      "يتحول الماء إلى بخار عند تسخينه ثم يصعد إلى طبقات الجو العليا ويبدأ دورة جديدة",
+      "توضح الصورة مراحل التغير المتتابعة",
+    ];
+    raw.slides[3].talkingPoints = ["يتتبع الطالب مرحلة واحدة من الدورة في مثال واقعي"];
+
+    const result = sanitizeOutline(raw, { ...baseBrief, topic: "دورة الماء", subject: "العلوم" });
+
+    expect(result.report.fatal).toBe(false);
+    expect(result.outline.slides[1].talkingPoints).toHaveLength(2);
+    expect(result.outline.slides[1].talkingPoints[0]).toContain("يتحول الماء");
+    expect(result.outline.slides[3].talkingPoints).toHaveLength(1);
+  });
 });
