@@ -46,3 +46,4 @@
 - [Presentation visual contract](presentation-visual-contract.md) — real-image search is opt-in and every planned image has a deterministic teaching fallback.
 - [Question source selection state](question-source-selection-state.md) — async assignment pickers must bind loaded questions to the currently selected ID.
 - [Replit Build session recovery](replit-build-session.md) — a crossed Wi‑Fi icon and missing Agent usually indicate an editor WebSocket/session issue, not app code.
+- [Playwright cache fallback](playwright-cache-fallback.md) — after clearing Playwright’s browser cache, use the managed Chromium binary for local browser checks.
