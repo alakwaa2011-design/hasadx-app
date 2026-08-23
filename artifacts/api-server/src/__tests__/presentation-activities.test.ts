@@ -239,6 +239,30 @@ describe("POST /presentation-activities", () => {
     expect(mockState.queue.length).toBe(0); // insert path fully ran — no reuse
   });
 
+  it("accepts rocket_race as an activityType and creates the assignment (task #981)", async () => {
+    pushQueue(
+      "advisory-lock-ok",
+      /* existing lookup */ [],
+      /* insert assignment .returning() */ [
+        { id: 55, title: "نشاط الكسور", activityType: "rocket_race" },
+      ],
+      /* insert questions */ "questions-ok",
+    );
+    const res = await request(makeApp({ teacherId: 7 }))
+      .post("/api/presentation-activities")
+      .send({ ...validCreateBody, activityType: "rocket_race" });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ id: 55, activityType: "rocket_race", reused: false });
+    expect(mockState.queue.length).toBe(0);
+  });
+
+  it("rejects unknown activity types", async () => {
+    const res = await request(makeApp({ teacherId: 7 }))
+      .post("/api/presentation-activities")
+      .send({ ...validCreateBody, activityType: "word_cloud" });
+    expect(res.status).toBe(400);
+  });
+
   it("replays idempotently: same slideKey returns the existing assignment without inserting", async () => {
     pushQueue(
       "advisory-lock-ok",

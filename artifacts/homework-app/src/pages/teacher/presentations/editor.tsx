@@ -70,7 +70,10 @@ import {
   createHasadActivityFromSlide,
   fetchActivitySuggestions,
   type ActivitySuggestion,
+  type HasadSlideActivityType,
   unsupportedHasadActivityLabel,
+  getRecommendedHasadActivityType,
+  slideSupportsRocketRace,
   ACTIVITY_TYPE_LABELS,
 } from "@/lib/presentation-hasad-activities";
 import { getSocket } from "@/lib/socket";
@@ -653,7 +656,7 @@ export default function PresentationEditor() {
     }
   };
 
-  const handleCreateSlideHasadActivity = useCallback(async () => {
+  const handleCreateSlideHasadActivity = useCallback(async (typeOverride?: HasadSlideActivityType) => {
     if (!activeSlide || readOnlyRef.current || creatingSlideActivity) return;
     if (!canCreateHasadActivityFromSlide(activeSlide)) {
       mutateSlides((prev) =>
@@ -667,7 +670,7 @@ export default function PresentationEditor() {
       prev.map((s, i) => i === activeIdx ? { ...s, activityCreationStatus: "creating" } : s),
     );
     try {
-      const created = await createHasadActivityFromSlide(activeSlide, id);
+      const created = await createHasadActivityFromSlide(activeSlide, id, typeOverride);
       const hasadElement: SlideElement = {
         id: genId("ha"),
         kind: "hasad-activity",
@@ -703,7 +706,9 @@ export default function PresentationEditor() {
       );
       const msg = err instanceof Error && err.message === "NO_ACTIVITY_QUESTIONS"
         ? (isAr ? "لا توجد أسئلة كافية لإنشاء النشاط" : "Not enough questions to create this activity")
-        : (isAr ? "تعذّر إنشاء النشاط" : "Could not create activity");
+        : err instanceof Error && err.message === "NO_ROCKET_QUESTIONS"
+          ? (isAr ? "سباق الصواريخ يحتاج سؤال اختيار من متعدد بأربعة خيارات على الأقل" : "Rocket Race needs at least one 4-option multiple-choice question")
+          : (isAr ? "تعذّر إنشاء النشاط" : "Could not create activity");
       toast.error(msg);
     } finally {
       setCreatingSlideActivity(false);
@@ -3567,7 +3572,7 @@ function Inspector({
   gifLibraryOpen?: boolean;
   setGifLibraryOpen?: (v: boolean) => void;
   onOpenActivityPickerWithKind?: (kind: string) => void;
-  onCreateSlideHasadActivity?: () => void;
+  onCreateSlideHasadActivity?: (typeOverride?: HasadSlideActivityType) => void;
   creatingSlideActivity?: boolean;
   onLaunchWameeth?: (assignmentId: number) => void;
   launchingWameeth?: boolean;
@@ -3935,6 +3940,19 @@ function Inspector({
         const linkedId = s.linkedActivityId ? Number(s.linkedActivityId) : null;
         const isWameeth = s.linkedActivityType === "quick_quiz";
         const isTug     = s.linkedActivityType === "tug_war";
+        const isRocket  = s.linkedActivityType === "rocket_race";
+
+        /* Create-state game-type choice: primary button creates the
+           recommended type; a compact secondary button offers the other
+           supported live game (rocket needs ≥1 four-option MCQ). */
+        const recommendedType = getRecommendedHasadActivityType(slide);
+        const rocketOk = slideSupportsRocketRace(slide);
+        const altType: HasadSlideActivityType | null =
+          recommendedType === "rocket_race" ? "quick_quiz"
+          : recommendedType && rocketOk ? "rocket_race"
+          : null;
+        const recLabel = recommendedType ? ACTIVITY_TYPE_LABELS[recommendedType] : null;
+        const altLabel = altType ? ACTIVITY_TYPE_LABELS[altType] : null;
 
         return (
           <Section
@@ -3990,6 +4008,18 @@ function Inspector({
                     ? (isAr ? "جارٍ التشغيل..." : "Starting…")
                     : (isAr ? "⚡ تشغيل وميض الآن" : "⚡ Start Wameeth now")}
                 </button>
+              ) : linkedId && isRocket ? (
+                /* Rocket Race: open setup page — same launch pattern as tug;
+                   URL built from linkedId so it survives missing linkedActivityUrl */
+                <button
+                  type="button"
+                  onClick={() => window.open(`/game/rocket/create?assignmentId=${linkedId}`, "_blank", "noopener")}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white"
+                  style={{ background: BRAND_GREEN }}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {isAr ? "🚀 فتح إعداد سباق الصواريخ" : "🚀 Open Rocket Race setup"}
+                </button>
               ) : linkedId && isTug && s.linkedActivityUrl ? (
                 /* Tug of War: open setup page */
                 <button
@@ -4010,22 +4040,38 @@ function Inspector({
 
               /* ── State: supported but not yet created ── */
               ) : (
-                <button
-                  type="button"
-                  onClick={onCreateSlideHasadActivity}
-                  disabled={readOnly || creatingSlideActivity || !onCreateSlideHasadActivity}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ background: BRAND_GREEN }}
-                >
-                  {creatingSlideActivity
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Plus className="w-3.5 h-3.5" />}
-                  {creatingSlideActivity
-                    ? (isAr ? "جارٍ الإنشاء..." : "Creating…")
-                    : (isAr
-                        ? `إنشاء نشاط ${actDisplayAr}`
-                        : `Create ${actDisplayEn} activity`)}
-                </button>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onCreateSlideHasadActivity?.()}
+                    disabled={readOnly || creatingSlideActivity || !onCreateSlideHasadActivity}
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ background: BRAND_GREEN }}
+                  >
+                    {creatingSlideActivity
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <Plus className="w-3.5 h-3.5" />}
+                    {creatingSlideActivity
+                      ? (isAr ? "جارٍ الإنشاء..." : "Creating…")
+                      : (isAr
+                          ? `إنشاء نشاط ${recLabel?.ar ?? actDisplayAr}`
+                          : `Create ${recLabel?.en ?? actDisplayEn} activity`)}
+                  </button>
+                  {altType && altLabel && (
+                    <button
+                      type="button"
+                      onClick={() => onCreateSlideHasadActivity?.(altType)}
+                      disabled={readOnly || creatingSlideActivity || !onCreateSlideHasadActivity}
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ borderColor: `${BRAND_GREEN}55`, color: BRAND_GREEN, background: "transparent" }}
+                    >
+                      <span>{altLabel.emoji}</span>
+                      {isAr
+                        ? `إنشاء ${altLabel.ar} بدلًا منه`
+                        : `Create ${altLabel.en} instead`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </Section>
@@ -6400,7 +6446,7 @@ function MobileShell({
   onGoLive: () => void;
   onExport: (kind: "pdf" | "pptx") => void;
   onBack: () => void;
-  onCreateSlideHasadActivity: () => void;
+  onCreateSlideHasadActivity: (typeOverride?: HasadSlideActivityType) => void;
   creatingSlideActivity: boolean;
   onLaunchWameeth: (assignmentId: number) => void;
   launchingWameeth: boolean;

@@ -196,7 +196,7 @@ const CreateBody = z.object({
   title: z.string().trim().min(1).max(200),
   subject: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(1000).optional(),
-  activityType: z.enum(["quick_quiz", "tug_war"]),
+  activityType: z.enum(["quick_quiz", "tug_war", "rocket_race"]),
   questions: z.array(CreateQuestionSchema).min(1).max(20),
 });
 

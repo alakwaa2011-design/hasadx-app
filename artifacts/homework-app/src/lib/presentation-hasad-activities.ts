@@ -4,8 +4,11 @@
  * the appropriate game session.
  *
  * Supported activity types (extensible):
- *  - tug_war   → /game/tug/create?assignmentId=…  (URL-based setup page)
- *  - quick_quiz → Wameeth live engine via socket teacher:create-game
+ *  - tug_war     → /game/tug/create?assignmentId=…     (URL-based setup page)
+ *  - quick_quiz  → Wameeth live engine via socket teacher:create-game
+ *  - rocket_race → /game/rocket/create?assignmentId=…  (URL-based setup page;
+ *                  its importer only loads 4-option MCQs, so rocket is offered
+ *                  only when the slide has at least one such question)
  *
  * Question type mapping (no 4-option assumption):
  *  - 2 options that are صح/خطأ or yes/no variants → true_false
@@ -20,15 +23,17 @@ type HasadGameQuestion = {
   correctIndex: number;
 };
 
+export type HasadSlideActivityType = "tug_war" | "quick_quiz" | "rocket_race";
+
 export type CreatedHasadActivity = {
   assignmentId: number;
-  activityType: "tug_war" | "quick_quiz";
-  /** "tug_of_war" or "knowledge_race" — the internal Hasaad game kind stored
-   *  on the linked hasad-activity element so present.tsx picks the right launcher. */
-  gameType: "tug_of_war" | "knowledge_race";
+  activityType: HasadSlideActivityType;
+  /** The internal Hasaad game kind stored on the linked hasad-activity
+   *  element so present.tsx picks the right launcher. */
+  gameType: "tug_of_war" | "knowledge_race" | "rocket_race";
   title: string;
   /**
-   * For tug_war: direct URL to the tug setup page (accepts ?assignmentId).
+   * For tug_war / rocket_race: direct URL to the setup page (accepts ?assignmentId).
    * For quick_quiz: undefined — must be launched via socket teacher:create-game.
    */
   url: string | undefined;
@@ -38,6 +43,7 @@ export type CreatedHasadActivity = {
 export const ACTIVITY_TYPE_LABELS: Record<string, { ar: string; en: string; emoji: string }> = {
   tug_war:    { ar: "شد الحبل",  en: "Tug of War",  emoji: "🪢" },
   quick_quiz: { ar: "وميض",      en: "Wameeth",      emoji: "⚡" },
+  rocket_race: { ar: "سباق الصواريخ", en: "Rocket Race", emoji: "🚀" },
   word_cloud: { ar: "سحابة كلمات", en: "Word Cloud", emoji: "☁️" },
   discussion_wall: { ar: "جدار النقاش", en: "Discussion Wall", emoji: "💬" },
   live_poll:  { ar: "تصويت مباشر", en: "Live Poll",  emoji: "📊" },
@@ -107,13 +113,39 @@ function titleFromSlide(slide: Slide): string {
 }
 
 function getRecommendedActivityType(slide: any): string | null {
-  if (slide.activityType && slide.activityType !== "null") return slide.activityType;
-  if (slide.gameSuggestion === "tug")    return "tug_war";
-  if (slide.gameSuggestion === "kahoot") return "quick_quiz";
-  /* Treat any Wameeth-compatible game suggestion as quick_quiz */
-  if (slide.gameSuggestion === "hack" || slide.gameSuggestion === "wheel" ||
-      slide.gameSuggestion === "rocket") return "quick_quiz";
-  return null;
+  let type: string | null = null;
+  if (slide.activityType && slide.activityType !== "null") type = slide.activityType;
+  else if (slide.gameSuggestion === "tug")    type = "tug_war";
+  else if (slide.gameSuggestion === "kahoot") type = "quick_quiz";
+  else if (slide.gameSuggestion === "rocket") type = "rocket_race";
+  /* Treat the remaining Wameeth-compatible game suggestions as quick_quiz */
+  else if (slide.gameSuggestion === "hack" || slide.gameSuggestion === "wheel") type = "quick_quiz";
+
+  /* Rocket race can only be recommended when the slide's questions can
+     actually power it (its importer drops everything but 4-option MCQs) —
+     otherwise degrade to Wameeth, which handles every question type. */
+  if (type === "rocket_race" && !slideSupportsRocketRace(slide as Slide)) type = "quick_quiz";
+  return type;
+}
+
+/** The supported activity type the create button should default to. */
+export function getRecommendedHasadActivityType(
+  slide: Slide | undefined,
+): HasadSlideActivityType | null {
+  if (!slide) return null;
+  const type = getRecommendedActivityType(slide);
+  return type === "tug_war" || type === "quick_quiz" || type === "rocket_race"
+    ? type
+    : null;
+}
+
+/** Rocket race requires at least one 4-option MCQ — the rocket setup
+ *  importer drops true/false, fill-blank, and 2–3 option questions. */
+export function slideSupportsRocketRace(slide: Slide | undefined): boolean {
+  if (!slide) return false;
+  return questionsFromSlide(slide).some(
+    (q) => q.options.length === 4 && q.options.every((o) => typeof o === "string" && o.trim().length > 0),
+  );
 }
 
 function questionsFromSlide(slide: Slide): HasadGameQuestion[] {
@@ -135,9 +167,7 @@ function questionsFromSlide(slide: Slide): HasadGameQuestion[] {
 
 // ── Public helpers ────────────────────────────────────────────────────────────
 export function canCreateHasadActivityFromSlide(slide: Slide | undefined): boolean {
-  if (!slide) return false;
-  const type = getRecommendedActivityType(slide);
-  return type === "tug_war" || type === "quick_quiz";
+  return getRecommendedHasadActivityType(slide) !== null;
 }
 
 export function unsupportedHasadActivityLabel(
@@ -183,10 +213,14 @@ export async function fetchActivitySuggestions(
 export async function createHasadActivityFromSlide(
   slide: Slide,
   presentationId: number | string,
+  overrideType?: HasadSlideActivityType,
 ): Promise<CreatedHasadActivity> {
-  const type = getRecommendedActivityType(slide);
-  if (type !== "tug_war" && type !== "quick_quiz") {
+  const type = overrideType ?? getRecommendedHasadActivityType(slide);
+  if (type !== "tug_war" && type !== "quick_quiz" && type !== "rocket_race") {
     throw new Error("UNSUPPORTED_ACTIVITY_TYPE");
+  }
+  if (type === "rocket_race" && !slideSupportsRocketRace(slide)) {
+    throw new Error("NO_ROCKET_QUESTIONS");
   }
 
   const questions = questionsFromSlide(slide);
@@ -195,8 +229,6 @@ export async function createHasadActivityFromSlide(
   }
 
   const title = titleFromSlide(slide);
-  const gameType: CreatedHasadActivity["gameType"] =
-    type === "tug_war" ? "tug_of_war" : "knowledge_race";
 
   /* Idempotent server endpoint: the stable client key is presentation-scoped
      ("presId:slideId") because AI-generated decks reuse deterministic slide
@@ -225,15 +257,32 @@ export async function createHasadActivityFromSlide(
   const assignmentId = Number((data as { id?: number }).id);
   if (!Number.isFinite(assignmentId)) throw new Error("CREATE_ACTIVITY_FAILED");
 
+  /* Idempotent replays return the EXISTING assignment, whose activityType
+     may differ from the one requested this time (e.g. Wameeth was created
+     first, rocket requested later). Trust the server's answer so the linked
+     element launches the game that actually exists. */
+  const serverType = (data as { activityType?: string }).activityType;
+  const finalType: HasadSlideActivityType =
+    serverType === "tug_war" || serverType === "quick_quiz" || serverType === "rocket_race"
+      ? serverType
+      : type;
+
+  const gameType: CreatedHasadActivity["gameType"] =
+    finalType === "tug_war" ? "tug_of_war"
+    : finalType === "rocket_race" ? "rocket_race"
+    : "knowledge_race";
+
   return {
     assignmentId,
-    activityType: type,
+    activityType: finalType,
     gameType,
     title,
-    /* tug_war: direct URL (tug-create.tsx reads ?assignmentId).
+    /* tug_war / rocket_race: direct URL (their setup pages read ?assignmentId).
        quick_quiz: undefined — must be launched via socket in the editor. */
-    url: type === "tug_war"
+    url: finalType === "tug_war"
       ? `/game/tug/create?assignmentId=${assignmentId}`
-      : undefined,
+      : finalType === "rocket_race"
+        ? `/game/rocket/create?assignmentId=${assignmentId}`
+        : undefined,
   };
 }
