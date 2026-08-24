@@ -189,6 +189,7 @@ export default function MaraquiCreate() {
           topic: aiTopic,
           count: Math.min(Math.max(parseInt(aiCount) || 5, 1), 15),
           difficulty: stages[stageIdx].difficulty,
+          language: lang,
         }),
       });
       const data = await res.json();

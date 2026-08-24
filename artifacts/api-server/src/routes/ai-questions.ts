@@ -16,6 +16,27 @@ const VALID_DIFFICULTIES = ["easy", "medium", "hard"] as const;
    types so the generated questions match the chosen template structure. */
 const VALID_AI_QTYPES = ["mcq", "true_false", "fill_blank"] as const;
 type AiQType = (typeof VALID_AI_QTYPES)[number];
+type QuestionLanguage = "ar" | "en";
+
+/** The UI language is the teacher's explicit preference. When an older client
+    does not send it, a topic written wholly in Latin characters is an
+    intentional English request and should not be translated back to Arabic. */
+function resolveQuestionLanguage(rawLanguage: unknown, topic: string, subject?: unknown): QuestionLanguage {
+  if (rawLanguage === "en") return "en";
+
+  /* The topic is the teacher's primary content request. A translated or
+     bilingual subject label must not turn an English topic back into Arabic. */
+  const topicHasArabic = /[\u0600-\u06FF]/.test(topic);
+  const topicHasLatin = /[A-Za-z]/.test(topic);
+  if (topicHasLatin && !topicHasArabic) return "en";
+
+  const subjectText = typeof subject === "string" ? subject : "";
+  const subjectHasArabic = /[\u0600-\u06FF]/.test(subjectText);
+  const subjectHasLatin = /[A-Za-z]/.test(subjectText);
+  if (subjectHasLatin && !subjectHasArabic) return "en";
+
+  return "ar";
+}
 
 /** Sanitize the requested types and cycle them to exactly `count` slots.
     Returns null when nothing usable / all-MCQ (caller keeps the MCQ-only path). */
@@ -27,15 +48,33 @@ function parseQuestionTypes(raw: unknown, count: number): AiQType[] | null {
   return cycled.every((t) => t === "mcq") ? null : cycled;
 }
 
-const AR_TYPE_LABEL: Record<AiQType, string> = {
-  mcq: "اختيار من متعدد",
-  true_false: "صح أو خطأ",
-  fill_blank: "أكمل الفراغ",
+const TYPE_LABELS: Record<QuestionLanguage, Record<AiQType, string>> = {
+  ar: {
+    mcq: "اختيار من متعدد",
+    true_false: "صح أو خطأ",
+    fill_blank: "أكمل الفراغ",
+  },
+  en: {
+    mcq: "multiple choice",
+    true_false: "true or false",
+    fill_blank: "fill in the blank",
+  },
 };
 
-/** Arabic prompt block describing the exact per-question type plan. */
-function typePlanPrompt(types: AiQType[]): string {
-  const plan = types.map((t, i) => `السؤال ${i + 1}: ${AR_TYPE_LABEL[t]}`).join("\n");
+/** Prompt block describing the exact per-question type plan in the output language. */
+function typePlanPrompt(types: AiQType[], language: QuestionLanguage): string {
+  if (language === "en") {
+    const plan = types.map((t, i) => `Question ${i + 1}: ${TYPE_LABELS.en[t]}`).join("\n");
+    return `Required question types (follow this exact order):
+${plan}
+
+Rules for each type:
+- "multiple choice": 4 options (A, B, C, D), "questionType": "mcq", and "correctAnswer" must be A/B/C/D — distribute correct answers across positions
+- "true or false": a statement the learner judges, "questionType": "true_false", empty option fields "", and "correctAnswer" must be "true" or "false" — include both true and false statements
+- "fill in the blank": the question text contains a blank written as ____, "questionType": "fill_blank", empty option fields "", and "correctAnswer" is the correct missing word or phrase`;
+  }
+
+  const plan = types.map((t, i) => `السؤال ${i + 1}: ${TYPE_LABELS.ar[t]}`).join("\n");
   return `أنواع الأسئلة المطلوبة (التزم بها بالترتيب حرفياً):
 ${plan}
 
@@ -145,18 +184,50 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
   }
 
   const diff = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
-  const difficultyText = diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة";
+  const questionLanguage = resolveQuestionLanguage(req.body?.language, topic, subject);
+  const english = questionLanguage === "en";
+  const difficultyText = english
+    ? (diff === "easy" ? "easy" : diff === "hard" ? "hard" : "medium")
+    : (diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة");
   const qTypes = parseQuestionTypes(req.body.questionTypes, parsedCount);
 
   const prompt = qTypes
-    ? `أنت خبير تعليمي متخصص في إعداد أسئلة الاختبارات.
+    ? english
+      ? `You are an educational expert who writes assessment questions.
+
+Task: Create ${parsedCount} questions about this topic:
+Topic: ${topic.trim()}
+${subject ? `Subject: ${subject.trim()}` : ""}
+Difficulty: ${difficultyText}
+
+${typePlanPrompt(qTypes, questionLanguage)}
+
+General rules:
+- Write every question, answer option, true/false statement, and fill-in-the-blank answer in English only. Do not include Arabic translations.
+- Keep questions varied and cover different aspects of the topic.
+- Return questions in the exact type order requested above.
+
+Return JSON only, with no additional text:
+[
+  {
+    "text": "Question text",
+    "questionType": "mcq",
+    "optionA": "Option A",
+    "optionB": "Option B",
+    "optionC": "Option C",
+    "optionD": "Option D",
+    "correctAnswer": "B",
+    "points": 1
+  }
+]`
+      : `أنت خبير تعليمي متخصص في إعداد أسئلة الاختبارات.
 
 المطلوب: إنشاء ${parsedCount} سؤال عن الموضوع التالي:
 الموضوع: ${topic.trim()}
 ${subject ? `المادة: ${subject.trim()}` : ""}
 الصعوبة: ${difficultyText}
 
-${typePlanPrompt(qTypes)}
+${typePlanPrompt(qTypes, questionLanguage)}
 
 قواعد عامة:
 - الأسئلة باللغة العربية ومتنوعة وتغطي جوانب مختلفة من الموضوع
@@ -175,7 +246,34 @@ ${typePlanPrompt(qTypes)}
     "points": 1
   }
 ]`
-    : `أنت خبير تعليمي متخصص في إعداد أسئلة الاختيار من متعدد.
+    : english
+      ? `You are an educational expert who writes multiple-choice assessment questions.
+
+Task: Create ${parsedCount} multiple-choice questions about this topic:
+Topic: ${topic.trim()}
+${subject ? `Subject: ${subject.trim()}` : ""}
+Difficulty: ${difficultyText}
+
+Rules:
+- Each question has exactly 4 options (A, B, C, D).
+- Each question has exactly one correct answer.
+- Distribute correct answers randomly across A, B, C, and D. Do not make A correct every time.
+- Write every question and answer option in English only. Do not include Arabic translations.
+- Cover different aspects of the topic with plausible distractors.
+
+Return JSON only, with no additional text:
+[
+  {
+    "text": "Question text",
+    "optionA": "Option A",
+    "optionB": "Option B",
+    "optionC": "Option C",
+    "optionD": "Option D",
+    "correctAnswer": "B",
+    "points": 1
+  }
+]`
+      : `أنت خبير تعليمي متخصص في إعداد أسئلة الاختيار من متعدد.
 
 المطلوب: إنشاء ${parsedCount} سؤال اختيار من متعدد عن الموضوع التالي:
 الموضوع: ${topic.trim()}
@@ -316,17 +414,48 @@ router.post("/ai/generate-questions-with-images", requireAdminForImageGen, check
   }
 
   const diff = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
-  const difficultyText = diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة";
   const subjectText = typeof subject === "string" && subject.trim() ? subject.trim().slice(0, 100) : "";
+  const questionLanguage = resolveQuestionLanguage(req.body?.language, topic, subjectText);
+  const english = questionLanguage === "en";
+  const difficultyText = english
+    ? (diff === "easy" ? "easy" : diff === "hard" ? "hard" : "medium")
+    : (diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة");
   const qTypesImg = parseQuestionTypes(req.body.questionTypes, parsedCount);
 
   /* Step 1 — Ask GPT to produce questions + a short English image prompt per question */
-  const prompt = `أنت خبير تعليمي. المطلوب: إنشاء ${parsedCount} سؤال عن الموضوع التالي:
+  const prompt = english
+    ? `You are an educational expert. Create ${parsedCount} questions about this topic:
+Topic: ${topic.trim()}
+${subjectText ? `Subject: ${subjectText}` : ""}
+Difficulty: ${difficultyText}
+
+${qTypesImg ? typePlanPrompt(qTypesImg, questionLanguage) : `Rules:
+- Each question has 4 options (A, B, C, D) and exactly one correct answer.
+- Distribute correct answers randomly across A, B, C, and D.`}
+
+- Write every question, answer option, statement, and answer in English only. Do not include Arabic translations.
+- Every question should be answerable from a clear educational image. Do not mention "the image" unless that wording is needed.
+- Add an "imagePrompt" field containing a concise English visual description suitable for image generation: photographic or simple educational illustration, white background, no visible text.
+
+Return JSON only, with no additional text:
+[
+  {
+    "text": "Question text",
+    "imagePrompt": "A clear educational illustration of ..., white background, no text",
+    "optionA": "Option A",
+    "optionB": "Option B",
+    "optionC": "Option C",
+    "optionD": "Option D",
+    "correctAnswer": "B",
+    "points": 1
+  }
+]`
+    : `أنت خبير تعليمي. المطلوب: إنشاء ${parsedCount} سؤال عن الموضوع التالي:
 الموضوع: ${topic.trim()}
 ${subjectText ? `المادة: ${subjectText}` : ""}
 الصعوبة: ${difficultyText}
 
-${qTypesImg ? typePlanPrompt(qTypesImg) : `القواعد:
+${qTypesImg ? typePlanPrompt(qTypesImg, questionLanguage) : `القواعد:
 - كل سؤال له 4 خيارات (A, B, C, D) وإجابة صحيحة واحدة
 - وزّع الإجابات الصحيحة عشوائياً بين A وB وC وD`}
 

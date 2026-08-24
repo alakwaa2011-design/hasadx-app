@@ -518,6 +518,7 @@ export default function CreateAssignment() {
           count: aiWithImages ? Math.min(requestCount, 20) : requestCount,
           difficulty: aiDifficulty,
           subject: subject || undefined,
+          language: lang,
           questionTypes: hasNonMcq ? slotTypes.slice(0, aiWithImages ? 20 : slotTypes.length) : undefined,
         }),
       });

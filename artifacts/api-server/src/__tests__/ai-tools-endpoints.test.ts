@@ -416,6 +416,72 @@ describe("POST /api/ai/generate-questions", () => {
     expectNoLegacyParams();
   });
 
+  it("uses an English-only prompt when the teacher selects English", async () => {
+    openaiReturns(
+      JSON.stringify([{
+        text: "What is the capital of France?",
+        optionA: "Paris", optionB: "Rome", optionC: "Madrid", optionD: "Berlin",
+        correctAnswer: "A",
+        points: 1,
+      }]),
+    );
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({ topic: "World geography", count: 1, difficulty: "medium", language: "en" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions[0]).toMatchObject({
+      text: "What is the capital of France?",
+      optionA: "Paris",
+      correctAnswer: "A",
+    });
+    const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
+    expect(callArgs.messages[0].content).toContain("Write every question and answer option in English only.");
+    expect(callArgs.messages[0].content).toContain("Topic: World geography");
+  });
+
+  it("detects a fully English topic even when older clients omit the language", async () => {
+    openaiReturns(
+      JSON.stringify([{
+        text: "Which planet is known as the Red Planet?",
+        optionA: "Mars", optionB: "Venus", optionC: "Earth", optionD: "Jupiter",
+        correctAnswer: "A",
+        points: 1,
+      }]),
+    );
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({ topic: "The solar system", count: 1, difficulty: "easy" });
+
+    expect(res.status).toBe(200);
+    const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
+    expect(callArgs.messages[0].content).toContain("Topic: The solar system");
+    expect(callArgs.messages[0].content).toContain("Write every question and answer option in English only.");
+  });
+
+  it("keeps an English topic in English when its subject label is Arabic", async () => {
+    openaiReturns(
+      JSON.stringify([{
+        text: "What is photosynthesis?",
+        optionA: "A way plants make food", optionB: "A type of rock",
+        optionC: "A weather pattern", optionD: "A planet",
+        correctAnswer: "A",
+        points: 1,
+      }]),
+    );
+
+    const res = await request(makeApp(aiQuestionsRouter))
+      .post("/api/ai/generate-questions")
+      .send({ topic: "Photosynthesis", subject: "علوم", count: 1, difficulty: "easy", language: "ar" });
+
+    expect(res.status).toBe(200);
+    const callArgs = mockState.openaiCreate.mock.calls[0][0] as any;
+    expect(callArgs.messages[0].content).toContain("Topic: Photosynthesis");
+    expect(callArgs.messages[0].content).toContain("Write every question and answer option in English only.");
+  });
+
   it("count=10 reaches the prompt and returns all 10 valid questions", async () => {
     const tenQuestions = Array.from({ length: 10 }, (_, i) => ({
       text: `سؤال رقم ${i + 1}؟`,

@@ -15,6 +15,7 @@ import {
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   creditAwareFetch,
@@ -44,6 +45,7 @@ interface Assignment {
 
 export default function SoloChallengeCreatePage() {
   const [, setLocation] = useLocation();
+  const { lang } = useI18n();
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
 
   const [source, setSource] = useState<Source | null>(null);
@@ -125,7 +127,7 @@ export default function SoloChallengeCreatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic: topic.trim(), subject: subject.trim(), count, difficulty }),
+        body: JSON.stringify({ topic: topic.trim(), subject: subject.trim(), count, difficulty, language: lang }),
       });
       const data = await res.json();
       if (!res.ok) {

@@ -266,7 +266,13 @@ export function UnifiedQuestionSourceFlow({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic: aiTopic.trim(), subject: aiSubject.trim(), count, difficulty: aiDifficulty }),
+        body: JSON.stringify({
+          topic: aiTopic.trim(),
+          subject: aiSubject.trim(),
+          count,
+          difficulty: aiDifficulty,
+          language: lang,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
