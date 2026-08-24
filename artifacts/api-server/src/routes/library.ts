@@ -14,6 +14,7 @@ import JSZip from "jszip";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { LIBRARY_PENDING_UPLOAD_TTL_MS } from "../lib/library-constants";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -620,6 +621,7 @@ const ExtractQuestionsBody = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
   subject: z.string().max(200).optional(),
   questionType: z.enum(["mcq", "true_false", "fill_blank"]).default("mcq"),
+  language: z.enum(["ar", "en"]).optional(),
 });
 
 router.post("/library/files/:id/extract-questions", requireAuth, checkCredits("extract_questions_from_source"), async (req: any, res: Response) => {
@@ -684,6 +686,11 @@ router.post("/library/files/:id/extract-questions", requireAuth, checkCredits("e
     const truncated = text.length > MAX_TEXT_CHARS ? text.slice(0, MAX_TEXT_CHARS) : text;
 
     const { count, difficulty, subject, questionType } = parsed.data;
+    const language = resolveAiContentLanguage({
+      preferredLanguage: parsed.data.language,
+      primaryText: subject,
+      detailTexts: [truncated],
+    });
     const difficultyText = difficulty === "easy" ? "سهلة" : difficulty === "hard" ? "صعبة" : "متوسطة";
 
     let typeRules = "";
@@ -748,7 +755,7 @@ ${truncated}
 
 القواعد:
 - استخرج الأسئلة من المحتوى أعلاه فقط
-- الأسئلة بنفس لغة المحتوى (عربية في الغالب)
+- ${language === "ar" ? "اكتب كل الأسئلة والخيارات باللغة العربية فقط" : "Write every question and answer option in English only"}
 - الأسئلة متنوعة وتغطي جوانب مختلفة من المحتوى
 - إذا كان المحتوى لا يكفي لعدد الأسئلة المطلوب، أنشئ بقدر ما يسمح المحتوى
 ${typeRules}
@@ -867,6 +874,7 @@ const ExtractQuestionsBulkBody = z.object({
   count: z.number().int().min(1).max(30).default(10),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
   subject: z.string().max(200).optional(),
+  language: z.enum(["ar", "en"]).optional(),
 });
 
 router.post("/library/files/extract-questions-bulk", requireAuth, checkCredits("extract_questions_from_source"), async (req: any, res: Response) => {
@@ -876,7 +884,7 @@ router.post("/library/files/extract-questions-bulk", requireAuth, checkCredits("
     res.status(400).json({ message: "بيانات غير صالحة (يجب اختيار ملفين على الأقل)" });
     return;
   }
-  const { fileIds, count, difficulty, subject } = parsed.data;
+    const { fileIds, count, difficulty, subject } = parsed.data;
   const uniqueIds = Array.from(new Set(fileIds));
   try {
     const teacherId = req.session.teacherId;
@@ -945,6 +953,11 @@ router.post("/library/files/extract-questions-bulk", requireAuth, checkCredits("
     const combined = sections
       .map((s, i) => `--- الملف ${i + 1}: ${s.name} ---\n${s.text}`)
       .join("\n\n");
+    const language = resolveAiContentLanguage({
+      preferredLanguage: parsed.data.language,
+      primaryText: subject,
+      detailTexts: [combined],
+    });
 
     const difficultyText = difficulty === "easy" ? "سهلة" : difficulty === "hard" ? "صعبة" : "متوسطة";
     const fileNamesList = sections.map((s, i) => `${i + 1}) ${s.name}`).join("\n");
@@ -967,7 +980,7 @@ ${combined}
 - كل سؤال له 4 خيارات (A, B, C, D)
 - إجابة صحيحة واحدة فقط لكل سؤال
 - مهم: وزّع الإجابات الصحيحة بشكل عشوائي بين A و B و C و D
-- الأسئلة والخيارات بنفس لغة المحتوى (عربية في الغالب)
+- ${language === "ar" ? "اكتب كل الأسئلة والخيارات باللغة العربية فقط" : "Write every question and answer option in English only"}
 - الخيارات الخاطئة يجب أن تكون منطقية ومعقولة
 - إذا كان المحتوى لا يكفي لعدد الأسئلة المطلوب، أنشئ بقدر ما يسمح المحتوى
 - مهم جداً: لكل سؤال، حدّد رقم الملف المصدر (1 إلى ${sections.length}) في الحقل "sourceFile" بناءً على أي ملف استُمد منه السؤال

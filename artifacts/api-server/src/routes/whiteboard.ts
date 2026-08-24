@@ -12,6 +12,7 @@ import {
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 import { resolveTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -232,7 +233,15 @@ const generateBody = z.object({
 
 router.post("/whiteboard/generate", requireTeacher, checkCredits("whiteboard"), async (req, res) => {
   try {
-    const body = generateBody.parse(req.body);
+    const parsedBody = generateBody.parse(req.body);
+    const body = {
+      ...parsedBody,
+      language: resolveAiContentLanguage({
+        preferredLanguage: parsedBody.language,
+        primaryText: parsedBody.topic,
+        detailTexts: [parsedBody.subject, parsedBody.gradeLevel],
+      }),
+    };
     const tier: AiTier = await resolveTier(req.session.teacherId as number);
     const prompt = buildLessonPrompt({
       topic: body.topic,
@@ -252,14 +261,14 @@ router.post("/whiteboard/generate", requireTeacher, checkCredits("whiteboard"), 
       if (json.steps && Array.isArray(json.steps) && json.steps.length > 0) {
         // نجاح فعلي (خطة صالحة بصيغة متساهلة) — يُخصم كأي نجاح
         await captureCredits(req);
-        res.json({ plan: json }); return;
+        res.json({ plan: json, language: body.language }); return;
       }
       req.log.warn({ issues: validated.error.issues }, "whiteboard generate schema mismatch");
       await refundCredits(req, "فشل توليد خطة الدرس");
       res.status(500).json({ message: "تعذّر توليد خطة الدرس" }); return;
     }
     await captureCredits(req);
-    res.json({ plan: validated.data });
+    res.json({ plan: validated.data, language: body.language });
   } catch (err: any) {
     await refundCredits(req, "فشل توليد السبورة");
     if (err?.issues) { res.status(400).json({ message: "إدخال غير صالح" }); return; }
@@ -415,12 +424,20 @@ router.put("/whiteboard/lessons/:id", requireTeacher, async (req, res) => {
 // ── POST /api/whiteboard/ask — instant Q&A answer on the chalkboard ──────────
 router.post("/whiteboard/ask", requireTeacher, checkCredits("whiteboard"), async (req, res) => {
   try {
-    const { question = "", imageBase64 } = req.body as { question?: string; imageBase64?: string };
+    const { question = "", imageBase64, language: preferredLanguage } = req.body as {
+      question?: string;
+      imageBase64?: string;
+      language?: "ar" | "en";
+    };
     if (!question.trim() && !imageBase64) {
       await refundCredits(req, "طلب غير صالح — لا سؤال");
       res.status(400).json({ error: "سؤال مطلوب" }); return;
     }
 
+    const contentLanguage = resolveAiContentLanguage({
+      preferredLanguage,
+      primaryText: question,
+    });
     const KNOWN_TYPES = ["bullet","highlight","writeText","writeTitle","writeMath","drawArrow",
       "drawCircle","drawConnector","showChart","showImage","showLocation","showDiagram","clearBoard","erase"];
 
@@ -605,6 +622,10 @@ router.post("/whiteboard/ask", requireTeacher, checkCredits("whiteboard"), async
 ━━━ ألوان السبورة ━━━
 yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضية | blue=مواقع وصور | orange=خطوات وعلاقات | white=نص عام | pink=ملاحظات وتنبيهات | red=أخطاء شائعة | purple=مصطلحات متقدمة`;
 
+    const languageDirective = contentLanguage === "en"
+      ? "\n\nLANGUAGE REQUIREMENT: All visible lesson content (titles, voiceText, bullets, labels, descriptions, and location names) must be in English only. Keep imageQuery in English."
+      : "\n\nمتطلب اللغة: كل المحتوى الظاهر (العناوين والشرح والنقاط والتسميات والأوصاف وأسماء المواقع) باللغة العربية فقط، مع إبقاء imageQuery بالإنجليزية.";
+    const localizedSystemPrompt = `${systemPrompt}${languageDirective}`;
     let rawJson: string;
 
     if (imageBase64) {
@@ -614,12 +635,12 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
         temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: localizedSystemPrompt },
           {
             role: "user",
             content: [
               { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "high" } as any },
-              { type: "text", text: question.trim() ? `اشرح وحل: ${question}` : "اقرأ المسألة في الصورة وحلّها على السبورة بالتفصيل" },
+              { type: "text", text: question.trim() ? question : (contentLanguage === "ar" ? "اقرأ المسألة في الصورة وحلّها على السبورة بالتفصيل" : "Read the problem in the image and solve it on the board in detail.") },
             ] as any,
           },
         ],
@@ -632,7 +653,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
         temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: localizedSystemPrompt },
           { role: "user", content: question.trim() },
         ],
       });
@@ -652,7 +673,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
     if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
       steps = parsed.steps.map((s: any, i: number) => ({
         id: String(s.id ?? i + 1),
-        title: s.title ?? `الخطوة ${i + 1}`,
+        title: s.title ?? (contentLanguage === "ar" ? `الخطوة ${i + 1}` : `Step ${i + 1}`),
         voiceText: s.voiceText ?? "",
         boardActions: normalizeActions(s.boardActions),
       })).filter((s: any) => s.voiceText.trim() || s.boardActions.length > 0);
@@ -662,7 +683,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
       if (actions.length === 0 && (parsed.voiceText ?? "").trim()) {
         actions = [{ type: "writeText", content: parsed.voiceText.trim(), color: "white" }];
       }
-      steps = [{ id: "1", title: "الإجابة", voiceText: parsed.voiceText ?? "", boardActions: actions }];
+      steps = [{ id: "1", title: contentLanguage === "ar" ? "الإجابة" : "Answer", voiceText: parsed.voiceText ?? "", boardActions: actions }];
     }
 
     // Ensure no step has a completely blank board
@@ -674,8 +695,8 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
     });
 
     const plan = {
-      title: question.trim() || "سؤال",
-      topic: question.trim() || "سؤال",
+      title: question.trim() || (contentLanguage === "ar" ? "سؤال" : "Question"),
+      topic: question.trim() || (contentLanguage === "ar" ? "سؤال" : "Question"),
       intro:   { voiceText: "", boardActions: [] },
       steps,
       summary: { voiceText: "", boardActions: [] },
@@ -690,7 +711,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
         INSERT INTO whiteboard_sessions
           (teacher_id, question, plan, language, level)
         VALUES
-          (${teacherId}, ${question.trim() || "سؤال"}, ${JSON.stringify(plan)}::jsonb, 'ar', 'ask')
+          (${teacherId}, ${question.trim() || (contentLanguage === "ar" ? "سؤال" : "Question")}, ${JSON.stringify(plan)}::jsonb, ${contentLanguage}, 'ask')
         RETURNING id
       `);
       savedId = ((saveResult.rows ?? saveResult as any)[0] as any)?.id ?? null;

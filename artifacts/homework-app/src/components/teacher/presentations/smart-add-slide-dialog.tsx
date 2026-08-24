@@ -98,6 +98,7 @@ export function SmartAddSlideDialog({
           kind: selectedKind,
           prompt: prompt.trim(),
           theme,
+          language: isAr ? "ar" : "en",
         }),
       });
       if (!res.ok) {

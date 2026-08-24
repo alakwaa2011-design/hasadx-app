@@ -4,6 +4,7 @@ import { db, assignmentsTable, questionsTable, millionScoresTable, platformSetti
 import { eq, desc, sql, and, notInArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getClassSession } from "../game/million-class-handlers";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router = Router();
 
@@ -285,13 +286,15 @@ router.post("/million/swap-question", questionsLimiter, async (req, res) => {
 });
 
 router.post("/million/hint", hintLimiter, async (req, res) => {
+  let contentLanguage: "ar" | "en" = "ar";
   try {
-    const { questionText, optionA, optionB, optionC, optionD } = req.body as {
+    const { questionText, optionA, optionB, optionC, optionD, language: preferredLanguage } = req.body as {
       questionText: string;
       optionA: string;
       optionB: string;
       optionC: string;
       optionD: string;
+      language?: "ar" | "en";
     };
 
     if (!questionText || typeof questionText !== "string") {
@@ -302,7 +305,22 @@ router.post("/million/hint", hintLimiter, async (req, res) => {
       return res.status(503).json({ hint: "خدمة التلميح غير متاحة حالياً." });
     }
 
-    const prompt = `أنت مساعد تعليمي. لديك هذا السؤال وخياراته:
+    contentLanguage = resolveAiContentLanguage({
+      preferredLanguage,
+      primaryText: questionText,
+      detailTexts: [optionA, optionB, optionC, optionD],
+    });
+    const prompt = contentLanguage === "en"
+      ? `You are an educational assistant. Here is a question and its options:
+
+Question: ${questionText.slice(0, 300)}
+A) ${(optionA || "").slice(0, 100)}
+B) ${(optionB || "").slice(0, 100)}
+C) ${(optionC || "").slice(0, 100)}
+D) ${(optionD || "").slice(0, 100)}
+
+Give a helpful hint that guides the student toward the right direction without directly revealing the answer. The hint must be one or two sentences in English.`
+      : `أنت مساعد تعليمي. لديك هذا السؤال وخياراته:
 
 السؤال: ${questionText.slice(0, 300)}
 أ) ${(optionA || "").slice(0, 100)}
@@ -321,11 +339,12 @@ router.post("/million/hint", hintLimiter, async (req, res) => {
       reasoning_effort: "minimal",
     });
 
-    const hint = completion.choices[0]?.message?.content?.trim() ?? "لا يتوفر تلميح الآن.";
+    const unavailableHint = contentLanguage === "en" ? "No hint is available right now." : "لا يتوفر تلميح الآن.";
+    const hint = completion.choices[0]?.message?.content?.trim() ?? unavailableHint;
     res.json({ hint });
   } catch (err) {
     req.log.error(err, "Million hint error");
-    res.json({ hint: "لا يتوفر تلميح الآن." });
+    res.json({ hint: contentLanguage === "en" ? "No hint is available right now." : "لا يتوفر تلميح الآن." });
   }
 });
 

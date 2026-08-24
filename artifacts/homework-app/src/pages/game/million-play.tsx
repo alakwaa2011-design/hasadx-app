@@ -766,6 +766,7 @@ export default function MillionPlay() {
           questionText: currentQuestion.text,
           optionA: currentQuestion.optionA, optionB: currentQuestion.optionB,
           optionC: currentQuestion.optionC, optionD: currentQuestion.optionD,
+          language: lang,
         }),
       });
       const data = await r.json() as { hint: string };

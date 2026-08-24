@@ -813,6 +813,7 @@ export default function TeacherLibraryPage() {
         count: extractCount,
         difficulty: extractDifficulty,
         subject: extractSubject.trim() || undefined,
+        language: lang,
       };
       if (extractBulkTargets) {
         body.fileIds = extractBulkTargets.map((f) => f.id);

@@ -17,6 +17,7 @@ import {
 } from "@workspace/api-zod";
 import { imageUploadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -186,7 +187,6 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
-
     if (!assignment.examMode || !assignment.examDurationMinutes) {
       res.status(400).json({ message: "هذا الواجب ليس في وضع الاختبار" });
       return;
@@ -265,6 +265,11 @@ router.post("/assignments/:id/submit", async (req, res) => {
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
+    const contentLanguage = resolveAiContentLanguage({
+      preferredLanguage: req.body?.language,
+      primaryText: assignment.title,
+      detailTexts: [assignment.aiGradingInstructions],
+    });
 
     if (assignment.submissionMode === "paper") {
       res.status(400).json({ message: "هذا الواجب يقبل فقط الإجابات الورقية (رفع صورة)" });
@@ -503,7 +508,17 @@ ${isBase64Image ? "إجابة الطالب مرفقة كصورة من السبو
 
     let aiFeedback: string | null = null;
     try {
-      const feedbackPrompt = `أنت معلم عربي. طالب اسمه "${body.studentName}" أجاب على واجب يحتوي على ${totalQuestions} سؤال.
+      const feedbackPrompt = contentLanguage === "en"
+        ? `You are a supportive teacher. A student named "${body.studentName}" completed an assignment with ${totalQuestions} questions.
+They earned ${earnedPoints} out of ${totalPointsVal} points (${Math.round(score)}%).
+
+Questions and answers:
+${answerResults.map((a, i) => `${i + 1}. ${a.questionText} (${a.points} points)
+   Student answer: ${a.selectedAnswer} ${a.isCorrect ? "✓" : "✗"}
+   Correct answer: ${a.correctAnswer}`).join("\n")}
+${assignment.aiGradingInstructions ? `\nTeacher grading instructions:\n${assignment.aiGradingInstructions}\n` : ""}
+Give concise, encouraging feedback about the student's performance in English (3–4 sentences).`
+        : `أنت معلم عربي. طالب اسمه "${body.studentName}" أجاب على واجب يحتوي على ${totalQuestions} سؤال.
 حصل على ${earnedPoints} درجة من أصل ${totalPointsVal} (${Math.round(score)}%).
 
 الأسئلة والإجابات:
@@ -635,7 +650,6 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
-
     const [submission] = await db.select().from(submissionsTable).where(
       and(eq(submissionsTable.id, submissionId), eq(submissionsTable.assignmentId, assignmentId))
     );
@@ -789,6 +803,11 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
+    const contentLanguage = resolveAiContentLanguage({
+      preferredLanguage: req.body?.language,
+      primaryText: assignment.title,
+      detailTexts: [assignment.aiGradingInstructions],
+    });
 
     // المعلم مالك الواجب يستطيع تصحيح أوراق طلابه بالتصوير من صفحة
     // التصحيح الورقي لأي واجب يملكه — بلا قيود وضع التسليم أو الموعد
@@ -1145,7 +1164,15 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
     let aiFeedback: string | null = null;
     try {
-      const feedbackPrompt = `أنت معلم عربي. طالب اسمه "${finalStudentName}" أرسل واجبه ورقياً عبر صورة.
+      const feedbackPrompt = contentLanguage === "en"
+        ? `You are a supportive teacher. A student named "${finalStudentName}" submitted a paper assignment as an image.
+They earned ${earnedPoints} out of ${totalPointsVal} points (${Math.round(score)}%).
+
+Answer details:
+${answerResults.map((a, i) => `${i + 1}. ${a.questionText} (${a.points} points) - earned ${a.earnedPoints} points`).join("\n")}
+${assignment.aiGradingInstructions ? `\nTeacher grading instructions:\n${assignment.aiGradingInstructions}\n` : ""}
+Give concise, encouraging feedback about the student's performance in English (3–4 sentences).`
+        : `أنت معلم عربي. طالب اسمه "${finalStudentName}" أرسل واجبه ورقياً عبر صورة.
 حصل على ${earnedPoints} درجة من أصل ${totalPointsVal} (${Math.round(score)}%).
 
 تفاصيل الإجابات:

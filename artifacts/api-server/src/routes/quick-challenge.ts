@@ -5,6 +5,7 @@ import { db, assignmentsTable, questionsTable, platformSettingsTable } from "@wo
 import { eq } from "drizzle-orm";
 import { createGame, getGame, type GameQuestion } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
+import { resolveAiContentLanguage, type AiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -46,42 +47,49 @@ function sanitizeText(val: any, maxLen: number): string {
   return val.trim().slice(0, maxLen);
 }
 
-function buildPrompt(questionType: string, topic: string): string {
+function buildPrompt(questionType: string, topic: string, language: AiContentLanguage, count = QUICK_QUESTION_COUNT, difficulty = "medium"): string {
   const topicLine = topic.trim()
     ? `الموضوع: ${topic.trim()}`
     : "الموضوع: معلومات عامة ومتنوعة";
+  const englishRule = language === "en"
+    ? "\nIMPORTANT: Write every question, answer option, statement, and answer in English only. Do not include Arabic translations."
+    : "";
+  const questionLanguageRule = language === "ar"
+    ? "باللغة العربية"
+    : "in English only";
+  const difficultyLabel = difficulty === "easy" ? "سهلة" : difficulty === "hard" ? "صعبة" : "متوسطة";
 
   if (questionType === "true_false") {
-    return `أنت خبير تعليمي. المطلوب: إنشاء ${QUICK_QUESTION_COUNT} أسئلة صح أو خطأ.
+    return `أنت خبير تعليمي. المطلوب: إنشاء ${count} أسئلة صح أو خطأ.
 ${topicLine}
 القواعد:
-- نص السؤال باللغة العربية
+- اكتب نص السؤال ${questionLanguageRule}
 - correctAnswer إما "true" أو "false"
 - وزّع الإجابات بالتساوي بين true و false
 أعد JSON فقط:
-[{"text":"...","correctAnswer":"true","points":1},...]`;
+[{"text":"...","correctAnswer":"true","points":1},...]${englishRule}`;
   }
 
   if (questionType === "fill_blank") {
-    return `أنت خبير تعليمي. المطلوب: إنشاء ${QUICK_QUESTION_COUNT} أسئلة أملأ الفراغ.
+    return `أنت خبير تعليمي. المطلوب: إنشاء ${count} أسئلة أملأ الفراغ.
 ${topicLine}
 القواعد:
 - استخدم ___ لتمثيل الفراغ في نص السؤال
 - الإجابة كلمة واحدة أو عبارة قصيرة
-- الأسئلة والإجابات باللغة العربية
+- اكتب الأسئلة والإجابات ${questionLanguageRule}
 أعد JSON فقط:
-[{"text":"العاصمة ___ هي أكبر مدينة في فرنسا","correctAnswer":"باريس","points":1},...]`;
+[{"text":"العاصمة ___ هي أكبر مدينة في فرنسا","correctAnswer":"باريس","points":1},...]${englishRule}`;
   }
 
-  return `أنت خبير تعليمي. المطلوب: إنشاء ${QUICK_QUESTION_COUNT} أسئلة اختيار من متعدد.
+  return `أنت خبير تعليمي. المطلوب: إنشاء ${count} أسئلة اختيار من متعدد.
 ${topicLine}
-الصعوبة: متوسطة
+الصعوبة: ${difficultyLabel}
 القواعد:
 - 4 خيارات (A,B,C,D) لكل سؤال، إجابة صحيحة واحدة
 - وزّع الإجابات الصحيحة عشوائياً بين A و B و C و D
-- الأسئلة والخيارات باللغة العربية
+- اكتب الأسئلة والخيارات ${questionLanguageRule}
 أعد JSON فقط:
-[{"text":"...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"B","points":1},...]`;
+[{"text":"...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"B","points":1},...]${englishRule}`;
 }
 
 router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (req, res) => {
@@ -93,15 +101,16 @@ router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (r
     return;
   }
 
-  const rawBody = (req.body || {}) as { questionType?: unknown; topic?: unknown };
+  const rawBody = (req.body || {}) as { questionType?: unknown; topic?: unknown; language?: unknown };
   const questionType = typeof rawBody.questionType === "string" ? rawBody.questionType : "mcq";
   const topic = typeof rawBody.topic === "string" ? rawBody.topic : "";
+  const language = resolveAiContentLanguage({ preferredLanguage: rawBody.language, primaryText: topic });
   const validTypes = ["mcq", "true_false", "fill_blank", "mixed"];
   const type = validTypes.includes(questionType) ? questionType : "mcq";
 
   const title = topic.trim()
-    ? `تحدي سريع: ${topic.trim()}`
-    : "تحدي سريع متنوع";
+    ? (language === "ar" ? `تحدي سريع: ${topic.trim()}` : `Quick challenge: ${topic.trim()}`)
+    : (language === "ar" ? "تحدي سريع متنوع" : "Mixed quick challenge");
 
   try {
     let questions: any[] = [];
@@ -111,12 +120,12 @@ router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (r
         openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 2000,
-          messages: [{ role: "user", content: buildPrompt("mcq", topic) }],
+          messages: [{ role: "user", content: buildPrompt("mcq", topic, language) }],
         }),
         openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 1000,
-          messages: [{ role: "user", content: buildPrompt("true_false", topic) }],
+          messages: [{ role: "user", content: buildPrompt("true_false", topic, language) }],
         }),
       ]);
 
@@ -128,7 +137,7 @@ router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (r
       const completion = await openai.chat.completions.create({
         model: "gpt-5.2",
         max_completion_tokens: 2500,
-        messages: [{ role: "user", content: buildPrompt(type, topic) }],
+          messages: [{ role: "user", content: buildPrompt(type, topic, language) }],
       });
       questions = parseAiResponse(completion.choices[0]?.message?.content || "");
     }
@@ -152,8 +161,10 @@ router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (r
         .insert(assignmentsTable)
         .values({
           title,
-          subject: "تحدي سريع",
-          description: `تحدي سريع تلقائي - ${type === "mcq" ? "اختيار متعدد" : type === "true_false" ? "صح أو خطأ" : type === "fill_blank" ? "أملأ الفراغ" : "متنوع"}`,
+          subject: language === "ar" ? "تحدي سريع" : "Quick challenge",
+          description: language === "ar"
+            ? `تحدي سريع تلقائي - ${type === "mcq" ? "اختيار متعدد" : type === "true_false" ? "صح أو خطأ" : type === "fill_blank" ? "أملأ الفراغ" : "متنوع"}`
+            : `Generated quick challenge - ${type === "mcq" ? "multiple choice" : type === "true_false" ? "true or false" : type === "fill_blank" ? "fill in the blank" : "mixed"}`,
           submissionMode: "kahoot",
           accessMode: "open",
           accessCode: null,
@@ -366,7 +377,7 @@ router.post("/quick-challenge/guest-ai-generate", async (req, res) => {
     return;
   }
 
-  const { topic, count = 5, difficulty = "medium", questionType = "mcq" } = req.body || {};
+  const { topic, count = 5, difficulty = "medium", questionType = "mcq", language: preferredLanguage } = req.body || {};
 
   const cleanTopic = sanitizeText(topic, MAX_TOPIC_LENGTH);
   if (!cleanTopic) {
@@ -378,40 +389,9 @@ router.post("/quick-challenge/guest-ai-generate", async (req, res) => {
   const type = validTypes.includes(questionType) ? questionType : "mcq";
   const parsedCount = Math.min(Math.max(parseInt(count) || 5, 1), 10);
 
-  const difficultyText = difficulty === "easy" ? "سهلة" : difficulty === "hard" ? "صعبة" : "متوسطة";
+  const language = resolveAiContentLanguage({ preferredLanguage, primaryText: cleanTopic });
 
-  let prompt: string;
-  if (type === "true_false") {
-    prompt = `أنت خبير تعليمي. المطلوب: إنشاء ${parsedCount} أسئلة صح أو خطأ.
-الموضوع: ${cleanTopic}
-الصعوبة: ${difficultyText}
-القواعد:
-- نص السؤال باللغة العربية
-- correctAnswer إما "true" أو "false"
-- وزّع الإجابات بالتساوي بين true و false
-أعد JSON فقط:
-[{"text":"...","correctAnswer":"true","questionType":"true_false","points":1},...]`;
-  } else if (type === "fill_blank") {
-    prompt = `أنت خبير تعليمي. المطلوب: إنشاء ${parsedCount} أسئلة أملأ الفراغ.
-الموضوع: ${cleanTopic}
-الصعوبة: ${difficultyText}
-القواعد:
-- استخدم ___ لتمثيل الفراغ في نص السؤال
-- الإجابة كلمة واحدة أو عبارة قصيرة
-- الأسئلة والإجابات باللغة العربية
-أعد JSON فقط:
-[{"text":"العاصمة ___ هي أكبر مدينة في فرنسا","correctAnswer":"باريس","questionType":"fill_blank","points":1},...]`;
-  } else {
-    prompt = `أنت خبير تعليمي. المطلوب: إنشاء ${parsedCount} أسئلة اختيار من متعدد.
-الموضوع: ${cleanTopic}
-الصعوبة: ${difficultyText}
-القواعد:
-- 4 خيارات (A,B,C,D) لكل سؤال، إجابة صحيحة واحدة
-- وزّع الإجابات الصحيحة عشوائياً بين A و B و C و D
-- الأسئلة والخيارات باللغة العربية
-أعد JSON فقط:
-[{"text":"...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"B","questionType":"mcq","points":1},...]`;
-  }
+  const prompt = buildPrompt(type, cleanTopic, language, parsedCount, difficulty);
 
   try {
     const completion = await openai.chat.completions.create({

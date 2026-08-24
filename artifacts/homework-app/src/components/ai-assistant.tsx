@@ -224,7 +224,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, message: text }),
+        body: JSON.stringify({ conversationId, message: text, language: lang }),
       });
       const data = await r.json();
       if (!r.ok) {

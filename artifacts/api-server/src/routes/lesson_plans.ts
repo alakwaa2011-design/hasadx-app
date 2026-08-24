@@ -12,6 +12,7 @@ import {
   processUploadedFiles,
   runVisionCompletionMulti,
 } from "../lib/file-upload";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -367,7 +368,15 @@ router.post("/lesson-plans/ai/generate", requireTeacher, checkCredits("lesson-pl
   let language: "ar" | "en" = "ar";
   try {
     const teacherId = req.session.teacherId as number;
-    const body = aiGenerateBody.parse(req.body);
+    const parsedBody = aiGenerateBody.parse(req.body);
+    const body = {
+      ...parsedBody,
+      language: resolveAiContentLanguage({
+        preferredLanguage: parsedBody.language,
+        primaryText: parsedBody.topic,
+        detailTexts: [parsedBody.subject, parsedBody.gradeLevel, parsedBody.notes],
+      }),
+    };
     language = body.language;
 
     const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
@@ -385,7 +394,7 @@ router.post("/lesson-plans/ai/generate", requireTeacher, checkCredits("lesson-pl
       return;
     }
     await captureCredits(req);
-    res.json({ sections: validated.data });
+    res.json({ sections: validated.data, language });
   } catch (err: any) {
     await refundCredits(req, "فشل توليد خطة الدرس");
     if (err?.issues) {
@@ -430,7 +439,7 @@ router.post(
       const teacherId = req.session.teacherId as number;
       const files = (req.files as Express.Multer.File[]) || [];
 
-      const parsedBody = aiExtractFields.parse({
+      const parsedInput = aiExtractFields.parse({
         language: req.body.language,
         topic: req.body.topic || undefined,
         subject: req.body.subject || undefined,
@@ -439,7 +448,13 @@ router.post(
         pedagogy: req.body.pedagogy,
         notes: req.body.notes || undefined,
       });
-      language = parsedBody.language;
+      const contentLanguage = resolveAiContentLanguage({
+        preferredLanguage: parsedInput.language,
+        primaryText: parsedInput.topic,
+        detailTexts: [parsedInput.subject, parsedInput.gradeLevel, parsedInput.notes],
+      });
+      const parsedBody = { ...parsedInput, language: contentLanguage };
+      language = contentLanguage;
 
       const prepared = await processUploadedFiles(req, res, files, language);
       if (!prepared) {
@@ -485,7 +500,7 @@ router.post(
         return;
       }
       await captureCredits(req);
-      res.json({ sections: validated.data });
+      res.json({ sections: validated.data, language });
     } catch (err: any) {
       await refundCredits(req, "فشل استخراج خطة الدرس");
       if (err?.issues) {

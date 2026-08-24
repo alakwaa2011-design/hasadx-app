@@ -59,7 +59,7 @@ export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionType, topic }),
+        body: JSON.stringify({ questionType, topic, language: lang }),
       });
       const data = await res.json();
       if (!res.ok) {

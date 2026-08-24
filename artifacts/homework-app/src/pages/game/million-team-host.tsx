@@ -451,6 +451,7 @@ export default function MillionTeamHost() {
           optionB: question.optionB,
           optionC: question.optionC,
           optionD: question.optionD,
+          language: lang,
         }),
       });
       if (!r.ok) {

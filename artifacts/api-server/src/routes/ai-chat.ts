@@ -14,6 +14,7 @@ import {
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { buildSystemPrompt } from "../lib/ai-system-prompt";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
 
@@ -180,6 +181,7 @@ router.delete("/conversations/:id", async (req, res) => {
 const sendBody = z.object({
   conversationId: z.number().int().positive().nullable().optional(),
   message: z.string().min(1).max(4000),
+  language: z.enum(["ar", "en"]).optional(),
 });
 
 // POST /api/ai-chat/messages — send a message, get a reply
@@ -206,6 +208,10 @@ async function handleSendMessage(req: any, res: any) {
     return res.status(400).json({ error: "bad_request", details: parsed.error.message });
   }
   const { message } = parsed.data;
+  const language = resolveAiContentLanguage({
+    preferredLanguage: parsed.data.language,
+    primaryText: message,
+  });
 
   logActivity({
     req,
@@ -248,7 +254,7 @@ async function handleSendMessage(req: any, res: any) {
   }
 
   // First-turn cache lookup — runs BEFORE rate-limit, since cached hits are free.
-  const qHash = hashQuestion(message);
+  const qHash = hashQuestion(`${language}:${message}`);
   if (isFirstTurn) {
     const cached = await db
       .select()
@@ -342,7 +348,7 @@ async function handleSendMessage(req: any, res: any) {
 
   // Load admin custom instructions (cached per request — one fast PK lookup)
   const customRows = await db.select().from(aiCustomInstructionsTable).limit(1);
-  const fullSystemPrompt = buildSystemPrompt(customRows[0]?.content);
+  const fullSystemPrompt = buildSystemPrompt(customRows[0]?.content, language);
 
   try {
     const completion = await anthropic.messages.create({

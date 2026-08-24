@@ -633,32 +633,35 @@ export default function WorksheetCreate() {
         return;
       }
       const current = latestWorksheetRef.current;
+      const resolvedLanguage = data.language === "en" ? "en" : "ar";
       const nextQuestions = [...generated, ...current.questions];
       const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 80);
       const lastTheme = getLastTheme();
       const chosenTheme = selectTheme(
         current.subject.trim() || null,
         current.gradeLevel.trim() || null,
-        current.contentLang,
+        resolvedLanguage,
         generated.length,
         lastTheme,
       );
       const nextSettings = { ...current.settings, template: chosenTheme };
 
       setQuestions(nextQuestions);
+      setContentLang(resolvedLanguage);
       if (!current.title.trim()) setTitle(nextTitle);
       setLastTheme(chosenTheme);
       setSettings(nextSettings);
       latestWorksheetRef.current = {
         ...current,
         title: nextTitle,
+        contentLang: resolvedLanguage,
         questions: nextQuestions,
         settings: nextSettings,
       };
       toast.success(ar ? `تمت إضافة ${generated.length} سؤال` : `Added ${generated.length} questions`);
       await persistWorksheetPayload({
         title: nextTitle,
-        language: current.contentLang,
+        language: resolvedLanguage,
         gradeLevel: current.gradeLevel.trim() || null,
         subject: current.subject.trim() || null,
         questions: nextQuestions,
@@ -722,6 +725,7 @@ export default function WorksheetCreate() {
         return;
       }
       const current = latestWorksheetRef.current;
+      const resolvedLanguage = data.language === "en" ? "en" : "ar";
       const nextQuestions = [...generated, ...current.questions];
       const fallbackTitle = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
       const nextTitle = current.title.trim() || fallbackTitle;
@@ -729,19 +733,21 @@ export default function WorksheetCreate() {
       const chosenThemeF = selectTheme(
         current.subject.trim() || null,
         current.gradeLevel.trim() || null,
-        current.contentLang,
+        resolvedLanguage,
         generated.length,
         lastThemeF,
       );
       const nextSettings = { ...current.settings, template: chosenThemeF };
 
       setQuestions(nextQuestions);
+      setContentLang(resolvedLanguage);
       if (!current.title.trim()) setTitle(nextTitle);
       setLastTheme(chosenThemeF);
       setSettings(nextSettings);
       latestWorksheetRef.current = {
         ...current,
         title: nextTitle,
+        contentLang: resolvedLanguage,
         questions: nextQuestions,
         settings: nextSettings,
       };
@@ -759,7 +765,7 @@ export default function WorksheetCreate() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       await persistWorksheetPayload({
         title: nextTitle,
-        language: current.contentLang,
+        language: resolvedLanguage,
         gradeLevel: current.gradeLevel.trim() || null,
         subject: current.subject.trim() || null,
         questions: nextQuestions,

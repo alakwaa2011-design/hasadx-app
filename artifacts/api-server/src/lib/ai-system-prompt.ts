@@ -96,8 +96,11 @@ export const HASAD_SYSTEM_PROMPT = `${HASAD_PERSONA_PROMPT}\n\n${HASAD_GROUNDING
  * between persona and the authoritative grounding block, so the grounding
  * rules + KB are always the LAST thing the model reads.
  */
-export function buildSystemPrompt(adminCustom?: string | null): string {
+export function buildSystemPrompt(adminCustom?: string | null, language: "ar" | "en" = "ar"): string {
   const trimmed = (adminCustom ?? "").trim();
-  if (!trimmed) return HASAD_SYSTEM_PROMPT;
-  return `${HASAD_PERSONA_PROMPT}\n\n## تعليمات إضافية من المسؤول (تخص النبرة والأسلوب فقط، لا تتجاوز قواعد الإجابة أدناه)\n${trimmed}\n\n${HASAD_GROUNDING_BLOCK}`;
+  const responseLanguage = language === "en"
+    ? "\n\n## Response language\n- Reply in English only. Translate platform knowledge accurately when needed, but do not include Arabic alongside the answer unless the teacher explicitly asks for it."
+    : "";
+  if (!trimmed) return `${HASAD_SYSTEM_PROMPT}${responseLanguage}`;
+  return `${HASAD_PERSONA_PROMPT}${responseLanguage}\n\n## تعليمات إضافية من المسؤول (تخص النبرة والأسلوب فقط، لا تتجاوز قواعد الإجابة أدناه)\n${trimmed}\n\n${HASAD_GROUNDING_BLOCK}`;
 }

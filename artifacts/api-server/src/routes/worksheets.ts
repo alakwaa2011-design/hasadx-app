@@ -15,6 +15,7 @@ import {
   processUploadedFiles,
   runVisionCompletionMulti,
 } from "../lib/file-upload";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -870,7 +871,15 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
   let language: "ar" | "en" = "ar";
   try {
     const teacherId = req.session.teacherId as number;
-    const body = aiGenerateBody.parse(req.body);
+    const parsedBody = aiGenerateBody.parse(req.body);
+    const body = {
+      ...parsedBody,
+      language: resolveAiContentLanguage({
+        preferredLanguage: parsedBody.language,
+        primaryText: parsedBody.topic,
+        detailTexts: [parsedBody.subject, parsedBody.gradeLevel],
+      }),
+    };
     language = body.language;
 
     const total = body.counts.mcq + body.counts.true_false + body.counts.short_answer + body.counts.fill_blank + body.counts.matching;
@@ -905,7 +914,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       return;
     }
     await captureCredits(req);
-    res.json({ questions: validated.data });
+    res.json({ questions: validated.data, language });
   } catch (err: any) {
     await refundCredits(req, "فشل توليد الورقة العمل");
     if (err?.issues) {
@@ -948,7 +957,7 @@ router.post(
           return;
         }
       }
-      const parsedBody = aiExtractFields.parse({
+      const parsedInput = aiExtractFields.parse({
         language: req.body.language,
         subject: req.body.subject || undefined,
         gradeLevel: req.body.gradeLevel || undefined,
@@ -957,6 +966,14 @@ router.post(
         topicHint: req.body.topicHint || undefined,
         counts: parsedCounts,
       });
+      const parsedBody = {
+        ...parsedInput,
+        language: resolveAiContentLanguage({
+          preferredLanguage: parsedInput.language,
+          primaryText: parsedInput.topicHint,
+          detailTexts: [parsedInput.subject, parsedInput.gradeLevel],
+        }),
+      };
       language = parsedBody.language;
 
       const total = parsedBody.counts.mcq + parsedBody.counts.true_false + parsedBody.counts.short_answer + parsedBody.counts.fill_blank + parsedBody.counts.matching;
@@ -1016,7 +1033,7 @@ router.post(
         res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
         return;
       }
-      const responseBody = { questions: validated.data };
+      const responseBody = { questions: validated.data, language };
       await captureCredits(req, responseBody);
       res.json(responseBody);
     } catch (err: any) {

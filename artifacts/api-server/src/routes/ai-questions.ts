@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { imageUploadLimiter } from "../lib/rate-limiter";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { resolveAiContentLanguage, type AiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -16,26 +17,17 @@ const VALID_DIFFICULTIES = ["easy", "medium", "hard"] as const;
    types so the generated questions match the chosen template structure. */
 const VALID_AI_QTYPES = ["mcq", "true_false", "fill_blank"] as const;
 type AiQType = (typeof VALID_AI_QTYPES)[number];
-type QuestionLanguage = "ar" | "en";
+type QuestionLanguage = AiContentLanguage;
 
 /** The UI language is the teacher's explicit preference. When an older client
     does not send it, a topic written wholly in Latin characters is an
     intentional English request and should not be translated back to Arabic. */
 function resolveQuestionLanguage(rawLanguage: unknown, topic: string, subject?: unknown): QuestionLanguage {
-  if (rawLanguage === "en") return "en";
-
-  /* The topic is the teacher's primary content request. A translated or
-     bilingual subject label must not turn an English topic back into Arabic. */
-  const topicHasArabic = /[\u0600-\u06FF]/.test(topic);
-  const topicHasLatin = /[A-Za-z]/.test(topic);
-  if (topicHasLatin && !topicHasArabic) return "en";
-
-  const subjectText = typeof subject === "string" ? subject : "";
-  const subjectHasArabic = /[\u0600-\u06FF]/.test(subjectText);
-  const subjectHasLatin = /[A-Za-z]/.test(subjectText);
-  if (subjectHasLatin && !subjectHasArabic) return "en";
-
-  return "ar";
+  return resolveAiContentLanguage({
+    preferredLanguage: rawLanguage,
+    primaryText: topic,
+    detailTexts: [subject],
+  });
 }
 
 /** Sanitize the requested types and cycle them to exactly `count` slots.
@@ -599,7 +591,7 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, checkCredits
     return;
   }
 
-  const { images, count, difficulty } = req.body || {};
+  const { images, count, difficulty, language: preferredLanguage } = req.body || {};
 
   if (!images || !Array.isArray(images) || images.length === 0) {
     await refundCredits(req, "invalid input");
@@ -632,6 +624,10 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, checkCredits
 
   const diff = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
   const difficultyText = diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة";
+  const language = resolveAiContentLanguage({ preferredLanguage });
+  const outputLanguageRule = language === "ar"
+    ? "الأسئلة والخيارات باللغة العربية فقط"
+    : "Write all questions and answer options in English only";
 
   const textContent = `أنت خبير تعليمي. قم بتحليل الصور المرفقة (صفحات من كتاب أو درس أو ملخص) واستخراج ${questionCount} سؤال اختيار من متعدد.
 
@@ -640,7 +636,7 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, checkCredits
 - كل سؤال له 4 خيارات (A, B, C, D)
 - إجابة صحيحة واحدة فقط لكل سؤال
 - وزّع الإجابات الصحيحة بشكل عشوائي بين A و B و C و D
-- الأسئلة والخيارات باللغة العربية (إلا إذا كان المحتوى بلغة أخرى فاستخدم نفس اللغة)
+- ${outputLanguageRule}
 - الصعوبة: ${difficultyText}
 - الخيارات الخاطئة يجب أن تكون منطقية ومعقولة
 - إذا كان المحتوى لا يكفي لعدد الأسئلة المطلوب، أنشئ أسئلة بقدر ما يسمح المحتوى

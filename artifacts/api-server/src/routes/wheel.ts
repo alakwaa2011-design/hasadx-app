@@ -5,6 +5,7 @@ import { z } from "zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -312,7 +313,12 @@ router.post("/wheel-templates/generate", async (req, res) => {
     res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
     return;
   }
-  const { topic, subject, gradeLevel, segmentCount, language, includeBonus, difficulty } = parsed.data;
+  const { topic, subject, gradeLevel, segmentCount, includeBonus, difficulty } = parsed.data;
+  const language = resolveAiContentLanguage({
+    preferredLanguage: parsed.data.language,
+    primaryText: topic,
+    detailTexts: [subject, gradeLevel],
+  });
   try {
     const tier = await resolveTier(req.session.teacherId, (req.body as { tier?: string })?.tier);
     const prompt = buildWheelPrompt({ topic, subject: subject ?? null, gradeLevel: gradeLevel ?? null, segmentCount, language, includeBonus, difficulty });

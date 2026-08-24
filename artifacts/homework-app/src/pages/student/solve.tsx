@@ -1283,14 +1283,14 @@ export default function StudentSolve() {
     }));
     const deviceFingerprint = getDeviceFingerprint();
     const durationSeconds = Math.max(1, Math.floor((Date.now() - startTimeRef.current) / 1000));
-    submitMcq.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, answers: formattedAnswers, accessCode: accessCode || undefined, deviceFingerprint, examSessionId: examSessionId || undefined, durationSeconds } } as any);
+    submitMcq.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, answers: formattedAnswers, accessCode: accessCode || undefined, deviceFingerprint, examSessionId: examSessionId || undefined, durationSeconds, language: lang } } as any);
   };
 
   const handleImgSubmit = () => {
     setAccessError("");
     if (imagePreview) {
       const deviceFingerprint = getDeviceFingerprint();
-      submitImg.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, imageBase64: imagePreview, accessCode: accessCode || undefined, deviceFingerprint } } as any);
+      submitImg.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, imageBase64: imagePreview, accessCode: accessCode || undefined, deviceFingerprint, language: lang } } as any);
     }
   };
 

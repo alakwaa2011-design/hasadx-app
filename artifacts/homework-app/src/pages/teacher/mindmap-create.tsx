@@ -416,7 +416,7 @@ export default function MindMapCreate() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic: t, lang, depth }),
+        body: JSON.stringify({ topic: t, language: lang, depth }),
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {

@@ -414,6 +414,7 @@ export default function SmartBoardNew() {
   const savedIdRef = useRef<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState("");
+  const [contentLanguage, setContentLanguage] = useState<"ar" | "en">(lang);
   const [clientRequestId] = useState(createClientRequestId);
   const saveInFlightRef = useRef(false);
   const saveBlockedRef = useRef(false);
@@ -440,7 +441,7 @@ export default function SmartBoardNew() {
       subject,
       gradeLevel,
       depth,
-      language: lang,
+       language: contentLanguage,
       clientRequestId,
     };
     saveInFlightRef.current = true;
@@ -526,8 +527,18 @@ export default function SmartBoardNew() {
         setError(d.message ?? (isAr ? "حدث خطأ" : "An error occurred"));
         return;
       }
+      const resolvedLanguage = d.language === "en" ? "en" : "ar";
       setPlan(d.plan);
-      await persistPlan(d.plan);
+      setContentLanguage(resolvedLanguage);
+      await persistPlan(d.plan, false, false, {
+        topic: d.plan.topic,
+        plan: d.plan,
+        subject,
+        gradeLevel,
+        depth,
+        language: resolvedLanguage,
+        clientRequestId,
+      });
     } catch {
       setError(isAr ? "تعذّر الاتصال بالخادم" : "Could not connect to server");
     } finally {

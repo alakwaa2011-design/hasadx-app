@@ -201,7 +201,7 @@ export default function GuestCreatePage() {
       const res = await fetch(`${API_BASE}/api/quick-challenge/guest-ai-generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: aiTopic.trim(), count: aiCount, difficulty: aiDifficulty, questionType: aiType }),
+        body: JSON.stringify({ topic: aiTopic.trim(), count: aiCount, difficulty: aiDifficulty, questionType: aiType, language: lang }),
       });
       const data = await res.json();
       if (!res.ok) {

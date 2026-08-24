@@ -709,19 +709,22 @@ export default function LessonPlanCreate() {
       }
       if (data?.sections) {
         const current = latestPlanRef.current;
+        const resolvedLanguage = data.language === "en" ? "en" : "ar";
         const nextSections = { ...blankSections(), ...data.sections };
         const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 200);
         setSections(nextSections);
+        setContentLang(resolvedLanguage);
         if (!current.title.trim()) setTitle(nextTitle);
         latestPlanRef.current = {
           ...current,
           title: nextTitle,
+          contentLang: resolvedLanguage,
           sections: nextSections,
         };
         toast.success(ar ? "تم توليد الخطة" : "Plan generated");
         await persistPlanPayload({
           title: nextTitle,
-          language: current.contentLang,
+          language: resolvedLanguage,
           subject: current.subject.trim() || null,
           gradeLevel: current.gradeLevel.trim() || null,
           durationMinutes: current.durationMinutes,
@@ -773,14 +776,17 @@ export default function LessonPlanCreate() {
       }
       if (data?.sections) {
         const current = latestPlanRef.current;
+        const resolvedLanguage = data.language === "en" ? "en" : "ar";
         const nextSections = { ...blankSections(), ...data.sections };
         const fallbackTitle = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
         const nextTitle = current.title.trim() || fallbackTitle;
         setSections(nextSections);
+        setContentLang(resolvedLanguage);
         if (!current.title.trim()) setTitle(nextTitle);
         latestPlanRef.current = {
           ...current,
           title: nextTitle,
+          contentLang: resolvedLanguage,
           sections: nextSections,
         };
         toast.success(ar ? `تم توليد الخطة من ${pickedFiles.length} ملف` : `Plan generated from ${pickedFiles.length} file(s)`);
@@ -788,7 +794,7 @@ export default function LessonPlanCreate() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         await persistPlanPayload({
           title: nextTitle,
-          language: current.contentLang,
+          language: resolvedLanguage,
           subject: current.subject.trim() || null,
           gradeLevel: current.gradeLevel.trim() || null,
           durationMinutes: current.durationMinutes,

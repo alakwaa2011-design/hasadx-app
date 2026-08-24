@@ -5,6 +5,7 @@ import { z } from "zod";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { awardXpAndNotify } from "../lib/xp/socket";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -449,7 +450,15 @@ router.post("/arena-content/ai-generate-questions", checkCredits("arena-generate
       return res.status(403).json({ error: "AI generation is currently disabled by the admin" });
     }
 
-    const body = AiGenerateBody.parse(req.body);
+    const parsedBody = AiGenerateBody.parse(req.body);
+    const body = {
+      ...parsedBody,
+      language: resolveAiContentLanguage({
+        preferredLanguage: parsedBody.language,
+        primaryText: parsedBody.topic,
+        detailTexts: [parsedBody.notes],
+      }),
+    };
 
     const langName = body.language === "ar" ? "Arabic" : "English";
     const sysPrompt = [

@@ -433,7 +433,7 @@ export default function NewPresentationPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          language: "ar",
+          language: isAr ? "ar" : "en",
           subject: subject.trim() || topic.trim(),
           gradeLevel: grade || "غير محدد",
           topic: topic.trim(),

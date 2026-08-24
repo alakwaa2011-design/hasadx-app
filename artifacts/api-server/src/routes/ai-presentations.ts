@@ -35,6 +35,7 @@ import {
   needsCorrectiveOutlineRetry,
   shouldAdoptCorrectiveOutline,
 } from "../lib/outline-guardrails";
+import { findExplicitAiContentLanguage, resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -426,6 +427,14 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
   try {
     const teacherId = req.session.teacherId as number;
     let brief = briefSchema.parse(req.body) as OutlineBrief;
+    brief = {
+      ...brief,
+      language: resolveAiContentLanguage({
+        preferredLanguage: brief.language,
+        primaryText: brief.topic,
+        detailTexts: [brief.subject, brief.gradeLevel, brief.notes],
+      }),
+    };
 
     /* Quick Mode always enables all interactive toggles regardless of
        what the client sent — the whole point of the mode is to produce
@@ -1422,6 +1431,7 @@ const singleSlideBody = z.object({
   kind: outlineSlideKindSchema,
   prompt: z.string().max(300).default(""),
   theme: z.string().max(40).optional(),
+  language: z.enum(["ar", "en"]).optional(),
 });
 
 function buildSingleSlidePrompt(opts: {
@@ -1542,7 +1552,8 @@ router.post("/presentations/ai/single-slide", requireTeacher, checkCredits("pres
       res.status(403).json({ message: "Forbidden" }); return;
     }
 
-    const lang = (deck.language ?? "ar") as "ar" | "en";
+    const lang = findExplicitAiContentLanguage(body.prompt)
+      ?? ((deck.language ?? "ar") as "ar" | "en");
     const themeKey = body.theme && isAllowedTheme(body.theme) ? body.theme : "harvest";
 
     const userMsg = buildSingleSlidePrompt({

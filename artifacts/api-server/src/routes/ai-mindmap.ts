@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -23,7 +24,7 @@ router.post("/ai/generate-mindmap", checkCredits("mindmap"), async (req, res) =>
     return;
   }
 
-  const { topic, lang = "ar", depth = "standard" } = req.body || {};
+  const { topic, lang, language, depth = "standard" } = req.body || {};
 
   if (!topic || typeof topic !== "string" || !topic.trim()) {
     await refundCredits(req, "invalid input");
@@ -39,7 +40,11 @@ router.post("/ai/generate-mindmap", checkCredits("mindmap"), async (req, res) =>
     return;
   }
 
-  const isAr = lang !== "en";
+  const contentLanguage = resolveAiContentLanguage({
+    preferredLanguage: language ?? lang,
+    primaryText: topic,
+  });
+  const isAr = contentLanguage === "ar";
   const branchRange = depth === "detailed" ? "6 إلى 8" : "4 إلى 6";
   const childRange = depth === "detailed" ? "3 إلى 5" : "2 إلى 4";
 

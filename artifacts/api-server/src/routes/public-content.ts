@@ -5,6 +5,7 @@ import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getG
 import { startGameFromRest } from "../game/socket-handlers";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateSoloChallengeOgImage } from "../lib/og-image";
+import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
 
@@ -283,7 +284,7 @@ router.post("/public/ai-generate", async (req, res) => {
     return;
   }
 
-  const { topic, count = 5, difficulty = "medium", subject } = req.body;
+  const { topic, count = 5, difficulty = "medium", subject, language: preferredLanguage } = req.body;
 
   if (!topic || typeof topic !== "string" || !topic.trim()) {
     res.status(400).json({ message: "يجب تحديد موضوع الأسئلة" });
@@ -297,8 +298,16 @@ router.post("/public/ai-generate", async (req, res) => {
   const parsedCount = Math.max(1, Math.min(10, parseInt(count, 10) || 5));
   const diff = ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium";
   const difficultyText = diff === "easy" ? "سهلة" : diff === "hard" ? "صعبة" : "متوسطة";
+  const language = resolveAiContentLanguage({
+    preferredLanguage,
+    primaryText: topic,
+    detailTexts: [subject],
+  });
+  const languageRule = language === "ar"
+    ? "اكتب الأسئلة والخيارات باللغة العربية فقط."
+    : "Write every question and answer option in English only.";
 
-  const prompt = `أنت خبير تعليمي. أنشئ ${parsedCount} سؤال اختيار من متعدد باللغة العربية عن:
+  const prompt = `أنت خبير تعليمي. أنشئ ${parsedCount} سؤال اختيار من متعدد عن:
 الموضوع: ${topic.trim()}${subject ? `\nالمادة: ${subject.trim()}` : ""}
 الصعوبة: ${difficultyText}
 
@@ -307,6 +316,7 @@ router.post("/public/ai-generate", async (req, res) => {
 - إجابة صحيحة واحدة فقط
 - وزّع الإجابات الصحيحة عشوائياً بين A وB وC وD
 - الخيارات الخاطئة منطقية
+- ${languageRule}
 
 أعد JSON فقط بدون أي نص إضافي:
 [{"text":"...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"B"}]`;

@@ -106,7 +106,7 @@ export default function SmartBoardAsk() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ question: q.trim(), imageBase64: imageB64 }),
+        body: JSON.stringify({ question: q.trim(), imageBase64: imageB64, language: lang }),
       });
       if (!res.ok) {
         if (isInsufficientCreditsResponse(res)) return;
