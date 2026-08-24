@@ -594,7 +594,7 @@ export default function RocketCreate() {
         className="min-h-screen py-8 px-4"
         style={{ background: "linear-gradient(180deg, #FCFAF8 0%, #F4EBD9 100%)" }}
       >
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* Hero */}
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <div
@@ -722,7 +722,7 @@ export default function RocketCreate() {
            </AnimatePresence>
 
            {/* Question sources */}
-            <Card className="p-5 sm:p-7 mb-4 border-primary/15 shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}08, ${BRAND_GOLD}12)` }}>
+            <div className="mb-4">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white shadow-sm border border-primary/10 shrink-0">
                   <Rocket className="w-6 h-6" style={{ color: BRAND_PRIMARY }} />
@@ -732,30 +732,30 @@ export default function RocketCreate() {
                   <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{ar ? "اختر مصدراً للأسئلة، ويمكنك مراجعتها وتعديلها قبل البدء." : "Choose a question source. You can review and edit everything before starting."}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <button type="button" onClick={() => setAssignOpen(true)} className="group relative overflow-hidden rounded-2xl border-2 border-blue-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+                <button type="button" onClick={() => setAssignOpen(true)} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-blue-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-lg">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-blue-500/10 border border-blue-500/20 shadow-sm"><BookOpen className="w-6 h-6 text-blue-500" /></div>
                   <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "من واجب موجود" : "From an assignment"}</h3>
                   <p className="text-sm text-muted-foreground font-medium">{ar ? "استورد أسئلة واجبك السابق في ثوانٍ" : "Import questions from an existing assignment"}</p>
                 </button>
-                <button type="button" onClick={() => { setAiOpen(open => !open); setQuestionsEditorOpen(false); }} className="group relative overflow-hidden rounded-2xl border-2 border-amber-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-lg">
+                <button type="button" onClick={() => { setAiOpen(open => !open); setQuestionsEditorOpen(false); }} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-amber-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-lg">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-500/10 border border-amber-500/20 shadow-sm"><Sparkles className="w-6 h-6 text-amber-500" /></div>
                   <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "بالذكاء الاصطناعي" : "With AI"}</h3>
                   <p className="text-sm text-muted-foreground font-medium">{ar ? "ولّد أسئلة مناسبة لموضوعك تلقائياً" : "Generate questions for your topic automatically"}</p>
                 </button>
-                <button type="button" onClick={addManualQuestion} className="group relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg">
+                <button type="button" onClick={addManualQuestion} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-emerald-500/10 border border-emerald-500/20 shadow-sm"><PenLine className="w-6 h-6 text-emerald-600" /></div>
                   <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "إضافة يدوية" : "Add manually"}</h3>
                   <p className="text-sm text-muted-foreground font-medium">{ar ? "اكتب أسئلتك وخيارات الإجابة بنفسك" : "Write your own questions and answer choices"}</p>
                 </button>
-                <button type="button" onClick={() => setBankOpen(true)} className="group relative overflow-hidden rounded-2xl border-2 border-purple-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-lg">
+                <button type="button" onClick={() => setBankOpen(true)} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-purple-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-lg">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-purple-500/10 border border-purple-500/20 shadow-sm"><Database className="w-6 h-6 text-purple-500" /></div>
                   <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "بنك الأسئلة" : "Question bank"}</h3>
                   <p className="text-sm text-muted-foreground font-medium">{ar ? "اختر من أسئلتك المحفوظة في بنك حصاد" : "Pick from your saved questions in Hasad"}</p>
                 </button>
               </div>
               <button type="button" onClick={() => { setSavedOpen(true); loadTemplates(); }} className="mt-4 w-full min-h-11 rounded-xl text-sm font-bold border border-primary/25 bg-card text-primary hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"><FolderOpen className="w-4 h-4" />{ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}</button>
-            </Card>
+            </div>
 
            <AnimatePresence>
              {aiOpen && (
