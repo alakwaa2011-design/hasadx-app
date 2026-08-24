@@ -7,7 +7,7 @@ import {
   Play, Clock, ChevronDown, ChevronUp, Plus, Sparkles, PenLine, Wand2,
   Check, X, Loader2, FileText, FolderOpen,
   GraduationCap, Trash2, BookOpen, Rocket, Copy,
-  ExternalLink, Users, Database,
+  ExternalLink, Users, Database, Search,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
@@ -124,6 +124,7 @@ export default function RocketCreate() {
   const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number }[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignImporting, setAssignImporting] = useState<number | null>(null);
+  const [assignSearch, setAssignSearch] = useState("");
 
   // Templates
   const [savedOpen, setSavedOpen] = useState(false);
@@ -343,7 +344,10 @@ export default function RocketCreate() {
   }, [ar]);
 
   useEffect(() => {
-    if (assignOpen) { loadAssignments(); }
+    if (assignOpen) {
+      setAssignSearch("");
+      loadAssignments();
+    }
   }, [assignOpen, loadAssignments]);
 
   const importAllFromAssignment = async (assignmentId: number, assignmentTitle: string) => {
@@ -398,6 +402,13 @@ export default function RocketCreate() {
   const filteredBank = bankSearch.trim()
     ? bankQuestions.filter(q => q.text.includes(bankSearch) || q.subject.includes(bankSearch))
     : bankQuestions;
+
+  const filteredAssignments = assignSearch.trim()
+    ? assignments.filter(a => (
+      a.title.toLowerCase().includes(assignSearch.trim().toLowerCase())
+      || a.subject.toLowerCase().includes(assignSearch.trim().toLowerCase())
+    ))
+    : assignments;
 
   // ── Game Created Screen ────────────────────────────────────────────────────
   if (gamePin) {
@@ -862,10 +873,30 @@ export default function RocketCreate() {
                   <button onClick={() => setAssignOpen(false)} className="p-2 rounded-xl hover:bg-white/20 text-white"><X className="w-5 h-5" /></button>
                 </div>
               </div>
+               <div className="p-4 border-b bg-white dark:bg-gray-900" style={{ borderColor: "#e5e7eb" }}>
+                 <label htmlFor="rocket-assignment-search" className="sr-only">{ar ? "البحث في الواجبات" : "Search assignments"}</label>
+                 <div className="relative">
+                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                   <input
+                     id="rocket-assignment-search"
+                     type="search"
+                     value={assignSearch}
+                     onChange={e => setAssignSearch(e.target.value)}
+                     placeholder={ar ? "ابحث في الواجبات..." : "Search assignments..."}
+                     className="w-full py-3 ps-10 pe-4 rounded-xl border-2 text-sm font-medium outline-none transition-colors focus:border-primary"
+                     style={{ borderColor: "#e5e7eb" }}
+                   />
+                 </div>
+                 <p className="mt-2 text-xs text-muted-foreground">
+                   {assignSearch.trim()
+                     ? `${filteredAssignments.length} ${ar ? "واجب مطابق" : "matching assignments"}`
+                     : `${assignments.length} ${ar ? "واجب متاح" : "assignments available"}`}
+                 </p>
+               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {assignLoading && <div className="text-center py-8"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>}
-                {!assignLoading && assignments.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد واجبات" : "No assignments"}</div>}
-                {assignments.map(a => (
+                 {!assignLoading && filteredAssignments.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{assignSearch.trim() ? (ar ? "لا توجد واجبات مطابقة" : "No matching assignments") : (ar ? "لا توجد واجبات" : "No assignments")}</div>}
+                 {filteredAssignments.map(a => (
                   <motion.button key={a.id} whileTap={{ scale: 0.97 }}
                     onClick={() => importAllFromAssignment(a.id, a.title)}
                     disabled={assignImporting !== null}
