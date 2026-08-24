@@ -28,6 +28,8 @@ export interface UnifiedQuestionSourceFlowProps {
   header?: React.ReactNode;
   /** Optional action shown below the source cards, only while choosing a source. */
   menuFooter?: React.ReactNode;
+  /** Starts the manual editor with its first question already open. */
+  manualEntryMode?: "button" | "immediate";
   minQuestions: number;
   maxQuestions: number;
   onComplete: (data: {
@@ -49,6 +51,7 @@ export function UnifiedQuestionSourceFlow({
   floatingAssignmentContinue = false,
   header,
   menuFooter,
+  manualEntryMode = "button",
   minQuestions,
   maxQuestions,
   onComplete,
@@ -545,7 +548,12 @@ export function UnifiedQuestionSourceFlow({
                   <button
                     key={opt.id}
                     onClick={() => {
-                      if (opt.id === "editor") setEditorSource("manual");
+                      if (opt.id === "editor") {
+                        setEditorSource("manual");
+                        if (manualEntryMode === "immediate" && manualQuestions.length === 0) {
+                          setManualQuestions([emptyQuestion("mcq")]);
+                        }
+                      }
                       setViewState(opt.id);
                     }}
                     className={cn(
@@ -793,7 +801,11 @@ export function UnifiedQuestionSourceFlow({
                     <div className="w-12 h-12 rounded-xl bg-muted/60 flex items-center justify-center group-hover:bg-muted mb-3 transition-colors border border-transparent group-hover:border-border/50">
                       <Plus className="w-6 h-6" />
                     </div>
-                    <span className="font-bold text-sm">{ar ? "إضافة سؤال جديد" : "Add new question"}</span>
+                    <span className="font-bold text-sm">
+                      {editorSource === "manual" && manualEntryMode === "immediate"
+                        ? (ar ? "إضافة سؤال آخر" : "Add another question")
+                        : (ar ? "إضافة سؤال جديد" : "Add new question")}
+                    </span>
                   </button>
                 )}
               </div>

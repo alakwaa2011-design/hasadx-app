@@ -524,6 +524,7 @@ export default function RocketCreate() {
                   {ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}
                 </button>
               }
+              manualEntryMode="immediate"
               minQuestions={1}
               maxQuestions={30}
               onComplete={({ questions: prepared, sourceTitle }) => {
