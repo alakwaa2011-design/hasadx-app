@@ -725,42 +725,49 @@ id = "CATFztHdjjfNNL5tmrFul"
 uri = "file://artifacts/homework-app/public/images/logo-hasadx-icon.png"
 type = "image"
 title = "شعار حصاد - أيقونة (خلفية خضراء)"
+logical_id = "061ed859-37b9-4178-8203-5267bd70d023"
 
 [[outputs]]
 id = "Q8C_E0MVi5lWJW8IZUGCb"
 uri = "file://artifacts/homework-app/public/images/logo-hasadx-full.png"
 type = "image"
 title = "شعار حصاد - كامل (عريض)"
+logical_id = "75b4f57c-741c-4e7d-aaca-43a545aa55f8"
 
 [[outputs]]
 id = "Am4SdS_fvGFc5XOTdOQMN"
 uri = "file://artifacts/homework-app/public/images/logo-x-white.png"
 type = "image"
 title = "شعار حصاد - X (خلفية بيضاء)"
+logical_id = "e78d6010-e3e9-4b21-b27f-8ade40d60fc1"
 
 [[outputs]]
 id = "qpuu5ByeY_q7tPO1JvS2l"
 uri = "file://artifacts/homework-app/public/images/preview-full.png"
 type = "image"
 title = "HASAD X فقط - خلفية داكنة"
+logical_id = "641245f4-f842-42d3-894f-9de84ce0f8ac"
 
 [[outputs]]
 id = "5utsbtwPhuvqcFm7Z-uCz"
 uri = "file://artifacts/homework-app/public/images/preview-icon.png"
 type = "image"
 title = "X أيقونة"
+logical_id = "30651082-a534-48b7-81de-dae53877c88c"
 
 [[outputs]]
 id = "0jxCErIfdsiqtBetyqilh"
 uri = "file://artifacts/homework-app/public/images/preview-combined-dark.png"
 type = "image"
 title = "HASAD X + عربي - خلفية داكنة"
+logical_id = "cd0dc4d4-0d86-4654-8e5c-f668e7bde6d6"
 
 [[outputs]]
 id = "MSbR2_tJpzvnAXl1RHj0W"
 uri = "file://artifacts/homework-app/public/images/preview-combined-white.png"
 type = "image"
 title = "HASAD X + عربي - خلفية بيضاء"
+logical_id = "5b38ebab-5f41-4624-a305-6309b8f68baa"
 
 [[outputs]]
 id = "i2o51PuNA3mAaYH73fx_Q"
@@ -768,6 +775,7 @@ uri = "file://hasaadx-brand-package.zip"
 type = "unspecified"
 title = "HASAADX Brand Package — حزمة الهوية البصرية"
 description = "SVGs + دليل الهوية | 10 ملفات"
+logical_id = "c9812786-d0a8-485b-9c77-7a923ee97b11"
 
 [[outputs]]
 id = "wgIFERhqZKrkF7Ao_8zyH"
@@ -775,6 +783,7 @@ uri = "file://brand/brand-guidelines.html"
 type = "unspecified"
 title = "دليل الهوية البصرية — Brand Guidelines"
 description = "ألوان، خطوط، نسخ الشعار، قواعد الاستخدام"
+logical_id = "dbf6ad25-3436-4fc9-9d11-a8f5533ff5f2"
 
 [[outputs]]
 id = "Tfft1-UEw91w7NnFMd8Wx"
@@ -782,6 +791,7 @@ uri = "file://hasad-platform-knowledge.md"
 type = "text"
 title = "وثيقة منصة حصاد — Knowledge Base"
 description = "وثيقة شاملة عن منصة حصاد جاهزة للنسخ ومشاركتها مع أي ذكاء اصطناعي"
+logical_id = "a8e2a9bf-13ec-4482-9e98-c439236ff540"
 
 [[outputs]]
 id = "sdBHY9QlMqqvAIg16IMXC"
@@ -789,6 +799,7 @@ uri = "file://screenshots/homepage-mobile-390x844-final.jpg"
 type = "image"
 title = "Homepage review — mobile 390×844"
 description = "Final mobile view showing the compact single-column hero and code-join card."
+logical_id = "b1ba4f7d-f1e4-4f81-a3a7-340da00a66df"
 
 [[outputs]]
 id = "MHIkFhGJVmNJr1Z_qqUnd"
@@ -796,6 +807,7 @@ uri = "file://screenshots/homepage-desktop-1440x900-final.jpg"
 type = "image"
 title = "Homepage review — desktop 1440×900"
 description = "Final desktop view showing the two-column hero, product preview, and horizontal join bar."
+logical_id = "5c5a41d0-59a3-4722-a21e-67762e1576df"
 
 [[outputs]]
 id = "9hRLelf8w7O8zVWW7TxUu"
@@ -803,6 +815,7 @@ uri = "file://screenshots/homepage-desktop-1440x900-hero-tuned.jpg"
 type = "image"
 title = "Hero tuned — desktop 1440×900"
 description = "Final desktop review showing the adjusted headline wrapping, larger product preview, quieter background ornaments, and balanced join bar."
+logical_id = "f18260bb-677d-4bb5-b569-483a43e80c70"
 
 [[outputs]]
 id = "ZKEKDZMFHNuRoPs6p6zT5"
@@ -810,6 +823,7 @@ uri = "file://screenshots/home-tools-mobile.jpg"
 type = "image"
 title = "Homepage tools — mobile 390×844"
 description = "Final public homepage preview showing the mobile landing layout and join card at 390×844."
+logical_id = "bce8e053-244b-4caf-a51c-8b7657593988"
 
 [[outputs]]
 id = "3OgsexwL50wznsDD0oiTk"
@@ -817,6 +831,7 @@ uri = "file://screenshots/home-tools-desktop.jpg"
 type = "image"
 title = "Homepage tools — desktop 1440×900"
 description = "Final public homepage preview showing the two-column hero and join card at 1440×900."
+logical_id = "f82b45f7-71b7-4698-9c75-d9470be20344"
 
 [[outputs]]
 id = "KoKcBCur6aJYTmkiPLTF0"
@@ -824,6 +839,7 @@ uri = "file://screenshots/join-card-mobile-compact.jpg"
 type = "image"
 title = "Join card — compact mobile 390×844"
 description = "Updated public homepage preview showing the compact join card on mobile, with six PIN fields, join button, and secondary link."
+logical_id = "3686ff0c-f2ad-4ea3-9b72-420761131a96"
 
 [[outputs]]
 id = "GRhM0jzqtKayoWS-KFMOp"
@@ -831,6 +847,7 @@ uri = "file://screenshots/join-card-desktop-compact.jpg"
 type = "image"
 title = "Join card — compact desktop 1440×900"
 description = "Updated public homepage preview showing the compact horizontal join strip on desktop."
+logical_id = "c52f8c0e-b42f-450b-8496-9349a30bfab9"
 
 [[outputs]]
 id = "ZmmQovqjQvlGim9P1oz2h"
@@ -838,6 +855,7 @@ uri = "file://screenshots/join-card-pin-only-mobile.jpg"
 type = "image"
 title = "Join card — PIN only mobile 390×844"
 description = "Final mobile preview with the secondary text removed and balanced bottom spacing."
+logical_id = "30383029-4b78-48fe-8cea-4cd9b3d08518"
 
 [[outputs]]
 id = "yVQwH_ngN5zh4rdkYumKx"
@@ -845,6 +863,7 @@ uri = "file://screenshots/join-card-pin-only-desktop.jpg"
 type = "image"
 title = "Join card — PIN only desktop 1440×900"
 description = "Final desktop preview with the compact horizontal join card and balanced spacing."
+logical_id = "38a358ba-d243-4511-9e23-8f1aac321084"
 
 [[outputs]]
 id = "0fnKq5wBJJE6j32LZHyqx"
@@ -852,6 +871,7 @@ uri = "file://screenshots/teacher-mobile-nav-390x844-authenticated.jpg"
 type = "image"
 title = "لقطة شريط المعلم على الهاتف — 390×844"
 description = "لقطة تحقق بصري للنسخة المصادق عليها محلياً: العناصر الخمسة مرتبة من اليمين إلى اليسار، مع ظهور مكتبة الأنشطة دون قص. تم الاعتماد على استجابات قراءة محلية فقط دون إنشاء حساب أو بيانات."
+logical_id = "8e6f70ae-edc8-449d-89e8-d659ed52a5ae"
 
 [[outputs]]
 id = "TeoJZic7BcTHJeNVnkQXI"
@@ -859,6 +879,7 @@ uri = "file://screenshots/tug-source-desktop.jpg"
 type = "image"
 title = "شد الحبل — اختيار مصدر الأسئلة (سطح المكتب)"
 description = "مرحلة المصادر الأربع والمسار: الأسئلة ← إعدادات اللعبة ← البدء."
+logical_id = "dc229f14-87d4-4091-a6b5-f0183e3dc9c4"
 
 [[outputs]]
 id = "eiyq9VjCnwmDNLj1E0Yit"
@@ -866,6 +887,7 @@ uri = "file://screenshots/escape-source-mobile.jpg"
 type = "image"
 title = "غرفة الهروب — اختيار مصدر الأسئلة (الجوال)"
 description = "معاينة RTL متجاوبة لمرحلة المصادر الأربع على عرض 390px."
+logical_id = "a480cc84-eb72-401f-8267-f9adff5c3be1"
 
 [[outputs]]
 id = "PlT0VIioNeO8_F4La4mM6"
@@ -873,6 +895,7 @@ uri = "file://screenshots/tug-source-mobile-final.jpg"
 type = "image"
 title = "شد الحبل — اختيار مصدر الأسئلة (الجوال)"
 description = "المعاينة النهائية المتجاوبة بعد اكتمال التحقق."
+logical_id = "e00e5626-4c2e-479e-9ad8-86a4986e6628"
 
 [[outputs]]
 id = "4swq10tlvtxt7T7xnYDVm"
@@ -880,6 +903,7 @@ uri = "file://screenshots/tug-redesign-source-desktop.jpg"
 type = "image"
 title = "شد الحبل — إعداد المصادر على سطح المكتب"
 description = "الرأس المختصر، الفرق، مسار الإعداد، ومصادر الأسئلة الأربع."
+logical_id = "2297ae27-4fb8-451d-aa2f-e097bdf7b766"
 
 [[outputs]]
 id = "vP9ZPR1Wv_UW_YlvklvUG"
@@ -887,3 +911,4 @@ uri = "file://screenshots/tug-redesign-final-mobile.jpg"
 type = "image"
 title = "شد الحبل — إعداد المصادر على الجوال"
 description = "المعاينة النهائية على عرض 390×844 من دون تمرير أفقي."
+logical_id = "1a0000d4-5c53-4927-bcd8-14baa55730d7"
