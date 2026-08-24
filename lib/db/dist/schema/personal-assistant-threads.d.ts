@@ -1,0 +1,121 @@
+import { z } from "zod/v4";
+export declare const personalAssistantThreadsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "personal_assistant_threads";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "personal_assistant_threads";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: "always";
+            generated: undefined;
+        }, {}, {}>;
+        channel: import("drizzle-orm/pg-core").PgColumn<{
+            name: "channel";
+            tableName: "personal_assistant_threads";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        externalContactPhone: import("drizzle-orm/pg-core").PgColumn<{
+            name: "external_contact_phone";
+            tableName: "personal_assistant_threads";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lastMessageAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "last_message_at";
+            tableName: "personal_assistant_threads";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "personal_assistant_threads";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
+            tableName: "personal_assistant_threads";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const insertPersonalAssistantThreadSchema: z.ZodObject<{
+    channel: z.ZodOptional<z.ZodString>;
+    externalContactPhone: z.ZodString;
+    lastMessageAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+}, {
+    out: {};
+    in: {};
+}>;
+export type InsertPersonalAssistantThread = z.infer<typeof insertPersonalAssistantThreadSchema>;
+export type PersonalAssistantThread = typeof personalAssistantThreadsTable.$inferSelect;
+//# sourceMappingURL=personal-assistant-threads.d.ts.map

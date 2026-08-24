@@ -88,3 +88,6 @@ export * from "./credit-purchases";
 export * from "./webhook-events";
 export * from "./direct-play-links";
 export * from "./mind-maps";
+export * from "./personal-assistant-threads";
+export * from "./personal-assistant-messages";
+export * from "./personal-assistant-actions";

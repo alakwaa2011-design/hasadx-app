@@ -67,6 +67,7 @@ const TeacherGamesPage = lazy(() => import("@/pages/teacher/games"));
 const TeacherSessions = lazy(() => import("@/pages/teacher/sessions"));
 const AdminPage = lazy(() => import("@/pages/teacher/admin"));
 const AdminHiddenPage = lazy(() => import("@/pages/admin/hidden"));
+const PersonalAssistantPage = lazy(() => import("@/pages/admin/personal-assistant"));
 const ArenaReportsPage = lazy(() => import("@/pages/teacher/arena-reports"));
 const ArenaContentAdmin = lazy(() => import("@/pages/teacher/arena-content"));
 const TeacherIslamicAdmin = lazy(() => import("@/pages/teacher/islamic-admin"));
@@ -333,6 +334,7 @@ function Router() {
         <Route path="/teacher/sessions" component={TeacherSessions} />
         <Route path="/teacher/admin" component={AdminPage} />
         <Route path="/admin/hidden" component={AdminHiddenPage} />
+        <Route path="/admin/personal-assistant" component={PersonalAssistantPage} />
         <Route path="/teacher/arena-reports" component={ArenaReportsPage} />
         <Route path="/teacher/arena-content" component={ArenaContentAdmin} />
         <Route path="/teacher/islamic/admin" component={TeacherIslamicAdmin} />

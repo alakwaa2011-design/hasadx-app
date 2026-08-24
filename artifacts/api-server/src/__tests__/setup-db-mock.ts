@@ -39,7 +39,7 @@ function makeChain(result: unknown): unknown {
   const handler: ProxyHandler<Promise<unknown>> = {
     get(target, prop) {
       if (prop === "then" || prop === "catch" || prop === "finally") {
-        const fn = (target as Record<string, unknown>)[prop as string] as (
+        const fn = (target as unknown as Record<string, unknown>)[prop as string] as (
           ...args: unknown[]
         ) => unknown;
         return fn.bind(target);

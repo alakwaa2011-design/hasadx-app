@@ -53,6 +53,19 @@ _Populate as you build_
 -   Please ask for confirmation before making any major architectural changes or deleting significant portions of code.
 -   Ensure all new features are accompanied by appropriate tests.
 
+## Personal assistant environment variables
+
+The isolated personal assistant uses only these variable names. Keep their values in Secrets; never place values in source, tests, logs, or documentation.
+
+- `PERSONAL_ASSISTANT_OWNER_PHONE`
+- `PERSONAL_ASSISTANT_OWNER_ACCOUNT_IDS`
+- `PERSONAL_ASSISTANT_WHATSAPP_VERIFY_TOKEN`
+- `PERSONAL_ASSISTANT_WHATSAPP_APP_SECRET`
+- `PERSONAL_ASSISTANT_WHATSAPP_ACCESS_TOKEN`
+- `PERSONAL_ASSISTANT_WHATSAPP_PHONE_NUMBER_ID`
+- `PERSONAL_ASSISTANT_OUTBOUND_ENABLED`
+- `PERSONAL_ASSISTANT_AI_ENABLED`
+
 ## Gotchas
 
 -   Worksheet generator's `window.print()` relies on browser print functionality; no PDF library is used.

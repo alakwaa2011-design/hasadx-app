@@ -741,7 +741,10 @@ export function sanitizeOutline(
       feedback.push(`Deck reads like a summary, not a lesson: missing core pedagogical role(s): ${missingRoles.join(", ")}. Rebuild with explanation, a worked example or guided practice, and a quick assessment.`);
     }
     const roleCounts = new Map<string, number>();
-    for (const role of roles) roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+    for (const role of roles) {
+      if (!role) continue;
+      roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+    }
     const topRole = [...roleCounts.entries()].sort((a, b) => b[1] - a[1])[0];
     if (topRole && topRole[1] > Math.floor(slides.length / 2)) {
       if (fullLessonContract) structuralFatal = true;

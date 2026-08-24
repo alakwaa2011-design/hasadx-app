@@ -9,8 +9,8 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { logActivity } from "./lib/activity-logger";
 import { localizeApiMessages } from "./lib/request-locale";
+import { unauthorizedAccessActivityLogger } from "./lib/unauthorized-access-logger";
 
 export async function ensureSessionTable() {
   await pool.query(`
@@ -173,7 +173,7 @@ const ASSIGNMENT_BODY_PATTERN = /^\/api\/assignments(\/\d+)?$/;
 app.use((req, res, next) => {
   // Lemon Squeezy webhook: keep the RAW body — HMAC signature verification
   // must run against the exact bytes received, before any JSON parsing.
-  if (req.path === "/api/webhooks/lemonsqueezy") {
+  if (req.path === "/api/webhooks/lemonsqueezy" || req.path === "/api/webhooks/whatsapp") {
     express.raw({ type: "*/*", limit: "2mb" })(req, res, next);
     return;
   }
@@ -190,7 +190,7 @@ app.use((req, res, next) => {
   if (!STATE_MUTATING_METHODS.has(req.method)) return next();
   // Lemon Squeezy webhooks carry no Origin/Referer — they are authenticated
   // by HMAC signature (X-Signature) inside the route itself, not by CSRF origin.
-  if (req.path === "/api/webhooks/lemonsqueezy") return next();
+  if (req.path === "/api/webhooks/lemonsqueezy" || req.path === "/api/webhooks/whatsapp") return next();
   if (!isProduction || !allowedOrigins) return next();
 
   const rawOrigin = req.headers.origin ?? req.headers.referer;
@@ -251,35 +251,9 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Auto-log unauthorized access attempts (401/403) on /api/* routes.
-// Lightweight: hooks res.end once per request without touching the body.
-app.use((req, res, next) => {
-  if (!req.path.startsWith("/api/")) return next();
-  // Skip the page-view endpoint itself and known noisy paths.
-  if (req.path === "/api/activity/page-view" || req.path.startsWith("/api/health")) return next();
-  res.on("finish", () => {
-    try {
-      if (res.statusCode === 401 || res.statusCode === 403) {
-        const sess: any = (req as any).session;
-        const userId = sess?.teacherId ?? sess?.studentAccountId ?? null;
-        const userRole: "teacher" | "student" | "visitor" = sess?.teacherId
-          ? "teacher"
-          : (sess?.studentAccountId ? "student" : "visitor");
-        logActivity({
-          req,
-          userId,
-          userRole,
-          action: "unauthorized_access",
-          details: { method: req.method, path: req.path, status: res.statusCode },
-          pageUrl: req.originalUrl,
-        });
-      }
-    } catch {
-      // never let logging affect the response
-    }
-  });
-  next();
-});
+// Auto-log unauthorized access attempts (401/403) on /api/* routes, excluding
+// sensitive verification endpoints whose query strings can contain secrets.
+app.use(unauthorizedAccessActivityLogger());
 
 app.use("/api", router);
 

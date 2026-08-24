@@ -447,6 +447,54 @@ async function runSchemaMigrations() {
     logger.error(err, "Schema migration failed");
   }
 
+  // ── Personal assistant — isolated storage, no foreign keys into Hasaad data ──
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS personal_assistant_threads (
+        id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        channel                 TEXT NOT NULL DEFAULT 'whatsapp',
+        external_contact_phone  TEXT NOT NULL UNIQUE,
+        last_message_at         TIMESTAMPTZ,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS personal_assistant_messages (
+        id                    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        thread_id             INTEGER NOT NULL REFERENCES personal_assistant_threads(id) ON DELETE CASCADE,
+        external_message_id   TEXT NOT NULL UNIQUE,
+        direction             TEXT NOT NULL DEFAULT 'inbound',
+        message_text          TEXT NOT NULL,
+        received_at           TIMESTAMPTZ NOT NULL,
+        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS personal_assistant_actions (
+        id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        thread_id     INTEGER NOT NULL REFERENCES personal_assistant_threads(id) ON DELETE CASCADE,
+        message_id    INTEGER NOT NULL UNIQUE REFERENCES personal_assistant_messages(id) ON DELETE CASCADE,
+        action_type   TEXT NOT NULL DEFAULT 'review',
+        status        TEXT NOT NULL DEFAULT 'pending_review'
+          CHECK (status IN ('pending_review', 'confirmed', 'cancelled')),
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        reviewed_at   TIMESTAMPTZ
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS personal_assistant_messages_thread_idx
+        ON personal_assistant_messages(thread_id, received_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS personal_assistant_actions_status_idx
+        ON personal_assistant_actions(status, created_at DESC)
+    `);
+    logger.info("Personal assistant tables ready");
+  } catch (err) {
+    logger.error(err, "Personal assistant table migration failed");
+  }
+
   // ── Credits system — tables ──────────────────────────────────────────────────
   try {
     await db.execute(sql`

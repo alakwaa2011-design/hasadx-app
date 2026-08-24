@@ -118,7 +118,7 @@ describe("POST /api/parent-messages", () => {
   });
 
   it("rolls back the insert and returns 502 when email delivery fails", async () => {
-    mockSendEmail.mockResolvedValueOnce({ delivered: false, reason: "smtp_timeout" });
+    mockSendEmail.mockResolvedValueOnce({ delivered: false, reason: "smtp_timeout" } as any);
 
     mockState.queue.push([STUDENT]);    // select student
     mockState.queue.push([TEACHER]);   // select teacher
@@ -134,7 +134,7 @@ describe("POST /api/parent-messages", () => {
   });
 
   it("rolls back and returns 502 when Resend is not configured", async () => {
-    mockSendEmail.mockResolvedValueOnce({ delivered: false, reason: "resend_not_configured" });
+    mockSendEmail.mockResolvedValueOnce({ delivered: false, reason: "resend_not_configured" } as any);
 
     mockState.queue.push([STUDENT]);
     mockState.queue.push([TEACHER]);
@@ -154,7 +154,7 @@ describe("POST /api/parent-messages", () => {
 
 import submissionsRouter from "../routes/submissions";
 
-vi.mock("../routes/assignments", () => ({ default: { get: vi.fn(), post: vi.fn() } }), { virtual: true });
+vi.mock("../routes/assignments", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 
 // Extra db tables needed by the submissions router
 vi.mock("@workspace/db", async (importOriginal) => {

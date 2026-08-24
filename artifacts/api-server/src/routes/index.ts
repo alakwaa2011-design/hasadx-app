@@ -72,6 +72,7 @@ import whiteboardRouter from "./whiteboard";
 import subscriptionsRouter from "./subscriptions";
 import directPlayRouter from "./direct-play";
 import mindMapsRouter from "./mind-maps";
+import personalAssistantRouter from "./personal-assistant";
 
 const router: IRouter = Router();
 
@@ -150,5 +151,6 @@ router.use(directMessagesRouter);
 router.use(parentMessagesRouter);
 router.use(whiteboardRouter);
 router.use(mindMapsRouter);
+router.use(personalAssistantRouter);
 router.use(shortenRouter);
 export default router;

@@ -912,3 +912,17 @@ type = "image"
 title = "شد الحبل — إعداد المصادر على الجوال"
 description = "المعاينة النهائية على عرض 390×844 من دون تمرير أفقي."
 logical_id = "1a0000d4-5c53-4927-bcd8-14baa55730d7"
+
+[[outputs]]
+id = "gGi3pSK-Kmd-qHmGiGQo3"
+uri = "file://screenshots/personal-assistant-access-closed.jpg"
+type = "image"
+title = "معاينة الوصول المقيد لمساعد مروان الشخصي"
+description = "لقطة من بيئة المعاينة لمسار /admin/personal-assistant دون جلسة مالك؛ تعرض رسالة وصول مقيد ولا تكشف أي بيانات."
+logical_id = "88dfd611-572c-43f7-b221-4b30ce557442"
+content_hash = "sha256:e440e658105732a690a0f49beccc707f66d88c71e0e1e7f7bf0bdac1162aed6f"
+size = 33243
+mtime_ms = 1787604112995
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/88dfd611-572c-43f7-b221-4b30ce557442/8fe10f6c-fbca-4d78-8788-3dcf89a7024f"
+storage_version_token = "1787604362797272"
+content_type = "image/jpeg"
