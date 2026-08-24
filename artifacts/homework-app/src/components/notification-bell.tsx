@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Bell, Check, CheckCheck, FileText, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -26,6 +27,8 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
   const ref = useRef<HTMLDivElement>(null);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { lang, dir } = useI18n();
+  const isAr = lang === "ar";
 
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ["notifications"],
@@ -92,12 +95,12 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "الآن";
-    if (mins < 60) return `منذ ${mins} د`;
+    if (mins < 1) return isAr ? "الآن" : "Just now";
+    if (mins < 60) return isAr ? `منذ ${mins} د` : `${mins}m ago`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `منذ ${hours} س`;
+    if (hours < 24) return isAr ? `منذ ${hours} س` : `${hours}h ago`;
     const days = Math.floor(hours / 24);
-    return `منذ ${days} ي`;
+    return isAr ? `منذ ${days} ي` : `${days}d ago`;
   }
 
   return (
@@ -105,7 +108,8 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
       <button
         onClick={() => setOpen(!open)}
         className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        title="الإشعارات"
+        title={isAr ? "الإشعارات" : "Notifications"}
+        aria-label={isAr ? "الإشعارات" : "Notifications"}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -127,16 +131,17 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
             className="absolute end-0 top-full mt-2 w-[min(92vw,24rem)] bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-50"
+            dir={dir}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-              <h3 className="font-bold text-foreground">الإشعارات</h3>
+              <h3 className="font-bold text-foreground">{isAr ? "الإشعارات" : "Notifications"}</h3>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAllRead.mutate()}
                   className="text-xs text-primary hover:underline font-bold flex items-center gap-1"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  قراءة الكل
+                  {isAr ? "قراءة الكل" : "Mark all as read"}
                 </button>
               )}
             </div>
@@ -145,14 +150,14 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
               {notifications.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm font-medium">لا توجد إشعارات</p>
+                  <p className="text-sm font-medium">{isAr ? "لا توجد إشعارات" : "No notifications"}</p>
                 </div>
               ) : (
                 notifications.map((n) => (
                   <button
                     key={n.id}
                     onClick={() => handleNotifClick(n)}
-                    className={`w-full text-right px-4 py-3 flex items-start gap-3 hover:bg-muted/40 transition-colors border-b border-border/50 last:border-0 ${
+                    className={`w-full text-start px-4 py-3 flex items-start gap-3 hover:bg-muted/40 transition-colors border-b border-border/50 last:border-0 ${
                       !n.isRead ? "bg-primary/5" : ""
                     }`}
                   >

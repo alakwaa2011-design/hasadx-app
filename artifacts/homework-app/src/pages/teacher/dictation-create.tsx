@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -81,32 +82,13 @@ const POINT_STEP = 0.5;
 
 type AccessFlavor = "general" | "link" | "private";
 
-const ACCESS_FLAVOR_OPTIONS: { id: AccessFlavor; label: string; hint: string }[] = [
-  {
-    id: "general",
-    label: "عام",
-    hint: "متاح للطلاب المصرّح لهم وفق سياسات المنصة.",
-  },
-  {
-    id: "link",
-    label: "بالرابط فقط",
-    hint: "يُشارَك عبر الرابط؛ تقنياً مثل «عام» مع تمييز للمعلّم.",
-  },
-  {
-    id: "private",
-    label: "خاص",
-    hint: "تقييد الوصول حسب إعدادات حسابك.",
-  },
-];
-
 function clampQuestionPoints(n: number): number {
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(MAX_QUESTION_POINTS, Math.round(n * 100) / 100);
 }
 
-/** حقول عربية: محاذاة يمين + اتجاه RTL للنص والـ placeholder */
-const FIELD_RTL_CLASS =
-  "text-right [direction:rtl] placeholder:text-right placeholder:text-[#94a3ab]";
+/** Logical field alignment; entered content selects its own direction. */
+const FIELD_CLASS = "text-start placeholder:text-start placeholder:text-[#94a3ab]";
 
 const PREVIEW_SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 
@@ -181,30 +163,7 @@ const newQuestion = (type: QuestionType = "open"): QuestionItem => ({
   points: 1,
 });
 
-const VOICES = [
-  { id: "shimmer", label: "شيمر — نسائي هادئ" },
-  { id: "nova", label: "نوفا — نسائي واضح" },
-  { id: "alloy", label: "ألوي — محايد" },
-  { id: "echo", label: "إيكو — رجالي ناعم" },
-  { id: "onyx", label: "أونيكس — رجالي عميق" },
-];
-
 const SPEED_PRESETS = [0.75, 0.85, 0.9, 1, 1.1, 1.25] as const;
-
-const LISTEN_SEGMENTS: { label: string; value: number }[] = [
-  { label: "مرة واحدة", value: 1 },
-  { label: "مرتان", value: 2 },
-  { label: "3 مرات", value: 3 },
-  { label: "غير محدود", value: 0 },
-];
-
-function speedLabelAr(v: number): string {
-  if (v <= 0.76) return "بطيء جداً ٠.٧٥×";
-  if (v <= 0.88) return "بطيء ٠.٨٥×";
-  if (v <= 1.0) return "عادي ١×";
-  if (v <= 1.13) return "سريع ١.١×";
-  return "سريع جداً ١.٢٥×";
-}
 
 function formatAudioTime(sec: number): string {
   if (!Number.isFinite(sec) || sec < 0) return "٠:٠٠";
@@ -223,6 +182,7 @@ function estimateReadSeconds(text: string, speed: number): number {
 // ===================== Hooks =====================
 
 function useTtsPreview() {
+  const { t } = useI18n();
   const refreshCreditsBalance = useRefreshCreditsBalance();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -312,10 +272,10 @@ function useTtsPreview() {
         await audio.play();
       } catch {
         stopAudio();
-        toast.error("تعذّر تشغيل الصوت");
+        toast.error(t.dictationCreate.audioError);
       }
     },
-    [speakingId, stopAudio, volume],
+    [speakingId, stopAudio, volume, t.dictationCreate.audioError],
   );
 
   return { speakingId, progress, currentSec, durationSec, volume, play, stopAudio, seek, setSpeed, setVolume };
@@ -324,6 +284,7 @@ function useTtsPreview() {
 // ===================== Sub-components =====================
 
 function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
+  const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <div
@@ -345,7 +306,7 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
         {...attributes}
         {...listeners}
         className="absolute top-4 end-3 z-10 cursor-grab active:cursor-grabbing p-2 rounded-xl text-[#64748B] hover:bg-[#f3f7f4]"
-        aria-label="إعادة ترتيب"
+        aria-label={t.dictationCreate.reorderQuestions}
       >
         <GripVertical className="w-5 h-5" />
       </div>
@@ -367,6 +328,7 @@ function ToggleCell({
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
 }) {
+  const { dir } = useI18n();
   return (
     <div
       className={cn(
@@ -379,7 +341,7 @@ function ToggleCell({
       <span className="shrink-0 w-10 h-10 rounded-2xl bg-white border flex items-center justify-center text-[#1E4D35]" style={{ borderColor: CARD_BORDER }}>
         {icon}
       </span>
-      <div dir="rtl" className="min-w-0 flex-1 text-right space-y-1">
+      <div dir={dir} className="min-w-0 flex-1 text-start space-y-1">
         <p className="text-sm font-bold text-[#0f2918] leading-snug">{label}</p>
         {hint && <p className="text-[11px] text-[#64748B] leading-relaxed">{hint}</p>}
       </div>
@@ -394,11 +356,12 @@ function ToggleCell({
 }
 
 function QuestionTypeBadge({ type }: { type: QuestionType }) {
+  const { t } = useI18n();
   const map: Record<QuestionType, { label: string; className: string; icon: React.ReactNode }> = {
-    mcq: { label: "اختيار متعدد", className: "bg-sky-50/90 text-sky-800 border-sky-100", icon: <ListChecks className="w-3.5 h-3.5" /> },
-    dictation: { label: "إملاء", className: "bg-amber-50/90 text-amber-900 border-amber-100", icon: <Mic className="w-3.5 h-3.5" /> },
-    open: { label: "إجابة مفتوحة", className: "bg-[#eef5f0] text-[#1E4D35] border-[#dce8e0]", icon: <AlignLeft className="w-3.5 h-3.5" /> },
-    true_false: { label: "صح / خطأ", className: "bg-emerald-50/90 text-emerald-900 border-emerald-100", icon: <Check className="w-3.5 h-3.5" /> },
+    mcq: { label: t.dictationCreate.multipleChoice, className: "bg-sky-50/90 text-sky-800 border-sky-100", icon: <ListChecks className="w-3.5 h-3.5" /> },
+    dictation: { label: t.dictationCreate.dictation, className: "bg-amber-50/90 text-amber-900 border-amber-100", icon: <Mic className="w-3.5 h-3.5" /> },
+    open: { label: t.dictationCreate.openAnswer, className: "bg-[#eef5f0] text-[#1E4D35] border-[#dce8e0]", icon: <AlignLeft className="w-3.5 h-3.5" /> },
+    true_false: { label: t.dictationCreate.trueFalse, className: "bg-emerald-50/90 text-emerald-900 border-emerald-100", icon: <Check className="w-3.5 h-3.5" /> },
   };
   const { label, className, icon } = map[type];
   return (
@@ -419,6 +382,7 @@ function ListeningOptionCard({
   hint: string;
   footer: React.ReactNode;
 }) {
+  const { dir } = useI18n();
   return (
     <div
       className={cn("flex min-h-[148px] flex-col rounded-[20px] border bg-[#fafdfb] p-4", TRANSITION)}
@@ -431,7 +395,7 @@ function ListeningOptionCard({
         >
           {icon}
         </div>
-        <div className="min-w-0 flex-1 space-y-1 text-right">
+        <div dir={dir} className="min-w-0 flex-1 space-y-1 text-start">
           <p className="text-sm font-bold text-[#0f2918]">{title}</p>
           <p className="text-[11px] leading-relaxed text-[#64748B]">{hint}</p>
         </div>
@@ -446,6 +410,12 @@ function ListeningOptionCard({
 // ===================== Main Component =====================
 
 export default function DictationCreate() {
+  const { t, lang, dir } = useI18n();
+  const c = t.dictationCreate;
+  const speedLabel = (v: number): string => {
+    const label = v <= 0.76 ? c.speedVerySlow : v <= 0.88 ? c.speedSlow : v <= 1 ? c.speedNormal : v <= 1.13 ? c.speedFast : c.speedVeryFast;
+    return `${label} ${v}×`;
+  };
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -562,12 +532,12 @@ export default function DictationCreate() {
         setQuestions(qs.length > 0 ? qs : [newQuestion("open")]);
         setHydrated(true);
       } catch {
-        toast.error("تعذّر تحميل الواجب للتعديل");
+        toast.error(c.loadError);
         setLocation("/teacher");
       }
     })();
     return () => { cancelled = true; };
-  }, [editId, isEditing, hydrated, setLocation]);
+  }, [editId, isEditing, hydrated, setLocation, c.loadError]);
 
   const {
     speakingId,
@@ -657,14 +627,14 @@ export default function DictationCreate() {
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "خطأ في الحفظ");
+      if (!res.ok) throw new Error(data.message || c.saveError);
       const id: number = isEditing ? Number(editId) : Number(data.id);
       return { id };
     },
     onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
       queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
-      toast.success(isEditing ? "تم تحديث نشاط الاستماع بنجاح" : "تم نشر نشاط الاستماع بنجاح 🎉");
+      toast.success(isEditing ? c.updateSuccess : c.publishSuccess);
       setLocation(`/teacher/assignment/${id}`);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -672,7 +642,7 @@ export default function DictationCreate() {
 
   const validateStep1 = () => {
     if (!title.trim()) {
-      toast.error("الرجاء إدخال عنوان النشاط");
+      toast.error(c.titleRequired);
       return false;
     }
     return true;
@@ -680,19 +650,19 @@ export default function DictationCreate() {
 
   const validateStep2 = () => {
     if (!audioText.trim()) {
-      toast.error("الرجاء إدخال نص الاستماع الرئيسي");
+      toast.error(c.audioRequired);
       return false;
     }
     const emptyQ = questions.findIndex((q) => !q.text.trim());
     if (emptyQ !== -1) {
-      toast.error(`السؤال ${emptyQ + 1} فارغ — أدخل نص السؤال`);
+      toast.error(c.questionRequired.replace("{n}", String(emptyQ + 1)));
       setActiveIndex(emptyQ);
       return false;
     }
     for (const q of questions) {
       if (q.type === "mcq") {
         if (!q.optionA.trim() || !q.optionB.trim()) {
-          toast.error("أدخل خيارَين على الأقل في أسئلة الاختيار المتعدد");
+          toast.error(c.mcqRequired);
           return false;
         }
       }
@@ -775,19 +745,19 @@ export default function DictationCreate() {
           accessFlavor,
         }),
       );
-      toast.success("تم حفظ المسودة في هذا المتصفح");
+      toast.success(c.draftSaved);
     } catch {
-      toast.error("تعذّر حفظ المسودة");
+      toast.error(c.draftError);
     }
   };
 
   const totalPoints = questions.reduce((s, q) => s + q.points, 0);
 
   const STEPS_META = [
-    { num: 1 as const, label: "الأساسيات" },
-    { num: 2 as const, label: "المحتوى والأسئلة" },
-    { num: 3 as const, label: "إعدادات النشر" },
-    { num: 4 as const, label: "مراجعة" },
+    { num: 1 as const, label: c.basics },
+    { num: 2 as const, label: c.contentQuestions },
+    { num: 3 as const, label: c.publishingSettings },
+    { num: 4 as const, label: c.review },
   ];
 
   const footerBack = () => {
@@ -816,29 +786,34 @@ export default function DictationCreate() {
 
   const selectUiClass =
     "w-full h-12 px-3 rounded-2xl bg-white border text-sm font-semibold text-[#0f2918] appearance-none focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/20 focus:border-[#1E4D35]/25 " +
-    FIELD_RTL_CLASS +
+     FIELD_CLASS +
     " " +
     TRANSITION;
 
   const approxDurationSec = estimateReadSeconds(audioText, audioSpeed);
 
   const primaryClassLabel =
-    targetClasses.length === 0 ? "بدون صف" : targetClasses.join("، ");
+    targetClasses.length === 0 ? c.noClass : targetClasses.join(lang === "ar" ? "، " : ", ");
 
   const accessFlavorLabel =
-    accessFlavor === "private" ? "خاص" : accessFlavor === "link" ? "بالرابط فقط" : "عام";
+    accessFlavor === "private" ? c.accessPrivate : accessFlavor === "link" ? c.accessLink : c.accessGeneral;
 
   const formattedApproxDuration =
     approxDurationSec < 60
-      ? `≈ ${approxDurationSec} ث`
-      : `≈ ${Math.floor(approxDurationSec / 60)} د ${approxDurationSec % 60} ث`;
+      ? `≈ ${approxDurationSec} ${c.secondsShort}`
+      : `≈ ${Math.floor(approxDurationSec / 60)} ${c.minutesShort} ${approxDurationSec % 60} ${c.secondsShort}`;
 
   /** سطر مختصر لإعدادات الاستماع — للنشر والمراجعة */
   const listeningSettingsSummary =
-    `${settings.maxListens === 0 ? "استماع غير محدود" : `${settings.maxListens} مرات`}` +
-    ` · سرعة ${settings.allowSpeedControl ? "مسموحة" : "مغلقة"}` +
-    ` · تخطي ${settings.allowSeek ? "مسموح" : "مغلق"}` +
-    ` · النص ${settings.showTranscript ? "بعد الإجابة" : "مخفى"}`;
+    `${settings.maxListens === 0 ? c.unlimitedListening : `${settings.maxListens} ${c.times}`}` +
+    ` · ${c.speedControl}: ${settings.allowSpeedControl ? c.allowed : c.disabled}` +
+    ` · ${c.seek}: ${settings.allowSeek ? c.allowed : c.disabled}` +
+    ` · ${c.showTranscript}: ${settings.showTranscript ? c.afterAnswer : c.hidden}`;
+  const accessFlavorOptions: { id: AccessFlavor; label: string; hint: string }[] = [
+    { id: "general", label: c.accessGeneral, hint: c.accessGeneralHint },
+    { id: "link", label: c.accessLink, hint: c.accessLinkHint },
+    { id: "private", label: c.accessPrivate, hint: c.accessPrivateHint },
+  ];
 
   const waveformBars = [5, 9, 6, 11, 8, 7, 10, 6];
 
@@ -846,7 +821,7 @@ export default function DictationCreate() {
     <div
       className="min-h-[100dvh] overflow-x-hidden pb-[calc(7.25rem+env(safe-area-inset-bottom))]"
       style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-      dir="rtl"
+      dir={dir}
     >
       <header
         className={cn("sticky top-0 z-40 border-b bg-[#fcfdfc]/90 backdrop-blur-xl", TRANSITION)}
@@ -861,14 +836,14 @@ export default function DictationCreate() {
               TRANSITION,
             )}
             style={{ borderColor: CARD_BORDER }}
-            aria-label="رجوع"
+            aria-label={c.back}
           >
             <ChevronRight className="h-5 w-5" />
           </button>
 
           <nav
             className="flex min-w-0 flex-1 justify-center gap-1 overflow-x-auto pb-0.5 sm:flex-wrap sm:justify-center sm:overflow-visible [-webkit-overflow-scrolling:touch]"
-            aria-label="خطوات المعالج"
+            aria-label={c.wizardSteps}
           >
             {STEPS_META.map((st, idx) => {
               const done = step > st.num;
@@ -927,18 +902,18 @@ export default function DictationCreate() {
                 >
                   <Headphones className="h-5 w-5" />
                 </div>
-                <div className="space-y-1 text-right">
-                  <h1 className="text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">أساسيات نشاط الاستماع</h1>
-                  <p className="text-sm leading-relaxed text-[#64748B]">ابدأ بتسمية النشاط وتحديد الصف عند الحاجة.</p>
+                <div className="space-y-1 text-start">
+                  <h1 className="text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">{c.basicsTitle}</h1>
+                  <p className="text-sm leading-relaxed text-[#64748B]">{c.basicsDescription}</p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="space-y-2 text-right">
+              <div className="space-y-2 text-start">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="text-sm font-bold text-[#0f2918]" htmlFor="listening-title">
-                    عنوان النشاط <span className="text-red-500">*</span>
+                    {c.activityTitle} <span className="text-red-500">*</span>
                   </label>
                   <span className="text-[11px] font-semibold tabular-nums text-[#94a3b8]">{title.length} / 120</span>
                 </div>
@@ -948,12 +923,12 @@ export default function DictationCreate() {
                   value={title}
                   maxLength={120}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="مثال: قصة قصيرة — فهم المسموع والاستنتاج"
-                  dir="rtl"
+                  placeholder={c.titlePlaceholder}
+                  dir="auto"
                   autoComplete="off"
                   className={cn(
                     "min-h-[52px] w-full rounded-2xl border bg-white px-4 py-3 text-base font-semibold text-[#111827]",
-                    FIELD_RTL_CLASS,
+                    FIELD_CLASS,
                     "focus:border-[#1E4D35]/30 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                     TRANSITION,
                   )}
@@ -961,13 +936,13 @@ export default function DictationCreate() {
                 />
               </div>
 
-              <div className="text-right">
+              <div className="text-start">
                 <div
                   className={cn("rounded-[24px] border bg-[#fafdfb] p-5 sm:p-6", TRANSITION)}
                   style={{ borderColor: CARD_BORDER }}
                 >
                   <div className="mb-4 flex flex-col gap-1">
-                    <span className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">الصف الدراسي</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">{c.grade}</span>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-lg font-black text-[#0f2918]">{primaryClassLabel}</span>
                       {targetClasses.length > 0 && (
@@ -976,8 +951,8 @@ export default function DictationCreate() {
                     </div>
                     <p className="text-[13px] leading-relaxed text-[#64748B]">
                       {targetClasses.length === 0
-                        ? "سيكون النشاط متاحاً بدون ربطه بصف محدد."
-                        : "النشاط مرتبط بالصفوف التي اخترتها أدناه."}
+                        ? c.noClassDescription
+                        : c.classDescription}
                     </p>
                   </div>
 
@@ -992,15 +967,15 @@ export default function DictationCreate() {
                           )}
                           style={{ borderColor: CARD_BORDER }}
                         >
-                          {targetClasses.length === 0 ? "اختيار صف" : "تغيير"}
+                          {targetClasses.length === 0 ? c.selectClass : c.change}
                           <ChevronDown className="h-4 w-4 opacity-60" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[min(100vw-2rem,320px)] rounded-2xl border p-2 shadow-lg" align="end" dir="rtl">
-                        <p className="mb-2 px-2 text-[11px] font-bold text-[#94a3b8]">صفوفك المحفوظة</p>
+                      <PopoverContent className="w-[min(100vw-2rem,320px)] rounded-2xl border p-2 shadow-lg text-start" align="end" dir={dir}>
+                        <p className="mb-2 px-2 text-[11px] font-bold text-[#94a3b8]">{c.savedClasses}</p>
                         <div className="max-h-[240px] overflow-y-auto">
                           {gradeLevels.length === 0 ? (
-                            <p className="px-2 py-6 text-center text-sm text-[#64748B]">لا توجد صفوف محفوظة</p>
+                            <p className="px-2 py-6 text-center text-sm text-[#64748B]">{c.noSavedClasses}</p>
                           ) : (
                             gradeLevels.map((g) => {
                               const selected = targetClasses.includes(g.gradeLevel);
@@ -1016,7 +991,7 @@ export default function DictationCreate() {
                                     );
                                   }}
                                   className={cn(
-                                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right text-sm font-bold transition-colors hover:bg-[#f3f7f4]",
+                                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors hover:bg-[#f3f7f4]",
                                     selected && "bg-[#eef5f0] text-[#1E4D35]",
                                   )}
                                 >
@@ -1039,7 +1014,7 @@ export default function DictationCreate() {
                         onClick={() => setTargetClasses([])}
                         className="min-h-[44px] rounded-2xl px-3 text-sm font-bold text-[#64748B] underline-offset-4 hover:text-[#1E4D35] hover:underline"
                       >
-                        إزالة الصف
+                        {c.removeClass}
                       </button>
                     )}
                   </div>
@@ -1059,32 +1034,32 @@ export default function DictationCreate() {
             className={cn("rounded-[24px] border bg-white overflow-hidden", TRANSITION)}
             style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
           >
-            <div className="flex flex-col gap-2 border-b px-6 py-5 text-right sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER, background: "linear-gradient(180deg, #fafdfb 0%, #fff 100%)" }}>
+            <div className="flex flex-col gap-2 border-b px-6 py-5 text-start sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER, background: "linear-gradient(180deg, #fafdfb 0%, #fff 100%)" }}>
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1E4D35] text-white shadow-sm shadow-[#1E4D35]/20">
                   <Headphones className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-[#0f2918]">النص الصوتي الرئيسي</h2>
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#64748B]">اكتب النص الذي سيُقرَأ للطلاب بصوت واضح ومريح.</p>
+                  <h2 className="text-lg font-black text-[#0f2918]">{c.audioTitle}</h2>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#64748B]">{c.audioDescription}</p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-5 p-6 sm:p-8">
-              <div className="space-y-2 text-right">
+              <div className="space-y-2 text-start">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-[#0f2918]">نص التسجيل</span>
+                  <span className="text-sm font-bold text-[#0f2918]">{c.recordingText}</span>
                   <span className="text-[11px] font-semibold tabular-nums text-[#94a3ab]">{audioText.length} / {MAX_CHARS}</span>
                 </div>
                 <textarea
                   value={audioText}
-                  dir="rtl"
+                  dir="auto"
                   onChange={(e) => setAudioText(e.target.value.slice(0, MAX_CHARS))}
-                  placeholder={`اكتب نصاً كاملاً للاستماع — قصة، حوار، أو تعليمات.\n\nمثال: كان يا ما كان في قديم الزمان قصةً علّمتنا الصبر والتفكير الناضج...`}
+                  placeholder={c.audioPlaceholder}
                   className={cn(
                     "min-h-[220px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-4 text-base leading-[1.75] text-[#111827]",
-                    FIELD_RTL_CLASS,
+                    FIELD_CLASS,
                     "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/12",
                     TRANSITION,
                   )}
@@ -1094,8 +1069,8 @@ export default function DictationCreate() {
 
               {/* صف ١: الصوت + سرعة الإنشاء │ صف ٢: المدة + معاينة (مدمجة) */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-                <div className="space-y-1.5 text-right">
-                  <label className="text-xs font-bold text-[#64748B]">الصوت</label>
+                <div className="space-y-1.5 text-start">
+                  <label className="text-xs font-bold text-[#64748B]">{c.voice}</label>
                   <div className="relative">
                     <select
                       value={audioVoice}
@@ -1103,15 +1078,15 @@ export default function DictationCreate() {
                       className={cn(selectUiClass, "px-4 pe-10")}
                       style={{ borderColor: COLOR_CARD_BORDER }}
                     >
-                      {VOICES.map((v) => (
-                        <option key={v.id} value={v.id}>{v.label}</option>
+                      {(["shimmer", "nova", "alloy", "echo", "onyx"] as const).map((voice) => (
+                        <option key={voice} value={voice}>{c[`voice${voice.charAt(0).toUpperCase()}${voice.slice(1)}` as "voiceShimmer" | "voiceNova" | "voiceAlloy" | "voiceEcho" | "voiceOnyx"]}</option>
                       ))}
                     </select>
                     <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
                   </div>
                 </div>
-                <div className="space-y-1.5 text-right">
-                  <label className="text-xs font-bold text-[#64748B]">سرعة القراءة (عند الإنشاء)</label>
+                <div className="space-y-1.5 text-start">
+                  <label className="text-xs font-bold text-[#64748B]">{c.readingSpeed}</label>
                   <div className="relative">
                     <select
                       value={String(audioSpeed)}
@@ -1120,25 +1095,25 @@ export default function DictationCreate() {
                       style={{ borderColor: COLOR_CARD_BORDER }}
                     >
                       {SPEED_PRESETS.map((sp) => (
-                        <option key={sp} value={sp}>{speedLabelAr(sp)}</option>
+                        <option key={sp} value={sp}>{speedLabel(sp)}</option>
                       ))}
                     </select>
                     <Gauge className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-right">
-                  <label className="text-xs font-bold text-[#64748B]">مدة القراءة التقريبية</label>
+                <div className="space-y-1.5 text-start">
+                  <label className="text-xs font-bold text-[#64748B]">{c.approximateDuration}</label>
                   <div
                     className="flex h-12 items-center justify-between rounded-2xl border bg-[#f9faf9] px-4 text-sm font-bold text-[#374151]"
                     style={{ borderColor: COLOR_CARD_BORDER }}
                   >
                     <span className="tabular-nums">
                       {approxDurationSec < 60
-                        ? `≈ ${approxDurationSec} ث`
-                        : `≈ ${Math.floor(approxDurationSec / 60)} د ${approxDurationSec % 60} ث`}
+                        ? `≈ ${approxDurationSec} ${c.secondsShort}`
+                        : `≈ ${Math.floor(approxDurationSec / 60)} ${c.minutesShort} ${approxDurationSec % 60} ${c.secondsShort}`}
                     </span>
-                    <span className="text-[11px] font-semibold text-[#94a3ab]">وفق طول النص</span>
+                    <span className="text-[11px] font-semibold text-[#94a3ab]">{c.basedOnTextLength}</span>
                   </div>
                 </div>
 
@@ -1149,10 +1124,10 @@ export default function DictationCreate() {
                   )}
                   style={{ borderColor: CARD_BORDER }}
                 >
-                  <p className="text-right text-xs font-bold text-[#64748B]">معاينة الصوت</p>
+                  <p className="text-start text-xs font-bold text-[#64748B]">{c.audioPreview}</p>
 
                   {/* صف تحكم يلتف تلقائياً إذا ضاقت الخلية */}
-                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  <div className="flex flex-wrap items-center justify-start gap-1.5">
                     <button
                       type="button"
                       disabled={!audioText.trim()}
@@ -1163,7 +1138,7 @@ export default function DictationCreate() {
                         "h-10 w-10 max-md:min-h-[44px] max-md:min-w-[44px] md:h-9 md:w-9 hover:opacity-95 active:scale-[0.98]",
                         isAudioPlaying ? "bg-red-500" : "bg-[#1E4D35]",
                       )}
-                      aria-label={isAudioPlaying ? "إيقاف" : "تشغيل"}
+                      aria-label={isAudioPlaying ? c.stop : c.play}
                     >
                       {isAudioPlaying ? <Square className="h-4 w-4 md:h-3.5 md:w-3.5" /> : <Volume2 className="h-4 w-4 md:h-3.5 md:w-3.5" />}
                     </button>
@@ -1176,7 +1151,7 @@ export default function DictationCreate() {
                         "h-10 w-10 max-md:min-h-[44px] max-md:min-w-[44px] md:h-9 md:w-9",
                       )}
                       style={{ borderColor: COLOR_CARD_BORDER }}
-                      title="رجوع ١٠ ثوانٍ"
+                      title={c.backTenSeconds}
                     >
                       <SkipBack className="h-3.5 w-3.5" />
                     </button>
@@ -1189,7 +1164,7 @@ export default function DictationCreate() {
                         "h-10 w-10 max-md:min-h-[44px] max-md:min-w-[44px] md:h-9 md:w-9",
                       )}
                       style={{ borderColor: COLOR_CARD_BORDER }}
-                      title="تقدم ١٠ ثوانٍ"
+                      title={c.forwardTenSeconds}
                     >
                       <SkipForward className="h-3.5 w-3.5" />
                     </button>
@@ -1204,12 +1179,12 @@ export default function DictationCreate() {
                         }}
                         className={cn(
                           "h-9 w-full rounded-lg border bg-white px-2 py-1 text-[11px] font-black text-[#374151]",
-                          FIELD_RTL_CLASS,
+                          FIELD_CLASS,
                           "appearance-none pe-7 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                           TRANSITION,
                         )}
                         style={{ borderColor: COLOR_CARD_BORDER }}
-                        aria-label="سرعة المعاينة"
+                        aria-label={c.previewSpeed}
                       >
                         {PREVIEW_SPEEDS.map((sp) => (
                           <option key={sp} value={sp}>×{sp}</option>
@@ -1228,13 +1203,13 @@ export default function DictationCreate() {
                         value={volume}
                         onChange={(e) => setVolume(Number(e.target.value))}
                         className="h-1 min-w-0 flex-1 cursor-pointer accent-[#1E4D35]"
-                        aria-label="مستوى الصوت"
+                        aria-label={c.volume}
                       />
                     </div>
                   </div>
 
                   <div className="min-w-0 space-y-1">
-                    <div className="flex h-6 items-end justify-end gap-px overflow-hidden">
+                    <div className="flex h-6 items-end justify-start gap-px overflow-hidden">
                       {waveformBars.map((h, wi) => (
                         <div
                           key={wi}
@@ -1267,18 +1242,18 @@ export default function DictationCreate() {
             className={cn("rounded-[24px] border bg-white p-6 sm:p-8", TRANSITION)}
             style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
           >
-            <div className="mb-6 text-right">
-              <h2 className="text-lg font-black text-[#0f2918]">إعدادات الاستماع للطالب</h2>
-              <p className="mt-1 text-[13px] text-[#64748B]">تحكم مختصر في تجربة الطالب أثناء الاستماع.</p>
+            <div className="mb-6 text-start">
+              <h2 className="text-lg font-black text-[#0f2918]">{c.studentListeningSettings}</h2>
+              <p className="mt-1 text-[13px] text-[#64748B]">{c.studentListeningSettingsDescription}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <ListeningOptionCard
                 icon={<Gauge className="h-4 w-4" />}
-                title="التحكم بالسرعة"
-                hint="الطالب يغيّر سرعة التشغيل أثناء الاستماع."
+                title={c.speedControl}
+                hint={c.speedControlHint}
                 footer={
-                  <div className="flex justify-end">
+                  <div className="flex justify-start">
                     <Switch
                       checked={settings.allowSpeedControl}
                       onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSpeedControl: v }))}
@@ -1289,10 +1264,10 @@ export default function DictationCreate() {
               />
               <ListeningOptionCard
                 icon={<SkipForward className="h-4 w-4" />}
-                title="الرجوع والتقديم"
-                hint="تخطّي ±١٠ ثانية داخل التسجيل."
+                title={c.seek}
+                hint={c.seekHint}
                 footer={
-                  <div className="flex justify-end">
+                  <div className="flex justify-start">
                     <Switch
                       checked={settings.allowSeek}
                       onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSeek: v }))}
@@ -1303,10 +1278,10 @@ export default function DictationCreate() {
               />
               <ListeningOptionCard
                 icon={<AlignLeft className="h-4 w-4" />}
-                title="عرض النص بعد الإجابة"
-                hint="إظهار النص للمراجعة بعد التسليم حسب سياسة العرض."
+                title={c.showTranscript}
+                hint={c.showTranscriptHint}
                 footer={
-                  <div className="flex justify-end">
+                  <div className="flex justify-start">
                     <Switch
                       checked={settings.showTranscript}
                       onCheckedChange={(v) => setSettings((s) => ({ ...s, showTranscript: v }))}
@@ -1317,8 +1292,8 @@ export default function DictationCreate() {
               />
               <ListeningOptionCard
                 icon={<Headphones className="h-4 w-4" />}
-                title="عدد مرات الاستماع"
-                hint="كم مرة يمكن للطالب إعادة تشغيل النص."
+                title={c.listenCount}
+                hint={c.listenCountHint}
                 footer={
                   <div className="relative w-full max-w-full">
                     <select
@@ -1328,16 +1303,16 @@ export default function DictationCreate() {
                       }
                       className={cn(
                         "h-10 w-full rounded-xl border bg-white px-3 py-2 text-xs font-black text-[#374151]",
-                        FIELD_RTL_CLASS,
+                        FIELD_CLASS,
                         "appearance-none pe-9 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                         TRANSITION,
                       )}
                       style={{ borderColor: COLOR_CARD_BORDER }}
-                      aria-label="عدد مرات الاستماع"
+                      aria-label={c.listenCount}
                     >
-                      {LISTEN_SEGMENTS.map((seg) => (
-                        <option key={seg.value} value={seg.value}>
-                          {seg.label}
+                      {[1, 2, 3, 0].map((count) => (
+                        <option key={count} value={count}>
+                          {count === 0 ? c.unlimitedListening : count === 1 ? c.once : count === 2 ? c.twice : `${count} ${c.times}`}
                         </option>
                       ))}
                     </select>
@@ -1349,13 +1324,13 @@ export default function DictationCreate() {
           </section>
 
           <section className="space-y-5">
-            <div className="flex flex-col gap-3 text-right sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 text-start sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-black text-[#0f2918]">الأسئلة</h2>
-                <p className="text-[12px] text-[#94a3ab]">اسحب المقبض لإعادة ترتيب الأسئلة.</p>
+                <h2 className="text-lg font-black text-[#0f2918]">{c.questions}</h2>
+                <p className="text-[12px] text-[#94a3ab]">{c.reorderQuestions}</p>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="rounded-full bg-[#eef5f0] px-3 py-1 text-xs font-black text-[#1E4D35]">{questions.length} أسئلة</span>
+              <div className="flex flex-wrap items-center justify-start gap-2">
+                <span className="rounded-full bg-[#eef5f0] px-3 py-1 text-xs font-black text-[#1E4D35]">{questions.length} {c.questions}</span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -1367,22 +1342,22 @@ export default function DictationCreate() {
                       style={{ borderColor: CARD_BORDER }}
                     >
                       <Plus className="h-4 w-4" />
-                      إضافة سؤال
+                      {c.addQuestion}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-52 rounded-2xl border p-1 shadow-lg text-right [direction:rtl]" align="end">
+                  <DropdownMenuContent className="w-52 rounded-2xl border p-1 shadow-lg text-start" align="end">
                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("open")}>
-                      إجابة مفتوحة
+                      {c.openAnswer}
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("mcq")}>
-                      اختيار متعدد
+                      {c.multipleChoice}
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("true_false")}>
-                      صح وخطأ
+                      {c.trueFalse}
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("dictation")}>
-                      إملاء
+                      {c.dictation}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1405,7 +1380,7 @@ export default function DictationCreate() {
                         <div className="mb-5 flex flex-col gap-3 border-b px-5 pb-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER }}>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-[#f3f7f4] px-2.5 py-1 text-[11px] font-black text-[#1E4D35]">
-                              سؤال {i + 1}
+                              {c.question} {i + 1}
                             </span>
                             <QuestionTypeBadge type={q.type} />
                           </div>
@@ -1416,23 +1391,23 @@ export default function DictationCreate() {
                                 onClick={(e) => e.stopPropagation()}
                                 className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border bg-white text-[#64748B] hover:bg-[#fafdfb]"
                                 style={{ borderColor: COLOR_CARD_BORDER }}
-                                aria-label="خيارات السؤال"
+                                aria-label={c.questionOptions}
                               >
                                 <MoreVertical className="h-5 w-5" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-48 rounded-2xl border p-1 shadow-lg text-right [direction:rtl]" align="end">
+                            <DropdownMenuContent className="w-48 rounded-2xl border p-1 shadow-lg text-start" align="end">
                               <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "open")}>
-                                تحويل إلى مفتوحة
+                                {c.convertOpen}
                               </DropdownMenuItem>
                               <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "mcq")}>
-                                تحويل إلى متعدد
+                                {c.convertMcq}
                               </DropdownMenuItem>
                               <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "true_false")}>
-                                تحويل إلى صح/خطأ
+                                {c.convertTrueFalse}
                               </DropdownMenuItem>
                               <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "dictation")}>
-                                تحويل إلى إملاء
+                                {c.convertDictation}
                               </DropdownMenuItem>
                               {questions.length > 1 && (
                                 <>
@@ -1444,7 +1419,7 @@ export default function DictationCreate() {
                                       deleteQuestion(q.id);
                                     }}
                                   >
-                                    حذف السؤال
+                                    {c.deleteQuestion}
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -1453,23 +1428,23 @@ export default function DictationCreate() {
                         </div>
 
                         <div className="space-y-5 px-5 pb-6">
-                          <div className="space-y-2 text-right">
-                            <label className="text-xs font-bold text-[#64748B]">صياغة السؤال</label>
+                          <div className="space-y-2 text-start">
+                            <label className="text-xs font-bold text-[#64748B]">{c.questionWording}</label>
                             <textarea
                               value={q.text}
-                              dir="rtl"
+                              dir="auto"
                               onChange={(e) => updateQuestion(q.id, { text: e.target.value.slice(0, MAX_QUESTION_CHARS) })}
                               rows={3}
                               placeholder={
                                 q.type === "dictation"
-                                  ? "مثال: اكتب الجملة التي سمعتها بحرفية..."
+                                  ? c.dictationQuestionPlaceholder
                                   : q.type === "mcq"
-                                    ? "مثال: ما الموضوع الرئيسي في المقطع؟"
-                                    : "صِغ سؤالاً يقيّم فهماً صوتياً أو استنتاجاً من النص."
+                                     ? c.mcqQuestionPlaceholder
+                                    : c.questionPlaceholder
                               }
                               className={cn(
                                 "min-h-[100px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-3 text-sm leading-relaxed text-[#111827]",
-                                FIELD_RTL_CLASS,
+                                FIELD_CLASS,
                                 "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10",
                               )}
                               style={{ borderColor: COLOR_CARD_BORDER }}
@@ -1480,8 +1455,8 @@ export default function DictationCreate() {
 
                         {/* خيارات MCQ */}
                         {q.type === "mcq" && (
-                          <div className="space-y-3 mb-4" dir="rtl">
-                            <p className="text-xs font-bold text-[#64748B]">الخيارات (اضغط على الدائرة لتحديد الإجابة الصحيحة)</p>
+                          <div className="space-y-3 mb-4" dir={dir}>
+                            <p className="text-xs font-bold text-[#64748B]">{c.optionsHint}</p>
                             {(["A", "B", "C", "D"] as const).map((letter, li) => {
                               const field = `option${letter}` as keyof QuestionItem;
                               const isCorrect = q.correctAnswer === letter;
@@ -1500,14 +1475,14 @@ export default function DictationCreate() {
                                   </button>
                                   <input
                                     type="text"
-                                    dir="rtl"
+                                    dir="auto"
                                     value={q[field] as string}
                                     onChange={(e) => updateQuestion(q.id, { [field]: e.target.value })}
                                     onClick={(e) => e.stopPropagation()}
-                                    placeholder={`الخيار ${letter}`}
+                                    placeholder={`${c.option} ${letter}`}
                                     className={cn(
                                       "flex-1 rounded-xl border px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/20",
-                                      FIELD_RTL_CLASS,
+                                    FIELD_CLASS,
                                     )}
                                     style={{ borderColor: isCorrect ? "#1E4D35" : COLOR_CARD_BORDER }}
                                   />
@@ -1519,10 +1494,10 @@ export default function DictationCreate() {
 
                         {/* صح / خطأ — اختيار الإجابة الصحيحة */}
                         {q.type === "true_false" && (
-                          <div className="mb-4 grid grid-cols-2 gap-3" dir="rtl">
+                          <div className="mb-4 grid grid-cols-2 gap-3" dir={dir}>
                             {[
-                              { value: "true", label: "صح", icon: "✓" },
-                              { value: "false", label: "خطأ", icon: "✗" },
+                              { value: "true", label: c.true, icon: "✓" },
+                              { value: "false", label: c.false, icon: "✗" },
                             ].map((opt) => {
                               const isCorrect = q.correctAnswer === opt.value;
                               return (
@@ -1541,7 +1516,7 @@ export default function DictationCreate() {
                                 </button>
                               );
                             })}
-                            <p className="col-span-2 text-[11px] text-[#64748B] text-right">حدد الإجابة الصحيحة التي ستُستخدم في التصحيح التلقائي.</p>
+                            <p className="col-span-2 text-[11px] text-[#64748B] text-start">{c.trueFalseHint}</p>
                           </div>
                         )}
 
@@ -1550,26 +1525,26 @@ export default function DictationCreate() {
                           <Collapsible className="rounded-2xl border bg-[#fafdfb]" style={{ borderColor: CARD_BORDER }}>
                             <CollapsibleTrigger
                               onClick={(e) => e.stopPropagation()}
-                              className="flex w-full min-h-[48px] items-center justify-between gap-2 rounded-2xl px-4 py-3 text-right text-sm font-black text-[#1E4D35] hover:bg-[#f3f7f4] data-[state=open]:rounded-b-none data-[state=open]:[&_.chev-icon]:rotate-180"
+                              className="flex w-full min-h-[48px] items-center justify-between gap-2 rounded-2xl px-4 py-3 text-start text-sm font-black text-[#1E4D35] hover:bg-[#f3f7f4] data-[state=open]:rounded-b-none data-[state=open]:[&_.chev-icon]:rotate-180"
                             >
-                              إجابة نموذجية (اختياري)
+                              {c.sampleAnswer}
                               <ChevronDown className="chev-icon h-4 w-4 shrink-0 opacity-60 transition-transform duration-200" />
                             </CollapsibleTrigger>
                             <CollapsibleContent className="border-t px-4 pb-4 pt-2" style={{ borderColor: CARD_BORDER }}>
                               <textarea
-                                dir="rtl"
+                                dir="auto"
                                 value={q.correctAnswer}
                                 onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
                                 onClick={(e) => e.stopPropagation()}
                                 rows={3}
                                 placeholder={
                                   q.type === "dictation"
-                                    ? "النص الصحيح المتوقع كما سيُصحَّح ضده الإملاء…"
-                                    : "مرجع سريع للمعلم أثناء المراجعة — لا يُعرض للطالب تلقائياً."
+                                    ? c.dictationAnswerPlaceholder
+                                    : c.answerPlaceholder
                                 }
                                 className={cn(
                                   "w-full resize-y rounded-xl border bg-white px-3 py-3 text-sm leading-relaxed text-[#111827]",
-                                  FIELD_RTL_CLASS,
+                                  FIELD_CLASS,
                                   "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10",
                                 )}
                                 style={{ borderColor: COLOR_CARD_BORDER }}
@@ -1580,30 +1555,30 @@ export default function DictationCreate() {
 
                         {/* إعدادات الإملاء */}
                         {q.type === "dictation" && (
-                          <div className="mt-4 space-y-3 border-t border-dashed border-[#E5E7EB] pt-4" dir="rtl">
-                            <p className="text-xs font-bold text-[#64748B]">إعدادات التصحيح</p>
+                          <div className="mt-4 space-y-3 border-t border-dashed border-[#E5E7EB] pt-4" dir={dir}>
+                            <p className="text-xs font-bold text-[#64748B]">{c.gradingSettings}</p>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <ToggleCell
                                 icon={<Pencil className="h-4 w-4" />}
-                                label="تجاهل الحركات"
+                                label={c.ignoreDiacritics}
                                 checked={q.grading.ignoreDiacritics}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignoreDiacritics: v })}
                               />
                               <ToggleCell
                                 icon={<Minus className="h-4 w-4" />}
-                                label="تجاهل التنوين"
+                                label={c.ignoreTanween}
                                 checked={q.grading.ignoreTanween}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignoreTanween: v })}
                               />
                               <ToggleCell
                                 icon={<Mic className="h-4 w-4" />}
-                                label="تجاهل الشدة"
+                                label={c.ignoreShadda}
                                 checked={q.grading.ignoreShadda}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignoreShadda: v })}
                               />
                               <ToggleCell
                                 icon={<AlignLeft className="h-4 w-4" />}
-                                label="تجاهل الترقيم"
+                                label={c.ignorePunctuation}
                                 checked={q.grading.ignorePunctuation}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignorePunctuation: v })}
                               />
@@ -1620,14 +1595,14 @@ export default function DictationCreate() {
                                   onClick={(e) => e.stopPropagation()}
                                 />
                               </div>
-                              <p className="text-xs font-bold text-[#0f2918] text-right">نسبة التسامح</p>
+                              <p className="text-xs font-bold text-[#0f2918] text-start">{c.tolerance}</p>
                             </div>
                           </div>
                         )}
 
                         {/* الدرجة */}
                         <div className="flex flex-wrap items-center gap-2 border-t border-dashed pt-4" style={{ borderColor: CARD_BORDER }}>
-                          <span className="text-xs font-bold text-[#64748B]">الدرجة</span>
+                          <span className="text-xs font-bold text-[#64748B]">{c.points}</span>
                           <div
                             className="inline-flex items-center gap-1 rounded-2xl border bg-white p-1"
                             style={{ borderColor: COLOR_CARD_BORDER }}
@@ -1643,7 +1618,7 @@ export default function DictationCreate() {
                               }}
                               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
                               style={{ borderColor: COLOR_CARD_BORDER }}
-                              aria-label="تقليل الدرجة"
+                              aria-label={c.decreasePoints}
                             >
                               <Minus className="h-4 w-4" />
                             </button>
@@ -1669,11 +1644,11 @@ export default function DictationCreate() {
                               }}
                               className={cn(
                                 "h-10 w-[4.25rem] rounded-xl border bg-[#fafdfb] text-center text-sm font-black tabular-nums text-[#0f2918]",
-                                FIELD_RTL_CLASS,
+                                FIELD_CLASS,
                                 "focus:border-[#1E4D35]/35 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                               )}
                               style={{ borderColor: COLOR_CARD_BORDER }}
-                              aria-label="قيمة الدرجة"
+                              aria-label={c.pointsValue}
                             />
                             <button
                               type="button"
@@ -1685,7 +1660,7 @@ export default function DictationCreate() {
                               }}
                               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
                               style={{ borderColor: COLOR_CARD_BORDER }}
-                              aria-label="زيادة الدرجة"
+                              aria-label={c.increasePoints}
                             >
                               <Plus className="h-4 w-4" />
                             </button>
@@ -1704,29 +1679,29 @@ export default function DictationCreate() {
 
       {step === 3 && (
         <main className="mx-auto max-w-[1100px] space-y-7 px-4 py-7 sm:py-8">
-          <div className="text-right space-y-2">
-            <h2 className="text-xl font-black text-[#0f2918] sm:text-2xl">إعدادات النشر</h2>
-            <p className="text-sm leading-relaxed text-[#64748B]">حدد طريقة وصول الطلاب إلى النشاط ومشاركته مع المعلمين.</p>
+          <div className="text-start space-y-2">
+            <h2 className="text-xl font-black text-[#0f2918] sm:text-2xl">{c.publishingSettings}</h2>
+            <p className="text-sm leading-relaxed text-[#64748B]">{c.publishingDescription}</p>
           </div>
 
           <section
             className={cn("rounded-[24px] border bg-white p-6 sm:p-8", TRANSITION)}
             style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
           >
-            <div className="mb-6 space-y-4 text-right">
+            <div className="mb-6 space-y-4 text-start">
               <div
                 className="rounded-[20px] border bg-[#fafdfb] p-5 sm:p-6"
                 style={{ borderColor: CARD_BORDER }}
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-[11px] font-bold text-[#94a3ab]">اسم النشاط</p>
+                    <p className="text-[11px] font-bold text-[#94a3ab]">{c.activityName}</p>
                     <p className="text-lg font-black leading-snug text-[#0f2918] sm:text-xl">
-                      {title.trim() || "بدون عنوان"}
+                      {title.trim() || c.untitled}
                     </p>
                   </div>
                   <span className="shrink-0 rounded-full bg-[#eef5f0] px-3 py-1 text-[11px] font-black text-[#1E4D35]">
-                    مسودة
+                    {c.draft}
                   </span>
                 </div>
               </div>
@@ -1735,22 +1710,22 @@ export default function DictationCreate() {
                 {[
                   {
                     k: "questions",
-                    label: "الأسئلة",
-                    value: `${questions.length} سؤال · ${totalPoints} درجة`,
+                    label: c.questions,
+                    value: `${questions.length} ${c.questions} · ${totalPoints} ${c.points}`,
                   },
                   {
                     k: "duration",
-                    label: "مدة النص التقريبية",
+                    label: c.approximateDuration,
                     value: formattedApproxDuration,
                   },
                   {
                     k: "class",
-                    label: "الصف",
+                    label: c.grade,
                     value: primaryClassLabel,
                   },
                   {
                     k: "listening",
-                    label: "إعدادات الاستماع",
+                    label: c.studentListeningSettings,
                     value: listeningSettingsSummary,
                     wide: true,
                   },
@@ -1758,7 +1733,7 @@ export default function DictationCreate() {
                   <div
                     key={cell.k}
                     className={cn(
-                      "rounded-2xl border bg-[#fcfdfc] p-4 text-right",
+                      "rounded-2xl border bg-[#fcfdfc] p-4 text-start",
                       cell.wide && "sm:col-span-2",
                     )}
                     style={{ borderColor: CARD_BORDER }}
@@ -1769,7 +1744,7 @@ export default function DictationCreate() {
                 ))}
               </div>
               <p className="text-center text-[11px] tabular-nums text-[#94a3ab]">
-                {audioText.length.toLocaleString("ar-SA")} حرف في النص الصوتي
+                {c.audioCharacterCount.replace("{n}", audioText.length.toLocaleString(lang === "ar" ? "ar-SA" : "en-US"))}
               </p>
             </div>
 
@@ -1778,21 +1753,21 @@ export default function DictationCreate() {
                 className="rounded-[20px] border bg-[#fcfdfc] p-5 sm:flex sm:items-center sm:justify-between sm:gap-4"
                 style={{ borderColor: CARD_BORDER }}
               >
-                <div className="mb-4 text-right sm:mb-0 sm:min-w-0 sm:flex-1 sm:space-y-1">
-                  <p className="text-sm font-black text-[#0f2918]">المشاركة في المكتبة العامة</p>
+                <div className="mb-4 text-start sm:mb-0 sm:min-w-0 sm:flex-1 sm:space-y-1">
+                  <p className="text-sm font-black text-[#0f2918]">{c.publicLibrary}</p>
                   <p className="text-[12px] leading-relaxed text-[#64748B]">
-                    يتمكن المعلمون من استيراد النشاط إلى حساباتهم.
+                    {c.publicLibraryHint}
                   </p>
                 </div>
-                <div className="flex justify-end sm:shrink-0">
+                <div className="flex justify-start sm:shrink-0">
                   <Switch checked={isShared} onCheckedChange={setIsShared}  />
                 </div>
               </div>
 
-              <div className="space-y-3 text-right">
-                <label className="text-xs font-bold text-[#64748B]">وضع الوصول</label>
+              <div className="space-y-3 text-start">
+                <label className="text-xs font-bold text-[#64748B]">{c.accessMode}</label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {ACCESS_FLAVOR_OPTIONS.map((opt) => {
+                  {accessFlavorOptions.map((opt) => {
                     const active = accessFlavor === opt.id;
                     return (
                       <button
@@ -1800,7 +1775,7 @@ export default function DictationCreate() {
                         type="button"
                         onClick={() => setAccessFlavor(opt.id)}
                         className={cn(
-                          "min-h-[44px] rounded-2xl border px-3 py-2.5 text-right transition-colors",
+                          "min-h-[44px] rounded-2xl border px-3 py-2.5 text-start transition-colors",
                           active
                             ? "border-[#1E4D35] bg-[#eef5f0] shadow-sm shadow-[#1E4D35]/10"
                             : "border-transparent bg-[#f9faf9] hover:border-[#1E4D35]/15 hover:bg-[#fafdfb]",
@@ -1817,11 +1792,7 @@ export default function DictationCreate() {
                   })}
                 </div>
                 <p className="text-[11px] leading-relaxed text-[#94a3ab]">
-                  {accessFlavor === "private"
-                    ? "خاص: يُرسَل للمنصة كوصول مقيّد (private) حيث يدعمه الخادم."
-                    : accessFlavor === "link"
-                      ? "بالرابط فقط: يشارك الطلاب عبر الرابط؛ النشر على الخادم بوضع عام (public) مثل «عام»."
-                      : "عام: وصول عبر المنصة وفق سياسات حسابك؛ يُخزَّن كـ public في الخادم."}
+                  {accessFlavorOptions.find((option) => option.id === accessFlavor)?.hint}
                 </p>
               </div>
             </div>
@@ -1831,9 +1802,9 @@ export default function DictationCreate() {
 
       {step === 4 && (
         <main className="mx-auto max-w-[1100px] space-y-7 px-4 py-7 sm:py-8">
-          <div className="text-right space-y-2">
-            <h2 className="text-xl font-black text-[#0f2918] sm:text-2xl">مراجعة النشاط قبل النشر</h2>
-            <p className="text-sm leading-relaxed text-[#64748B]">راجع النشاط وتأكد من جاهزيته قبل أن يصبح متاحاً للطلاب.</p>
+          <div className="text-start space-y-2">
+            <h2 className="text-xl font-black text-[#0f2918] sm:text-2xl">{c.reviewTitle}</h2>
+            <p className="text-sm leading-relaxed text-[#64748B]">{c.reviewDescription}</p>
           </div>
 
           <section
@@ -1845,21 +1816,21 @@ export default function DictationCreate() {
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
                   <Headphones className="h-7 w-7" />
                 </div>
-                <div className="space-y-2 text-right">
-                  <p className="text-xs font-bold text-white/70">نشاط استماع</p>
-                  <h3 className="text-2xl font-black leading-snug">{title.trim() || "بدون عنوان"}</h3>
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{questions.length} أسئلة</span>
-                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{totalPoints} درجة</span>
+                <div className="space-y-2 text-start">
+                  <p className="text-xs font-bold text-white/70">{c.listeningActivity}</p>
+                  <h3 className="text-2xl font-black leading-snug">{title.trim() || c.untitled}</h3>
+                  <div className="flex flex-wrap gap-2 justify-start">
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{questions.length} {c.questions}</span>
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{totalPoints} {c.points}</span>
                     <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">
-                      {settings.maxListens === 0 ? "استماع غير محدود" : `${settings.maxListens} استماع`}
+                      {settings.maxListens === 0 ? c.unlimitedListening : `${settings.maxListens} ${c.listens}`}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-right text-[11px] leading-relaxed backdrop-blur-sm">
-                <p className="font-bold text-white/90">آخر مراجعة للمعالج</p>
-                <p className="mt-1 text-white/75">{new Date().toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" })}</p>
+              <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-start text-[11px] leading-relaxed backdrop-blur-sm">
+                <p className="font-bold text-white/90">{c.lastReview}</p>
+                <p className="mt-1 text-white/75">{new Date().toLocaleString(lang === "ar" ? "ar-SA" : "en-US", { dateStyle: "medium", timeStyle: "short" })}</p>
               </div>
             </div>
           </section>
@@ -1867,33 +1838,33 @@ export default function DictationCreate() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {[
               {
-                title: "النص الصوتي",
-                desc: `${audioText.length.toLocaleString("ar-SA")} حرف · قراءة تقريبية ~${approxDurationSec} ث`,
+                title: c.audioText,
+                desc: `${audioText.length.toLocaleString(lang === "ar" ? "ar-SA" : "en-US")} ${c.charactersApprox} ~${approxDurationSec} ${c.secondsShort}`,
                 icon: <Volume2 className="h-5 w-5" />,
                 go: 2 as const,
               },
               {
-                title: "إعدادات الاستماع",
+                title: c.studentListeningSettings,
                 desc: listeningSettingsSummary,
                 icon: <Settings2 className="h-5 w-5" />,
                 go: 2 as const,
               },
               {
-                title: "الأسئلة",
-                desc: `${questions.length} سؤالًا · ${totalPoints} درجة`,
+                title: c.questions,
+                desc: `${questions.length} ${c.questions} · ${totalPoints} ${c.points}`,
                 icon: <ListChecks className="h-5 w-5" />,
                 go: 2 as const,
               },
               {
-                title: "إعدادات النشر",
-                desc: `${accessFlavorLabel} · ${isShared ? "مشاركة مع المكتبة" : "غير مشارَك"}`,
+                title: c.publishingSettings,
+                desc: `${accessFlavorLabel} · ${isShared ? c.publicLibrary : c.notShared}`,
                 icon: <Globe className="h-5 w-5" />,
                 go: 3 as const,
               },
             ].map((card) => (
               <div
                 key={card.title}
-                className={cn("flex flex-col rounded-[24px] border bg-white p-5 text-right", TRANSITION)}
+                className={cn("flex flex-col rounded-[24px] border bg-white p-5 text-start", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
                 <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f3f7f4] text-[#1E4D35]">{card.icon}</div>
@@ -1904,32 +1875,32 @@ export default function DictationCreate() {
                   onClick={() => setStep(card.go)}
                   className="mt-4 min-h-[44px] rounded-xl border border-[#1E4D35]/20 bg-white text-sm font-black text-[#1E4D35] hover:bg-[#eef5f0]"
                 >
-                  تعديل
+                  {c.edit}
                 </button>
               </div>
             ))}
           </div>
 
-          <section className={cn("rounded-[24px] border bg-white p-6 text-right", TRANSITION)} style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}>
-            <h4 className="mb-4 font-black text-[#0f2918]">معاينة الأسئلة</h4>
+          <section className={cn("rounded-[24px] border bg-white p-6 text-start", TRANSITION)} style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}>
+            <h4 className="mb-4 font-black text-[#0f2918]">{c.questionsPreview}</h4>
             <div className="space-y-3">
               {questions.slice(0, 2).map((qq, idx) => (
                 <div key={qq.id} className="rounded-2xl border bg-[#fafdfb] px-4 py-3" style={{ borderColor: CARD_BORDER }}>
-                  <div className="mb-1 flex flex-wrap items-center gap-2 justify-end">
-                    <span className="text-[11px] font-bold text-[#94a3ab]">سؤال {idx + 1}</span>
+                  <div className="mb-1 flex flex-wrap items-center gap-2 justify-start">
+                    <span className="text-[11px] font-bold text-[#94a3ab]">{c.question} {idx + 1}</span>
                     <QuestionTypeBadge type={qq.type} />
                   </div>
                   <p className="text-sm font-semibold leading-relaxed text-[#111827] line-clamp-3">{qq.text || "—"}</p>
                 </div>
               ))}
               {questions.length > 2 && (
-                <p className="text-center text-[12px] text-[#94a3ab]">+ {questions.length - 2} أسئلة إضافية</p>
+                <p className="text-center text-[12px] text-[#94a3ab]">+ {questions.length - 2} {c.additionalQuestions}</p>
               )}
             </div>
           </section>
 
           <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-center text-[13px] font-semibold text-amber-950">
-            سيصبح النشاط متاحاً للطلاب فور نشره.
+            {c.publishNotice}
           </p>
 
           <div className="flex justify-center">
@@ -1938,7 +1909,7 @@ export default function DictationCreate() {
               onClick={() => setStep(3)}
               className="text-sm font-bold text-[#1E4D35] underline-offset-4 hover:underline"
             >
-              العودة لتعديل إعدادات النشر
+              {c.returnToPublishing}
             </button>
           </div>
         </main>
@@ -1950,7 +1921,7 @@ export default function DictationCreate() {
           TRANSITION,
         )}
         style={{ borderColor: CARD_BORDER }}
-        dir="rtl"
+        dir={dir}
       >
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-2 px-4 py-3 sm:justify-between sm:gap-3">
           <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-1">
@@ -1963,7 +1934,7 @@ export default function DictationCreate() {
               )}
               style={{ borderColor: COLOR_CARD_BORDER }}
             >
-              <ChevronRight className="h-4 w-4" /> رجوع
+              <ChevronRight className="h-4 w-4" /> {c.back}
             </button>
             <button
               type="button"
@@ -1974,7 +1945,7 @@ export default function DictationCreate() {
               )}
               style={{ borderColor: CARD_BORDER }}
             >
-              حفظ كمسودة
+              {c.saveDraft}
             </button>
           </div>
           <button
@@ -1992,15 +1963,15 @@ export default function DictationCreate() {
           >
             {step === 4 ? (
               createMutation.isPending ? (
-                "جارٍ النشر..."
+                c.publishing
               ) : (
                 <>
-                  <Save className="h-4 w-4" /> نشر النشاط
+                  <Save className="h-4 w-4" /> {c.publish}
                 </>
               )
             ) : (
               <>
-                التالي
+                {c.next}
                 <ChevronLeft className="h-4 w-4" />
               </>
             )}

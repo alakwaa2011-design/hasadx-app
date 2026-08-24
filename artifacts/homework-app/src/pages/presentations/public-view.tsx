@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "wouter";
 import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { getTheme, getPattern } from "@/lib/slide-themes";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -36,6 +37,7 @@ type Presentation = {
 };
 
 export default function PublicPresentationView() {
+  const { t, dir } = useI18n();
   const { id } = useParams<{ id: string }>();
   const [pres, setPres] = useState<Presentation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,29 +94,29 @@ export default function PublicPresentationView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white" dir={dir} aria-label={t.presentationPublic.loading}>
         <Loader2 className="w-10 h-10 animate-spin" />
       </div>
     );
   }
   if (error === "notfound") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-8" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-8" dir={dir}>
         <div className="max-w-md text-center">
           <div className="text-6xl mb-4">🔒</div>
-          <h1 className="text-2xl font-bold mb-2">العرض غير متاح</h1>
-          <p className="text-slate-300 text-sm">قد يكون هذا العرض خاصاً أو تم حذفه. تواصل مع المعلم للحصول على الإذن.</p>
-          <a href="/" className="inline-block mt-6 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold">العودة للرئيسية</a>
+          <h1 className="text-2xl font-bold mb-2">{t.presentationPublic.unavailableTitle}</h1>
+          <p className="text-slate-300 text-sm">{t.presentationPublic.unavailableBody}</p>
+          <a href="/" className="inline-block mt-6 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold">{t.presentationPublic.home}</a>
         </div>
       </div>
     );
   }
   if (error === "error" || !pres) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white" dir={dir}>
         <div className="text-center">
-          <p className="mb-4">حدث خطأ أثناء تحميل العرض.</p>
-          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20">إعادة المحاولة</button>
+          <p className="mb-4">{t.presentationPublic.loadError}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20">{t.presentationPublic.retry}</button>
         </div>
       </div>
     );
@@ -125,11 +127,11 @@ export default function PublicPresentationView() {
   /* Guard against empty/invalid slides arrays. */
   if (!pres.slides || pres.slides.length === 0) {
     return (
-      <div dir="rtl" className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${theme.grad} text-white p-8`}>
+      <div dir={dir} className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${theme.grad} text-white p-8`}>
         <div className="max-w-md text-center">
           <div className="text-7xl mb-4">📭</div>
           <h1 className="text-2xl font-bold mb-2">{pres.title}</h1>
-          <p className="opacity-80">هذا العرض فارغ — لم يتم إضافة شرائح بعد.</p>
+          <p className="opacity-80">{t.presentationPublic.empty}</p>
         </div>
       </div>
     );
@@ -138,14 +140,14 @@ export default function PublicPresentationView() {
   const slide = pres.slides[safeIdx];
 
   return (
-    <div dir="rtl" className={`min-h-screen flex flex-col bg-gradient-to-br ${theme.grad} text-white relative overflow-hidden`}>
+    <div dir={dir} className={`min-h-screen flex flex-col bg-gradient-to-br ${theme.grad} text-white relative overflow-hidden`}>
       {Object.keys(pattern.style).length > 0 && (
         <div className="absolute inset-0 pointer-events-none" style={pattern.style} />
       )}
       {/* Public watermark / brand */}
       <div className="absolute top-4 start-4 z-10 flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-xs font-bold">
         <span>🌾</span>
-        <span>منصة حصاد</span>
+        <span>{t.presentationPublic.platform}</span>
         <span className="opacity-60">·</span>
         <span className="opacity-80">{pres.title}</span>
       </div>
@@ -153,7 +155,8 @@ export default function PublicPresentationView() {
       <button
         onClick={toggleFullscreen}
         className="absolute top-4 end-4 z-10 p-2 rounded-lg bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/20"
-        title={isFullscreen ? "خروج" : "ملء الشاشة"}
+        title={isFullscreen ? t.presentationPublic.exitFullscreen : t.presentationPublic.fullscreen}
+        aria-label={isFullscreen ? t.presentationPublic.exitFullscreen : t.presentationPublic.fullscreen}
       >
         {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
       </button>
@@ -166,7 +169,7 @@ export default function PublicPresentationView() {
               <div className="text-7xl sm:text-9xl mb-6 drop-shadow-lg">{slide.emoji || pres.coverEmoji || "📚"}</div>
               <h1 className="text-4xl sm:text-7xl font-black mb-4 drop-shadow">{slide.title || pres.title}</h1>
               {slide.subtitle && <p className="text-xl sm:text-2xl opacity-90">{slide.subtitle}</p>}
-              {pres.teacherName && <p className="mt-8 text-base opacity-70">المعلم: {pres.teacherName}</p>}
+              {pres.teacherName && <p className="mt-8 text-base opacity-70">{t.presentationPublic.teacher} {pres.teacherName}</p>}
             </div>
           )}
 
@@ -199,7 +202,7 @@ export default function PublicPresentationView() {
 
           {slide.type === "quiz" && slide.question && (
             <div>
-              <div className="text-yellow-300 text-xl mb-3 font-bold">❓ سؤال</div>
+              <div className="text-yellow-300 text-xl mb-3 font-bold">❓ {t.presentationPublic.question}</div>
               <h2 className="text-2xl sm:text-4xl font-black mb-8">{slide.question.text}</h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 {(["A","B","C","D"] as const).map((k) => {
@@ -235,18 +238,18 @@ export default function PublicPresentationView() {
           {slide.type === "activity" && slide.activity && (
             <div className="text-center">
               <div className="text-7xl mb-4">🎮</div>
-              <h2 className="text-3xl sm:text-5xl font-black mb-4">{slide.title || "نشاط تفاعلي"}</h2>
+              <h2 className="text-3xl sm:text-5xl font-black mb-4">{slide.title || t.presentationPublic.activity}</h2>
               <p className="text-lg sm:text-xl opacity-90 mb-6 max-w-2xl mx-auto">{slide.activity.instructions}</p>
               <div className="inline-block px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-sm font-bold">
-                لعبة: {slide.activity.gameType} · {slide.activity.questions.length} سؤال
+                {t.presentationPublic.game} {slide.activity.gameType} · {slide.activity.questions.length} {t.presentationPublic.questions}
               </div>
-              <p className="mt-4 text-xs opacity-70">انضم لصفك على منصة حصاد لتلعب هذا النشاط مباشرة</p>
+              <p className="mt-4 text-xs opacity-70">{t.presentationPublic.activityJoinHint}</p>
             </div>
           )}
 
           {slide.type === "discussion" && (
             <div>
-              <div className="text-yellow-300 text-xl mb-3 font-bold">💬 نقاش</div>
+              <div className="text-yellow-300 text-xl mb-3 font-bold">💬 {t.presentationPublic.discussion}</div>
               <h2 className="text-3xl sm:text-5xl font-black mb-6">{slide.discussionPrompt || slide.title}</h2>
               {(slide.discussionPoints || []).length > 0 && (
                 <ul className="space-y-3 text-lg sm:text-xl">
@@ -278,7 +281,7 @@ export default function PublicPresentationView() {
               <h2 className="text-3xl font-black mb-3">{slide.title}</h2>
               {slide.videoUrl && (
                 <a href={slide.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-3 rounded-xl bg-white text-slate-900 font-bold hover:bg-white/90">
-                  مشاهدة الفيديو
+                  {t.presentationPublic.watchVideo}
                 </a>
               )}
             </div>
@@ -292,13 +295,14 @@ export default function PublicPresentationView() {
           onClick={prev}
           disabled={idx === 0}
           className="p-3 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label={t.presentationPublic.previousSlide}
         >
-          <ChevronRight className="w-5 h-5" />
+          {dir === "rtl" ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
         </button>
 
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold">
-            {idx + 1} / {pres.slides.length}
+            {t.presentationPublic.slideProgress.replace("{current}", String(idx + 1)).replace("{total}", String(pres.slides.length))}
           </span>
           <div className="flex gap-1">
             {pres.slides.map((_, i) => (
@@ -315,8 +319,9 @@ export default function PublicPresentationView() {
           onClick={next}
           disabled={idx === pres.slides.length - 1}
           className="p-3 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label={t.presentationPublic.nextSlide}
         >
-          <ChevronLeft className="w-5 h-5" />
+          {dir === "rtl" ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
         </button>
       </div>
     </div>

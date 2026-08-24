@@ -11,6 +11,7 @@ import {
   type LetrlyLength,
 } from "@/lib/letrly-engine";
 import LetrlyCreate from "./letrly-create";
+import { useI18n } from "@/lib/i18n";
 
 const ALL_CATEGORIES: LetrlyCategory[] = [
   "general",
@@ -72,6 +73,7 @@ type LetrlyOptions = {
 };
 
 function PlayPanel() {
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [opts, setOpts] = useState<LetrlyOptions | null>(null);
   const [category, setCategory] = useState<LetrlyCategory>("general");
@@ -114,13 +116,13 @@ function PlayPanel() {
       >
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[hsl(145,40%,28%)]/10 text-[hsl(145,40%,28%)] text-xs font-bold mb-3 border border-[hsl(145,40%,28%)]/15">
           <Sparkles className="w-3.5 h-3.5" />
-          لعبة كلمات عربية
+          {t.letrly.arabicWordGame}
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-2">
-          تحدي الكلمة
+          {t.letrly.playTitle}
         </h1>
         <p className="text-muted-foreground text-base">
-          خمّن الكلمة السرّية في ٦ محاولات. كل لون يخبرك بمدى قربك.
+          {t.letrly.playDescription}
         </p>
       </motion.div>
 
@@ -131,8 +133,8 @@ function PlayPanel() {
         className="bg-white border border-card-border rounded-2xl p-4 sm:p-5 mb-6 shadow-sm"
       >
         <div className="text-center mb-4">
-          <h2 className="text-sm font-extrabold text-foreground mb-1">كيف ألعب؟</h2>
-          <p className="text-xs text-muted-foreground">الألوان تخبرك بمدى قربك من الكلمة السرّية</p>
+          <h2 className="text-sm font-extrabold text-foreground mb-1">{t.letrly.howToPlay}</h2>
+          <p className="text-xs text-muted-foreground">{t.letrly.colorHint}</p>
         </div>
         <div className="flex flex-col items-center gap-1.5 mb-4">
           <DemoRow letters={["ج", "م", "ل", "ي"]} states={["absent", "absent", "absent", "absent"]} />
@@ -142,15 +144,15 @@ function PlayPanel() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="flex flex-col items-center gap-1">
             <div className="w-7 h-7 rounded-md bg-emerald-500 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">ح</div>
-            <div className="text-[11px] font-bold text-emerald-700">في مكانه ✓</div>
+            <div className="text-[11px] font-bold text-emerald-700">{t.letrly.correctPlace}</div>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="w-7 h-7 rounded-md bg-amber-400 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">ص</div>
-            <div className="text-[11px] font-bold text-amber-700">موجود لكن مكان آخر</div>
+            <div className="text-[11px] font-bold text-amber-700">{t.letrly.presentElsewhere}</div>
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="w-7 h-7 rounded-md bg-zinc-400 text-white font-extrabold flex items-center justify-center text-sm shadow-sm">ل</div>
-            <div className="text-[11px] font-bold text-zinc-600">غير موجود</div>
+            <div className="text-[11px] font-bold text-zinc-600">{t.letrly.absent}</div>
           </div>
         </div>
       </motion.div>
@@ -161,9 +163,9 @@ function PlayPanel() {
         transition={{ delay: 0.1 }}
         className="bg-white border border-card-border rounded-2xl p-5 mb-5 shadow-sm"
       >
-        <h2 className="text-sm font-bold text-foreground mb-3">اختر التصنيف</h2>
+        <h2 className="text-sm font-bold text-foreground mb-3">{t.letrly.chooseCategory}</h2>
         {enabledCategories.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">لا توجد تصنيفات متاحة حالياً</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t.letrly.noCategories}</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {enabledCategories.map((cat) => {
@@ -195,9 +197,9 @@ function PlayPanel() {
         transition={{ delay: 0.15 }}
         className="bg-white border border-card-border rounded-2xl p-5 mb-6 shadow-sm"
       >
-        <h2 className="text-sm font-bold text-foreground mb-3">عدد حروف الكلمة</h2>
+        <h2 className="text-sm font-bold text-foreground mb-3">{t.letrly.wordLengthLabel}</h2>
         {enabledLengths.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">لا توجد أطوال متاحة حالياً</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t.letrly.noLengths}</p>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {enabledLengths.map((len) => {
@@ -232,13 +234,14 @@ function PlayPanel() {
         className="w-full bg-[hsl(145,55%,32%)] hover:bg-[hsl(145,55%,28%)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-lg py-4 rounded-2xl shadow-lg shadow-[hsl(145,55%,32%)]/30 hover:shadow-xl transition-all hover:-translate-y-0.5 inline-flex items-center justify-center gap-2"
       >
         <Play className="w-5 h-5" />
-        ابدأ اللعب
+        {t.letrly.startPlaying}
       </motion.button>
     </>
   );
 }
 
 export default function LetrlySetup() {
+  const { t, dir } = useI18n();
   const [, setLocation] = useLocation();
   const { data: teacher } = useGetCurrentTeacher({ query: { retry: false } as any });
   const isTeacher = !!teacher?.id;
@@ -249,7 +252,7 @@ export default function LetrlySetup() {
       <div
         className="min-h-[calc(100vh-4rem)] py-10"
         style={{ background: "#F5FAF7" }}
-        dir="rtl"
+        dir={dir}
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
           <button
@@ -257,7 +260,7 @@ export default function LetrlySetup() {
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ArrowRight className="w-4 h-4" />
-            {isTeacher ? "لوحة المعلم" : "كل الألعاب"}
+            {isTeacher ? t.letrly.teacherDashboard : t.letrly.allGames}
           </button>
 
           {isTeacher && (
@@ -271,7 +274,7 @@ export default function LetrlySetup() {
                 }`}
               >
                 <Play className="w-4 h-4" />
-                العب الآن
+                {t.letrly.playNow}
               </button>
               <button
                 onClick={() => setTab("create")}
@@ -282,7 +285,7 @@ export default function LetrlySetup() {
                 }`}
               >
                 <Send className="w-4 h-4" />
-                أنشئ كلمة وشاركها
+                {t.letrly.createAndShare}
               </button>
             </div>
           )}

@@ -45,7 +45,8 @@ interface Assignment {
 
 export default function SoloChallengeCreatePage() {
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
+  const s = t.soloChallenges;
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
 
   const [source, setSource] = useState<Source | null>(null);
@@ -78,7 +79,7 @@ export default function SoloChallengeCreatePage() {
   // === Multi-level + difficulty distribution ===
   const [isMultiLevel, setIsMultiLevel] = useState(false);
   const [challengeLevels, setChallengeLevels] = useState<ChallengeLevel[]>([
-    { name: "المرحلة الأولى", questionCount: 5, timePerQuestion: 25 },
+    { name: "Level 1", questionCount: 5, timePerQuestion: 25 },
   ]);
   const [diffDistribution, setDiffDistribution] = useState<DiffDistribution | null>(null);
 
@@ -120,7 +121,7 @@ export default function SoloChallengeCreatePage() {
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const generateWithAI = async () => {
-    if (!topic.trim()) { toast.error("أدخل الموضوع أولاً"); return; }
+    if (!topic.trim()) { toast.error(s.enterTopic); return; }
     setGenerating(true);
     try {
       const res = await creditAwareFetch(`${API}/api/ai/generate-questions`, {
@@ -132,7 +133,7 @@ export default function SoloChallengeCreatePage() {
       const data = await res.json();
       if (!res.ok) {
         if (isInsufficientCreditsResponse(res)) return;
-        throw new Error(data.message || "فشل التوليد");
+        throw new Error(data.message || s.generationFailed);
       }
       const generated: Question[] = (data.questions || []).map((q: any) => ({
         text: q.text || "",
@@ -149,9 +150,9 @@ export default function SoloChallengeCreatePage() {
       }));
       setQuestions(prev => [...prev, ...generated]);
       if (!title) setTitle(topic.trim());
-      toast.success(`تم توليد ${generated.length} سؤال`);
+      toast.success(s.generated.replace("{n}", String(generated.length)));
     } catch (err: any) {
-      toast.error(err.message || "خطأ في التوليد");
+      toast.error(err.message || s.generationFailed);
     } finally {
       setGenerating(false);
       refreshCreditsBalance();
@@ -159,7 +160,7 @@ export default function SoloChallengeCreatePage() {
   };
 
   const createFromAssignment = async () => {
-    if (!selectedAssignment) { toast.error("اختر واجباً أولاً"); return; }
+    if (!selectedAssignment) { toast.error(s.chooseAssignment); return; }
     setSaving(true);
     try {
       const res = await fetch(`${API}/api/solo-challenges`, {
@@ -189,19 +190,19 @@ export default function SoloChallengeCreatePage() {
         }),
       });
 
-      toast.success("تم إنشاء المسابقة");
+      toast.success(s.created);
       setLocation(`/teacher/solo-challenges/${data.slug}`);
     } catch (err: any) {
-      toast.error(err.message || "خطأ في الإنشاء");
+      toast.error(err.message || s.creationFailed);
     } finally {
       setSaving(false);
     }
   };
 
   const createStandalone = async () => {
-    if (!title.trim()) { toast.error("أدخل عنوان المسابقة"); return; }
+    if (!title.trim()) { toast.error(s.enterTitle); return; }
     const validQs = questions.filter(isValidQ);
-    if (validQs.length === 0) { toast.error("أضف سؤالاً واحداً على الأقل"); return; }
+    if (validQs.length === 0) { toast.error(s.addQuestion); return; }
 
     const sendQs = validQs.map(q => {
       if (q.type === "fill_blank") {
@@ -210,7 +211,7 @@ export default function SoloChallengeCreatePage() {
         const allAnswers = [q.fillAnswer.trim(), ...alternatives].join("|");
         return { text: q.text, questionType: "fill_blank", correctAnswer: allAnswers, optionA: "", optionB: "", optionC: "", optionD: "", difficulty: q.difficulty ?? null, audioUrl: q.audioUrl ?? null };
       }
-      if (q.type === "tf") return { ...q, questionType: "true_false", optionA: "صح", optionB: "خطأ", optionC: "", optionD: "" };
+      if (q.type === "tf") return { ...q, questionType: "true_false", optionA: s.trueLabel, optionB: s.falseLabel, optionC: "", optionD: "" };
       return { ...q, questionType: "mcq" };
     });
 
@@ -236,10 +237,10 @@ export default function SoloChallengeCreatePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      toast.success("تم إنشاء المسابقة");
+      toast.success(s.created);
       setLocation(`/teacher/solo-challenges/${data.slug}`);
     } catch (err: any) {
-      toast.error(err.message || "خطأ في الإنشاء");
+      toast.error(err.message || s.creationFailed);
     } finally {
       setSaving(false);
     }
@@ -248,7 +249,7 @@ export default function SoloChallengeCreatePage() {
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div className="min-h-screen bg-background" dir={dir}>
       {/* Header */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
@@ -259,7 +260,7 @@ export default function SoloChallengeCreatePage() {
             <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
               <Target className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
             </div>
-            <h1 className="text-lg lg:text-xl font-black text-foreground tracking-tight">مسابقة ذاتية جديدة</h1>
+            <h1 className="text-lg lg:text-xl font-black text-foreground tracking-tight">{s.createTitle}</h1>
           </div>
         </div>
       </div>
@@ -271,44 +272,44 @@ export default function SoloChallengeCreatePage() {
           {!source && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-6 lg:space-y-8 max-w-3xl lg:max-w-5xl mx-auto mt-4 lg:mt-6">
               <div className="text-center space-y-2 lg:space-y-3 mb-8 lg:mb-10">
-                <h2 className="text-2xl lg:text-3xl font-black text-foreground">كيف تريد إنشاء المسابقة؟</h2>
-                <p className="text-sm lg:text-base text-muted-foreground font-medium">اختر الطريقة الأنسب لبدء التحدي</p>
+                <h2 className="text-2xl lg:text-3xl font-black text-foreground">{s.chooseHow}</h2>
+                <p className="text-sm lg:text-base text-muted-foreground font-medium">{s.chooseHowHint}</p>
               </div>
               <div className="grid sm:grid-cols-3 gap-4 lg:gap-6">
                 <button
                   onClick={() => setSource("assignment")}
-                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-primary/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
+                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-primary/50 rounded-3xl text-start transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
                 >
                   <div className="absolute top-0 end-0 w-24 h-24 lg:w-32 lg:h-32 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-primary/10 transition-colors" />
                   <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center mb-5 lg:mb-6 transition-colors border border-primary/10 shadow-sm relative z-10">
                     <BookOpen className="w-6 h-6 lg:w-7 lg:h-7 text-primary" />
                   </div>
-                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">من واجب موجود</h3>
-                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">اختر واجباً من مكتبتك وانشر رابط مسابقة فردية مباشرةً بمحتواه</p>
+                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">{s.fromAssignment}</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">{s.fromAssignmentHint}</p>
                 </button>
 
                 <button
                   onClick={() => setSource("ai")}
-                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-amber-500/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
+                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-amber-500/50 rounded-3xl text-start transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
                 >
                   <div className="absolute top-0 end-0 w-24 h-24 lg:w-32 lg:h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-amber-500/10 transition-colors" />
                   <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-amber-500/10 group-hover:bg-amber-500/20 flex items-center justify-center mb-5 lg:mb-6 transition-colors border border-amber-500/10 shadow-sm relative z-10">
                     <Sparkles className="w-6 h-6 lg:w-7 lg:h-7 text-amber-500" />
                   </div>
-                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">بالذكاء الاصطناعي</h3>
-                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">أنشئ أسئلة جديدة تلقائياً في أي موضوع، عدّل عليها، وانشرها</p>
+                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">{s.withAi}</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">{s.withAiHint}</p>
                 </button>
 
                 <button
                   onClick={() => setSource("manual")}
-                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-emerald-500/50 rounded-3xl text-right transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
+                  className="group p-6 lg:p-8 bg-card border-2 border-border/60 hover:border-emerald-500/50 rounded-3xl text-start transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden"
                 >
                   <div className="absolute top-0 end-0 w-24 h-24 lg:w-32 lg:h-32 bg-emerald-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 group-hover:bg-emerald-500/10 transition-colors" />
                   <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-emerald-500/10 group-hover:bg-emerald-500/20 flex items-center justify-center mb-5 lg:mb-6 transition-colors border border-emerald-500/10 shadow-sm relative z-10">
                     <PenLine className="w-6 h-6 lg:w-7 lg:h-7 text-emerald-600" />
                   </div>
-                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">إضافة يدوية</h3>
-                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">اكتب أسئلتك من الصفر — اختيار متعدد أو صح وخطأ بنفسك</p>
+                  <h3 className="font-black text-foreground text-lg lg:text-xl mb-2 lg:mb-2.5 relative z-10">{s.manually}</h3>
+                  <p className="text-xs lg:text-sm text-muted-foreground font-medium leading-relaxed relative z-10">{s.manuallyHint}</p>
                 </button>
               </div>
             </motion.div>
@@ -323,8 +324,8 @@ export default function SoloChallengeCreatePage() {
                 <X className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
-                <h2 className="font-black text-xl lg:text-2xl text-foreground">اختيار واجب</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium">سيتم تحويل أسئلة الواجب إلى مسابقة ذاتية</p>
+                <h2 className="font-black text-xl lg:text-2xl text-foreground">{s.chooseAssignment}</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{s.chooseAssignmentHint}</p>
               </div>
             </div>
 
@@ -335,7 +336,7 @@ export default function SoloChallengeCreatePage() {
                   <input
                     value={assignSearch}
                     onChange={e => setAssignSearch(e.target.value)}
-                    placeholder="ابحث في واجباتك المحفوظة..."
+                    placeholder={s.searchAssignments}
                     className="w-full pe-12 ps-4 py-3.5 lg:py-4 rounded-2xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20 text-sm lg:text-base font-bold transition-all"
                   />
                 </div>
@@ -344,7 +345,7 @@ export default function SoloChallengeCreatePage() {
               {loadingAssignments ? (
                 <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
               ) : filteredAssignments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-16 text-sm lg:text-base font-medium">لا توجد واجبات مطابقة</p>
+                <p className="text-center text-muted-foreground py-16 text-sm lg:text-base font-medium">{s.noMatchingAssignments}</p>
               ) : (
                 <div className="p-3 lg:p-4 space-y-2 lg:space-y-2.5 max-h-[400px] lg:max-h-[460px] overflow-y-auto">
                   {filteredAssignments.map(a => (
@@ -352,7 +353,7 @@ export default function SoloChallengeCreatePage() {
                       key={a.id}
                       onClick={() => setSelectedAssignment(a)}
                       className={cn(
-                        "w-full text-right px-5 lg:px-6 py-4 lg:py-5 rounded-2xl border-2 transition-all group",
+                        "w-full text-start px-5 lg:px-6 py-4 lg:py-5 rounded-2xl border-2 transition-all group",
                         selectedAssignment?.id === a.id
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-transparent bg-background hover:bg-muted/50 hover:border-border",
@@ -392,7 +393,7 @@ export default function SoloChallengeCreatePage() {
                       className="w-full flex items-center justify-center gap-2 py-4 lg:py-5 rounded-2xl font-black text-base lg:text-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
                     >
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Target className="w-5 h-5" />}
-                      {saving ? "جاري الإنشاء..." : "إنشاء المسابقة وبدء النشر"}
+                      {saving ? s.creating : s.createAndPublish}
                     </button>
                   </div>
                 </motion.div>
@@ -409,8 +410,8 @@ export default function SoloChallengeCreatePage() {
                 <X className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
-                <h2 className="font-black text-xl lg:text-2xl text-foreground">ذكاء اصطناعي</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium">ولّد أسئلة جديدة تلقائياً ثم عدّلها كما تشاء</p>
+                <h2 className="font-black text-xl lg:text-2xl text-foreground">{s.ai}</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{s.aiHint}</p>
               </div>
             </div>
 
@@ -423,25 +424,25 @@ export default function SoloChallengeCreatePage() {
                     <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
                       <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-amber-600" />
                     </div>
-                    <h3 className="font-black text-base lg:text-lg text-amber-900 dark:text-amber-400">توليد الأسئلة</h3>
+                    <h3 className="font-black text-base lg:text-lg text-amber-900 dark:text-amber-400">{s.generateQuestions}</h3>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4 lg:gap-5 mb-4 lg:mb-5">
                     <div>
-                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">الموضوع *</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{s.topic} *</label>
                       <input
                         value={topic}
                         onChange={e => setTopic(e.target.value)}
-                        placeholder="مثال: الجهاز الهضمي"
+                        placeholder={s.topicExample}
                         className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm lg:text-base font-bold shadow-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">المادة (اختياري)</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{s.subjectOptional}</label>
                       <input
                         value={subject}
                         onChange={e => setSubject(e.target.value)}
-                        placeholder="مثال: علوم"
+                        placeholder={s.subjectExample}
                         className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm lg:text-base font-bold shadow-sm"
                       />
                     </div>
@@ -449,7 +450,7 @@ export default function SoloChallengeCreatePage() {
 
                   <div className="grid grid-cols-2 gap-4 lg:gap-5 mb-5 lg:mb-6">
                     <div>
-                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">العدد</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{s.count}</label>
                       <select
                         value={count}
                         onChange={e => setCount(Number(e.target.value))}
@@ -459,15 +460,15 @@ export default function SoloChallengeCreatePage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">المستوى</label>
+                      <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{s.difficulty}</label>
                       <select
                         value={difficulty}
                         onChange={e => setDifficulty(e.target.value as Difficulty)}
                         className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none text-sm lg:text-base font-bold shadow-sm"
                       >
-                        <option value="easy">سهل</option>
-                        <option value="medium">متوسط</option>
-                        <option value="hard">صعب</option>
+                        <option value="easy">{s.easy}</option>
+                        <option value="medium">{s.medium}</option>
+                        <option value="hard">{s.hard}</option>
                       </select>
                     </div>
                   </div>
@@ -478,9 +479,9 @@ export default function SoloChallengeCreatePage() {
                     className="w-full flex items-center justify-center gap-2 py-3.5 lg:py-4 rounded-xl font-black text-sm lg:text-base bg-gradient-to-l from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-amber-500/25 active:scale-95"
                   >
                     {generating ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" />جاري التوليد...</>
+                      <><Loader2 className="w-5 h-5 animate-spin" />{s.generating}</>
                     ) : (
-                      <><Sparkles className="w-5 h-5" />{questions.length > 0 ? "توليد أسئلة إضافية" : "توليد الأسئلة الآن"}</>
+                      <><Sparkles className="w-5 h-5" />{questions.length > 0 ? s.generateMore : s.generateNow}</>
                     )}
                   </button>
                 </div>
@@ -520,11 +521,11 @@ export default function SoloChallengeCreatePage() {
               <div className="order-1 md:order-2 space-y-5 md:sticky md:top-24">
                 <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-5 lg:space-y-6">
                   <div>
-                    <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">عنوان المسابقة النهائي *</label>
+                    <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">{s.finalTitle}</label>
                     <input
                       value={title}
                       onChange={e => setTitle(e.target.value)}
-                      placeholder="يظهر للطلاب..."
+                      placeholder={s.visibleToStudents}
                       className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background text-sm lg:text-base font-bold transition-all shadow-inner"
                     />
                   </div>
@@ -552,7 +553,7 @@ export default function SoloChallengeCreatePage() {
                     إنشاء المسابقة
                   </button>
                   {questions.length === 0 && (
-                    <p className="text-[10px] lg:text-xs text-center text-muted-foreground font-medium px-2">يجب توليد أو إضافة سؤال واحد على الأقل قبل الإنشاء</p>
+                    <p className="text-[10px] lg:text-xs text-center text-muted-foreground font-medium px-2">{s.needQuestion}</p>
                   )}
                 </div>
               </div>
@@ -568,8 +569,8 @@ export default function SoloChallengeCreatePage() {
                 <X className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <div>
-                <h2 className="font-black text-xl lg:text-2xl text-foreground">إضافة يدوية</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium">اكتب الأسئلة والخيارات بنفسك خطوة بخطوة</p>
+                <h2 className="font-black text-xl lg:text-2xl text-foreground">{s.manually}</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{s.manualHint}</p>
               </div>
             </div>
 
@@ -600,8 +601,8 @@ export default function SoloChallengeCreatePage() {
                       <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4 lg:mb-5 group-hover:bg-primary/10 transition-colors">
                         <Plus className="w-6 h-6 lg:w-7 lg:h-7 text-muted-foreground group-hover:text-primary" />
                       </div>
-                      <p className="font-bold text-foreground text-lg lg:text-xl mb-1 lg:mb-1.5 group-hover:text-primary">أضف سؤالك الأول</p>
-                      <p className="text-xs lg:text-sm text-muted-foreground">اضغط هنا للبدء في إضافة الأسئلة يدوياً</p>
+                      <p className="font-bold text-foreground text-lg lg:text-xl mb-1 lg:mb-1.5 group-hover:text-primary">{s.firstQuestion}</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">{s.firstQuestionHint}</p>
                     </div>
                   ) : (
                     <div className="space-y-4 lg:space-y-5">
@@ -620,7 +621,7 @@ export default function SoloChallengeCreatePage() {
                           onClick={() => setQuestions(prev => [...prev, emptyQuestion()])}
                           className="w-full py-5 lg:py-6 rounded-2xl border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 transition-colors font-bold lg:text-base flex items-center justify-center gap-2"
                         >
-                          <Plus className="w-5 h-5" /> أضف سؤالاً آخر
+                          <Plus className="w-5 h-5" /> {s.addAnother}
                         </button>
                       )}
                     </div>
@@ -632,11 +633,11 @@ export default function SoloChallengeCreatePage() {
               <div className="order-1 md:order-2 space-y-5 md:sticky md:top-24">
                 <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-5 lg:space-y-6">
                   <div>
-                    <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">عنوان المسابقة *</label>
+                    <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">{s.challengeTitle}</label>
                     <input
                       value={title}
                       onChange={e => setTitle(e.target.value)}
-                      placeholder="مثال: اختبار الوحدة الأولى"
+                      placeholder={s.titleExample}
                       className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:bg-background text-sm lg:text-base font-bold transition-all shadow-inner"
                     />
                   </div>
@@ -664,7 +665,7 @@ export default function SoloChallengeCreatePage() {
                     إنشاء المسابقة
                   </button>
                   {questions.length === 0 && (
-                    <p className="text-[10px] lg:text-xs text-center text-muted-foreground font-medium px-2">يجب إضافة سؤال واحد على الأقل قبل الإنشاء</p>
+                    <p className="text-[10px] lg:text-xs text-center text-muted-foreground font-medium px-2">{s.addQuestion}</p>
                   )}
                 </div>
               </div>
@@ -702,6 +703,8 @@ function SettingsPanel({
   teacherClasses: string[];
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
+  const s = t.soloChallenges;
 
   const updateLevel = (i: number, patch: Partial<ChallengeLevel>) => {
     onChallengeLevels(challengeLevels.map((l, j) => j === i ? { ...l, ...patch } : l));
@@ -712,9 +715,8 @@ function SettingsPanel({
   };
   const addLevel = () => {
     if (challengeLevels.length >= 10) return;
-    const arabicOrdinal = ["الأولى","الثانية","الثالثة","الرابعة","الخامسة","السادسة","السابعة","الثامنة","التاسعة","العاشرة"];
     onChallengeLevels([...challengeLevels, {
-      name: `المرحلة ${arabicOrdinal[challengeLevels.length] ?? challengeLevels.length + 1}`,
+      name: `${s.level} ${challengeLevels.length + 1}`,
       questionCount: 5,
       timePerQuestion: 20,
     }]);
@@ -734,7 +736,7 @@ function SettingsPanel({
       >
         <div className="flex items-center gap-2">
           <Settings className="w-5 h-5 text-primary" />
-          إعدادات إضافية
+           {s.extraSettings}
           {(diffDistribution || isMultiLevel) && (
             <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
               {isMultiLevel ? `${challengeLevels.length} مراحل` : `${distTotal} مخصص`}
@@ -758,11 +760,11 @@ function SettingsPanel({
                <div className="px-4 py-4 hover:bg-muted/10 transition-colors">
                  <label className="flex items-center gap-2 text-xs font-bold text-foreground mb-2.5">
                    <FileText className="w-4 h-4 text-primary" />
-                   تعليمات أو ملاحظات للمشاركين
+                    {s.instructions}
                  </label>
                  <textarea
                    value={notes} onChange={e => onNotes(e.target.value)}
-                   placeholder="تعليمات أو رسالة تظهر قبل البدء..."
+                    placeholder={s.instructionsPlaceholder}
                    rows={2} maxLength={1000}
                    className="w-full px-3 py-2.5 rounded-xl bg-card border border-border/60 focus:outline-none focus:border-primary text-xs font-medium resize-none shadow-sm transition-colors"
                  />
@@ -772,7 +774,7 @@ function SettingsPanel({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2 hover:bg-muted/10 transition-colors">
                 <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                   <Layers className="w-4 h-4 text-emerald-600" />
-                  مراحل متعددة
+                   {s.multiLevel}
                 </label>
                 <button
                   onClick={() => onIsMultiLevel(!isMultiLevel)}
@@ -783,7 +785,7 @@ function SettingsPanel({
               </div>
               {isMultiLevel && (
                 <div className="px-4 py-4 bg-muted/20 space-y-3">
-                  <p className="text-[11px] font-medium text-muted-foreground">قسّم المسابقة إلى مراحل، بخصائص مستقلة لكل مرحلة.</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">{s.multiLevelHint}</p>
                   <div className="space-y-2">
                     {challengeLevels.map((lv, i) => (
                       <div key={i} className="bg-card rounded-xl p-3 border border-border/60 shadow-sm relative group">
@@ -799,7 +801,7 @@ function SettingsPanel({
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="bg-muted/30 p-2 rounded-lg border border-border/40">
-                            <span className="block text-[10px] font-bold text-muted-foreground mb-1.5 text-center">عدد الأسئلة</span>
+                             <span className="block text-[10px] font-bold text-muted-foreground mb-1.5 text-center">{s.questionCount}</span>
                             <div className="flex items-center justify-center gap-2">
                               <button onClick={() => updateLevel(i, { questionCount: Math.max(1, lv.questionCount - 1) })} className="w-6 h-6 rounded-md bg-background border shadow-sm font-black text-xs flex items-center justify-center hover:bg-muted">−</button>
                               <span className="w-6 text-center text-xs font-black">{lv.questionCount}</span>
@@ -807,7 +809,7 @@ function SettingsPanel({
                             </div>
                           </div>
                           <div className="bg-muted/30 p-2 rounded-lg border border-border/40">
-                            <span className="block text-[10px] font-bold text-muted-foreground mb-1.5 text-center">الوقت (ثواني)</span>
+                             <span className="block text-[10px] font-bold text-muted-foreground mb-1.5 text-center">{s.timeSeconds}</span>
                             <div className="flex items-center justify-center gap-2">
                               <button onClick={() => updateLevel(i, { timePerQuestion: Math.max(5, lv.timePerQuestion - 5) })} className="w-6 h-6 rounded-md bg-background border shadow-sm font-black text-xs flex items-center justify-center hover:bg-muted">−</button>
                               <span className="w-6 text-center text-xs font-black">{lv.timePerQuestion}</span>
@@ -820,12 +822,12 @@ function SettingsPanel({
                   </div>
                   {challengeLevels.length < 10 && (
                     <button onClick={addLevel} className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-dashed border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 transition-colors text-xs font-bold">
-                      <Plus className="w-4 h-4" /> إضافة مرحلة
+                       <Plus className="w-4 h-4" /> {s.addLevel}
                     </button>
                   )}
                   <div className="text-center pt-1">
                     <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                      الإجمالي: {challengeLevels.reduce((s, l) => s + l.questionCount, 0)} سؤال عبر {challengeLevels.length} مراحل
+                      {s.total} {challengeLevels.reduce((sum, l) => sum + l.questionCount, 0)} {s.questions} / {challengeLevels.length} {s.multiLevel}
                     </span>
                   </div>
                 </div>
@@ -836,11 +838,11 @@ function SettingsPanel({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                     <Clock className="w-4 h-4 text-amber-500" />
-                    وقت كل سؤال
+                     {s.timeEachQuestion}
                   </label>
                   <div className="flex items-center gap-1.5 self-start sm:self-auto bg-muted/50 p-1 rounded-xl border border-border/50">
                     <button onClick={() => onTime(Math.max(5, timePerQuestion - 5))} className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors shadow-sm border border-border/50">−</button>
-                    <span className="w-12 text-center text-xs font-black tabular-nums text-foreground">{timePerQuestion} ث</span>
+                    <span className="w-12 text-center text-xs font-black tabular-nums text-foreground">{timePerQuestion} {s.secondsShort}</span>
                     <button onClick={() => onTime(Math.min(120, timePerQuestion + 5))} className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors shadow-sm border border-border/50">+</button>
                   </div>
                 </div>
@@ -852,7 +854,7 @@ function SettingsPanel({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2 hover:bg-muted/10 transition-colors">
                     <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                       <Target className="w-4 h-4 text-primary" />
-                      توزيع الصعوبة
+                       {s.difficultyDistribution}
                     </label>
                     <button
                       onClick={() => onDiffDistribution(diffDistribution ? null : { easy: 4, medium: 4, hard: 2 })}
@@ -863,12 +865,12 @@ function SettingsPanel({
                   </div>
                   {diffDistribution && (
                     <div className="px-4 py-4 bg-primary/5 space-y-3 mx-2 mb-2 rounded-xl border border-primary/10">
-                      <p className="text-[10px] font-bold text-primary/80">خصص عدد أسئلة كل مستوى (صنّف الأسئلة أولاً)</p>
+                      <p className="text-[10px] font-bold text-primary/80">{s.distributionHint}</p>
                       <div className="grid gap-2">
                         {([
-                          { key: "easy" as const, label: "سهل", color: "bg-emerald-500" },
-                          { key: "medium" as const, label: "متوسط", color: "bg-amber-500" },
-                          { key: "hard" as const, label: "صعب", color: "bg-red-500" },
+                          { key: "easy" as const, label: s.easy, color: "bg-emerald-500" },
+                          { key: "medium" as const, label: s.medium, color: "bg-amber-500" },
+                          { key: "hard" as const, label: s.hard, color: "bg-red-500" },
                         ]).map(({ key, label, color }) => (
                           <div key={key} className="flex items-center justify-between bg-card px-2 py-1.5 rounded-lg border shadow-sm">
                             <span className={cn("text-[10px] font-black px-2 py-0.5 rounded text-white w-14 text-center", color)}>{label}</span>
@@ -881,7 +883,7 @@ function SettingsPanel({
                         ))}
                       </div>
                       <div className="flex items-center justify-between border-t border-primary/10 pt-2 px-1">
-                        <span className="text-[10px] font-bold text-primary">الإجمالي:</span>
+                        <span className="text-[10px] font-bold text-primary">{s.total}</span>
                         <span className="text-xs font-black text-primary">{distTotal}</span>
                       </div>
                     </div>
@@ -894,7 +896,7 @@ function SettingsPanel({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                     <Target className="w-4 h-4 text-emerald-500" />
-                    أسئلة لكل متسابق
+                     {s.questionsPerParticipant}
                   </label>
                   <div className="flex items-center gap-1.5 self-start sm:self-auto bg-muted/50 p-1 rounded-xl border border-border/50">
                     <button
@@ -905,7 +907,7 @@ function SettingsPanel({
                       className="w-8 h-8 rounded-lg bg-background hover:bg-muted font-black text-base flex items-center justify-center transition-colors shadow-sm border border-border/50"
                     >−</button>
                     <span className="w-12 text-center text-xs font-black text-foreground">
-                      {questionsPerParticipant === "" ? "الكل" : String(questionsPerParticipant)}
+                      {questionsPerParticipant === "" ? s.all : String(questionsPerParticipant)}
                     </span>
                     <button
                       onClick={() => {
@@ -924,13 +926,13 @@ function SettingsPanel({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
                 <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                   <Trophy className="w-4 h-4 text-amber-500" />
-                  المتصدرين
+                   {s.leaders}
                 </label>
                 <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50 self-start sm:self-auto">
                   {([
-                    { value: "top3" as const, label: "أفضل 3" },
-                    { value: "top20" as const, label: "أفضل 20" },
-                    { value: "all" as const, label: "الكل" },
+                     { value: "top3" as const, label: s.top3 },
+                     { value: "top20" as const, label: s.top20 },
+                     { value: "all" as const, label: s.all },
                   ]).map((o) => {
                     const active = leaderboardDisplay === o.value;
                     return (
@@ -951,7 +953,7 @@ function SettingsPanel({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
                 <label className="flex items-center gap-2 text-xs font-bold text-foreground shrink-0">
                   <Calendar className="w-4 h-4 text-orange-500" />
-                  انتهاء المسابقة
+                   {s.expiration}
                 </label>
                 <div className="flex items-center gap-2 self-start sm:self-auto min-w-0">
                   <span dir="ltr">
@@ -959,7 +961,7 @@ function SettingsPanel({
                       className="text-[11px] font-bold px-3 py-2 rounded-xl bg-card border border-border/60 focus:outline-none focus:border-primary shadow-sm min-w-0" />
                   </span>
                   {expiresAt && (
-                    <button onClick={() => onExpires("")} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="إزالة">
+                    <button onClick={() => onExpires("")} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title={s.remove}>
                       <XCircle className="w-4 h-4" />
                     </button>
                   )}
@@ -971,7 +973,7 @@ function SettingsPanel({
                 <div className="flex items-center justify-between mb-3">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                     <Users className="w-4 h-4 text-emerald-600" />
-                    تقييد بالصف
+                   {s.restrictClass}
                   </label>
                   {allowedClasses.length > 0 && (
                     <span className="text-[10px] font-black text-primary-foreground bg-primary px-2 py-0.5 rounded-md">
@@ -980,7 +982,7 @@ function SettingsPanel({
                   )}
                 </div>
                 {teacherClasses.length === 0 ? (
-                   <p className="text-[10px] font-bold text-amber-600 bg-amber-500/10 p-2 rounded-lg">لا توجد صفوف بحسابك.</p>
+                   <p className="text-[10px] font-bold text-amber-600 bg-amber-500/10 p-2 rounded-lg">{s.noClasses}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {teacherClasses.map(cls => {

@@ -34,6 +34,7 @@ import {
   type TileState,
 } from "@/lib/letrly-engine";
 import { useGameAudio } from "./useGameAudio";
+import { useI18n } from "@/lib/i18n";
 
 const MAX_ATTEMPTS = 6;
 
@@ -70,6 +71,7 @@ type Phase = "playing" | "won" | "lost";
 type Source = "random" | "pin" | "daily";
 
 export default function LetrlyPlay() {
+  const { t, dir } = useI18n();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const settings = useMemo(() => parseSettings(search), [search]);
@@ -132,11 +134,11 @@ export default function LetrlyPlay() {
         const data = await r.json().catch(() => ({}));
         if (cancelled) return;
         if (!r.ok) {
-          setLoadError(data?.error || "تعذّر تحميل التحدّي");
+          setLoadError(data?.error || t.letrly.loadChallengeFailed);
           return;
         }
         if (source === "daily" && data?.available === false) {
-          setLoadError("لا توجد كلمة يوم محدّدة اليوم — جرّب لاحقاً");
+          setLoadError(t.letrly.noDailyWord);
           return;
         }
         const w: LetrlyWord = {
@@ -149,7 +151,7 @@ export default function LetrlyPlay() {
         resetState();
       })
       .catch(() => {
-        if (!cancelled) setLoadError("خطأ في الاتصال بالخادم");
+        if (!cancelled) setLoadError(t.letrly.connectionError);
       });
     return () => {
       cancelled = true;
@@ -167,7 +169,7 @@ export default function LetrlyPlay() {
         if (r.status === 403) {
           // category/length disabled by admin — surface a clear error
           const data = await r.json().catch(() => ({}));
-          setLoadError(data?.error || "هذا الخيار غير متاح حالياً");
+          setLoadError(data?.error || t.letrly.optionUnavailable);
           return null;
         }
         if (r.ok) {
@@ -224,7 +226,7 @@ export default function LetrlyPlay() {
     if (currentRow.length !== len) {
       setShake(true);
       setTimeout(() => setShake(false), 400);
-      toast.error("أكمل الحروف أولاً", { duration: 1400 });
+      toast.error(t.letrly.completeLetters, { duration: 1400 });
       return;
     }
     const guess = currentRow.join("");
@@ -234,13 +236,13 @@ export default function LetrlyPlay() {
       // hint instead of a false "not in dictionary" rejection. Read the
       // ready state at call time (not via stale closure).
       if (!isDictionaryLoaded(len)) {
-        toast("جاري تحميل القاموس…", { duration: 1400 });
+        toast(t.letrly.loadingDictionary, { duration: 1400 });
         return;
       }
       setShake(true);
       setTimeout(() => setShake(false), 400);
       playWrong();
-      toast.error("هذه الكلمة ليست في القاموس", { duration: 1600 });
+      toast.error(t.letrly.wordNotInDictionary, { duration: 1600 });
       return;
     }
     const result = evaluateGuess(guess, target.word);
@@ -343,10 +345,10 @@ export default function LetrlyPlay() {
       try {
         await navigator.clipboard.writeText(shareText);
         setCopied(true);
-        toast.success("تم نسخ النتيجة");
+        toast.success(t.letrly.resultCopied);
         setTimeout(() => setCopied(false), 2000);
       } catch {
-        toast.error("تعذّر النسخ");
+        toast.error(t.letrly.copyFailed);
       }
     }
   };
@@ -356,17 +358,17 @@ export default function LetrlyPlay() {
     try {
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
-      toast.success("تم نسخ النتيجة");
+      toast.success(t.letrly.resultCopied);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("تعذّر النسخ");
+      toast.error(t.letrly.copyFailed);
     }
   };
 
   if (loadError) {
     return (
       <Layout>
-        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 px-6 text-center" dir="rtl">
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 px-6 text-center" dir={dir}>
           <div className="text-5xl">🔍</div>
           <h2 className="text-xl font-extrabold">{loadError}</h2>
           <button
@@ -383,9 +385,9 @@ export default function LetrlyPlay() {
   if (noWords) {
     return (
       <Layout>
-        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 px-6 text-center" dir="rtl">
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4 px-6 text-center" dir={dir}>
           <div className="text-5xl">🤔</div>
-          <h2 className="text-xl font-extrabold">لا توجد كلمات بهذه الإعدادات بعد</h2>
+          <h2 className="text-xl font-extrabold">{t.letrly.noWordsForSettings}</h2>
           <p className="text-sm text-muted-foreground max-w-md">
             جرّب تغيير التصنيف أو طول الكلمة. سنضيف المزيد من الكلمات قريباً.
           </p>
@@ -417,7 +419,7 @@ export default function LetrlyPlay() {
       <div
         className="min-h-[calc(100vh-4rem)] py-4 sm:py-6"
         style={{ background: "#F5FAF7" }}
-        dir="rtl"
+        dir={dir}
       >
         <div className="container mx-auto px-3 sm:px-6 max-w-lg">
           {/* Top bar */}
@@ -439,24 +441,24 @@ export default function LetrlyPlay() {
               <button
                 onClick={revealHint}
                 disabled={hintRevealed || phase !== "playing"}
-                title="تلميح"
-                aria-label="إظهار تلميح للكلمة"
+                title={t.letrly.hint}
+                aria-label={t.letrly.showHint}
                 className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <Lightbulb className="w-4 h-4" />
               </button>
               <button
                 onClick={toggleMute}
-                title={muted ? "تشغيل الصوت" : "كتم الصوت"}
-                aria-label={muted ? "تشغيل الصوت" : "كتم الصوت"}
+                title={muted ? t.letrly.unmute : t.letrly.mute}
+                aria-label={muted ? t.letrly.unmute : t.letrly.mute}
                 className="p-2 rounded-lg bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
               >
                 {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
               <button
                 onClick={startNew}
-                title="كلمة جديدة"
-                aria-label="بدء كلمة جديدة"
+                title={t.letrly.newWord}
+                aria-label={t.letrly.startNewWord}
                 className="p-2 rounded-lg bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -524,7 +526,7 @@ export default function LetrlyPlay() {
                 }`}
               >
                 <div className="text-2xl font-extrabold mb-1">
-                  {phase === "won" ? "🎉 أحسنت!" : "😢 انتهت المحاولات"}
+                  {phase === "won" ? t.letrly.won : t.letrly.attemptsOver}
                 </div>
                 <div className="text-sm text-muted-foreground mb-3">
                   الكلمة كانت:{" "}
@@ -575,11 +577,11 @@ export default function LetrlyPlay() {
           {!dictReady && phase === "playing" && (
             <div
               className="flex items-center justify-center gap-2 text-xs text-zinc-500"
-              dir="rtl"
+              dir={dir}
               data-testid="dict-loading-indicator"
             >
               <span className="inline-block w-3 h-3 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
-              <span>جاري تحميل القاموس…</span>
+              <span>{t.letrly.loadingDictionary}</span>
             </div>
           )}
 
@@ -613,7 +615,7 @@ export default function LetrlyPlay() {
                       }`}
                     >
                       {key === "ENTER" ? (
-                        "تأكيد"
+                        t.letrly.confirm
                       ) : key === "BACK" ? (
                         <Delete className="w-4 h-4 mx-auto" />
                       ) : (

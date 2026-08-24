@@ -4,6 +4,7 @@ import { useSeo } from "@/lib/seo";
 import { motion } from "framer-motion";
 import QRCode from "react-qr-code";
 import { Copy, Check, ArrowRight, ArrowLeft, Smartphone } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const GOLD = "hsl(43,74%,49%)";
 const GREEN = "hsl(145,55%,32%)";
@@ -28,8 +29,6 @@ const IOS_STEPS = [
         <path d="M12 8v4l3 3" />
       </svg>
     ),
-    title: "افتح Safari",
-    desc: "تأكد من استخدام متصفح Safari وليس Chrome أو غيره",
   },
   {
     num: 2,
@@ -38,8 +37,6 @@ const IOS_STEPS = [
         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
       </svg>
     ),
-    title: 'اضغط زر المشاركة ⬆',
-    desc: 'زر السهم المتجه للأعلى في شريط الأدوات السفلي',
   },
   {
     num: 3,
@@ -48,8 +45,6 @@ const IOS_STEPS = [
         <path d="M12 5v14M5 12h14" />
       </svg>
     ),
-    title: "أضف للشاشة الرئيسية",
-    desc: "ابحث عن «أضف إلى الشاشة الرئيسية» في القائمة واضغط عليها",
   },
   {
     num: 4,
@@ -58,8 +53,6 @@ const IOS_STEPS = [
         <path d="M20 6L9 17l-5-5" />
       </svg>
     ),
-    title: "اضغط «إضافة»",
-    desc: "ستظهر أيقونة حصاد على شاشتك الرئيسية مباشرة",
   },
 ];
 
@@ -72,8 +65,6 @@ const ANDROID_STEPS = [
         <path d="M21 21l-4.35-4.35" />
       </svg>
     ),
-    title: "افتح Chrome",
-    desc: "افتح هذه الصفحة في متصفح Chrome على جهاز Android",
   },
   {
     num: 2,
@@ -82,8 +73,6 @@ const ANDROID_STEPS = [
         <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
       </svg>
     ),
-    title: "افتح القائمة ⋮",
-    desc: "اضغط على النقاط الثلاث في الزاوية العلوية اليمنى",
   },
   {
     num: 3,
@@ -92,8 +81,6 @@ const ANDROID_STEPS = [
         <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
       </svg>
     ),
-    title: "إضافة إلى الشاشة الرئيسية",
-    desc: "اختر «إضافة إلى الشاشة الرئيسية» من القائمة",
   },
   {
     num: 4,
@@ -102,15 +89,14 @@ const ANDROID_STEPS = [
         <path d="M20 6L9 17l-5-5" />
       </svg>
     ),
-    title: "تأكيد التثبيت",
-    desc: "اضغط «إضافة» لتثبيت حصاد على شاشتك الرئيسية",
   },
 ];
 
 export default function InstallPage() {
+  const { t, dir, lang } = useI18n();
   useSeo({
-    title: "تثبيت تطبيق حصاد | منصة حصاد",
-    description: "ثبّت منصة حصاد على جهازك للوصول السريع.",
+    title: t.install.seoTitle,
+    description: t.install.seoDescription,
     canonicalPath: "/install",
     noindex: true,
   });
@@ -157,13 +143,15 @@ export default function InstallPage() {
     });
   };
 
-  const steps = device === "iphone" ? IOS_STEPS : ANDROID_STEPS;
-  const isAr = true;
+  const stepText = device === "iphone"
+    ? [[t.install.ios1Title, t.install.ios1Desc], [t.install.ios2Title, t.install.ios2Desc], [t.install.ios3Title, t.install.ios3Desc], [t.install.ios4Title, t.install.ios4Desc]]
+    : [[t.install.android1Title, t.install.android1Desc], [t.install.android2Title, t.install.android2Desc], [t.install.android3Title, t.install.android3Desc], [t.install.android4Title, t.install.android4Desc]];
+  const steps = (device === "iphone" ? IOS_STEPS : ANDROID_STEPS).map((step, i) => ({ ...step, title: stepText[i][0], desc: stepText[i][1] }));
 
   return (
     <div
       className="min-h-screen flex flex-col"
-      dir="rtl"
+       dir={dir}
       style={{
         background: "linear-gradient(160deg, hsl(145,40%,8%) 0%, hsl(145,30%,12%) 40%, hsl(43,40%,10%) 100%)",
         fontFamily: "'Tajawal', 'Noto Sans Arabic', sans-serif",
@@ -176,13 +164,13 @@ export default function InstallPage() {
           className="flex items-center gap-2 text-sm font-bold rounded-xl px-3 py-2 transition-colors"
           style={{ color: "rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.06)" }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          الرئيسية
+          {lang === "ar" ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+          {t.install.home}
         </Link>
 
         <div className="flex items-center gap-2">
-          <img src="/icons/icon-192.png" alt="حصاد" className="w-8 h-8 rounded-xl shadow-md" />
-          <span className="font-black text-lg tracking-tight" style={{ color: GOLD_LIGHT }}>حصاد</span>
+          <img src="/icons/icon-192.png" alt={t.install.appName} className="w-8 h-8 rounded-xl shadow-md" />
+          <span className="font-black text-lg tracking-tight" style={{ color: GOLD_LIGHT }}>{t.install.appName}</span>
         </div>
       </header>
 
@@ -199,12 +187,12 @@ export default function InstallPage() {
             className="inline-flex items-center justify-center w-20 h-20 rounded-3xl shadow-2xl mb-4"
             style={{ background: `linear-gradient(135deg, ${GOLD} 0%, hsl(38,80%,42%) 100%)` }}
           >
-            <img src="/icons/icon-192.png" alt="حصاد" className="w-14 h-14 rounded-2xl" />
+            <img src="/icons/icon-192.png" alt={t.install.appName} className="w-14 h-14 rounded-2xl" />
           </motion.div>
 
-          <h1 className="font-black text-3xl text-white mb-2 tracking-tight">ثبّت تطبيق حصاد</h1>
+          <h1 className="font-black text-3xl text-white mb-2 tracking-tight">{t.install.title}</h1>
           <p className="text-base font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>
-            مجاناً بدون متجر تطبيقات — مباشرة على شاشتك
+            {t.install.subtitle}
           </p>
         </motion.div>
 
@@ -218,8 +206,8 @@ export default function InstallPage() {
           >
             <Check className="w-5 h-5 shrink-0" style={{ color: "hsl(145,65%,55%)" }} />
             <div>
-              <p className="font-bold text-white text-sm">التطبيق مثبّت بالفعل ✓</p>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.55)" }}>يمكنك فتح حصاد من شاشتك الرئيسية</p>
+              <p className="font-bold text-white text-sm">{t.install.installedTitle}</p>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.55)" }}>{t.install.installedDescription}</p>
             </div>
           </motion.div>
         )}
@@ -246,7 +234,7 @@ export default function InstallPage() {
                   <path d="M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l48,83.17C64.64,202.14,16.79,285.34,0,384H576c-16.79-98.66-64.64-181.86-146.85-226.55" />
                 </svg>
               )}
-              {d === "iphone" ? "آيفون iOS" : "أندرويد"}
+              {d === "iphone" ? t.install.iphone : t.install.android}
             </button>
           ))}
         </div>
@@ -268,7 +256,7 @@ export default function InstallPage() {
               }}
             >
               <Smartphone className="w-5 h-5" />
-              تثبيت الآن مباشرةً
+              {t.install.installNow}
             </button>
           </motion.div>
         )}
@@ -312,9 +300,9 @@ export default function InstallPage() {
           className="rounded-2xl p-5 mb-6"
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
         >
-          <p className="font-black text-white text-sm mb-1">شارك رابط التثبيت</p>
+          <p className="font-black text-white text-sm mb-1">{t.install.shareTitle}</p>
           <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.45)" }}>
-            أرسله لطلابك أو ضع الباركود على السبورة
+            {t.install.shareDescription}
           </p>
 
           <div className="flex items-center gap-2 mb-4">
@@ -335,7 +323,7 @@ export default function InstallPage() {
               }}
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? "تم!" : "نسخ"}
+               {copied ? t.install.copied : t.install.copy}
             </button>
           </div>
 
@@ -353,7 +341,7 @@ export default function InstallPage() {
         >
           <span className="text-xl shrink-0">💡</span>
           <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-            حصاد هو تطبيق ويب تقدمي (PWA). لا يتطلب تنزيلاً من App Store أو Play Store — يُثبَّت مباشرةً من المتصفح ويعمل بدون اتصال للمحتوى المحفوظ.
+             {t.install.note}
           </p>
         </div>
 
@@ -364,8 +352,8 @@ export default function InstallPage() {
           style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.09)" }}
         >
           <span>🎬</span>
-          شاهد العرض التعريفي التفاعلي
-          <ArrowLeft className="w-3.5 h-3.5" />
+           {t.install.tutorial}
+           {lang === "ar" ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
         </Link>
       </main>
     </div>

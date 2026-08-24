@@ -359,6 +359,7 @@ function modeLabel(
 const READY_QUIZZES_HOME_PREVIEW = 4;
 
 function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
+  const { t } = useI18n();
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -404,7 +405,7 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
         },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "خطأ في بدء اللعبة");
+      if (!res.ok) throw new Error(data.message || t.publicGames.startError);
       setLocation(`/game/join/${data.pin}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "خطأ في بدء اللعبة";
@@ -691,6 +692,7 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
 }
 
 function ScaledTutorialPreview() {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
   useEffect(() => {
@@ -710,7 +712,7 @@ function ScaledTutorialPreview() {
     >
       <iframe
         src={`${import.meta.env.BASE_URL}install-tutorial?start=2`}
-        title="شرح تثبيت حصاد"
+        title={t.install.tutorial}
         className="absolute top-0 left-0 origin-top-left border-0"
         style={{
           width: "1280px",
@@ -999,7 +1001,7 @@ export default function Home() {
     setScannerSuccess(false);
     if (!navigator.mediaDevices?.getUserMedia) {
       setScannerError(
-        "متصفحك لا يدعم الوصول إلى الكاميرا. جرّب Chrome أو Safari على هاتفك.",
+        t.home.cameraUnsupported,
       );
       return;
     }
@@ -1084,7 +1086,7 @@ export default function Home() {
       scanAnimRef.current = requestAnimationFrame(tick);
     } catch {
       setScannerError(
-        "تعذّر الوصول إلى الكاميرا. تأكد من منح الإذن وأعد المحاولة.",
+        t.home.cameraError,
       );
     }
   };

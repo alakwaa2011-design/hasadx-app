@@ -114,8 +114,9 @@ interface ResultAnswer {
 export default function AdaptiveSolve() {
   const [, params] = useRoute("/solve/adaptive/:id");
   const assignmentId = parseInt(params?.id || "0");
-  const { lang } = useI18n();
-  const BackIcon = lang === "ar" ? ChevronLeft : ChevronRight;
+  const { lang, t, dir } = useI18n();
+  const copy = t.adaptiveSolve;
+  const BackIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   const [loading, setLoading] = useState(true);
   const [assignment, setAssignment] = useState<Record<string, unknown> | null>(null);
@@ -187,10 +188,10 @@ export default function AdaptiveSolve() {
           // payload still includes the code on /adaptive/start.
           if (verifiedAccessCode) setAccessCode(verifiedAccessCode);
         } else if (!accessCodeGate) {
-          setError(lang === "ar" ? "الواجب غير موجود" : "Assignment not found");
+          setError(t.solve.notFound);
         }
       })
-      .catch(() => setError(lang === "ar" ? "خطأ في الاتصال" : "Connection error"))
+      .catch(() => setError(copy.connectionError))
       .finally(() => setLoading(false));
     // accessCodeGate intentionally omitted — re-running on its change would
     // cause loops; we only refetch when the assignment id or verified code
@@ -201,7 +202,7 @@ export default function AdaptiveSolve() {
   const submitAccessCodePrompt = async () => {
     const code = pendingAccessCode.trim();
     if (!code) {
-      setAccessCodePromptError(lang === "ar" ? "أدخل رمز الوصول" : "Enter the access code");
+      setAccessCodePromptError(copy.enterAccessCode);
       return;
     }
     try {
@@ -210,14 +211,14 @@ export default function AdaptiveSolve() {
         headers: { "X-Access-Code": code },
       });
       if (!r.ok) {
-        setAccessCodePromptError(lang === "ar" ? "رمز الوصول غير صحيح" : "Incorrect access code");
+        setAccessCodePromptError(copy.incorrectAccessCode);
         return;
       }
       try { sessionStorage.setItem(accessCodeStorageKey, code); } catch {}
       setVerifiedAccessCode(code);
       setAccessCodePromptError("");
     } catch {
-      setAccessCodePromptError(lang === "ar" ? "تعذّر التحقق من الرمز" : "Could not verify the code");
+      setAccessCodePromptError(copy.verifyAccessCodeError);
     }
   };
 
@@ -248,7 +249,7 @@ export default function AdaptiveSolve() {
       setCurrentQuestion(data.question);
       setStarted(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(err instanceof Error ? err.message : t.solve.error);
     } finally {
       setSubmitting(false);
     }
@@ -315,7 +316,7 @@ export default function AdaptiveSolve() {
         }, 1100);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(err instanceof Error ? err.message : t.solve.error);
     } finally {
       setSubmitting(false);
     }
@@ -323,7 +324,7 @@ export default function AdaptiveSolve() {
 
   const levelConfig = {
     beginner: {
-      label: lang === "ar" ? "مبتدئ" : "Beginner",
+      label: copy.beginner,
       color: "text-orange-600 dark:text-orange-300",
       bg: "bg-orange-100 dark:bg-orange-900/30",
       border: "border-orange-300",
@@ -331,7 +332,7 @@ export default function AdaptiveSolve() {
       gradient: "from-orange-400 to-orange-600",
     },
     intermediate: {
-      label: lang === "ar" ? "متوسط" : "Intermediate",
+      label: copy.intermediate,
       color: "text-blue-600 dark:text-blue-300",
       bg: "bg-blue-100 dark:bg-blue-900/30",
       border: "border-blue-300",
@@ -339,7 +340,7 @@ export default function AdaptiveSolve() {
       gradient: "from-blue-400 to-blue-600",
     },
     advanced: {
-      label: lang === "ar" ? "متقدم" : "Advanced",
+      label: copy.advanced,
       color: "text-emerald-600 dark:text-emerald-300",
       bg: "bg-emerald-100 dark:bg-emerald-900/30",
       border: "border-emerald-300",
@@ -351,8 +352,9 @@ export default function AdaptiveSolve() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex h-96 items-center justify-center">
+        <div className="flex h-96 items-center justify-center" role="status" aria-label={t.solve.loading}>
           <div className="animate-spin w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full" />
+          <span className="sr-only">{t.solve.loading}</span>
         </div>
       </Layout>
     );
@@ -363,19 +365,17 @@ export default function AdaptiveSolve() {
       <Layout>
         <div className="max-w-md mx-auto mt-16 p-6 bg-card border-2 rounded-2xl space-y-4">
           <h2 className="text-lg font-bold">
-            {accessCodeGate.title || (lang === "ar" ? "واجب مغلق" : "Private assignment")}
+            {accessCodeGate.title || copy.privateAssignment}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {lang === "ar"
-              ? "هذا الواجب يتطلّب رمز وصول. اطلبه من معلمك."
-              : "This assignment requires an access code from your teacher."}
+            {copy.privateAssignmentDescription}
           </p>
           <input
             type="text"
             value={pendingAccessCode}
             onChange={e => { setPendingAccessCode(e.target.value); setAccessCodePromptError(""); }}
             onKeyDown={e => { if (e.key === "Enter") void submitAccessCodePrompt(); }}
-            placeholder={lang === "ar" ? "أدخل رمز الوصول" : "Enter access code"}
+            placeholder={copy.enterAccessCode}
             className="w-full p-3 rounded-xl border-2 font-mono tracking-widest text-center"
             dir="ltr"
             autoFocus
@@ -389,7 +389,7 @@ export default function AdaptiveSolve() {
             onClick={() => void submitAccessCodePrompt()}
             className="w-full py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-600 transition-colors"
           >
-            {lang === "ar" ? "متابعة" : "Continue"}
+            {copy.continue}
           </button>
         </div>
       </Layout>
@@ -399,7 +399,7 @@ export default function AdaptiveSolve() {
   if (!assignment) {
     return (
       <Layout>
-        <div className="text-center p-20 text-xl font-bold">{error || (lang === "ar" ? "الواجب غير موجود" : "Not found")}</div>
+        <div className="text-center p-20 text-xl font-bold">{error || t.solve.notFound}</div>
       </Layout>
     );
   }
@@ -411,10 +411,10 @@ export default function AdaptiveSolve() {
     const isGreat = score >= 80;
     const isOk = score >= 50;
     const celebMsg = isGreat
-      ? (lang === "ar" ? "🎉 عمل رائع! أنت متميز!" : "🎉 Excellent work! You're a star!")
+      ? copy.excellent
       : isOk
-        ? (lang === "ar" ? "💪 جيد! استمر في التحسن!" : "💪 Good job! Keep improving!")
-        : (lang === "ar" ? "📚 لا بأس، المحاولة تستحق!" : "📚 Nice try, keep practicing!");
+        ? copy.goodJob
+        : copy.niceTry;
 
     return (
       <Layout>
@@ -444,7 +444,7 @@ export default function AdaptiveSolve() {
                     transition={{ delay: 0.3 }}
                     className="text-2xl md:text-3xl font-black mb-1 mt-2"
                   >
-                    {lang === "ar" ? "أحسنت" : "Well done"} {studentName}!
+                    {copy.wellDone} {studentName}!
                   </motion.h1>
 
                   {studentClass && (
@@ -461,7 +461,7 @@ export default function AdaptiveSolve() {
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${lc.bg} ${lc.color} font-bold text-base mt-2`}
                   >
                     <Brain className="w-4 h-4" />
-                    {lang === "ar" ? "مستواك:" : "Your Level:"} <span className="text-lg">{lc.icon}</span> {lc.label}
+                    {copy.yourLevel} <span className="text-lg">{lc.icon}</span> {lc.label}
                   </motion.div>
 
                   <div className="flex items-center justify-center my-6">
@@ -484,35 +484,35 @@ export default function AdaptiveSolve() {
 
                   <p className="text-sm text-muted-foreground mb-2 max-w-md mx-auto">
                     {finalResult.finalLevel === "advanced"
-                      ? (lang === "ar" ? "مستواك متقدم — أنت نجم! واصل التفوق وساعد زملاءك 🌟" : "You're at an advanced level — you're a star! Keep excelling and help your peers 🌟")
+                      ? copy.advancedFeedback
                       : finalResult.finalLevel === "intermediate"
-                      ? (lang === "ar" ? "أداء جيد! أنت في المسار الصحيح — استمر في التدريب وستصل للمستوى المتقدم قريباً 💪" : "Good job! You're on the right track — keep practicing and you'll reach advanced soon 💪")
-                      : (lang === "ar" ? "بداية رائعة! كل خطوة تقربك من التقدم — لا تستسلم وحاول مرة أخرى 🌱" : "Great start! Every step brings you closer — don't give up and try again 🌱")}
+                      ? copy.intermediateFeedback
+                      : copy.beginnerFeedback}
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-lg mx-auto mt-6 mb-2">
                     <div className="bg-muted/40 rounded-2xl p-4 text-center">
-                      <p className="text-xs font-bold text-muted-foreground mb-1">{lang === "ar" ? "النتيجة" : "Grade"}</p>
+                      <p className="text-xs font-bold text-muted-foreground mb-1">{copy.grade}</p>
                       <p className="text-2xl font-black">{finalResult.earnedPoints}</p>
                       <p className="text-xs text-muted-foreground">/ {finalResult.totalPoints}</p>
                     </div>
                     <div className="bg-muted/40 rounded-2xl p-4 text-center">
-                      <p className="text-xs font-bold text-muted-foreground mb-1">{lang === "ar" ? "الإجابات الصحيحة" : "Correct"}</p>
+                      <p className="text-xs font-bold text-muted-foreground mb-1">{copy.correct}</p>
                       <p className="text-2xl font-black text-green-500">{finalResult.correctAnswers}</p>
                       <p className="text-xs text-muted-foreground">/ {totalQuestions}</p>
                     </div>
                     <div className="col-span-2 sm:col-span-1 bg-muted/40 rounded-2xl p-4 text-center">
-                      <p className="text-xs font-bold text-muted-foreground mb-1">{lang === "ar" ? "النسبة" : "Percentage"}</p>
+                      <p className="text-xs font-bold text-muted-foreground mb-1">{copy.percentage}</p>
                       <p className={`text-2xl font-black ${isGreat ? 'text-green-500' : isOk ? 'text-amber-500' : 'text-red-500'}`}>{score}%</p>
                       <p className="text-xs text-muted-foreground">&nbsp;</p>
                     </div>
                   </div>
 
                   {skills.length > 0 && (
-                    <div className={`${lang === "ar" ? "text-right" : "text-left"} space-y-3 mt-6 bg-muted/20 rounded-2xl p-5 border border-border`}>
+                    <div className={`${dir === "rtl" ? "text-right" : "text-left"} space-y-3 mt-6 bg-muted/20 rounded-2xl p-5 border border-border`}>
                       <h3 className="font-bold text-sm text-muted-foreground flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
-                        {lang === "ar" ? "تحليل المهارات" : "Skills Analysis"}
+                        {copy.skillsAnalysis}
                       </h3>
                       {skills.map(([skill, data]) => {
                         const pct = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
@@ -547,7 +547,7 @@ export default function AdaptiveSolve() {
                 <div className="space-y-3">
                   <h2 className="text-lg font-black mb-3 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-violet-500" />
-                    {lang === "ar" ? "تفاصيل الإجابات" : "Answer Details"}
+                    {copy.answerDetails}
                   </h2>
                   {detailResults.map((ans, i) => (
                     <motion.div
@@ -561,21 +561,21 @@ export default function AdaptiveSolve() {
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${ans.isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                             {ans.isCorrect ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                           </div>
-                          <p className="font-bold text-sm flex-1">{lang === "ar" ? "سؤال" : "Q"} {i + 1}: {ans.questionText}</p>
+                          <p className="font-bold text-sm flex-1">{copy.question} {i + 1}: {ans.questionText}</p>
                           <div className="flex gap-1.5 shrink-0">
                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ans.difficulty === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : ans.difficulty === 2 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
-                              {ans.difficulty === 1 ? (lang === "ar" ? "سهل" : "Easy") : ans.difficulty === 2 ? (lang === "ar" ? "متوسط" : "Med") : (lang === "ar" ? "صعب" : "Hard")}
+                              {ans.difficulty === 1 ? copy.easy : ans.difficulty === 2 ? copy.medium : copy.hard}
                             </span>
                             {ans.skill && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">{ans.skill}</span>}
                           </div>
                         </div>
                         <div className="px-4 py-3 flex flex-wrap gap-4 text-sm">
                           <div className="w-full">
-                            <span className="text-muted-foreground text-xs font-medium">{lang === "ar" ? "إجابتك:" : "Your answer:"} </span>
+                            <span className="text-muted-foreground text-xs font-medium">{copy.yourAnswer} </span>
                             {ans.selectedAnswer?.startsWith("data:image") ? (
                               <img
                                 src={ans.selectedAnswer}
-                                alt={lang === "ar" ? "رسمتك" : "Your drawing"}
+                                alt={copy.yourDrawing}
                                 className="max-w-full rounded-xl border border-border mt-1"
                               />
                             ) : (
@@ -586,7 +586,7 @@ export default function AdaptiveSolve() {
                           </div>
                           {!ans.isCorrect && (
                             <div>
-                              <span className="text-muted-foreground text-xs font-medium">{lang === "ar" ? "الصحيحة:" : "Correct:"} </span>
+                              <span className="text-muted-foreground text-xs font-medium">{copy.correctAnswer} </span>
                               <span className="font-bold text-green-600 dark:text-green-400">{ans.correctAnswer}</span>
                             </div>
                           )}
@@ -601,7 +601,7 @@ export default function AdaptiveSolve() {
                 <Link href="/">
                   <Button variant="outline" className="px-8">
                     <BackIcon className="w-4 h-4 me-1" />
-                    {lang === "ar" ? "العودة للرئيسية" : "Back to Home"}
+                    {copy.backToHome}
                   </Button>
                 </Link>
               </div>
@@ -642,7 +642,7 @@ export default function AdaptiveSolve() {
               </div>
               <div className="flex items-center gap-3">
                 <p className="text-xs font-bold text-muted-foreground shrink-0">
-                  {answeredCount} / {totalQuestions} {lang === "ar" ? "سؤال" : "answered"}
+                  {answeredCount} / {totalQuestions} {copy.answered}
                 </p>
                 <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div
@@ -676,21 +676,21 @@ export default function AdaptiveSolve() {
                 >
                   {lastCorrect ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                   {lastCorrect
-                    ? (lang === "ar" ? "إجابة صحيحة!" : "Correct!")
-                    : (lang === "ar" ? "إجابة خاطئة" : "Incorrect")}
+                    ? copy.correctFeedback
+                    : copy.incorrectFeedback}
                   {lastCorrect && streak >= 2 && (
                     <span className="ms-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-800 dark:bg-amber-500/30 dark:text-amber-200 text-xs">
-                      <Sparkles className="w-3 h-3" /> {streak} {lang === "ar" ? "متتالية" : "streak"}
+                      <Sparkles className="w-3 h-3" /> {streak} {copy.streak}
                     </span>
                   )}
                   {levelChanged === "up" && (
                     <span className="ms-1 px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 dark:bg-emerald-500/30 dark:text-emerald-200 text-xs font-bold">
-                      ⬆ {lang === "ar" ? "ترقية للمستوى" : "Level up"}
+                      ⬆ {copy.levelUp}
                     </span>
                   )}
                   {levelChanged === "down" && (
                     <span className="ms-1 px-2 py-0.5 rounded-full bg-orange-200/80 text-orange-800 dark:bg-orange-500/30 dark:text-orange-200 text-xs font-bold">
-                      ⬇ {lang === "ar" ? "تخفيف الصعوبة" : "Easier next"}
+                      ⬇ {copy.easierNext}
                     </span>
                   )}
                 </motion.div>
@@ -711,14 +711,14 @@ export default function AdaptiveSolve() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-muted-foreground mb-1">
-                        {lang === "ar" ? "سؤال" : "Question"} {questionNumber} / {totalQuestions}
+                        {copy.questionLong} {questionNumber} / {totalQuestions}
                       </p>
                       <h2 className="text-lg md:text-xl font-black leading-snug">{currentQuestion.text}</h2>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0 items-end">
                       {currentQuestion.difficulty && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${currentQuestion.difficulty === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : currentQuestion.difficulty === 2 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
-                          {currentQuestion.difficulty === 1 ? (lang === "ar" ? "سهل" : "Easy") : currentQuestion.difficulty === 2 ? (lang === "ar" ? "متوسط" : "Medium") : (lang === "ar" ? "صعب" : "Hard")}
+                          {currentQuestion.difficulty === 1 ? copy.easy : currentQuestion.difficulty === 2 ? copy.intermediate : copy.hard}
                         </span>
                       )}
                       {currentQuestion.skill && (
@@ -784,8 +784,8 @@ export default function AdaptiveSolve() {
                   {qt === "true_false" && (
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { value: "true", label: lang === "ar" ? "صح" : "True", icon: "✓", cls: "green" },
-                        { value: "false", label: lang === "ar" ? "خطأ" : "False", icon: "✗", cls: "red" },
+                        { value: "true", label: copy.true, icon: "✓", cls: "green" },
+                        { value: "false", label: copy.false, icon: "✗", cls: "red" },
                       ].map(opt => (
                         <motion.button
                           key={opt.value}
@@ -813,7 +813,7 @@ export default function AdaptiveSolve() {
                       <Input
                         value={selectedAnswer}
                         onChange={e => setSelectedAnswer(e.target.value)}
-                        placeholder={lang === "ar" ? "اكتب إجابتك هنا..." : "Type your answer here..."}
+                        placeholder={copy.answerPlaceholder}
                         className="text-base py-3 border-2 rounded-xl focus:border-violet-500"
                         disabled={submitting}
                       />
@@ -821,7 +821,7 @@ export default function AdaptiveSolve() {
                         <motion.div
                           initial={{ opacity: 0, scale: 0.5 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className={`absolute top-1/2 -translate-y-1/2 ${lang === "ar" ? "left-3" : "right-3"}`}
+                          className="absolute top-1/2 -translate-y-1/2 end-3"
                         >
                           <CheckCircle2 className="w-5 h-5 text-green-500" />
                         </motion.div>
@@ -842,8 +842,8 @@ export default function AdaptiveSolve() {
                         <>
                           <Target className="w-5 h-5" />
                           {answeredCount + 1 === totalQuestions
-                            ? (lang === "ar" ? "إنهاء الاختبار" : "Finish Test")
-                            : (lang === "ar" ? "تأكيد والتالي" : "Confirm & Next")}
+                            ? copy.finishTest
+                            : copy.confirmNext}
                         </>
                       )}
                     </button>
@@ -870,7 +870,7 @@ export default function AdaptiveSolve() {
           <div className="container relative z-10 mx-auto px-4 max-w-4xl py-8 md:py-12">
             <Link href="/" className="inline-flex items-center gap-1 text-white/70 hover:text-white mb-5 text-sm font-semibold transition-colors">
               <BackIcon className="w-4 h-4" />
-              {lang === "ar" ? "العودة" : "Back"}
+              {t.solve.back}
             </Link>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -878,7 +878,7 @@ export default function AdaptiveSolve() {
               </div>
               <div>
                 <div className="text-xs font-bold bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full inline-block mb-1">
-                  {lang === "ar" ? "اختبار تكيّفي" : "Adaptive Test"}
+                  {copy.adaptiveTest}
                 </div>
                 <h1 className="text-2xl md:text-4xl font-black leading-tight">{assignment.title as string}</h1>
               </div>
@@ -887,7 +887,7 @@ export default function AdaptiveSolve() {
             <div className="mt-2 flex items-center gap-2 text-sm font-medium flex-wrap">
               <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg">
                 <Brain className="w-4 h-4" />
-                {lang === "ar" ? "تكيّفي" : "Adaptive"}
+                {copy.adaptive}
               </span>
               {assignment.subject ? (
                 <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg">
@@ -896,7 +896,7 @@ export default function AdaptiveSolve() {
               ) : null}
               {isPrivate && (
                 <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg">
-                  <Lock className="w-3.5 h-3.5" /> {lang === "ar" ? "كود مطلوب" : "Code required"}
+                  <Lock className="w-3.5 h-3.5" /> {copy.codeRequired}
                 </span>
               )}
             </div>
@@ -916,12 +916,10 @@ export default function AdaptiveSolve() {
                   🧠
                 </motion.div>
                 <h2 className="text-xl font-black mb-2">
-                  {lang === "ar" ? "اختبار تكيّفي ذكي" : "Smart Adaptive Test"}
+                  {copy.smartAdaptiveTest}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {lang === "ar"
-                    ? "سيتكيّف الاختبار مع مستواك — إذا أجبت صحيحاً ستزداد الصعوبة، وإذا أخطأت ستقل"
-                    : "The test adapts to your level — correct answers increase difficulty, wrong answers decrease it"}
+                  {copy.smartAdaptiveDescription}
                 </p>
               </div>
 
@@ -938,20 +936,20 @@ export default function AdaptiveSolve() {
               </div>
 
               <div>
-                <Label className="text-sm font-bold mb-1.5 block">{lang === "ar" ? "اسمك" : "Your Name"}</Label>
+                <Label className="text-sm font-bold mb-1.5 block">{copy.yourName}</Label>
                 <Input
                   value={studentName}
                   onChange={e => setStudentName(e.target.value)}
-                  placeholder={lang === "ar" ? "ادخل اسمك الكامل" : "Enter your full name"}
+                  placeholder={copy.fullNamePlaceholder}
                   className="text-base border-2"
                 />
               </div>
               <div>
-                <Label className="text-sm font-bold mb-1.5 block">{lang === "ar" ? "الصف" : "Class"}</Label>
+                <Label className="text-sm font-bold mb-1.5 block">{copy.class}</Label>
                 <Input
                   value={studentClass}
                   onChange={e => setStudentClass(e.target.value)}
-                  placeholder={lang === "ar" ? "مثال: 3/أ" : "e.g. 3/A"}
+                  placeholder={copy.classExample}
                   className="text-base border-2"
                 />
               </div>
@@ -960,12 +958,12 @@ export default function AdaptiveSolve() {
                 <div>
                   <Label className="text-sm font-bold mb-1.5 flex items-center gap-2">
                     <Lock className="w-4 h-4 text-violet-600" />
-                    {lang === "ar" ? "كود الدخول" : "Access Code"}
+                    {t.solve.accessCode}
                   </Label>
                   <Input
                     value={accessCode}
                     onChange={e => setAccessCode(e.target.value)}
-                    placeholder="XXXXXX"
+                    placeholder={copy.codePlaceholder}
                     className="font-mono tracking-widest text-base border-2"
                     dir="ltr"
                   />
@@ -990,7 +988,7 @@ export default function AdaptiveSolve() {
                 ) : (
                   <>
                     <Brain className="w-5 h-5" />
-                    {lang === "ar" ? "ابدأ الاختبار التكيّفي" : "Start Adaptive Test"}
+                    {copy.startAdaptiveTest}
                   </>
                 )}
               </button>

@@ -635,10 +635,7 @@ const importUpload = multer({
     } else if (IMPORT_ALLOWED_MIMES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(
-        "نوع الملف غير مدعوم. المقبول: PDF، PPTX، Word، Excel، وصور / " +
-        "Unsupported file type. Allowed: PDF, PPTX, Word, Excel, and images"
-      ));
+      cb(new Error("Unsupported file type. Allowed: PDF, PPTX, Word, Excel, and images"));
     }
   },
 });
@@ -1199,7 +1196,7 @@ router.post(
       const bodySchema = z.object({ url: z.string().url("Invalid URL") });
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) {
-        res.status(400).json({ message: "يرجى إدخال رابط صحيح / Please enter a valid URL" });
+        res.status(400).json({ message: "Please enter a valid URL" });
         return;
       }
       const { url } = parsed.data;
@@ -1209,9 +1206,7 @@ router.post(
         const u = new URL(url);
         if (u.hostname === "www.canva.com" || u.hostname === "canva.com") {
           res.status(422).json({
-            message:
-              "روابط Canva لا تدعم التنزيل المباشر — يرجى تصدير العرض من Canva كملف PPTX ثم رفعه هنا / " +
-              "Canva links don't support direct download — please export your design from Canva as PPTX and upload it here.",
+            message: "Canva links don't support direct download — please export your design from Canva as PPTX and upload it here.",
           });
           return;
         }
@@ -1221,9 +1216,7 @@ router.post(
       const slideId = parseGoogleSlidesId(url);
       if (!slideId) {
         res.status(422).json({
-          message:
-            "الرابط غير مدعوم. الروابط المدعومة: Google Slides العامة فقط / " +
-            "Unsupported link. Only public Google Slides links are supported.",
+          message: "Unsupported link. Only public Google Slides links are supported.",
         });
         return;
       }

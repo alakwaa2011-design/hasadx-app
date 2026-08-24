@@ -34,7 +34,7 @@ interface LeaderboardEntry {
 }
 
 export default function StroopSetup() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const [, setLocation] = useLocation();
 
   const [pinInput, setPinInput] = useState("");
@@ -66,12 +66,12 @@ export default function StroopSetup() {
     try {
       const res = await fetch(`${API_BASE}/api/stroop-sets/${pin}`);
       if (!res.ok) {
-        setPinError(lang === "ar" ? "لم يُعثر على هذا الكود" : "PIN not found");
+        setPinError(t.stroop.pinNotFound);
         return;
       }
       setLocation(`/game/stroop/play?pin=${pin}`);
     } catch {
-      setPinError(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+      setPinError(t.stroop.connectionError);
     } finally {
       setPinLoading(false);
     }
@@ -90,8 +90,8 @@ export default function StroopSetup() {
       iconGradient="from-red-500 via-orange-500 to-yellow-500"
       iconShadow="shadow-orange-500/40"
       icon={<Brain className="w-10 h-10 text-white" />}
-      title={lang === "ar" ? "لعبة ارتباك" : "Stroop Game"}
-      subtitle={lang === "ar" ? "اضغط على لون الحبر وليس معنى الكلمة — تحدٍّ لعقلك!" : "Click the ink color, not the word meaning — challenge your brain!"}
+      title={t.stroop.title}
+      subtitle={t.stroop.subtitle}
       maxWidth="xl"
     >
       <motion.div
@@ -126,20 +126,20 @@ export default function StroopSetup() {
         <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm">
           <h3 className="font-extrabold text-foreground mb-3 flex items-center gap-2">
             <Zap className="w-4 h-4 text-orange-500" />
-            {lang === "ar" ? "كيف تلعب؟" : "How to Play?"}
+            {t.stroop.howToPlay}
           </h3>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center text-xs font-black shrink-0">١</span>
-              {lang === "ar" ? "ستظهر كلمة لون مكتوبة بلون مختلف" : "A color word appears in a different ink color"}
+              {t.stroop.stepOne}
             </li>
             <li className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center text-xs font-black shrink-0">٢</span>
-              {lang === "ar" ? "اضغط على اللون الصحيح للحبر (ليس معنى الكلمة)" : "Click the correct ink color (not the word meaning)"}
+              {t.stroop.stepTwo}
             </li>
             <li className="flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center text-xs font-black shrink-0">٣</span>
-              {lang === "ar" ? "ارتقِ مستوى كل ٥ إجابات صحيحة — الوقت يتناقص!" : "Level up every 5 correct answers — timer gets faster!"}
+              {t.stroop.stepThree}
             </li>
           </ul>
         </div>
@@ -147,18 +147,18 @@ export default function StroopSetup() {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-card border border-border/60 rounded-2xl p-4 text-center shadow-sm">
             <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1.5" />
-            <p className="text-xs font-bold text-foreground">{lang === "ar" ? "نقاط × كومبو" : "Score × Combo"}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{lang === "ar" ? "التحديات المتسلسلة" : "Chain challenges"}</p>
+            <p className="text-xs font-bold text-foreground">{t.stroop.scoreCombo}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{t.stroop.chainChallenges}</p>
           </div>
           <div className="bg-card border border-border/60 rounded-2xl p-4 text-center shadow-sm">
             <Brain className="w-5 h-5 text-red-500 mx-auto mb-1.5" />
-            <p className="text-xs font-bold text-foreground">{lang === "ar" ? "٣ أرواح" : "3 Lives"}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{lang === "ar" ? "لا تخطئ!" : "Don't make mistakes!"}</p>
+            <p className="text-xs font-bold text-foreground">{t.stroop.lives}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{t.stroop.noMistakes}</p>
           </div>
           <div className="bg-card border border-border/60 rounded-2xl p-4 text-center shadow-sm">
             <Zap className="w-5 h-5 text-orange-500 mx-auto mb-1.5" />
-            <p className="text-xs font-bold text-foreground">{lang === "ar" ? "عداد دائري" : "Circle Timer"}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{lang === "ar" ? "يتسارع بالمستوى" : "Speeds up per level"}</p>
+            <p className="text-xs font-bold text-foreground">{t.stroop.circleTimer}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{t.stroop.speedsUp}</p>
           </div>
         </div>
       </motion.div>
@@ -167,7 +167,7 @@ export default function StroopSetup() {
         onClick={() => setLocation("/game/stroop/play")}
         gradient="from-red-500 via-orange-500 to-yellow-500"
         shadow="shadow-orange-500/30"
-        label={lang === "ar" ? "ابدأ اللعبة!" : "Start Game!"}
+        label={t.stroop.start}
       />
 
       <ChallengeFriendButton
@@ -180,7 +180,7 @@ export default function StroopSetup() {
         {showArenaLobby && (
           <MultiplayerLobby
             gameId="stroop"
-            gameTitle={lang === "ar" ? "لعبة ارتباك" : "Stroop Game"}
+            gameTitle={t.stroop.title}
             playUrl="/game/stroop/play"
             playerName=""
             onClose={() => setShowArenaLobby(false)}
@@ -191,7 +191,7 @@ export default function StroopSetup() {
       <div className="bg-card border border-border/60 rounded-2xl p-4 shadow-sm mb-3">
         <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
           <Hash className="w-3.5 h-3.5" />
-          {lang === "ar" ? "لعب بمجموعة مخصصة (كود المعلم)" : "Play with custom set (Teacher PIN)"}
+          {t.stroop.customSet}
         </p>
         <div className="flex gap-2">
           <input
@@ -199,7 +199,8 @@ export default function StroopSetup() {
             value={pinInput}
             onChange={e => { setPinInput(e.target.value); setPinError(""); }}
             onKeyDown={e => e.key === "Enter" && handlePlayWithPin()}
-            placeholder={lang === "ar" ? "أدخل الكود..." : "Enter PIN..."}
+            placeholder={t.stroop.enterPin}
+            aria-label={t.stroop.customSet}
             maxLength={10}
             dir="ltr"
             className="flex-1 px-4 py-2.5 rounded-xl bg-background border border-border text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 transition-colors"
@@ -209,7 +210,7 @@ export default function StroopSetup() {
             disabled={pinLoading || !pinInput.trim()}
             className="px-4 py-2.5 rounded-xl bg-orange-500 text-white font-bold text-sm hover:bg-orange-600 transition-colors disabled:opacity-50"
           >
-            {pinLoading ? "..." : lang === "ar" ? "انضم" : "Join"}
+            {pinLoading ? "..." : t.stroop.join}
           </button>
         </div>
         {pinError && (
@@ -222,7 +223,7 @@ export default function StroopSetup() {
         className="w-full py-3 mb-6 rounded-2xl border-2 border-dashed border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 font-bold text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors flex items-center justify-center gap-2"
       >
         <Brain className="w-4 h-4" />
-        {lang === "ar" ? "إنشاء مجموعة مخصصة (للمعلمين)" : "Create Custom Set (Teachers)"}
+        {t.stroop.createCustomSet}
       </button>
 
       {!lbLoading && leaderboard.length > 0 && (
@@ -233,7 +234,7 @@ export default function StroopSetup() {
         >
           <h2 className="font-extrabold text-foreground mb-3 flex items-center gap-2">
             <Medal className="w-4 h-4 text-yellow-500" />
-            {lang === "ar" ? "أفضل اللاعبين" : "Top Players"}
+            {t.stroop.topPlayers}
           </h2>
           <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm divide-y divide-border">
             {leaderboard.map((entry, i) => (
@@ -243,7 +244,7 @@ export default function StroopSetup() {
                   <span className="font-bold text-sm text-foreground truncate max-w-[140px]">{entry.name}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">{lang === "ar" ? "م" : "Lv"}{entry.level}</span>
+                  <span className="text-xs text-muted-foreground">{t.stroop.levelShort}{entry.level}</span>
                   <span className="font-black text-sm text-orange-600">{entry.score.toLocaleString(lang === "ar" ? "ar-EG" : "en")}</span>
                 </div>
               </div>

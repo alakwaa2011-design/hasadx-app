@@ -252,7 +252,7 @@ export default function VerifyEmailPage() {
       >
         {/* Header */}
         <div className="flex justify-center mb-6">
-          <span className="text-lg font-black" style={{ color: "#1a4731" }}>منصة حصاد</span>
+          <span className="text-lg font-black" style={{ color: "#1a4731" }}>{lang === "ar" ? "منصة حصاد" : "HasadX"}</span>
         </div>
         {cardContent()}
       </motion.div>

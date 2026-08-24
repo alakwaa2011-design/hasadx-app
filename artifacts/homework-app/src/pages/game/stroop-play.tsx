@@ -174,7 +174,7 @@ function CircleTimer({ pct, color, size = 72 }: CircleTimerProps) {
 }
 
 export default function StroopPlay() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
@@ -446,7 +446,7 @@ export default function StroopPlay() {
               {score > 2000 ? "🏆" : score > 800 ? "🥈" : score > 300 ? "🎉" : "🎮"}
             </motion.div>
             <h1 className="text-3xl font-black text-foreground mb-2">
-              {lang === "ar" ? "انتهت اللعبة!" : "Game Over!"}
+              {t.stroop.gameOver}
             </h1>
 
             <div className="flex justify-center gap-1.5 mb-4">
@@ -467,15 +467,15 @@ export default function StroopPlay() {
 
             <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-lg mb-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">{lang === "ar" ? "النقاط" : "Score"}</span>
+                <span className="text-muted-foreground text-sm">{t.stroop.score}</span>
                 <span className="font-black text-2xl text-foreground">{score.toLocaleString(lang === "ar" ? "ar-EG" : "en")}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">{lang === "ar" ? "المستوى" : "Level"}</span>
+                <span className="text-muted-foreground text-sm">{t.stroop.level}</span>
                 <span className="font-bold text-foreground">{level}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">{lang === "ar" ? "صحيح / خطأ" : "Correct / Wrong"}</span>
+                <span className="text-muted-foreground text-sm">{t.stroop.correctWrong}</span>
                 <span className="font-bold">
                   <span className="text-green-600">{correctCount}</span>
                   <span className="text-muted-foreground mx-1">/</span>
@@ -483,16 +483,16 @@ export default function StroopPlay() {
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">{lang === "ar" ? "الدقة" : "Accuracy"}</span>
+                <span className="text-muted-foreground text-sm">{t.stroop.accuracy}</span>
                 <span className="font-bold text-blue-600">{accuracy}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-sm">{lang === "ar" ? "أعلى كومبو" : "Best Combo"}</span>
+                <span className="text-muted-foreground text-sm">{t.stroop.bestCombo}</span>
                 <span className="font-bold text-orange-600">×{maxCombo}</span>
               </div>
               {rank && saveStatus === "saved" && (
                 <div className="flex justify-between items-center border-t border-border pt-3">
-                  <span className="text-muted-foreground text-sm">{lang === "ar" ? "ترتيبك" : "Your Rank"}</span>
+                  <span className="text-muted-foreground text-sm">{t.stroop.yourRank}</span>
                   <span className="font-black text-yellow-600">#{rank}</span>
                 </div>
               )}
@@ -501,7 +501,7 @@ export default function StroopPlay() {
             {saveStatus !== "saved" && (
               <div className="bg-card border border-border/60 rounded-2xl p-4 shadow-sm mb-4">
                 <p className="text-xs font-bold text-muted-foreground mb-2">
-                  {lang === "ar" ? "أدخل اسمك لحفظ نتيجتك في المتصدرين العشرة (اختياري)" : "Enter your name to save score in top 10 (optional)"}
+                  {t.stroop.savePrompt}
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -509,7 +509,8 @@ export default function StroopPlay() {
                     value={playerName}
                     onChange={e => setPlayerName(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleSaveScore()}
-                    placeholder={lang === "ar" ? "اسمك..." : "Your name..."}
+                    placeholder={t.stroop.namePlaceholder}
+                    aria-label={t.stroop.namePlaceholder}
                     maxLength={30}
                     autoFocus
                     className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 transition-colors"
@@ -522,17 +523,17 @@ export default function StroopPlay() {
                     {saveStatus === "saving" ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : saveStatus === "error" ? (
-                      lang === "ar" ? "أعد" : "Retry"
+                      t.stroop.retry
                     ) : (
                       <>
                         <Save className="w-4 h-4" />
-                        {lang === "ar" ? "احفظ" : "Save"}
+                        {t.stroop.save}
                       </>
                     )}
                   </button>
                 </div>
                 {saveStatus === "error" && (
-                  <p className="text-xs text-destructive mt-1">{lang === "ar" ? "حدث خطأ، حاول مجدداً" : "Error, try again"}</p>
+                  <p className="text-xs text-destructive mt-1">{t.stroop.saveError}</p>
                 )}
               </div>
             )}
@@ -544,7 +545,7 @@ export default function StroopPlay() {
                 className="flex items-center justify-center gap-2 py-3 text-green-600 font-bold text-sm mb-4"
               >
                 <CheckCircle className="w-5 h-5" />
-                {lang === "ar" ? "تم حفظ نتيجتك!" : "Score saved!"}
+                {t.stroop.scoreSaved}
               </motion.div>
             )}
 
@@ -560,13 +561,13 @@ export default function StroopPlay() {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-black text-base shadow-lg flex items-center justify-center gap-2"
               >
                 <RotateCcw className="w-5 h-5" />
-                {lang === "ar" ? "العب مجدداً" : "Play Again"}
+                {t.stroop.playAgain}
               </button>
               <button
                 onClick={() => setLocation("/game/stroop")}
                 className="w-full py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                {lang === "ar" ? "العودة للقائمة" : "Back to Menu"}
+                {t.stroop.backToMenu}
               </button>
             </div>
           </motion.div>
@@ -616,7 +617,7 @@ export default function StroopPlay() {
             </div>
             <div className="text-end">
               <p className="text-[10px] text-muted-foreground font-medium">
-                {customTitle || (lang === "ar" ? "ارتباك" : "Stroop")} · {lang === "ar" ? "م" : "Lv"}{level}
+                 {customTitle || t.stroop.title} · {t.stroop.levelShort}{level}
               </p>
               <p className="text-xl font-black text-foreground">{score.toLocaleString(lang === "ar" ? "ar-EG" : "en")}</p>
             </div>
@@ -624,7 +625,7 @@ export default function StroopPlay() {
 
           <div className="mb-1">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-              <span>{lang === "ar" ? "تقدم المستوى" : "Level progress"}</span>
+               <span>{t.stroop.levelProgress}</span>
               <span>{correctInLevel}/{LEVEL_UP_EVERY}</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -648,7 +649,7 @@ export default function StroopPlay() {
                     {Math.ceil(timeLeft / 1000)}
                   </span>
                   <span className="text-[9px] text-muted-foreground font-medium">
-                    {lang === "ar" ? "ث" : "s"}
+                     {t.stroop.second}
                   </span>
                 </div>
               </motion.div>
@@ -659,7 +660,7 @@ export default function StroopPlay() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-card border border-border/40 shadow-sm">
               <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
               <p className="text-xs font-bold text-muted-foreground">
-                {lang === "ar" ? "اضغط على لون الحبر — ليس معنى الكلمة" : "Click the ink color — not the word"}
+                 {t.stroop.instruction}
               </p>
             </div>
           </div>
@@ -783,7 +784,7 @@ export default function StroopPlay() {
                 className="text-center mb-3"
               >
                 <span className="text-lg font-black text-red-500">
-                  ✗ {lang === "ar" ? "لون الحبر كان:" : "Ink was:"}{" "}
+                  ✗ {t.stroop.inkWas}{" "}
                   <span style={{ color: question?.inkColor }}>{question?.inkColorName}</span>
                 </span>
               </motion.div>
@@ -796,7 +797,7 @@ export default function StroopPlay() {
               className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             >
               <BackArrow className="w-3.5 h-3.5" />
-              {lang === "ar" ? "إنهاء" : "End"}
+               {t.stroop.end}
             </button>
             <div className="flex items-center gap-2">
               <Trophy className="w-3.5 h-3.5 text-yellow-500" />

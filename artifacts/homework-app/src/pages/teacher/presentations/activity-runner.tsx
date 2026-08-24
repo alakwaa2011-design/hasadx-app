@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Trophy, X } from "lucide-react";
 import { getTheme, resolveSlideGradient } from "@/lib/slide-themes";
+import { useI18n } from "@/lib/i18n";
 
 type Question = { prompt: string; options: string[]; correctIndex: number };
 type Payload = {
@@ -13,14 +14,9 @@ type Payload = {
   themeKey?: string | null;
 };
 
-const GAME_LABELS_AR: Record<string, string> = {
-  kahoot: "وميض", wheel: "عجلة التحدي", millionaire: "من سيربح المليون",
-  "flag-quiz": "اختبار الأعلام", capitals: "العواصم", letrly: "حروفلي",
-  rocket: "سباق الصواريخ", tug: "شد الحبل", maraqui: "السلّم والثعبان",
-  hack: "تحدي الاختراق",
-};
-
 export default function ActivityRunner() {
+  const { t, dir, lang } = useI18n();
+  const copy = t.activityRunner;
   const params = useParams<{ seedId: string }>();
   const seedId = params?.seedId ?? "";
   const [payload, setPayload] = useState<Payload | null>(null);
@@ -70,14 +66,14 @@ export default function ActivityRunner() {
 
   if (missing) {
     return (
-      <div dir="rtl" className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+      <div dir={dir} className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-3">
-          <div className="text-2xl font-bold">لم يتم العثور على النشاط</div>
+          <div className="text-2xl font-bold">{copy.missingTitle}</div>
           <div className="text-sm text-white/70">
-            ربما تم إغلاق التبويب الأصلي أو انتهت الجلسة. عُد إلى المحرر وأعد تشغيل النشاط.
+            {copy.missingBody}
           </div>
           <Button onClick={() => window.close()} variant="outline">
-            <X className="w-4 h-4 me-1" /> إغلاق
+            <X className="w-4 h-4 me-1" /> {copy.close}
           </Button>
         </div>
       </div>
@@ -85,8 +81,8 @@ export default function ActivityRunner() {
   }
   if (!payload) {
     return (
-      <div dir="rtl" className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="text-sm text-white/70">جارٍ التحميل…</div>
+      <div dir={dir} className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="text-sm text-white/70" role="status">{copy.loading}</div>
       </div>
     );
   }
@@ -94,7 +90,11 @@ export default function ActivityRunner() {
   const q = payload.questions[idx];
   const total = payload.questions.length;
   const isLast = idx >= total - 1;
-  const gameLabel = payload.gameLabel ?? GAME_LABELS_AR[payload.gameKind] ?? "نشاط";
+  const gameLabels: Record<string, string> = {
+    ...copy.gameLabels,
+    "flag-quiz": copy.gameLabels.flagQuiz,
+  };
+  const gameLabel = payload.gameLabel ?? gameLabels[payload.gameKind] ?? copy.activity;
   const textColor = bg.textOnLight ? "#1f2937" : "#f8fafc";
   const subtle = bg.textOnLight ? "rgba(31,41,55,0.65)" : "rgba(248,250,252,0.75)";
   const accent = bg.accentColor ?? "#d4af37";
@@ -117,7 +117,7 @@ export default function ActivityRunner() {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="min-h-screen w-full flex flex-col items-stretch"
       style={bg.cssBackground ? { background: bg.cssBackground, color: textColor } : { color: textColor }}
     >
@@ -146,9 +146,9 @@ export default function ActivityRunner() {
         </div>
         <div className="flex items-center gap-3">
           <div className="text-sm font-bold tabular-nums" style={{ color: subtle }}>
-            {done ? `${score} / ${total}` : `سؤال ${idx + 1} / ${total}`}
+            {done ? `${score} / ${total}` : copy.questionProgress.replace("{current}", String(idx + 1)).replace("{total}", String(total))}
           </div>
-          <Button size="sm" variant="outline" onClick={() => window.close()}>
+          <Button size="sm" variant="outline" onClick={() => window.close()} aria-label={copy.close}>
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -162,23 +162,23 @@ export default function ActivityRunner() {
                  style={{ background: `${accent}30`, color: accent }}>
               <Trophy className="w-10 h-10" />
             </div>
-            <div className="text-3xl font-extrabold">انتهى النشاط!</div>
+            <div className="text-3xl font-extrabold">{copy.complete}</div>
             <div className="text-2xl font-bold tabular-nums">
-              النتيجة: {score} / {total}
+              {copy.result.replace("{score}", String(score)).replace("{total}", String(total))}
             </div>
             <div className="text-sm" style={{ color: subtle }}>
               {score === total
-                ? "أداء ممتاز! إجابات صحيحة بالكامل."
+                ? copy.perfect
                 : score >= Math.ceil(total / 2)
-                  ? "أحسنت! لا تزال هناك مساحة للتحسّن."
-                  : "حاول مرة أخرى لتعزيز فهمك للموضوع."}
+                  ? copy.good
+                  : copy.retryHint}
             </div>
             <div className="flex items-center justify-center gap-2">
               <Button onClick={restart} style={{ background: accent, color: "#1c1003" }} className="font-bold">
-                إعادة المحاولة
+                {copy.retry}
               </Button>
               <Button onClick={() => window.close()} variant="outline">
-                إغلاق
+                {copy.close}
               </Button>
             </div>
           </div>
@@ -224,6 +224,7 @@ export default function ActivityRunner() {
                     key={i}
                     onClick={() => pick(i)}
                     disabled={revealed}
+                    aria-label={copy.answerOption.replace("{label}", lang === "ar" ? String.fromCharCode(0x0623 + i) : String.fromCharCode(65 + i))}
                     className="text-start rounded-xl px-4 py-4 border-2 flex items-center gap-3 transition-all duration-300 hover:scale-[1.01] disabled:cursor-default disabled:hover:scale-100"
                     style={style}
                   >
@@ -231,7 +232,7 @@ export default function ActivityRunner() {
                       className="inline-flex items-center justify-center w-9 h-9 rounded-full font-bold text-base shrink-0"
                       style={{ background: showAsCorrect || showAsWrong ? "rgba(255,255,255,0.25)" : `${accent}40`, color: showAsCorrect || showAsWrong ? "white" : accent }}
                     >
-                      {String.fromCharCode(0x0623 + i) /* أ ب ت ث … */}
+                      {lang === "ar" ? String.fromCharCode(0x0623 + i) : String.fromCharCode(65 + i)}
                     </span>
                     <span className="flex-1 text-base md:text-lg font-medium">{opt}</span>
                     {showAsCorrect && <CheckCircle2 className="w-5 h-5" />}
@@ -242,12 +243,12 @@ export default function ActivityRunner() {
             {/* Footer */}
             <div className="flex items-center justify-between pt-2">
               <div className="text-sm font-bold tabular-nums" style={{ color: subtle }}>
-                النتيجة الحالية: {score} / {total}
+                {copy.currentResult.replace("{score}", String(score)).replace("{total}", String(total))}
               </div>
               {!revealed ? (
                 <div className="text-sm" style={{ color: subtle }}>
                   <Eye className="w-4 h-4 inline-block me-1" />
-                  اختر إجابة لكشف الصحيحة
+                  {copy.chooseAnswer}
                 </div>
               ) : (
                 <Button
@@ -255,8 +256,8 @@ export default function ActivityRunner() {
                   style={{ background: accent, color: "#1c1003" }}
                   className="font-bold btn-reveal-ready"
                 >
-                  {isLast ? "إنهاء النشاط" : "السؤال التالي"}
-                  <ChevronLeft className="w-4 h-4 ms-1" />
+                  {isLast ? copy.finish : copy.nextQuestion}
+                  {dir === "rtl" ? <ChevronLeft className="w-4 h-4 ms-1" /> : <ChevronRight className="w-4 h-4 ms-1" />}
                 </Button>
               )}
             </div>

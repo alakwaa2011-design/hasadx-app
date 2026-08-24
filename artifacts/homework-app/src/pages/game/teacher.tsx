@@ -125,7 +125,7 @@ const TeacherControlHeader = ({
     <header className="sticky top-2 sm:top-4 z-40 bg-[#0A120E]/90 backdrop-blur-xl border border-emerald-900/50 shadow-2xl rounded-2xl mb-6 mx-auto max-w-5xl flex items-center justify-between p-2 sm:px-4" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="flex items-center gap-2 sm:gap-3">
         <div className="flex flex-col items-center justify-center bg-emerald-950/40 border border-emerald-900/40 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[4.5rem]">
-          <span className="text-[9px] sm:text-[10px] text-emerald-500/80 uppercase font-black tracking-wider leading-none mb-0.5">{lang === "ar" ? "كود اللعبة" : "CODE"}</span>
+          <span className="text-[9px] sm:text-[10px] text-emerald-500/80 uppercase font-black tracking-wider leading-none mb-0.5">{t.teacherGame.code}</span>
           <span className="font-mono font-black text-base sm:text-lg text-emerald-50 leading-none">{pin}</span>
         </div>
         
@@ -150,7 +150,7 @@ const TeacherControlHeader = ({
          {phase === "question" && (
            <Button onClick={onSkip} variant="outline" size="sm" className="h-8 sm:h-9 gap-1 sm:gap-1.5 bg-transparent border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 hover:text-emerald-200 px-2 sm:px-3">
               <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline text-xs font-bold">{lang === "ar" ? "تخطي" : "Skip"}</span>
+              <span className="hidden sm:inline text-xs font-bold">{t.teacherGame.skip}</span>
            </Button>
          )}
 
@@ -161,13 +161,13 @@ const TeacherControlHeader = ({
                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
                     <Clock className="w-3.5 h-3.5" />
                  </motion.div>
-                 <span>{lang === "ar" ? "السؤال التالي ينتقل تلقائياً..." : "Auto-advancing..."}</span>
+                  <span>{t.teacherGame.autoNext}</span>
                </div>
              )}
              
              <Button onClick={onAdvance} size="sm" className="h-8 sm:h-9 gap-1 sm:gap-1.5 bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-amber-950 border border-amber-400/50 shadow-lg shadow-amber-900/20 px-2 sm:px-3">
                 <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="font-bold text-xs">{lang === "ar" ? "تقدم الآن" : "Advance"}</span>
+                <span className="font-bold text-xs">{t.teacherGame.advance}</span>
              </Button>
            </>
          )}
@@ -183,7 +183,7 @@ const TeacherControlHeader = ({
                  </Button>
                </TooltipTrigger>
                <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
-                  {isPaused ? (lang === "ar" ? "استئناف" : "Resume") : (lang === "ar" ? "إيقاف مؤقت" : "Pause")}
+                  {isPaused ? t.teacherGame.resume : t.teacherGame.pausePlain}
                </TooltipContent>
              </Tooltip>
            )}
@@ -196,7 +196,7 @@ const TeacherControlHeader = ({
                </Button>
              </TooltipTrigger>
              <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
-               {lang === "ar" ? "نسخ الرابط" : "Copy Link"}
+                {t.teacherGame.copyLink}
              </TooltipContent>
            </Tooltip>
 
@@ -211,19 +211,19 @@ const TeacherControlHeader = ({
                  </DialogTrigger>
                </TooltipTrigger>
                <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
-                 {lang === "ar" ? "باركود الانضمام" : "Join QR Code"}
+                  {t.teacherGame.joinQrCode}
                </TooltipContent>
              </Tooltip>
              <DialogContent className="sm:max-w-sm bg-[#0c2117] border-emerald-800 text-center">
                <DialogHeader>
-                 <DialogTitle className="text-emerald-100">{lang === "ar" ? "امسح الباركود للانضمام" : "Scan to Join"}</DialogTitle>
+                <DialogTitle className="text-emerald-100">{t.teacherGame.scanToJoin}</DialogTitle>
                </DialogHeader>
                <div className="flex justify-center p-6 bg-white rounded-xl mx-auto my-4">
                  <GameQRCode url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`} pin={pin} size={200} />
                </div>
                <DialogFooter>
                  <DialogClose asChild>
-                   <Button variant="outline" className="w-full bg-transparent border-emerald-800 text-emerald-100 hover:bg-emerald-900/50">{lang === "ar" ? "إغلاق" : "Close"}</Button>
+                    <Button variant="outline" className="w-full bg-transparent border-emerald-800 text-emerald-100 hover:bg-emerald-900/50">{t.common.close}</Button>
                  </DialogClose>
                </DialogFooter>
              </DialogContent>
@@ -247,8 +247,8 @@ const TeacherControlHeader = ({
              </TooltipTrigger>
              <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
                {musicMuted
-                 ? (lang === "ar" ? "تشغيل الصوت والموسيقى" : "Unmute Sounds")
-                 : (lang === "ar" ? "كتم الصوت والموسيقى" : "Mute Sounds")}
+                  ? t.teacherGame.unmuteSounds
+                  : t.teacherGame.muteSounds}
              </TooltipContent>
            </Tooltip>
 
@@ -261,7 +261,7 @@ const TeacherControlHeader = ({
                  </Button>
                </TooltipTrigger>
                <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
-                 {hackMusicMuted ? (lang === "ar" ? "تشغيل موسيقى الاختراق" : "Unmute Hack Music") : (lang === "ar" ? "كتم موسيقى الاختراق" : "Mute Hack Music")}
+                  {hackMusicMuted ? t.teacherGame.unmuteHackMusic : t.teacherGame.muteHackMusic}
                </TooltipContent>
              </Tooltip>
            )}
@@ -277,21 +277,21 @@ const TeacherControlHeader = ({
                  </DialogTrigger>
                </TooltipTrigger>
                <TooltipContent side="bottom" className="text-xs font-bold bg-emerald-950 text-emerald-100 border-emerald-800">
-                 {lang === "ar" ? "إنهاء اللعبة" : "End Game"}
+                  {t.teacherGame.endGame}
                </TooltipContent>
              </Tooltip>
              <DialogContent className="sm:max-w-sm bg-[#0c2117] border-emerald-800">
                <DialogHeader>
-                 <DialogTitle className="text-emerald-100">{lang === "ar" ? "هل أنت متأكد من إنهاء اللعبة؟" : "End the game?"}</DialogTitle>
+                  <DialogTitle className="text-emerald-100">{t.teacherGame.confirmEndTitle}</DialogTitle>
                  <DialogDescription className="text-emerald-400/80">
-                   {lang === "ar" ? "سيتم إنهاء اللعبة لجميع الطلاب وعرض النتائج النهائية." : "This will end the game for all students."}
+                    {t.teacherGame.confirmEndDescription}
                  </DialogDescription>
                </DialogHeader>
                <DialogFooter className="mt-4 gap-2 sm:gap-0">
                  <DialogClose asChild>
-                   <Button variant="outline" className="bg-transparent border-emerald-800 text-emerald-100 hover:bg-emerald-900/50">{lang === "ar" ? "إلغاء" : "Cancel"}</Button>
+                    <Button variant="outline" className="bg-transparent border-emerald-800 text-emerald-100 hover:bg-emerald-900/50">{t.common.cancel}</Button>
                  </DialogClose>
-                 <Button variant="destructive" onClick={onEndGame} className="bg-rose-600 hover:bg-rose-700 text-white font-bold">{lang === "ar" ? "إنهاء اللعبة" : "End Game"}</Button>
+                  <Button variant="destructive" onClick={onEndGame} className="bg-rose-600 hover:bg-rose-700 text-white font-bold">{t.teacherGame.endGame}</Button>
                </DialogFooter>
              </DialogContent>
            </Dialog>
@@ -738,7 +738,6 @@ export default function TeacherGame() {
   const updateTargetClass = (next: string) => {
     setTargetClass(next);
     const socket = getSocket();
-    const ar = lang === "ar";
     socket.emit(
       "teacher:set-target-class",
       { pin, targetClass: next || null },
@@ -750,8 +749,8 @@ export default function TeacherGame() {
           }
           toast.success(
             res?.targetClass
-              ? (ar ? `تم تحديد الصف: ${res.targetClass}` : `Class set: ${res.targetClass}`)
-              : (ar ? "تم إزالة تحديد الصف" : "Class targeting cleared"),
+              ? t.teacherGame.classSet.replace("{name}", res.targetClass)
+              : t.teacherGame.classTargetingCleared,
           );
         });
       },
@@ -843,7 +842,7 @@ export default function TeacherGame() {
       if (res?.error) {
         import("@/components/ui/sonner").then(({ toast }) => toast.error(res.error));
       } else {
-        import("@/components/ui/sonner").then(({ toast }) => toast.success(t.teacherGame.botsAdded || (lang === "ar" ? "تم إضافة اللاعبين الوهميين" : "Bot players added")));
+        import("@/components/ui/sonner").then(({ toast }) => toast.success(t.teacherGame.botsAdded));
       }
     });
   };
@@ -882,9 +881,9 @@ export default function TeacherGame() {
     navigator.clipboard.writeText(shareLink).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-      toast.success(lang === "ar" ? "تم نسخ رابط الانضمام!" : "Join link copied!");
+      toast.success(t.teacherGame.joinLinkCopied);
     }).catch(() => {
-      toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link");
+      toast.error(t.teacherGame.joinLinkCopyFailed);
     });
   };
 
@@ -926,7 +925,7 @@ export default function TeacherGame() {
                   onClick={endGame}
                   className="px-4 py-2 rounded-xl text-sm font-bold bg-red-950/60 text-red-400 border border-red-900 hover:bg-red-950 font-mono transition-colors"
                 >
-                  {lang === "ar" ? "إنهاء الجلسة" : "END SESSION"}
+                  {t.teacherGame.endSession}
                 </button>
               </div>
             </div>
@@ -936,20 +935,20 @@ export default function TeacherGame() {
               <div className="lg:col-span-2 bg-zinc-950 border border-green-900 rounded-2xl p-4">
                 <h2 className="text-green-400 font-mono font-black text-sm mb-3 flex items-center gap-2">
                   <Activity className="w-4 h-4" />
-                  {lang === "ar" ? "إحصائيات الطلاب" : "STUDENT_STATS"}
+                  {t.teacherGame.studentStats}
                   <span className="text-green-800 font-normal">({players.filter(p => !p.isBot).length})</span>
                 </h2>
                 {players.filter(p => !p.isBot).length === 0 ? (
-                  <p className="text-green-900 font-mono text-sm text-center py-8">{lang === "ar" ? "لا يوجد طلاب..." : "NO_AGENTS..."}</p>
+                  <p className="text-green-900 font-mono text-sm text-center py-8">{t.teacherGame.noStudents}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm font-mono">
                       <thead>
                         <tr className="text-green-700 text-xs border-b border-green-900">
-                          <th className="text-start pb-2 font-bold">{lang === "ar" ? "الطالب" : "AGENT"}</th>
+                          <th className="text-start pb-2 font-bold">{t.teacherGame.student}</th>
                           <th className="text-center pb-2 font-bold">✅</th>
                           <th className="text-center pb-2 font-bold">❌</th>
-                          <th className="text-center pb-2 font-bold">{lang === "ar" ? "تقدم" : "PROGRESS"}</th>
+                          <th className="text-center pb-2 font-bold">{t.teacherGame.progress}</th>
                           <th className="text-end pb-2 font-bold">🏆</th>
                         </tr>
                       </thead>
@@ -998,10 +997,10 @@ export default function TeacherGame() {
                 <div className="bg-zinc-950 border border-green-900 rounded-2xl p-4">
                   <h2 className="text-green-400 font-mono font-black text-sm mb-3 flex items-center gap-2">
                     <Trophy className="w-4 h-4" />
-                    {lang === "ar" ? "المتصدرون" : "LEADERBOARD"}
+                    {t.teacherGame.leaderboard}
                   </h2>
                   {sortedLeaderboard.length === 0 ? (
-                    <p className="text-green-900 font-mono text-xs text-center py-4">{lang === "ar" ? "لا يوجد..." : "EMPTY..."}</p>
+                    <p className="text-green-900 font-mono text-xs text-center py-4">{t.teacherGame.empty}</p>
                   ) : (
                     <div className="space-y-2">
                       {sortedLeaderboard.slice(0, 8).map((entry, idx) => (
@@ -1021,10 +1020,10 @@ export default function TeacherGame() {
                 {/* Hack Log */}
                 <div className="bg-zinc-950 border border-green-900 rounded-2xl p-4 flex-1">
                   <h2 className="text-green-400 font-mono font-black text-sm mb-3 flex items-center gap-2">
-                    💀 {lang === "ar" ? "سجل الاختراق" : "HACK_LOG"}
+                    💀 {t.teacherGame.hackLog}
                   </h2>
                   {hackLog.length === 0 ? (
-                    <p className="text-green-900 font-mono text-xs text-center py-4">{lang === "ar" ? "لا اختراقات بعد..." : "NO_HACKS_YET..."}</p>
+                    <p className="text-green-900 font-mono text-xs text-center py-4">{t.teacherGame.noHacks}</p>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       <AnimatePresence>
@@ -1142,7 +1141,7 @@ export default function TeacherGame() {
               )}
               {hackMode && (
                 <div className="flex items-center gap-1.5 px-3 h-8 rounded-full bg-green-500/20 border border-green-400/40 shadow-lg shadow-green-900/20">
-                  <span className="text-xs font-bold text-green-100"><Lock className="w-3.5 h-3.5 inline-block -mt-0.5 ml-1 rtl:ml-0 rtl:mr-1" /> {lang === "ar" ? "وضع الاختراق" : "Hack Mode"}</span>
+                   <span className="text-xs font-bold text-green-100"><Lock className="w-3.5 h-3.5 inline-block -mt-0.5 ml-1 rtl:ml-0 rtl:mr-1" /> {t.teacherGame.hackMode}</span>
                 </div>
               )}
             </div>
@@ -1185,15 +1184,15 @@ export default function TeacherGame() {
             {(question?.questionType === "true_false") ? (
               <>
                 <div className="bg-green-500 rounded-2xl p-5 text-white font-bold text-lg text-center">
-                  {lang === "ar" ? "صح ✓" : "True ✓"}
+                  {t.teacherGame.trueAnswer}
                 </div>
                 <div className="bg-red-500 rounded-2xl p-5 text-white font-bold text-lg text-center">
-                  {lang === "ar" ? "خطأ ✗" : "False ✗"}
+                  {t.teacherGame.falseAnswer}
                 </div>
               </>
             ) : (question?.questionType === "fill_blank") ? (
               <div className="col-span-2 bg-gray-700 rounded-2xl p-5 text-white font-bold text-lg text-center">
-                {lang === "ar" ? "✏️ إجابة كتابية" : "✏️ Text Answer"}
+                {t.teacherGame.textAnswer}
               </div>
             ) : (
               [
@@ -1219,8 +1218,8 @@ export default function TeacherGame() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
           <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-8xl mb-4">🎁</motion.div>
-          <h2 className="text-4xl font-black text-white mb-3">جولة المفاجآت!</h2>
-          <p className="text-white/60 font-bold text-xl">الطلاب يختارون قواهم الخاصة...</p>
+          <h2 className="text-4xl font-black text-white mb-3">{t.teacherGame.giftRoundTitle}</h2>
+          <p className="text-white/60 font-bold text-xl">{t.teacherGame.giftRoundDescription}</p>
         </motion.div>
       </div>
     );
@@ -1238,7 +1237,7 @@ export default function TeacherGame() {
         ? Object.keys(distribution)
         : ["A", "B", "C", "D"];
     const distKeyLabels: Record<string, string> = qType === "true_false"
-      ? { true: lang === "ar" ? "صح" : "True", false: lang === "ar" ? "خطأ" : "False" }
+      ? { true: t.teacherGame.trueAnswer.replace(" ✓", ""), false: t.teacherGame.falseAnswer.replace(" ✗", "") }
       : {};
 
     return (
@@ -1257,7 +1256,7 @@ export default function TeacherGame() {
           {hackMode && (
             <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 2 }}
               className="text-center font-mono text-green-500 text-xs mb-4 tracking-widest">
-              ══ HACK_RESULTS ══ ROUND_COMPLETE ══ SCORES_UPDATED ══
+              {t.teacherGame.hackResultsStatus}
             </motion.div>
           )}
           
@@ -1269,8 +1268,8 @@ export default function TeacherGame() {
                 <>
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-3 text-green-400 font-mono">
                     <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 1 }}>⚡</motion.span>
-                    HACK_LOG
-                    {hackLog.length > 0 && <span className="text-xs text-green-700 font-mono">{hackLog.length} EVENTS</span>}
+                    {t.teacherGame.hackLog}
+                    {hackLog.length > 0 && <span className="text-xs text-green-700 font-mono">{hackLog.length} {t.teacherGame.hackEvents}</span>}
                   </h2>
                   <div
                     className="rounded-xl overflow-hidden h-full min-h-[200px]"
@@ -1278,13 +1277,13 @@ export default function TeacherGame() {
                   >
                     <div className="px-4 py-2 border-b border-green-900/50 flex items-center gap-2">
                       <motion.div className="w-2 h-2 rounded-full bg-green-500" animate={{ opacity: [1, 0.2, 1] }} transition={{ repeat: Infinity, duration: 0.8 }} />
-                      <span className="text-xs font-mono text-green-600 tracking-widest">LIVE INTRUSION MONITOR</span>
+                      <span className="text-xs font-mono text-green-600 tracking-widest">{t.teacherGame.hackLiveMonitor}</span>
                     </div>
                     <div className="p-3 space-y-1.5 max-h-80 overflow-y-auto">
                       {hackLog.length === 0 ? (
                         <motion.p animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}
                           className="text-center text-green-900 font-mono text-xs py-6">
-                          AWAITING_INTRUSION_EVENTS...
+                          {t.teacherGame.awaitingIntrusion}
                         </motion.p>
                       ) : (
                         <AnimatePresence initial={false}>
@@ -1303,7 +1302,7 @@ export default function TeacherGame() {
                               </span>
                               <span className="text-base leading-none shrink-0">{entry.hackerAvatar || "💻"}</span>
                               <span className="text-green-400 font-black truncate">{entry.hackerName}</span>
-                              <span className="text-green-800 text-xs shrink-0 mx-0.5">اخترق</span>
+                               <span className="text-green-800 text-xs shrink-0 mx-0.5">{t.teacherGame.hackMode}</span>
                               <span className="text-red-500 font-black truncate">{entry.targetName}</span>
                               <span className="text-green-300 font-black shrink-0 mr-auto">+{entry.stolenAmount}</span>
                             </motion.div>
@@ -1313,14 +1312,15 @@ export default function TeacherGame() {
                     </div>
                     <div className="px-3 pb-3 pt-2 border-t border-green-900/50">
                       <p className="text-green-800 font-mono text-xs mb-2 tracking-widest">
-                        📡 {lang === "ar" ? "إرسال رسالة للجميع" : "BROADCAST_TRANSMISSION"}
+                         📡 {t.teacherGame.broadcastLabel}
                       </p>
                       <div className="flex gap-2">
                         <input
                           value={broadcastMessage}
                           onChange={e => setBroadcastMessage(e.target.value)}
                           onKeyDown={e => e.key === "Enter" && sendBroadcast()}
-                          placeholder={lang === "ar" ? "اكتب تلميحاً أو رسالة للطلاب..." : "Type a hint or message to all students..."}
+                          placeholder={t.teacherGame.broadcastPlaceholder}
+                          aria-label={t.teacherGame.broadcastLabel}
                           className="flex-1 px-3 py-2 bg-zinc-950 border border-green-900 rounded-lg text-green-300 font-mono text-xs focus:outline-none focus:border-green-500 placeholder:text-green-900 min-w-0"
                         />
                         <button
@@ -1329,23 +1329,23 @@ export default function TeacherGame() {
                           className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-black font-mono font-black text-xs rounded-lg transition-colors shrink-0"
                         >
                           {broadcastSent
-                            ? (lang === "ar" ? "✓ أُرسل" : "✓ SENT")
-                            : (lang === "ar" ? "بث للجميع" : "BROADCAST")}
+                            ? t.teacherGame.broadcastSent
+                            : t.teacherGame.broadcast}
                         </button>
                       </div>
                       {sentMessages.length > 0 && (
                         <div className="mt-3">
                           <div className="flex items-center justify-between mb-1.5">
                             <p className="text-green-900 font-mono text-xs tracking-widest">
-                              📜 {lang === "ar" ? "سجل الرسائل المُرسلة" : "SENT_LOG"}
+                              📜 {t.teacherGame.sentLog}
                               <span className="text-green-900/60 ml-1">({sentMessages.length})</span>
                             </p>
                             <button
                               onClick={() => setSentMessages([])}
                               className="text-green-900/70 hover:text-red-400 font-mono text-xs transition-colors px-1.5 py-0.5 rounded hover:bg-red-400/10"
-                              title={lang === "ar" ? "مسح السجل" : "Clear log"}
+                              title={t.teacherGame.clearLog}
                             >
-                              {lang === "ar" ? "✕ مسح" : "✕ CLEAR"}
+                              ✕ {t.teacherGame.clearLog}
                             </button>
                           </div>
                           <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
@@ -1367,7 +1367,7 @@ export default function TeacherGame() {
                                   <button
                                     onClick={() => setSentMessages(prev => prev.filter(m => m.id !== msg.id))}
                                     className="shrink-0 opacity-0 group-hover:opacity-100 text-green-900 hover:text-red-400 transition-all leading-none mt-px"
-                                    title={lang === "ar" ? "حذف الرسالة" : "Delete message"}
+                                    title={t.teacherGame.deleteMessage}
                                   >
                                     ×
                                   </button>
@@ -1488,7 +1488,7 @@ export default function TeacherGame() {
                         <div className="mt-5 pt-4 flex items-center justify-center gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                           <Users className="w-4 h-4" style={{ color: "rgba(232,184,75,0.7)" }} />
                           <span className="text-xs font-bold text-white/60">
-                            {lang === "ar" ? `${total} إجابة مسجّلة` : `${total} answers recorded`}
+                            {t.teacherGame.answersRecorded.replace("{count}", String(total))}
                           </span>
                         </div>
                       );
@@ -1506,7 +1506,7 @@ export default function TeacherGame() {
                     <Trophy className="w-5 h-5" style={{ color: "#E8B84B" }} />
                   </span>
                 )}
-                {hackMode ? "AGENT_RANKING" : t.teacherGame.raceTrack}
+                {hackMode ? t.teacherGame.agentRanking : t.teacherGame.raceTrack}
                 {hackMode && <span className="text-green-500">]</span>}
               </h2>
               <div className="flex-1 min-h-[300px]">
@@ -1531,8 +1531,8 @@ export default function TeacherGame() {
                         <span className="text-2xl font-black text-yellow-500">{team.totalScore}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm text-white/60">
-                        <span>{team.members} {lang === "ar" ? "أعضاء" : "members"}</span>
-                        <span>{lang === "ar" ? "المتوسط:" : "Avg:"} {Math.round(team.avgScore)}</span>
+                        <span>{team.members} {t.teacherGame.members}</span>
+                        <span>{t.teacherGame.average} {Math.round(team.avgScore)}</span>
                       </div>
                     </Card>
                   </motion.div>
@@ -1554,7 +1554,7 @@ export default function TeacherGame() {
               >
                 {correctAnswer && (
                   <p className="text-center mb-4 font-mono text-sm text-green-600">
-                    CORRECT_KEY: <span className="text-green-300 font-black text-lg">{correctAnswer}</span>
+                    {t.teacherGame.correctKey} <span className="text-green-300 font-black text-lg">{correctAnswer}</span>
                   </p>
                 )}
                 <div className="space-y-3">
@@ -1816,26 +1816,26 @@ export default function TeacherGame() {
                       setSaveStatus("saved");
                       import("@/components/ui/sonner").then(({ toast }) =>
                         toast.success(data.message === "already_saved"
-                          ? (lang === "ar" ? "النتائج محفوظة مسبقاً" : "Results already saved")
-                          : (lang === "ar" ? "تم حفظ النتائج بنجاح" : "Results saved successfully")));
+                          ? t.teacherGame.resultsAlreadySaved
+                          : t.teacherGame.resultsSaved));
                     } else {
                       setSaveStatus("error");
-                      import("@/components/ui/sonner").then(({ toast }) => toast.error(lang === "ar" ? "فشل حفظ النتائج" : "Failed to save results"));
+                      import("@/components/ui/sonner").then(({ toast }) => toast.error(t.teacherGame.saveResultsFailed));
                     }
                   })
                   .catch(() => {
                     setSaveStatus("error");
-                    import("@/components/ui/sonner").then(({ toast }) => toast.error(lang === "ar" ? "فشل حفظ النتائج" : "Failed to save results"));
+                    import("@/components/ui/sonner").then(({ toast }) => toast.error(t.teacherGame.saveResultsFailed));
                   });
               }}
               disabled={saveStatus === "saving" || saveStatus === "saved"}
               className={`px-8 py-3 rounded-xl font-black shadow-lg flex items-center gap-2 transition-colors ${saveStatus === "saved" ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white" : saveStatus === "saving" ? "bg-white/20 text-white/70" : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"} disabled:cursor-not-allowed`}>
               {saveStatus === "saving" ? <Loader2 className="w-5 h-5 animate-spin" /> : saveStatus === "saved" ? <CheckCircle className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-              {saveStatus === "saved" ? (lang === "ar" ? "تم الحفظ ✓" : "Saved ✓") : saveStatus === "saving" ? (lang === "ar" ? "جاري الحفظ..." : "Saving...") : (lang === "ar" ? "حفظ النتائج" : "Save Results")}
+              {saveStatus === "saved" ? t.teacherGame.savedResult : saveStatus === "saving" ? t.teacherGame.savingResults : t.teacherGame.saveResults}
             </button>
             <button onClick={replayGame}
               className="px-8 py-3 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-xl font-black hover:from-teal-600 hover:to-green-600 transition-colors shadow-lg">
-              <span className="flex items-center gap-2"><RotateCcw className="w-5 h-5" /> {lang === "ar" ? "العب مرة أخرى" : "Play Again"}</span>
+              <span className="flex items-center gap-2"><RotateCcw className="w-5 h-5" /> {t.teacherGame.playAgain}</span>
             </button>
             <button onClick={() => setLocation("/teacher")} className="px-8 py-3 bg-white/10 backdrop-blur-sm text-white rounded-xl font-bold hover:bg-white/20 transition-colors border border-white/20">
               {t.teacherGame.backToDashboard}

@@ -18,6 +18,10 @@ import { getWameethSetupPath } from "@/lib/wameeth-entry";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
+function formatCatalog(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? `{${key}}`));
+}
+
 interface EditQuestion {
   id?: number;
   text: string;
@@ -36,7 +40,7 @@ export default function TeacherAssignmentDetail() {
   const id = parseInt(params?.id || "0");
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
   const [editingSubId, setEditingSubId] = useState<number | null>(null);
   const [editPoints, setEditPoints] = useState<string>("");
@@ -116,7 +120,7 @@ export default function TeacherAssignmentDetail() {
       const data = await res.json();
       setSoloParticipants(Array.isArray(data) ? data : []);
     } catch {
-      toast.error(lang === "ar" ? "تعذّر تحميل المشاركين" : "Failed to load");
+      toast.error(t.assignmentDetail.leaderboardLoadError);
     } finally {
       setSoloParticipantsLoading(false);
     }
@@ -552,8 +556,7 @@ export default function TeacherAssignmentDetail() {
     const subStudentId: number | null = (sub as any).studentId ?? null;
     if (subStudentId === null) {
       setReportIdError(
-        "لا يمكن تحديد هوية هذا الطالب بشكل دقيق — التسليم لم يُربط بحساب طالب." +
-        " لإرسال التقرير، اطلب من الطالب تسجيل الدخول أو أضف معلوماته من صفحة الطلاب.",
+        t.assignmentDetail.parentReportUnidentifiedStudent,
       );
       return;
     }
@@ -586,11 +589,7 @@ export default function TeacherAssignmentDetail() {
 
     // Hard block: no stable student identity
     if (reportIdError || reportStudentDbId === null) {
-      toast.error(
-        lang === "ar"
-          ? "لا يمكن إرسال التقرير — هوية الطالب غير محددة"
-          : "Cannot send — student identity is ambiguous",
-      );
+      toast.error(t.assignmentDetail.parentReportAmbiguousIdentity);
       return;
     }
 
@@ -600,8 +599,20 @@ export default function TeacherAssignmentDetail() {
     const locale_ = lang === "ar" ? "ar-EG" : "en-US";
     const date = new Date(reportSub.submittedAt).toLocaleDateString(locale_);
 
-    const subject = `تقرير واجب: ${assignment.title}`;
-    const body = `نتيجة الطالب/ة ${reportSub.studentName} في الواجب "${assignment.title}":\n\n• الدرجة: ${scorePct}%\n• النقاط: ${finalPoints} / ${reportSub.totalPoints}\n• تاريخ التسليم: ${date}${reportNote.trim() ? `\n\nملاحظة المعلم:\n${reportNote.trim()}` : ""}`;
+    const subject = formatCatalog(t.assignmentDetail.parentReportSubject, {
+      assignment: assignment.title,
+    });
+    const body = formatCatalog(t.assignmentDetail.parentReportBody, {
+      student: reportSub.studentName,
+      assignment: assignment.title,
+      score: scorePct,
+      points: finalPoints,
+      totalPoints: reportSub.totalPoints,
+      date,
+      note: reportNote.trim()
+        ? formatCatalog(t.assignmentDetail.parentReportNoteBody, { note: reportNote.trim() })
+        : "",
+    });
 
     setReportSending(true);
     try {
@@ -618,11 +629,11 @@ export default function TeacherAssignmentDetail() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.message || "حدث خطأ أثناء الإرسال"); return; }
-      toast.success(lang === "ar" ? "✓ تم إرسال التقرير إلى ولي الأمر" : "Report sent to parent ✓");
+      if (!res.ok) { toast.error(data.message || t.assignmentDetail.parentReportSendError); return; }
+      toast.success(t.assignmentDetail.parentReportSent);
       setReportSub(null);
     } catch {
-      toast.error(lang === "ar" ? "تعذّر إرسال التقرير" : "Failed to send report");
+      toast.error(t.assignmentDetail.parentReportSendError);
     } finally {
       setReportSending(false);
     }
@@ -2278,14 +2289,14 @@ export default function TeacherAssignmentDetail() {
               transition={{ type: "spring", damping: 20 }}
               onClick={e => e.stopPropagation()}
               className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
-              dir="rtl"
+              dir={dir}
             >
               {/* Header */}
               <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800" style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)" }}>
                 <Trophy className="w-6 h-6 text-white" />
                 <div className="flex-1">
-                  <h2 className="text-base font-black text-white">{lang === "ar" ? "قائمة المتصدرين" : "Leaderboard"}</h2>
-                  <p className="text-xs text-white/80">{lang === "ar" ? `مسابقة ذاتية · ${soloChallenge?.slug}` : `Self Challenge · ${soloChallenge?.slug}`}</p>
+                  <h2 className="text-base font-black text-white">{t.assignmentDetail.leaderboardTitle}</h2>
+                  <p className="text-xs text-white/80">{t.assignmentDetail.selfChallengeLabel} · {soloChallenge?.slug}</p>
                 </div>
                 <button onClick={() => setSoloLeaderboardOpen(false)} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white">
                   <X className="w-4 h-4" />
@@ -2295,10 +2306,10 @@ export default function TeacherAssignmentDetail() {
               {/* Column headers */}
               <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-muted-foreground">
                 <span className="w-7 shrink-0">#</span>
-                <span className="flex-1">{lang === "ar" ? "الاسم" : "Name"}</span>
-                <span className="w-10 text-center">{lang === "ar" ? "صحيح" : "✓"}</span>
-                <span className="w-14 text-center">{lang === "ar" ? "الوقت" : "Time"}</span>
-                <span className="w-16 text-end">{lang === "ar" ? "النقاط" : "Points"}</span>
+                 <span className="flex-1">{t.assignmentDetail.leaderboardName}</span>
+                 <span className="w-10 text-center">{t.assignmentDetail.leaderboardCorrect}</span>
+                 <span className="w-14 text-center">{t.assignmentDetail.leaderboardTime}</span>
+                 <span className="w-16 text-end">{t.assignmentDetail.leaderboardPoints}</span>
               </div>
 
               {/* Body */}
@@ -2310,7 +2321,7 @@ export default function TeacherAssignmentDetail() {
                 ) : soloParticipants.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Trophy className="w-10 h-10 mx-auto mb-2 opacity-25" />
-                    <p className="text-sm font-bold">{lang === "ar" ? "لا يوجد مشاركون بعد" : "No participants yet"}</p>
+                    <p className="text-sm font-bold">{t.assignmentDetail.leaderboardEmpty}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1">
@@ -2355,11 +2366,11 @@ export default function TeacherAssignmentDetail() {
               {/* Footer */}
               <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  {soloParticipants.length} {lang === "ar" ? "مشارك" : "participants"}
+                  {formatCatalog(t.assignmentDetail.leaderboardParticipantCount, { count: soloParticipants.length })}
                 </span>
                 <button onClick={loadParticipants} disabled={soloParticipantsLoading} className="text-xs font-bold text-amber-600 hover:underline flex items-center gap-1">
                   <Loader2 className={`w-3 h-3 ${soloParticipantsLoading ? "animate-spin" : "opacity-0"}`} />
-                  {lang === "ar" ? "تحديث" : "Refresh"}
+                  {t.assignmentDetail.leaderboardRefresh}
                 </button>
               </div>
             </motion.div>
@@ -2383,7 +2394,7 @@ export default function TeacherAssignmentDetail() {
               transition={{ type: "spring", damping: 22 }}
               onClick={e => e.stopPropagation()}
               className="bg-card rounded-2xl shadow-2xl w-full max-w-md border border-border flex flex-col"
-              dir="rtl"
+              dir={dir}
             >
               {/* Header */}
               <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
@@ -2391,7 +2402,7 @@ export default function TeacherAssignmentDetail() {
                   <Mail className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-black text-foreground">إرسال التقرير لولي الأمر</h2>
+                  <h2 className="text-base font-black text-foreground">{t.assignmentDetail.parentReportTitle}</h2>
                   <p className="text-xs text-muted-foreground truncate">{reportSub.studentName}</p>
                 </div>
                 <button
@@ -2422,19 +2433,19 @@ export default function TeacherAssignmentDetail() {
                       return (
                         <div className="rounded-xl border-2 border-border bg-muted/20 p-3 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-muted-foreground">الواجب</span>
-                            <span className="text-xs font-bold text-foreground truncate max-w-[60%] text-left">{assignment?.title}</span>
+                            <span className="text-xs font-bold text-muted-foreground">{t.assignmentDetail.parentReportAssignment}</span>
+                            <span className="text-xs font-bold text-foreground truncate max-w-[60%] text-end">{assignment?.title}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-muted-foreground">الطالب/ة</span>
+                            <span className="text-xs font-bold text-muted-foreground">{t.assignmentDetail.parentReportStudent}</span>
                             <span className="text-xs font-bold text-foreground">{reportSub.studentName}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-muted-foreground">النقاط</span>
+                            <span className="text-xs font-bold text-muted-foreground">{t.assignmentDetail.parentReportPoints}</span>
                             <span className="text-xs font-black text-foreground">{finalPoints} / {reportSub.totalPoints}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-muted-foreground">الدرجة</span>
+                            <span className="text-xs font-bold text-muted-foreground">{t.assignmentDetail.parentReportScore}</span>
                             <span className={`text-xs font-black px-2 py-0.5 rounded-lg border ${scoreColor}`}>{scorePct}%</span>
                           </div>
                         </div>
@@ -2445,29 +2456,29 @@ export default function TeacherAssignmentDetail() {
                     {reportParentEmail ? (
                       <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
                         <Mail className="w-3.5 h-3.5 shrink-0" />
-                        <span className="font-bold">سيُرسل إلى: {reportParentEmail}</span>
+                        <span className="font-bold">{formatCatalog(t.assignmentDetail.parentReportSendingTo, { email: reportParentEmail })}</span>
                       </div>
                     ) : (
                       <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        <span className="font-bold">لا يوجد بريد ولي أمر مسجل لهذا الطالب — يمكن إضافته من صفحة الطلاب.</span>
+                        <span className="font-bold">{t.assignmentDetail.parentReportNoEmail}</span>
                       </div>
                     )}
 
                     {/* Teacher note */}
                     <div>
                       <label className="block text-xs font-bold text-foreground mb-1.5">
-                        ملاحظة إضافية للمعلم <span className="text-muted-foreground font-normal">(اختياري)</span>
+                        {t.assignmentDetail.parentReportAdditionalNote} <span className="text-muted-foreground font-normal">({t.assignmentDetail.parentReportOptional})</span>
                       </label>
                       <textarea
                         value={reportNote}
                         onChange={e => setReportNote(e.target.value)}
-                        placeholder="أضف ملاحظة أو توجيهاً لولي الأمر..."
+                        placeholder={t.assignmentDetail.parentReportNotePlaceholder}
                         rows={3}
                         maxLength={500}
                         className="w-full px-3 py-2.5 rounded-xl bg-background border-2 border-border text-sm font-medium focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all resize-none"
                       />
-                      <p className="text-[10px] text-muted-foreground text-left mt-0.5">{reportNote.length}/500</p>
+                      <p className="text-[10px] text-muted-foreground text-end mt-0.5">{reportNote.length}/500</p>
                     </div>
                   </>
                 )}
@@ -2480,19 +2491,19 @@ export default function TeacherAssignmentDetail() {
                   disabled={reportSending}
                   className="flex-1 px-4 py-2.5 rounded-xl bg-muted text-muted-foreground font-bold text-sm hover:bg-muted/80 transition-colors disabled:opacity-50"
                 >
-                  إلغاء
+                  {t.assignmentDetail.parentReportCancel}
                 </button>
                 {!reportIdError && (
                   <button
                     onClick={sendReport}
                     disabled={!reportParentEmail || reportSending}
-                    title={!reportParentEmail ? "لا يوجد بريد ولي أمر مسجل لهذا الطالب" : undefined}
+                    title={!reportParentEmail ? t.assignmentDetail.parentReportNoEmailShort : undefined}
                     className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {reportSending ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الإرسال...</>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> {t.assignmentDetail.parentReportSending}</>
                     ) : (
-                      <><Send className="w-4 h-4" /> إرسال التقرير</>
+                      <><Send className="w-4 h-4" /> {t.assignmentDetail.parentReportSend}</>
                     )}
                   </button>
                 )}

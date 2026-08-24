@@ -14,8 +14,10 @@ const FEEDBACK_TYPES = ["suggestion", "bug", "feature"] as const;
 export default function FeedbackPage() {
   const { t, lang } = useI18n();
   useSeo({
-    title: "اقتراحات وملاحظات | منصة حصاد",
-    description: "شاركنا اقتراحاتك وملاحظاتك لتطوير منصة حصاد التعليمية. رأيك يهمنا ويساعدنا على تحسين تجربة المعلمين والطلاب.",
+    title: lang === "ar" ? "اقتراحات وملاحظات | منصة حصاد" : "Suggestions & Feedback | HasadX",
+    description: lang === "ar"
+      ? "شاركنا اقتراحاتك وملاحظاتك لتطوير منصة حصاد التعليمية. رأيك يهمنا ويساعدنا على تحسين تجربة المعلمين والطلاب."
+      : "Share your suggestions and feedback to help improve the HasadX learning platform.",
     canonicalPath: "/feedback",
     ogImage: "/opengraph.jpg",
   });
@@ -88,7 +90,7 @@ export default function FeedbackPage() {
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-5rem)] py-8 px-4 sm:px-6">
+      <div className="min-h-[calc(100vh-5rem)] py-8 px-4 sm:px-6" dir={dir}>
         <div className="container mx-auto max-w-2xl">
           <Link
             href="/"
@@ -161,7 +163,7 @@ export default function FeedbackPage() {
 
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                      <Label className="mb-3 block">{t.feedback.typeSuggestion.split(" ")[0] === "اقتراح" ? "نوع الملاحظة" : "Feedback Type"}</Label>
+                      <Label className="mb-3 block">{lang === "ar" ? "نوع الملاحظة" : "Feedback Type"}</Label>
                       <div className="grid grid-cols-3 gap-3">
                         {FEEDBACK_TYPES.map((ft) => {
                           const cfg = typeConfig[ft];

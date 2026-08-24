@@ -58,6 +58,7 @@ vi.mock("@workspace/billing", () => ({
 import express from "express";
 import request from "supertest";
 import router from "../routes/assignments";
+import { localizeApiMessages } from "../lib/request-locale";
 
 type Session = { teacherId?: number };
 
@@ -68,6 +69,8 @@ function makeApp(session: Session | null) {
     (req as unknown as { session: Session }).session = session ?? {};
     next();
   });
+  // Mirrors production's single API registration-boundary localization layer.
+  app.use("/api", localizeApiMessages);
   app.use("/api", router);
   return app;
 }
@@ -81,6 +84,19 @@ beforeEach(() => {
 });
 
 describe("assignments.ts — auth & ownership", () => {
+  it.each([
+    ["en", "You must sign in first"],
+    ["ar", "يجب تسجيل الدخول أولاً"],
+  ])("localizes an assignment auth error for language=%s", async (language, message) => {
+    const res = await request(makeApp(null))
+      .post("/api/assignments")
+      .send({ language });
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message });
+    expect(res.headers["content-language"]).toBe(language);
+  });
+
   it("PUT /assignments/:id returns 401 when no teacher session", async () => {
     const res = await request(makeApp(null))
       .put("/api/assignments/5")

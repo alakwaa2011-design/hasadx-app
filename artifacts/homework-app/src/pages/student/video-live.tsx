@@ -110,9 +110,10 @@ export default function StudentVideoLive() {
   const [, params] = useRoute("/watch/:roomCode");
   const roomCodeFromUrl = (params?.roomCode || "").toUpperCase();
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
+  const copy = t.studentVideo;
   const isAr = lang === "ar";
-  const BackIcon = isAr ? ArrowLeft : ArrowRight;
+  const BackIcon = dir === "rtl" ? ArrowLeft : ArrowRight;
 
   const [phase, setPhase] = useState<"join" | "reconnecting" | "watching" | "ended">("join");
   const [roomCode, setRoomCode] = useState(roomCodeFromUrl);
@@ -279,11 +280,11 @@ export default function StudentVideoLive() {
 
   const handleJoin = () => {
     if (!roomCode.trim()) {
-      toast.error(isAr ? "يرجى إدخال كود الغرفة" : "Please enter room code");
+      toast.error(copy.roomRequired);
       return;
     }
     if (!name.trim()) {
-      toast.error(isAr ? "يرجى إدخال الاسم" : "Please enter your name");
+      toast.error(copy.nameRequired);
       return;
     }
     setJoining(true);
@@ -631,17 +632,17 @@ export default function StudentVideoLive() {
         <div
           className="flex min-h-[100dvh] items-center justify-center px-4"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-          dir={isAr ? "rtl" : "ltr"}
+          dir={dir}
         >
           <div className="text-center space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-[#eef2ef]">
               <Wifi className="h-8 w-8 text-[#1E4D35] animate-pulse" />
             </div>
             <p className="text-lg font-black text-[#0f2918]">
-              {isAr ? "جارٍ إعادة الاتصال بالجلسة..." : "Reconnecting to session..."}
+              {copy.reconnecting}
             </p>
             <p className="text-sm font-semibold text-[#64748B]">
-              {isAr ? "يرجى الانتظار لحظات" : "Please wait a moment"}
+              {copy.wait}
             </p>
           </div>
         </div>
@@ -655,7 +656,7 @@ export default function StudentVideoLive() {
         <div
           className="min-h-[100dvh] overflow-x-hidden pb-12"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-          dir={isAr ? "rtl" : "ltr"}
+          dir={dir}
         >
           <div className="mx-auto max-w-3xl px-4 pt-8">
             <Link
@@ -663,7 +664,7 @@ export default function StudentVideoLive() {
               className="mb-6 inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-[#64748B] transition-colors hover:text-[#1E4D35]"
             >
               <BackIcon className="h-4 w-4 opacity-70" />
-              {isAr ? "العودة" : "Back"}
+              {copy.back}
             </Link>
 
             <motion.div
@@ -679,27 +680,25 @@ export default function StudentVideoLive() {
                     <Radio className="h-10 w-10 text-white animate-pulse" />
                   </div>
                   <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black text-white backdrop-blur-sm ring-1 ring-white/20">
-                    {isAr ? "● بث مباشر" : "● LIVE"}
+                    {copy.live}
                   </span>
                 </div>
               </div>
               <div className="space-y-3 p-6 sm:p-8">
                 <h1 className="text-start text-2xl font-black leading-tight text-[#0f2918] sm:text-3xl">
-                  {isAr ? "الانضمام للبث التفاعلي" : "Join interactive live lesson"}
+                  {copy.joinLive}
                 </h1>
                 <p className="text-start text-sm leading-relaxed text-[#64748B]">
-                  {isAr
-                    ? "أدخل كود الغرفة الذي يعطيك إياه المعلّم، ثم اسمك للدخول إلى نفس الجلسة."
-                    : "Enter the room code from your teacher, then your name to enter the same session."}
+                  {copy.joinHint}
                 </p>
                 <div className="flex flex-wrap justify-start gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef5f0] px-3 py-1.5 text-[11px] font-black text-[#1E4D35]">
                     <Film className="h-3.5 w-3.5" />
-                    {isAr ? "فيديو تفاعلي — بث مباشر" : "Interactive live"}
+                    {copy.interactiveLive}
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f3f7f4] px-3 py-1.5 text-[11px] font-black text-[#374151]">
                     <Users className="h-3.5 w-3.5 text-[#64748B]" />
-                    {isAr ? "منصّة حصاد" : "Hasaad platform"}
+                    {copy.platform}
                   </span>
                 </div>
               </div>
@@ -713,31 +712,17 @@ export default function StudentVideoLive() {
                 >
                   <Info className="h-4 w-4 shrink-0 text-[#1E4D35]/40 mt-0.5" aria-hidden />
                   <p className="text-[12.5px] leading-relaxed text-[#5a6b62] font-medium">
-                    {isAr ? (
-                      <>
-                        <span className="font-semibold text-[#2d4238]">اسمك مطلوب</span> للانضمام وتسجيل إجاباتك. حقل الفصل{" "}
-                        <span className="font-semibold text-[#2d4238]">اختياري</span>. بعد الدخول،{" "}
-                        <span className="font-semibold text-[#2d4238]">الفيديو يعمل مع بثّ المعلّم</span>: انتظر حتى يضغط تشغيل من جهازه،
-                        وسيتزامن العرض عندك تلقائياً (قد تحتاج للنقر مرة إذا منع المتصفح التشغيل التلقائي).
-                      </>
-                    ) : (
-                      <>
-                        Your <span className="font-semibold text-[#2d4238]">name is required</span> to join and save answers.{" "}
-                        <span className="font-semibold text-[#2d4238]">Class is optional.</span> After joining,{" "}
-                        <span className="font-semibold text-[#2d4238]">playback follows your teacher</span>: wait until they press play on their side;
-                        your player syncs automatically (you may need one tap if the browser blocks autoplay).
-                      </>
-                    )}
+                    {copy.liveIdentityHint}
                   </p>
                 </div>
 
                 <div className="space-y-5">
                   <div className="space-y-2 text-start">
-                    <Label className="text-sm font-black text-[#0f2918]">{isAr ? "كود الغرفة" : "Room code"} *</Label>
+                    <Label className="text-sm font-black text-[#0f2918]">{copy.roomCode} *</Label>
                     <Input
                       value={roomCode}
                       onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                      placeholder="ABC123"
+                      placeholder={copy.roomCodePlaceholder}
                       dir="ltr"
                       maxLength={8}
                       className="mt-1 min-h-[52px] rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] text-center text-2xl font-black tracking-[0.3em] focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10"
@@ -745,12 +730,12 @@ export default function StudentVideoLive() {
                   </div>
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div className="space-y-2 text-start">
-                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "اسمك" : "Your name"} *</Label>
+                      <Label className="text-sm font-black text-[#0f2918]">{copy.yourName} *</Label>
                       <Input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder={isAr ? "اكتب اسمك الكامل" : "Full name"}
-                        dir={isAr ? "rtl" : "ltr"}
+                        placeholder={copy.fullName}
+                        dir={dir}
                         className={cn(
                           "mt-1 min-h-[52px] rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
                           isAr ? FIELD_RTL : "",
@@ -758,12 +743,12 @@ export default function StudentVideoLive() {
                       />
                     </div>
                     <div className="space-y-2 text-start">
-                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل (اختياري)" : "Class (optional)"}</Label>
+                      <Label className="text-sm font-black text-[#0f2918]">{copy.classOptional}</Label>
                       <Input
                         value={studentClass}
                         onChange={(e) => setStudentClass(e.target.value)}
-                        placeholder={isAr ? "يمكنك تركه فارغاً" : "Can be left blank"}
-                        dir={isAr ? "rtl" : "ltr"}
+                        placeholder={copy.optionalHint}
+                        dir={dir}
                         className={cn(
                           "mt-1 min-h-[52px] rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
                           isAr ? FIELD_RTL : "",
@@ -788,22 +773,22 @@ export default function StudentVideoLive() {
                   ) : (
                     <LogIn className="h-6 w-6 shrink-0" />
                   )}
-                  {isAr ? "انضمام إلى الجلسة" : "Join session"}
+                  {copy.joinSession}
                 </button>
 
                 <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {[
                     {
                       icon: <Radio className="h-5 w-5 text-[#1E4D35]" />,
-                      t: isAr ? "البث متزامن مع شاشة المعلّم" : "Synced with your teacher",
+                      t: copy.syncTeacher,
                     },
                     {
                       icon: <BadgeCheck className="h-5 w-5 text-[#1E4D35]" />,
-                      t: isAr ? "تتوقف الأسئلة عن الفيديو أثناء الإجابة" : "Questions pause the video",
+                      t: copy.questionsPause,
                     },
                     {
                       icon: <Sparkles className="h-5 w-5 text-[#1E4D35]" />,
-                      t: isAr ? "اكسب نقاطاً على الإجابات الصحيحة" : "Earn points for correct answers",
+                      t: copy.earnPoints,
                     },
                   ].map((item, i) => (
                     <div
@@ -830,7 +815,7 @@ export default function StudentVideoLive() {
         <div
           className="flex min-h-[100dvh] items-center justify-center px-4 py-12"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-          dir={isAr ? "rtl" : "ltr"}
+          dir={dir}
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -841,17 +826,17 @@ export default function StudentVideoLive() {
               <CheckCircle2 className="h-10 w-10 text-[#1E4D35]" />
             </div>
             <h1 className="text-2xl font-black text-[#0f2918]">
-              {isAr ? "انتهت الجلسة!" : "Session ended!"}
+              {copy.sessionEnded}
             </h1>
             <p className="text-sm font-semibold text-[#64748B]">
-              {isAr ? "شكراً لمشاركتك 🎉" : "Thanks for participating! 🎉"}
+              {copy.thanks}
             </p>
             <button
               type="button"
               onClick={() => setLocation("/")}
               className="rounded-2xl bg-[#1E4D35] px-8 py-3 text-base font-black text-white shadow-lg shadow-[#1E4D35]/25 hover:opacity-95"
             >
-              {isAr ? "الصفحة الرئيسية" : "Home"}
+              {copy.home}
             </button>
           </motion.div>
         </div>
@@ -866,7 +851,7 @@ export default function StudentVideoLive() {
       <div
         className="min-h-[100dvh] overflow-x-hidden pb-8"
         style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-        dir={isAr ? "rtl" : "ltr"}
+        dir={dir}
       >
         <div className="mx-auto max-w-4xl px-4 py-6">
           <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -876,18 +861,18 @@ export default function StudentVideoLive() {
               className="flex min-h-[44px] shrink-0 items-center gap-2 rounded-2xl border border-[#e8ece9] bg-white px-4 text-sm font-black text-[#64748B] shadow-sm transition-colors hover:bg-[#f9faf9]"
             >
               <BackIcon className="h-4 w-4" />
-              {isAr ? "خروج" : "Exit"}
+              {copy.exit}
             </button>
             <h1 className="min-w-0 flex-1 truncate text-start text-lg font-black text-[#0f2918] sm:text-xl">{lessonTitle}</h1>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-[#b91c1c] shadow-sm ring-1 ring-red-100">
                 <Radio className="h-3.5 w-3.5 animate-pulse" />
-                {isAr ? "بث مباشر" : "LIVE"}
+                {copy.live.replace("● ", "")}
               </span>
               {teacherDisconnected && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 ring-1 ring-amber-200/80">
                   <WifiOff className="h-3.5 w-3.5" />
-                  {isAr ? "المعلم غير متصل" : "Teacher offline"}
+                  {copy.teacherOffline}
                 </span>
               )}
             </div>
@@ -930,24 +915,16 @@ export default function StudentVideoLive() {
                       <Play className="h-10 w-10 fill-white text-white" />
                     </div>
                     <span className="max-w-[min(90%,22rem)] px-4 text-center text-lg font-black text-white leading-snug">
-                      {overlayTeacherStarted
-                        ? isAr
-                          ? "المعلّم يشغّل الفيديو الآن — اضغط للمتابعة"
-                          : "Your teacher is playing — tap to watch"
-                        : isAr
-                          ? "انتظر بدء المعلّم"
-                          : "Waiting for your teacher"}
+                      {overlayTeacherStarted ? copy.teacherPlaying : copy.waitTeacher}
                     </span>
                     {!overlayTeacherStarted && (
                       <span className="mt-2 max-w-[min(92%,24rem)] px-4 text-center text-sm font-semibold leading-relaxed text-white/90">
-                        {isAr
-                          ? "الفيديو يعمل مع بثّ المعلّم فقط. سيتحرك تلقائياً عندما يضغط تشغيل؛ يمكنك أيضاً النقر لتجهيز الشاشة إذا احتجت."
-                          : "Playback follows your teacher. It moves automatically when they press play — or tap once to prepare the player."}
+                        {copy.playbackHint}
                       </span>
                     )}
                     {overlayTeacherStarted && (
                       <span className="mt-2 text-sm font-bold text-red-200 animate-pulse">
-                        {isAr ? "● متزامن مع البث" : "● Live sync"}
+                        {copy.liveSync}
                       </span>
                     )}
                   </button>
@@ -982,15 +959,13 @@ export default function StudentVideoLive() {
                             <CheckCircle2 className="w-10 h-10 text-green-500" />
                           </div>
                           <p className="text-xl font-black text-green-600 dark:text-green-400">
-                            {isAr ? "إجابة صحيحة! 🎉" : "Correct! 🎉"}
+                            {copy.correctCelebration}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {isAr
-                              ? `حصلت على ${answerResult.points} نقطة`
-                              : `You earned ${answerResult.points} points`}
+                            {copy.pointsEarned.replace("{points}", String(answerResult.points))}
                           </p>
                           <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                            {isAr ? "أحسنت! واصل التميز 🌟" : "Great job! Keep it up 🌟"}
+                            {copy.keepGoing}
                           </p>
                         </div>
                       ) : (
@@ -999,19 +974,15 @@ export default function StudentVideoLive() {
                             <XCircle className="w-10 h-10 text-red-500" />
                           </div>
                           <p className="text-xl font-black text-red-600 dark:text-red-400">
-                            {isAr ? "إجابة خاطئة" : "Incorrect"}
+                            {copy.incorrect}
                           </p>
                           <p className="text-sm font-bold">
-                            {isAr ? "الإجابة الصحيحة:" : "Correct answer:"}{" "}
+                            {copy.correctAnswerShort}{" "}
                             <span className="text-green-600 dark:text-green-400">
                               {answerResult.correctAnswer === "true"
-                                ? isAr
-                                  ? "صح"
-                                  : "True"
+                                ? copy.truePlain
                                 : answerResult.correctAnswer === "false"
-                                  ? isAr
-                                    ? "خطأ"
-                                    : "False"
+                                  ? copy.falsePlain
                                   : activeQuestion.questionType === "mcq"
                                     ? (() => {
                                         const map: Record<string, string | null> = {
@@ -1026,15 +997,13 @@ export default function StudentVideoLive() {
                             </span>
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {isAr ? "لا بأس! حاول في المرة القادمة 💪" : "Don't worry! Try next time 💪"}
+                            {copy.tryNext}
                           </p>
                         </div>
                       )}
 
                       <p className="text-xs text-muted-foreground mt-3">
-                        {isAr
-                          ? "انتظر المعلم لمتابعة الفيديو..."
-                          : "Waiting for teacher to resume..."}
+                        {copy.waitContinue}
                       </p>
                     </motion.div>
                   ) : activeQuestion.questionType === "mcq" ? (
@@ -1067,12 +1036,12 @@ export default function StudentVideoLive() {
                       {[
                         {
                           value: "true",
-                          label: isAr ? "صح ✓" : "True ✓",
+                          label: copy.true,
                           color: "bg-green-500",
                         },
                         {
                           value: "false",
-                          label: isAr ? "خطأ ✗" : "False ✗",
+                          label: copy.false,
                           color: "bg-red-500",
                         },
                       ].map((o) => (
@@ -1118,13 +1087,15 @@ function FillBlankInput({
   onSubmit: (answer: string) => void;
 }) {
   const [value, setValue] = useState("");
+  const { t } = useI18n();
+  const copy = t.studentVideo;
 
   return (
     <div className="flex gap-3">
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={isAr ? "اكتب الإجابة..." : "Type your answer..."}
+        placeholder={copy.answerPlaceholder}
         className="flex-1 text-lg font-bold"
         disabled={disabled}
         onKeyDown={(e) => {
@@ -1138,7 +1109,7 @@ function FillBlankInput({
         disabled={disabled || !value.trim()}
         className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold disabled:opacity-50"
       >
-        {isAr ? "إرسال" : "Submit"}
+        {copy.submit}
       </button>
     </div>
   );

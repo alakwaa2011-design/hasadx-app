@@ -75,9 +75,8 @@ type PlayMode = "solo" | "teams" | "classroom" | "independent";
 // mode — all three consuming the exact same prepared question list.
 export default function WameethCreate() {
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
   const ar = lang === "ar";
-  const dir = ar ? "rtl" : "ltr";
   const BackIcon = ar ? ChevronRight : ChevronLeft;
 
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
@@ -329,13 +328,13 @@ export default function WameethCreate() {
       });
       const data = await res.json();
       if (!res.ok || !Number.isInteger(data.id) || data.id <= 0) {
-        throw new Error(data.message || (ar ? "خطأ في الاستيراد" : "Import failed"));
+        throw new Error(data.message || t.wameethCreate.importDialog.error);
       }
 
       setShowImportPrompt(false);
       setLocation(getWameethSetupPath(data.id));
     } catch (err: any) {
-      toast.error(err.message || (ar ? "خطأ في الاستيراد" : "Import failed"));
+      toast.error(err.message || t.wameethCreate.importDialog.error);
     } finally {
       importingLibraryAssignmentRef.current = false;
       setImportingLibraryAssignment(false);
@@ -485,32 +484,43 @@ export default function WameethCreate() {
   return (
     <div className="min-h-screen bg-background" dir={dir} data-testid="wameeth-setup">
       <Dialog open={showImportPrompt} onOpenChange={setShowImportPrompt}>
-        <DialogContent className="max-w-md rounded-2xl p-6 text-start" dir="rtl">
-          <DialogHeader className="text-right">
+        <DialogContent
+          className="max-w-md rounded-2xl p-6 text-start"
+          dir={dir}
+          closeLabel={t.wameethCreate.importDialog.close}
+          aria-busy={importingLibraryAssignment}
+        >
+          <DialogHeader className="text-start">
             <DialogTitle className="text-xl font-black text-foreground">
-              استورد النشاط لتبدأ اللعب
+              {t.wameethCreate.importDialog.title}
             </DialogTitle>
             <DialogDescription className="pt-2 text-sm leading-7 text-muted-foreground">
-              هذا النشاط موجود في مكتبة حصاد ولم يُضف إلى أنشطتك بعد. استورده أولاً، ثم يمكنك تشغيله من أنشطتك واستخدامه في الألعاب.
+              {t.wameethCreate.importDialog.description}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-2 sm:flex-row-reverse sm:justify-start sm:space-x-0">
+          <DialogFooter className="gap-2 pt-2 sm:justify-start sm:space-x-0">
             <button
               type="button"
               onClick={() => void importLibraryActivityAndOpen()}
               disabled={importingLibraryAssignment}
+              aria-label={importingLibraryAssignment
+                ? t.wameethCreate.importDialog.importing
+                : t.wameethCreate.importDialog.importAction}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {importingLibraryAssignment && <Loader2 className="h-4 w-4 animate-spin" />}
-              استيراد النشاط إلى أنشطتي
+              {importingLibraryAssignment && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {importingLibraryAssignment
+                ? t.wameethCreate.importDialog.importing
+                : t.wameethCreate.importDialog.importAction}
             </button>
             <button
               type="button"
               onClick={() => setLocation("/teacher/library/homework")}
               disabled={importingLibraryAssignment}
+              aria-label={t.wameethCreate.importDialog.backToLibrary}
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
-              العودة إلى المكتبة
+              {t.wameethCreate.importDialog.backToLibrary}
             </button>
           </DialogFooter>
         </DialogContent>

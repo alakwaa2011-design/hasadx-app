@@ -110,14 +110,14 @@ function downloadClassCSV(students: ClassStudent[], totalQ: number) {
 }
 
 export default function MillionPlay() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const search = useSearch();
   const [, setLocation] = useLocation();
   const { isArenaMode, myName, opponents, results, updateScore, finishArena } = useArena("million");
 
   const urlParams = new URLSearchParams(search);
-  const playerName = urlParams.get("name") || (lang === "ar" ? "مجهول" : "Anonymous");
+  const playerName = urlParams.get("name") || t.million.anonymous;
   const assignmentId = urlParams.get("assignmentId");
   const bankLevel = urlParams.get("bankLevel");
   const bankCategory = urlParams.get("bankCategory");
@@ -344,7 +344,7 @@ export default function MillionPlay() {
       .then(async r => {
         const data = await r.json();
         if (!r.ok) {
-          toast.error(data.message || (lang === "ar" ? "لا توجد أسئلة كافية" : "Not enough questions"));
+          toast.error(data.message || t.million.notEnoughQuestions);
           setLocation(rejoinUrl);
           return;
         }
@@ -353,7 +353,7 @@ export default function MillionPlay() {
       .then((data?: { questions: GameQuestion[]; assignmentTitle: string; historyReset?: boolean; questionSource?: string; assignmentId?: number; bankLevel?: string; bankCategory?: string }) => {
         if (!data) return;
         if (!data.questions || data.questions.length === 0) {
-          toast.error(lang === "ar" ? "لا توجد أسئلة كافية" : "Not enough questions");
+          toast.error(t.million.notEnoughQuestions);
           setLocation(rejoinUrl);
           return;
         }
@@ -384,7 +384,7 @@ export default function MillionPlay() {
         setPhase("playing");
       })
       .catch(() => {
-        toast.error(lang === "ar" ? "فشل تحميل الأسئلة" : "Failed to load questions");
+        toast.error(t.million.loadFailed);
         setLocation(rejoinUrl);
       });
   }, [assignmentId, bankLevel, bankCategory, lang, setLocation, rejoinUrl]);
@@ -498,7 +498,7 @@ export default function MillionPlay() {
     if (!bankCategory && !bankLevel) return null;
     const catLabels = lang === "ar" ? BANK_CATEGORY_LABELS_AR : BANK_CATEGORY_LABELS_EN;
     const lvlLabels = lang === "ar" ? BANK_LEVEL_LABELS_AR : BANK_LEVEL_LABELS_EN;
-    const catLabel = bankCategory && bankCategory !== "all" ? (catLabels[bankCategory] ?? bankCategory) : (lang === "ar" ? "جميع التخصصات" : "All Categories");
+    const catLabel = bankCategory && bankCategory !== "all" ? (catLabels[bankCategory] ?? bankCategory) : t.million.allCategories;
     const lvlLabel = bankLevel && bankLevel !== "all" ? (lvlLabels[bankLevel] ?? bankLevel) : null;
     return lvlLabel ? `${catLabel} — ${lvlLabel}` : catLabel;
   })();
@@ -506,7 +506,7 @@ export default function MillionPlay() {
   const handleManualSave = useCallback(async (score: number, level: number) => {
     if (isSaving || manualSaved) return;
     const name = saveName.trim();
-    if (!name) { toast.error(lang === "ar" ? "أدخل اسمك" : "Enter your name"); return; }
+    if (!name) { toast.error(t.million.enterName); return; }
     setIsSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/million/scores`, {
@@ -522,9 +522,9 @@ export default function MillionPlay() {
       });
       if (!r.ok) throw new Error("server error");
       setManualSaved(true);
-      toast.success(lang === "ar" ? "تم حفظ النتيجة!" : "Score saved!");
+      toast.success(t.million.scoreSaved);
       fetchTopScores();
-    } catch { toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed"); }
+    } catch { toast.error(t.million.saveFailed); }
     finally { setIsSaving(false); }
   }, [isSaving, manualSaved, saveName, assignmentTitle, gameCategoryLabel, lang]);
 
@@ -831,7 +831,7 @@ export default function MillionPlay() {
       });
       if (!r.ok) {
         const err = await r.json() as { message?: string };
-        toast.error(err.message || (lang === "ar" ? "لا يوجد سؤال بديل" : "No replacement available"));
+      toast.error(err.message || t.million.noReplacement);
         setLifelines(l => ({ ...l, swap: true }));
         return;
       }
@@ -849,7 +849,7 @@ export default function MillionPlay() {
       setAudienceVotes(null);
       questionStartTimeRef.current = Date.now();
     } catch {
-      toast.error(lang === "ar" ? "فشل تبديل السؤال" : "Failed to swap question");
+      toast.error(t.million.swapFailed);
       setLifelines(l => ({ ...l, swap: true }));
     } finally { setLifelineLoading(null); }
   }, [lifelines.swap, currentQuestion, phase, questions, currentIndex, assignmentId, bankLevel, bankCategory, classPin, sessionAssignmentId, sessionBankLevel, sessionBankCategory, lang, audio]);
@@ -877,7 +877,7 @@ export default function MillionPlay() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a1628" }}>
         <div className="text-center text-white">
           <Loader2 className="w-10 h-10 animate-spin mx-auto mb-3 text-amber-400" />
-          <p className="text-blue-300">{lang === "ar" ? "جارٍ تحميل الأسئلة..." : "Loading questions..."}</p>
+          <p className="text-blue-300">{t.million.loadingQuestions}</p>
         </div>
       </div>
     );
@@ -891,7 +891,7 @@ export default function MillionPlay() {
           <div className="text-center mb-6">
             <div className="text-5xl mb-3">🏆</div>
             <h1 className="text-3xl font-black text-amber-400 mb-1">
-              {lang === "ar" ? "نتائج الصف" : "Class Results"}
+              {t.million.classResults}
             </h1>
             <p className="text-blue-300 text-sm">
               {lang === "ar" ? `${totalQuestions} سؤال — ${classStudents.length} طالب` : `${totalQuestions} questions — ${classStudents.length} students`}
@@ -941,7 +941,7 @@ export default function MillionPlay() {
               style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
             >
               <Save className="w-4 h-4" />
-              {lang === "ar" ? "💾 حفظ النتائج (CSV)" : "💾 Save Results (CSV)"}
+              {t.million.saveResultsCsv}
             </button>
             <button
               onClick={() => setLocation("/game/million")}
@@ -1043,17 +1043,17 @@ export default function MillionPlay() {
               <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <Zap className="w-4 h-4 text-amber-400 mx-auto mb-1" />
                 <p className="text-white font-black text-base">{totalPoints.toLocaleString("en-US")}</p>
-                <p className="text-blue-400 text-[10px] font-medium">{lang === "ar" ? "نقاطك" : "Points"}</p>
+                <p className="text-blue-400 text-[10px] font-medium">{t.million.points}</p>
               </div>
               <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <Clock className="w-4 h-4 text-blue-400 mx-auto mb-1" />
                 <p className="text-white font-black text-base">{elapsedStr}</p>
-                <p className="text-blue-400 text-[10px] font-medium">{lang === "ar" ? "الوقت" : "Time"}</p>
+                <p className="text-blue-400 text-[10px] font-medium">{t.million.time}</p>
               </div>
               <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <Shield className="w-4 h-4 text-purple-400 mx-auto mb-1" />
                 <p className="text-white font-black text-base">{lifelinesUsedCount}/4</p>
-                <p className="text-blue-400 text-[10px] font-medium">{lang === "ar" ? "أطواق استُخدمت" : "Lifelines used"}</p>
+                <p className="text-blue-400 text-[10px] font-medium">{t.million.lifelinesUsed}</p>
               </div>
             </div>
           )}
@@ -1073,27 +1073,27 @@ export default function MillionPlay() {
             <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
               <p className="text-blue-300 text-sm font-bold mb-2 flex items-center gap-2">
                 <Save className="w-4 h-4" />
-                {lang === "ar" ? "احفظ نتيجتك في لوحة الشرف" : "Save your score to leaderboard"}
+                  {t.million.saveScorePrompt}
               </p>
               <div className="flex gap-2">
                 <input type="text" value={saveName} onChange={e => setSaveName(e.target.value)} maxLength={40}
-                  placeholder={lang === "ar" ? "اسمك" : "Your name"}
+                  placeholder={t.million.yourName}
                   className="flex-1 px-3 py-2 rounded-xl text-white text-sm placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
                   style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }} />
                 <button onClick={() => void handleManualSave(score, level)} disabled={isSaving || manualSaved}
                   className="px-4 py-2 rounded-xl font-bold text-sm text-white disabled:opacity-50 transition-all"
                   style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === "ar" ? "حفظ" : "Save")}
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : t.common.save}
                 </button>
               </div>
               {gameCategoryLabel && (
                 <p className="text-blue-400/60 text-[10px] mt-1">
-                  {lang === "ar" ? "المجال:" : "Category:"} {gameCategoryLabel}
+                  {t.million.category} {gameCategoryLabel}
                 </p>
               )}
               {manualSaved && (
                 <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />{lang === "ar" ? "تم الحفظ!" : "Saved!"}
+                  <CheckCircle className="w-3 h-3" />{t.million.saved}
                 </p>
               )}
             </div>
@@ -1128,7 +1128,7 @@ export default function MillionPlay() {
             <button onClick={() => setLocation(rejoinUrl)}
               className="w-full py-3.5 rounded-2xl font-bold text-white"
               style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
-              {lang === "ar" ? (classPin ? "أعد الدخول للغرفة" : "حاول مجدداً") : (classPin ? "Rejoin Room" : "Try Again")}
+              {classPin ? t.million.rejoinRoom : t.million.playAgain}
             </button>
             <button onClick={() => setLocation("/games")}
               className="w-full py-3 rounded-2xl font-medium text-blue-300 border border-blue-500/30">
@@ -1168,7 +1168,7 @@ export default function MillionPlay() {
             style={{ background: "#0d1f3c", border: "2px solid rgba(245,158,11,0.4)" }}>
             <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto mb-3" />
             <h2 className="text-white font-black text-xl mb-1">
-              {lang === "ar" ? "تأكيد الانسحاب" : "Confirm Walk Away"}
+              {t.million.confirmWalkAway}
             </h2>
             <p className="text-blue-300 text-sm mb-4">
               {lang === "ar"
@@ -1302,7 +1302,7 @@ export default function MillionPlay() {
                   style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)" }}
                 >
                   <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>⏰</motion.span>
-                  <span>{lang === "ar" ? "انتهى الوقت — اختر طالباً للإجابة أو اكشف الجواب" : "Time's up — pick a student or reveal the answer"}</span>
+                  <span>{t.million.timeUpClass}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1314,7 +1314,7 @@ export default function MillionPlay() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-blue-400 text-xs font-bold mb-1">
-                    {lang === "ar" ? "الطالب المجيب:" : "Student answering:"}
+                    {t.million.studentAnswering}
                   </p>
                   <AnimatePresence mode="wait">
                     {currentPickedName ? (
@@ -1338,7 +1338,7 @@ export default function MillionPlay() {
                           type="text"
                           value={manualStudentInput}
                           onChange={e => setManualStudentInput(e.target.value)}
-                          placeholder={lang === "ar" ? "اكتب اسم الطالب..." : "Type student name..."}
+                          placeholder={t.million.studentNamePlaceholder}
                           className="px-3 py-1.5 rounded-lg text-white text-sm placeholder-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
                           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                         />
@@ -1355,7 +1355,7 @@ export default function MillionPlay() {
                     style={{ background: "linear-gradient(135deg, #6366f1, #4f46e5)" }}
                   >
                     <Shuffle className={`w-4 h-4 ${isPicking ? "animate-spin" : ""}`} />
-                    {lang === "ar" ? "اختر طالباً 🎲" : "Pick Student 🎲"}
+                    {t.million.pickStudent}
                   </button>
                 )}
               </div>
@@ -1377,7 +1377,7 @@ export default function MillionPlay() {
                     style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.3), rgba(239,68,68,0.2))", border: "2px solid rgba(245,158,11,0.6)", color: "#fbbf24" }}
                   >
                     <span className="text-xl">⚡</span>
-                    {lang === "ar" ? "سؤال المفاجأة! النقاط مضاعفة ×2 🎉" : "Surprise Question! Double Points ×2 🎉"}
+                    {t.million.surpriseQuestion}
                     <span className="text-xl">⚡</span>
                   </motion.div>
                 )}
@@ -1462,7 +1462,7 @@ export default function MillionPlay() {
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
                         style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd" }}>
                         <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                        {lang === "ar" ? "انتظر المعلم للانتقال للسؤال التالي…" : "Waiting for teacher to advance…"}
+                        {t.million.waitingTeacherAdvance}
                       </motion.div>
                     ) : (
                       <button onClick={handleNextQuestion}

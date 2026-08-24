@@ -16,10 +16,12 @@ import {
   ExternalLink,
   LineChart as LineChartIcon,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_GREEN = "#225739";
 const BRAND_GOLD = "#D9A521";
+type TimelineT = ReturnType<typeof useI18n>["t"]["studentTimeline"];
 
 interface KindRow {
   kind: string;
@@ -73,34 +75,8 @@ interface TimelinePayload {
   sessions: SessionRow[];
 }
 
-const KIND_LABELS: Record<string, string> = {
-  mcq: "اختيار من متعدد",
-  poll: "تصويت",
-  open: "إجابة مفتوحة",
-  truefalse: "صح أم خطأ",
-  short: "إجابة قصيرة",
-  fill: "أكمل الفراغ",
-  word_cloud: "سحابة كلمات",
-  unknown: "غير معروف",
-};
-const labelKind = (k: string) => KIND_LABELS[k] ?? k;
-
-function fmtSec(n: number | null): string {
-  if (n == null) return "—";
-  if (n < 60) return `${n} ث`;
-  return `${Math.floor(n / 60)} د ${n % 60} ث`;
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString("ar", { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return "—";
-  }
-}
-
 export default function StudentTimelinePage() {
+  const { t, lang, dir } = useI18n();
   const params = useParams<{ classStudentId: string }>();
   const [, setLocation] = useLocation();
   const sid = Number(params.classStudentId);
@@ -111,7 +87,7 @@ export default function StudentTimelinePage() {
 
   useEffect(() => {
     if (!Number.isFinite(sid)) {
-      setError("معرّف غير صالح");
+      setError(t.studentTimeline.invalidId);
       setLoading(false);
       return;
     }
@@ -126,16 +102,21 @@ export default function StudentTimelinePage() {
       .then((j) => setData(j))
       .catch((e: Error) => {
         if (e.message === "auth") setLocation("/login");
-        else if (e.message === "forbidden") setError("لا تملك صلاحية الوصول لهذا الطالب");
-        else if (e.message === "notfound") setError("الطالب غير موجود");
-        else setError("تعذّر تحميل بيانات الطالب");
+        else if (e.message === "forbidden") setError(t.studentTimeline.forbidden);
+        else if (e.message === "notfound") setError(t.studentTimeline.notFound);
+        else setError(t.studentTimeline.loadError);
       })
       .finally(() => setLoading(false));
-  }, [sid, setLocation]);
+  }, [sid, setLocation, t]);
+  const fmtSec = (n: number | null) => n == null ? "—" : n < 60 ? `${n} ${t.studentTimeline.seconds}` : `${Math.floor(n / 60)} ${t.studentTimeline.minutes} ${n % 60} ${t.studentTimeline.seconds}`;
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return "—";
+    try { return new Date(iso).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" }); } catch { return "—"; }
+  };
 
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div dir={dir} className="min-h-screen bg-slate-50 flex items-center justify-center" aria-label={t.presentationPublic.loading}>
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
       </div>
     );
@@ -143,10 +124,10 @@ export default function StudentTimelinePage() {
 
   if (error || !data) {
     return (
-      <div dir="rtl" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 p-6 text-center">
+      <div dir={dir} className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 p-6 text-center">
         <AlertTriangle className="w-10 h-10 text-amber-500" />
-        <div className="text-slate-700">{error ?? "تعذّر التحميل"}</div>
-        <button onClick={() => window.history.back()} className="text-sm text-slate-500 underline">العودة</button>
+        <div className="text-slate-700">{error ?? t.studentTimeline.loadError}</div>
+        <button onClick={() => window.history.back()} className="text-sm text-slate-500 underline">{t.studentTimeline.back}</button>
       </div>
     );
   }
@@ -154,7 +135,7 @@ export default function StudentTimelinePage() {
   const { student, summary, byKind, strongestKind, weakestKind, recentSessions, trend, sessions } = data;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-50">
+    <div dir={dir} className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
 
         {/* Header */}
@@ -163,13 +144,13 @@ export default function StudentTimelinePage() {
             onClick={() => window.history.back()}
             className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1"
           >
-            <ChevronRight className="w-4 h-4" /> العودة
+            {dir === "rtl" ? <ChevronRight className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />} {t.studentTimeline.back}
           </button>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: BRAND_GOLD }}>
                 <LineChartIcon className="w-4 h-4" />
-                سجل تطور الطالب
+                {t.studentTimeline.title}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black" style={{ color: BRAND_GREEN }}>
                 {student.name}
@@ -188,9 +169,9 @@ export default function StudentTimelinePage() {
         {summary.sessionsCount === 0 ? (
           <section className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
             <div className="text-5xl mb-3">📭</div>
-            <div className="text-lg font-bold text-slate-700">لم يشارك هذا الطالب في أي عرض بعد</div>
+            <div className="text-lg font-bold text-slate-700">{t.studentTimeline.emptyTitle}</div>
             <div className="text-sm text-slate-500 mt-2">
-              ستظهر بياناته هنا فور انضمامه لأول عرض تفاعلي.
+              {t.studentTimeline.emptyBody}
             </div>
           </section>
         ) : (
@@ -199,23 +180,23 @@ export default function StudentTimelinePage() {
             <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Tile
                 icon={<Calendar className="w-4 h-4" />}
-                label="عدد الجلسات"
+                label={t.studentTimeline.sessionsCount}
                 value={String(summary.sessionsCount)}
               />
               <Tile
                 icon={<Target className="w-4 h-4" />}
-                label="متوسط النجاح"
+                label={t.studentTimeline.averageScore}
                 value={summary.avgScorePct != null ? `${summary.avgScorePct}%` : "—"}
                 tone={summary.avgScorePct != null ? scoreTone(summary.avgScorePct) : "neutral"}
               />
               <Tile
                 icon={<Activity className="w-4 h-4" />}
-                label="متوسط المشاركة"
+                label={t.studentTimeline.averageParticipation}
                 value={summary.participationPct != null ? `${summary.participationPct}%` : "—"}
               />
               <Tile
                 icon={<Clock className="w-4 h-4" />}
-                label="متوسط زمن الإجابة"
+                label={t.studentTimeline.averageResponseTime}
                 value={fmtSec(summary.avgResponseSec)}
               />
             </section>
@@ -224,16 +205,16 @@ export default function StudentTimelinePage() {
             <section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-500 mb-2">الاتجاه العام</div>
+                  <div className="text-xs font-bold text-slate-500 mb-2">{t.studentTimeline.overallTrend}</div>
                   <div className="flex items-center gap-2">
-                    <TrendBadge dir={trend.direction} />
+                    <TrendBadge dir={trend.direction} t={t.studentTimeline} />
                     <span className="text-xs text-slate-500 tabular-nums">
-                      {trend.sample > 0 ? `بناءً على آخر ${trend.sample} جلسة` : "لا توجد بيانات كافية"}
+                      {trend.sample > 0 ? t.studentTimeline.basedOnSessions.replace("{count}", String(trend.sample)) : t.studentTimeline.insufficientData}
                     </span>
                   </div>
                 </div>
                 <div className="flex-1 min-w-[260px]">
-                  <Sparkline
+                    <Sparkline t={t.studentTimeline}
                     points={sessions
                       .map((s, i) => (s.scorePct != null ? { x: i, y: s.scorePct } : null))
                       .filter((p): p is { x: number; y: number } => p != null)}
@@ -249,21 +230,23 @@ export default function StudentTimelinePage() {
                 {strongestKind && (
                   <KindCard
                     tone="strong"
-                    title="الأقوى في"
+                    title={t.studentTimeline.strongest}
                     kind={strongestKind.kind}
                     pct={strongestKind.correctPct}
                     sample={byKind.find((k) => k.kind === strongestKind.kind)?.answered ?? 0}
                     icon={<Award className="w-5 h-5" />}
+                    t={t.studentTimeline}
                   />
                 )}
                 {weakestKind && (
                   <KindCard
                     tone="weak"
-                    title="بحاجة لتقوية"
+                    title={t.studentTimeline.needsImprovement}
                     kind={weakestKind.kind}
                     pct={weakestKind.correctPct}
                     sample={byKind.find((k) => k.kind === weakestKind.kind)?.answered ?? 0}
                     icon={<AlertTriangle className="w-5 h-5" />}
+                    t={t.studentTimeline}
                   />
                 )}
               </section>
@@ -271,13 +254,13 @@ export default function StudentTimelinePage() {
 
             {byKind.length > 0 && byKind.every((k) => !k.eligible) && (
               <div className="text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                لم يجمع الطالب بعد ما يكفي من الإجابات في أي نوع نشاط لتقييم نقاط القوة والضعف (الحد الأدنى ٥ إجابات).
+                {t.studentTimeline.insufficientAnswers}
               </div>
             )}
 
             {/* Recent sessions */}
             <section>
-              <h2 className="text-sm font-bold text-slate-600 mb-3">آخر الجلسات</h2>
+              <h2 className="text-sm font-bold text-slate-600 mb-3">{t.studentTimeline.recentSessions}</h2>
               <div className="space-y-2">
                 {recentSessions.map((s) => (
                   <a
@@ -314,9 +297,9 @@ export default function StudentTimelinePage() {
             {sessions.length > 5 && (
               <section className="bg-white rounded-2xl border border-slate-200 p-5">
                 <h2 className="text-sm font-bold text-slate-600 mb-3">
-                  مسار النتائج الكامل ({sessions.length} جلسة)
+                  {t.studentTimeline.fullResultsPath.replace("{count}", String(sessions.length))}
                 </h2>
-                <Sparkline
+                <Sparkline t={t.studentTimeline}
                   points={sessions
                     .map((s, i) => (s.scorePct != null ? { x: i, y: s.scorePct } : null))
                     .filter((p): p is { x: number; y: number } => p != null)}
@@ -362,31 +345,31 @@ function Tile({
   );
 }
 
-function TrendBadge({ dir }: { dir: "improving" | "stable" | "declining" | null }) {
+function TrendBadge({ dir, t }: { dir: "improving" | "stable" | "declining" | null; t: TimelineT }) {
   if (dir == null) {
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold bg-slate-100 text-slate-500">
-        <Minus className="w-4 h-4" /> بيانات غير كافية
+        <Minus className="w-4 h-4" /> {t.insufficientData}
       </span>
     );
   }
   if (dir === "improving") {
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold bg-emerald-100 text-emerald-700">
-        <TrendingUp className="w-4 h-4" /> يتحسّن
+        <TrendingUp className="w-4 h-4" /> {t.improving}
       </span>
     );
   }
   if (dir === "declining") {
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold bg-rose-100 text-rose-700">
-        <TrendingDown className="w-4 h-4" /> يتراجع
+        <TrendingDown className="w-4 h-4" /> {t.declining}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold bg-amber-100 text-amber-700">
-      <Minus className="w-4 h-4" /> ثابت
+      <Minus className="w-4 h-4" /> {t.stable}
     </span>
   );
 }
@@ -403,7 +386,7 @@ function ScoreBadge({ pct }: { pct: number | null }) {
 }
 
 function KindCard({
-  tone, title, kind, pct, sample, icon,
+  tone, title, kind, pct, sample, icon, t,
 }: {
   tone: "strong" | "weak";
   title: string;
@@ -411,6 +394,7 @@ function KindCard({
   pct: number;
   sample: number;
   icon: React.ReactNode;
+  t: TimelineT;
 }) {
   const palette = tone === "strong"
     ? { bg: "bg-emerald-50", border: "border-emerald-200", title: "text-emerald-700", value: "text-emerald-800" }
@@ -421,19 +405,20 @@ function KindCard({
         {icon}
         <span>{title}</span>
       </div>
-      <div className={`mt-2 text-xl font-black ${palette.value}`}>{labelKind(kind)}</div>
+      <div className={`mt-2 text-xl font-black ${palette.value}`}>{t.kinds[kind as keyof typeof t.kinds] ?? kind}</div>
       <div className="mt-1 text-sm text-slate-600 tabular-nums">
-        نسبة الصحة <b>{pct}%</b> · بناءً على {sample} إجابة
+        {t.accuracy} <b>{pct}%</b> · {t.basedOnAnswers.replace("{count}", String(sample))}
       </div>
     </div>
   );
 }
 
 function Sparkline({
-  points, totalPoints,
+  points, totalPoints, t,
 }: {
   points: { x: number; y: number }[];
   totalPoints: number;
+  t: TimelineT;
 }) {
   const W = 600;
   const H = 140;
@@ -458,13 +443,13 @@ function Sparkline({
   if (points.length === 0) {
     return (
       <div className="h-[140px] flex items-center justify-center text-sm text-slate-400">
-        لا توجد بيانات نتائج بعد.
+        {t.noResultsYet}
       </div>
     );
   }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[140px]" role="img" aria-label="رسم بياني لتطور النتائج">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[140px]" role="img" aria-label={t.resultsChart}>
       {[0, 50, 100].map((g) => {
         const y = padY + (1 - g / 100) * innerH;
         return (

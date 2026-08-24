@@ -70,6 +70,7 @@ function StudentRow({
   colorIdx: number;
   isOverlay?: boolean;
 }) {
+  const { t, dir } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: `student-${student.id}` });
 
@@ -122,21 +123,22 @@ function StudentRow({
           <div className="relative">
             <button
               onClick={() => setMoveOpen((v) => !v)}
-              title="نقل إلى صف آخر"
+              title={t.teacherStudents.moveToAnotherClass}
+              aria-label={t.teacherStudents.moveToAnotherClass}
               className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-50 text-xs font-medium flex items-center gap-1"
             >
-              <ArrowRight size={13} />
+              {dir === "rtl" ? <ArrowRight size={13} /> : <ArrowLeft size={13} />}
             </button>
             {moveOpen && (
-              <div className="absolute left-0 top-8 z-50 bg-card border border-border rounded-xl shadow-xl min-w-40 py-1">
-                <p className="px-3 py-1.5 text-xs text-muted-foreground font-medium border-b border-border">نقل إلى صف:</p>
+              <div className="absolute start-0 top-8 z-50 bg-card border border-border rounded-xl shadow-xl min-w-40 py-1">
+                <p className="px-3 py-1.5 text-xs text-muted-foreground font-medium border-b border-border">{t.teacherStudents.moveToClass}</p>
                 {otherFolders.map((f) => (
                   <button
                     key={f}
                     onClick={() => { onMove(student.id, f); setMoveOpen(false); }}
-                    className="w-full text-right px-3 py-2 text-sm text-foreground hover:bg-muted truncate"
+                    className="w-full text-start px-3 py-2 text-sm text-foreground hover:bg-muted truncate"
                   >
-                    {f === UNGROUPED ? "بلا صف" : f}
+                    {f === UNGROUPED ? t.teacherStudents.unassigned : f}
                   </button>
                 ))}
               </div>
@@ -146,22 +148,24 @@ function StudentRow({
         <Link
           href={`/teacher/students/${student.id}/timeline`}
           className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 inline-flex items-center"
-          title="سجل التطور"
-          aria-label="سجل التطور"
+          title={t.teacherStudents.timeline}
+          aria-label={t.teacherStudents.timeline}
         >
           <TrendingUp size={13} />
         </Link>
         <button
           onClick={() => onResetPassword(student)}
           className="p-1.5 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-500/10"
-          title="إعادة تعيين كلمة المرور"
+          title={t.teacherStudents.resetPassword}
+          aria-label={t.teacherStudents.resetPassword}
         >
           <KeyRound size={13} />
         </button>
         <button
           onClick={() => onEdit(student)}
           className="p-1.5 rounded-lg text-muted-foreground hover:text-teal-600 hover:bg-teal-500/10"
-          title="تعديل"
+          title={t.teacherStudents.edit}
+          aria-label={t.teacherStudents.edit}
         >
           <Pencil size={13} />
         </button>
@@ -169,7 +173,8 @@ function StudentRow({
           <button
             onClick={() => setConfirmDelete(true)}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-            title="حذف"
+            title={t.teacherStudents.delete}
+            aria-label={t.teacherStudents.delete}
           >
             <Trash2 size={13} />
           </button>
@@ -177,12 +182,14 @@ function StudentRow({
           <div className="flex items-center gap-1 bg-red-50 rounded-lg px-1.5 py-0.5">
             <button
               onClick={() => { onDelete(student.id); setConfirmDelete(false); }}
+              aria-label={t.teacherStudents.confirm}
               className="p-0.5 rounded bg-red-500 text-white hover:bg-red-600"
             >
               <Check size={11} />
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
+              aria-label={t.teacherStudents.cancel}
               className="p-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/80"
             >
               <X size={11} />
@@ -219,6 +226,7 @@ function ClassBlock({
   onAssignGroup?: (className: string, groupName: string | null) => void;
   onAttendance?: (className: string) => void;
 }) {
+  const { lang, t, dir } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: `folder-${folderName}` });
 
@@ -272,7 +280,8 @@ function ClassBlock({
                 {...attributes}
                 {...listeners}
                 className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 touch-none flex-shrink-0 transition-colors"
-                title="اسحب لإعادة الترتيب"
+                title={t.teacherStudents.dragToReorder}
+                aria-label={t.teacherStudents.dragToReorder}
               >
                 <GripVertical size={18} />
               </button>
@@ -302,7 +311,7 @@ function ClassBlock({
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`font-black text-lg leading-tight ${color.text}`}>
-                      {isUngrouped ? "بلا صف" : folderName}
+                      {isUngrouped ? t.teacherStudents.unassigned : folderName}
                     </span>
                     {groupName && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
@@ -312,7 +321,7 @@ function ClassBlock({
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    <span className="font-semibold text-foreground">{students.length}</span> طالب
+                    {t.teacherStudents.studentCount.replace("{count}", String(students.length))}
                   </p>
                 </div>
               )}
@@ -322,9 +331,10 @@ function ClassBlock({
             <button
               onClick={onToggle}
               className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-              title={isExpanded ? "طيّ الصف" : "عرض الطلاب"}
+              title={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
+              aria-label={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
             >
-              {isExpanded ? <ChevronDown size={18} /> : <ChevronLeft size={18} />}
+              {isExpanded ? <ChevronDown size={18} /> : dir === "rtl" ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
             </button>
           </div>
 
@@ -336,20 +346,20 @@ function ClassBlock({
               <Link
                 href={`/teacher/class-grades/${encodeURIComponent(folderName)}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
-                title="كشف الدرجات"
+                title={t.teacherStudents.gradebook}
               >
                 <ClipboardList size={13} />
-                الدرجات
+                {t.teacherStudents.grades}
               </Link>
 
               {onAttendance && (
                 <button
                   onClick={() => onAttendance(folderName)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 text-xs font-semibold border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
-                  title="تسجيل الحضور"
+                  title={t.teacherStudents.takeAttendance}
                 >
                   <UserCheck size={13} />
-                  حضور
+                  {t.teacherStudents.attendance}
                 </button>
               )}
 
@@ -362,18 +372,18 @@ function ClassBlock({
                       ${groupName
                         ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/40"
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"}`}
-                    title="تعيين مجموعة"
+                    title={t.teacherStudents.assignGroup}
                   >
                     <Layers size={13} />
-                    {groupName || "مجموعة"}
+                    {groupName || t.teacherStudents.group}
                   </button>
                   {showGroupMenu && (
                     <div className="absolute start-0 top-10 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-48 py-1 text-sm max-h-64 overflow-y-auto">
-                      <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border sticky top-0 bg-card">تعيين إلى مجموعة:</p>
+                      <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border sticky top-0 bg-card">{t.teacherStudents.assignToGroup}</p>
                       {(allGroups ?? []).map(g => (
                         <button key={g}
                           onClick={() => { onAssignGroup(folderName, g); setShowGroupMenu(false); }}
-                          className={`w-full text-right px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2
+                          className={`w-full text-start px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2
                             ${groupName === g ? "text-violet-600 font-bold" : "text-foreground"}`}
                         >
                           {groupName === g && <Check size={12} className="shrink-0" />}
@@ -383,13 +393,13 @@ function ClassBlock({
                       {groupName && (
                         <button
                           onClick={() => { onAssignGroup(folderName, null); setShowGroupMenu(false); }}
-                          className="w-full text-right px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-xs border-t border-border mt-1"
+                          className="w-full text-start px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-xs border-t border-border mt-1"
                         >
-                          إزالة من المجموعة
+                          {t.teacherStudents.removeFromGroup}
                         </button>
                       )}
                       {(allGroups ?? []).length === 0 && (
-                        <p className="px-3 py-2 text-xs text-muted-foreground">لا توجد مجموعات — أنشئ مجموعة أولاً</p>
+                        <p className="px-3 py-2 text-xs text-muted-foreground">{t.teacherStudents.noGroups}</p>
                       )}
                     </div>
                   )}
@@ -400,10 +410,10 @@ function ClassBlock({
               <button
                 onClick={() => onAddStudent(folderName)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${color.light} ${color.text} ${color.border} hover:opacity-80`}
-                title="إضافة طالب"
+                title={t.teacherStudents.addStudent}
               >
                 <UserPlus size={13} />
-                إضافة طالب
+                {t.teacherStudents.addStudent}
               </button>
 
               {/* Spacer */}
@@ -414,7 +424,8 @@ function ClassBlock({
                 <button
                   onClick={startRename}
                   className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                  title="تغيير اسم الصف"
+                  title={t.teacherStudents.renameClass}
+                  aria-label={t.teacherStudents.renameClass}
                 >
                   <Pencil size={14} />
                 </button>
@@ -423,21 +434,24 @@ function ClassBlock({
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                    title="حذف الصف"
+                    title={t.teacherStudents.deleteClass}
+                    aria-label={t.teacherStudents.deleteClass}
                   >
                     <Trash2 size={14} />
                   </button>
                 ) : (
                   <div className="flex items-center gap-1 bg-card rounded-xl px-2.5 py-1.5 border border-red-200 dark:border-red-900 shadow-sm">
-                    <span className="text-xs text-red-500 font-semibold">حذف الصف؟</span>
+                    <span className="text-xs text-red-500 font-semibold">{t.teacherStudents.confirmDeleteClass}</span>
                     <button
                       onClick={() => { onDeleteClass(folderName); setShowDeleteConfirm(false); }}
+                      aria-label={t.teacherStudents.confirm}
                       className="p-1 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                     >
                       <Check size={11} />
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
+                      aria-label={t.teacherStudents.cancel}
                       className="p-1 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                     >
                       <X size={11} />
@@ -456,7 +470,7 @@ function ClassBlock({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 text-xs font-semibold border border-teal-200 dark:border-teal-800 hover:bg-teal-100 transition-colors"
               >
                 <UserPlus size={13} />
-                إضافة طالب
+                {t.teacherStudents.addStudent}
               </button>
             </div>
           )}
@@ -473,7 +487,7 @@ function ClassBlock({
               className="overflow-hidden border-t border-border/50"
             >
               {(() => {
-                const sortedClassStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, "ar"));
+                const sortedClassStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, lang));
                 return (
                   <SortableContext
                     items={sortedClassStudents.map((s) => `student-${s.id}`)}
@@ -483,7 +497,7 @@ function ClassBlock({
                       {sortedClassStudents.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <Users size={32} className="mx-auto mb-2 opacity-30" />
-                          <p className="text-sm">لا يوجد طلاب في هذا الصف بعد</p>
+                          <p className="text-sm">{t.teacherStudents.noStudentsInClassYet}</p>
                         </div>
                       ) : (
                         sortedClassStudents.map((s, sIdx) => (
@@ -508,14 +522,14 @@ function ClassBlock({
                             className={`flex-1 py-2.5 text-xs font-semibold ${color.text} bg-card hover:bg-muted rounded-xl border-2 border-dashed ${color.border} transition-all flex items-center justify-center gap-1.5`}
                           >
                             <UserPlus size={14} />
-                            إضافة طالب
+                            {t.teacherStudents.addStudent}
                           </button>
                           <button
                             onClick={() => onBulkAdd(folderName)}
                             className="flex-1 py-2.5 text-xs font-semibold text-muted-foreground bg-card hover:bg-muted rounded-xl border-2 border-dashed border-border transition-all flex items-center justify-center gap-1.5"
                           >
                             <ListPlus size={14} />
-                            إضافة بالجملة
+                            {t.teacherStudents.bulkAdd}
                           </button>
                         </div>
                       )}
@@ -534,7 +548,7 @@ function ClassBlock({
 /* ─── Main Page ─────────────────────────────────────────── */
 export default function StudentsPage() {
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -618,15 +632,16 @@ export default function StudentsPage() {
         const preserved = prev.filter((f) => f === UNGROUPED || namedSet.has(f));
         const newOnes = [...namedSet].filter((g) => !prev.includes(g));
         const all = [...preserved, ...newOnes];
-        const named = all.filter((f) => f !== UNGROUPED).sort((a, b) => a.localeCompare(b, "ar"));
+        const named = all.filter((f) => f !== UNGROUPED).sort((a, b) => a.localeCompare(b, lang));
         const hasUngrouped = data.some((s) => !s.gradeLevel);
         return hasUngrouped ? [...named, UNGROUPED] : named;
       });
     } catch {
+      toast.error(t.teacherStudents.loadError);
     } finally {
       setLoading(false);
     }
-  }, [setLocation]);
+  }, [setLocation, lang, t.teacherStudents.loadError]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
@@ -640,7 +655,7 @@ export default function StudentsPage() {
   const studentsInFolder = (folder: string) => {
     const list = students
       .filter((s) => (s.gradeLevel || UNGROUPED) === folder)
-      .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+      .sort((a, b) => a.name.localeCompare(b.name, lang));
     if (!search) return list;
     return list.filter((s) => s.name.includes(search));
   };
@@ -716,7 +731,7 @@ export default function StudentsPage() {
           }),
         });
       } catch {
-        toast.error("فشل حفظ التغيير");
+        toast.error(t.teacherStudents.saveChangeError);
         fetchStudents();
       }
     }
@@ -731,12 +746,12 @@ export default function StudentsPage() {
         setStudents([]);
         setFolderOrder([]);
         setExpandedFolders(new Set());
-        toast.success("تم حذف جميع الطلاب");
+        toast.success(t.teacherStudents.allDeleted);
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     } finally {
       setDeleteAllLoading(false);
       setShowDeleteAll(false);
@@ -758,18 +773,18 @@ export default function StudentsPage() {
         }
         setStudents((prev) => prev.filter((s) => (s.gradeLevel || UNGROUPED) !== folder));
         setFolderOrder((prev) => prev.filter((f) => f !== folder));
-        toast.success("تم حذف الصف");
+        toast.success(t.teacherStudents.classDeleted);
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     }
   };
 
   const handleRenameClass = async (oldName: string, newName: string) => {
     if (folderOrder.includes(newName) && newName !== oldName) {
-      toast.error("يوجد صف بهذا الاسم");
+      toast.error(t.teacherStudents.duplicateClass);
       return;
     }
     setRenameLoading(true);
@@ -794,12 +809,12 @@ export default function StudentsPage() {
           if (next.has(oldName)) { next.delete(oldName); next.add(newName); }
           return next;
         });
-        toast.success("تم تغيير اسم الصف");
+        toast.success(t.teacherStudents.classRenamed);
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     } finally {
       setRenameLoading(false);
     }
@@ -808,7 +823,7 @@ export default function StudentsPage() {
   const handleAddClass = async () => {
     const name = newClassName.trim();
     if (!name) return;
-    if (folderOrder.includes(name)) { toast.error("الصف موجود بالفعل"); return; }
+    if (folderOrder.includes(name)) { toast.error(t.teacherStudents.classAlreadyExists); return; }
     try {
       const res = await fetch(`${API_BASE}/api/teacher/classes`, {
         method: "POST",
@@ -816,19 +831,19 @@ export default function StudentsPage() {
         credentials: "include",
         body: JSON.stringify({ name }),
       });
-      if (!res.ok) { toast.error("حدث خطأ"); return; }
+      if (!res.ok) { toast.error(t.teacherStudents.genericError); return; }
       setFolderOrder((prev) => {
         const named = prev.filter((f) => f !== UNGROUPED);
         const hasUngrouped = prev.includes(UNGROUPED);
-        const next = [...named, name].sort((a, b) => a.localeCompare(b, "ar"));
+        const next = [...named, name].sort((a, b) => a.localeCompare(b, lang));
         return hasUngrouped ? [...next, UNGROUPED] : next;
       });
       setExpandedFolders((prev) => new Set([...prev, name]));
       setShowAddClass(false);
       setNewClassName("");
-      toast.success(`تم إنشاء صف "${name}"`);
+      toast.success(t.teacherStudents.classCreated.replace("{name}", name));
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     }
   };
 
@@ -848,12 +863,12 @@ export default function StudentsPage() {
           else delete next[className];
           return next;
         });
-        if (groupName) toast.success(`تم تعيين "${className}" ضمن "${groupName}"`);
+        if (groupName) toast.success(t.teacherStudents.classAssigned.replace("{class}", className).replace("{group}", groupName));
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     }
   };
 
@@ -861,7 +876,7 @@ export default function StudentsPage() {
     for (const cn of classNames) {
       await handleAssignGroup(cn, groupName);
     }
-    toast.success(`تم تعيين ${classNames.length} صف ضمن "${groupName}"`);
+    toast.success(t.teacherStudents.classesAssigned.replace("{count}", String(classNames.length)).replace("{group}", groupName));
   };
 
   /* ── Attendance ── */
@@ -922,10 +937,10 @@ export default function StudentsPage() {
         credentials: "include",
         body: JSON.stringify({ date: attendanceDate, records }),
       });
-      if (res.ok) toast.success("تم حفظ الحضور ✓");
-      else toast.error("فشل حفظ الحضور");
+      if (res.ok) toast.success(t.teacherStudents.attendanceSaved);
+      else toast.error(t.teacherStudents.attendanceSaveError);
     } catch {
-      toast.error("خطأ في الحفظ");
+      toast.error(t.teacherStudents.saveError);
     } finally {
       setSavingAttendance(false);
     }
@@ -957,16 +972,16 @@ export default function StudentsPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success(editingStudent ? "تم التحديث" : "تمت الإضافة");
+        toast.success(editingStudent ? t.teacherStudents.updated : t.teacherStudents.added);
         setShowStudentForm(false);
         setEditingStudent(null);
         setForm({ name: "", parentPhone: "", parentName: "", parentEmail: "", notes: "", accountUsername: "" });
         fetchStudents();
       } else {
-        toast.error(data.message || "حدث خطأ");
+        toast.error(data.message || t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("خطأ في الاتصال");
+      toast.error(t.teacherStudents.connectionError);
     } finally {
       setSaving(false);
     }
@@ -977,12 +992,12 @@ export default function StudentsPage() {
       const res = await fetch(`${API_BASE}/api/students/${id}`, { method: "DELETE", credentials: "include" });
       if (res.ok) {
         setStudents((prev) => prev.filter((s) => s.id !== id));
-        toast.success("تم حذف الطالب");
+        toast.success(t.teacherStudents.studentDeleted);
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     }
   };
 
@@ -1001,12 +1016,12 @@ export default function StudentsPage() {
             s.id === id ? { ...s, gradeLevel: folder, studentClass: folder } : s
           )
         );
-        toast.success("تم النقل");
+        toast.success(t.teacherStudents.moved);
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     }
   };
 
@@ -1041,12 +1056,12 @@ export default function StudentsPage() {
       const data = await res.json();
       if (res.ok) {
         setResetDone(true);
-        toast.success("تم تغيير كلمة المرور بنجاح");
+        toast.success(t.teacherStudents.passwordChangedSuccess);
       } else {
-        toast.error(data.message || "حدث خطأ");
+        toast.error(data.message || t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("خطأ في الاتصال");
+      toast.error(t.teacherStudents.connectionError);
     } finally {
       setResetSaving(false);
     }
@@ -1071,15 +1086,15 @@ export default function StudentsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`تمت إضافة ${data.length} طالب`);
+        toast.success(t.teacherStudents.studentsAdded.replace("{count}", String(data.length)));
         setBulkText("");
         setShowBulkForm(false);
         fetchStudents();
       } else {
-        toast.error("حدث خطأ");
+        toast.error(t.teacherStudents.genericError);
       }
     } catch {
-      toast.error("حدث خطأ");
+      toast.error(t.teacherStudents.genericError);
     } finally {
       setBulkSaving(false);
     }
@@ -1123,19 +1138,19 @@ export default function StudentsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.message || "حدث خطأ أثناء الاستيراد");
+        toast.error(data.message || t.teacherStudents.importError);
         return;
       }
       if (data.saved === 0) {
-        toast.warning(data.message || "لم يتم العثور على أسماء في الملف");
+        toast.warning(data.message || t.teacherStudents.noNamesInFile);
         return;
       }
       setImportedCount(data.saved);
-      toast.success(data.message || `تم استيراد ${data.saved} طالب`);
+      toast.success(data.message || t.teacherStudents.studentsImported.replace("{count}", String(data.saved)));
       setShowBulkForm(false);
       fetchStudents();
     } catch {
-      toast.error("حدث خطأ في الاتصال");
+      toast.error(t.teacherStudents.connectionError);
     } finally {
       setImportLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1145,11 +1160,11 @@ export default function StudentsPage() {
   const totalCount = students.length;
   const namedFolders = folders.filter((f) => f !== UNGROUPED);
   const hasUngrouped = folders.includes(UNGROUPED);
-  const allGroups = [...new Set(Object.values(classGroupMap))].sort((a, b) => a.localeCompare(b, "ar"));
+  const allGroups = [...new Set(Object.values(classGroupMap))].sort((a, b) => a.localeCompare(b, lang));
 
   return (
     <Layout>
-      <div className="min-h-screen bg-background pb-16" dir="rtl">
+      <div className="min-h-screen bg-background pb-16" dir={dir}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
           {/* Hero — Hasaad brand: deep green #1E4D35 + gold #E8A80E accent */}
@@ -1169,6 +1184,7 @@ export default function StudentsPage() {
                 {/* Back button */}
                 <button
                   onClick={() => setLocation("/teacher")}
+                  aria-label={t.teacherStudents.back}
                   className="shrink-0 p-2.5 rounded-xl transition-all text-white"
                   style={{ background: "rgba(232,168,14,0.15)", border: "1px solid rgba(232,168,14,0.3)" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.28)"; }}
@@ -1185,10 +1201,12 @@ export default function StudentsPage() {
                 {/* Title + subtitle */}
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl font-black leading-tight" style={{ letterSpacing: "-0.5px" }}>
-                    إدارة الصفوف والطلاب
+                    {t.teacherStudents.title}
                   </h1>
                   <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>
-                    {namedFolders.length > 0 ? `${namedFolders.length} صف · ${totalCount} طالب` : "ابدأ بإنشاء صفك الأول"}
+                    {namedFolders.length > 0
+                      ? t.teacherStudents.summary.replace("{classes}", String(namedFolders.length)).replace("{students}", String(totalCount))
+                      : t.teacherStudents.firstClassPrompt}
                   </p>
                 </div>
 
@@ -1197,12 +1215,12 @@ export default function StudentsPage() {
                   {namedFolders.length > 0 && (
                     <div className="flex flex-col items-center px-5 py-2.5 rounded-xl" style={{ background: "rgba(232,168,14,0.15)", border: "1px solid rgba(232,168,14,0.25)" }}>
                       <span className="text-2xl font-black" style={{ color: "#E8A80E" }}>{namedFolders.length}</span>
-                      <span className="text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>صف</span>
+                      <span className="text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>{t.teacherStudents.classLabel}</span>
                     </div>
                   )}
                   <div className="flex flex-col items-center px-5 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
                     <span className="text-2xl font-black text-white">{totalCount}</span>
-                    <span className="text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>طالب</span>
+                    <span className="text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>{t.teacherStudents.studentLabel}</span>
                   </div>
                 </div>
               </div>
@@ -1213,12 +1231,13 @@ export default function StudentsPage() {
           <div className="flex flex-wrap gap-2.5 mb-6">
             {/* Search */}
             <div className="flex-1 min-w-[200px] relative">
-              <Search size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={16} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="بحث عن طالب..."
-                className="w-full pr-10 pl-4 py-2.5 text-sm border border-border rounded-xl bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
+                placeholder={t.teacherStudents.searchPlaceholder}
+                aria-label={t.teacherStudents.searchPlaceholder}
+                className="w-full ps-10 pe-4 py-2.5 text-sm border border-border rounded-xl bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
               />
             </div>
 
@@ -1232,7 +1251,7 @@ export default function StudentsPage() {
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1E4D35"; }}
               >
                 <Plus size={16} />
-                <span>صف جديد</span>
+                <span>{t.teacherStudents.newClass}</span>
               </button>
 
               <button
@@ -1240,14 +1259,15 @@ export default function StudentsPage() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-violet-500 text-white text-sm font-semibold rounded-xl hover:bg-violet-600 transition-colors shadow-md shadow-violet-200/40"
               >
                 <Layers size={16} />
-                <span className="hidden sm:inline">مجموعة</span>
+                <span className="hidden sm:inline">{t.teacherStudents.group}</span>
               </button>
 
               {totalCount > 0 && (
                 <button
                   onClick={() => setShowDeleteAll(true)}
                   className="flex items-center gap-1.5 px-3 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-500 text-sm rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-900"
-                  title="حذف جميع الطلاب"
+                  title={t.teacherStudents.deleteAllTitle}
+                  aria-label={t.teacherStudents.deleteAllTitle}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -1259,7 +1279,7 @@ export default function StudentsPage() {
           {loading ? (
             <div className="text-center py-16 text-muted-foreground">
               <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-              جارٍ التحميل...
+              {t.teacherStudents.loading}
             </div>
           ) : namedFolders.length === 0 && !hasUngrouped ? (
             /* Empty state */
@@ -1271,14 +1291,14 @@ export default function StudentsPage() {
               <div className="w-20 h-20 bg-gradient-to-br from-amber-100 to-amber-200/60 dark:from-amber-900/40 dark:to-amber-950/40 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
                 <BookOpen size={40} className="text-amber-500" />
               </div>
-              <p className="text-foreground font-black text-lg mb-1">لا توجد صفوف بعد</p>
-              <p className="text-sm text-muted-foreground mb-5">أنشئ صفاً وابدأ بإضافة الطلاب</p>
+              <p className="text-foreground font-black text-lg mb-1">{t.teacherStudents.noClasses}</p>
+              <p className="text-sm text-muted-foreground mb-5">{t.teacherStudents.noClassesDesc}</p>
               <button
                 onClick={() => setShowAddClass(true)}
                 className="inline-flex items-center gap-1.5 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors text-sm font-bold shadow-md shadow-primary/20"
               >
                 <Plus size={16} />
-                إنشاء صف جديد
+                {t.teacherStudents.createNewClass}
               </button>
             </motion.div>
           ) : (
@@ -1314,7 +1334,11 @@ export default function StudentsPage() {
                             </div>
                             <div>
                               <span className="font-bold text-base text-foreground">{group.name}</span>
-                              <span className="mr-2 text-xs text-muted-foreground">{group.classes.length} صف · {group.classes.reduce((acc, f) => acc + studentsInFolder(f).length, 0)} طالب</span>
+                              <span className="ms-2 text-xs text-muted-foreground">
+                                {t.teacherStudents.groupSummary
+                                  .replace("{classes}", String(group.classes.length))
+                                  .replace("{students}", String(group.classes.reduce((acc, f) => acc + studentsInFolder(f).length, 0)))}
+                              </span>
                             </div>
                             <div className="flex-1 h-px bg-border" />
                           </div>
@@ -1356,7 +1380,7 @@ export default function StudentsPage() {
                           <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0">
                             <BookOpen size={14} className="text-muted-foreground" />
                           </div>
-                          <span className="font-semibold text-sm text-muted-foreground">بدون مجموعة</span>
+                          <span className="font-semibold text-sm text-muted-foreground">{t.teacherStudents.withoutGroup}</span>
                           <div className="flex-1 h-px bg-border" />
                         </div>
                       )}
@@ -1446,18 +1470,21 @@ export default function StudentsPage() {
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                 className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t.teacherStudents.deleteAllAndClasses}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-red-100 rounded-full">
                     <AlertTriangle size={24} className="text-red-500" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-foreground">حذف جميع الطلاب والصفوف</h3>
-                    <p className="text-sm text-muted-foreground">لا يمكن التراجع عن هذا الإجراء</p>
+                    <h3 className="font-bold text-foreground">{t.teacherStudents.deleteAllAndClasses}</h3>
+                    <p className="text-sm text-muted-foreground">{t.teacherStudents.irreversible}</p>
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground mb-5">
-                  هل أنت متأكد من حذف <strong>{totalCount} طالب</strong> وجميع الصفوف؟
+                  {t.teacherStudents.deleteAllQuestion.replace("{count}", String(totalCount))}
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -1465,13 +1492,13 @@ export default function StudentsPage() {
                     disabled={deleteAllLoading}
                     className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
                   >
-                    {deleteAllLoading ? "جارٍ الحذف..." : "حذف الكل"}
+                    {deleteAllLoading ? t.teacherStudents.deleting : t.teacherStudents.deleteAll}
                   </button>
                   <button
                     onClick={() => setShowDeleteAll(false)}
                     className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                   >
-                    إلغاء
+                    {t.teacherStudents.cancel}
                   </button>
                 </div>
               </motion.div>
@@ -1491,12 +1518,15 @@ export default function StudentsPage() {
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                 className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t.teacherStudents.addNewClass}
               >
                 <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
                   <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
                     <BookOpen size={16} className="text-primary-foreground" />
                   </div>
-                  إضافة صف جديد
+                  {t.teacherStudents.addNewClass}
                 </h3>
                 <input
                   value={newClassName}
@@ -1504,7 +1534,8 @@ export default function StudentsPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleAddClass()}
                   autoFocus
                   className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 mb-4 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  placeholder="مثال: الصف الأول أ"
+                  placeholder={t.teacherStudents.classPlaceholder}
+                  aria-label={t.teacherStudents.addNewClass}
                 />
                 <div className="flex gap-3">
                   <button
@@ -1512,13 +1543,13 @@ export default function StudentsPage() {
                     disabled={!newClassName.trim()}
                     className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm shadow-primary/20"
                   >
-                    إنشاء
+                    {t.teacherStudents.create}
                   </button>
                   <button
                     onClick={() => setShowAddClass(false)}
                     className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                   >
-                    إلغاء
+                    {t.teacherStudents.cancel}
                   </button>
                 </div>
               </motion.div>
@@ -1538,52 +1569,55 @@ export default function StudentsPage() {
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                 className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={editingStudent ? t.teacherStudents.editStudent : t.teacherStudents.addStudent}
               >
                 <h3 className="font-bold text-foreground mb-1 flex items-center gap-2">
                   {editingStudent ? <Pencil size={18} className="text-primary" /> : <UserPlus size={18} className="text-primary" />}
-                  {editingStudent ? "تعديل بيانات الطالب" : "إضافة طالب"}
+                  {editingStudent ? t.teacherStudents.editStudent : t.teacherStudents.addStudent}
                 </h3>
                 {studentFormFolder && studentFormFolder !== UNGROUPED && (
-                  <p className="text-xs text-muted-foreground mb-4">الصف: <span className="font-semibold text-foreground">{studentFormFolder}</span></p>
+                  <p className="text-xs text-muted-foreground mb-4">{t.teacherStudents.classPrefix} <span className="font-semibold text-foreground">{studentFormFolder === UNGROUPED ? t.teacherStudents.unassigned : studentFormFolder}</span></p>
                 )}
 
                 <div className="space-y-3 mb-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">اسم الطالب *</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t.teacherStudents.studentName}</label>
                     <input
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       autoFocus
                       className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      placeholder="الاسم الكامل"
+                      placeholder={t.teacherStudents.fullName}
                     />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
-                      <Phone size={12} /> رقم ولي الأمر
+                      <Phone size={12} /> {t.teacherStudents.parentPhone}
                     </label>
                     <input
                       value={form.parentPhone}
                       onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
                       className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      placeholder="اختياري"
+                      placeholder={t.teacherStudents.optional}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
-                        <User size={12} className="text-emerald-600" /> اسم ولي الأمر
+                        <User size={12} className="text-emerald-600" /> {t.teacherStudents.parentName}
                       </label>
                       <input
                         value={form.parentName}
                         onChange={(e) => setForm({ ...form, parentName: e.target.value })}
                         className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
-                        placeholder="اختياري"
+                        placeholder={t.teacherStudents.optional}
                       />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
-                        <Mail size={12} className="text-emerald-600" /> إيميل ولي الأمر
+                        <Mail size={12} className="text-emerald-600" /> {t.teacherStudents.parentEmail}
                       </label>
                       <input
                         value={form.parentEmail}
@@ -1598,27 +1632,27 @@ export default function StudentsPage() {
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
                       <KeyRound size={12} className="text-violet-500" />
-                      اسم المستخدم في المنصة
+                      {t.teacherStudents.platformUsername}
                     </label>
                     <input
                       value={form.accountUsername}
                       onChange={(e) => setForm({ ...form, accountUsername: e.target.value.replace(/\s/g, "") })}
                       dir="ltr"
                       className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-                      placeholder="مثال: ahmed_2024 (اختياري)"
+                      placeholder={t.teacherStudents.usernamePlaceholder}
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      اسم المستخدم الذي يستخدمه الطالب لتسجيل الدخول — يُستخدم لإعادة تعيين كلمة المرور
+                      {t.teacherStudents.usernameHelp}
                     </p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">ملاحظات</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t.teacherStudents.notes}</label>
                     <textarea
                       value={form.notes}
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
                       rows={2}
                       className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-                      placeholder="اختياري"
+                      placeholder={t.teacherStudents.optional}
                     />
                   </div>
                 </div>
@@ -1629,13 +1663,13 @@ export default function StudentsPage() {
                     disabled={saving || !form.name.trim()}
                     className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm shadow-primary/20"
                   >
-                    {saving ? "جارٍ الحفظ..." : editingStudent ? "تحديث" : "إضافة"}
+                    {saving ? t.teacherStudents.saving : editingStudent ? t.teacherStudents.update : t.teacherStudents.addStudent}
                   </button>
                   <button
                     onClick={() => setShowStudentForm(false)}
                     className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                   >
-                    إلغاء
+                    {t.teacherStudents.cancel}
                   </button>
                 </div>
               </motion.div>
@@ -1655,20 +1689,23 @@ export default function StudentsPage() {
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                 className="bg-card text-card-foreground rounded-2xl p-6 max-w-md w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t.teacherStudents.bulkNames}
               >
                 <h3 className="font-bold text-foreground mb-1 flex items-center gap-2">
                   <ListPlus size={18} className="text-primary" />
-                  إضافة أسماء بالجملة
+                  {t.teacherStudents.bulkNames}
                 </h3>
                 {bulkFolder && bulkFolder !== UNGROUPED && (
-                  <p className="text-xs text-muted-foreground mb-3">الصف: <span className="font-semibold text-foreground">{bulkFolder}</span></p>
+                  <p className="text-xs text-muted-foreground mb-3">{t.teacherStudents.classPrefix} <span className="font-semibold text-foreground">{bulkFolder}</span></p>
                 )}
 
                 {/* File import buttons */}
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                     <Upload size={12} />
-                    استيراد من ملف
+                    {t.teacherStudents.importFile}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1710,11 +1747,11 @@ export default function StudentsPage() {
                   {importLoading && (
                     <div className="flex items-center justify-center gap-2 mt-3 py-2 bg-muted rounded-xl text-sm text-muted-foreground">
                       <Loader2 size={16} className="animate-spin text-primary" />
-                      <span>جارٍ قراءة الملف واستخراج الأسماء...</span>
+                      <span>{t.teacherStudents.readingFile}</span>
                     </div>
                   )}
                   <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-                    Excel: يأخذ عمود الأسماء تلقائياً · Word: يقرأ السطور
+                    {t.teacherStudents.importHelp}
                   </p>
                 </div>
 
@@ -1723,17 +1760,17 @@ export default function StudentsPage() {
                     <div className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center">
-                    <span className="bg-card px-2 text-xs text-muted-foreground">أو أدخل الأسماء يدوياً</span>
+                    <span className="bg-card px-2 text-xs text-muted-foreground">{t.teacherStudents.manualNames}</span>
                   </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground mb-2">ضع كل اسم في سطر منفصل</p>
+                <p className="text-xs text-muted-foreground mb-2">{t.teacherStudents.oneNamePerLine}</p>
                 <textarea
                   value={bulkText}
                   onChange={(e) => setBulkText(e.target.value)}
                   rows={6}
                   className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none mb-4"
-                  placeholder={"أحمد محمد\nسارة علي\nمحمد خالد"}
+                  placeholder={t.teacherStudents.namesPlaceholder}
                 />
                 <div className="flex gap-3">
                   <button
@@ -1741,13 +1778,13 @@ export default function StudentsPage() {
                     disabled={bulkSaving || !bulkText.trim()}
                     className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm shadow-primary/20"
                   >
-                    {bulkSaving ? "جارٍ الإضافة..." : "إضافة"}
+                    {bulkSaving ? t.teacherStudents.adding : t.teacherStudents.addStudent}
                   </button>
                   <button
                     onClick={() => setShowBulkForm(false)}
                     className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                   >
-                    إلغاء
+                    {t.teacherStudents.cancel}
                   </button>
                 </div>
               </motion.div>
@@ -1767,6 +1804,9 @@ export default function StudentsPage() {
                 initial={{ scale: 0.9, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9 }}
                 className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t.teacherStudents.resetPassword}
               >
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-5">
@@ -1774,12 +1814,13 @@ export default function StudentsPage() {
                     <KeyRound size={22} className="text-violet-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-foreground">إعادة تعيين كلمة المرور</h3>
+                    <h3 className="font-bold text-foreground">{t.teacherStudents.resetPassword}</h3>
                     <p className="text-sm text-muted-foreground">{resetPasswordStudent.name}</p>
                   </div>
                   <button
                     onClick={() => setResetPasswordStudent(null)}
-                    className="mr-auto p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                    className="ms-auto p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                    aria-label={t.teacherStudents.closeDialog}
                   >
                     <X size={16} />
                   </button>
@@ -1789,10 +1830,10 @@ export default function StudentsPage() {
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
                       <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                        لم يُربط حساب منصة بعد
+                        {t.teacherStudents.noLinkedAccount}
                       </p>
                       <p className="text-xs text-amber-700 dark:text-amber-300">
-                        لإعادة تعيين كلمة المرور، يجب أولاً ربط حساب الطالب على المنصة. افتح بيانات الطالب وأضف اسم المستخدم في حقل "اسم المستخدم في المنصة".
+                        {t.teacherStudents.noLinkedAccountHelp}
                       </p>
                     </div>
                     <div className="flex gap-3">
@@ -1805,13 +1846,13 @@ export default function StudentsPage() {
                         className="flex-1 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
                       >
                         <Pencil size={15} />
-                        تعديل بيانات الطالب
+                        {t.teacherStudents.editStudent}
                       </button>
                       <button
                         onClick={() => setResetPasswordStudent(null)}
                         className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                       >
-                        إغلاق
+                        {t.teacherStudents.close}
                       </button>
                     </div>
                   </div>
@@ -1819,37 +1860,38 @@ export default function StudentsPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                        حساب المنصة المرتبط
+                        {t.teacherStudents.linkedAccount}
                       </label>
                       <div
                         className="w-full border border-border bg-muted/50 text-foreground rounded-xl px-3 py-2.5 text-sm flex items-center gap-2"
                         dir="ltr"
                       >
                         <span className="flex-1 font-mono">{resetPasswordStudent.accountUsername}</span>
-                        <span className="text-[10px] text-violet-500 font-semibold bg-violet-50 dark:bg-violet-900/20 px-1.5 py-0.5 rounded-md">مرتبط</span>
+                        <span className="text-[10px] text-violet-500 font-semibold bg-violet-50 dark:bg-violet-900/20 px-1.5 py-0.5 rounded-md">{t.teacherStudents.linked}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        لتغيير الحساب المرتبط، عدّل بيانات الطالب
+                        {t.teacherStudents.changeLinkedAccount}
                       </p>
                     </div>
 
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
-                        كلمة المرور الجديدة
+                        {t.teacherStudents.newPassword}
                       </label>
                       <div className="relative">
                         <input
                           type={resetShowPassword ? "text" : "password"}
                           value={resetNewPassword}
                           onChange={(e) => setResetNewPassword(e.target.value)}
-                          placeholder="4 أحرف على الأقل"
+                          placeholder={t.teacherStudents.passwordPlaceholder}
                           dir="ltr"
-                          className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 pr-20 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                          className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 pe-20 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                         />
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => setResetShowPassword((v) => !v)}
+                            aria-label={t.teacherStudents.newPassword}
                             className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                           >
                             {resetShowPassword ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -1857,7 +1899,8 @@ export default function StudentsPage() {
                           <button
                             type="button"
                             onClick={generatePassword}
-                            title="توليد كلمة مرور"
+                            title={t.teacherStudents.generatePassword}
+                            aria-label={t.teacherStudents.generatePassword}
                             className="p-1 text-violet-500 hover:text-violet-700 transition-colors"
                           >
                             <RefreshCw size={14} />
@@ -1877,13 +1920,13 @@ export default function StudentsPage() {
                         ) : (
                           <KeyRound size={15} />
                         )}
-                        تغيير كلمة المرور
+                        {t.teacherStudents.changePassword}
                       </button>
                       <button
                         onClick={() => setResetPasswordStudent(null)}
                         className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                       >
-                        إلغاء
+                        {t.teacherStudents.cancel}
                       </button>
                     </div>
                   </div>
@@ -1893,9 +1936,9 @@ export default function StudentsPage() {
                       <Check size={28} className="text-green-600" />
                     </div>
                     <div>
-                      <p className="font-bold text-foreground mb-1">تم تغيير كلمة المرور</p>
+                      <p className="font-bold text-foreground mb-1">{t.teacherStudents.passwordChanged}</p>
                       <p className="text-sm text-muted-foreground mb-3">
-                        أخبر الطالب بكلمة المرور الجديدة
+                        {t.teacherStudents.tellStudentPassword}
                       </p>
                       <div
                         className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-mono text-lg font-bold tracking-widest select-all"
@@ -1905,6 +1948,7 @@ export default function StudentsPage() {
                         {resetShowPassword ? resetNewPassword : "••••••••"}
                         <button
                           onClick={() => setResetShowPassword((v) => !v)}
+                          aria-label={t.teacherStudents.newPassword}
                           className="text-muted-foreground hover:text-foreground transition-colors"
                         >
                           {resetShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -1915,7 +1959,7 @@ export default function StudentsPage() {
                       onClick={() => setResetPasswordStudent(null)}
                       className="w-full py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                     >
-                      إغلاق
+                      {t.teacherStudents.close}
                     </button>
                   </div>
                 )}
@@ -1936,25 +1980,28 @@ export default function StudentsPage() {
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
                 className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t.teacherStudents.newGroup}
               >
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl"><Layers size={20} className="text-violet-600" /></div>
-                  <h3 className="font-bold text-foreground">مجموعة / مرحلة جديدة</h3>
+                  <h3 className="font-bold text-foreground">{t.teacherStudents.newGroup}</h3>
                 </div>
 
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">اسم المجموعة</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">{t.teacherStudents.groupName}</label>
                 <input
                   autoFocus
                   value={newGroupName}
                   onChange={e => setNewGroupName(e.target.value)}
-                  placeholder='مثال: صفوف الخامس'
+                  placeholder={t.teacherStudents.groupPlaceholder}
                   className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4"
                 />
 
-                <label className="block text-xs font-semibold text-muted-foreground mb-2">اختر الصفوف التي تريد إضافتها (يمكن اختيار أكثر من صف):</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-2">{t.teacherStudents.chooseClasses}</label>
                 <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto border border-border rounded-xl p-2">
                   {namedFolders.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-3">لا توجد صفوف بعد</p>
+                    <p className="text-xs text-muted-foreground text-center py-3">{t.teacherStudents.noClassesYet}</p>
                   )}
                   {namedFolders.map(f => (
                     <label key={f} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted cursor-pointer transition-colors">
@@ -1975,7 +2022,7 @@ export default function StudentsPage() {
                   ))}
                 </div>
                 {groupTargetClasses.length > 0 && (
-                  <p className="text-xs text-violet-600 mb-3 font-medium">✓ تم تحديد {groupTargetClasses.length} صف</p>
+                  <p className="text-xs text-violet-600 mb-3 font-medium">{t.teacherStudents.selectedClasses.replace("{count}", String(groupTargetClasses.length))}</p>
                 )}
 
                 <div className="flex gap-3">
@@ -1985,20 +2032,22 @@ export default function StudentsPage() {
                       if (groupTargetClasses.length > 0) {
                         await handleAssignGroupMulti(groupTargetClasses, newGroupName.trim());
                       } else {
-                        toast.success(`تم إنشاء المجموعة "${newGroupName.trim()}" — عيّن الصفوف إليها من زر "مجموعة" في كل صف`);
+                        toast.success(t.teacherStudents.groupCreated.replace("{name}", newGroupName.trim()));
                       }
                       setNewGroupName(""); setGroupTargetClasses([]); setShowAddGroup(false);
                     }}
                     disabled={!newGroupName.trim()}
                     className="flex-1 py-2.5 bg-violet-500 text-white rounded-xl font-bold hover:bg-violet-600 transition-colors disabled:opacity-50"
                   >
-                    إنشاء {groupTargetClasses.length > 0 ? `وإضافة ${groupTargetClasses.length} صف` : ""}
+                    {groupTargetClasses.length > 0
+                      ? t.teacherStudents.createGroupWithClasses.replace("{count}", String(groupTargetClasses.length))
+                      : t.teacherStudents.createGroup}
                   </button>
                   <button
                     onClick={() => { setShowAddGroup(false); setNewGroupName(""); setGroupTargetClasses([]); }}
                     className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                   >
-                    إلغاء
+                    {t.teacherStudents.cancel}
                   </button>
                 </div>
               </motion.div>
@@ -2018,15 +2067,18 @@ export default function StudentsPage() {
                 initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
                 className="bg-card text-card-foreground rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t.teacherStudents.attendanceTitle.replace("{class}", attendanceClass)}
               >
                 {/* Header */}
                 <div className="flex items-center gap-3 p-4 border-b border-border">
                   <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl shrink-0"><UserCheck size={18} className="text-sky-600" /></div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-foreground text-sm">الحضور والغياب — {attendanceClass}</h3>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">يمكنك تسجيل حضور أي يوم سابق باختيار التاريخ</p>
+                    <h3 className="font-bold text-foreground text-sm">{t.teacherStudents.attendanceTitle.replace("{class}", attendanceClass)}</h3>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{t.teacherStudents.attendanceDateHelp}</p>
                   </div>
-                  <button onClick={() => setAttendanceClass(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted shrink-0">
+                  <button onClick={() => setAttendanceClass(null)} aria-label={t.teacherStudents.closeDialog} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted shrink-0">
                     <X size={16} />
                   </button>
                 </div>
@@ -2037,13 +2089,13 @@ export default function StudentsPage() {
                     onClick={() => setAttendanceTab("register")}
                     className={`flex-1 py-2.5 text-xs font-bold transition-colors ${attendanceTab === "register" ? "text-sky-600 border-b-2 border-sky-500 bg-sky-50/50 dark:bg-sky-950/20" : "text-muted-foreground hover:bg-muted/50"}`}
                   >
-                    📋 تسجيل الحضور
+                    {t.teacherStudents.registerAttendance}
                   </button>
                   <button
                     onClick={() => setAttendanceTab("report")}
                     className={`flex-1 py-2.5 text-xs font-bold transition-colors ${attendanceTab === "report" ? "text-amber-600 border-b-2 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20" : "text-muted-foreground hover:bg-muted/50"}`}
                   >
-                    📊 سجل الغياب
+                    {t.teacherStudents.absenceLog}
                   </button>
                 </div>
 
@@ -2059,9 +2111,10 @@ export default function StudentsPage() {
                           if (attendanceClass) loadAttendanceForDate(attendanceClass, s);
                         }}
                         className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-                        title="اليوم السابق"
+                        title={t.teacherStudents.previousDay}
+                        aria-label={t.teacherStudents.previousDay}
                       >
-                        <ChevronRight size={16} />
+                        {dir === "rtl" ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                       </button>
                       <input
                         type="date"
@@ -2083,9 +2136,10 @@ export default function StudentsPage() {
                           }
                         }}
                         className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground disabled:opacity-30"
-                        title="اليوم التالي"
+                        title={t.teacherStudents.nextDay}
+                        aria-label={t.teacherStudents.nextDay}
                       >
-                        <ChevronLeft size={16} />
+                        {dir === "rtl" ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                       </button>
                       <button
                         onClick={() => {
@@ -2095,18 +2149,18 @@ export default function StudentsPage() {
                         }}
                         className="text-[10px] font-bold px-2 py-1 rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 hover:bg-sky-200 transition-colors"
                       >
-                        اليوم
+                        {t.teacherStudents.today}
                       </button>
                     </div>
 
                     {/* Legend */}
                     <div className="flex items-center gap-3 px-4 py-1.5 text-[10px] text-muted-foreground bg-muted/10">
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-400 inline-block"/> حاضر</span>
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"/> غائب</span>
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"/> متأخر</span>
-                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"/> بعذر</span>
-                      <span className="mr-auto text-sky-500 font-medium">
-                        غائب: {Object.values(attendanceMap).filter(v => v === "absent").length} طالب
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-400 inline-block"/> {t.teacherStudents.present}</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"/> {t.teacherStudents.absent}</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"/> {t.teacherStudents.late}</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"/> {t.teacherStudents.excused}</span>
+                      <span className="ms-auto text-sky-500 font-medium">
+                        {t.teacherStudents.absentCount.replace("{count}", String(Object.values(attendanceMap).filter(v => v === "absent").length))}
                       </span>
                     </div>
 
@@ -2115,10 +2169,10 @@ export default function StudentsPage() {
                       {studentsInFolder(attendanceClass).map((s, idx) => {
                         const status = attendanceMap[s.id] ?? "present";
                         const STATUS_OPTIONS: Array<{ value: "present"|"absent"|"late"|"excused"; label: string; color: string }> = [
-                          { value: "present", label: "حاضر", color: "bg-green-500" },
-                          { value: "absent", label: "غائب", color: "bg-red-500" },
-                          { value: "late", label: "متأخر", color: "bg-amber-500" },
-                          { value: "excused", label: "بعذر", color: "bg-blue-500" },
+                          { value: "present", label: t.teacherStudents.present, color: "bg-green-500" },
+                          { value: "absent", label: t.teacherStudents.absent, color: "bg-red-500" },
+                          { value: "late", label: t.teacherStudents.late, color: "bg-amber-500" },
+                          { value: "excused", label: t.teacherStudents.excused, color: "bg-blue-500" },
                         ];
                         return (
                           <div key={s.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors
@@ -2147,7 +2201,7 @@ export default function StudentsPage() {
                         );
                       })}
                       {studentsInFolder(attendanceClass).length === 0 && (
-                        <p className="text-center py-8 text-muted-foreground text-sm">لا يوجد طلاب في هذا الصف</p>
+                        <p className="text-center py-8 text-muted-foreground text-sm">{t.teacherStudents.noStudentsInClass}</p>
                       )}
                     </div>
 
@@ -2158,13 +2212,13 @@ export default function StudentsPage() {
                         disabled={savingAttendance}
                         className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                       >
-                        {savingAttendance ? <><Loader2 size={14} className="animate-spin"/> حفظ...</> : <><Check size={14}/> حفظ الحضور</>}
+                        {savingAttendance ? <><Loader2 size={14} className="animate-spin"/> {t.teacherStudents.saving}</> : <><Check size={14}/> {t.teacherStudents.saveAttendance}</>}
                       </button>
                       <button
                         onClick={() => setAttendanceClass(null)}
                         className="px-4 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                       >
-                        إغلاق
+                        {t.teacherStudents.close}
                       </button>
                     </div>
                   </>
@@ -2172,7 +2226,7 @@ export default function StudentsPage() {
 
                 {attendanceTab === "report" && (
                   <div className="overflow-y-auto flex-1 p-4">
-                    <p className="text-xs text-muted-foreground mb-3">سجل الغياب والتأخر — آخر 30 يوماً</p>
+                    <p className="text-xs text-muted-foreground mb-3">{t.teacherStudents.absenceReportHelp}</p>
                     {(() => {
                       const classStudents = studentsInFolder(attendanceClass);
                       const absentRecords = attendanceReport
@@ -2181,8 +2235,8 @@ export default function StudentsPage() {
                         return (
                           <div className="text-center py-10 text-muted-foreground">
                             <div className="text-4xl mb-2">✅</div>
-                            <p className="font-bold">لا توجد غيابات مسجّلة</p>
-                            <p className="text-xs mt-1">سجّل الحضور اليومي من تبويب "تسجيل الحضور"</p>
+                            <p className="font-bold">{t.teacherStudents.noAbsences}</p>
+                            <p className="text-xs mt-1">{t.teacherStudents.noAbsencesHelp}</p>
                           </div>
                         );
                       }
@@ -2206,10 +2260,10 @@ export default function StudentsPage() {
                                 <div key={sid} className="rounded-xl border border-border bg-background p-3">
                                   <div className="flex items-center gap-2 mb-2">
                                     <span className="font-bold text-sm">{student.name}</span>
-                                    <span className="mr-auto flex items-center gap-1.5">
-                                      {absences > 0 && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 px-2 py-0.5 rounded-full font-bold">غائب {absences}×</span>}
-                                      {late > 0 && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 px-2 py-0.5 rounded-full font-bold">متأخر {late}×</span>}
-                                      {excused > 0 && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-2 py-0.5 rounded-full font-bold">بعذر {excused}×</span>}
+                                    <span className="ms-auto flex items-center gap-1.5">
+                                      {absences > 0 && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 px-2 py-0.5 rounded-full font-bold">{t.teacherStudents.statusCount.replace("{status}", t.teacherStudents.absent).replace("{count}", String(absences))}</span>}
+                                      {late > 0 && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 px-2 py-0.5 rounded-full font-bold">{t.teacherStudents.statusCount.replace("{status}", t.teacherStudents.late).replace("{count}", String(late))}</span>}
+                                      {excused > 0 && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-2 py-0.5 rounded-full font-bold">{t.teacherStudents.statusCount.replace("{status}", t.teacherStudents.excused).replace("{count}", String(excused))}</span>}
                                     </span>
                                   </div>
                                   <div className="flex flex-wrap gap-1">

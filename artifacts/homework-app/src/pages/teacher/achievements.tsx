@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { Trophy, Star, Flame, Target, Lock, CheckCircle2, Sparkles } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -69,6 +70,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export default function TeacherAchievements() {
+  const { lang, dir, t } = useI18n();
   const [data, setData] = useState<AchievementsData | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,7 @@ export default function TeacherAchievements() {
           setQuests(a.xpRewardsEnabled === false ? [] : (q.quests ?? []));
         }
       } catch (e) {
-        if (!cancelled) setError("تعذّر تحميل البيانات");
+        if (!cancelled) setError(t.achievements.loadError);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -99,19 +101,19 @@ export default function TeacherAchievements() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t.achievements.loadError]);
 
   if (loading) {
     return (
       <Layout>
-        <div className="p-8 text-center text-gray-600">جارٍ التحميل…</div>
+        <div className="p-8 text-center text-gray-600">{t.achievements.loading}</div>
       </Layout>
     );
   }
   if (error || !data) {
     return (
       <Layout>
-        <div className="p-8 text-center text-red-600">{error ?? "لا توجد بيانات"}</div>
+        <div className="p-8 text-center text-red-600">{error ?? t.achievements.noData}</div>
       </Layout>
     );
   }
@@ -121,10 +123,10 @@ export default function TeacherAchievements() {
       <Layout>
         <div className="max-w-lg mx-auto p-8 text-center space-y-3">
           <p className="text-lg font-bold text-foreground">
-            تم تعطيل نظام نقاط الخبرة والإنجازات من قبل الإدارة.
+            {t.achievements.disabledTitle}
           </p>
           <p className="text-sm text-muted-foreground">
-            إذا كان عندك استفسار، تواصل مع فريق الدعم.
+            {t.achievements.disabledBody}
           </p>
         </div>
       </Layout>
@@ -134,7 +136,7 @@ export default function TeacherAchievements() {
   if (!data.stats) {
     return (
       <Layout>
-        <div className="p-8 text-center text-muted-foreground">لا توجد بيانات</div>
+        <div className="p-8 text-center text-muted-foreground">{t.achievements.noData}</div>
       </Layout>
     );
   }
@@ -161,33 +163,33 @@ export default function TeacherAchievements() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto p-4 space-y-6" dir="rtl">
+      <div className="max-w-6xl mx-auto p-4 space-y-6" dir={dir}>
         {/* Stats hero */}
         <Card className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-2 text-sm text-indigo-700 font-semibold">
-                <Sparkles size={16} /> المستوى {s.level}
+                <Sparkles size={16} /> {t.achievements.level} {s.level}
               </div>
               <h2 className="text-3xl font-bold mt-1">{s.levelNameAr}</h2>
               {s.levelPinnedByAdmin && (
                 <p className="text-xs text-amber-800 bg-amber-100 rounded-lg px-2 py-1 mt-2 inline-block">
-                  المستوى المعروض محدّد يدوياً من لوحة الإدارة (لا يزال تقدّمك بالنقاط يُحسب للشارات).
+                  {t.achievements.pinnedLevel}
                 </p>
               )}
-              <p className="text-gray-700 mt-1">إجمالي الخبرة: {s.totalXp.toLocaleString("ar")}</p>
+              <p className="text-gray-700 mt-1">{t.achievements.totalXp}: {s.totalXp.toLocaleString(lang)}</p>
               {s.nextLevelNameAr && (
                 <p className="text-sm text-gray-600 mt-2">
-                  باقي {s.xpToNext.toLocaleString("ar")} نقطة للوصول إلى{" "}
+                  {t.achievements.xpToLevel.replace("{count}", s.xpToNext.toLocaleString(lang))}{" "}
                   <span className="font-semibold">{s.nextLevelNameAr}</span>
                 </p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 text-center">
-              <Stat icon={<Flame className="text-orange-500" />} label="السلسلة الحالية" value={`${s.currentStreakDays} يوم`} />
-              <Stat icon={<Star className="text-yellow-500" />} label="أطول سلسلة" value={`${s.longestStreakDays} يوم`} />
-              <Stat icon={<Trophy className="text-amber-600" />} label="الشارات" value={s.badgeCount} />
-              <Stat icon={<Target className="text-green-600" />} label="مهام منجزة" value={s.questsCompleted} />
+              <Stat icon={<Flame className="text-orange-500" />} label={t.achievements.currentStreak} value={`${s.currentStreakDays} ${t.achievements.days}`} />
+              <Stat icon={<Star className="text-yellow-500" />} label={t.achievements.longestStreak} value={`${s.longestStreakDays} ${t.achievements.days}`} />
+              <Stat icon={<Trophy className="text-amber-600" />} label={t.achievements.badges} value={s.badgeCount} />
+              <Stat icon={<Target className="text-green-600" />} label={t.achievements.completedQuests} value={s.questsCompleted} />
             </div>
           </div>
           {s.nextLevelMinXp != null && (
@@ -207,7 +209,7 @@ export default function TeacherAchievements() {
         {quests.length > 0 && (
           <Card className="p-5">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-              <Target size={18} /> مهام الأسبوع
+              <Target size={18} /> {t.achievements.weeklyQuests}
             </h3>
             <div className="space-y-3">
               {quests.map((q) => {
@@ -242,7 +244,7 @@ export default function TeacherAchievements() {
         {/* Badges */}
         <Card className="p-5">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <Trophy size={18} /> الشارات ({(data.badges ?? []).filter((b) => b.earned).length}/{(data.badges ?? []).length})
+            <Trophy size={18} /> {t.achievements.badges} ({(data.badges ?? []).filter((b) => b.earned).length}/{(data.badges ?? []).length})
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {(data.badges ?? []).map((b) => (
@@ -257,7 +259,7 @@ export default function TeacherAchievements() {
                 <p className="text-xs mt-1">{b.descriptionAr}</p>
                 {b.earned && b.earnedAt && (
                   <p className="text-xs mt-1 opacity-70">
-                    {new Date(b.earnedAt).toLocaleDateString("ar")}
+                    {new Date(b.earnedAt).toLocaleDateString(lang)}
                   </p>
                 )}
               </div>
@@ -268,7 +270,7 @@ export default function TeacherAchievements() {
         {/* Threshold rewards */}
         {(data.rewards ?? []).length > 0 && (
           <Card className="p-5">
-            <h3 className="text-lg font-bold mb-3">الجوائز والمكافآت</h3>
+            <h3 className="text-lg font-bold mb-3">{t.achievements.rewards}</h3>
             <div className="space-y-3">
               {(data.rewards ?? []).map((r) => {
                 const pct = Math.min(100, Math.round((r.progress / r.threshold) * 100));
@@ -285,11 +287,11 @@ export default function TeacherAchievements() {
                       <div className="text-sm shrink-0">
                         {r.granted ? (
                           <span className="text-green-700 font-semibold">
-                            {r.fulfilled ? "✓ تم الاستلام" : "✓ مستحقة"}
+                            {r.fulfilled ? t.achievements.received : t.achievements.eligible}
                           </span>
                         ) : (
                           <span className="text-gray-700">
-                            {r.progress.toLocaleString("ar")}/{r.threshold.toLocaleString("ar")}
+                            {r.progress.toLocaleString(lang)}/{r.threshold.toLocaleString(lang)}
                           </span>
                         )}
                       </div>
@@ -314,7 +316,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   return (
     <div className="bg-white rounded-lg p-2 min-w-[110px] flex items-center gap-2">
       <div>{icon}</div>
-      <div className="text-right">
+      <div className="text-start">
         <p className="text-[11px] text-gray-600">{label}</p>
         <p className="font-bold">{value}</p>
       </div>

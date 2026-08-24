@@ -12,8 +12,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 export default function MillionJoin() {
   const { pin: pinParam } = useParams<{ pin?: string }>();
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [pin, setPin] = useState(pinParam || "");
@@ -38,14 +37,14 @@ export default function MillionJoin() {
     try {
       const res = await fetch(`${API_BASE}/api/million/class-session/${p}`, { credentials: "include" });
       if (!res.ok) {
-        toast.error(lang === "ar" ? "الغرفة غير موجودة أو منتهية الصلاحية" : "Room not found or expired");
+        toast.error(t.million.roomNotFound);
         return;
       }
       const data = await res.json();
       setSessionConfig(data);
       setPin(p);
     } catch {
-      toast.error(lang === "ar" ? "فشل التحقق من الرمز" : "Failed to validate code");
+      toast.error(t.million.validateCodeFailed);
     }
   }
 
@@ -54,11 +53,11 @@ export default function MillionJoin() {
     const trimmedName = name.trim();
 
     if (!/^\d{6}$/.test(trimmedPin)) {
-      toast.error(lang === "ar" ? "أدخل رمزاً مكوناً من 6 أرقام" : "Enter a 6-digit code");
+      toast.error(t.million.invalidRoomCode);
       return;
     }
     if (!trimmedName) {
-      toast.error(lang === "ar" ? "أدخل اسمك أولاً" : "Please enter your name");
+      toast.error(t.million.nameRequired);
       return;
     }
 
@@ -69,14 +68,14 @@ export default function MillionJoin() {
       try {
         const res = await fetch(`${API_BASE}/api/million/class-session/${trimmedPin}`, { credentials: "include" });
         if (!res.ok) {
-          toast.error(lang === "ar" ? "الغرفة غير موجودة أو منتهية الصلاحية" : "Room not found or expired");
+          toast.error(t.million.roomNotFound);
           setJoining(false);
           return;
         }
         config = await res.json();
         setSessionConfig(config);
       } catch {
-        toast.error(lang === "ar" ? "فشل التحقق من الرمز" : "Failed to validate code");
+        toast.error(t.million.validateCodeFailed);
         setJoining(false);
         return;
       }
@@ -85,7 +84,7 @@ export default function MillionJoin() {
     const socket = getSocket();
     socket.emit("million-class:join", { pin: trimmedPin, name: trimmedName }, (res: { playerToken?: string; autoAdvance?: boolean; broadcastMode?: boolean; mode?: string; currentQuestionIdx?: number; error?: string }) => {
       if (res.error || !res.playerToken) {
-        toast.error(res.error || (lang === "ar" ? "فشل الانضمام" : "Failed to join"));
+        toast.error(res.error || t.million.failedToJoin);
         setJoining(false);
         return;
       }
@@ -94,9 +93,7 @@ export default function MillionJoin() {
 
       // Team-control mode: students don't play interactively — they watch the host's screen.
       if (res.mode === "team-control") {
-        toast.success(lang === "ar"
-          ? "اللعبة بإدارة المعلم — تابع الشاشة الرئيسية"
-          : "Game is host-controlled — watch the main screen");
+        toast.success(t.million.hostControlled);
         setLocation(`/game/million/team-watch/${trimmedPin}?name=${encodeURIComponent(trimmedName)}`);
         return;
       }
@@ -134,7 +131,7 @@ export default function MillionJoin() {
               className="inline-flex items-center gap-2 text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors mb-4"
             >
               <BackIcon className="w-4 h-4" />
-              {lang === "ar" ? "الألعاب" : "Games"}
+              {t.million.games}
             </button>
 
             <motion.div
@@ -146,10 +143,10 @@ export default function MillionJoin() {
               <Trophy className="w-8 h-8 text-white" />
             </motion.div>
             <h1 className="text-2xl font-black text-white">
-              {lang === "ar" ? "انضم إلى المنافسة" : "Join the Competition"}
+               {t.million.joinCompetition}
             </h1>
             <p className="text-blue-300 text-sm mt-1">
-              {lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?"}
+                 {t.million.title}
             </p>
           </div>
 
@@ -162,7 +159,7 @@ export default function MillionJoin() {
           >
             <div>
               <label className="text-blue-300 text-sm font-medium block mb-1.5">
-                {lang === "ar" ? "رمز الغرفة (6 أرقام)" : "Room Code (6 digits)"}
+                 {t.million.roomCode}
               </label>
               <input
                 type="text"
@@ -181,14 +178,14 @@ export default function MillionJoin() {
               />
               {sessionConfig && (
                 <p className="text-green-400 text-xs mt-1 text-center">
-                  ✓ {lang === "ar" ? "الغرفة صالحة" : "Room valid"}
+                   ✓ {t.million.roomValid}
                 </p>
               )}
             </div>
 
             <div>
               <label className="text-blue-300 text-sm font-medium block mb-1.5">
-                {lang === "ar" ? "اسمك" : "Your Name"}
+                 {t.million.yourName}
               </label>
               <input
                 type="text"
@@ -196,7 +193,7 @@ export default function MillionJoin() {
                 onChange={e => setName(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && !joining && handleJoin()}
                 maxLength={40}
-                placeholder={lang === "ar" ? "مثال: أحمد" : "e.g. Ahmad"}
+                 placeholder={t.million.nameExample}
                 className="w-full px-4 py-3 rounded-xl text-white placeholder-blue-400 font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
                 style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
               />
@@ -209,8 +206,8 @@ export default function MillionJoin() {
               style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
             >
               {joining
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> {lang === "ar" ? "جاري الانضمام..." : "Joining..."}</>
-                : <>{lang === "ar" ? "انضم وابدأ اللعب!" : "Join & Play!"}</>
+                 ? <><Loader2 className="w-5 h-5 animate-spin" /> {t.million.joining}</>
+                 : <>{t.million.joinAndPlay}</>
               }
             </button>
           </motion.div>

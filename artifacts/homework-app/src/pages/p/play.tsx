@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
 import { Loader2, CheckCircle2, LogOut, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -17,6 +18,7 @@ function loadStored(): Stored | null {
    to the activity card when the teacher opens one, locks the chosen
    answer, and reveals correctness when the teacher kicks reveal on. */
 export default function PresentationPlay() {
+  const { lang, dir, t } = useI18n();
   const params = useParams<{ sessionId: string }>();
   const [, setLocation] = useLocation();
   const sid = Number(params.sessionId);
@@ -418,8 +420,7 @@ export default function PresentationPlay() {
      Once we have the deck language, every visible string + the page
      direction follows it so a teacher running an English deck shows
      LTR English copy to students. */
-  const isAr = deckMeta ? deckMeta.language !== "en" : true;
-  const dir = isAr ? "rtl" : "ltr";
+  const isAr = lang === "ar";
 
   const wameedhBg =
     "radial-gradient(at 15% 18%, rgba(34,87,57,0.75) 0px, transparent 55%)," +
@@ -440,7 +441,7 @@ export default function PresentationPlay() {
         style={{ background: wameedhBg, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
       >
         <div className="text-5xl mb-4">👋</div>
-        <h1 className="text-2xl font-black mb-2">{isAr ? "انتهت الجلسة" : "Session ended"}</h1>
+        <h1 className="text-2xl font-black mb-2">{t.presentation.sessionEnded}</h1>
         <p style={{ color: "rgba(255,255,255,0.55)" }}>{isAr ? "شكراً لمشاركتك!" : "Thanks for joining!"}</p>
       </div>
     );

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { api, IslamicShell, GoldButton, BackLink, ISLAMIC_GOLD, ISLAMIC_GREEN } from "./_shared";
+import { useI18n } from "@/lib/i18n";
 
 interface Cert { id: number; serial: string; userName: string; categoryName: string; totalQuestions: number; totalStars: number; issuedAt: string; }
 
 export default function IslamicCertificate() {
+  const { t, lang } = useI18n();
   const [, params] = useRoute("/islamic/certificate/:serial");
   const serial = params?.serial || "";
   const [cert, setCert] = useState<Cert | null>(null);
@@ -22,7 +24,7 @@ export default function IslamicCertificate() {
     window.print();
   }
 
-  if (!cert) return <IslamicShell title="الشهادة"><BackLink /><div style={{ textAlign: "center" }}>لم تُعثر الشهادة</div></IslamicShell>;
+  if (!cert) return <IslamicShell title={t.islamic.certificate}><BackLink /><div style={{ textAlign: "center" }}>{t.islamic.certificateNotFound}</div></IslamicShell>;
 
   const verifyUrl = `${window.location.origin}/islamic/certificate/${cert.serial}`;
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(verifyUrl)}`;
@@ -47,25 +49,25 @@ export default function IslamicCertificate() {
         boxShadow: `0 0 60px rgba(217,119,6,0.4)`,
         fontFamily: "'Cairo', sans-serif",
       }}>
-        <div style={{ fontSize: 28, color: ISLAMIC_GOLD, fontWeight: 900 }}>منصة حصاد</div>
+        <div style={{ fontSize: 28, color: ISLAMIC_GOLD, fontWeight: 900 }}>{lang === "ar" ? "منصة حصاد" : "HasadX"}</div>
         <div style={{ height: 2, background: ISLAMIC_GOLD, margin: "16px auto", width: "60%" }} />
-        <div style={{ fontSize: 22, marginTop: 24, color: ISLAMIC_GREEN }}>شهادة تقدير</div>
-        <div style={{ fontSize: 18, marginTop: 16, opacity: 0.85 }}>تُمنح هذه الشهادة لـ</div>
+        <div style={{ fontSize: 22, marginTop: 24, color: ISLAMIC_GREEN }}>{t.islamic.certificateOfAppreciation}</div>
+        <div style={{ fontSize: 18, marginTop: 16, opacity: 0.85 }}>{t.islamic.awardedTo}</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: ISLAMIC_GREEN, margin: "16px 0" }}>{cert.userName}</div>
-        <div style={{ fontSize: 18 }}>لإتقان فئة</div>
+        <div style={{ fontSize: 18 }}>{t.islamic.masteryOf}</div>
         <div style={{ fontSize: 24, fontWeight: 700, color: ISLAMIC_GOLD, marginTop: 8 }}>{cert.categoryName}</div>
-        <div style={{ fontSize: 18, marginTop: 16 }}>بعدد {cert.totalStars} ⭐ على {cert.totalQuestions} سؤال</div>
+        <div style={{ fontSize: 18, marginTop: 16 }}>{cert.totalStars} ⭐ / {cert.totalQuestions} {t.islamic.questions}</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32 }}>
           <div style={{ fontSize: 13, opacity: 0.85, textAlign: "right" }}>
-            <div>التاريخ: {new Date(cert.issuedAt).toLocaleDateString("ar-EG")}</div>
-            <div>الرقم التسلسلي: {cert.serial}</div>
+             <div>{t.islamic.date} {new Date(cert.issuedAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</div>
+             <div>{t.islamic.serialNumber} {cert.serial}</div>
           </div>
           <img src={qrSrc} alt="QR" style={{ width: 100, height: 100 }} />
         </div>
       </div>
       <div className="no-print" style={{ textAlign: "center", marginTop: 16, display: "flex", gap: 8, justifyContent: "center" }}>
-        <GoldButton onClick={downloadPdf}>طباعة / حفظ PDF</GoldButton>
-        <GoldButton onClick={() => navigator.clipboard?.writeText(verifyUrl)}>نسخ رابط التحقق</GoldButton>
+        <GoldButton onClick={downloadPdf}>{t.islamic.printPdf}</GoldButton>
+        <GoldButton onClick={() => navigator.clipboard?.writeText(verifyUrl)}>{t.islamic.copyVerificationLink}</GoldButton>
       </div>
     </IslamicShell>
   );

@@ -27,8 +27,8 @@ interface LeaderboardEntry {
 }
 
 export default function CapitalsMultiPlay() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
+  const g = t.capitalsGame;
   const [, setLocation] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
@@ -147,7 +147,7 @@ export default function CapitalsMultiPlay() {
     });
 
     socket.on("capital:game-ended", () => {
-      setError(lang === "ar" ? "انتهت اللعبة" : "Game ended");
+      setError(g.gameEnded);
       setPhase("finished");
     });
 
@@ -155,7 +155,7 @@ export default function CapitalsMultiPlay() {
       if (timerRef.current) clearInterval(timerRef.current);
       socket.disconnect();
     };
-  }, [pin, isHost, playerName]);
+  }, [pin, isHost, playerName, g.gameEnded]);
 
   const handleAnswer = (value: string) => {
     if (selected || phase !== "question" || !socketRef.current) return;
@@ -197,12 +197,12 @@ export default function CapitalsMultiPlay() {
             <div className="text-center px-6">
               <div className="text-5xl mb-4">😕</div>
               <p className="text-red-500 dark:text-red-400 font-bold text-lg mb-4">{error}</p>
-              <button onClick={() => setLocation("/game/capitals")} className="px-6 py-3 rounded-xl bg-teal-600 text-white font-bold">{lang === "ar" ? "العودة" : "Go Back"}</button>
+              <button onClick={() => setLocation("/game/capitals")} className="px-6 py-3 rounded-xl bg-teal-600 text-white font-bold">{g.back}</button>
             </div>
           ) : (
             <div className="text-center">
               <div className="w-12 h-12 rounded-full border-4 border-teal-500/30 border-t-teal-500 animate-spin mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-white/70 font-medium">{lang === "ar" ? "جاري الاتصال..." : "Connecting..."}</p>
+              <p className="text-gray-500 dark:text-white/70 font-medium">{g.connecting}</p>
             </div>
           )}
         </div>
@@ -216,13 +216,13 @@ export default function CapitalsMultiPlay() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-100 dark:from-gray-900 dark:via-slate-900 dark:to-gray-950" dir={dir}>
           <div className="text-center px-6">
             <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-6xl mb-5">🏛️</motion.div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">{lang === "ar" ? "أنت في اللعبة!" : "You're in!"}</h2>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">{g.joined}</h2>
             <div className="bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 rounded-2xl px-6 py-4 mb-4 shadow-sm dark:shadow-none">
               <p className="text-teal-600 dark:text-teal-400 font-black text-xl">{playerName}</p>
             </div>
             <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.8 }} className="flex items-center justify-center gap-2 text-gray-500 dark:text-white/50 text-sm">
               <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-              {lang === "ar" ? "في انتظار بدء اللعبة من المضيف..." : "Waiting for host to start..."}
+              {g.waitingForHost}
             </motion.div>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function CapitalsMultiPlay() {
                 {countdownNum > 0 ? countdownNum : "🚀"}
               </div>
               <p className="text-gray-500 dark:text-white/60 text-xl font-bold">
-                {countdownNum > 0 ? (lang === "ar" ? "استعد!" : "Get Ready!") : (lang === "ar" ? "انطلق!" : "GO!")}
+                {countdownNum > 0 ? g.getReady : g.go}
               </p>
             </motion.div>
           </AnimatePresence>
@@ -274,10 +274,10 @@ export default function CapitalsMultiPlay() {
               >
                 {myFinalRank === 1 ? "🏆" : myFinalRank === 2 ? "🥈" : myFinalRank === 3 ? "🥉" : "🎮"}
               </motion.div>
-              <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1">{lang === "ar" ? "انتهت اللعبة!" : "Game Over!"}</h1>
+              <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1">{g.gameOver}</h1>
               {myResult && (
                 <p className="text-gray-500 dark:text-white/60 text-sm">
-                  {lang === "ar" ? `ترتيبك: #${myFinalRank} | النقاط: ${myResult.score}` : `Your rank: #${myFinalRank} | Score: ${myResult.score}`}
+                  {g.yourRankScore.replace("{rank}", String(myFinalRank)).replace("{score}", String(myResult.score))}
                 </p>
               )}
             </motion.div>
@@ -296,7 +296,7 @@ export default function CapitalsMultiPlay() {
                     </div>
                     <div className="flex-1">
                       <p className="font-black text-yellow-700 dark:text-yellow-300 text-base">{players[0].name}</p>
-                      <p className="text-xs text-gray-500 dark:text-white/50">{players[0].correctCount}/{players[0].totalQuestions} {lang === "ar" ? "صحيح" : "correct"}</p>
+                      <p className="text-xs text-gray-500 dark:text-white/50">{players[0].correctCount}/{players[0].totalQuestions} {g.correct}</p>
                     </div>
                     <p className="font-black text-yellow-600 dark:text-yellow-400 text-2xl">{players[0].score}</p>
                   </motion.div>
@@ -319,7 +319,7 @@ export default function CapitalsMultiPlay() {
                         </div>
                         <div className="flex-1">
                           <p className={`font-black text-sm ${isMe ? "text-teal-600 dark:text-teal-300" : "text-gray-900 dark:text-white"}`}>{p.name}{isMe && " 👈"}</p>
-                          <p className="text-xs text-gray-400 dark:text-white/40">{p.correctCount}/{p.totalQuestions} {lang === "ar" ? "صحيح" : "correct"}</p>
+                          <p className="text-xs text-gray-400 dark:text-white/40">{p.correctCount}/{p.totalQuestions} {g.correct}</p>
                         </div>
                         <div className="text-end">
                           <p className={`font-black text-base ${isMe ? "text-teal-600 dark:text-teal-400" : "text-gray-800 dark:text-white/80"}`}>{p.score}</p>
@@ -335,11 +335,11 @@ export default function CapitalsMultiPlay() {
             <div className="flex flex-col gap-3">
               <button onClick={() => setLocation("/game/capitals")} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-black text-base shadow-lg flex items-center justify-center gap-2">
                 <Trophy className="w-5 h-5" />
-                {lang === "ar" ? "لعبة جديدة" : "New Game"}
+                {g.newGame}
               </button>
               <button onClick={() => setLocation("/")} className="w-full py-2.5 text-sm font-medium text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white transition-colors flex items-center justify-center gap-1.5">
                 <Home className="w-4 h-4" />
-                {lang === "ar" ? "الرئيسية" : "Home"}
+                {g.home}
               </button>
             </div>
           </div>
@@ -357,13 +357,13 @@ export default function CapitalsMultiPlay() {
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-5">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <TrendingUp className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                <p className="text-gray-500 dark:text-white/50 text-sm font-bold">{lang === "ar" ? "سؤال" : "Question"} {questionIdx + 1}/{totalQuestions}</p>
+                <p className="text-gray-500 dark:text-white/50 text-sm font-bold">{g.question} {questionIdx + 1}/{totalQuestions}</p>
               </div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white">{lang === "ar" ? "الترتيب الحالي" : "Current Standings"}</h2>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white">{g.currentStandings}</h2>
               {myLbEntry && (
                 <div className="mt-2 inline-flex items-center gap-2 bg-teal-500/20 border border-teal-500/30 px-3 py-1.5 rounded-full">
-                  <span className="text-teal-600 dark:text-teal-300 font-bold text-sm">{lang === "ar" ? `أنت: #${myLbEntry.rank}` : `You: #${myLbEntry.rank}`}</span>
-                  <span className="text-gray-500 dark:text-white/60 text-xs">{myLbEntry.score} {lang === "ar" ? "نقطة" : "pts"}</span>
+                  <span className="text-teal-600 dark:text-teal-300 font-bold text-sm">{g.youRank.replace("{rank}", String(myLbEntry.rank))}</span>
+                  <span className="text-gray-500 dark:text-white/60 text-xs">{myLbEntry.score} {g.pointsShort}</span>
                 </div>
               )}
             </motion.div>
@@ -395,7 +395,7 @@ export default function CapitalsMultiPlay() {
             <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-center">
               <div className="flex items-center justify-center gap-2 text-gray-400 dark:text-white/40 text-sm">
                 <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                {lang === "ar" ? "السؤال التالي قادم..." : "Next question coming..."}
+                {g.nextQuestion}
               </div>
             </motion.div>
           </div>
@@ -405,8 +405,8 @@ export default function CapitalsMultiPlay() {
   }
 
   const questionText = question?.questionMode === "country-to-capital"
-    ? (lang === "ar" ? `ما عاصمة ${question?.countryNameAr}؟` : `What is the capital of ${question?.countryNameEn}?`)
-    : (lang === "ar" ? `${question?.capitalAr} هي عاصمة أي دولة؟` : `${question?.capitalEn} is the capital of which country?`);
+    ? g.countryCapitalQuestion.replace("{country}", lang === "ar" ? question?.countryNameAr ?? "" : question?.countryNameEn ?? "")
+    : g.capitalCountryQuestion.replace("{capital}", lang === "ar" ? question?.capitalAr ?? "" : question?.capitalEn ?? "");
 
   return (
     <Layout>
@@ -428,7 +428,7 @@ export default function CapitalsMultiPlay() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-gray-500 dark:text-white/50 bg-gray-200/80 dark:bg-white/10 px-2.5 py-1 rounded-lg">{questionIdx + 1}/{totalQuestions}</span>
-              <button onClick={toggleMute} className="p-1.5 rounded-lg bg-gray-200/80 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <button aria-label={muted ? t.escapeClass.unmute : t.escapeClass.mute} onClick={toggleMute} className="p-1.5 rounded-lg bg-gray-200/80 dark:bg-white/10 text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
             </div>
@@ -440,7 +440,7 @@ export default function CapitalsMultiPlay() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className="font-black text-gray-900 dark:text-white">{myScore} <span className="text-xs text-gray-500 dark:text-white/50">{lang === "ar" ? "نقطة" : "pts"}</span></div>
+              <div className="font-black text-gray-900 dark:text-white">{myScore} <span className="text-xs text-gray-500 dark:text-white/50">{g.pointsShort}</span></div>
             </div>
           </div>
 
@@ -490,8 +490,8 @@ export default function CapitalsMultiPlay() {
                   </div>
                   <div className={`py-2 px-4 text-center text-xs font-bold text-gray-500 dark:text-white/50 ${phase === "feedback" && feedback?.correct ? "bg-green-500/30" : phase === "feedback" ? "bg-red-500/20" : "bg-gray-50 dark:bg-white/5"}`}>
                     {question.questionMode === "country-to-capital"
-                      ? (lang === "ar" ? "اختر العاصمة الصحيحة" : "Choose the correct capital")
-                      : (lang === "ar" ? "اختر الدولة الصحيحة" : "Choose the correct country")}
+                      ? g.chooseCapital
+                      : g.chooseCountry}
                   </div>
                 </div>
 
@@ -505,7 +505,7 @@ export default function CapitalsMultiPlay() {
                           {feedback.streak >= 3 && <span className="text-orange-400 font-bold text-xs">🔥 {feedback.streak}</span>}
                         </>
                       ) : (
-                        <span className="text-red-500 dark:text-red-400 font-bold text-sm">❌ {lang === "ar" ? "خطأ!" : "Wrong!"}</span>
+                        <span className="text-red-500 dark:text-red-400 font-bold text-sm">❌ {g.wrong}</span>
                       )}
                     </motion.div>
                   )}

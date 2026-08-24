@@ -17,7 +17,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export default function ColorSetup() {
-  const { lang } = useI18n();
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
 
   const [leaderboard, setLeaderboard] = useState<BasicLeaderboardEntry[]>([]);
@@ -46,8 +46,8 @@ export default function ColorSetup() {
       iconGradient="from-violet-500 to-fuchsia-600"
       iconShadow="shadow-violet-500/40"
       icon={<Palette className="w-10 h-10 text-white" />}
-      title={lang === "ar" ? "لعبة الألوان" : "Find the Different Color"}
-      subtitle={lang === "ar" ? "هل عينك حادة بما يكفي؟ لعبة الألوان !" : "Is your eye sharp enough? Find the odd square!"}
+      title={t.colorGame.title}
+      subtitle={t.colorGame.subtitle}
     >
       <HowToPlayCard accentColor="text-violet-500">
         <div className="flex items-center gap-4">
@@ -67,9 +67,7 @@ export default function ColorSetup() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {lang === "ar"
-              ? "ابحث عن المربع المختلف في اللون! كل مستوى يزداد صعوبة — الشبكة أكبر والفرق أصغر."
-              : "Find the square with a slightly different color! Each level gets harder — bigger grid, smaller difference."}
+            {t.colorGame.instructions}
           </p>
         </div>
       </HowToPlayCard>
@@ -78,7 +76,7 @@ export default function ColorSetup() {
         onClick={() => setLocation("/game/color/play")}
         gradient="from-violet-500 to-fuchsia-600"
         shadow="shadow-violet-500/30"
-        label={lang === "ar" ? "ابدأ اللعب" : "Start Playing"}
+        label={t.colorGame.start}
       />
 
       <ChallengeFriendButton
@@ -91,7 +89,7 @@ export default function ColorSetup() {
         {showArenaLobby && (
           <MultiplayerLobby
             gameId="color"
-            gameTitle={lang === "ar" ? "لعبة الألوان" : "Color Game"}
+            gameTitle={t.colorGame.lobbyTitle}
             playUrl="/game/color/play"
             playerName=""
             onClose={() => setShowArenaLobby(false)}

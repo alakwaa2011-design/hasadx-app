@@ -9,6 +9,7 @@ import {
   CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon, Sparkles, MonitorPlay,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useI18n } from "@/lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,7 @@ interface LiveState {
    verifies the session via socket.request.session.teacherId on every
    command. The big PIN + slide nav + activity reveals all live here. */
 export default function PresentationControl() {
+  const { lang, dir, t } = useI18n();
   const params = useParams<{ sessionId: string }>();
   const [, setLocation] = useLocation();
   const sid = Number(params.sessionId);
@@ -129,7 +131,7 @@ export default function PresentationControl() {
     fetch(`${API_BASE}/api/presentations/sessions/${sid}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((j) => setInfo(j))
-      .catch(() => toast.error("تعذّر تحميل الجلسة"))
+      .catch(() => toast.error(t.presentation.loadError))
       .finally(() => setLoading(false));
   }, [sid]);
 
@@ -265,7 +267,7 @@ export default function PresentationControl() {
      "previous in reading order" key always points to the start of
      the line. Skipped when the user is typing in a text field so
      editing the title or PIN doesn't paginate the deck. */
-  const isAr = info?.deck?.language !== "en";
+  const isAr = lang === "ar";
   useEffect(() => {
     if (!Number.isFinite(sid)) return;
     const ended = (live?.status ?? info?.session.status) === "ended";
@@ -358,7 +360,7 @@ export default function PresentationControl() {
   }
   function copyPin() {
     if (!info?.session.pin) return;
-    navigator.clipboard.writeText(info.session.pin).then(() => toast.success("تم نسخ الـ PIN"));
+    navigator.clipboard.writeText(info.session.pin).then(() => toast.success(t.presentation.joinCode));
   }
   function joinUrl() {
     if (!info?.session.pin) return "";
@@ -367,7 +369,7 @@ export default function PresentationControl() {
   function copyJoinLink() {
     const url = joinUrl();
     if (!url) return;
-    navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ الرابط"));
+    navigator.clipboard.writeText(url).then(() => toast.success(t.presentation.joinInstruction));
   }
   async function shareJoinLink() {
     const url = joinUrl();
@@ -398,7 +400,7 @@ export default function PresentationControl() {
   const ended = (live?.status ?? info.session.status) === "ended";
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 text-white p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+    <div dir={dir} className="min-h-screen bg-slate-950 text-white p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold truncate">{info.deck?.title ?? ""}</h1>

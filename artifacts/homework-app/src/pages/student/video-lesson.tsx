@@ -150,9 +150,10 @@ export default function StudentVideoLesson() {
   const [, params] = useRoute("/video/:id");
   const [, setLocation] = useLocation();
   const id = parseInt(params?.id || "0");
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
+  const copy = t.studentVideo;
   const isAr = lang === "ar";
-  const BackIcon = isAr ? ArrowLeft : ArrowRight;
+  const BackIcon = dir === "rtl" ? ArrowLeft : ArrowRight;
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -214,13 +215,7 @@ export default function StudentVideoLesson() {
       .then((r) => {
         if (!r.ok) {
           setError(
-            r.status === 404
-              ? isAr
-                ? "درس غير موجود"
-                : "Lesson not found"
-              : isAr
-                ? "خطأ في تحميل الدرس"
-                : "Error loading lesson",
+            r.status === 404 ? copy.notFound : copy.loadError,
           );
           setLoading(false);
           return null;
@@ -234,7 +229,7 @@ export default function StudentVideoLesson() {
         }
       })
       .catch(() => {
-        setError(isAr ? "خطأ في تحميل الدرس" : "Error loading lesson");
+        setError(copy.loadError);
         setLoading(false);
       });
   }, [id, accessCode]);
@@ -423,7 +418,7 @@ export default function StudentVideoLesson() {
     const rawQid = activeQuestion.id;
     const questionId = typeof rawQid === "number" ? rawQid : parseInt(String(rawQid), 10);
     if (!Number.isFinite(questionId) || questionId < 1) {
-      toast.error(isAr ? "بيانات السؤال غير صالحة. أعد تحميل الصفحة." : "Invalid question data. Reload the page.");
+      toast.error(copy.invalidQuestion);
       return;
     }
     setVerifying(true);
@@ -450,26 +445,18 @@ export default function StudentVideoLesson() {
           data?.code === "classroom_disabled" ||
           data?.code === "classroom_not_allowed" ||
           (typeof data?.message === "string" &&
-            (data.message.includes("Google Classroom") || data.message.includes("كلاس روم")));
+            (data.message.includes("Google Classroom") || data.message.includes("\u0643\u0644\u0627\u0633 \u0631\u0648\u0645")));
         const fallback =
-          isAr
-            ? data?.message?.trim()
-              ? data.message
-              : `تعذّر التحقق من الإجابة (رمز ${res.status}). حاول مجدداً.`
-            : data?.message?.trim()
-              ? data.message
-              : `Could not verify answer (HTTP ${res.status}). Try again.`;
+          data?.message?.trim() ? data.message : copy.verifyAnswerStatus.replace("{status}", String(res.status));
         toast.error(
           classroomLeak
-            ? isAr
-              ? "تعذّر التحقق من الإجابة. حاول مجدداً."
-              : "Could not verify answer. Try again."
+            ? copy.verifyAnswerError
             : fallback,
         );
         return;
       }
       if (typeof data?.isCorrect !== "boolean") {
-        toast.error(isAr ? "استجابة غير متوقعة من الخادم." : "Unexpected server response.");
+        toast.error(copy.unexpectedResponse);
         return;
       }
       const earnedPts = typeof data.earnedPoints === "number" ? data.earnedPoints : 0;
@@ -481,7 +468,7 @@ export default function StudentVideoLesson() {
       if (data.isCorrect) setSessionEarned((s) => s + earnedPts);
     } catch {
       toast.error(
-        isAr ? "تعذّر الاتصال بالخادم. تحقق من الشبكة." : "Could not reach the server. Check your connection.",
+        copy.connectionError,
       );
     } finally {
       setVerifying(false);
@@ -508,14 +495,14 @@ export default function StudentVideoLesson() {
     if (classStudents.length > 0) {
       if (!studentId || !studentName.trim()) {
         toast.error(
-          isAr ? "يرجى اختيار اسمك من القائمة لتسجيل الدرجة." : "Please select your name from the list to record your score.",
+          copy.selectNameError,
         );
         scrollToIdentity();
         window.setTimeout(() => studentSelectRef.current?.focus(), 400);
         return;
       }
     } else if (!studentName.trim()) {
-      toast.error(isAr ? "يرجى إدخال اسمك لتسجيل الدرجة." : "Please enter your name to record your score.");
+      toast.error(copy.enterNameError);
       scrollToIdentity();
       window.setTimeout(() => studentNameInputRef.current?.focus(), 400);
       return;
@@ -539,12 +526,12 @@ export default function StudentVideoLesson() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Error");
+        throw new Error(err.message || copy.submissionError);
       }
       const data = await res.json();
       setResult(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : isAr ? "خطأ في التسليم" : "Submission error";
+      const message = err instanceof Error ? err.message : copy.submissionError;
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -580,8 +567,11 @@ export default function StudentVideoLesson() {
         <div
           className="flex min-h-[50vh] items-center justify-center"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+          role="status"
+          aria-label={t.solve.loading}
         >
           <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#1E4D35]/25 border-t-[#1E4D35]" />
+          <span className="sr-only">{t.solve.loading}</span>
         </div>
       </Layout>
     );
@@ -593,9 +583,9 @@ export default function StudentVideoLesson() {
         <div
           className="min-h-[60vh] px-4 py-16 text-center text-lg font-black text-[#374151]"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-          dir={isAr ? "rtl" : "ltr"}
+          dir={dir}
         >
-          {error || (isAr ? "درس غير موجود" : "Lesson not found")}
+          {error || copy.notFound}
         </div>
       </Layout>
     );
@@ -607,12 +597,12 @@ export default function StudentVideoLesson() {
         <div
           className="min-h-[100dvh] overflow-x-hidden px-4 py-10"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-          dir="rtl"
+          dir={dir}
         >
           <div className="mx-auto max-w-md">
             <Link href="/" className="mb-6 inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-[#64748B] hover:text-[#0f2918]">
               <BackIcon className="h-4 w-4" />
-              {isAr ? "العودة" : "Back"}
+              {copy.back}
             </Link>
             <Card className="border border-[#e8ece9] bg-white p-8 shadow-lg" style={{ borderRadius: "24px", boxShadow: CARD_SHADOW }}>
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#eef5f0] text-[#1E4D35]">
@@ -620,15 +610,15 @@ export default function StudentVideoLesson() {
               </div>
               <h2 className="mb-2 text-center text-xl font-black text-[#0f2918]">{lesson.title}</h2>
               <p className="mb-6 text-center text-sm leading-relaxed text-[#64748B]">
-                {isAr ? "هذا الدرس يتطلب كود دخول" : "This lesson requires an access code"}
+                {copy.requiresCode}
               </p>
-              <Label className="mb-2 block text-right text-xs font-bold text-[#64748B]">
-                {isAr ? "رمز الدخول" : "Access code"}
+              <Label className="mb-2 block text-start text-xs font-bold text-[#64748B]">
+                {copy.accessCode}
               </Label>
               <Input
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                placeholder={isAr ? "أدخل الكود" : "Enter code"}
+                placeholder={copy.enterCode}
                 dir="ltr"
                 className={cn("mb-4 min-h-[52px] rounded-2xl border-2 text-center font-mono tracking-[0.25em]", TRANSITION)}
               />
@@ -636,7 +626,7 @@ export default function StudentVideoLesson() {
                 <p className="mb-3 text-center text-sm font-bold text-red-700/90">{accessError}</p>
               )}
               <p className="text-center text-[11px] text-[#94a3ab]">
-                {isAr ? "سيتم تحميل الدرس تلقائياً عند إدخال الكود الصحيح." : "The lesson loads when the code matches."}
+                {copy.codeHint}
               </p>
             </Card>
           </div>
@@ -651,7 +641,7 @@ export default function StudentVideoLesson() {
         <div
           className="min-h-[100dvh] overflow-x-hidden px-4 py-10"
           style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-          dir={isAr ? "rtl" : "ltr"}
+          dir={dir}
         >
           <div className="mx-auto max-w-2xl">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -663,7 +653,7 @@ export default function StudentVideoLesson() {
                   <BadgeCheck className="h-9 w-9" strokeWidth={2.25} />
                 </div>
                 <h1 className="mb-2 text-2xl font-black text-[#0f2918] sm:text-3xl">
-                  {isAr ? "أحسنت،" : "Great job,"} {result.studentName}!
+                  {copy.greatJob} {result.studentName}!
                 </h1>
                 {result.studentClass && (
                   <p className="mb-3 flex items-center justify-center gap-2 text-sm font-semibold text-[#64748B]">
@@ -671,11 +661,11 @@ export default function StudentVideoLesson() {
                     {result.studentClass}
                   </p>
                 )}
-                <p className="mb-8 text-sm text-[#64748B]">{isAr ? "إليك ملخص أدائك في الدرس" : "Here is your lesson summary"}</p>
+                <p className="mb-8 text-sm text-[#64748B]">{copy.summary}</p>
 
                 <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
                   <div>
-                    <p className="mb-1 text-xs font-bold text-[#94a3ab]">{isAr ? "النقاط" : "Points"}</p>
+                    <p className="mb-1 text-xs font-bold text-[#94a3ab]">{copy.points}</p>
                     <p className="text-3xl font-black tabular-nums text-[#1E4D35]">
                       {result.earnedPoints}{" "}
                       <span className="text-lg font-bold text-[#94a3ab]">/ {result.totalPoints}</span>
@@ -683,7 +673,7 @@ export default function StudentVideoLesson() {
                   </div>
                   <div className="hidden h-12 w-px bg-[#e8ece9] sm:block" />
                   <div>
-                    <p className="mb-1 text-xs font-bold text-[#94a3ab]">{isAr ? "النسبة" : "Score"}</p>
+                    <p className="mb-1 text-xs font-bold text-[#94a3ab]">{copy.score}</p>
                     <p
                       className={cn(
                         "text-3xl font-black tabular-nums",
@@ -695,7 +685,7 @@ export default function StudentVideoLesson() {
                   </div>
                   <div className="hidden h-12 w-px bg-[#e8ece9] sm:block" />
                   <div>
-                    <p className="mb-1 text-xs font-bold text-[#94a3ab]">{isAr ? "صحيح" : "Correct"}</p>
+                    <p className="mb-1 text-xs font-bold text-[#94a3ab]">{copy.correct}</p>
                     <p className="text-3xl font-black tabular-nums text-[#0f2918]">
                       {result.correctAnswers}{" "}
                       <span className="text-lg font-bold text-[#94a3ab]">/ {result.totalQuestions}</span>
@@ -704,7 +694,7 @@ export default function StudentVideoLesson() {
                 </div>
               </div>
 
-              <h2 className="mb-4 text-lg font-black text-[#0f2918]">{isAr ? "تفاصيل الإجابات" : "Answer breakdown"}</h2>
+              <h2 className="mb-4 text-lg font-black text-[#0f2918]">{copy.answerBreakdown}</h2>
               <div className="space-y-3">
                 {result.answers.map((ans, i) => (
                   <Card
@@ -726,7 +716,7 @@ export default function StudentVideoLesson() {
                       <div className="min-w-0 flex-1">
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="font-bold leading-snug text-[#0f2918]">
-                            {isAr ? "سؤال" : "Q"} {i + 1}: {ans.questionText}
+                            {copy.questionShort} {i + 1}: {ans.questionText}
                           </p>
                           <span
                             className={cn(
@@ -738,7 +728,7 @@ export default function StudentVideoLesson() {
                           </span>
                         </div>
                         <p className="text-sm text-[#64748B]">
-                          <span className="font-semibold">{isAr ? "إجابتك:" : "Your answer:"}</span>{" "}
+                          <span className="font-semibold">{copy.yourAnswer}</span>{" "}
                           <span className={cn("font-black", ans.isCorrect ? "text-emerald-800" : "text-rose-800/90")}>
                             {ans.selectedAnswer}
                           </span>
@@ -752,7 +742,7 @@ export default function StudentVideoLesson() {
               <div className="mt-10 text-center">
                 <Link href="/">
                   <Button variant="outline" className="min-h-[48px] rounded-2xl border-2 px-8 font-black">
-                    {isAr ? "العودة للرئيسية" : "Back to home"}
+                    {copy.backHome}
                   </Button>
                 </Link>
               </div>
@@ -776,7 +766,7 @@ export default function StudentVideoLesson() {
       <div
         className="min-h-[100dvh] overflow-x-hidden pb-8"
         style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
-        dir={isAr ? "rtl" : "ltr"}
+        dir={dir}
       >
         <div className="mx-auto max-w-4xl px-4 py-6">
           <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -789,16 +779,16 @@ export default function StudentVideoLesson() {
               className="flex min-h-[44px] shrink-0 items-center gap-2 rounded-2xl border border-[#e8ece9] bg-white px-4 text-sm font-black text-[#64748B] shadow-sm transition-colors hover:bg-[#f9faf9]"
             >
               <BackIcon className="h-4 w-4" />
-              {isAr ? "خروج" : "Exit"}
+              {copy.exit}
             </button>
-            <h1 className="min-w-0 flex-1 truncate text-right text-lg font-black text-[#0f2918] sm:text-xl">{lesson.title}</h1>
+            <h1 className="min-w-0 flex-1 truncate text-start text-lg font-black text-[#0f2918] sm:text-xl">{lesson.title}</h1>
             <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] font-bold text-[#64748B]">
               <span className="rounded-full bg-white px-3 py-1.5 shadow-sm ring-1 ring-[#eef2ef]">
                 {answeredQuestions.size}/{lesson.questions.length}
               </span>
               {sessionEarned > 0 && (
                 <span className="rounded-full bg-[#eef5f0] px-3 py-1.5 font-black text-[#1E4D35] ring-1 ring-[#1E4D35]/10">
-                  +{sessionEarned} {isAr ? "نقطة" : "pts"}
+                  +{sessionEarned} {copy.pointShort}
                 </span>
               )}
             </div>
@@ -829,18 +819,16 @@ export default function StudentVideoLesson() {
                   onClick={(e) => e.stopPropagation()}
                   className="w-full max-w-sm rounded-[24px] border bg-white p-6 shadow-2xl"
                   style={{ borderColor: CARD_BORDER }}
-                  dir={isAr ? "rtl" : "ltr"}
+                  dir={dir}
                 >
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="font-black text-[#0f2918]">{isAr ? "مغادرة الدرس؟" : "Leave lesson?"}</h3>
+                    <h3 className="font-black text-[#0f2918]">{copy.leaveTitle}</h3>
                     <button type="button" onClick={() => setShowExitConfirm(false)} className="rounded-xl p-2 hover:bg-[#f3f7f4]">
                       <X className="h-4 w-4 text-[#64748B]" />
                     </button>
                   </div>
                   <p className="mb-5 text-sm leading-relaxed text-[#64748B]">
-                    {isAr
-                      ? "لم تكمل الدرس بعد. الخروج الآن قد يفقد تقدمك."
-                      : "You have not finished. Leaving may lose your progress."}
+                    {copy.leaveWarning}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -848,14 +836,14 @@ export default function StudentVideoLesson() {
                       onClick={() => setShowExitConfirm(false)}
                       className="min-h-[44px] flex-1 rounded-2xl bg-[#f3f7f4] font-black text-[#374151] hover:bg-[#eef5f0]"
                     >
-                      {isAr ? "متابعة" : "Stay"}
+                      {copy.stay}
                     </button>
                     <button
                       type="button"
                       onClick={() => setLocation("/")}
                       className="min-h-[44px] flex-1 rounded-2xl bg-rose-700/90 font-black text-white hover:bg-rose-700"
                     >
-                      {isAr ? "خروج" : "Leave"}
+                      {copy.leave}
                     </button>
                   </div>
                 </motion.div>
@@ -863,7 +851,7 @@ export default function StudentVideoLesson() {
             )}
           </AnimatePresence>
 
-          {/* مشغل + تايم لاين — السؤال يظهر طبقة فوق الفيديو */}
+          {/* Player and timeline; questions appear over the video. */}
           <section
             className="overflow-hidden rounded-[24px] border bg-white shadow-lg"
             style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
@@ -872,7 +860,7 @@ export default function StudentVideoLesson() {
               {isYoutube ? (
                 <div className="absolute inset-0 z-0 h-full w-full">
                   <div ref={ytPlayerMountRef} className="h-full w-full min-h-0" />
-                  {/* يمنع فتح youtube.com عند النقر على شعار/رابط يوتيوب (غالباً أسفل يمين أو بعد زر التشغيل يساراً) */}
+                  {/* Prevent opening youtube.com from the embedded logo/link. */}
                   <div
                     className="pointer-events-auto absolute bottom-0 right-0 z-[12] h-[52px] w-[130px] max-[380px]:w-[100px] sm:h-[56px] sm:w-[150px]"
                     aria-hidden
@@ -889,7 +877,7 @@ export default function StudentVideoLesson() {
                 <div className="pointer-events-auto absolute left-3 top-3 z-[15] max-w-[min(46%,13.5rem)]">
                   <div className="rounded-lg bg-white/95 px-2 py-1.5 shadow-lg ring-1 ring-black/10 backdrop-blur-sm">
                     <p className="text-[10px] font-black text-[#1E4D35]">
-                      {isAr ? `الأسئلة (${sortedQs.length})` : `Questions (${sortedQs.length})`}
+                      {copy.questions} ({sortedQs.length})
                     </p>
                     <div className="mt-1 flex flex-col gap-0.5">
                       {sortedQs.map((q, i) => (
@@ -937,13 +925,13 @@ export default function StudentVideoLesson() {
                         <div className="shrink-0 border-b border-[#f1f4f2] px-4 pb-3 pt-4">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-[#eef5f0] px-2.5 py-0.5 text-[10px] font-black text-[#1E4D35]">
-                              {isAr ? "سؤال" : "Q"} {activeQuestionOrder}/{lesson.questions.length}
+                              {copy.questionShort} {activeQuestionOrder}/{lesson.questions.length}
                             </span>
                             <span dir="ltr" className="rounded-full bg-[#f9faf9] px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-[#64748B]">
                               {formatTimestamp(activeQuestion.timestampSeconds)}
                             </span>
                             <span className="rounded-full bg-[#fcfdfc] px-2 py-0.5 text-[10px] font-bold text-[#94a3ab]">
-                              {activeQuestion.points} {isAr ? "نقطة" : "pts"}
+                              {activeQuestion.points} {copy.pointShort}
                             </span>
                           </div>
                           <p className="mt-3 text-start text-base font-black leading-relaxed text-[#0f2918]">{activeQuestion.text}</p>
@@ -1010,8 +998,7 @@ export default function StudentVideoLesson() {
                               const show = !!fb;
                               const isCor = show && cor === value;
                               const isWrong = show && sel === value && !fb.isCorrect;
-                              const labelAr = value === "true" ? "صح" : "خطأ";
-                              const labelEn = value === "true" ? "True" : "False";
+                              const label = value === "true" ? copy.truePlain : copy.falsePlain;
                               return (
                                 <button
                                   key={value}
@@ -1038,7 +1025,7 @@ export default function StudentVideoLesson() {
                                         ✕
                                       </span>
                                     )}
-                                    {isAr ? labelAr : labelEn}
+                                    {label}
                                   </span>
                                 </button>
                               );
@@ -1052,15 +1039,9 @@ export default function StudentVideoLesson() {
                           answerFeedback.correctAnswer && (
                             <p className="mt-3 text-[11px] leading-relaxed text-[#64748B]">
                               <span className="font-black text-[#0f2918]">
-                                {isAr ? "الإجابة الصحيحة: " : "Correct answer: "}
+                                {copy.correctAnswer}
                               </span>
-                              {answerFeedback.correctAnswer.trim().toLowerCase() === "true"
-                                ? isAr
-                                  ? "صح"
-                                  : "True"
-                                : isAr
-                                  ? "خطأ"
-                                  : "False"}
+                              {answerFeedback.correctAnswer.trim().toLowerCase() === "true" ? copy.truePlain : copy.falsePlain}
                             </p>
                           )}
 
@@ -1070,12 +1051,12 @@ export default function StudentVideoLesson() {
                               <Input
                                 value={selectedAnswer}
                                 onChange={(e) => setSelectedAnswer(e.target.value)}
-                                placeholder={isAr ? "اكتب إجابتك…" : "Type your answer…"}
-                                dir="rtl"
+                                placeholder={copy.typeAnswer}
+                                dir={dir}
                                 disabled={!!answerFeedback}
                                 className={cn(
                                   "min-h-[48px] flex-1 rounded-xl border-2 text-base font-semibold",
-                                  FIELD_RTL,
+                                  isAr && FIELD_RTL,
                                   answerFeedback?.isCorrect && "border-emerald-600/60 bg-emerald-50/50",
                                   answerFeedback && !answerFeedback.isCorrect && "border-rose-400/60 bg-rose-50/40",
                                 )}
@@ -1097,7 +1078,7 @@ export default function StudentVideoLesson() {
                             </div>
                             {answerFeedback && !answerFeedback.isCorrect && answerFeedback.correctAnswer && (
                               <p className="text-[12px] font-semibold leading-relaxed text-[#64748B]">
-                                <span className="font-black text-[#0f2918]">{isAr ? "الصحيح: " : "Correct: "}</span>
+                                <span className="font-black text-[#0f2918]">{copy.correctLabel}</span>
                                 {formatCorrectReveal(activeQuestion, answerFeedback.correctAnswer)}
                               </p>
                             )}
@@ -1106,7 +1087,7 @@ export default function StudentVideoLesson() {
 
                         {answerFeedback && !answerFeedback.isCorrect && answerFeedback.correctAnswer && activeQuestion.questionType === "mcq" && (
                           <p className="mt-3 text-[11px] leading-relaxed text-[#64748B]">
-                            <span className="font-black text-[#0f2918]">{isAr ? "الإجابة الصحيحة: " : "Correct: "}</span>
+                            <span className="font-black text-[#0f2918]">{copy.correctAnswer}</span>
                             {formatCorrectReveal(activeQuestion, answerFeedback.correctAnswer)}
                           </p>
                         )}
@@ -1125,7 +1106,7 @@ export default function StudentVideoLesson() {
                             style={{ background: BRAND }}
                           >
                             {verifying ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-                            {isAr ? "إرسال الإجابة" : "Submit answer"}
+                            {copy.submitAnswer}
                           </button>
                         ) : (
                           <div className="space-y-3">
@@ -1135,17 +1116,11 @@ export default function StudentVideoLesson() {
                                 answerFeedback.isCorrect ? "text-emerald-700" : "text-rose-700",
                               )}
                             >
-                              {answerFeedback.isCorrect
-                                ? isAr
-                                  ? "صحيحة"
-                                  : "Correct"
-                                : isAr
-                                  ? "خطأ"
-                                  : "Incorrect"}
+                              {answerFeedback.isCorrect ? copy.correctResult : copy.incorrect}
                             </p>
                             {answerFeedback.isCorrect && answerFeedback.earnedPoints > 0 && (
                               <p className="text-center text-sm font-black text-emerald-800">
-                                +{answerFeedback.earnedPoints} {isAr ? "نقطة" : "pts"}
+                                +{answerFeedback.earnedPoints} {copy.pointShort}
                               </p>
                             )}
                             <button
@@ -1158,7 +1133,7 @@ export default function StudentVideoLesson() {
                               style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #2a6144 100%)` }}
                             >
                               <Play className="h-5 w-5" fill="currentColor" />
-                              {isAr ? "متابعة الفيديو" : "Continue video"}
+                              {copy.continueVideo}
                             </button>
                           </div>
                         )}
@@ -1171,7 +1146,7 @@ export default function StudentVideoLesson() {
             </div>
             <div className="border-t border-[#eef2ef] px-4 py-4">
               <p className="mb-2 text-right text-[11px] font-black uppercase tracking-wide text-[#94a3ab]">
-                {isAr ? "خط الأسئلة" : "Timeline"}
+                {copy.timeline}
               </p>
               <div dir="ltr" className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
                 <div className="relative mx-auto min-h-14 min-w-[260px] px-1">
@@ -1231,21 +1206,7 @@ export default function StudentVideoLesson() {
               >
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#1E4D35]/40" aria-hidden />
                 <p className="text-[12.5px] font-medium leading-relaxed text-[#5a6b62]">
-                  {isAr ? (
-                    <>
-                      يمكنك <span className="font-semibold text-[#2d4238]">مشاهدة الفيديو</span> والإجابة على الأسئلة أعلاه دون إدخال الاسم. لتسجيل الدرجة عند الضغط على{" "}
-                      <span className="font-semibold text-[#2d4238]">«إنهاء وتسليم»</span>، يرجى{" "}
-                      <span className="font-semibold text-[#2d4238]">إدخال اسمك أو اختياره من القائمة</span> أدناه. حقل الفصل{" "}
-                      <span className="font-semibold text-[#2d4238]">اختياري</span>.
-                    </>
-                  ) : (
-                    <>
-                      You can <span className="font-semibold text-[#2d4238]">watch the video</span> and answer questions above without entering your name. To record your score when you tap{" "}
-                      <span className="font-semibold text-[#2d4238]">«Finish & submit»</span>, please{" "}
-                      <span className="font-semibold text-[#2d4238]">enter or select your name</span> below.{" "}
-                      <span className="font-semibold text-[#2d4238]">Class is optional.</span>
-                    </>
-                  )}
+                  {copy.identityHint}
                 </p>
               </div>
               <div className="space-y-5">
@@ -1253,7 +1214,7 @@ export default function StudentVideoLesson() {
                   <div className="space-y-2 text-right">
                     <Label className="text-sm font-black text-[#0f2918]">
                       <Users className="mb-0.5 inline h-4 w-4 text-[#1E4D35]" />{" "}
-                      {isAr ? "اختر اسمك من القائمة (عند التسليم)" : "Pick your name (for submission)"}
+                      {copy.selectNameSubmit}
                     </Label>
                     <select
                       ref={studentSelectRef}
@@ -1275,7 +1236,7 @@ export default function StudentVideoLesson() {
                         FIELD_RTL,
                       )}
                     >
-                      <option value="">{isAr ? "— اختر اسمك —" : "— Select —"}</option>
+                      <option value="">{copy.select}</option>
                       {classStudents.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
@@ -1285,30 +1246,30 @@ export default function StudentVideoLesson() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div className="space-y-2 text-right">
-                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "اسم الطالب (عند التسليم)" : "Your name (for submission)"}</Label>
+                    <div className="space-y-2 text-start">
+                      <Label className="text-sm font-black text-[#0f2918]">{copy.nameSubmit}</Label>
                       <Input
                         ref={studentNameInputRef}
                         value={studentName}
                         onChange={(e) => setStudentName(e.target.value)}
-                        placeholder={isAr ? "اكتب اسمك الكامل" : "Full name"}
-                        dir="rtl"
+                        placeholder={copy.fullName}
+                        dir={dir}
                         className={cn(
                           "min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
-                          FIELD_RTL,
+                          isAr && FIELD_RTL,
                         )}
                       />
                     </div>
-                    <div className="space-y-2 text-right">
-                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل (اختياري)" : "Class (optional)"}</Label>
+                    <div className="space-y-2 text-start">
+                      <Label className="text-sm font-black text-[#0f2918]">{copy.classOptional}</Label>
                       <Input
                         value={studentClass}
                         onChange={(e) => setStudentClass(e.target.value)}
-                        placeholder={isAr ? "يمكنك تركه فارغاً" : "Can be left blank"}
-                        dir="rtl"
+                        placeholder={copy.optionalHint}
+                        dir={dir}
                         className={cn(
                           "min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
-                          FIELD_RTL,
+                          isAr && FIELD_RTL,
                         )}
                       />
                     </div>
@@ -1335,7 +1296,7 @@ export default function StudentVideoLesson() {
                 style={{ background: BRAND }}
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {isAr ? "إنهاء وتسليم" : "Finish & submit"}
+                {copy.finishSubmit}
               </Button>
             )}
           </div>

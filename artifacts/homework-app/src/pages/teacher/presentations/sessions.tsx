@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import {
   Loader2,
+  ChevronLeft,
   ChevronRight,
   BarChart3,
   Users,
@@ -13,6 +14,7 @@ import {
   ExternalLink,
   Calendar,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_GREEN = "#225739";
@@ -46,6 +48,8 @@ interface HistoryPayload {
    a link through to the full per-question results, and direct CSV
    download buttons (responses + students). */
 export default function PresentationSessionsHistory() {
+  const { t, dir, lang } = useI18n();
+  const copy = t.presentationSessions;
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const deckId = Number(params.id);
@@ -56,7 +60,7 @@ export default function PresentationSessionsHistory() {
 
   useEffect(() => {
     if (!Number.isFinite(deckId)) {
-      setError("معرّف غير صالح");
+      setError(copy.invalidId);
       setLoading(false);
       return;
     }
@@ -73,21 +77,23 @@ export default function PresentationSessionsHistory() {
           setLocation("/login");
           return;
         }
-        if (e.message === "forbidden") setError("لا تملك صلاحية الوصول");
-        else setError("تعذّر تحميل النتائج");
-        toast.error("تعذّر تحميل النتائج");
+        if (e.message === "forbidden") setError(copy.forbidden);
+        else setError(copy.loadError);
+        toast.error(copy.loadError);
       })
       .finally(() => setLoading(false));
-  }, [deckId, setLocation]);
+  }, [copy, deckId, setLocation]);
+
+  const BackIcon = dir === "rtl" ? ChevronRight : ChevronLeft;
 
   return (
     <Layout>
-      <div dir="rtl" className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-6xl">
+      <div dir={dir} className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-6xl">
         <button
           onClick={() => setLocation(`/teacher/presentations/${deckId}`)}
           className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-3"
         >
-          <ChevronRight className="w-4 h-4" /> العودة إلى المحرّر
+          <BackIcon className="w-4 h-4" /> {copy.backToEditor}
         </button>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -100,10 +106,10 @@ export default function PresentationSessionsHistory() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black leading-tight">
-                نتائج الجلسات السابقة
+                {copy.title}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {data?.deck?.title ?? "العرض"}
+                {data?.deck?.title ?? copy.presentationFallback}
               </p>
             </div>
           </div>
@@ -114,20 +120,20 @@ export default function PresentationSessionsHistory() {
               className="gap-2"
               style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
             >
-              🔀 مقارنة الجلسات
+              🔀 {copy.compareSessions}
             </Button>
             <Button
               onClick={() => setLocation(`/teacher/presentations/${deckId}`)}
               variant="outline"
               className="gap-2"
             >
-              <ExternalLink className="w-4 h-4" /> فتح المحرّر
+              <ExternalLink className="w-4 h-4" /> {copy.openEditor}
             </Button>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-20" role="status" aria-label={copy.loading}>
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
@@ -135,11 +141,11 @@ export default function PresentationSessionsHistory() {
             {error}
           </div>
         ) : !data || data.sessions.length === 0 ? (
-          <EmptyState />
+          <EmptyState copy={copy} />
         ) : (
           <div className="space-y-3">
             {data.sessions.map((s) => (
-              <SessionRowCard key={s.id} s={s} onOpen={() => setLocation(`/p/results/${s.id}`)} />
+              <SessionRowCard key={s.id} s={s} lang={lang} copy={copy} onOpen={() => setLocation(`/p/results/${s.id}`)} />
             ))}
           </div>
         )}
@@ -148,7 +154,7 @@ export default function PresentationSessionsHistory() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ copy }: { copy: ReturnType<typeof useI18n>["t"]["presentationSessions"] }) {
   return (
     <div className="text-center py-16 px-6 rounded-2xl border-2 border-dashed border-border bg-muted/30">
       <div
@@ -157,18 +163,23 @@ function EmptyState() {
       >
         <BarChart3 className="w-8 h-8" />
       </div>
-      <h3 className="font-black text-lg mb-1">لا توجد جلسات سابقة</h3>
+      <h3 className="font-black text-lg mb-1">{copy.emptyTitle}</h3>
       <p className="text-sm text-muted-foreground max-w-md mx-auto">
-        ابدأ جلسة تفاعلية عبر QR وكود الانضمام من زر «بدء جلسة تفاعلية» في المحرّر، وستظهر النتائج هنا بعد انتهاء الجلسة.
+        {copy.emptyBody}
       </p>
     </div>
   );
 }
 
-function SessionRowCard({ s, onOpen }: { s: SessionRow; onOpen: () => void }) {
+function SessionRowCard({ s, onOpen, lang, copy }: {
+  s: SessionRow;
+  onOpen: () => void;
+  lang: "ar" | "en";
+  copy: ReturnType<typeof useI18n>["t"]["presentationSessions"];
+}) {
   const dateLabel = (() => {
     const d = new Date(s.startedAt ?? s.createdAt);
-    return d.toLocaleString("ar", {
+    return d.toLocaleString(lang, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -196,21 +207,21 @@ function SessionRowCard({ s, onOpen }: { s: SessionRow; onOpen: () => void }) {
                   : { background: "#D9A52122", color: "#7a5a00" }
               }
             >
-              {isEnded ? "منتهية" : "قيد التشغيل"}
+              {isEnded ? copy.ended : copy.running}
             </span>
             <span
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-muted text-foreground/70"
-              title="رقم الجلسة"
+              title={copy.sessionNumber}
             >
               PIN <span className="tabular-nums" style={{ color: BRAND_GOLD }}>{s.pin}</span>
             </span>
             {s.targetClassName ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700">
-                صف · {s.targetClassName}
+                {copy.classPrefix} · {s.targetClassName}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700">
-                وضع الضيوف
+                {copy.guestMode}
               </span>
             )}
           </div>
@@ -222,22 +233,22 @@ function SessionRowCard({ s, onOpen }: { s: SessionRow; onOpen: () => void }) {
             {s.durationMin != null && (
               <span className="inline-flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                {s.durationMin} د
+                {s.durationMin} {copy.minutesShort}
               </span>
             )}
             <span className="inline-flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
               {s.participantsCount}
-              {s.classSize != null ? ` / ${s.classSize}` : ""} مشارك
+              {s.classSize != null ? ` / ${s.classSize}` : ""} {copy.participant}
             </span>
           </div>
         </div>
 
         {/* Right: numeric stats + actions */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <Stat label="المتوسط" value={s.avgScorePct != null ? `${s.avgScorePct}%` : "—"} accent={BRAND_GREEN} />
-          <Stat label="المشاركة" value={s.participationPct != null ? `${s.participationPct}%` : "—"} accent={BRAND_GOLD} />
-          <Stat label="الإجابات" value={String(s.totalAnswers)} />
+          <Stat label={copy.average} value={s.avgScorePct != null ? `${s.avgScorePct}%` : "—"} accent={BRAND_GREEN} />
+          <Stat label={copy.participation} value={s.participationPct != null ? `${s.participationPct}%` : "—"} accent={BRAND_GOLD} />
+          <Stat label={copy.answers} value={String(s.totalAnswers)} />
           <div className="flex items-center gap-2">
             <Button
               onClick={onOpen}
@@ -245,23 +256,23 @@ function SessionRowCard({ s, onOpen }: { s: SessionRow; onOpen: () => void }) {
               className="gap-1 font-bold"
               style={{ background: BRAND_GREEN, color: "white" }}
             >
-              فتح
+              {copy.open}
             </Button>
             <a
               href={`${API_BASE}/api/presentations/sessions/${s.id}/students.csv`}
               className="inline-flex items-center gap-1 px-2.5 h-8 rounded-md border border-border text-xs font-bold hover:bg-muted"
-              title="تنزيل ملخّص الطلاب CSV"
+              title={copy.downloadStudentsCsv}
               onClick={(e) => e.stopPropagation()}
             >
-              <Download className="w-3.5 h-3.5" /> الطلاب
+              <Download className="w-3.5 h-3.5" /> {copy.students}
             </a>
             <a
               href={`${API_BASE}/api/presentations/sessions/${s.id}/results.csv`}
               className="inline-flex items-center gap-1 px-2.5 h-8 rounded-md border border-border text-xs font-bold hover:bg-muted"
-              title="تنزيل تفاصيل الإجابات CSV"
+              title={copy.downloadAnswersCsv}
               onClick={(e) => e.stopPropagation()}
             >
-              <Download className="w-3.5 h-3.5" /> الإجابات
+              <Download className="w-3.5 h-3.5" /> {copy.answers}
             </a>
           </div>
         </div>

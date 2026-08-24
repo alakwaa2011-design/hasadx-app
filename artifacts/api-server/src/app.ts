@@ -10,6 +10,7 @@ import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { logActivity } from "./lib/activity-logger";
+import { localizeApiMessages } from "./lib/request-locale";
 
 export async function ensureSessionTable() {
   await pool.query(`
@@ -151,6 +152,12 @@ app.use(
     credentials: true,
   }),
 );
+
+// Keep UI feedback localized for every API router. This sits at the API
+// registration boundary rather than on individual routers so newly mounted
+// routes cannot silently miss localization. It only replaces top-level
+// `message`/`error` strings and leaves response data intact.
+app.use("/api", localizeApiMessages);
 
 const IMAGE_UPLOAD_PATHS = new Set(["/api/ai/extract-questions-from-image"]);
 // Routes that may carry image data (paper-submission photo, whiteboard PNG

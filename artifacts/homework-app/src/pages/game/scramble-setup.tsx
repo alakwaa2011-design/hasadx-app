@@ -40,8 +40,8 @@ const DIFF_OPTIONS: { key: ScrambleDifficulty; icon: React.ReactNode; color: str
 ];
 
 export default function ScrambleSetup() {
-  const { lang } = useI18n();
-  const isRtl = lang === "ar";
+  const { lang, t, dir } = useI18n();
+  const isRtl = dir === "rtl";
   const [, setLocation] = useLocation();
 
   const [category, setCategory] = useState<string>("all");
@@ -103,9 +103,9 @@ export default function ScrambleSetup() {
 
   const handleCopyPin = (p: string) => {
     const url = `${window.location.origin}/game/scramble/play?pin=${p}`;
-    const text = lang === "ar"
-      ? `🔤 الكلمات المبعثرة\n🔑 الرمز: ${p}\n🔗 ${url}`
-      : `🔤 Scrambled Words\n🔑 PIN: ${p}\n🔗 ${url}`;
+    const text = t.gamePages.scramble.sharePin
+      .replace("{pin}", p)
+      .replace("{url}", url);
     navigator.clipboard.writeText(text).then(() => {
       setCopiedPin(p);
       setTimeout(() => setCopiedPin(null), 2000);
@@ -125,8 +125,8 @@ export default function ScrambleSetup() {
   };
 
   const catLabel = category === "all"
-    ? (lang === "ar" ? "الكل" : "All")
-    : (lang === "ar" ? CATEGORY_LABELS[category]?.ar || category : CATEGORY_LABELS[category]?.en || category);
+    ? t.gamePages.scramble.all
+    : (CATEGORY_LABELS[category]?.[lang] || category);
 
   return (
     <GameSetupLayout
@@ -134,8 +134,8 @@ export default function ScrambleSetup() {
       iconGradient="from-violet-500 via-purple-500 to-fuchsia-500"
       iconShadow="shadow-purple-500/30"
       icon={<Shuffle className="w-8 h-8 text-white" />}
-      title={lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words"}
-      subtitle={lang === "ar" ? "رتّب الحروف المبعثرة لتكوّن الكلمة الصحيحة!" : "Unscramble the letters to form the correct word!"}
+       title={t.gamePages.scramble.title}
+       subtitle={t.gamePages.scramble.subtitle}
       headerSize="sm"
     >
       {isTeacher && (
@@ -145,7 +145,7 @@ export default function ScrambleSetup() {
             onClick={() => setLocation("/game/scramble/create")}
             className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all">
             <PenLine className="w-4 h-4" />
-            {lang === "ar" ? "أنشئ كلمات مخصصة" : "Create Custom Words"}
+             {t.gamePages.scramble.createCustomWords}
           </button>
         </motion.div>
       )}
@@ -157,10 +157,10 @@ export default function ScrambleSetup() {
         className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 border border-violet-200/60 dark:border-violet-800/30 rounded-2xl p-4 mb-3"
       >
         <p className="text-[10px] font-bold text-violet-500 dark:text-violet-400 uppercase tracking-widest text-center mb-3">
-          {lang === "ar" ? "كيف تلعب؟" : "How to Play"}
+           {t.gamePages.howToPlay}
         </p>
         <div className="flex items-center justify-center gap-2 mb-2 flex-wrap" dir="ltr">
-          {["ك", "ت", "ا", "ب"].map((letter, i) => (
+          {t.gamePages.scramble.demoWord.split("").map((letter, i) => (
             <motion.div
               key={i}
               initial={{ scale: 0, rotate: -15 }}
@@ -179,7 +179,7 @@ export default function ScrambleSetup() {
           transition={{ delay: 0.5 }}
           className="text-center text-xs text-muted-foreground"
         >
-          {lang === "ar" ? "← اضغط على الحروف لترتيبها وتكوين كلمة" : "Tap letters to build the correct word →"}
+           {t.gamePages.scramble.howToPlay}
         </motion.div>
       </motion.div>
 
@@ -188,7 +188,7 @@ export default function ScrambleSetup() {
         onClick={handleStart}
         className="w-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-xl p-3.5 shadow-lg shadow-purple-500/25 hover:shadow-xl transition-all text-center mb-2 flex items-center justify-center gap-2">
         <Play className="w-5 h-5 text-white" />
-        <span className="font-black text-white text-base">{lang === "ar" ? "ابدأ اللعب" : "Start Playing"}</span>
+         <span className="font-black text-white text-base">{t.gamePages.startPlaying}</span>
       </motion.button>
 
       <motion.button initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
@@ -196,14 +196,14 @@ export default function ScrambleSetup() {
         onClick={() => setShowArenaLobby(true)}
         className="w-full bg-gradient-to-r from-indigo-500 to-purple-700 rounded-xl p-3.5 shadow-lg hover:shadow-xl transition-all text-center mb-3 flex items-center justify-center gap-2">
         <Swords className="w-5 h-5 text-white" />
-        <span className="font-black text-white text-base">{lang === "ar" ? "تحدِّ صديقاً ⚔️" : "Challenge a Friend ⚔️"}</span>
+         <span className="font-black text-white text-base">{t.gamePages.challengeFriend}</span>
       </motion.button>
 
       <AnimatePresence>
         {showArenaLobby && (
           <MultiplayerLobby
             gameId="scramble"
-            gameTitle={lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words"}
+             gameTitle={t.gamePages.scramble.title}
             playUrl={`/game/scramble/play?difficulty=${difficulty}${category !== "all" ? `&category=${category}` : ""}`}
             playerName=""
             onClose={() => setShowArenaLobby(false)}
@@ -216,7 +216,7 @@ export default function ScrambleSetup() {
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2 flex-1 min-w-[140px]">
             <Shuffle className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-            <span className="text-xs font-bold text-foreground shrink-0">{lang === "ar" ? "الفئة" : "Category"}</span>
+             <span className="text-xs font-bold text-foreground shrink-0">{t.gamePages.category}</span>
             <div className="relative flex-1">
               <button
                 onClick={() => setCatOpen(!catOpen)}
@@ -229,14 +229,14 @@ export default function ScrambleSetup() {
                   <button
                     onClick={() => { setCategory("all"); setCatOpen(false); }}
                     className={`w-full text-start px-3 py-2 text-xs font-bold transition-colors ${category === "all" ? "bg-purple-100 dark:bg-purple-950/30 text-purple-600" : "hover:bg-muted"}`}>
-                    {lang === "ar" ? "الكل" : "All"}
+                     {t.gamePages.scramble.all}
                   </button>
                   {CATEGORIES.map(cat => (
                     <button
                       key={cat}
                       onClick={() => { setCategory(cat); setCatOpen(false); }}
                       className={`w-full text-start px-3 py-2 text-xs font-bold transition-colors ${category === cat ? "bg-purple-100 dark:bg-purple-950/30 text-purple-600" : "hover:bg-muted"}`}>
-                      {lang === "ar" ? CATEGORY_LABELS[cat]?.ar || cat : CATEGORY_LABELS[cat]?.en || cat}
+                      {CATEGORY_LABELS[cat]?.[lang] || cat}
                     </button>
                   ))}
                 </div>
@@ -246,7 +246,7 @@ export default function ScrambleSetup() {
 
           <div className="flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-            <span className="text-xs font-bold text-foreground shrink-0">{lang === "ar" ? "المستوى" : "Level"}</span>
+             <span className="text-xs font-bold text-foreground shrink-0">{t.gamePages.level}</span>
             <div className="flex gap-1">
               {DIFF_OPTIONS.map(d => (
                 <button
@@ -269,12 +269,13 @@ export default function ScrambleSetup() {
         className="bg-card border border-border/60 rounded-xl p-3 shadow-sm mb-3">
         <div className="flex items-center gap-2">
           <KeyRound className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-          <span className="text-xs font-bold text-foreground shrink-0">{lang === "ar" ? "رمز المعلم" : "Teacher PIN"}</span>
+           <span className="text-xs font-bold text-foreground shrink-0">{t.gamePages.scramble.teacherPin}</span>
           <input
             type="text"
             value={pin}
             onChange={e => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="PIN"
+             placeholder={t.gamePages.pin}
+             aria-label={t.gamePages.scramble.teacherPin}
             className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-center font-bold tracking-widest text-sm min-w-0"
             dir="ltr"
           />
@@ -282,7 +283,7 @@ export default function ScrambleSetup() {
             onClick={handlePinJoin}
             disabled={pin.trim().length < 4}
             className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-xs disabled:opacity-40 transition-all">
-            {lang === "ar" ? "انضم" : "Join"}
+             {t.gamePages.join}
           </button>
         </div>
       </motion.div>
@@ -292,7 +293,7 @@ export default function ScrambleSetup() {
           className="bg-card border border-border/60 rounded-xl p-3 shadow-sm mb-3">
           <div className="flex items-center gap-2 mb-2">
             <FolderOpen className="w-3.5 h-3.5 text-purple-500" />
-            <p className="text-xs font-bold text-foreground">{lang === "ar" ? "مجموعاتك المحفوظة" : "Your Saved Sets"}</p>
+             <p className="text-xs font-bold text-foreground">{t.gamePages.scramble.savedSets}</p>
             <span className="text-[10px] text-muted-foreground">({savedSets.length})</span>
           </div>
           <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -306,32 +307,32 @@ export default function ScrambleSetup() {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-foreground text-xs truncate">{set.title}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {set.words.length} {lang === "ar" ? "كلمة" : "words"} • PIN: {set.pin}
+                       {set.words.length} {t.gamePages.scramble.words} • {t.gamePages.pin}: {set.pin}
                       {set.gradeLevel && ` • ${set.gradeLevel}`}
                     </p>
                   </div>
                   <button
                     onClick={() => setLocation(`/game/scramble/play?pin=${set.pin}`)}
                     className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 transition-colors"
-                    title={lang === "ar" ? "العب" : "Play"}>
+                     title={t.gamePages.play}>
                     <Play className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setLocation(`/game/scramble/monitor?pin=${set.pin}&title=${encodeURIComponent(set.title)}`)}
                     className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 transition-colors"
-                    title={lang === "ar" ? "مراقبة مباشرة" : "Live Monitor"}>
+                     title={t.gamePages.scramble.liveMonitor}>
                     <Eye className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleCopyPin(set.pin)}
                     className="p-1.5 rounded-lg bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 hover:bg-green-200 transition-colors"
-                    title={lang === "ar" ? "نسخ الرابط" : "Copy Link"}>
+                     title={t.gamePages.copyLink}>
                     {copiedPin === set.pin ? <Check className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
                   </button>
                   <button
                     onClick={() => handleDeleteSet(set.id)}
                     className="p-1.5 rounded-lg text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 hover:text-red-600 transition-colors"
-                    title={lang === "ar" ? "حذف" : "Delete"}>
+                     title={t.gamePages.delete}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -346,7 +347,7 @@ export default function ScrambleSetup() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-500" />
-            <h2 className="font-black text-foreground text-sm">{lang === "ar" ? "لوحة المتصدرين" : "Leaderboard"}</h2>
+             <h2 className="font-black text-foreground text-sm">{t.gamePages.leaderboard}</h2>
           </div>
           <div className="flex gap-1">
             {DIFF_OPTIONS.map(d => (
@@ -368,7 +369,7 @@ export default function ScrambleSetup() {
           </div>
         ) : leaderboard.length === 0 ? (
           <div className="text-center py-4">
-            <p className="text-muted-foreground text-xs">{lang === "ar" ? "لا توجد نتائج بعد. كن أول متصدر!" : "No scores yet. Be the first!"}</p>
+             <p className="text-muted-foreground text-xs">{t.gamePages.noScoresFirst}</p>
           </div>
         ) : (
           <div className="space-y-1 max-h-[300px] overflow-y-auto">
@@ -381,7 +382,7 @@ export default function ScrambleSetup() {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground text-xs truncate">{entry.name}</p>
                   <p className="text-[9px] text-muted-foreground">
-                    {lang === "ar" ? `المستوى ${entry.level}` : `Lv ${entry.level}`}
+                     {t.gamePages.levelShort} {entry.level}
                     {entry.streak > 0 && <span className="text-purple-500"> • 🔥{entry.streak}</span>}
                   </p>
                 </div>

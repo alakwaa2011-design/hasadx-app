@@ -5,6 +5,7 @@ import {
   Clock, XCircle, Paperclip, Download, X, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useI18n } from "@/lib/i18n";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -51,6 +52,7 @@ interface MessageData {
 function AttachmentViewer({
   attachments, initialIndex, onClose,
 }: { attachments: Attachment[]; initialIndex: number; onClose: () => void }) {
+  const { lang, dir } = useI18n();
   const [idx, setIdx] = useState(initialIndex);
   const att = attachments[idx];
   const url = `${BASE}/api/storage${att.objectPath}`;
@@ -76,7 +78,7 @@ function AttachmentViewer({
         position: "fixed", inset: 0, zIndex: 100,
         background: "rgba(0,0,0,0.82)",
         display: "flex", flexDirection: "column",
-        direction: "rtl",
+        direction: dir,
       }}
       onClick={onClose}>
 
@@ -99,7 +101,7 @@ function AttachmentViewer({
 
         <a href={url} download={att.name} onClick={e => e.stopPropagation()}
           style={{ border: "none", background: C.green, borderRadius: 8, color: "#fff", cursor: "pointer", padding: "7px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontFamily: "inherit" }}>
-          <Download size={13} /> تحميل
+          <Download size={13} /> {lang === "ar" ? "تحميل" : "Download"}
         </a>
       </div>
 
@@ -145,7 +147,7 @@ function AttachmentViewer({
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 20 }}>{attachSize(att.size)}</div>
             <a href={url} download={att.name}
               style={{ background: C.green, color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, fontFamily: "inherit" }}>
-              <Download size={15} /> تحميل الملف
+              <Download size={15} /> {lang === "ar" ? "تحميل الملف" : "Download file"}
             </a>
           </div>
         )}
@@ -156,11 +158,12 @@ function AttachmentViewer({
 
 // ── Attachment list inside thread ───────────────────────────
 function AttachmentList({ attachments, onOpen }: { attachments: Attachment[]; onOpen: (i: number) => void }) {
+  const { lang } = useI18n();
   if (!attachments.length) return null;
   return (
     <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
-        <Paperclip size={11} /> المرفقات ({attachments.length})
+        <Paperclip size={11} /> {lang === "ar" ? "المرفقات" : "Attachments"} ({attachments.length})
       </div>
       {attachments.map((att, i) => (
         <button key={i} onClick={() => onOpen(i)}
@@ -179,6 +182,8 @@ function AttachmentList({ attachments, onOpen }: { attachments: Attachment[]; on
 // ── Main page ───────────────────────────────────────────────
 export default function ParentPortalPage() {
   const { token } = useParams<{ token: string }>();
+  const { lang, dir } = useI18n();
+  const tr = (ar: string, en: string) => lang === "ar" ? ar : en;
   const [data, setData] = useState<MessageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,7 +201,7 @@ export default function ParentPortalPage() {
     if (!token) return;
     fetch(`${BASE}/api/parent-portal/${token}`)
       .then(async r => {
-        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || "الرابط غير صالح"); }
+        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || tr("الرابط غير صالح", "Invalid link")); }
         return r.json();
       })
       .then(d => { setData(d); setLocalReplies(d.replies || []); })
@@ -222,7 +227,7 @@ export default function ParentPortalPage() {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
     if (!files.length) return;
-    if (replyAttachments.length + files.length > 5) { alert("الحد الأقصى 5 مرفقات"); return; }
+    if (replyAttachments.length + files.length > 5) { alert(tr("الحد الأقصى 5 مرفقات", "Maximum 5 attachments")); return; }
     setUploading(true);
     const uploaded: Attachment[] = [];
     for (const f of files) {
@@ -245,7 +250,7 @@ export default function ParentPortalPage() {
           attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
         }),
       });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || "حدث خطأ"); }
+       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || tr("حدث خطأ", "An error occurred")); }
       setLocalReplies(prev => [...prev, {
         id: Date.now(), sender: "parent", body: replyText.trim(),
         createdAt: new Date().toISOString(),
@@ -255,7 +260,7 @@ export default function ParentPortalPage() {
       setReplyAttachments([]);
       setSent(true);
     } catch (e: any) {
-      setReplyError(e.message || "حدث خطأ أثناء الإرسال");
+      setReplyError(e.message || tr("حدث خطأ أثناء الإرسال", "Could not send your reply"));
     }
     finally { setSending(false); }
   }
@@ -271,10 +276,10 @@ export default function ParentPortalPage() {
   );
 
   if (error) return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, direction: "rtl" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, direction: dir }}>
       <div style={{ background: C.card, borderRadius: 16, padding: 32, maxWidth: 420, textAlign: "center", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
         <AlertTriangle size={40} style={{ color: "#e53e3e", margin: "0 auto 16px", display: "block" }} />
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text, marginBottom: 8 }}>الرابط غير صالح</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text, marginBottom: 8 }}>{tr("الرابط غير صالح", "Invalid link")}</h2>
         <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6 }}>{error}</p>
       </div>
     </div>
@@ -283,18 +288,18 @@ export default function ParentPortalPage() {
   if (!data) return null;
 
   const classInfo = [data.gradeLevel, data.studentClass].filter(Boolean).join(" — ");
-  const greeting = data.parentName ? data.parentName : "ولي الأمر الكريم";
+  const greeting = data.parentName ? data.parentName : tr("ولي الأمر الكريم", "Dear parent");
 
   let parsedAttachments: Attachment[] = [];
   try { if (data.attachments) parsedAttachments = JSON.parse(data.attachments); } catch {}
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Tajawal', sans-serif", direction: "rtl" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Tajawal', sans-serif", direction: dir }}>
 
       {/* Header */}
       <div style={{ background: C.green, padding: "18px 24px" }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: C.gold, letterSpacing: 1 }}>حصاد</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 1 }}>منصة التعليم التفاعلي</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: C.gold, letterSpacing: 1 }}>{tr("حصاد", "HasadX")}</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 1 }}>{tr("منصة التعليم التفاعلي", "Interactive learning platform")}</div>
       </div>
 
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "20px 16px" }}>
@@ -303,17 +308,17 @@ export default function ParentPortalPage() {
         {data.expired && (
           <div style={{ background: "#fff3cd", border: "1px solid #ffc107", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#856404" }}>
             <XCircle size={16} style={{ flexShrink: 0 }} />
-            انتهت صلاحية هذا الرابط — يمكنك مشاهدة المحادثة فقط
+            {tr("انتهت صلاحية هذا الرابط — يمكنك مشاهدة المحادثة فقط", "This link has expired — you can view the conversation only")}
           </div>
         )}
 
         {/* Greeting */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
           style={{ background: C.card, borderRadius: 14, padding: "18px 22px", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: `1px solid ${C.border}` }}>
-          <p style={{ fontSize: 14, color: C.muted, marginBottom: 4 }}>السلام عليكم</p>
+          <p style={{ fontSize: 14, color: C.muted, marginBottom: 4 }}>{tr("السلام عليكم", "Hello")}</p>
           <p style={{ fontSize: 17, fontWeight: 700, color: C.text }}>{greeting}</p>
           <p style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.6 }}>
-            محادثتك مع المعلم <strong style={{ color: C.text }}>{data.teacherName}</strong> بخصوص{" "}
+            {tr("محادثتك مع المعلم", "Your conversation with teacher")} <strong style={{ color: C.text }}>{data.teacherName}</strong> {tr("بخصوص", "about")}{" "}
             <strong style={{ color: C.green }}>{data.studentName}</strong>
             {classInfo ? ` (${classInfo})` : ""}
           </p>
@@ -322,7 +327,7 @@ export default function ParentPortalPage() {
         {/* Subject */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
           style={{ background: C.card, borderRadius: 14, padding: "14px 18px", marginBottom: 14, border: `1px solid ${C.border}`, boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 5 }}>الموضوع</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 5 }}>{tr("الموضوع", "Subject")}</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>{data.subject}</div>
         </motion.div>
 
@@ -330,7 +335,7 @@ export default function ParentPortalPage() {
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
           style={{ background: C.card, borderRadius: 14, padding: "18px 20px", marginBottom: 14, border: `1px solid ${C.border}`, boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 14, display: "flex", alignItems: "center", gap: 7 }}>
-            <MessageSquare size={15} style={{ color: C.green }} /> المحادثة
+            <MessageSquare size={15} style={{ color: C.green }} /> {tr("المحادثة", "Conversation")}
           </div>
 
           {/* Original teacher message */}
@@ -340,13 +345,13 @@ export default function ParentPortalPage() {
                 <User size={14} style={{ color: "#fff" }} />
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>المعلم {data.teacherName}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>{tr("المعلم", "Teacher")} {data.teacherName}</div>
                 <div style={{ fontSize: 11, color: C.muted }}>
-                  {new Date(data.sentAt).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  {new Date(data.sentAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </div>
               </div>
             </div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: "14px 16px", fontSize: 14, lineHeight: 1.75, color: C.text, whiteSpace: "pre-wrap", borderRight: `4px solid ${C.gold}` }}>
+            <div style={{ background: C.surface, borderRadius: 10, padding: "14px 16px", fontSize: 14, lineHeight: 1.75, color: C.text, whiteSpace: "pre-wrap", borderInlineStart: `4px solid ${C.gold}` }}>
               {data.body}
             </div>
             {parsedAttachments.length > 0 && (
@@ -364,15 +369,15 @@ export default function ParentPortalPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: reply.sender === "teacher" ? C.green : "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <span style={{ fontSize: 12, color: "#fff", fontWeight: 700 }}>
-                      {reply.sender === "teacher" ? "م" : "و"}
+                      {reply.sender === "teacher" ? tr("م", "T") : tr("و", "P")}
                     </span>
                   </div>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: reply.sender === "teacher" ? C.green : "#2563eb" }}>
-                      {reply.sender === "teacher" ? `المعلم ${data.teacherName}` : (data.parentName || "أنت")}
+                      {reply.sender === "teacher" ? `${tr("المعلم", "Teacher")} ${data.teacherName}` : (data.parentName || tr("أنت", "You"))}
                     </div>
                     <div style={{ fontSize: 11, color: C.muted }}>
-                      {new Date(reply.createdAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {new Date(reply.createdAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
                 </div>
@@ -380,7 +385,7 @@ export default function ParentPortalPage() {
                   background: reply.sender === "teacher" ? C.surface : "#f0f7ff",
                   borderRadius: 10, padding: "14px 16px", fontSize: 14, lineHeight: 1.75,
                   color: C.text, whiteSpace: "pre-wrap",
-                  borderRight: `4px solid ${reply.sender === "teacher" ? C.gold : "#3b82f6"}`,
+                  borderInlineStart: `4px solid ${reply.sender === "teacher" ? C.gold : "#3b82f6"}`,
                 }}>
                   {reply.body}
                 </div>
@@ -399,20 +404,20 @@ export default function ParentPortalPage() {
             {sent ? (
               <div style={{ textAlign: "center", padding: "8px 0" }}>
                 <CheckCircle size={32} style={{ color: C.green, margin: "0 auto 10px", display: "block" }} />
-                <p style={{ fontSize: 15, fontWeight: 700, color: C.green }}>تم إرسال ردك ✓</p>
-                <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>سيصل للمعلم {data.teacherName} فور الاستلام</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.green }}>{tr("تم إرسال ردك ✓", "Your reply was sent ✓")}</p>
+                <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{tr("سيصل للمعلم", "It will reach teacher")} {data.teacherName} {tr("فور الاستلام", "immediately")}</p>
                 <button onClick={() => setSent(false)}
                   style={{ marginTop: 14, padding: "9px 20px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 13, color: C.muted, cursor: "pointer", fontFamily: "inherit" }}>
-                  إضافة رد آخر
+                  {tr("إضافة رد آخر", "Add another reply")}
                 </button>
               </div>
             ) : (
               <>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 10, display: "flex", alignItems: "center", gap: 7 }}>
-                  <Send size={14} style={{ color: C.green }} /> ردّ على المعلم
+                  <Send size={14} style={{ color: C.green }} /> {tr("ردّ على المعلم", "Reply to teacher")}
                 </h3>
                 <textarea value={replyText} onChange={e => setReplyText(e.target.value)} rows={4}
-                  placeholder="اكتب ردك هنا..."
+                  placeholder={tr("اكتب ردك هنا...", "Write your reply here...")}
                   style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", background: C.surface, color: C.text, lineHeight: 1.6, transition: "border-color 0.2s", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = C.green}
                   onBlur={e => e.target.style.borderColor = C.border} />
@@ -440,7 +445,7 @@ export default function ParentPortalPage() {
                     <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>
                       {replyError}
-                      {replyAttachments.length > 0 && " — مرفقاتك محفوظة، يمكنك إعادة المحاولة."}
+                      {replyAttachments.length > 0 && tr(" — مرفقاتك محفوظة، يمكنك إعادة المحاولة.", " — your attachments were kept; you can try again.")}
                     </span>
                   </div>
                 )}
@@ -450,10 +455,10 @@ export default function ParentPortalPage() {
                   {/* Attach file button */}
                   <button onClick={() => fileInputRef.current?.click()}
                     disabled={uploading || replyAttachments.length >= 5}
-                    title="إرفاق ملف"
+                    title={tr("إرفاق ملف", "Attach file")}
                     style={{ padding: "10px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, cursor: uploading || replyAttachments.length >= 5 ? "not-allowed" : "pointer", color: C.muted, display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontFamily: "inherit", opacity: replyAttachments.length >= 5 ? 0.5 : 1, flexShrink: 0 }}>
                     {uploading ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Paperclip size={15} />}
-                    {uploading ? "جاري الرفع..." : "مرفق"}
+                    {uploading ? tr("جاري الرفع...", "Uploading...") : tr("مرفق", "Attach")}
                   </button>
                   <input ref={fileInputRef} type="file" multiple
                     accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
@@ -463,7 +468,7 @@ export default function ParentPortalPage() {
                   <button onClick={handleReply} disabled={sending || !replyText.trim()}
                     style={{ flex: 1, padding: "13px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: sending || !replyText.trim() ? "not-allowed" : "pointer", opacity: sending || !replyText.trim() ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     {sending ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={16} />}
-                    {sending ? "جارٍ الإرسال..." : "إرسال الرد"}
+                    {sending ? tr("جارٍ الإرسال...", "Sending...") : tr("إرسال الرد", "Send reply")}
                   </button>
                 </div>
               </>
@@ -472,12 +477,12 @@ export default function ParentPortalPage() {
         ) : (
           <div style={{ textAlign: "center", fontSize: 13, color: C.muted, padding: "16px 0" }}>
             <Clock size={18} style={{ margin: "0 auto 6px", display: "block", opacity: 0.4 }} />
-            انتهت صلاحية الرابط ولا يمكن إضافة ردود جديدة
+            {tr("انتهت صلاحية الرابط ولا يمكن إضافة ردود جديدة", "This link has expired and new replies cannot be added")}
           </div>
         )}
 
         <p style={{ textAlign: "center", fontSize: 11, color: C.muted, marginTop: 20 }}>
-          منصة حصاد للتعليم التفاعلي · hasaadx.com
+          {tr("منصة حصاد للتعليم التفاعلي", "HasadX interactive learning platform")} · hasaadx.com
         </p>
       </div>
 

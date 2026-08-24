@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { Loader2, Radio, RefreshCw } from "lucide-react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const POLL_MS  = 1500;
@@ -261,19 +262,20 @@ function BoardImage({ item }: { item: BoardItem }) {
 // ── Code entry screen ─────────────────────────────────────────────────────────
 
 function CodeEntry({ onJoin }: { onJoin:(code:string)=>void }) {
+  const { t, dir } = useI18n();
   const [input, setInput] = useState("");
   const [err,   setErr]   = useState("");
 
   function submit() {
     const code = input.trim().toUpperCase();
-    if (code.length < 4) { setErr("أدخل الرمز المكوّن من 6 أحرف"); return; }
+    if (code.length < 4) { setErr(t.smartBoard.codeValidation); return; }
     setErr("");
     onJoin(code);
   }
 
   return (
     <div style={{ minHeight:"100vh", background:"#0a0d08", display:"flex",
-      alignItems:"center", justifyContent:"center", fontFamily:"'Tajawal',sans-serif", direction:"rtl" }}>
+      alignItems:"center", justifyContent:"center", fontFamily:"'Tajawal',sans-serif", direction:dir }}>
       <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(168,230,176,.2)",
         borderRadius:20, padding:"40px 44px", maxWidth:380, width:"calc(100% - 40px)",
         boxShadow:"0 20px 60px rgba(0,0,0,.6)" }}>
@@ -281,20 +283,20 @@ function CodeEntry({ onJoin }: { onJoin:(code:string)=>void }) {
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28 }}>
           <Radio size={26} color="#a8e6b0"/>
           <div>
-            <div style={{ color:"#a8e6b0", fontSize:22, fontWeight:700 }}>شاهد السبورة</div>
-            <div style={{ color:"rgba(242,237,224,.4)", fontSize:13, marginTop:2 }}>سبورة المعلم الذكية</div>
+            <div style={{ color:"#a8e6b0", fontSize:22, fontWeight:700 }}>{t.smartBoard.watchBoard}</div>
+            <div style={{ color:"rgba(242,237,224,.4)", fontSize:13, marginTop:2 }}>{t.smartBoard.teacherBoard}</div>
           </div>
         </div>
 
         <p style={{ color:"rgba(242,237,224,.6)", fontSize:14, lineHeight:1.7, marginBottom:24 }}>
-          أدخل الرمز الذي أعطاه لك المعلم لتشاهد السبورة على شاشتك.
+          {t.smartBoard.entryDescription}
         </p>
 
         <input
           value={input}
           onChange={e => setInput(e.target.value.toUpperCase().slice(0, 8))}
           onKeyDown={e => e.key === "Enter" && submit()}
-          placeholder="مثال: AB3X9K"
+          placeholder={t.smartBoard.codePlaceholder}
           autoFocus
           style={{
             width:"100%", background:"rgba(255,255,255,.06)",
@@ -314,7 +316,7 @@ function CodeEntry({ onJoin }: { onJoin:(code:string)=>void }) {
             border:"1.5px solid rgba(168,230,176,.4)", borderRadius:12, padding:"14px",
             color:"#a8e6b0", fontFamily:"'Tajawal',sans-serif", fontSize:17, fontWeight:700,
             cursor:"pointer" }}>
-          دخول
+          {t.smartBoard.join}
         </button>
       </div>
 
@@ -329,6 +331,7 @@ function CodeEntry({ onJoin }: { onJoin:(code:string)=>void }) {
 // ── Main viewer ───────────────────────────────────────────────────────────────
 
 export default function SmartBoardView() {
+  const { t, dir } = useI18n();
   const [code,       setCode]       = useState<string|null>(null);
   const [state,      setState]      = useState<BroadcastState|null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -378,13 +381,13 @@ export default function SmartBoardView() {
   if (notFound) return (
     <div style={{ minHeight:"100vh", background:"#0a0d08", display:"flex",
       alignItems:"center", justifyContent:"center", fontFamily:"'Tajawal',sans-serif",
-      flexDirection:"column", gap:18, direction:"rtl" }}>
-      <p style={{ color:"#f58080", fontSize:20 }}>الجلسة غير موجودة أو انتهت</p>
+      flexDirection:"column", gap:18, direction:dir }}>
+      <p style={{ color:"#f58080", fontSize:20 }}>{t.smartBoard.sessionNotFound}</p>
       <button onClick={handleLeave}
         style={{ background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)",
           color:"rgba(242,237,224,.7)", borderRadius:10, padding:"10px 28px",
           cursor:"pointer", fontFamily:"'Tajawal',sans-serif", fontSize:15 }}>
-        حاول مجدداً
+        {t.smartBoard.tryAgain}
       </button>
     </div>
   );
@@ -392,9 +395,9 @@ export default function SmartBoardView() {
   if (connecting || !state) return (
     <div style={{ minHeight:"100vh", background:"#0a0d08", display:"flex",
       alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16,
-      fontFamily:"'Tajawal',sans-serif", direction:"rtl" }}>
+      fontFamily:"'Tajawal',sans-serif", direction:dir }}>
       <Loader2 size={40} color="#a8e6b0" style={{ animation:"spin 1s linear infinite" }}/>
-      <p style={{ color:"#a8e6b0", fontSize:16 }}>جارٍ الاتصال…</p>
+      <p style={{ color:"#a8e6b0", fontSize:16 }}>{t.smartBoard.connecting}</p>
       <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
@@ -407,7 +410,7 @@ export default function SmartBoardView() {
   const gridCols  = sections.length > 1 && !hasBig ? "1fr 1fr" : "1fr";
 
   return (
-    <div dir="rtl" style={{ position:"fixed", inset:0, background:"#0a0d08",
+    <div dir={dir} style={{ position:"fixed", inset:0, background:"#0a0d08",
       display:"flex", flexDirection:"column", fontFamily:"'Tajawal','Noto Sans Arabic',sans-serif",
       overflow:"hidden" }}>
       <ChalkDefs/>
@@ -433,7 +436,7 @@ export default function SmartBoardView() {
           <span style={{ width:8, height:8, borderRadius:"50%", background:"#a8e6b0",
             display:"inline-block", animation:"pulse 2s ease infinite" }}/>
           <span style={{ color:"rgba(242,237,224,.35)", fontSize:13, fontWeight:500 }}>
-            بث مباشر · {code}
+             {t.smartBoard.liveBroadcast} · {code}
           </span>
         </div>
         <div style={{ color:"rgba(242,237,224,.5)", fontSize:14, fontWeight:600 }}>
@@ -443,7 +446,7 @@ export default function SmartBoardView() {
           style={{ background:"none", border:"none", color:"rgba(242,237,224,.3)",
             cursor:"pointer", fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
           <RefreshCw size={13} style={{ verticalAlign:"middle", marginLeft:4 }}/>
-          خروج
+          {t.smartBoard.exit}
         </button>
       </div>
 
@@ -478,7 +481,7 @@ export default function SmartBoardView() {
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
                   height:"100%", color:"rgba(242,237,224,.12)", fontSize:18,
                   fontWeight:500, gap:10 }}>
-                  <span>في انتظار المعلم…</span>
+                  <span>{t.smartBoard.waitingForTeacher}</span>
                 </div>
               ) : (
                 <div style={{ display:"grid", gridTemplateColumns:gridCols, gap:"0 0",

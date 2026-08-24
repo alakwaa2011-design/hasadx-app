@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { api, IslamicShell, IslamicCard, GoldButton, GhostButton, BackLink, ISLAMIC_GOLD } from "./_shared";
 import AudioPicker from "@/components/AudioPicker";
+import { useI18n } from "@/lib/i18n";
 
 interface Category { id: number; sectionId: number; name: string; description: string | null; level: string; isVisible: boolean; order: number; questionCount: number; }
 interface Section { id: number; name: string; description: string | null; isVisible: boolean; order: number; categories: Category[]; }
 interface Q { id: number; categoryId: number; questionText: string; audioUrl: string | null; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; difficulty: string; }
 
 export default function IslamicAdmin() {
+  const { t } = useI18n();
   const [sections, setSections] = useState<Section[]>([]);
   const [activeCat, setActiveCat] = useState<Category | null>(null);
   const [questions, setQuestions] = useState<Q[]>([]);
@@ -46,13 +48,13 @@ export default function IslamicAdmin() {
   }, [activeCat]);
 
   async function addSection() {
-    const name = prompt("اسم القسم:");
+    const name = prompt(t.islamic.sectionNamePrompt);
     if (!name) return;
     await api("/islamic/sections", { method: "POST", body: JSON.stringify({ name }) });
     reload();
   }
   async function addCategory(sectionId: number) {
-    const name = prompt("اسم الفئة:");
+    const name = prompt(t.islamic.categoryNamePrompt);
     if (!name) return;
     await api("/islamic/categories", { method: "POST", body: JSON.stringify({ sectionId, name }) });
     reload();
@@ -66,12 +68,12 @@ export default function IslamicAdmin() {
     reload();
   }
   async function deleteSection(s: Section) {
-    if (!confirm(`حذف القسم "${s.name}" وكل ما فيه؟`)) return;
+    if (!confirm(`${t.islamic.delete} "${s.name}"?`)) return;
     await api(`/islamic/sections/${s.id}`, { method: "DELETE" });
     reload();
   }
   async function deleteCategory(c: Category) {
-    if (!confirm(`حذف الفئة "${c.name}" وكل أسئلتها؟`)) return;
+    if (!confirm(`${t.islamic.delete} "${c.name}"?`)) return;
     await api(`/islamic/categories/${c.id}`, { method: "DELETE" });
     if (activeCat?.id === c.id) setActiveCat(null);
     reload();
@@ -80,12 +82,12 @@ export default function IslamicAdmin() {
     if (!editing || !activeCat) return;
     setSaveError("");
     // Client-side validation
-    if (!editing.questionText?.trim()) { setSaveError("نص السؤال مطلوب"); return; }
+    if (!editing.questionText?.trim()) { setSaveError(t.islamic.questionRequired); return; }
     if (!editing.optionA?.trim() || !editing.optionB?.trim() || !editing.optionC?.trim() || !editing.optionD?.trim()) {
-      setSaveError("يجب تعبئة الخيارات الأربعة كاملة");
+      setSaveError(t.islamic.optionsRequired);
       return;
     }
-    if (!editing.correctAnswer?.trim()) { setSaveError("يجب اختيار الإجابة الصحيحة — انقر على الدائرة بجانب الخيار الصحيح"); return; }
+    if (!editing.correctAnswer?.trim()) { setSaveError(t.islamic.answerRequired); return; }
     const payload = {
       categoryId: activeCat.id,
       questionText: editing.questionText,
@@ -101,11 +103,11 @@ export default function IslamicAdmin() {
       if (activeCat) api<Q[]>(`/islamic/categories/${activeCat.id}/questions`).then(setQuestions);
       reload();
     } catch (err: unknown) {
-      setSaveError((err as Error).message || "فشل الحفظ — حاول مرة أخرى");
+      setSaveError((err as Error).message || t.islamic.saveFailed);
     }
   }
   async function deleteQuestion(q: Q) {
-    if (!confirm("حذف السؤال؟")) return;
+    if (!confirm(t.islamic.deleteQuestionConfirm)) return;
     await api(`/islamic/questions/${q.id}`, { method: "DELETE" });
     if (activeCat) api<Q[]>(`/islamic/categories/${activeCat.id}/questions`).then(setQuestions);
   }
@@ -120,72 +122,72 @@ export default function IslamicAdmin() {
     reload();
   }
   async function revoke(teacherId: number) {
-    if (!confirm("سحب الإذن؟")) return;
+    if (!confirm(t.islamic.revokeConfirm)) return;
     await api(`/islamic/admin/permissions/${teacherId}`, { method: "DELETE" });
     reload();
   }
   async function runFixAnswers() {
-    if (!confirm("سيتم إصلاح الأسئلة التي تظهر إجاباتها خاطئة رغم صحتها. هل أنت متأكد؟")) return;
+    if (!confirm(t.islamic.confirmFixAnswers)) return;
     setFixRunning(true); setFixMsg("");
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/admin/fix-islamic-correct-answers`, { method: "POST", credentials: "include" });
       const r = await res.json();
-      if (!res.ok) { setFixMsg(`فشل: ${r.message || res.statusText}`); return; }
-      setFixMsg(`✅ أُصلح ${r.letterFixed + r.partialFixed} سؤال (متبقٍ معطوب: ${r.stillBroken})`);
+      if (!res.ok) { setFixMsg(`${t.islamic.operationFailed}: ${r.message || res.statusText}`); return; }
+      setFixMsg(`✅ ${r.letterFixed + r.partialFixed} ${t.islamic.questions}`);
       reload();
-    } catch { setFixMsg("حدث خطأ"); }
+    } catch { setFixMsg(t.islamic.unexpectedError); }
     finally { setFixRunning(false); }
   }
 
   async function runDedup() {
-    if (!confirm("سيتم حذف الأسئلة المكررة وإضافة الأسئلة الأساسية. هل أنت متأكد؟")) return;
+    if (!confirm(t.islamic.confirmRemoveDuplicates)) return;
     setDedupRunning(true);
     setDedupMsg("");
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/admin/dedup-islamic-questions`, { method: "POST", credentials: "include" });
       const r = await res.json();
-      if (!res.ok) { setDedupMsg(`فشل: ${r.message || res.statusText}`); return; }
-      setDedupMsg(`✅ تم: حُذف ${r.deletedDuplicates} مكرر، أُضيف ${r.newQuestionsInserted} سؤال جديد`);
+      if (!res.ok) { setDedupMsg(`${t.islamic.operationFailed}: ${r.message || res.statusText}`); return; }
+      setDedupMsg(`✅ ${r.newQuestionsInserted} ${t.islamic.questions}`);
       reload();
-    } catch { setDedupMsg("حدث خطأ أثناء التنظيف"); }
+    } catch { setDedupMsg(t.islamic.unexpectedError); }
     finally { setDedupRunning(false); }
   }
 
   async function importFile(file: File) {
-    setImportMsg("جاري الاستيراد…");
+    setImportMsg(t.islamic.importing);
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/islamic/import`, { method: "POST", credentials: "include", body: fd });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      setImportMsg(`فشل: ${err.message || res.statusText}`);
+      setImportMsg(`${t.islamic.operationFailed}: ${err.message || res.statusText}`);
       return;
     }
     const r = await res.json();
-    setImportMsg(`تم استيراد ${r.imported} سؤال (تم تخطي ${r.skipped})`);
+    setImportMsg(`${r.imported} ${t.islamic.questions}`);
     reload();
   }
 
   return (
-    <IslamicShell title="لوحة التحكم">
+    <IslamicShell title={t.islamic.admin}>
       <BackLink />
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button onClick={() => setTab("content")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "content" ? ISLAMIC_GOLD : "#fff", color: tab === "content" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>المحتوى</button>
-        {isAdmin && <button onClick={() => setTab("permissions")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "permissions" ? ISLAMIC_GOLD : "#fff", color: tab === "permissions" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>الأذونات</button>}
-        <button onClick={() => setTab("import")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "import" ? ISLAMIC_GOLD : "#fff", color: tab === "import" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>استيراد Excel</button>
+        <button onClick={() => setTab("content")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "content" ? ISLAMIC_GOLD : "#fff", color: tab === "content" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>{t.islamic.content}</button>
+        {isAdmin && <button onClick={() => setTab("permissions")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "permissions" ? ISLAMIC_GOLD : "#fff", color: tab === "permissions" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>{t.islamic.permissions}</button>}
+        <button onClick={() => setTab("import")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "import" ? ISLAMIC_GOLD : "#fff", color: tab === "import" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>{t.islamic.importExcel}</button>
       </div>
 
       {tab === "content" && (
         <>
           <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <GoldButton onClick={addSection}>+ قسم جديد</GoldButton>
+            <GoldButton onClick={addSection}>+ {t.islamic.addSection}</GoldButton>
             {isAdmin && (
               <>
                 <GhostButton onClick={runFixAnswers} disabled={fixRunning} style={{ color: "#166534", borderColor: "#16a34a" }}>
-                  {fixRunning ? "جاري الإصلاح…" : "🔧 إصلاح الإجابات"}
+                  {fixRunning ? t.islamic.loading : `🔧 ${t.islamic.fixAnswers}`}
                 </GhostButton>
                 <GhostButton onClick={runDedup} disabled={dedupRunning} style={{ color: "#991b1b", borderColor: "#ef4444" }}>
-                  {dedupRunning ? "جاري التنظيف…" : "🧹 حذف المكررات"}
+                  {dedupRunning ? t.islamic.loading : `🧹 ${t.islamic.removeDuplicates}`}
                 </GhostButton>
               </>
             )}
@@ -197,9 +199,9 @@ export default function IslamicAdmin() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                 <h3 style={{ fontSize: 20, fontWeight: 700, color: ISLAMIC_GOLD }}>{s.name} {!s.isVisible && <span style={{ fontSize: 13, opacity: 0.7 }}>(مخفي)</span>}</h3>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <GhostButton onClick={() => addCategory(s.id)}>+ فئة</GhostButton>
-                  <GhostButton onClick={() => toggleSectionVisibility(s)}>{s.isVisible ? "إخفاء" : "إظهار"}</GhostButton>
-                  <GhostButton onClick={() => deleteSection(s)} style={{ color: "#fca5a5" }}>حذف</GhostButton>
+                  <GhostButton onClick={() => addCategory(s.id)}>+ {t.islamic.addCategory}</GhostButton>
+                  <GhostButton onClick={() => toggleSectionVisibility(s)}>{s.isVisible ? t.islamic.hide : t.islamic.show}</GhostButton>
+                  <GhostButton onClick={() => deleteSection(s)} style={{ color: "#fca5a5" }}>{t.islamic.delete}</GhostButton>
                 </div>
               </div>
               <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
@@ -211,13 +213,13 @@ export default function IslamicAdmin() {
                     boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
                   }}>
                     <div style={{ fontWeight: 700, marginBottom: 4, color: "#1c1208" }}>{c.name} {!c.isVisible && <span style={{ fontSize: 11, color: "#b45309", fontWeight: 400 }}>(مخفي)</span>}</div>
-                    <div style={{ fontSize: 12, color: "#78716c", marginBottom: 8 }}>{c.questionCount} سؤال</div>
+                    <div style={{ fontSize: 12, color: "#78716c", marginBottom: 8 }}>{c.questionCount} {t.islamic.questions}</div>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       <button onClick={() => openCategory(c)} style={{ background: activeCat?.id === c.id ? "#92400e" : ISLAMIC_GOLD, color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700 }}>
-                        {activeCat?.id === c.id ? "✓ مفتوحة" : "📝 الأسئلة"}
+                        {activeCat?.id === c.id ? `✓ ${t.islamic.open}` : `📝 ${t.islamic.questions}`}
                       </button>
-                      <button onClick={() => toggleCategoryVisibility(c)} style={{ background: "transparent", color: "#92400e", border: "1.5px solid #d4a96a", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>{c.isVisible ? "إخفاء" : "إظهار"}</button>
-                      <button onClick={() => deleteCategory(c)} style={{ background: "transparent", color: "#b91c1c", border: "1.5px solid #fca5a5", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>حذف</button>
+                      <button onClick={() => toggleCategoryVisibility(c)} style={{ background: "transparent", color: "#92400e", border: "1.5px solid #d4a96a", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>{c.isVisible ? t.islamic.hide : t.islamic.show}</button>
+                      <button onClick={() => deleteCategory(c)} style={{ background: "transparent", color: "#b91c1c", border: "1.5px solid #fca5a5", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>{t.islamic.delete}</button>
                     </div>
                   </div>
                 ))}
@@ -234,30 +236,30 @@ export default function IslamicAdmin() {
                     📝 {activeCat.name}
                   </h3>
                   <div style={{ fontSize: 13, color: "#78716c", marginTop: 4 }}>
-                    {questions.length} سؤال مسجّل · اضغط <strong>+ سؤال جديد</strong> لإضافة، أو <strong>تعديل</strong> بجانب أي سؤال للتغيير
+                    {questions.length} {t.islamic.questions}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <GoldButton onClick={() => setEditing({ optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", questionText: "", difficulty: "medium" })}>+ سؤال جديد</GoldButton>
-                  <GhostButton onClick={() => setActiveCat(null)}>✕ إغلاق</GhostButton>
+                  <GoldButton onClick={() => setEditing({ optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", questionText: "", difficulty: "medium" })}>+ {t.islamic.newQuestion}</GoldButton>
+                  <GhostButton onClick={() => setActiveCat(null)}>✕ {t.islamic.close}</GhostButton>
                 </div>
               </div>
               {questions.length === 0 && (
                 <div style={{ textAlign: "center", padding: "24px 0", color: "#a8a29e", fontSize: 14 }}>
-                  لا توجد أسئلة في هذه الفئة بعد — اضغط "+ سؤال جديد" للبدء
+                  {t.islamic.noQuestions}
                 </div>
               )}
               {questions.map((q) => (
                 <div key={q.id} style={{ borderBottom: "1px solid #e8d8b8", padding: "12px 0" }}>
                   <div style={{ fontWeight: 600, color: "#1c1208" }}>{q.questionText}</div>
                   <div style={{ fontSize: 13, color: "#78716c", marginTop: 4 }}>
-                    الصحيحة: <strong style={{ color: "#16a34a" }}>{q.correctAnswer}</strong>
+                    {t.islamic.correctAnswer}: <strong style={{ color: "#16a34a" }}>{q.correctAnswer}</strong>
                     {" · "}{q.difficulty}
                     {q.audioUrl && <span style={{ marginRight: 6, background: "#fef3c7", color: "#b45309", borderRadius: 4, padding: "1px 6px", fontSize: 11, fontWeight: 700 }}>🔊 صوتي</span>}
                   </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                    <GhostButton onClick={() => setEditing(q)}>تعديل</GhostButton>
-                    <GhostButton onClick={() => deleteQuestion(q)} style={{ color: "#b91c1c", borderColor: "#fca5a5" }}>حذف</GhostButton>
+                    <GhostButton onClick={() => setEditing(q)}>{t.islamic.edit}</GhostButton>
+                    <GhostButton onClick={() => deleteQuestion(q)} style={{ color: "#b91c1c", borderColor: "#fca5a5" }}>{t.islamic.delete}</GhostButton>
                   </div>
                 </div>
               ))}
@@ -268,24 +270,24 @@ export default function IslamicAdmin() {
           {editing && activeCat && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setEditing(null)}>
               <div onClick={(e) => e.stopPropagation()} style={{ background: "#fffbf0", borderRadius: 20, padding: 24, maxWidth: 560, width: "100%", maxHeight: "90vh", overflow: "auto", border: "1px solid rgba(180,83,9,0.3)", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-                <h3 style={{ fontSize: 18, color: "#92400e", fontWeight: 900, marginBottom: 12 }}>{editing.id ? "تعديل سؤال" : "سؤال جديد"}</h3>
-                <textarea placeholder="نص السؤال" value={editing.questionText || ""} onChange={(e) => setEditing({ ...editing, questionText: e.target.value })} style={inpStyle} rows={3} />
+                <h3 style={{ fontSize: 18, color: "#92400e", fontWeight: 900, marginBottom: 12 }}>{editing.id ? t.islamic.edit : t.islamic.newQuestion}</h3>
+                <textarea placeholder={t.islamic.questionText} value={editing.questionText || ""} onChange={(e) => setEditing({ ...editing, questionText: e.target.value })} style={inpStyle} rows={3} />
                 {[
-                  { label: "الخيار أ", key: "optionA" as const },
-                  { label: "الخيار ب", key: "optionB" as const },
-                  { label: "الخيار ج", key: "optionC" as const },
-                  { label: "الخيار د", key: "optionD" as const },
+                  { label: `${t.islamic.option} A`, key: "optionA" as const },
+                  { label: `${t.islamic.option} B`, key: "optionB" as const },
+                  { label: `${t.islamic.option} C`, key: "optionC" as const },
+                  { label: `${t.islamic.option} D`, key: "optionD" as const },
                 ].map(({ label, key }) => (
                   <input key={key} placeholder={label} value={(editing as any)[key] || ""} onChange={(e) => setEditing({ ...editing, [key]: e.target.value })} style={inpStyle} />
                 ))}
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 6 }}>الإجابة الصحيحة: <span style={{ color: "#b91c1c", fontSize: 11 }}>(مطلوب — انقر على الخيار الصحيح)</span></div>
+                  <div style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 6 }}>{t.islamic.correctAnswer}</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {[
-                      { label: "أ", val: editing.optionA },
-                      { label: "ب", val: editing.optionB },
-                      { label: "ج", val: editing.optionC },
-                      { label: "د", val: editing.optionD },
+                      { label: "A", val: editing.optionA },
+                      { label: "B", val: editing.optionB },
+                      { label: "C", val: editing.optionC },
+                      { label: "D", val: editing.optionD },
                     ].map(({ label, val }) =>
                       val ? (
                         <label key={label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: editing.correctAnswer === val ? "#dcfce7" : "#fff", border: editing.correctAnswer === val ? "1.5px solid #16a34a" : "1.5px solid #e8d8b8" }}>
@@ -298,11 +300,11 @@ export default function IslamicAdmin() {
                   </div>
                 </div>
                 <select value={editing.difficulty || "medium"} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} style={inpStyle}>
-                  <option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option>
+                  <option value="easy">{t.islamic.easy}</option><option value="medium">{t.islamic.medium}</option><option value="hard">{t.islamic.hard}</option>
                 </select>
                 <div style={{ marginBottom: 8 }}>
                   <label style={{ fontSize: 13, color: "#92400e", fontWeight: 700, display: "block", marginBottom: 6 }}>
-                    🔊 صوت مرفق (اختياري)
+                    🔊 {t.islamic.optionalAudio}
                   </label>
                   <AudioPicker
                     value={editing.audioUrl || null}
@@ -317,8 +319,8 @@ export default function IslamicAdmin() {
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                  <GhostButton onClick={() => { setEditing(null); setSaveError(""); }}>إلغاء</GhostButton>
-                  <GoldButton onClick={saveQuestion}>حفظ</GoldButton>
+                  <GhostButton onClick={() => { setEditing(null); setSaveError(""); }}>{t.islamic.cancel}</GhostButton>
+                  <GoldButton onClick={saveQuestion}>{t.islamic.save}</GoldButton>
                 </div>
               </div>
             </div>
@@ -328,23 +330,23 @@ export default function IslamicAdmin() {
 
       {tab === "permissions" && isAdmin && (
         <IslamicCard>
-          <h3 style={{ fontSize: 20, marginBottom: 12, color: ISLAMIC_GOLD }}>منح إذن لمعلم</h3>
+          <h3 style={{ fontSize: 20, marginBottom: 12, color: ISLAMIC_GOLD }}>{t.islamic.grantPermission}</h3>
           <div style={{ display: "flex", gap: 8 }}>
-            <input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="ابحث باسم أو إيميل" style={inpStyle} />
-            <GoldButton onClick={searchTeachers}>بحث</GoldButton>
+            <input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder={t.islamic.searchTeacher} style={inpStyle} />
+            <GoldButton onClick={searchTeachers}>{t.islamic.search}</GoldButton>
           </div>
           {searchResults.map((r) => (
             <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(217,119,6,0.15)" }}>
               <div>{r.name} <span style={{ opacity: 0.7, fontSize: 13 }}>{r.email}</span></div>
-              <GoldButton onClick={() => grant(r.id)}>منح</GoldButton>
+              <GoldButton onClick={() => grant(r.id)}>{t.islamic.grant}</GoldButton>
             </div>
           ))}
-          <h4 style={{ marginTop: 24, fontSize: 18, color: ISLAMIC_GOLD }}>الأذونات الحالية</h4>
-          {permissions.length === 0 && <p style={{ opacity: 0.7 }}>لا أذونات</p>}
+          <h4 style={{ marginTop: 24, fontSize: 18, color: ISLAMIC_GOLD }}>{t.islamic.currentPermissions}</h4>
+          {permissions.length === 0 && <p style={{ opacity: 0.7 }}>{t.islamic.noPermissions}</p>}
           {permissions.map((p) => (
             <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(217,119,6,0.15)" }}>
-              <div>{p.teacherName} <span style={{ opacity: 0.7, fontSize: 13 }}>{p.teacherEmail}</span> {!p.isActive && "(غير نشط)"}</div>
-              {p.isActive && <GhostButton onClick={() => revoke(p.teacherId)} style={{ color: "#fca5a5" }}>سحب</GhostButton>}
+              <div>{p.teacherName} <span style={{ opacity: 0.7, fontSize: 13 }}>{p.teacherEmail}</span> {!p.isActive && `(${t.islamic.inactive})`}</div>
+              {p.isActive && <GhostButton onClick={() => revoke(p.teacherId)} style={{ color: "#fca5a5" }}>{t.islamic.revoke}</GhostButton>}
             </div>
           ))}
         </IslamicCard>
@@ -352,7 +354,7 @@ export default function IslamicAdmin() {
 
       {tab === "import" && (
         <IslamicCard>
-          <h3 style={{ fontSize: 20, color: ISLAMIC_GOLD, marginBottom: 12 }}>استيراد أسئلة من Excel/Word</h3>
+          <h3 style={{ fontSize: 20, color: ISLAMIC_GOLD, marginBottom: 12 }}>{t.islamic.importQuestions}</h3>
           <p style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.8 }}>
             الأعمدة المطلوبة: <code>section_name</code>, <code>category_name</code>, <code>نص السؤال</code>, <code>الخيار أ</code>, <code>الخيار ب</code>, <code>الخيار ج</code>, <code>الخيار د</code>, <code>الإجابة الصحيحة</code>, <code>الصعوبة</code>, <code>audio_url</code> (اختياري).
             <br />
@@ -365,7 +367,7 @@ export default function IslamicAdmin() {
               ], { type: "text/csv" }))}
               download="islamic-questions-template.csv"
               style={{ color: ISLAMIC_GOLD }}
-            >تحميل قالب CSV</a>
+            >{t.islamic.downloadTemplate}</a>
           </div>
           <input type="file" accept=".xlsx,.xls,.csv,.docx" onChange={(e) => { const f = e.target.files?.[0]; if (f) importFile(f); }} style={{ ...inpStyle, padding: 8, marginTop: 12 }} />
           {importMsg && <p style={{ marginTop: 8 }}>{importMsg}</p>}

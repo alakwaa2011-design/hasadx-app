@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Tv2, ChevronLeft, Trophy, Clock, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { resolveImageUrl } from "@/lib/image-url";
+import { useI18n } from "@/lib/i18n";
 
 interface AudienceTeam {
   id: string;
@@ -37,7 +38,6 @@ interface AudienceSession {
 
 type PageState = "loading" | "not-found" | "live";
 
-const DIFF_LABELS: Record<number, string> = { 200: "سهل", 400: "متوسط", 600: "صعب" };
 const DIFF_COLORS: Record<number, string> = {
   200: "linear-gradient(135deg,#2457a8,#1e408e)",
   400: "linear-gradient(135deg,#5525a8,#421e88)",
@@ -107,6 +107,8 @@ function Confetti() {
 }
 
 function EndScreen({ session, sorted }: { session: AudienceSession; sorted: AudienceTeam[] }) {
+  const { t, dir, lang } = useI18n();
+  const copy = t.arenaAudience;
   const winner = sorted[0];
   const topScore = winner?.score ?? 0;
   const isMultiWinner = sorted.filter(t => t.score === topScore).length > 1;
@@ -120,7 +122,7 @@ function EndScreen({ session, sorted }: { session: AudienceSession; sorted: Audi
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="min-h-screen flex flex-col items-center p-4 sm:p-6 relative overflow-hidden"
       style={{ background: "radial-gradient(ellipse at top, #1a0a40 0%, #0a0520 60%, #000 100%)" }}
     >
@@ -144,7 +146,7 @@ function EndScreen({ session, sorted }: { session: AudienceSession; sorted: Audi
               paddingBottom: "0.05em",
             }}
           >
-            انتهت اللعبة!
+            {copy.gameEnded}
           </h1>
           <div className="text-amber-300/70 font-bold text-sm tracking-widest">
             {session.tournamentName}
@@ -171,10 +173,10 @@ function EndScreen({ session, sorted }: { session: AudienceSession; sorted: Audi
                 className="font-black text-4xl tabular-nums"
                 style={{ color: winner.color }}
               >
-                {winner.score.toLocaleString("ar-SA")}
+                {winner.score.toLocaleString(lang === "ar" ? "ar-SA" : "en-US")}
               </div>
               <div className="text-amber-200/60 text-sm font-bold">
-                {isMultiWinner ? "تعادل في المركز الأول" : "الفائز 🏆"}
+                {isMultiWinner ? copy.firstPlaceTie : copy.winner}
               </div>
             </div>
           </motion.div>
@@ -190,7 +192,7 @@ function EndScreen({ session, sorted }: { session: AudienceSession; sorted: Audi
           >
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
               <Trophy className="w-4 h-4 text-amber-300" />
-              <span className="text-amber-200 font-bold text-sm">ترتيب الفرق</span>
+              <span className="text-amber-200 font-bold text-sm">{copy.teamRankings}</span>
             </div>
             <div className="p-3 flex flex-col gap-2">
               {sorted.map((team, rank) => {
@@ -228,7 +230,7 @@ function EndScreen({ session, sorted }: { session: AudienceSession; sorted: Audi
                       className="flex-shrink-0 font-black text-sm tabular-nums"
                       style={{ color: team.color, minWidth: "3rem", textAlign: "start" }}
                     >
-                      {team.score.toLocaleString("ar-SA")}
+                      {team.score.toLocaleString(lang === "ar" ? "ar-SA" : "en-US")}
                     </div>
                   </motion.div>
                 );
@@ -242,7 +244,7 @@ function EndScreen({ session, sorted }: { session: AudienceSession; sorted: Audi
           <Link href="/games">
             <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition text-sm">
               <ChevronLeft className="w-4 h-4" />
-              الرئيسية
+              {copy.home}
             </button>
           </Link>
         </div>
@@ -273,6 +275,13 @@ function saveVoteForRound(code: string, roundId: string, choice: "a" | "b") {
 
 
 export default function ArenaAudience() {
+  const { t, dir, lang } = useI18n();
+  const copy = t.arenaAudience;
+  const difficultyLabels: Record<number, string> = {
+    200: copy.easy,
+    400: copy.medium,
+    600: copy.hard,
+  };
   const code = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : "",
   ).get("code") ?? "";
@@ -349,7 +358,7 @@ export default function ArenaAudience() {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="min-h-screen flex flex-col items-center p-4 sm:p-6 relative overflow-hidden"
       style={{ background: "radial-gradient(ellipse at top, #065f46 0%, #022c22 60%, #000 100%)" }}
     >
@@ -362,7 +371,7 @@ export default function ArenaAudience() {
           className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-l from-amber-300 via-yellow-200 to-amber-400"
           style={{ lineHeight: 1.25, paddingBottom: "0.05em" }}
         >
-          {session?.tournamentName || "تحدّي حصاد"}
+          {session?.tournamentName || copy.defaultTournamentName}
         </h1>
         {code && (
           <div className="mt-1 text-amber-400/60 font-mono text-xs tracking-widest">
@@ -380,7 +389,7 @@ export default function ArenaAudience() {
             animate={{ opacity: 1 }}
             className="rounded-2xl p-8 text-center border border-white/10 bg-white/5"
           >
-            <div className="text-amber-300/70 text-lg animate-pulse">جارٍ الاتصال بالجلسة…</div>
+            <div className="text-amber-300/70 text-lg animate-pulse">{copy.connecting}</div>
           </motion.div>
         )}
 
@@ -392,9 +401,9 @@ export default function ArenaAudience() {
             className="rounded-2xl p-8 text-center border-2 border-amber-400/20 bg-amber-400/5"
           >
             <div className="text-4xl mb-3">🔍</div>
-            <div className="text-amber-200 font-bold text-lg mb-1">الجلسة غير موجودة</div>
+            <div className="text-amber-200 font-bold text-lg mb-1">{copy.sessionNotFound}</div>
             <div className="text-emerald-100/60 text-sm">
-              تأكد من رمز الجلسة، أو أن الأستاذ بدأ اللعبة على جهازه
+              {copy.sessionNotFoundHint}
             </div>
           </motion.div>
         )}
@@ -422,10 +431,10 @@ export default function ArenaAudience() {
                     style={{ background: DIFF_COLORS[session.activeQuestion.difficulty] ?? DIFF_COLORS[200] }}
                   >
                     <span className="text-white/90 font-black text-sm">
-                      {DIFF_LABELS[session.activeQuestion.difficulty] ?? ""}
+                      {difficultyLabels[session.activeQuestion.difficulty] ?? ""}
                     </span>
                     <span className="text-white/60 text-xs font-bold">
-                      {session.activeQuestion.difficulty} نقطة
+                      {session.activeQuestion.difficulty} {copy.points}
                     </span>
                     <span className="mr-auto text-white/70 text-xs">
                       {session.activeQuestion.subCategoryName}
@@ -464,7 +473,7 @@ export default function ArenaAudience() {
                 >
                   <Clock className="w-5 h-5 text-amber-300/60 animate-pulse" />
                   <span className="text-emerald-100/70 font-bold">
-                    انتظر السؤال القادم…
+                    {copy.waitingNextQuestion}
                   </span>
                 </motion.div>
               )}
@@ -485,7 +494,7 @@ export default function ArenaAudience() {
                   {/* Card header */}
                   <div className="px-4 py-3 flex items-center gap-2" style={{ background: "linear-gradient(90deg,#1e3a5f,#163356)" }}>
                     <span className="text-xl">🗣️</span>
-                    <span className="text-blue-200 font-black text-sm">شورى الجمهور — صوّت الآن!</span>
+                    <span className="text-blue-200 font-black text-sm">{copy.audiencePoll}</span>
                   </div>
 
                   <div className="px-4 py-4 flex flex-col gap-3">
@@ -494,13 +503,13 @@ export default function ArenaAudience() {
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-2 text-blue-200 text-sm font-bold">
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          صوّتَ لـ «{myVote === "a" ? "خيار أ" : "خيار ب"}» — شكراً!
+                          {copy.votedFor.replace("{choice}", myVote === "a" ? copy.optionA : copy.optionB)}
                         </div>
                         {/* Bar A */}
                         <div className="flex flex-col gap-1">
                           <div className="flex justify-between text-xs font-bold text-blue-100/80">
-                            <span>خيار أ</span>
-                            <span>{session.shuraVotes.a} صوت ({shuraPctA}٪)</span>
+                            <span>{copy.optionA}</span>
+                            <span>{copy.votes.replace("{count}", String(session.shuraVotes.a)).replace("{percent}", String(shuraPctA))}</span>
                           </div>
                           <div className="h-3 rounded-full bg-white/10 overflow-hidden">
                             <motion.div
@@ -514,8 +523,8 @@ export default function ArenaAudience() {
                         {/* Bar B */}
                         <div className="flex flex-col gap-1">
                           <div className="flex justify-between text-xs font-bold text-blue-100/80">
-                            <span>خيار ب</span>
-                            <span>{session.shuraVotes.b} صوت ({shuraPctB}٪)</span>
+                            <span>{copy.optionB}</span>
+                            <span>{copy.votes.replace("{count}", String(session.shuraVotes.b)).replace("{percent}", String(shuraPctB))}</span>
                           </div>
                           <div className="h-3 rounded-full bg-white/10 overflow-hidden">
                             <motion.div
@@ -527,14 +536,14 @@ export default function ArenaAudience() {
                           </div>
                         </div>
                         <div className="text-center text-blue-100/40 text-xs">
-                          {shuraTotal} صوت إجمالاً
+                          {copy.totalVotes.replace("{count}", String(shuraTotal))}
                         </div>
                       </div>
                     ) : (
                       /* ── Not voted yet: show buttons ── */
                       <>
                         <p className="text-blue-100/80 text-sm text-center mb-1">
-                          ما رأيك في إجابة السؤال؟ اختر أحد الخيارين:
+                          {copy.pollPrompt}
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                           <motion.button
@@ -543,7 +552,7 @@ export default function ArenaAudience() {
                             disabled={voting}
                             className="py-5 rounded-xl font-black text-xl border-2 border-blue-400/60 bg-blue-500/25 hover:bg-blue-500/40 text-blue-100 transition disabled:opacity-50"
                           >
-                            خيار أ
+                            {copy.optionA}
                           </motion.button>
                           <motion.button
                             whileTap={{ scale: 0.95 }}
@@ -551,11 +560,11 @@ export default function ArenaAudience() {
                             disabled={voting}
                             className="py-5 rounded-xl font-black text-xl border-2 border-violet-400/60 bg-violet-500/25 hover:bg-violet-500/40 text-violet-100 transition disabled:opacity-50"
                           >
-                            خيار ب
+                            {copy.optionB}
                           </motion.button>
                         </div>
                         <div className="text-center text-blue-100/30 text-xs">
-                          يمكنك التصويت مرة واحدة فقط
+                          {copy.oneVoteOnly}
                         </div>
                       </>
                     )}
@@ -568,7 +577,7 @@ export default function ArenaAudience() {
             <div className="rounded-2xl overflow-hidden border border-amber-400/20 bg-white/5">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
                 <Trophy className="w-4 h-4 text-amber-300" />
-                <span className="text-amber-200 font-bold text-sm">لوحة النقاط</span>
+                <span className="text-amber-200 font-bold text-sm">{copy.scoreboard}</span>
               </div>
               <div className="p-3 flex flex-col gap-2">
                 <AnimatePresence>
@@ -630,7 +639,7 @@ export default function ArenaAudience() {
                           className="flex-shrink-0 font-black text-sm tabular-nums"
                           style={{ color: team.color, minWidth: "3rem", textAlign: "start" }}
                         >
-                          {team.score.toLocaleString("ar-SA")}
+                          {team.score.toLocaleString(lang === "ar" ? "ar-SA" : "en-US")}
                         </div>
                       </motion.div>
                     );
@@ -647,7 +656,7 @@ export default function ArenaAudience() {
         <Link href="/games">
           <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition text-sm">
             <ChevronLeft className="w-4 h-4" />
-            الرئيسية
+            {copy.home}
           </button>
         </Link>
       </div>

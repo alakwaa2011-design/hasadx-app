@@ -22,8 +22,6 @@ interface PlayInfo {
 
 const GAME_META = {
   wameeth: {
-    ar: { name: "وميض", desc: "أسئلة سريعة — كل إجابة صحيحة تكسبك نقاطاً" },
-    en: { name: "Wameedh", desc: "Quick fire questions — answer fast to score" },
     icon: (
       <Zap className="w-7 h-7 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.5)]" />
     ),
@@ -32,8 +30,6 @@ const GAME_META = {
     borderColor: "rgba(250,204,21,0.35)",
   },
   rocket_race: {
-    ar: { name: "سباق الصواريخ", desc: "صاروخك يرتفع مع كل إجابة صحيحة" },
-    en: { name: "Rocket Race", desc: "Your rocket rises with every correct answer" },
     icon: (
       <Rocket className="w-7 h-7 text-blue-400 drop-shadow-[0_0_12px_rgba(96,165,250,0.5)]" />
     ),
@@ -46,8 +42,7 @@ const GAME_META = {
 export default function DirectPlayPage() {
   const { token } = useParams<{ token: string }>();
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
 
   const [info, setInfo] = useState<PlayInfo | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -66,14 +61,14 @@ export default function DirectPlayPage() {
         else setInfo(data as PlayInfo);
       })
       .catch(() =>
-        setLoadError(lang === "ar" ? "تعذّر تحميل النشاط" : "Failed to load activity"),
+        setLoadError(t.directPlay.loadActivityError),
       );
   }, [token]);
 
   const handleStart = async () => {
     const name = playerName.trim();
     if (!name) {
-      setNameError(lang === "ar" ? "أدخل اسمك أولاً" : "Please enter your name");
+      setNameError(t.directPlay.nameRequired);
       return;
     }
     setNameError("");
@@ -84,7 +79,7 @@ export default function DirectPlayPage() {
         headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "خطأ");
+      if (!res.ok) throw new Error(data.message || t.directPlay.genericError);
 
       const avatar = "🎯";
       setLocation(
@@ -94,9 +89,7 @@ export default function DirectPlayPage() {
       const message =
         err instanceof Error
           ? err.message
-          : lang === "ar"
-            ? "تعذّر بدء اللعبة"
-            : "Failed to start";
+          : t.directPlay.startError;
       setNameError(message);
       setStarting(false);
     }
@@ -116,10 +109,10 @@ export default function DirectPlayPage() {
     })
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "خطأ");
-        if (!data.pin || !data.controlToken) throw new Error("تعذّر تهيئة جلسة اللعب");
+        if (!res.ok) throw new Error(data.message || t.directPlay.genericError);
+        if (!data.pin || !data.controlToken) throw new Error(t.directPlay.sessionError);
         storeIndependentControlToken(String(data.pin), String(data.controlToken));
-        const playerName = lang === "ar" ? "لاعب" : "Player";
+        const playerName = t.directPlay.defaultPlayer;
         setLocation(
           `${data.playRoute}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent("🎯")}&independent=1&token=${encodeURIComponent(token)}&returnTo=${encodeURIComponent("/")}`,
           { replace: true },
@@ -128,9 +121,7 @@ export default function DirectPlayPage() {
       .catch((err: unknown) => {
         const message = err instanceof Error
           ? err.message
-          : lang === "ar"
-            ? "تعذّر بدء اللعبة"
-            : "Failed to start";
+          : t.directPlay.startError;
         setLoadError(message);
         setStarting(false);
       });
@@ -146,7 +137,7 @@ export default function DirectPlayPage() {
         <div className="flex flex-col items-center gap-4" dir={dir}>
           <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
           <p className="text-white/70 font-bold" data-testid="status-independent-starting">
-            {lang === "ar" ? "جارٍ بدء اللعبة..." : "Starting game..."}
+            {t.directPlay.starting}
           </p>
         </div>
       </div>
@@ -178,8 +169,8 @@ export default function DirectPlayPage() {
   }
 
   const meta = GAME_META[info!.gameType] ?? GAME_META.wameeth;
-  const gameLabel = lang === "ar" ? meta.ar.name : meta.en.name;
-  const gameDesc = lang === "ar" ? meta.ar.desc : meta.en.desc;
+  const gameLabel = info!.gameType === "wameeth" ? t.directPlay.wameethName : t.directPlay.rocketRaceName;
+  const gameDesc = info!.gameType === "wameeth" ? t.directPlay.wameethDescription : t.directPlay.rocketRaceDescription;
 
   // ── Main ───────────────────────────────────────────────────────────────────
   return (
@@ -263,14 +254,14 @@ export default function DirectPlayPage() {
                 style={{ color: "rgba(255,255,255,0.65)" }}
               >
                 <Target className="w-4 h-4 text-emerald-400" />
-                {info!.questionCount} {lang === "ar" ? "أسئلة" : "questions"}
+                {info!.questionCount} {t.directPlay.questions}
               </span>
               <span
                 className="flex items-center gap-1.5 text-sm font-bold"
                 style={{ color: "rgba(255,255,255,0.65)" }}
               >
                 <User className="w-4 h-4 text-emerald-400" />
-                {lang === "ar" ? "فردي" : "Solo"}
+                {t.directPlay.solo}
               </span>
             </div>
           </div>
@@ -282,14 +273,14 @@ export default function DirectPlayPage() {
                 className="block text-sm font-bold mb-2"
                 style={{ color: "rgba(255,255,255,0.75)" }}
               >
-                {lang === "ar" ? "اكتب اسمك للبدء" : "Enter your name to start"}
+                {t.directPlay.enterName}
               </label>
               <input
                 type="text"
                 value={playerName}
                 onChange={(e) => { setPlayerName(e.target.value); setNameError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && handleStart()}
-                placeholder={lang === "ar" ? "اسمك هنا..." : "Your name..."}
+                placeholder={t.directPlay.namePlaceholder}
                 maxLength={40}
                 autoFocus
                 className="w-full rounded-2xl px-4 py-3.5 text-base font-bold outline-none transition-all"
@@ -332,12 +323,12 @@ export default function DirectPlayPage() {
               {starting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {lang === "ar" ? "جاري البدء..." : "Starting..."}
+                  {t.directPlay.gameStarting}
                 </>
               ) : (
                 <>
                   <Play className="w-5 h-5 fill-white" />
-                  {lang === "ar" ? "ابدأ اللعبة" : "Start Game"}
+                  {t.directPlay.startGame}
                 </>
               )}
             </motion.button>

@@ -31,17 +31,18 @@ interface CustomCategoryModalProps {
 }
 
 const TEAM_COLORS = [
-  { hex: "#dc2626", name: "أحمر" },
-  { hex: "#2563eb", name: "أزرق" },
-  { hex: "#16a34a", name: "أخضر" },
-  { hex: "#d97706", name: "ذهبي" },
-  { hex: "#7c3aed", name: "بنفسجي" },
-  { hex: "#0891b2", name: "تركواز" },
+  { hex: "#dc2626", name: "Red" },
+  { hex: "#2563eb", name: "Blue" },
+  { hex: "#16a34a", name: "Green" },
+  { hex: "#d97706", name: "Gold" },
+  { hex: "#7c3aed", name: "Purple" },
+  { hex: "#0891b2", name: "Turquoise" },
 ];
 
 const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🔬", "📚", "🧮", "🏛️", "🎨", "⚽", "🦁", "🌺", "🧪", "📖", "🎵", "🏆", "🌙", "🔭", "🧬", "🏺", "✏️"];
 
 function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCategoryModalProps) {
+  const { t } = useI18n();
   const [nameAr, setNameAr] = useState(existing?.nameAr ?? "");
   const [icon, setIcon] = useState(existing?.icon ?? "📋");
   const [coverImageUrl, setCoverImageUrl] = useState((existing as any)?.coverImageUrl ?? "");
@@ -64,9 +65,9 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
   };
 
   const handleSave = async () => {
-    if (!nameAr.trim()) { toast.error("أدخل اسم الفئة"); return; }
+    if (!nameAr.trim()) { toast.error(t.secretGame.categoryNameRequired); return; }
     const validItems = items.filter((it) => it.nameAr.trim());
-    if (validItems.length < 2) { toast.error("أضف عنصرين على الأقل"); return; }
+    if (validItems.length < 2) { toast.error(t.secretGame.twoItemsRequired); return; }
     setSaving(true);
     try {
       const url = existing
@@ -79,11 +80,11 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
         body: JSON.stringify({ nameAr: nameAr.trim(), icon, isPublic, coverImageUrl: coverImageUrl.trim() || undefined, items: validItems }),
       });
       const data = await r.json();
-      if (!r.ok) { toast.error(data.error ?? "خطأ في الحفظ"); return; }
-      toast.success(existing ? "تم تحديث الفئة" : "تمت إضافة الفئة بنجاح");
+      if (!r.ok) { toast.error(data.error ?? t.secretGame.saveError); return; }
+      toast.success(existing ? t.secretGame.categoryUpdated : t.secretGame.categoryAdded);
       onSaved(data.category);
     } catch {
-      toast.error("خطأ في الاتصال");
+      toast.error(t.secretGame.connectionError);
     } finally {
       setSaving(false);
     }
@@ -101,7 +102,7 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
         <div className="flex items-center justify-between p-5 border-b border-white/10 flex-shrink-0">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-purple-400" />
-            {existing ? "تعديل الفئة المخصصة" : "إضافة فئة مخصصة"}
+             {existing ? t.secretGame.editCategory : t.secretGame.addCategory}
           </h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors">
             <X className="w-5 h-5" />
@@ -111,17 +112,17 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-white/60 text-xs mb-1 block">اسم الفئة *</label>
+               <label className="text-white/60 text-xs mb-1 block">{t.secretGame.categoryName}</label>
               <input
                 value={nameAr}
                 onChange={(e) => setNameAr(e.target.value)}
                 maxLength={40}
-                placeholder="مثال: شخصيات من الكتاب المدرسي"
+                 placeholder={t.secretGame.categoryPlaceholder}
                 className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400"
               />
             </div>
             <div>
-              <label className="text-white/60 text-xs mb-1 block">الأيقونة</label>
+               <label className="text-white/60 text-xs mb-1 block">{t.secretGame.icon}</label>
               <div className="relative">
                 <button
                   type="button"
@@ -149,13 +150,13 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
           </div>
 
           <div>
-            <label className="text-white/60 text-xs mb-1 block">صورة الغلاف (اختياري)</label>
+             <label className="text-white/60 text-xs mb-1 block">{t.secretGame.coverImage}</label>
             <div className="flex items-center gap-1.5">
               <Image className="w-3.5 h-3.5 text-white/30 flex-shrink-0" />
               <input
                 value={coverImageUrl}
                 onChange={(e) => setCoverImageUrl(e.target.value)}
-                placeholder="رابط صورة تمثل الفئة (يُعرض على بطاقة الفئة)"
+                 placeholder={t.secretGame.coverImagePlaceholder}
                 className="flex-1 bg-white/5 border border-white/10 text-white/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-400/50"
               />
             </div>
@@ -174,14 +175,14 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
             </div>
             <span className="text-white/70 text-sm flex items-center gap-1.5 group-hover:text-white transition-colors">
               <Globe className="w-4 h-4 text-purple-400" />
-              مشاركة مع جميع المعلمين
+               {t.secretGame.shareTeachers}
             </span>
           </label>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-white/60 text-xs">العناصر (الأسرار) — الحد الأدنى عنصران *</label>
-              <span className="text-white/30 text-xs">{items.length} عنصر</span>
+               <label className="text-white/60 text-xs">{t.secretGame.secretItems}</label>
+               <span className="text-white/30 text-xs">{t.secretGame.itemCount.replace("{count}", String(items.length))}</span>
             </div>
             <div className="space-y-2 max-h-60 overflow-y-auto pl-1">
               {items.map((item, i) => (
@@ -191,7 +192,7 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
                       value={item.nameAr}
                       onChange={(e) => updateItem(i, "nameAr", e.target.value)}
                       maxLength={60}
-                      placeholder={`اسم العنصر ${i + 1}`}
+                       placeholder={t.secretGame.itemName.replace("{number}", String(i + 1))}
                       className="w-full bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-400"
                     />
                     <div className="flex items-center gap-1.5">
@@ -199,7 +200,7 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
                       <input
                         value={item.imageUrl}
                         onChange={(e) => updateItem(i, "imageUrl", e.target.value)}
-                        placeholder="رابط الصورة (اختياري)"
+                         placeholder={t.secretGame.imageUrl}
                         className="flex-1 bg-white/5 border border-white/10 text-white/70 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-purple-400/50"
                       />
                     </div>
@@ -221,14 +222,14 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
               className="mt-2 w-full py-2 rounded-xl border border-dashed border-white/20 text-white/50 text-sm hover:border-purple-400/50 hover:text-purple-400 transition-colors flex items-center justify-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
-              إضافة عنصر
+               {t.secretGame.addItem}
             </button>
           </div>
         </div>
 
         <div className="p-5 border-t border-white/10 flex gap-3 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/20 text-white/60 text-sm font-bold hover:bg-white/5 transition-colors">
-            إلغاء
+             {t.secretGame.cancel}
           </button>
           <button
             onClick={handleSave}
@@ -237,7 +238,7 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
             style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)", color: "white" }}
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            {saving ? "جارٍ الحفظ..." : existing ? "حفظ التعديلات" : "إضافة الفئة"}
+             {saving ? t.secretGame.saving : existing ? t.secretGame.saveChanges : t.secretGame.addCategory}
           </button>
         </div>
       </motion.div>
@@ -246,8 +247,7 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
 }
 
 export default function SecretSetup() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
   const [, setLocation] = useLocation();
 
   const { data: teacherData, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
@@ -257,8 +257,8 @@ export default function SecretSetup() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [catLoading, setCatLoading] = useState(true);
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
-  const [teamAName, setTeamAName] = useState("الفريق الأحمر");
-  const [teamBName, setTeamBName] = useState("الفريق الأزرق");
+  const [teamAName, setTeamAName] = useState(t.secretGame.teamA);
+  const [teamBName, setTeamBName] = useState(t.secretGame.teamB);
   const [teamAColor, setTeamAColor] = useState(TEAM_COLORS[0].hex);
   const [teamBColor, setTeamBColor] = useState(TEAM_COLORS[1].hex);
   const [maxQuestions, setMaxQuestions] = useState(20);
@@ -277,15 +277,15 @@ export default function SecretSetup() {
     fetch("/api/secret-game/categories")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setCategories(d); })
-      .catch(() => toast.error("تعذّر تحميل الفئات"))
+       .catch(() => toast.error(t.secretGame.loadCategoriesError))
       .finally(() => setCatLoading(false));
   };
 
   useEffect(() => { loadCategories(); }, []);
 
   const handleCreate = async () => {
-    if (!selectedCat) { toast.error("اختر فئة أولاً"); return; }
-    if (!teamAName.trim() || !teamBName.trim()) { toast.error("اكتب اسم كلا الفريقين"); return; }
+    if (!selectedCat) { toast.error(t.secretGame.selectCategoryError); return; }
+    if (!teamAName.trim() || !teamBName.trim()) { toast.error(t.secretGame.teamNamesError); return; }
     setCreating(true);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -300,7 +300,7 @@ export default function SecretSetup() {
             maxQuestions,
           }, (res: { pin?: string; tokenA?: string; tokenB?: string; error?: string }) => {
             if (res.error || !res.pin) {
-              reject(new Error(res.error ?? "فشل الإنشاء"));
+               reject(new Error(res.error ?? t.secretGame.createFailed));
               socket.disconnect();
               return;
             }
@@ -318,23 +318,23 @@ export default function SecretSetup() {
       });
       setLocation("/game/secret/play");
     } catch (err: any) {
-      toast.error(err.message ?? "خطأ في الإنشاء");
+       toast.error(err.message ?? t.secretGame.createError);
     } finally {
       setCreating(false);
     }
   };
 
   const handleDeleteCustom = async (cat: Category) => {
-    if (!window.confirm(`هل تريد حذف فئة "${cat.nameAr}"؟`)) return;
+    if (!window.confirm(t.secretGame.deleteCategoryConfirm.replace("{name}", cat.nameAr))) return;
     setDeletingId(cat.id);
     try {
       const r = await fetch(`/api/secret-game/custom-categories/${cat.id}`, { method: "DELETE" });
-      if (!r.ok) { const d = await r.json(); toast.error(d.error ?? "خطأ في الحذف"); return; }
+       if (!r.ok) { const d = await r.json(); toast.error(d.error ?? t.secretGame.deleteCategoryError); return; }
       if (selectedCat === cat.id) setSelectedCat(null);
       setCategories((prev) => prev.filter((c) => c.id !== cat.id));
-      toast.success("تم حذف الفئة");
+       toast.success(t.secretGame.categoryDeleted);
     } catch {
-      toast.error("خطأ في الاتصال");
+       toast.error(t.secretGame.connectionError);
     } finally {
       setDeletingId(null);
     }
@@ -403,21 +403,21 @@ export default function SecretSetup() {
   if (isLoggedIn === false) {
     return (
       <Layout>
-        <div dir="rtl" className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6"
+          <div dir={dir} className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6"
           style={{ background: "linear-gradient(180deg,#1E4D35 0%,#0F2A20 45%,#0A1F18 100%)" }}>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md rounded-3xl p-8 border-4 text-center backdrop-blur-sm"
             style={{ background: "linear-gradient(160deg,rgba(6,78,59,.95),rgba(2,44,34,.95))", borderColor: "rgba(245,158,11,.55)" }}>
             <Lock className="w-12 h-12 text-amber-300 mx-auto mb-4" />
-            <h1 className="text-2xl font-black text-amber-200 mb-3">تسجيل الدخول مطلوب</h1>
+             <h1 className="text-2xl font-black text-amber-200 mb-3">{t.secretGame.loginRequired}</h1>
             <div className="flex gap-3 justify-center mt-6">
               <Link href="/login">
                 <button className="px-6 py-3 rounded-xl font-bold bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 inline-flex items-center gap-2">
-                  <LogIn className="w-4 h-4" />تسجيل الدخول
+                   <LogIn className="w-4 h-4" />{t.secretGame.login}
                 </button>
               </Link>
               <Link href="/games">
-                <button className="px-5 py-3 rounded-xl font-bold bg-white/10 text-white border border-white/20">العودة</button>
+                 <button className="px-5 py-3 rounded-xl font-bold bg-white/10 text-white border border-white/20">{t.secretGame.back}</button>
               </Link>
             </div>
           </motion.div>
@@ -440,9 +440,9 @@ export default function SecretSetup() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
                 <Eye className="w-7 h-7 text-purple-400" />
-                اكتشف السر
+                 {t.secretGame.title}
               </h1>
-              <p className="text-white/50 text-sm">لعبة التخمين بالأسئلة</p>
+               <p className="text-white/50 text-sm">{t.secretGame.subtitle}</p>
             </div>
           </div>
 
@@ -453,12 +453,12 @@ export default function SecretSetup() {
               style={{ background: "rgba(255,255,255,0.05)" }}>
               <h2 className="text-white font-bold mb-4 flex items-center gap-2">
                 <Users className="w-5 h-5 text-purple-400" />
-                أسماء الفريقين وألوانهما
+                 {t.secretGame.teamNamesAndColors}
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { name: teamAName, setName: setTeamAName, color: teamAColor, setColor: setTeamAColor, label: "الفريق أ" },
-                  { name: teamBName, setName: setTeamBName, color: teamBColor, setColor: setTeamBColor, label: "الفريق ب" },
+                   { name: teamAName, setName: setTeamAName, color: teamAColor, setColor: setTeamAColor, label: t.secretGame.teamA },
+                   { name: teamBName, setName: setTeamBName, color: teamBColor, setColor: setTeamBColor, label: t.secretGame.teamB },
                 ].map((team, idx) => (
                   <div key={idx}>
                     <label className="text-white/60 text-xs mb-1 block">{team.label}</label>
@@ -467,7 +467,7 @@ export default function SecretSetup() {
                       onChange={(e) => team.setName(e.target.value)}
                       maxLength={20}
                       className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400 mb-2"
-                      placeholder={`اسم ${team.label}`}
+                       placeholder={t.secretGame.teamNamePlaceholder.replace("{team}", team.label)}
                     />
                     <div className="flex gap-1.5 flex-wrap">
                       {TEAM_COLORS.map((c) => (
@@ -491,7 +491,7 @@ export default function SecretSetup() {
               className="rounded-2xl p-5 border border-white/10"
               style={{ background: "rgba(255,255,255,0.05)" }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-white font-bold">اختر الفئة</h2>
+                 <h2 className="text-white font-bold">{t.secretGame.category}</h2>
                 {isLoggedIn && teacherId && (
                   <button
                     type="button"
@@ -500,7 +500,7 @@ export default function SecretSetup() {
                     style={{ background: "rgba(124,58,237,0.15)", borderColor: "rgba(139,92,246,0.4)", color: "#c4b5fd" }}
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    أضف فئة مخصصة
+                     {t.secretGame.addCustomCategory}
                   </button>
                 )}
               </div>
@@ -514,7 +514,7 @@ export default function SecretSetup() {
                 <div className="space-y-4">
                   {builtInCats.length > 0 && (
                     <div>
-                      <p className="text-white/30 text-xs mb-2">الفئات الافتراضية</p>
+                       <p className="text-white/30 text-xs mb-2">{t.secretGame.defaultCategories}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {builtInCats.map((cat) => <CategoryButton key={cat.id} cat={cat} />)}
                       </div>
@@ -523,7 +523,7 @@ export default function SecretSetup() {
 
                   {myCustomCats.length > 0 && (
                     <div>
-                      <p className="text-white/30 text-xs mb-2">فئاتي المخصصة</p>
+                       <p className="text-white/30 text-xs mb-2">{t.secretGame.myCategories}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {myCustomCats.map((cat) => <CategoryButton key={cat.id} cat={cat} />)}
                       </div>
@@ -532,7 +532,7 @@ export default function SecretSetup() {
 
                   {publicCustomCats.length > 0 && (
                     <div>
-                      <p className="text-white/30 text-xs mb-2">فئات مشتركة من المعلمين</p>
+                       <p className="text-white/30 text-xs mb-2">{t.secretGame.sharedCategories}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {publicCustomCats.map((cat) => <CategoryButton key={cat.id} cat={cat} />)}
                       </div>
@@ -540,7 +540,7 @@ export default function SecretSetup() {
                   )}
 
                   {categories.length === 0 && (
-                    <p className="text-white/40 text-sm text-center py-4">لا توجد فئات متاحة</p>
+                     <p className="text-white/40 text-sm text-center py-4">{t.secretGame.noCategories}</p>
                   )}
                 </div>
               )}
@@ -550,7 +550,7 @@ export default function SecretSetup() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
               className="rounded-2xl p-5 border border-white/10"
               style={{ background: "rgba(255,255,255,0.05)" }}>
-              <h2 className="text-white font-bold mb-3">الحد الأقصى للأسئلة</h2>
+               <h2 className="text-white font-bold mb-3">{t.secretGame.questionLimit}</h2>
               <div className="flex gap-2">
                 {[6, 8, 10, 12, 15].map((n) => (
                   <button
@@ -583,7 +583,7 @@ export default function SecretSetup() {
               ) : (
                 <Play className="w-5 h-5" />
               )}
-              {creating ? "جارٍ الإنشاء..." : "إنشاء اللعبة"}
+               {creating ? t.secretGame.creating : t.secretGame.createGame}
             </motion.button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, Loader2, AlertCircle } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -15,6 +16,7 @@ interface JoinResponse {
 
 export default function PlaySecret() {
   const [, setLocation] = useLocation();
+  const { t, dir } = useI18n();
   const [pin, setPin] = useState("");
   const [team, setTeam] = useState<"A" | "B" | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,13 +33,13 @@ export default function PlaySecret() {
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "خطأ غير معروف");
+        setError(body.error ?? t.secretGame.unknownError);
         return;
       }
       const data: JoinResponse = await res.json();
       setJoinInfo(data);
     } catch {
-      setError("تعذّر الاتصال بالسيرفر");
+      setError(t.secretGame.connectionFailed);
     } finally {
       setLoading(false);
     }
@@ -50,7 +52,7 @@ export default function PlaySecret() {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="min-h-screen flex flex-col items-center justify-center px-4 text-white"
       style={{ background: "linear-gradient(160deg,#0d0d1a 0%,#120d1f 100%)" }}
     >
@@ -67,8 +69,8 @@ export default function PlaySecret() {
           >
             <Eye className="w-8 h-8 text-purple-400" />
           </div>
-          <h1 className="text-2xl font-black text-white">اكتشف السر</h1>
-          <p className="text-white/40 text-sm text-center">أدخل رمز الجلسة واختر فريقك</p>
+          <h1 className="text-2xl font-black text-white">{t.secretGame.title}</h1>
+          <p className="text-white/40 text-sm text-center">{t.secretGame.subtitle}</p>
         </div>
 
         {/* PIN + Team Form */}
@@ -83,7 +85,7 @@ export default function PlaySecret() {
             >
               {/* PIN input */}
               <div className="flex flex-col gap-2">
-                <label className="text-white/60 text-xs font-bold">رمز الجلسة (PIN)</label>
+                <label className="text-white/60 text-xs font-bold">{t.secretGame.sessionCode}</label>
                 <input
                   value={pin}
                   onChange={(e) => {
@@ -91,7 +93,7 @@ export default function PlaySecret() {
                     setError(null);
                   }}
                   onKeyDown={(e) => e.key === "Enter" && team && handleJoin()}
-                  placeholder="مثال: AB12CD"
+                  placeholder={t.secretGame.sessionCodePlaceholder}
                   maxLength={6}
                   dir="ltr"
                   className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-center text-xl font-mono tracking-widest placeholder-white/20 focus:outline-none focus:border-purple-500 focus:bg-white/15 transition-all"
@@ -100,20 +102,20 @@ export default function PlaySecret() {
 
               {/* Team selection */}
               <div className="flex flex-col gap-2">
-                <label className="text-white/60 text-xs font-bold">اختر فريقك</label>
+                <label className="text-white/60 text-xs font-bold">{t.secretGame.chooseTeam}</label>
                 <div className="grid grid-cols-2 gap-3">
-                  {(["A", "B"] as const).map((t) => (
+                  {(["A", "B"] as const).map((teamOption) => (
                     <button
-                      key={t}
-                      onClick={() => setTeam(t)}
+                      key={teamOption}
+                      onClick={() => setTeam(teamOption)}
                       className="py-4 rounded-xl border-2 font-black text-base transition-all"
                       style={{
-                        borderColor: team === t ? "#a855f7" : "rgba(255,255,255,0.1)",
-                        background: team === t ? "rgba(168,85,247,0.2)" : "rgba(255,255,255,0.05)",
-                        color: team === t ? "#e9d5ff" : "rgba(255,255,255,0.5)",
+                        borderColor: team === teamOption ? "#a855f7" : "rgba(255,255,255,0.1)",
+                        background: team === teamOption ? "rgba(168,85,247,0.2)" : "rgba(255,255,255,0.05)",
+                        color: team === teamOption ? "#e9d5ff" : "rgba(255,255,255,0.5)",
                       }}
                     >
-                      الفريق {t === "A" ? "الأول" : "الثاني"}
+                      {teamOption === "A" ? t.secretGame.firstTeam : t.secretGame.secondTeam}
                     </button>
                   ))}
                 </div>
@@ -144,10 +146,10 @@ export default function PlaySecret() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    جارٍ الانضمام…
+                    {t.secretGame.joining}
                   </>
                 ) : (
-                  "انضم للعبة"
+                  t.secretGame.joinGame
                 )}
               </button>
             </motion.div>
@@ -165,16 +167,16 @@ export default function PlaySecret() {
                   borderColor: `${joinInfo.teamColor}40`,
                 }}
               >
-                <p className="text-white/50 text-xs mb-1">أنت قائد</p>
+                <p className="text-white/50 text-xs mb-1">{t.secretGame.youAreLeader}</p>
                 <p className="text-2xl font-black" style={{ color: joinInfo.teamColor }}>
                   {joinInfo.teamName}
                 </p>
                 <p className="text-white/30 text-xs mt-2">
-                  منافسك: {joinInfo.opponentName}
+                  {t.secretGame.opponent.replace("{name}", joinInfo.opponentName)}
                 </p>
                 {joinInfo.phase === "waiting_scan" && (
                   <p className="text-purple-400 text-xs mt-2 font-bold">
-                    ✅ جاهز للكشف — اضغط الزر لرؤية سرّك
+                    {t.secretGame.readyReveal}
                   </p>
                 )}
               </div>
@@ -184,14 +186,14 @@ export default function PlaySecret() {
                 className="w-full py-4 rounded-xl font-black text-lg transition-all"
                 style={{ background: `linear-gradient(135deg,${joinInfo.teamColor},${joinInfo.teamColor}cc)` }}
               >
-                🔍 اكتشف سرّك
+                  {t.secretGame.revealSecret}
               </button>
 
               <button
                 onClick={() => { setJoinInfo(null); setError(null); }}
                 className="text-white/30 text-sm hover:text-white/60 transition-colors"
               >
-                العودة
+                {t.secretGame.back}
               </button>
             </motion.div>
           )}

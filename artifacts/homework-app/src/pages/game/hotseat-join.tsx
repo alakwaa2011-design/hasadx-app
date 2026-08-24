@@ -14,6 +14,7 @@ const DARK_BG = "linear-gradient(180deg, #050818 0%, #0d1230 50%, #1a0800 100%)"
 const PIN_LENGTH = 6;
 
 function PinInput({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const { t } = useI18n();
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const chars = value.padEnd(PIN_LENGTH, "").split("").slice(0, PIN_LENGTH);
 
@@ -57,6 +58,7 @@ function PinInput({ value, onChange, disabled }: { value: string; onChange: (v: 
           onFocus={e => e.target.select()}
           disabled={disabled}
           maxLength={1}
+          aria-label={`${t.gamePages.hotseat.pinDigit} ${i + 1}`}
           style={{
             width: 44, height: 52, borderRadius: 12,
             background: chars[i] ? `${FIRE}25` : "rgba(255,255,255,0.08)",
@@ -77,9 +79,7 @@ export default function HotSeatJoin() {
   const searchStr = useSearch();
   const sp = new URLSearchParams(searchStr);
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
-  const ar = lang === "ar";
-  const dir = ar ? "rtl" : "ltr";
+  const { t, dir } = useI18n();
 
   const [pin, setPin] = useState(params.pin || sp.get("pin") || "");
   const [name, setName] = useState(sp.get("name") || "");
@@ -106,8 +106,8 @@ export default function HotSeatJoin() {
   const handleJoin = () => {
     const trimPin = pin.trim();
     const trimName = name.trim();
-    if (!trimPin || trimPin.length !== PIN_LENGTH) { toast.error(ar ? "أدخل كود الغرفة" : "Enter room code"); return; }
-    if (!trimName) { toast.error(ar ? "أدخل اسمك" : "Enter your name"); return; }
+    if (!trimPin || trimPin.length !== PIN_LENGTH) { toast.error(t.gamePages.hotseat.enterRoomCode); return; }
+    if (!trimName) { toast.error(t.gamePages.hotseat.enterYourName); return; }
     setJoining(true);
     const socket = getHotSeatSocket();
     socket.emit("hotseat:join", { pin: trimPin, name: trimName, avatar }, (res: {
@@ -153,10 +153,10 @@ export default function HotSeatJoin() {
             🔥
           </motion.div>
           <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 900, margin: "0 0 4px" }}>
-            {ar ? "الكرسي الساخن" : "HotSeat"}
+             {t.gamePages.hotseat.title}
           </h1>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, margin: 0 }}>
-            {ar ? "انضم للجلسة الآن" : "Join the session"}
+             {t.gamePages.hotseat.subtitle}
           </p>
         </motion.div>
 
@@ -177,12 +177,13 @@ export default function HotSeatJoin() {
           {/* Name */}
           <div>
             <label style={{ display: "block", color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-              {ar ? "👤 اسمك" : "👤 Your Name"}
+               {t.gamePages.hotseat.yourName}
             </label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={ar ? "أدخل اسمك..." : "Enter your name..."}
+               placeholder={t.gamePages.enterName}
+               aria-label={t.gamePages.hotseat.yourName}
               maxLength={30}
               style={{
                 width: "100%", padding: "12px 14px", borderRadius: 12,
@@ -197,7 +198,7 @@ export default function HotSeatJoin() {
           {/* Avatar */}
           <div>
             <label style={{ display: "block", color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-              {ar ? "🎭 أفاتارك" : "🎭 Your Avatar"}
+               {t.gamePages.hotseat.yourAvatar}
             </label>
             <button
               onClick={() => setAvatarOpen(v => !v)}
@@ -211,7 +212,7 @@ export default function HotSeatJoin() {
             >
               <span style={{ fontSize: 28 }}>{avatar}</span>
               <span style={{ flex: 1, textAlign: "start", fontSize: 14, fontWeight: 700 }}>
-                {ar ? "اختر أفاتار" : "Choose avatar"}
+                 {t.gamePages.hotseat.chooseAvatar}
               </span>
               {avatarOpen ? <ChevronUp size={16} color="rgba(255,255,255,0.5)" /> : <ChevronDown size={16} color="rgba(255,255,255,0.5)" />}
             </button>
@@ -230,6 +231,7 @@ export default function HotSeatJoin() {
                     {AVATARS.map(a => (
                       <button
                         key={a}
+                        aria-label={`${t.gamePages.hotseat.selectAvatar} ${a}`}
                         onClick={() => { setAvatar(a); setAvatarOpen(false); }}
                         style={{
                           fontSize: 26, padding: 6, borderRadius: 10, border: "none",
@@ -250,20 +252,20 @@ export default function HotSeatJoin() {
           {/* PIN */}
           <div>
             <label style={{ display: "block", color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700, marginBottom: 10, textAlign: "center" }}>
-              {ar ? "🔑 كود الغرفة" : "🔑 Room Code"}
+               {t.gamePages.hotseat.roomCode}
             </label>
             <PinInput value={pin} onChange={setPin} />
             <AnimatePresence>
               {pinValid === true && (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   style={{ color: "#22c55e", fontSize: 12, fontWeight: 700, textAlign: "center", marginTop: 6 }}>
-                  ✅ {ar ? "الغرفة موجودة!" : "Room found!"}
+                   ✅ {t.gamePages.hotseat.roomFound}
                 </motion.p>
               )}
               {pinValid === false && (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   style={{ color: "#ef4444", fontSize: 12, fontWeight: 700, textAlign: "center", marginTop: 6 }}>
-                  ❌ {ar ? "الغرفة غير موجودة" : "Room not found"}
+                   ❌ {t.gamePages.hotseat.roomNotFound}
                 </motion.p>
               )}
             </AnimatePresence>
@@ -285,7 +287,7 @@ export default function HotSeatJoin() {
           >
             {joining
               ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}>🔥</motion.span>
-              : <><span style={{ fontSize: 20 }}>🚀</span> {ar ? "انضم الآن" : "Join Now"} <ChevronRight size={18} /></>}
+               : <><span style={{ fontSize: 20 }}>🚀</span> {t.gamePages.joinNow} <ChevronRight size={18} /></>}
           </button>
         </motion.div>
       </div>

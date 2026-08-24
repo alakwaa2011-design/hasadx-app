@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSeo } from "@/lib/seo";
+import { useI18n } from "@/lib/i18n";
 
 const SCENES = ["intro", "hook", "iphone", "android", "outro"] as const;
 type Scene = (typeof SCENES)[number];
@@ -52,10 +53,11 @@ function Background() {
 }
 
 function AppIcon({ size = 80 }: { size?: number }) {
+  const { t } = useI18n();
   return (
     <img
       src="/icons/icon-192.png"
-      alt="حصاد"
+      alt={t.installTutorial.appAlt}
       style={{
         width: size,
         height: size,
@@ -95,12 +97,15 @@ function ProgressBars({ current, total, duration }: { current: number; total: nu
 }
 
 function NavDots({ current, total, onSelect }: { current: number; total: number; onSelect: (i: number) => void }) {
+  const { t } = useI18n();
   return (
     <div className="absolute bottom-5 left-0 right-0 flex justify-center gap-2 z-50">
       {Array.from({ length: total }).map((_, i) => (
         <button
           key={i}
           onClick={() => onSelect(i)}
+          aria-label={t.installTutorial.sceneLabel.replace("{n}", String(i + 1))}
+          aria-current={i === current ? "step" : undefined}
           className="rounded-full transition-all duration-300"
           style={{
             width: i === current ? 20 : 7,
@@ -114,6 +119,7 @@ function NavDots({ current, total, onSelect }: { current: number; total: number;
 }
 
 function SceneIntro({ phase }: { phase: number }) {
+  const { t, dir } = useI18n();
   return (
     <motion.div
       className="absolute inset-0 flex flex-col items-center justify-center gap-8"
@@ -137,7 +143,7 @@ function SceneIntro({ phase }: { phase: number }) {
         animate={phase >= 2 ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
       >
-        منصة حصاد
+        {t.installTutorial.platformName}
       </motion.h1>
 
       <motion.p
@@ -145,13 +151,13 @@ function SceneIntro({ phase }: { phase: number }) {
         style={{
           color: "rgba(255,255,255,0.8)",
           fontFamily: "'Tajawal', sans-serif",
-          direction: "rtl",
+          direction: dir,
           filter: phase >= 3 ? "blur(0px)" : "blur(8px)",
           opacity: phase >= 3 ? 1 : 0,
           transition: "all 0.7s ease",
         }}
       >
-        تعلم ، نافس، استمتع
+        {t.installTutorial.tagline}
       </motion.p>
 
       <motion.div
@@ -161,19 +167,20 @@ function SceneIntro({ phase }: { phase: number }) {
           border: `1px solid ${GOLD}55`,
           background: `${GOLD}11`,
           fontFamily: "'Tajawal', sans-serif",
-          direction: "rtl",
+          direction: dir,
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={phase >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         transition={{ delay: 0.3, duration: 0.5 }}
       >
-        حصاد . في جيبك دائماً
+        {t.installTutorial.pocketTagline}
       </motion.div>
     </motion.div>
   );
 }
 
 function SceneHook({ phase }: { phase: number }) {
+  const { t, dir } = useI18n();
   return (
     <motion.div
       className="absolute inset-0 flex items-center justify-center px-[8vw]"
@@ -181,7 +188,7 @@ function SceneHook({ phase }: { phase: number }) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: "-50vw", scale: 0.85 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      dir="rtl"
+      dir={dir}
     >
       <div className="flex items-center gap-[6vw] w-full">
         <motion.div
@@ -194,18 +201,18 @@ function SceneHook({ phase }: { phase: number }) {
             className="font-bold text-[clamp(1.6rem,5vw,3.5rem)] leading-tight mb-6"
             style={{ color: "white", fontFamily: "'Tajawal', sans-serif" }}
           >
-            تريد تجربة{" "}
-            <span style={{ color: GOLD }}>حصاد</span>
+            {t.installTutorial.hookBeforeBrand}{" "}
+            <span style={{ color: GOLD }}>{t.installTutorial.brandName}</span>
             <br />
-            كتطبيق حقيقي؟
+            {t.installTutorial.hookAfterBrand}
           </h2>
           <p
             className="text-[clamp(1rem,2.2vw,1.5rem)] leading-relaxed"
             style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Tajawal', sans-serif" }}
           >
-            ثبّته مجاناً على شاشتك الرئيسية
+            {t.installTutorial.hookLine1}
             <br />
-            بدون تنزيل من أي متجر!
+            {t.installTutorial.hookLine2}
           </p>
         </motion.div>
 
@@ -251,7 +258,7 @@ function SceneHook({ phase }: { phase: number }) {
               >
                 <AppIcon size={56} />
                 <span style={{ fontSize: 14, fontWeight: 700, color: GREEN, fontFamily: "'Tajawal', sans-serif" }}>
-                  حصاد
+                  {t.installTutorial.brandName}
                 </span>
               </div>
             </motion.div>
@@ -263,11 +270,12 @@ function SceneHook({ phase }: { phase: number }) {
 }
 
 function SceneIphone({ phase }: { phase: number }) {
+  const { t, dir } = useI18n();
   const steps = [
-    { label: "افتح Safari وانتقل إلى hasaadx.com", active: phase === 1 },
-    { label: 'اضغط زر المشاركة ⤴️ في الشريط السفلي', active: phase === 2 },
-    { label: "اختر «أضف للشاشة الرئيسية»", active: phase === 3 },
-    { label: "التطبيق جاهز على شاشتك! ✓", active: phase >= 4 },
+    { label: t.installTutorial.iphoneStep1, active: phase === 1 },
+    { label: t.installTutorial.iphoneStep2, active: phase === 2 },
+    { label: t.installTutorial.iphoneStep3, active: phase === 3 },
+    { label: t.installTutorial.ready, active: phase >= 4 },
   ];
 
   return (
@@ -277,7 +285,7 @@ function SceneIphone({ phase }: { phase: number }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, y: "-100vh" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      dir="rtl"
+      dir={dir}
     >
       <div className="flex-1 pr-[4vw]">
         <motion.h2
@@ -287,7 +295,7 @@ function SceneIphone({ phase }: { phase: number }) {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          على آيفون
+          {t.installTutorial.iphoneTitle}
           <svg viewBox="0 0 384 512" width="clamp(28px,3.5vw,44px)" height="clamp(28px,3.5vw,44px)" fill="currentColor" style={{ color: "white" }}>
             <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
           </svg>
@@ -412,7 +420,7 @@ function SceneIphone({ phase }: { phase: number }) {
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5">
                           <path d="M12 5v14M5 12h14" />
                         </svg>
-                        <span className="text-sm font-semibold text-black">أضف للشاشة الرئيسية</span>
+                        <span className="text-sm font-semibold text-black">{t.installTutorial.addToHome}</span>
                         {phase === 2 && (
                           <motion.div
                             className="absolute left-8 top-3 w-4 h-4 bg-blue-400 rounded-full"
@@ -453,8 +461,8 @@ function SceneIphone({ phase }: { phase: number }) {
                       transition={{ type: "spring", delay: 0.3 }}
                       className="flex flex-col items-center gap-1"
                     >
-                      <img src="/icons/icon-192.png" alt="حصاد" style={{ width: 36, height: 36, borderRadius: 8 }} />
-                      <span style={{ fontSize: 9, color: "white", fontFamily: "'Tajawal', sans-serif" }}>حصاد</span>
+                      <img src="/icons/icon-192.png" alt={t.installTutorial.appAlt} style={{ width: 36, height: 36, borderRadius: 8 }} />
+                      <span style={{ fontSize: 9, color: "white", fontFamily: "'Tajawal', sans-serif" }}>{t.installTutorial.brandName}</span>
                     </motion.div>
                   )}
                 </div>
@@ -468,11 +476,12 @@ function SceneIphone({ phase }: { phase: number }) {
 }
 
 function SceneAndroid({ phase }: { phase: number }) {
+  const { t, dir } = useI18n();
   const steps = [
-    { label: "افتح Chrome وانتقل إلى hasaadx.com", active: phase === 1 },
-    { label: "اضغط القائمة ⋮ في الزاوية العلوية", active: phase === 2 },
-    { label: 'اختر «إضافة إلى الشاشة الرئيسية»', active: phase === 3 },
-    { label: "التطبيق جاهز على شاشتك! ✓", active: phase >= 4 },
+    { label: t.installTutorial.androidStep1, active: phase === 1 },
+    { label: t.installTutorial.androidStep2, active: phase === 2 },
+    { label: t.installTutorial.androidStep3, active: phase === 3 },
+    { label: t.installTutorial.ready, active: phase >= 4 },
   ];
 
   return (
@@ -482,7 +491,7 @@ function SceneAndroid({ phase }: { phase: number }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.85, filter: "blur(10px)" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      dir="rtl"
+      dir={dir}
     >
       <div className="flex-1 pr-[4vw]">
         <motion.h2
@@ -492,7 +501,7 @@ function SceneAndroid({ phase }: { phase: number }) {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          على أندرويد
+          {t.installTutorial.androidTitle}
           <svg viewBox="0 0 576 512" width="clamp(28px,3.5vw,44px)" height="clamp(28px,3.5vw,44px)" fill="white">
             <path d="M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l48,83.17C64.64,202.14,16.79,285.34,0,384H576c-16.79-98.66-64.64-181.86-146.85-226.55" />
           </svg>
@@ -609,7 +618,7 @@ function SceneAndroid({ phase }: { phase: number }) {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5">
                       <path d="M12 5v14M5 12h14" />
                     </svg>
-                    <span className="text-xs font-semibold text-black">إضافة إلى الشاشة الرئيسية</span>
+                    <span className="text-xs font-semibold text-black">{t.installTutorial.addToHomeAndroid}</span>
                     {phase === 2 && (
                       <motion.div
                         className="absolute left-8 top-2 w-3 h-3 bg-gray-400 rounded-full"
@@ -646,7 +655,7 @@ function SceneAndroid({ phase }: { phase: number }) {
                       transition={{ type: "spring", delay: 0.3 }}
                       className="flex flex-col items-center gap-1"
                     >
-                      <img src="/icons/icon-192.png" alt="حصاد" style={{ width: "min(6vw,34px)", height: "min(6vw,34px)", borderRadius: 8 }} />
+                      <img src="/icons/icon-192.png" alt={t.installTutorial.appAlt} style={{ width: "min(6vw,34px)", height: "min(6vw,34px)", borderRadius: 8 }} />
                     </motion.div>
                   )}
                 </div>
@@ -665,6 +674,7 @@ function SceneAndroid({ phase }: { phase: number }) {
 }
 
 function SceneOutro({ phase }: { phase: number }) {
+  const { t, dir } = useI18n();
   return (
     <motion.div
       className="absolute inset-0 flex flex-col items-center justify-center gap-10"
@@ -672,6 +682,7 @@ function SceneOutro({ phase }: { phase: number }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 1 }}
+      dir={dir}
     >
       <div className="flex gap-10 items-end">
         {[
@@ -737,7 +748,7 @@ function SceneOutro({ phase }: { phase: number }) {
         animate={phase >= 2 ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
         transition={{ delay: 0.8, type: "spring" }}
       >
-        حصاد . جاهز الآن
+        {t.installTutorial.readyNow}
       </motion.h2>
 
       <motion.p
@@ -747,7 +758,7 @@ function SceneOutro({ phase }: { phase: number }) {
         animate={phase >= 3 ? { opacity: 1 } : { opacity: 0 }}
         transition={{ delay: 0.2 }}
       >
-        تعلم ، نافس، استمتع
+        {t.installTutorial.tagline}
       </motion.p>
 
       <motion.div
@@ -769,9 +780,10 @@ function SceneOutro({ phase }: { phase: number }) {
 }
 
 export default function InstallTutorial() {
+  const { t, dir } = useI18n();
   useSeo({
-    title: "دليل تثبيت حصاد | منصة حصاد",
-    description: "دليل خطوة بخطوة لتثبيت منصة حصاد.",
+    title: t.installTutorial.seoTitle,
+    description: t.installTutorial.seoDescription,
     canonicalPath: "/install-tutorial",
     noindex: true,
   });
@@ -814,6 +826,7 @@ export default function InstallTutorial() {
   return (
     <div
       className="tutorial-page relative w-full overflow-hidden"
+      dir={dir}
       style={{
         height: "100vh",
         background: "linear-gradient(135deg, #071510 0%, #0b1f18 45%, #10180a 100%)",

@@ -4,6 +4,7 @@ import { useSeo } from "@/lib/seo";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { BadgeCheck, Trophy, Gamepad2, Star, Loader2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -42,16 +43,19 @@ function StatItem({
 
 export default function StudentPublicProfile() {
   const { username } = useParams<{ username: string }>();
+  const { t, lang, dir } = useI18n();
+  const copy = t.publicProfiles.student;
+  const common = t.publicProfiles.common;
   const [data, setData] = useState<StudentProfileResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   useSeo({
     title: data?.student?.displayName
-      ? `${data.student.displayName} | منصة حصاد`
-      : "ملف الطالب | منصة حصاد",
+      ? copy.seoTitleNamed.replace("{name}", data.student.displayName)
+      : copy.seoTitle,
     description: data?.student?.displayName
-      ? `ملف ${data.student.displayName} في منصة حصاد — النقاط والإنجازات والمسابقات التعليمية.`
-      : "ملف طالب في منصة حصاد التعليمية.",
+      ? copy.seoDescriptionNamed.replace("{name}", data.student.displayName)
+      : copy.seoDescription,
     canonicalPath: `/stu/${username}`,
   });
 
@@ -84,8 +88,8 @@ export default function StudentPublicProfile() {
   if (loading) {
     return (
       <Layout>
-        <div className="p-8 flex justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+        <div className="p-8 flex justify-center" role="status" aria-label={common.loading}>
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-600" aria-hidden="true" />
         </div>
       </Layout>
     );
@@ -94,7 +98,7 @@ export default function StudentPublicProfile() {
   if (notFound || !data) {
     return (
       <Layout>
-        <div className="p-8 text-center text-red-600">الملف غير موجود</div>
+        <div className="p-8 text-center text-red-600" role="alert">{copy.notFound}</div>
       </Layout>
     );
   }
@@ -104,7 +108,7 @@ export default function StudentPublicProfile() {
 
   return (
     <Layout>
-      <div className="max-w-xl mx-auto p-4 space-y-4" dir="rtl">
+      <div className="max-w-xl mx-auto p-4 space-y-4" dir={dir}>
         {/* Profile card */}
         <Card className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 text-center">
           {/* Avatar / emoji */}
@@ -120,7 +124,7 @@ export default function StudentPublicProfile() {
           <h1 className="text-2xl font-bold mt-2 flex items-center justify-center gap-2">
             {student.displayName}
             {student.isVerified && (
-              <span title="حساب موثّق">
+              <span title={common.verifiedAccount} aria-label={common.verifiedAccount}>
                 <BadgeCheck className="w-6 h-6 text-emerald-500 shrink-0" />
               </span>
             )}
@@ -130,24 +134,26 @@ export default function StudentPublicProfile() {
           <p className="text-sm text-gray-500 mt-0.5">@{student.username}</p>
 
           {/* Member since */}
-          <p className="text-xs text-gray-400 mt-1">عضو منذ {joinYear}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {copy.memberSince.replace("{year}", joinYear.toLocaleString(lang, { useGrouping: false }))}
+          </p>
 
           {/* Stats row */}
           <div className="flex justify-center gap-8 mt-5 flex-wrap">
             <StatItem
               icon={<Trophy className="w-6 h-6 text-amber-500" />}
-              label="النقاط"
-              value={student.totalScore.toLocaleString("ar-SA")}
+              label={copy.points}
+              value={student.totalScore.toLocaleString(lang)}
             />
             <StatItem
               icon={<Gamepad2 className="w-6 h-6 text-indigo-500" />}
-              label="الألعاب"
-              value={student.gamesPlayed.toLocaleString("ar-SA")}
+              label={copy.games}
+              value={student.gamesPlayed.toLocaleString(lang)}
             />
             <StatItem
               icon={<Star className="w-6 h-6 text-yellow-500" />}
-              label="الترتيب"
-              value={`#${student.rank.toLocaleString("ar-SA")}`}
+              label={copy.rank}
+              value={`#${student.rank.toLocaleString(lang)}`}
             />
           </div>
         </Card>
@@ -157,11 +163,11 @@ export default function StudentPublicProfile() {
           <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
             <BadgeCheck className="w-4 h-4 shrink-0" />
             <span>
-              حسابك غير موثّق بعد.{" "}
+              {copy.unverifiedBefore}{" "}
               <Link href="/student/login" className="font-semibold underline">
-                سجّل الدخول بـ Google
+                {copy.signInGoogle}
               </Link>
-              {" "}لربط حسابك وإظهار شارة التوثيق.
+              {" "}{copy.unverifiedAfter}
             </span>
           </div>
         )}
@@ -169,9 +175,9 @@ export default function StudentPublicProfile() {
         {/* Owner link to dashboard */}
         {isOwner && (
           <p className="text-center text-xs text-gray-500">
-            هذا ملفك العام.{" "}
+            {copy.ownerBefore}{" "}
             <Link href="/student/dashboard" className="text-emerald-700 underline">
-              اذهب إلى لوحة التحكم
+              {copy.dashboard}
             </Link>
             .
           </p>

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
+import { useI18n } from "@/lib/i18n";
 import type { WorksheetData } from "@/pages/teacher/worksheet-print";
 import type { CanvasElement, CanvasElementKind, CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 export type { CanvasElement, CanvasElementKind, CanvasLayout };
@@ -32,11 +33,11 @@ const BRAND_GOLD = "#D9A521";
 
 const uid = () => `ce_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 
-function defaultElement(kind: CanvasElementKind, x = 30, y = 30): CanvasElement {
+function defaultElement(kind: CanvasElementKind, text: string, x = 30, y = 30): CanvasElement {
   const base = { id: uid(), kind, x, y };
   switch (kind) {
     case "text":
-      return { ...base, width: 30, height: 8, text: "نص حر", fontSize: 14, fontColor: "#1a2421", bold: false, italic: false, align: "right" };
+      return { ...base, width: 30, height: 8, text, fontSize: 14, fontColor: "#1a2421", bold: false, italic: false, align: "right" };
     case "rect":
       return { ...base, width: 30, height: 15, fillColor: "transparent", strokeColor: BRAND_PRIMARY, strokeWidth: 2 };
     case "circle":
@@ -59,7 +60,7 @@ interface Props {
 type Tool = "select" | CanvasElementKind;
 
 export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave, onClose }: Props) {
-  const dir = ar ? "rtl" : "ltr";
+  const { t, dir } = useI18n();
   const [elements, setElements] = useState<CanvasElement[]>(() =>
     initialLayout.elements.map(e => ({ ...e }))
   );
@@ -90,12 +91,12 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
       setEditingTextId(null);
       if (activeTool === "select") return;
       const { x, y } = toPercent(e.clientX, e.clientY);
-      const el = defaultElement(activeTool, x, y);
+      const el = defaultElement(activeTool, t.worksheetCanvas.defaultText, x, y);
       setElements(prev => [...prev, el]);
       setSelectedId(el.id);
       setActiveTool("select");
     },
-    [activeTool, toPercent],
+    [activeTool, t.worksheetCanvas.defaultText, toPercent],
   );
 
   // ── Drag element ──────────────────────────────────────────────────────────
@@ -245,12 +246,12 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = () => {
     onSave({ elements });
-    toast.success(ar ? "تم حفظ التخطيط" : "Layout saved");
+    toast.success(t.worksheetCanvas.saved);
     onClose();
   };
 
   const handleReset = () => {
-    if (!confirm(ar ? "هل تريد حذف جميع العناصر؟" : "Clear all canvas elements?")) return;
+    if (!confirm(t.worksheetCanvas.resetConfirm)) return;
     setElements([]);
     setSelectedId(null);
   };
@@ -274,30 +275,30 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
           style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
         >
           <X className="w-3.5 h-3.5" />
-          {ar ? "إلغاء" : "Cancel"}
+          {t.worksheetCanvas.cancel}
         </button>
 
         <div className="text-xs font-bold truncate" style={{ color: BRAND_PRIMARY }}>
-          {ar ? "محرر التصميم الحر" : "Canvas Editor"} · {data.title}
+          {t.worksheetCanvas.title} · {data.title}
         </div>
 
         <div className="flex-1" />
 
         {/* Tool buttons */}
         <ToolGroup>
-          <ToolBtn active={activeTool === "select"} onClick={() => setActiveTool("select")} title={ar ? "تحديد / تحريك" : "Select / Move"}>
+          <ToolBtn active={activeTool === "select"} onClick={() => setActiveTool("select")} title={t.worksheetCanvas.selectMove}>
             <MousePointer className="w-4 h-4" />
           </ToolBtn>
-          <ToolBtn active={activeTool === "text"} onClick={() => setActiveTool("text")} title={ar ? "نص حر" : "Text"}>
+          <ToolBtn active={activeTool === "text"} onClick={() => setActiveTool("text")} title={t.worksheetCanvas.text}>
             <Type className="w-4 h-4" />
           </ToolBtn>
-          <ToolBtn active={activeTool === "rect"} onClick={() => setActiveTool("rect")} title={ar ? "مستطيل" : "Rectangle"}>
+          <ToolBtn active={activeTool === "rect"} onClick={() => setActiveTool("rect")} title={t.worksheetCanvas.rectangle}>
             <Square className="w-4 h-4" />
           </ToolBtn>
-          <ToolBtn active={activeTool === "circle"} onClick={() => setActiveTool("circle")} title={ar ? "دائرة / بيضاوي" : "Oval"}>
+          <ToolBtn active={activeTool === "circle"} onClick={() => setActiveTool("circle")} title={t.worksheetCanvas.oval}>
             <Circle className="w-4 h-4" />
           </ToolBtn>
-          <ToolBtn active={activeTool === "line"} onClick={() => setActiveTool("line")} title={ar ? "خط أفقي" : "Line"}>
+          <ToolBtn active={activeTool === "line"} onClick={() => setActiveTool("line")} title={t.worksheetCanvas.line}>
             <Minus className="w-4 h-4" />
           </ToolBtn>
         </ToolGroup>
@@ -309,7 +310,8 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
           disabled={!selectedId}
           className="px-2.5 py-1.5 rounded-lg border text-sm flex items-center gap-1.5 disabled:opacity-30"
           style={{ borderColor: "#dc262655", color: "#dc2626" }}
-          title={ar ? "حذف العنصر المحدد" : "Delete selected"}
+          title={t.worksheetCanvas.deleteSelected}
+          aria-label={t.worksheetCanvas.deleteSelected}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -318,7 +320,8 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
           onClick={handleReset}
           className="px-2.5 py-1.5 rounded-lg border text-sm flex items-center gap-1.5"
           style={{ borderColor: `${BRAND_PRIMARY}44`, color: BRAND_PRIMARY }}
-          title={ar ? "مسح الكل" : "Clear all"}
+          title={t.worksheetCanvas.clearAll}
+          aria-label={t.worksheetCanvas.clearAll}
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>
@@ -329,7 +332,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
           style={{ background: BRAND_PRIMARY }}
         >
           <Check className="w-3.5 h-3.5" />
-          {ar ? "حفظ التخطيط" : "Save Layout"}
+          {t.worksheetCanvas.save}
         </button>
       </div>
 
@@ -347,7 +350,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
             <div className="flex flex-wrap gap-3 items-center px-4 py-2" dir={dir}>
               {selected.kind === "text" && (
                 <>
-                  <PropsLabel ar={ar}>{ar ? "حجم الخط" : "Font size"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.fontSize}</PropsLabel>
                   <input
                     type="number" min={7} max={72} step={1}
                     value={selected.fontSize ?? 14}
@@ -355,7 +358,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                     className="w-16 px-2 py-1 rounded border text-sm bg-white"
                   />
                   <div className="w-px h-5 bg-border" />
-                  <PropsLabel ar={ar}>{ar ? "لون النص" : "Color"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.color}</PropsLabel>
                   <input
                     type="color"
                     value={selected.fontColor ?? "#1a2421"}
@@ -364,27 +367,27 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                     style={{ padding: "1px" }}
                   />
                   <div className="w-px h-5 bg-border" />
-                  <ToolBtn active={!!selected.bold} onClick={() => patchSelected({ bold: !selected.bold })} title="Bold">
+                  <ToolBtn active={!!selected.bold} onClick={() => patchSelected({ bold: !selected.bold })} title={t.worksheetCanvas.bold}>
                     <Bold className="w-3.5 h-3.5" />
                   </ToolBtn>
-                  <ToolBtn active={!!selected.italic} onClick={() => patchSelected({ italic: !selected.italic })} title="Italic">
+                  <ToolBtn active={!!selected.italic} onClick={() => patchSelected({ italic: !selected.italic })} title={t.worksheetCanvas.italic}>
                     <Italic className="w-3.5 h-3.5" />
                   </ToolBtn>
                   <div className="w-px h-5 bg-border" />
-                  <ToolBtn active={selected.align === "right"} onClick={() => patchSelected({ align: "right" })} title="Align right">
+                  <ToolBtn active={selected.align === "right"} onClick={() => patchSelected({ align: "right" })} title={t.worksheetCanvas.alignRight}>
                     <AlignRight className="w-3.5 h-3.5" />
                   </ToolBtn>
-                  <ToolBtn active={selected.align === "center" || !selected.align} onClick={() => patchSelected({ align: "center" })} title="Align center">
+                  <ToolBtn active={selected.align === "center" || !selected.align} onClick={() => patchSelected({ align: "center" })} title={t.worksheetCanvas.alignCenter}>
                     <AlignCenter className="w-3.5 h-3.5" />
                   </ToolBtn>
-                  <ToolBtn active={selected.align === "left"} onClick={() => patchSelected({ align: "left" })} title="Align left">
+                  <ToolBtn active={selected.align === "left"} onClick={() => patchSelected({ align: "left" })} title={t.worksheetCanvas.alignLeft}>
                     <AlignLeft className="w-3.5 h-3.5" />
                   </ToolBtn>
                 </>
               )}
               {(selected.kind === "rect" || selected.kind === "circle") && (
                 <>
-                  <PropsLabel ar={ar}>{ar ? "لون الإطار" : "Stroke"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.stroke}</PropsLabel>
                   <input
                     type="color"
                     value={selected.strokeColor ?? BRAND_PRIMARY}
@@ -392,7 +395,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                     className="w-7 h-7 rounded border cursor-pointer"
                     style={{ padding: "1px" }}
                   />
-                  <PropsLabel ar={ar}>{ar ? "سمك الإطار" : "Thickness"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.thickness}</PropsLabel>
                   <input
                     type="range" min={0} max={8} step={0.5}
                     value={selected.strokeWidth ?? 2}
@@ -400,7 +403,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                     className="w-20"
                     style={{ accentColor: BRAND_PRIMARY }}
                   />
-                  <PropsLabel ar={ar}>{ar ? "تعبئة" : "Fill"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.fill}</PropsLabel>
                   <input
                     type="color"
                     value={selected.fillColor === "transparent" ? "#ffffff" : (selected.fillColor ?? "#ffffff")}
@@ -413,13 +416,13 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                     className="text-[11px] border px-2 py-1 rounded"
                     style={{ borderColor: `${BRAND_PRIMARY}44`, color: BRAND_PRIMARY }}
                   >
-                    {ar ? "بلا تعبئة" : "No fill"}
+                    {t.worksheetCanvas.noFill}
                   </button>
                 </>
               )}
               {selected.kind === "line" && (
                 <>
-                  <PropsLabel ar={ar}>{ar ? "لون الخط" : "Color"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.lineColor}</PropsLabel>
                   <input
                     type="color"
                     value={selected.strokeColor ?? BRAND_PRIMARY}
@@ -427,7 +430,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                     className="w-7 h-7 rounded border cursor-pointer"
                     style={{ padding: "1px" }}
                   />
-                  <PropsLabel ar={ar}>{ar ? "سمك" : "Width"}</PropsLabel>
+                  <PropsLabel ar={ar}>{t.worksheetCanvas.width}</PropsLabel>
                   <input
                     type="range" min={0.5} max={8} step={0.5}
                     value={selected.strokeWidth ?? 2}
@@ -450,7 +453,7 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
             className="absolute top-[120px] left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full text-sm font-bold text-white shadow-lg pointer-events-none"
             style={{ background: BRAND_PRIMARY }}
           >
-            {ar ? "انقر على الصفحة لإضافة عنصر" : "Click on the page to place element"}
+            {t.worksheetCanvas.placeHint}
           </div>
         )}
 

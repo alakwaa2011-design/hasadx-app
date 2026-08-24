@@ -60,6 +60,8 @@ function ListeningPlayer({
   lang: "ar" | "en";
   accessCode?: string;
 }) {
+  const { t } = useI18n();
+  const copy = t.solve;
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +111,7 @@ function ListeningPlayer({
       }
       return url;
     } catch (e) {
-      setError(lang === "ar" ? "تعذر تحميل الصوت، حاول مرة أخرى" : "Failed to load audio, try again");
+      setError(copy.audioLoadError);
       return null;
     } finally {
       setLoading(false);
@@ -118,7 +120,7 @@ function ListeningPlayer({
 
   const handlePlayPause = async () => {
     if (exhausted && !isPlaying) {
-      toast.error(lang === "ar" ? "لقد استنفدت عدد مرات الاستماع المسموحة" : "You have used all allowed listens");
+      toast.error(copy.listensExhausted);
       return;
     }
     let url = audioUrl;
@@ -168,12 +170,10 @@ function ListeningPlayer({
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-black text-lg leading-tight">
-            {lang === "ar" ? "نشاط استماع" : "Listening activity"}
+            {copy.listeningActivity}
           </h3>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {lang === "ar"
-              ? "اضغط زر التشغيل للاستماع للنص ثم أجب على الأسئلة"
-              : "Press play to listen, then answer the questions"}
+            {copy.listeningHint}
           </p>
         </div>
       </div>
@@ -199,19 +199,17 @@ function ListeningPlayer({
           )}
           <span>
             {loading
-              ? (lang === "ar" ? "جاري التحميل…" : "Loading…")
+              ? copy.loading
               : isPlaying
-              ? (lang === "ar" ? "إيقاف" : "Pause")
-              : (lang === "ar" ? "استمع" : "Listen")}
+              ? copy.pause
+              : copy.listen}
           </span>
         </motion.button>
 
         {!unlimited && (
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-sm font-bold">
             <Volume2 className="w-4 h-4" />
-            {lang === "ar"
-              ? `المتبقي: ${remaining} من ${maxListens}`
-              : `Remaining: ${remaining} of ${maxListens}`}
+            {copy.remainingListens.replace("{remaining}", String(remaining)).replace("{max}", String(maxListens))}
           </div>
         )}
 
@@ -238,8 +236,8 @@ function ListeningPlayer({
           >
             <FileText className="w-4 h-4" />
             {showText
-              ? (lang === "ar" ? "إخفاء النص" : "Hide text")
-              : (lang === "ar" ? "عرض النص" : "Show text")}
+              ? copy.hideText
+              : copy.showText}
           </button>
         )}
       </div>
@@ -266,20 +264,20 @@ function ListeningPlayer({
           onClick={() => seekBy(-10)}
           disabled={!audioUrl || !canRewind}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-          aria-label={lang === "ar" ? "إرجاع 10 ثوانٍ" : "Back 10 seconds"}
+          aria-label={copy.rewindAria}
         >
           <RotateCcw className="w-4 h-4" />
-          <span>{lang === "ar" ? "−10ث" : "−10s"}</span>
+          <span>{copy.rewind}</span>
         </button>
         <button
           type="button"
           onClick={() => seekBy(10)}
           disabled={!audioUrl || !canForward}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-          aria-label={lang === "ar" ? "تقديم 10 ثوانٍ" : "Forward 10 seconds"}
+          aria-label={copy.forwardAria}
         >
           <RotateCw className="w-4 h-4" />
-          <span>{lang === "ar" ? "+10ث" : "+10s"}</span>
+          <span>{copy.forward}</span>
         </button>
       </div>
       <audio
@@ -345,9 +343,9 @@ export default function StudentSolve() {
     const sp = new URLSearchParams(searchStr);
     return (sp.get("code") || sp.get("accessCode") || "").trim();
   }, [searchStr]);
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
   const locale = lang === "ar" ? "ar-EG" : "en-US";
-  const BackIcon = lang === "ar" ? ChevronLeft : ChevronRight;
+  const BackIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
   const [, setSolveLocation] = useLocation();
 
   // Persist the access code in sessionStorage so a refresh inside the same
@@ -403,7 +401,7 @@ export default function StudentSolve() {
         (res: { pin?: string; error?: string }) => {
           setLaunchingShared(false);
           if (res?.error || !res?.pin) {
-            toast.error(res?.error || (lang === "ar" ? "تعذّر بدء المسابقة" : "Failed to start"));
+            toast.error(res?.error || t.solve.startCompetitionError);
             disconnectSocket();
             return;
           }
@@ -460,7 +458,7 @@ export default function StudentSolve() {
   const submitAccessCodePrompt = async () => {
     const code = pendingAccessCode.trim();
     if (!code) {
-      setAccessCodePromptError(lang === "ar" ? "أدخل رمز الوصول" : "Enter the access code");
+      setAccessCodePromptError(t.adaptiveSolve.enterAccessCode);
       return;
     }
     try {
@@ -469,7 +467,7 @@ export default function StudentSolve() {
         headers: { "X-Access-Code": code },
       });
       if (!r.ok) {
-        setAccessCodePromptError(lang === "ar" ? "رمز الوصول غير صحيح" : "Incorrect access code");
+        setAccessCodePromptError(t.adaptiveSolve.incorrectAccessCode);
         return;
       }
       try { sessionStorage.setItem(accessCodeStorageKey, code); } catch {}
@@ -478,7 +476,7 @@ export default function StudentSolve() {
       // Trigger a refetch with the new code in the queryKey/header.
       setTimeout(() => { void refetchAssignment(); }, 0);
     } catch {
-      setAccessCodePromptError(lang === "ar" ? "تعذّر التحقق من الرمز" : "Could not verify the code");
+      setAccessCodePromptError(t.adaptiveSolve.verifyAccessCodeError);
     }
   };
 
@@ -749,7 +747,7 @@ export default function StudentSolve() {
     }
   }, [result]);
 
-  if (isLoading) return <Layout><div className="flex h-96 items-center justify-center"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" /></div></Layout>;
+  if (isLoading) return <Layout><div className="flex h-96 items-center justify-center" role="status" aria-label={t.solve.loading}><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" /><span className="sr-only">{t.solve.loading}</span></div></Layout>;
   // If the assignment fetch was rejected because the assignment is private and
   // we don't have the right access code, render only a code prompt — no
   // questions, no class info, no deadline, nothing else leaks.
@@ -760,19 +758,17 @@ export default function StudentSolve() {
           <div className="flex items-center gap-2 text-primary">
             <Lock className="w-5 h-5" />
             <h2 className="text-lg font-bold">
-              {accessCodeGate.title || (lang === "ar" ? "واجب مغلق" : "Private assignment")}
+              {accessCodeGate.title || t.solve.privateAssignment}
             </h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            {lang === "ar"
-              ? "هذا الواجب يتطلّب رمز وصول. اطلبه من معلمك."
-              : "This assignment requires an access code from your teacher."}
+            {t.solve.privateDescription}
           </p>
           <Input
             value={pendingAccessCode}
             onChange={e => { setPendingAccessCode(e.target.value); setAccessCodePromptError(""); }}
             onKeyDown={e => { if (e.key === "Enter") void submitAccessCodePrompt(); }}
-            placeholder={lang === "ar" ? "أدخل رمز الوصول" : "Enter access code"}
+            placeholder={t.adaptiveSolve.enterAccessCode}
             className="text-base font-mono tracking-widest border-2"
             dir="ltr"
             autoFocus
@@ -784,14 +780,14 @@ export default function StudentSolve() {
             </div>
           )}
           <Button onClick={() => void submitAccessCodePrompt()} className="w-full">
-            {lang === "ar" ? "متابعة" : "Continue"}
+            {t.solve.continue}
           </Button>
         </div>
       </Layout>
     );
   }
   if (!assignment) return <Layout><div className="text-center p-20 text-xl font-bold">{t.solve.notFound}</div></Layout>;
-  if ((assignment as unknown as Record<string, unknown>).isAdaptive) return <Layout><div className="flex h-96 items-center justify-center"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" /></div></Layout>;
+  if ((assignment as unknown as Record<string, unknown>).isAdaptive) return <Layout><div className="flex h-96 items-center justify-center" role="status" aria-label={t.solve.loading}><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" /><span className="sr-only">{t.solve.loading}</span></div></Layout>;
 
   const isExpired = assignment.deadline ? new Date(assignment.deadline) < new Date() : false;
 
@@ -813,12 +809,12 @@ export default function StudentSolve() {
           body: JSON.stringify({ answers, deviceFingerprint }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "خطأ في إرسال إجابات التكرار");
+        if (!res.ok) throw new Error(data.message || t.solve.error);
         setRepeatRound(false);
         setResult(data as SubmissionResult);
         clearDraft();
       } catch (err: unknown) {
-        setRepeatError(err instanceof Error ? err.message : "خطأ في إرسال إجابات التكرار");
+        setRepeatError(err instanceof Error ? err.message : t.solve.error);
       } finally {
         setRepeatSubmitting(false);
       }
@@ -834,8 +830,8 @@ export default function StudentSolve() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔁</span>
                 <div>
-                  <p className="font-black text-base">{lang === "ar" ? "جولة التكرار" : "Repeat Round"}</p>
-                  <p className="text-xs text-muted-foreground">{lang === "ar" ? "أجب مرة أخرى على الأسئلة التي أخطأت فيها" : "Answer the questions you got wrong again"}</p>
+                  <p className="font-black text-base">{t.solve.repeatRound}</p>
+                  <p className="text-xs text-muted-foreground">{t.solve.repeatHint}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -890,7 +886,7 @@ export default function StudentSolve() {
                           <div className="space-y-2.5">
                             {q.allowMultipleAnswers && (
                               <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-2">
-                                {lang === "ar" ? "✅ اختر جميع الإجابات الصحيحة" : "✅ Select all correct answers"}
+                                {t.solve.selectAllCorrect}
                               </p>
                             )}
                             {OPTION_LABELS.map((opt, oi) => {
@@ -933,8 +929,8 @@ export default function StudentSolve() {
                         {qType === "true_false" && (
                           <div className="grid grid-cols-2 gap-3">
                             {[
-                              { value: "true", label: lang === "ar" ? "صح" : "True", icon: "✓", cls: "green" },
-                              { value: "false", label: lang === "ar" ? "خطأ" : "False", icon: "✗", cls: "red" },
+                              { value: "true", label: t.studentVideo.truePlain, icon: "✓", cls: "green" },
+                              { value: "false", label: t.studentVideo.falsePlain, icon: "✗", cls: "red" },
                             ].map(opt => (
                               <motion.button
                                 key={opt.value}
@@ -988,7 +984,7 @@ export default function StudentSolve() {
               >
                 {repeatSubmitting
                   ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  : <><Send className={`w-5 h-5 ${lang === "ar" ? "ml-2" : "mr-2"}`} /> {lang === "ar" ? "تسليم الجولة الثانية" : "Submit Repeat Round"}</>
+                  : <><Send className="w-5 h-5 me-2" /> {t.solve.submitRepeat}</>
                 }
               </Button>
             </div>
@@ -1006,10 +1002,10 @@ export default function StudentSolve() {
 
     const celebMsg = canSeeResults
       ? isGreat
-        ? (lang === "ar" ? "🎉 عمل رائع! أنت متميز!" : "🎉 Excellent work! You're a star!")
+        ? t.adaptiveSolve.excellent
         : isOk
-          ? (lang === "ar" ? "💪 جيد! استمر في التحسن!" : "💪 Good job! Keep improving!")
-          : (lang === "ar" ? "📚 لا بأس، المحاولة تستحق!" : "📚 Nice try, keep practicing!")
+          ? t.adaptiveSolve.goodJob
+          : t.adaptiveSolve.niceTry
       : null;
 
     return (
@@ -1063,12 +1059,10 @@ export default function StudentSolve() {
                       <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center">
                         <Headphones className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
                         <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1">
-                          {lang === "ar" ? "تم استلام إجاباتك بنجاح" : "Your answers were received"}
+                          {t.solve.received}
                         </p>
                         <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80">
-                          {lang === "ar"
-                            ? "سيظهر التقييم النهائي بعد مراجعة معلمك"
-                            : "Your final grade will appear after teacher review"}
+                          {t.solve.teacherReview}
                         </p>
                       </div>
                     </div>
@@ -1113,7 +1107,7 @@ export default function StudentSolve() {
                       </div>
 
                       {result.aiFeedback && (
-                        <div className={`bg-primary/5 border border-primary/20 rounded-2xl p-5 ${lang === "ar" ? "text-right" : "text-left"} flex gap-4`}>
+                        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 text-start flex gap-4">
                           <BrainCircuit className="w-7 h-7 text-primary shrink-0 mt-0.5" />
                           <div>
                             <h3 className="font-bold text-primary mb-1 text-sm">{t.solve.aiFeedback}</h3>
@@ -1150,24 +1144,15 @@ export default function StudentSolve() {
                     pendingCount++;
                   }
                 }
-                const sentence = lang === "ar"
-                  ? (() => {
-                      const parts: string[] = [];
-                      if (autoCount > 0) parts.push(`أجبت بشكل صحيح عن ${autoCorrect} من ${autoCount}`);
-                      if (pendingCount > 0) parts.push(`وهناك ${pendingCount} ${pendingCount === 1 ? "إجابة سيراجعها معلمك" : "إجابات سيراجعها معلمك"}`);
-                      return parts.join("، ") || "تم استلام إجاباتك بنجاح";
-                    })()
-                  : (() => {
-                      const parts: string[] = [];
-                      if (autoCount > 0) parts.push(`You answered ${autoCorrect} of ${autoCount} correctly`);
-                      if (pendingCount > 0) parts.push(`and ${pendingCount} ${pendingCount === 1 ? "answer is" : "answers are"} pending teacher review`);
-                      return parts.join(", ") || "Your answers were received";
-                    })();
+                 const parts: string[] = [];
+                 if (autoCount > 0) parts.push(t.solve.autoSummary.replace("{correct}", String(autoCorrect)).replace("{total}", String(autoCount)));
+                 if (pendingCount > 0) parts.push(t.solve.pendingSummary.replace("{count}", String(pendingCount)));
+                 const sentence = parts.join(", ") || t.solve.received;
                 return (
-                  <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background p-5 text-right">
+                  <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background p-5 text-start">
                     <h2 className="text-lg font-black mb-2 flex items-center gap-2">
                       <Headphones className="w-5 h-5 text-emerald-600" />
-                      {lang === "ar" ? "ملخص نشاط الاستماع" : "Listening activity summary"}
+                      {t.solve.listeningSummary}
                     </h2>
                     <p className="text-sm text-foreground/85">{sentence}.</p>
                   </div>
@@ -1203,7 +1188,7 @@ export default function StudentSolve() {
                             {ans.selectedAnswer?.startsWith("data:image") ? (
                               <img
                                 src={ans.selectedAnswer}
-                                alt={lang === "ar" ? "رسمتك" : "Your drawing"}
+                                alt={t.adaptiveSolve.yourDrawing}
                                 className="max-w-full rounded-xl border border-border mt-1"
                               />
                             ) : (
@@ -1307,12 +1292,10 @@ export default function StudentSolve() {
               <span className="text-2xl">🎯</span>
               <div>
                 <p className="font-extrabold leading-tight">
-                  {lang === "ar" ? "هذه مسابقة مشتركة" : "This is a shared competition"}
+                  {t.solve.sharedCompetition}
                 </p>
                 <p className="text-xs sm:text-sm opacity-90 font-semibold">
-                  {lang === "ar"
-                    ? "أنت معلم — يمكنك تشغيلها مباشرة مع طلابك"
-                    : "You're a teacher — launch it live with your class"}
+                  {t.solve.teacherLaunchHint}
                 </p>
               </div>
             </div>
@@ -1324,12 +1307,12 @@ export default function StudentSolve() {
               {launchingShared ? (
                 <>
                   <span className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                  {lang === "ar" ? "جارٍ البدء..." : "Starting..."}
+                  {t.solve.starting}
                 </>
               ) : (
                 <>
                   <Gamepad2 className="w-4 h-4" />
-                  {lang === "ar" ? "شغّلها مع طلابي" : "Play with my class"}
+                  {t.solve.playWithClass}
                 </>
               )}
             </button>
@@ -1368,8 +1351,8 @@ export default function StudentSolve() {
               <button
                 type="button"
                 onClick={toggleSound}
-                aria-label={soundEnabled ? (lang === "ar" ? "إيقاف الصوت" : "Mute sound") : (lang === "ar" ? "تشغيل الصوت" : "Unmute sound")}
-                title={soundEnabled ? (lang === "ar" ? "الصوت مفعل" : "Sound on") : (lang === "ar" ? "الصوت مكتوم" : "Sound off")}
+                aria-label={soundEnabled ? t.solve.mute : t.solve.unmute}
+                title={soundEnabled ? t.solve.soundOn : t.solve.soundOff}
                 className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors"
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -1377,7 +1360,7 @@ export default function StudentSolve() {
             </div>
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-primary-foreground/90 text-xs font-bold mb-4 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5" />
-              {lang === "ar" ? "واجب من حصاد" : "A Hasaad Assignment"}
+              {t.solve.hasaadAssignment}
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold">
@@ -1425,7 +1408,7 @@ export default function StudentSolve() {
           <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-sm">
             <div className="container mx-auto px-4 max-w-4xl py-2.5 flex items-center justify-between gap-4">
               <p className="text-sm font-bold text-muted-foreground shrink-0">
-                {answeredCount} / {totalCount} {lang === "ar" ? "سؤال" : "answered"}
+                {answeredCount} / {totalCount} {t.solve.answered}
               </p>
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <motion.div
@@ -1465,7 +1448,7 @@ export default function StudentSolve() {
                     <div>
                       <Label className="text-base font-bold flex items-center gap-2 mb-2">
                         <GraduationCap className="w-5 h-5 text-primary" />
-                        {lang === "ar" ? "اختر صفك أولاً" : "Select your class first"}
+                        {t.solve.selectClassFirst}
                       </Label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {classList.map(c => (
@@ -1493,7 +1476,7 @@ export default function StudentSolve() {
                     <div>
                       <Label className="text-base font-bold flex items-center gap-2 mb-2">
                         <Users className="w-5 h-5 text-primary" />
-                        {lang === "ar" ? "اختر اسمك من القائمة" : "Select your name"}
+                        {t.solve.selectName}
                       </Label>
                       <select
                         value={studentId ?? ""}
@@ -1511,7 +1494,7 @@ export default function StudentSolve() {
                         }}
                         className="w-full rounded-xl border-2 border-input bg-background px-4 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                       >
-                        <option value="">{lang === "ar" ? "— اختر اسمك —" : "— Select your name —"}</option>
+                        <option value="">{t.solve.selectNameOption}</option>
                         {filteredStudents.map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
@@ -1631,7 +1614,7 @@ export default function StudentSolve() {
                   disabled={!studentName.trim() || !studentClass.trim() || startExam.isPending}
                   className="px-12 py-4 text-lg bg-orange-500 hover:bg-orange-600"
                 >
-                  <Clock className={`w-5 h-5 ${lang === "ar" ? "ml-2" : "mr-2"}`} />
+                  <Clock className="w-5 h-5 me-2" />
                   {t.solve.startExam}
                 </Button>
                 {(!studentName.trim() || !studentClass.trim()) && (
@@ -1648,14 +1631,14 @@ export default function StudentSolve() {
                   >
                     <div className="flex items-center gap-2 text-sm font-bold">
                       <CheckCircle2 className="w-5 h-5 shrink-0" />
-                      <span>{lang === "ar" ? "تم استعادة إجاباتك المحفوظة" : "Your saved answers have been restored"}</span>
+                      <span>{t.solve.draftRestored}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setAnswers({}); clearDraft(); }}
                       className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white dark:bg-blue-950 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                     >
-                      {lang === "ar" ? "بدء من جديد" : "Start fresh"}
+                      {t.solve.startFresh}
                     </button>
                   </motion.div>
                 )}
@@ -1716,7 +1699,7 @@ export default function StudentSolve() {
                             <div className="space-y-2.5">
                               {q.allowMultipleAnswers && (
                                 <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-2">
-                                  {lang === "ar" ? "✅ اختر جميع الإجابات الصحيحة ثم اضغط تأكيد" : "✅ Select all correct answers then confirm"}
+                                  {t.solve.selectAllThenConfirm}
                                 </p>
                               )}
                               {OPTION_LABELS.map((opt, oi) => {
@@ -1793,7 +1776,7 @@ export default function StudentSolve() {
                                         className="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1"
                                       >
                                         <CheckCircle2 className="w-4 h-4" />
-                                        {lang === "ar" ? "تم تأكيد الإجابة" : "Answer confirmed"}
+                                        {t.solve.answerConfirmed}
                                       </motion.p>
                                     ) : (
                                       <motion.button
@@ -1805,7 +1788,7 @@ export default function StudentSolve() {
                                         onClick={() => setConfirmedMultiAnswers(prev => new Set([...prev, q.id]))}
                                         className="py-2 px-4 rounded-lg text-sm font-bold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                       >
-                                        {lang === "ar" ? "تأكيد الاختيار" : "Confirm Selection"}
+                                        {t.solve.confirmSelection}
                                       </motion.button>
                                     )}
                                   </AnimatePresence>
@@ -1817,8 +1800,8 @@ export default function StudentSolve() {
                           {qType === "true_false" && (
                             <div className="grid grid-cols-2 gap-3">
                               {[
-                                { value: "true", label: lang === "ar" ? "صح" : "True", icon: "✓", cls: "green" },
-                                { value: "false", label: lang === "ar" ? "خطأ" : "False", icon: "✗", cls: "red" },
+                                { value: "true", label: t.studentVideo.truePlain, icon: "✓", cls: "green" },
+                                { value: "false", label: t.studentVideo.falsePlain, icon: "✗", cls: "red" },
                               ].map(opt => (
                                 <motion.button
                                   key={opt.value}
@@ -1852,7 +1835,7 @@ export default function StudentSolve() {
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.5 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className={`absolute top-1/2 -translate-y-1/2 ${lang === "ar" ? "left-3" : "right-3"}`}
+                                  className="absolute top-1/2 -translate-y-1/2 end-3"
                                 >
                                   <CheckCircle2 className="w-5 h-5 text-green-500" />
                                 </motion.div>
@@ -1885,18 +1868,18 @@ export default function StudentSolve() {
                                 onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
                                 placeholder={
                                   qType === "dictation"
-                                    ? (lang === "ar" ? "اكتب ما تسمعه هنا…" : "Write what you hear here…")
-                                    : (lang === "ar" ? "اكتب إجابتك هنا…" : "Write your answer here…")
+                                    ? t.solve.dictationPlaceholder
+                                    : t.solve.answerPlaceholder
                                 }
                                 rows={qType === "dictation" ? 3 : 5}
-                                dir="rtl"
+                                dir={dir}
                                 className="w-full rounded-xl border-2 border-input bg-background p-3 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-y"
                               />
                               {answers[q.id] && (
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.5 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className={`absolute top-3 ${lang === "ar" ? "left-3" : "right-3"}`}
+                                  className="absolute top-3 end-3"
                                 >
                                   <CheckCircle2 className="w-5 h-5 text-green-500" />
                                 </motion.div>
@@ -1922,12 +1905,12 @@ export default function StudentSolve() {
                   >
                     {isSubmitting
                       ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <><Send className={`w-5 h-5 ${lang === "ar" ? "ml-2" : "mr-2"}`} /> {t.solve.submitAndGrade}</>
+                      : <><Send className="w-5 h-5 me-2" /> {t.solve.submitAndGrade}</>
                     }
                   </Button>
                   {!canSubmitMcq && studentName.trim() && studentClass.trim() && (
                     <p className="text-center text-xs text-muted-foreground mt-2">
-                      {lang === "ar" ? "أجب على جميع الأسئلة للمتابعة" : "Answer all questions to continue"}
+                      {t.solve.answerAll}
                     </p>
                   )}
                 </motion.div>
@@ -1946,7 +1929,7 @@ export default function StudentSolve() {
                           <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">{i + 1}</span>
                           {q.text}
                         </span>
-                        <span className={`text-sm font-bold bg-secondary/10 text-secondary px-2 py-0.5 rounded-lg shrink-0 ${lang === "ar" ? "mr-2" : "ml-2"}`}>
+                        <span className="text-sm font-bold bg-secondary/10 text-secondary px-2 py-0.5 rounded-lg shrink-0 ms-2">
                           {q.points} {t.solve.gradeUnit}
                         </span>
                       </div>
@@ -1982,7 +1965,7 @@ export default function StudentSolve() {
                     variant={imagePreview ? "outline" : "default"}
                     className="mx-auto"
                   >
-                    <Camera className={`w-5 h-5 ${lang === "ar" ? "ml-2" : "mr-2"}`} />
+                    <Camera className="w-5 h-5 me-2" />
                     {imagePreview ? t.solve.changeImage : t.solve.captureOrChoose}
                   </Button>
                 </div>
@@ -2007,7 +1990,7 @@ export default function StudentSolve() {
                   >
                     {isSubmitting
                       ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <><Send className={`w-5 h-5 ${lang === "ar" ? "ml-2" : "mr-2"}`} /> {t.solve.submitAndGrade}</>
+                      : <><Send className="w-5 h-5 me-2" /> {t.solve.submitAndGrade}</>
                     }
                   </Button>
                 )}

@@ -45,7 +45,7 @@ function readSetup(): EscapeSetup | null {
 }
 
 function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => void }) {
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
   const ar = lang === "ar";
   const [, setLocation] = useLocation();
   const [state, dispatch] = useReducer(
@@ -86,7 +86,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
     if (!s.muted && state.status === "playing") { s.startAmbient(); s.startMusic(); }
   };
 
-  const title = setup.title || (ar ? "غرفة الهروب" : "Escape Room");
+  const title = setup.title || t.escapeClass.defaultTitle;
   const minutes = Math.round(setup.totalTime / 60);
   const danger = state.status === "playing" && state.timeLeft <= 60;
 
@@ -99,14 +99,14 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
       <button onClick={toggleMute}
         className="fixed top-3 z-50 rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm"
         style={{ insetInlineEnd: 12 }}
-        aria-label={muted ? "unmute" : "mute"}>
+        aria-label={muted ? t.escapeClass.unmute : t.escapeClass.mute}>
         {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
       </button>
 
       {/* Title banner */}
       <div className="relative z-10 flex justify-center pt-3">
         <p className="w-fit max-w-[80vw] truncate rounded-full border border-amber-300/40 bg-black/50 px-6 py-1.5 text-center text-sm font-black text-amber-100 backdrop-blur-md sm:text-lg"
-          style={{ direction: ar ? "rtl" : "ltr", textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
+          style={{ direction: dir, textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
           title={title}>
           🔐 {title}
         </p>
@@ -119,7 +119,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
       {/* ── WIN / LOSE ceremony ── */}
       {(state.status === "won" || state.status === "lost") && (
         <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-4 px-4 py-8 text-center"
-          style={{ direction: ar ? "rtl" : "ltr" }}>
+          style={{ direction: dir }}>
           <motion.div initial={{ opacity: 0, y: 18, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }} className="w-full">
             {state.status === "won" ? (
@@ -132,10 +132,10 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
                   🏆
                 </motion.div>
                 <h2 className="mb-1 text-3xl font-black sm:text-4xl" style={{ color: GOLD, textShadow: "0 0 26px rgba(247,201,72,0.6)" }}>
-                  {ar ? "هربتم من القبو!" : "You escaped the vault!"}
+                  {t.escapeClass.escapedTitle}
                 </h2>
                 <p className="mb-4 text-base font-bold text-white/70">
-                  {ar ? "فريق واحد… عقول كثيرة… كنز المعرفة صار لكم 🎉" : "One crew, many minds — the treasure is yours 🎉"}
+                  {t.escapeClass.escapedDescription}
                 </p>
               </>
             ) : (
@@ -144,10 +144,10 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
                   ⛓️
                 </div>
                 <h2 className="mb-1 text-3xl font-black text-red-300 sm:text-4xl" style={{ textShadow: "0 0 22px rgba(248,113,113,0.5)" }}>
-                  {ar ? "انتهى الوقت — القبو أُغلق!" : "Time's up — the vault sealed!"}
+                  {t.escapeClass.timeUpTitle}
                 </h2>
                 <p className="mb-4 text-base font-bold text-white/70">
-                  {ar ? "كنتم قريبين جداً… جولة أخرى وستهربون حتماً 💪" : "So close! One more run and you'll make it 💪"}
+                  {t.escapeClass.timeUpDescription}
                 </p>
               </>
             )}
@@ -157,7 +157,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
               initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}
               className="mx-auto mb-4 w-fit rounded-2xl border-2 border-amber-300/45 bg-black/50 px-8 py-2.5"
             >
-              <p className="text-[11px] font-black text-white/55">{ar ? "نقاط الفريق" : "Crew score"}</p>
+              <p className="text-[11px] font-black text-white/55">{t.escapeClass.crewScore}</p>
               <p className="text-4xl font-black" style={{ color: GOLD, fontVariantNumeric: "tabular-nums", textShadow: "0 0 18px rgba(247,201,72,0.55)" }}>
                 {escapeScore(state)}
               </p>
@@ -175,11 +175,11 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
                   background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
                   boxShadow: "0 14px 32px rgba(217,165,33,0.5), inset 0 2px 0 rgba(255,255,255,0.32)",
                 }}>
-                🔄 {ar ? (state.status === "won" ? "قبو جديد بنفس الأسئلة" : "حاولوا مرة أخرى") : (state.status === "won" ? "New vault, same questions" : "Try again")}
+                🔄 {state.status === "won" ? t.escapeClass.newVault : t.escapeClass.tryAgain}
               </motion.button>
               <button onClick={() => setLocation("/game/escape/create")}
                 className="w-full rounded-2xl border border-white/25 bg-white/8 py-3 text-sm font-black text-white/85 backdrop-blur-sm">
-                🛠 {ar ? "العودة للإعداد" : "Back to setup"}
+                🛠 {t.escapeClass.backToSetup}
               </button>
             </div>
           </motion.div>
@@ -191,17 +191,17 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-md rounded-3xl border border-white/15 bg-[#101c2b]/95 p-5 text-center shadow-2xl sm:p-6"
-            style={{ direction: ar ? "rtl" : "ltr" }}>
+            style={{ direction: dir }}>
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B4B35] text-3xl shadow-lg">🏫</div>
-            <p className="mb-1 text-sm font-black text-emerald-200">{ar ? "وضع الصف" : "Class mode"}</p>
-            <h1 className="mb-2 text-2xl font-black text-white">{ar ? "استعدوا للتحدي" : "Get ready for the challenge"}</h1>
+            <p className="mb-1 text-sm font-black text-emerald-200">{t.escapeClass.classMode}</p>
+            <h1 className="mb-2 text-2xl font-black text-white">{t.escapeClass.getReady}</h1>
             <p className="mx-auto mb-4 max-w-sm text-sm font-bold leading-relaxed text-white/70">
-              {ar ? "اعرض اللعبة على الشاشة، وتعاونوا لاختيار الإجابة الصحيحة معاً." : "Show the game on the main screen and answer each question together."}
+              {t.escapeClass.startDescription}
             </p>
             <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-xs font-black text-white/75">
-              <span className="rounded-full bg-white/10 px-3 py-1.5">📚 {setup.questions.length} {ar ? "سؤال" : "questions"}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1.5">🔒 {setup.lockCount} {ar ? "أقفال" : "locks"}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1.5">⏱ {minutes} {ar ? "دقائق" : "min"}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5">📚 {setup.questions.length} {t.escapeClass.questions}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5">🔒 {setup.lockCount} {t.escapeClass.locks}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5">⏱ {minutes} {t.escapeClass.minutes}</span>
             </div>
             <motion.button whileTap={{ scale: 0.97 }}
               onClick={() => { getSound().playStart(); dispatch({ type: "start" }); }}
@@ -209,9 +209,9 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
               style={{
                 boxShadow: "0 12px 28px rgba(11,75,53,0.36)",
               }}>
-              {ar ? "ابدأ التحدي" : "Start challenge"}
+              {t.escapeClass.startChallenge}
             </motion.button>
-            <p className="mt-3 text-xs font-medium text-white/45">{ar ? "كل إجابة خاطئة تخصم 15 ثانية من الوقت." : "Each wrong answer costs 15 seconds."}</p>
+            <p className="mt-3 text-xs font-medium text-white/45">{t.escapeClass.wrongAnswerPenalty}</p>
           </motion.div>
         </div>
       )}
@@ -220,8 +220,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
 }
 
 export default function EscapeClass() {
-  const { lang } = useI18n();
-  const ar = lang === "ar";
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [setup] = useState<EscapeSetup | null>(readSetup);
   const [round, setRound] = useState(0);
@@ -231,15 +230,13 @@ export default function EscapeClass() {
       <Layout>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
           <div className="text-6xl">🔐</div>
-          <h2 className="text-2xl font-black">{ar ? "غرفة الهروب" : "Escape Room"}</h2>
+          <h2 className="text-2xl font-black">{t.escapeClass.defaultTitle}</h2>
           <p className="max-w-sm text-muted-foreground">
-            {ar
-              ? "جهّز 3 أسئلة على الأقل من صفحة إنشاء غرفة الهروب ثم اختر «وضع الصف»."
-              : "Prepare at least 3 questions from the vault create page, then choose Class Mode."}
+            {t.escapeClass.setupRequiredDescription}
           </p>
           <button onClick={() => setLocation("/game/escape/create")}
             className="rounded-xl bg-amber-600 px-6 py-3 font-bold text-white">
-            {ar ? "إعداد الأسئلة" : "Set up questions"}
+            {t.escapeClass.setupQuestions}
           </button>
         </div>
       </Layout>

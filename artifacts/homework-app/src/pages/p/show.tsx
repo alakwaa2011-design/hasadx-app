@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
 import { Loader2, Cloud, MessageSquare } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 /* ── Word cloud overlay ────────────────────────────────────────────── */
 interface CloudWord { text: string; count: number }
@@ -11,13 +12,13 @@ const CLOUD_COLORS = [
   "#D9A521", "#60b8a0", "#7ec8e3", "#f4845f", "#b5a1dc",
   "#6bcb77", "#f9c74f", "#f8961e", "#90e0ef", "#c77dff",
 ];
-function WordCloudOverlay({ words, isAr }: { words: CloudWord[]; isAr: boolean }) {
+function WordCloudOverlay({ words, isAr, t }: { words: CloudWord[]; isAr: boolean; t: ReturnType<typeof useI18n>["t"] }) {
   if (words.length === 0) {
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70">
         <Cloud className="w-16 h-16 opacity-30 text-white" />
         <div className="text-white/50 text-lg font-bold">
-          {isAr ? "في انتظار كلمات الطلاب…" : "Waiting for student words…"}
+          {t.presentation.waitingWords}
         </div>
       </div>
     );
@@ -65,7 +66,7 @@ function WordCloudOverlay({ words, isAr }: { words: CloudWord[]; isAr: boolean }
         className="absolute bottom-5 right-5 text-white/40 text-sm font-bold tabular-nums"
         dir="ltr"
       >
-        {words.length} {isAr ? "كلمة" : "words"}
+        {new Intl.NumberFormat(isAr ? "ar" : "en").format(words.length)} {t.presentation.words}
       </div>
     </div>
   );
@@ -73,14 +74,14 @@ function WordCloudOverlay({ words, isAr }: { words: CloudWord[]; isAr: boolean }
 
 /* ── Open wall overlay ─────────────────────────────────────────────── */
 interface WallCard { id: string; name: string; text: string; visible: boolean }
-function OpenWallOverlay({ cards, isAr }: { cards: WallCard[]; isAr: boolean }) {
+function OpenWallOverlay({ cards, isAr, t }: { cards: WallCard[]; isAr: boolean; t: ReturnType<typeof useI18n>["t"] }) {
   const visible = cards.filter((c) => c.visible);
   if (visible.length === 0) {
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70">
         <MessageSquare className="w-16 h-16 opacity-30 text-white" />
         <div className="text-white/50 text-lg font-bold">
-          {isAr ? "في انتظار ردود الطلاب…" : "Waiting for student responses…"}
+          {t.presentation.waitingResponses}
         </div>
       </div>
     );
@@ -121,7 +122,7 @@ function OpenWallOverlay({ cards, isAr }: { cards: WallCard[]; isAr: boolean }) 
         </AnimatePresence>
       </div>
       <div className="absolute bottom-5 right-5 text-white/40 text-sm font-bold tabular-nums" dir="ltr">
-        {visible.length} {isAr ? "رد" : "responses"}
+        {new Intl.NumberFormat(isAr ? "ar" : "en").format(visible.length)} {t.presentation.responses}
       </div>
     </div>
   );
@@ -136,7 +137,7 @@ const STAGE_TIMER_SECS = 60;
  * reconnecting projectors show the correct remaining time rather than
  * restarting from 60s.  Pass `null` to hide the timer (no activity open).
  */
-function StageTimer({ startedAt, isAr }: { startedAt: number | null; isAr: boolean }) {
+function StageTimer({ startedAt, isAr, t }: { startedAt: number | null; isAr: boolean; t: ReturnType<typeof useI18n>["t"] }) {
   const computeRemaining = () =>
     startedAt
       ? Math.max(0, STAGE_TIMER_SECS - Math.floor((Date.now() - startedAt) / 1000))
@@ -231,7 +232,7 @@ function StageTimer({ startedAt, isAr }: { startedAt: number | null; isAr: boole
           {remaining}
         </div>
         <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: 2, textTransform: "uppercase" }}>
-          {isAr ? "ثانية" : "sec"}
+          {t.presentation.secondsShort}
         </div>
       </div>
     </motion.div>
@@ -239,7 +240,7 @@ function StageTimer({ startedAt, isAr }: { startedAt: number | null; isAr: boole
 }
 
 /* ── Stage Mode: Dramatic reveal overlay ──────────────────────────── */
-function DramaticRevealOverlay({ isAr }: { isAr: boolean }) {
+function DramaticRevealOverlay({ t }: { t: ReturnType<typeof useI18n>["t"] }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -295,7 +296,7 @@ function DramaticRevealOverlay({ isAr }: { isAr: boolean }) {
             fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif",
             textShadow: "0 0 24px rgba(34,197,94,0.6)",
           }}>
-            {isAr ? "الإجابة الصحيحة" : "Correct Answer"}
+            {t.presentation.correctAnswer}
           </div>
         </motion.div>
       </motion.div>
@@ -316,6 +317,7 @@ const WN_GOLD_DIM = "rgba(217,165,33,0.18)";
 /* Projector / "show" view. Anyone with the URL can watch (no auth);
    intended for a classroom screen connected to the teacher's laptop. */
 export default function PresentationShow() {
+  const { lang, dir, t } = useI18n();
   const params = useParams<{ sessionId: string }>();
   const sid = Number(params.sessionId);
 
@@ -492,7 +494,7 @@ export default function PresentationShow() {
   const ended = (live?.status ?? state?.status) === "ended";
   const slideKey = slide?.id ?? live?.currentSlideIndex ?? 0;
   const activeKind: string | undefined = live?.activeElement?.activityKind ?? state?.activeElement?.activityKind;
-  const isAr = state?.deck?.language !== "en";
+  const isAr = lang === "ar";
 
   /* Activity-specific overlays that consume the full screen. */
   const hasActivityOverlay = !inLobby && (activeKind === "word_cloud" || activeKind === "open_wall");
@@ -505,7 +507,7 @@ export default function PresentationShow() {
   if (ended) {
     return (
       <div
-        dir="rtl"
+        dir={dir}
         className="fixed inset-0 flex flex-col items-center justify-center"
         style={{ background: WN_BG, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
       >
@@ -516,9 +518,9 @@ export default function PresentationShow() {
           className="text-center"
         >
           <div className="text-6xl mb-5">👋</div>
-          <div className="text-3xl font-black text-white mb-2">انتهت الجلسة</div>
+          <div className="text-3xl font-black text-white mb-2">{t.presentation.sessionEnded}</div>
           <div className="text-base" style={{ color: "rgba(255,255,255,0.45)" }}>
-            شكراً لحضور الحصة
+            {t.presentation.thanksForAttending}
           </div>
         </motion.div>
       </div>
@@ -556,7 +558,7 @@ export default function PresentationShow() {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="fixed inset-0 overflow-hidden"
       style={{ background: "#000" }}
     >
@@ -626,7 +628,7 @@ export default function PresentationShow() {
                   className="text-2xl font-black tracking-widest uppercase"
                   style={{ color: WN_GOLD, letterSpacing: "0.25em" }}
                 >
-                  وميض
+                  {t.presentation.brandArabic}
                 </div>
                 <div
                   className="text-xs mt-1 tracking-wider"
@@ -647,7 +649,7 @@ export default function PresentationShow() {
                   className="text-lg font-semibold mb-2"
                   style={{ color: "rgba(255,255,255,0.55)" }}
                 >
-                  للانضمام إلى الحصة، افتح هاتفك واذهب إلى
+                  {t.presentation.joinInstruction}
                 </div>
                 <div
                   className="inline-block px-6 py-2 rounded-xl font-black text-xl"
@@ -673,7 +675,7 @@ export default function PresentationShow() {
                   className="text-sm font-bold tracking-widest uppercase mb-3"
                   style={{ color: "rgba(255,255,255,0.40)", letterSpacing: "0.28em" }}
                 >
-                  رمز الانضمام
+                  {t.presentation.joinCode}
                 </div>
                 {/* PIN card */}
                 <div
@@ -706,7 +708,7 @@ export default function PresentationShow() {
                 className="mt-6 text-sm"
                 style={{ color: "rgba(255,255,255,0.25)" }}
               >
-                في انتظار انضمام الطلاب…
+                {t.presentation.waitingStudents}
               </motion.div>
             </div>
           </motion.div>
@@ -724,7 +726,7 @@ export default function PresentationShow() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <WordCloudOverlay words={wordCloudWords} isAr={isAr} />
+            <WordCloudOverlay words={wordCloudWords} isAr={isAr} t={t} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -740,7 +742,7 @@ export default function PresentationShow() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <OpenWallOverlay cards={wallCards} isAr={isAr} />
+            <OpenWallOverlay cards={wallCards} isAr={isAr} t={t} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -756,7 +758,7 @@ export default function PresentationShow() {
             transition={{ type: "spring", stiffness: 300, damping: 24 }}
             style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 19 }}
           >
-            <StageTimer startedAt={activityOpenedAt} isAr={isAr} />
+            <StageTimer startedAt={activityOpenedAt} isAr={isAr} t={t} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -764,7 +766,7 @@ export default function PresentationShow() {
       {/* ── Stage Mode: dramatic correct-answer reveal ────────── */}
       <AnimatePresence>
         {stageMode && showReveal && !inLobby && (
-          <DramaticRevealOverlay key="stage-reveal" isAr={isAr} />
+          <DramaticRevealOverlay key="stage-reveal" t={t} />
         )}
       </AnimatePresence>
 
@@ -784,7 +786,7 @@ export default function PresentationShow() {
               className="rounded-full px-7 py-2.5 text-base font-black"
               style={{ background: WN_GOLD, color: "#0d0a00", boxShadow: `0 4px 24px ${WN_GOLD}55` }}
             >
-              ✦ نشاط مفتوح — أجيبوا من أجهزتكم
+              {t.presentation.activityOpen}
             </div>
           </motion.div>
         )}
@@ -822,7 +824,7 @@ export default function PresentationShow() {
               alignItems: "center",
               gap: 6,
             }}>
-              🎬 وضع المسرح
+              {t.presentation.stageMode}
             </div>
           </motion.div>
         )}

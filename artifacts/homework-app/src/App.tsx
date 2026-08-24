@@ -3,7 +3,7 @@ import { Switch, Route, Router as WouterRouter, useLocation, useParams } from "w
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { I18nProvider, useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { DarkModeProvider } from "@/lib/dark-mode";
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -667,25 +667,23 @@ function I18nAwareToaster() {
 function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <I18nProvider>
-        <DarkModeProvider>
-          <ThemeProvider>
-            <QueryClientProvider client={queryClient}>
-              <TooltipProvider>
-                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                  <Router />
-                  <GlobalAiAssistant />
-                  <InsufficientCreditsDialog />
-                  <PageViewTracker />
-                  <HeartbeatTracker />
-                  <NavTracker />
-                </WouterRouter>
-                <I18nAwareToaster />
-              </TooltipProvider>
-            </QueryClientProvider>
-          </ThemeProvider>
-        </DarkModeProvider>
-      </I18nProvider>
+      <DarkModeProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+                <GlobalAiAssistant />
+                <InsufficientCreditsDialog />
+                <PageViewTracker />
+                <HeartbeatTracker />
+                <NavTracker />
+              </WouterRouter>
+              <I18nAwareToaster />
+            </TooltipProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </DarkModeProvider>
     </GoogleOAuthProvider>
   );
 }

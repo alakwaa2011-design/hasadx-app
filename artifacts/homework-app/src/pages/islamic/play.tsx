@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRoute, useLocation, useSearch } from "wouter";
 import { api, IslamicShell, IslamicCard, GoldButton, GhostButton, BackLink, ISLAMIC_GOLD, ISLAMIC_GREEN, playCorrect, playWrong } from "./_shared";
 import AudioPlayer from "@/components/AudioPlayer";
+import { useI18n } from "@/lib/i18n";
 
 interface Q {
   id: number;
@@ -21,6 +22,7 @@ const LEVEL_COLORS: Record<number, string> = { 1: "#16a34a", 2: "#d97706", 3: "#
 const LEVEL_ICONS: Record<number, string> = { 1: "🌱", 2: "🔥", 3: "💎" };
 
 export default function IslamicPlay() {
+  const { t } = useI18n();
   const [, params] = useRoute("/islamic/play/:categoryId");
   const [, setLocation] = useLocation();
   const search = useSearch();
@@ -60,7 +62,7 @@ export default function IslamicPlay() {
   useEffect(() => {
     api<{ questions: Q[]; sessionId: string; level: number }>(`/islamic/play/${categoryId}?level=${level}`)
       .then((r) => {
-        if (r.questions.length === 0) setErrorMsg("لا أسئلة في هذا المستوى بعد");
+        if (r.questions.length === 0) setErrorMsg(t.islamic.noQuestions);
         setQuestions(r.questions);
         sessionIdRef.current = r.sessionId;
         sessionStartRef.current = Date.now();
@@ -259,7 +261,7 @@ export default function IslamicPlay() {
 
   if (errorMsg) {
     return (
-      <IslamicShell title={categoryName || "مسابقة"}>
+      <IslamicShell title={categoryName || t.islamic.challenge}>
         <BackLink />
         <IslamicCard><p style={{ textAlign: "center" }}>{errorMsg}</p></IslamicCard>
       </IslamicShell>
@@ -267,7 +269,7 @@ export default function IslamicPlay() {
   }
   if (!questions || !q) {
     return (
-      <IslamicShell title="جاري التحميل">
+      <IslamicShell title={t.islamic.loading}>
         <BackLink />
         <IslamicCard><p style={{ textAlign: "center" }}>…</p></IslamicCard>
       </IslamicShell>
@@ -278,7 +280,7 @@ export default function IslamicPlay() {
     const totalStars = stars.reduce((a, b) => a + b, 0);
     const allCorrect = stars.every((s) => s > 0);
     return (
-      <IslamicShell title="انتهت الجلسة">
+      <IslamicShell title={t.islamic.sessionEnded}>
         <BackLink />
 
         {/* Level unlock celebration */}
@@ -322,10 +324,10 @@ export default function IslamicPlay() {
               </span>
             </div>
             <div style={{ marginTop: 8 }}>
-              {allCorrect ? "ممتاز! أجبت بدون أي خطأ 🎉" : "أحسنت! 🎉"}
+              {allCorrect ? (t.islamic.basic === "Basic" ? "Excellent! You answered without mistakes 🎉" : "ممتاز! أجبت بدون أي خطأ 🎉") : (t.islamic.basic === "Basic" ? "Well done! 🎉" : "أحسنت! 🎉")}
             </div>
-            <div>النقاط المكتسبة: <span style={{ color: ISLAMIC_GOLD, fontWeight: 900 }}>{points}</span></div>
-            <div>إجمالي النجوم: {"⭐".repeat(Math.min(totalStars, 30))} ({totalStars})</div>
+            <div>{t.islamic.pointsEarned} <span style={{ color: ISLAMIC_GOLD, fontWeight: 900 }}>{points}</span></div>
+            <div>{t.islamic.totalStars} {"⭐".repeat(Math.min(totalStars, 30))} ({totalStars})</div>
             {!allCorrect && level > 1 && (
               <div style={{ fontSize: 15, color: "#fca5a5", marginTop: 8 }}>
                 ⚠️ يلزم الإجابة بدون أخطاء لفتح المستوى التالي
@@ -342,10 +344,10 @@ export default function IslamicPlay() {
               </>
             )}
             <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-              <GhostButton onClick={() => setLocation("/islamic")}>الرئيسية</GhostButton>
-              <GhostButton onClick={() => setLocation("/islamic/leaderboard")}>المتصدرون</GhostButton>
+              <GhostButton onClick={() => setLocation("/islamic")}>{t.islamic.home}</GhostButton>
+              <GhostButton onClick={() => setLocation("/islamic/leaderboard")}>{t.islamic.leaderboard}</GhostButton>
               {!allCorrect && (
-                <GoldButton onClick={restartFromZero}>إعادة المحاولة ↺</GoldButton>
+                <GoldButton onClick={restartFromZero}>{t.islamic.retry}</GoldButton>
               )}
             </div>
           </div>
@@ -398,9 +400,9 @@ export default function IslamicPlay() {
       )}
 
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14 }}>
-        <div>السؤال {idx + 1} / {questions.length}</div>
-        <div>النقاط: <strong style={{ color: ISLAMIC_GOLD }}>{points}</strong></div>
-        <div>سلسلة: {streak}🔥</div>
+        <div>{t.islamic.question} {idx + 1} / {questions.length}</div>
+        <div>{t.islamic.points} <strong style={{ color: ISLAMIC_GOLD }}>{points}</strong></div>
+        <div>{t.islamic.streak} {streak}🔥</div>
       </div>
 
       <div style={{ height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
@@ -430,14 +432,14 @@ export default function IslamicPlay() {
       <style>{`
         .islamic-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
           font-family: inherit; font-size: 17px; font-weight: 600; line-height: 1.7;
-          text-align: right; cursor: pointer; transition: all .18s ease; width: 100%;
+          text-align: start; cursor: pointer; transition: all .18s ease; width: 100%;
           border: 2px solid transparent; color: #1c1208;
           box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
         .islamic-opt:hover:not(:disabled) { transform: translateY(-3px);
           box-shadow: 0 8px 22px rgba(0,0,0,0.13); filter: brightness(0.96); }
         .islamic-opt:active:not(:disabled) { transform: translateY(0); }
         .islamic-opt:disabled { cursor: default; }
-        .islamic-opt .ltr { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+         .islamic-opt .ltr { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%);
           width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
           font-weight: 800; font-size: 16px; background: rgba(0,0,0,0.1); color: inherit;
           border: 2px solid rgba(0,0,0,0.12); }
@@ -499,7 +501,7 @@ export default function IslamicPlay() {
 
       {revealed && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
-          <GoldButton onClick={next}>{idx + 1 >= questions.length ? "إنهاء" : "السؤال التالي"}</GoldButton>
+          <GoldButton onClick={next}>{idx + 1 >= questions.length ? t.islamic.finish : t.islamic.nextQuestion}</GoldButton>
         </div>
       )}
     </IslamicShell>

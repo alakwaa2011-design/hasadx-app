@@ -141,6 +141,8 @@ function usdLabel(priceMinor: number) {
 }
 
 function PlansSection({ overview, onReload }: { overview: Overview; onReload: () => void }) {
+  const { t, lang, dir } = useI18n();
+  const c = t.adminCredits.system;
   const [editing, setEditing] = useState<Plan | null>(null);
   // ترتيب ثابت: free → basic → pro؛ أي خطط أخرى تُعرض بعدها
   const order = ["free", "basic", "pro"];
@@ -149,7 +151,7 @@ function PlansSection({ overview, onReload }: { overview: Overview; onReload: ()
   );
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="space-y-4" dir={dir}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {plans.map((p) => {
           const editable = p.code === "basic" || p.code === "pro";
@@ -157,54 +159,54 @@ function PlansSection({ overview, onReload }: { overview: Overview; onReload: ()
             <Card key={p.id} className={`p-4 flex flex-col ${p.code === "pro" ? "border-primary/40" : ""}`}>
               <div className="flex items-start justify-between mb-1">
                 <div>
-                  <h3 className="font-extrabold text-lg">{p.nameAr}</h3>
+                  <h3 className="font-extrabold text-lg">{lang === "ar" ? p.nameAr : p.nameEn}</h3>
                   <p className="text-[11px] text-muted-foreground font-mono" dir="ltr">{p.code}</p>
                 </div>
                 {!editable && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">للعرض فقط</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{c.readOnly}</span>
                 )}
               </div>
               <div className="my-2">
                 <span className="text-2xl font-black text-primary tabular-nums" dir="ltr">
-                  {p.priceMinor === 0 ? "مجاني" : usdLabel(p.priceMinor)}
+                  {p.priceMinor === 0 ? c.free : usdLabel(p.priceMinor)}
                 </span>
-                {p.priceMinor > 0 && <span className="text-xs text-muted-foreground mr-1">/ شهريًا</span>}
+                {p.priceMinor > 0 && <span className="text-xs text-muted-foreground ms-1">{c.monthly}</span>}
               </div>
               <ul className="text-xs space-y-1.5 mb-3 text-muted-foreground">
                 {p.code === "free" ? (
                   <li className="flex justify-between">
-                    <span>نقاط ترحيبية (مرة واحدة)</span>
+                    <span>{c.welcomePoints}</span>
                     <span className="font-bold text-foreground">50</span>
                   </li>
                 ) : (
                   <>
                     <li className="flex justify-between">
-                      <span>النقاط الشهرية</span>
+                      <span>{c.monthlyPoints}</span>
                       <span className="font-bold text-foreground tabular-nums">{p.monthlyCredits ?? "—"}</span>
                     </li>
                     <li className="flex justify-between">
-                      <span>سقف الترحيل (rollover)</span>
+                      <span>{c.rolloverCap}</span>
                       <span className="font-bold text-foreground tabular-nums">{p.rolloverCap ?? "—"}</span>
                     </li>
                   </>
                 )}
                 {p.code === "pro" && (
                   <li className="flex justify-between">
-                    <span>خصم أدوات AI</span>
+                    <span>{c.aiDiscount}</span>
                     <span className="font-bold text-emerald-600">20%</span>
                   </li>
                 )}
                 <li className="flex justify-between" dir="ltr">
-                  <span className="font-mono text-[10px]">Lemon Product / Variant</span>
+                  <span className="font-mono text-[10px]">{c.productVariant}</span>
                   <span className="font-mono text-[10px] text-foreground">
                     {p.lemonProductId || "—"} / {p.lemonVariantId || "—"}
                   </span>
                 </li>
               </ul>
               <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{p.subscriberCount} مشترك</span>
+                <span className="text-xs text-muted-foreground">{c.subscribers.replace("{count}", String(p.subscriberCount))}</span>
                 {editable && (
-                  <Button variant="outline" onClick={() => setEditing(p)} className="text-xs h-8 px-3">تعديل</Button>
+                  <Button variant="outline" onClick={() => setEditing(p)} className="text-xs h-8 px-3">{c.edit}</Button>
                 )}
               </div>
             </Card>
@@ -224,6 +226,8 @@ function PlansSection({ overview, onReload }: { overview: Overview; onReload: ()
 }
 
 function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => void; onSaved: () => void }) {
+  const { t, lang, dir } = useI18n();
+  const c = t.adminCredits.system;
   const [priceMajor, setPriceMajor] = useState((plan.priceMinor / 100).toString());
   const [monthlyCredits, setMonthlyCredits] = useState(plan.monthlyCredits == null ? "" : String(plan.monthlyCredits));
   const [rolloverCap, setRolloverCap] = useState(plan.rolloverCap == null ? "" : String(plan.rolloverCap));
@@ -241,11 +245,11 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
 
   const save = async () => {
     const priceNum = Number(priceMajor);
-    if (!Number.isFinite(priceNum) || priceNum < 0) { toast.error("سعر غير صالح"); return; }
+    if (!Number.isFinite(priceNum) || priceNum < 0) { toast.error(c.invalidPrice); return; }
     const lsP = parseId(lemonProductId);
     const lsV = parseId(lemonVariantId);
-    if (lsP !== null && !/^\d+$/.test(lsP)) { toast.error("Lemon Product ID يجب أن يكون رقمًا صحيحًا"); return; }
-    if (lsV !== null && !/^\d+$/.test(lsV)) { toast.error("Lemon Variant ID يجب أن يكون رقمًا صحيحًا"); return; }
+    if (lsP !== null && !/^\d+$/.test(lsP)) { toast.error(c.productIdInvalid); return; }
+    if (lsV !== null && !/^\d+$/.test(lsV)) { toast.error(c.variantIdInvalid); return; }
     setSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/billing/admin/plans/${plan.id}`, {
@@ -260,13 +264,13 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
           lemonVariantId: lsV,
         }),
       });
-      if (r.ok) { toast.success("تم حفظ الخطة"); onSaved(); }
+      if (r.ok) { toast.success(c.planSaved); onSaved(); }
       else {
         const d = await r.json().catch(() => ({}));
-        toast.error((d as any).message || "فشل الحفظ");
+        toast.error((d as any).message || c.saveFailed);
       }
     } catch {
-      toast.error("خطأ في الاتصال");
+      toast.error(c.networkError);
     } finally {
       setSaving(false);
     }
@@ -274,54 +278,54 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir="rtl">
+      <div className="bg-card rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir={dir}>
         <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card">
           <div className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold">{plan.nameAr}</h2>
+            <h2 className="text-lg font-bold">{lang === "ar" ? plan.nameAr : plan.nameEn}</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label={c.closeDialog} className="p-1 hover:bg-muted rounded-lg"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-4 space-y-4">
           <label className="block">
-            <span className="text-xs font-bold text-muted-foreground block mb-1">السعر الشهري (USD)</span>
+            <span className="text-xs font-bold text-muted-foreground block mb-1">{c.monthlyPrice}</span>
             <Input type="number" step="0.01" min="0" value={priceMajor} onChange={(e) => setPriceMajor(e.target.value)} dir="ltr" />
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block">
-              <span className="text-xs font-bold text-muted-foreground block mb-1">النقاط الشهرية</span>
+              <span className="text-xs font-bold text-muted-foreground block mb-1">{c.monthlyPoints}</span>
               <Input type="number" min="0" step="1" value={monthlyCredits} onChange={(e) => setMonthlyCredits(e.target.value)} dir="ltr" />
             </label>
             <label className="block">
-              <span className="text-xs font-bold text-muted-foreground block mb-1">سقف الترحيل (rollover)</span>
+              <span className="text-xs font-bold text-muted-foreground block mb-1">{c.rolloverCap}</span>
               <Input type="number" min="0" step="1" value={rolloverCap} onChange={(e) => setRolloverCap(e.target.value)} dir="ltr" />
             </label>
           </div>
           <div className="border-t border-border pt-3">
-            <p className="text-xs font-bold text-muted-foreground mb-2">🍋 Lemon Squeezy — أرقام فقط، اتركه فارغًا لفك الربط</p>
+            <p className="text-xs font-bold text-muted-foreground mb-2">{c.idsHint}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-xs font-bold text-muted-foreground block mb-1">Lemon Product ID</span>
-                <Input value={lemonProductId} onChange={(e) => setLemonProductId(e.target.value)} placeholder="e.g. 448058" dir="ltr" inputMode="numeric" />
+                <span className="text-xs font-bold text-muted-foreground block mb-1">{c.productId}</span>
+                <Input value={lemonProductId} onChange={(e) => setLemonProductId(e.target.value)} placeholder={c.numericIdPlaceholder} dir="ltr" inputMode="numeric" />
               </label>
               <label className="block">
-                <span className="text-xs font-bold text-muted-foreground block mb-1">Lemon Variant ID</span>
-                <Input value={lemonVariantId} onChange={(e) => setLemonVariantId(e.target.value)} placeholder="e.g. 2017697" dir="ltr" inputMode="numeric" />
+                <span className="text-xs font-bold text-muted-foreground block mb-1">{c.variantId}</span>
+                <Input value={lemonVariantId} onChange={(e) => setLemonVariantId(e.target.value)} placeholder={c.numericIdPlaceholder} dir="ltr" inputMode="numeric" />
               </label>
             </div>
           </div>
           {plan.subscriberCount > 0 && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3 flex gap-2 text-sm text-amber-800 dark:text-amber-200">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p>التغييرات تسري فورًا على {plan.subscriberCount} مشتركًا في هذه الخطة.</p>
+              <p>{c.immediateChanges.replace("{count}", String(plan.subscriberCount))}</p>
             </div>
           )}
         </div>
         <div className="p-4 border-t border-border flex items-center justify-end gap-2 sticky bottom-0 bg-card">
-          <Button variant="outline" onClick={onClose} disabled={saving}>إلغاء</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{c.cancel}</Button>
           <Button onClick={save} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            حفظ
+            {c.save}
           </Button>
         </div>
       </div>
@@ -332,6 +336,8 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
 /* ─── القسم 4: اشتراكات المعلمين (تعيين يدوي) ───────────────────────────── */
 
 function AssignSection({ plans }: { plans: Plan[] }) {
+  const { t, lang, dir } = useI18n();
+  const c = t.adminCredits.system;
   const [rows, setRows] = useState<SubscriberRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -357,9 +363,9 @@ function AssignSection({ plans }: { plans: Plan[] }) {
         const data = await r.json();
         setRows(data.rows ?? []);
         setTotal(data.total ?? 0);
-      } else toast.error("فشل تحميل الاشتراكات");
+      } else toast.error(c.subscriptionsLoadFailed);
     } catch {
-      toast.error("خطأ في الاتصال");
+      toast.error(c.networkError);
     } finally {
       setLoading(false);
     }
@@ -376,13 +382,13 @@ function AssignSection({ plans }: { plans: Plan[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teacherId, planCode }),
       });
-      if (r.ok) { toast.success("تم تحديث الخطة"); load(); }
+      if (r.ok) { toast.success(c.planUpdated); load(); }
       else {
         const d = await r.json().catch(() => ({}));
-        toast.error((d as any).message || "فشل تحديث الخطة");
+        toast.error((d as any).message || c.planUpdateFailed);
       }
     } catch {
-      toast.error("خطأ في الاتصال");
+      toast.error(c.networkError);
     } finally {
       setAssigning(null);
     }
@@ -392,24 +398,31 @@ function AssignSection({ plans }: { plans: Plan[] }) {
     () => plans.filter((p) => p.isActive && HASAD_PLAN_CODES.includes(p.code)),
     [plans],
   );
+  const subscriptionStatus: Record<string, string> = {
+    active: c.statusActive,
+    cancelled: c.statusCancelled,
+    expired: c.statusExpired,
+    past_due: c.statusPastDue,
+    unpaid: c.statusUnpaid,
+  };
 
   return (
-    <div className="space-y-3" dir="rtl">
+    <div className="space-y-3" dir={dir}>
       <p className="text-xs text-muted-foreground">
-        إعدادات ومزايا العروض التفاعلية فقط — لا تغيّر باقة حصاد أو نقاط المعلم.
+        {c.assignHint}
       </p>
       <Card className="p-3 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث باسم أو بريد…" className="ps-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={c.search} className="ps-9" />
         </div>
         <select
           value={planFilter}
           onChange={(e) => setPlanFilter(e.target.value)}
           className="px-3 py-2 rounded-xl border border-border bg-background text-sm font-bold min-w-[160px]"
         >
-          <option value="">كل الخطط</option>
-          {planOptions.map((p) => <option key={p.id} value={p.code}>{p.nameAr}</option>)}
+          <option value="">{c.allPlans}</option>
+          {planOptions.map((p) => <option key={p.id} value={p.code}>{lang === "ar" ? p.nameAr : p.nameEn}</option>)}
         </select>
         <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">{total}</span>
       </Card>
@@ -424,11 +437,11 @@ function AssignSection({ plans }: { plans: Plan[] }) {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs font-bold text-muted-foreground">
                 <tr>
-                  <th className="text-start px-3 py-2.5">المعلم</th>
-                  <th className="text-start px-3 py-2.5 hidden md:table-cell">التواصل</th>
-                  <th className="text-start px-3 py-2.5">الخطة</th>
-                  <th className="text-start px-3 py-2.5 hidden lg:table-cell">الحالة</th>
-                  <th className="text-start px-3 py-2.5">تعيين</th>
+                  <th className="text-start px-3 py-2.5">{c.teacher}</th>
+                  <th className="text-start px-3 py-2.5 hidden md:table-cell">{c.contact}</th>
+                  <th className="text-start px-3 py-2.5">{c.plan}</th>
+                  <th className="text-start px-3 py-2.5 hidden lg:table-cell">{c.status}</th>
+                  <th className="text-start px-3 py-2.5">{c.assign}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -445,11 +458,13 @@ function AssignSection({ plans }: { plans: Plan[] }) {
                       {r.teacherEmail && <div dir="ltr">{r.teacherEmail}</div>}
                       {r.teacherPhone && <div dir="ltr">{r.teacherPhone}</div>}
                     </td>
-                    <td className="px-3 py-2.5 font-bold">{r.planNameAr}</td>
+                    <td className="px-3 py-2.5 font-bold">
+                      {lang === "ar" ? r.planNameAr : (planOptions.find((p) => p.code === r.planCode)?.nameEn ?? r.planNameAr)}
+                    </td>
                     <td className="px-3 py-2.5 hidden lg:table-cell">
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                         r.status === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30" : "bg-muted text-muted-foreground"
-                      }`}>{r.status}</span>
+                      }`}>{subscriptionStatus[r.status] ?? r.status}</span>
                     </td>
                     <td className="px-3 py-2.5">
                       <select
@@ -458,7 +473,7 @@ function AssignSection({ plans }: { plans: Plan[] }) {
                         onChange={(e) => assignPlan(r.teacherId, e.target.value)}
                         className="px-2 py-1.5 rounded-lg border border-border bg-background text-xs font-bold"
                       >
-                        {planOptions.map((p) => <option key={p.id} value={p.code}>{p.nameAr}</option>)}
+                        {planOptions.map((p) => <option key={p.id} value={p.code}>{lang === "ar" ? p.nameAr : p.nameEn}</option>)}
                       </select>
                     </td>
                   </tr>
@@ -475,6 +490,8 @@ function AssignSection({ plans }: { plans: Plan[] }) {
 /* ─── القسم 6: سجل المدفوعات والأحداث ──────────────────────────────────── */
 
 function LogsSection() {
+  const { t, lang, dir } = useI18n();
+  const c = t.adminCredits.system;
   const [view, setView] = useState<"purchases" | "webhooks">("purchases");
   const [purchases, setPurchases] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -489,7 +506,7 @@ function LogsSection() {
         if (view === "purchases") setPurchases(d.rows ?? []);
         else setEvents(Array.isArray(d) ? d : []);
       })
-      .catch(() => toast.error("فشل تحميل السجل"))
+      .catch(() => toast.error(c.logLoadFailed))
       .finally(() => setLoading(false));
   }, [view]);
 
@@ -498,11 +515,20 @@ function LogsSection() {
     pending_checkout: "text-yellow-600", pending: "text-yellow-600",
     failed: "text-red-500", refunded: "text-blue-600",
   };
+  const statusLabel: Record<string, string> = {
+    paid: c.statusPaid,
+    processed: c.statusProcessed,
+    pending_checkout: c.statusPendingCheckout,
+    pending: c.statusPending,
+    failed: c.statusFailed,
+    refunded: c.statusRefunded,
+  };
+  const locale = lang === "ar" ? "ar-SA" : "en-US";
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="space-y-4" dir={dir}>
       <div className="flex gap-2">
-        {([["purchases", "المشتريات"], ["webhooks", "أحداث Webhook"]] as const).map(([k, label]) => (
+        {([["purchases", c.purchases], ["webhooks", c.webhookEvents]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setView(k)}
             className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${view === k ? "bg-primary text-primary-foreground font-semibold" : "bg-muted hover:bg-muted/80 text-muted-foreground"}`}>
             {label}
@@ -511,22 +537,22 @@ function LogsSection() {
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">جارٍ التحميل…</p>
+        <p className="text-center text-muted-foreground py-8">{c.loading}</p>
       ) : view === "purchases" ? (
         purchases.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">لا توجد مشتريات بعد</p>
+          <p className="text-center text-muted-foreground py-8">{c.noPurchases}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-muted-foreground">
-                  <th className="text-right py-2 px-3">#</th>
-                  <th className="text-right py-2 px-3">المعلم</th>
-                  <th className="text-right py-2 px-3">الباقة</th>
-                  <th className="text-right py-2 px-3">المبلغ</th>
-                  <th className="text-right py-2 px-3">النقاط</th>
-                  <th className="text-right py-2 px-3">الحالة</th>
-                  <th className="text-right py-2 px-3">التاريخ</th>
+                   <th className="text-start py-2 px-3">#</th>
+                   <th className="text-start py-2 px-3">{c.teacher}</th>
+                   <th className="text-start py-2 px-3">{c.package}</th>
+                   <th className="text-start py-2 px-3">{c.amount}</th>
+                   <th className="text-start py-2 px-3">{c.points}</th>
+                   <th className="text-start py-2 px-3">{c.status}</th>
+                   <th className="text-start py-2 px-3">{c.date}</th>
                 </tr>
               </thead>
               <tbody>
@@ -540,8 +566,8 @@ function LogsSection() {
                     <td className="py-2 px-3 text-xs">{p.package_name_snapshot ?? "—"}</td>
                     <td className="py-2 px-3 tabular-nums" dir="ltr">${((p.amount_cents ?? 0) / 100).toFixed(2)}</td>
                     <td className="py-2 px-3 font-semibold tabular-nums">{p.credits_amount ?? p.package_credits_snapshot ?? "—"}</td>
-                    <td className={`py-2 px-3 text-xs font-medium ${statusColor[p.payment_status] ?? ""}`}>{p.payment_status}</td>
-                    <td className="py-2 px-3 text-xs text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleString("ar-SA") : "—"}</td>
+                    <td className={`py-2 px-3 text-xs font-medium ${statusColor[p.payment_status] ?? ""}`}>{statusLabel[p.payment_status] ?? p.payment_status}</td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleString(locale) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -549,19 +575,19 @@ function LogsSection() {
           </div>
         )
       ) : events.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">لا توجد أحداث بعد</p>
+        <p className="text-center text-muted-foreground py-8">{c.noEvents}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-muted-foreground">
-                <th className="text-right py-2 px-3">#</th>
-                <th className="text-right py-2 px-3">الحدث</th>
-                <th className="text-right py-2 px-3">المزوّد</th>
-                <th className="text-right py-2 px-3">الحالة</th>
-                <th className="text-right py-2 px-3">محاولات</th>
-                <th className="text-right py-2 px-3">الخطأ</th>
-                <th className="text-right py-2 px-3">التاريخ</th>
+                 <th className="text-start py-2 px-3">#</th>
+                 <th className="text-start py-2 px-3">{c.event}</th>
+                 <th className="text-start py-2 px-3">{c.provider}</th>
+                 <th className="text-start py-2 px-3">{c.status}</th>
+                 <th className="text-start py-2 px-3">{c.attempts}</th>
+                 <th className="text-start py-2 px-3">{c.error}</th>
+                 <th className="text-start py-2 px-3">{c.date}</th>
               </tr>
             </thead>
             <tbody>
@@ -570,10 +596,10 @@ function LogsSection() {
                   <td className="py-2 px-3 text-xs text-muted-foreground">{e.id}</td>
                   <td className="py-2 px-3 font-mono text-xs" dir="ltr">{e.event_name}</td>
                   <td className="py-2 px-3 text-xs">{e.provider}</td>
-                  <td className={`py-2 px-3 text-xs font-medium ${statusColor[e.status] ?? ""}`}>{e.status}</td>
+                  <td className={`py-2 px-3 text-xs font-medium ${statusColor[e.status] ?? ""}`}>{statusLabel[e.status] ?? e.status}</td>
                   <td className="py-2 px-3 text-xs tabular-nums">{e.attempts}</td>
                   <td className="py-2 px-3 text-xs text-red-500 max-w-[200px] truncate" dir="ltr">{e.error_message ?? "—"}</td>
-                  <td className="py-2 px-3 text-xs text-muted-foreground">{e.created_at ? new Date(e.created_at).toLocaleString("ar-SA") : "—"}</td>
+                  <td className="py-2 px-3 text-xs text-muted-foreground">{e.created_at ? new Date(e.created_at).toLocaleString(locale) : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -589,6 +615,8 @@ function LogsSection() {
 type Section = "plans" | "packages" | "tools" | "assign" | "balances" | "transactions" | "settings" | "logs";
 
 export function HasadCreditsSystem() {
+  const { t, dir } = useI18n();
+  const c = t.adminCredits.system;
   const [section, setSection] = useState<Section>("plans");
   const [overview, setOverview] = useState<Overview | null>(null);
 
@@ -597,32 +625,32 @@ export function HasadCreditsSystem() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       // الخادم يستبعد school أصلًا — فلتر إضافي دفاعي في الواجهة
       .then((d: Overview) => setOverview({ ...d, plans: d.plans.filter((p) => HASAD_PLAN_CODES.includes(p.code)) }))
-      .catch(() => toast.error("فشل تحميل بيانات الخطط"));
+      .catch(() => toast.error(c.overviewLoadFailed));
   };
   useEffect(() => { loadOverview(); }, []);
 
   const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
-    { key: "plans",    label: "الخطط",              icon: <Crown size={15} /> },
-    { key: "packages", label: "حزم النقاط",          icon: <Package size={15} /> },
-    { key: "tools",    label: "أسعار أدوات الذكاء",  icon: <Coins size={15} /> },
-    { key: "assign",   label: "العروض التفاعلية للمعلمين", icon: <Users size={15} /> },
-    { key: "balances",     label: "أرصدة المعلمين",  icon: <Coins size={15} /> },
-    { key: "transactions", label: "حركات الرصيد",    icon: <ScrollText size={15} /> },
-    { key: "settings", label: "إعدادات النظام",      icon: <Settings size={15} /> },
-    { key: "logs",     label: "السجل",               icon: <ScrollText size={15} /> },
+    { key: "plans", label: c.tabs.plans, icon: <Crown size={15} /> },
+    { key: "packages", label: c.tabs.packages, icon: <Package size={15} /> },
+    { key: "tools", label: c.tabs.tools, icon: <Coins size={15} /> },
+    { key: "assign", label: c.tabs.assign, icon: <Users size={15} /> },
+    { key: "balances", label: c.tabs.balances, icon: <Coins size={15} /> },
+    { key: "transactions", label: c.tabs.transactions, icon: <ScrollText size={15} /> },
+    { key: "settings", label: c.tabs.settings, icon: <Settings size={15} /> },
+    { key: "logs", label: c.tabs.logs, icon: <ScrollText size={15} /> },
   ];
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5" dir={dir}>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-extrabold flex items-center gap-2">
             <Coins className="w-5 h-5 text-primary" />
-            نظام نقاط حصاد
+            {c.title}
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            إدارة موحدة للخطط وحزم النقاط وأسعار الأدوات والإعدادات
+            {c.subtitle}
           </p>
         </div>
         {overview && (
@@ -631,7 +659,7 @@ export function HasadCreditsSystem() {
               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
               : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
           }`}>
-            {overview.paymentsEnabled ? "المدفوعات مفعّلة" : "المدفوعات غير مفعّلة"}
+            {overview.paymentsEnabled ? c.paymentsEnabled : c.paymentsDisabled}
           </span>
         )}
       </div>
@@ -659,7 +687,7 @@ export function HasadCreditsSystem() {
         {section === "plans" && (
           overview
             ? <PlansSection overview={overview} onReload={loadOverview} />
-            : <p className="text-center text-muted-foreground py-8">جارٍ التحميل…</p>
+            : <p className="text-center text-muted-foreground py-8">{c.loading}</p>
         )}
 
         {section === "packages" && <PackagesPanel />}
@@ -668,7 +696,7 @@ export function HasadCreditsSystem() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5">
               <Sparkles className="w-4 h-4 shrink-0 text-primary" />
-              <span>مشتركو <strong>Pro</strong> يستهلكون تلقائيًا <strong>80%</strong> من السعر المعروض (خصم 20% مطبَّق في الخادم).</span>
+              <span>{c.proDiscountHint}</span>
             </div>
             <ToolPricesPanel />
           </div>
@@ -677,7 +705,7 @@ export function HasadCreditsSystem() {
         {section === "assign" && (
           overview
             ? <AssignSection plans={overview.plans} />
-            : <p className="text-center text-muted-foreground py-8">جارٍ التحميل…</p>
+            : <p className="text-center text-muted-foreground py-8">{c.loading}</p>
         )}
 
         {section === "balances" && <BalancesPanel />}
@@ -691,20 +719,20 @@ export function HasadCreditsSystem() {
               <div className="flex items-start gap-3">
                 <ShieldAlert className={`w-5 h-5 mt-0.5 shrink-0 ${overview?.paymentsEnabled ? "text-emerald-600" : "text-amber-500"}`} />
                 <div>
-                  <h3 className="font-bold">حالة المدفوعات (PAYMENTS_ENABLED)</h3>
+                  <h3 className="font-bold">{c.paymentStatusTitle}</h3>
                   <p className="text-sm mt-1">
                     {overview?.paymentsEnabled ? (
                       <span className="text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> مفعّلة — أزرار الشراء والترقية تعمل
+                        <CheckCircle2 className="w-4 h-4" /> {c.paymentActive}
                       </span>
                     ) : (
-                      <span className="text-amber-700 dark:text-amber-300 font-semibold">غير مفعّلة — كل مسارات الدفع محجوبة</span>
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold">{c.paymentInactive}</span>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    هذا الإعداد متغيّر بيئي على الخادم ولا يُفعَّل من هذه الصفحة عمدًا — التفعيل يتطلب ضبط
+                    {c.paymentEnvHintBefore}
                     <code className="font-mono mx-1" dir="ltr">PAYMENTS_ENABLED=true</code>
-                    مع اكتمال ربط Lemon Squeezy وتأكيدًا صريحًا.
+                    {c.paymentEnvHintAfter}
                   </p>
                 </div>
               </div>

@@ -25,8 +25,7 @@ interface LbEntry {
 }
 
 export default function ColorPlay() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { t, dir } = useI18n();
   const [, setLocation] = useLocation();
   const { isArenaMode, myName, opponents, results, updateScore, finishArena } = useArena("color");
 
@@ -210,11 +209,7 @@ export default function ColorPlay() {
       const lowestLb = leaderboard.length >= 10 ? leaderboard[leaderboard.length - 1]?.score ?? 0 : 0;
       if (score > lowestLb || leaderboard.length < 10) {
         setIsNewRecord(true);
-        if (lang === "ar") {
-          setAutoSaveMsg("عينك حادة جداً! أنت بطل حقيقي 🏆 واصل التطوير!");
-        } else {
-          setAutoSaveMsg("Sharp eyes! You're a true champion 🏆 Keep improving!");
-        }
+        setAutoSaveMsg(t.gamePages.color.championMessage);
       }
     } catch {}
     setSaving(false);
@@ -228,10 +223,10 @@ export default function ColorPlay() {
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 w-full">
       <div className="flex items-center gap-1.5 mb-2">
         <Trophy className="w-4 h-4 text-amber-400" />
-        <span className="text-xs font-black text-white/80">{lang === "ar" ? "المتصدرون" : "Top Players"}</span>
+        <span className="text-xs font-black text-white/80">{t.gamePages.playUi.topPlayers}</span>
       </div>
       {leaderboard.length === 0 ? (
-        <p className="text-white/30 text-[10px] text-center py-2">{lang === "ar" ? "لا نتائج بعد" : "No scores yet"}</p>
+        <p className="text-white/30 text-[10px] text-center py-2">{t.gamePages.playUi.noScores}</p>
       ) : (
         <div className="space-y-1">
           {leaderboard.map((e, i) => (
@@ -277,7 +272,7 @@ export default function ColorPlay() {
               >
                 {stars >= 4 ? "🏆" : stars >= 3 ? "🎉" : stars >= 2 ? "😤" : "😢"}
               </motion.div>
-              <h1 className="text-2xl font-black text-white mb-2">{lang === "ar" ? "انتهت اللعبة!" : "Game Over!"}</h1>
+              <h1 className="text-2xl font-black text-white mb-2">{t.gamePages.playUi.gameOver}</h1>
 
               <div className="flex justify-center gap-1.5 my-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -294,19 +289,19 @@ export default function ColorPlay() {
 
               <div className="grid grid-cols-4 gap-2 mt-3 bg-white/5 rounded-2xl p-3">
                 <div className="text-center">
-                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{lang === "ar" ? "النقاط" : "Score"}</p>
+                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{t.gamePages.playUi.score}</p>
                   <p className="text-lg font-black text-amber-400">{score}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{lang === "ar" ? "المستوى" : "Level"}</p>
+                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{t.gamePages.level}</p>
                   <p className="text-lg font-black text-emerald-400">{finalLevel}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{lang === "ar" ? "الوقت" : "Time"}</p>
+                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{t.gamePages.playUi.time}</p>
                   <p className="text-lg font-black text-sky-400" dir="ltr">{timeStr}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{lang === "ar" ? "سلسلة" : "Streak"}</p>
+                  <p className="text-white/50 text-[10px] font-bold mb-0.5">{t.gamePages.playUi.streak}</p>
                   <p className="text-lg font-black text-orange-400">{maxStreak}🔥</p>
                 </div>
               </div>
@@ -315,20 +310,21 @@ export default function ColorPlay() {
             {beatLeaderboard && !saved && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-4 mb-4">
                 <p className="text-center text-amber-400 font-black text-sm mb-3">
-                  🎉 {lang === "ar" ? "نتيجة مميزة! سجّل اسمك في لوحة المتصدرين!" : "Amazing score! Save your name to the leaderboard!"}
+                  🎉 {t.gamePages.playUi.amazingScore}
                 </p>
                 <input
                   type="text"
                   maxLength={20}
                   value={playerName}
                   onChange={e => setPlayerName(e.target.value)}
-                  placeholder={lang === "ar" ? "أدخل اسمك..." : "Enter your name..."}
+                  placeholder={t.gamePages.playUi.enterName}
+                  aria-label={t.gamePages.playUi.enterYourNameTitle}
                   className="w-full text-center text-lg font-bold py-3 px-4 rounded-xl bg-white/10 border-2 border-amber-500/30 text-white focus:border-amber-500 focus:outline-none transition-colors mb-3"
                   onKeyDown={e => e.key === "Enter" && handleSaveScore()}
                   autoFocus
                 />
                 <button onClick={handleSaveScore} disabled={!playerName.trim() || saving} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg disabled:opacity-50">
-                  {saving ? (lang === "ar" ? "جاري الحفظ..." : "Saving...") : (lang === "ar" ? "سجّل نتيجتك" : "Save Score")}
+                  {saving ? t.gamePages.playUi.saving : t.gamePages.playUi.saveScore}
                 </button>
               </motion.div>
             )}
@@ -338,7 +334,7 @@ export default function ColorPlay() {
                 {!showNameInput ? (
                   <button onClick={() => setShowNameInput(true)} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg flex items-center justify-center gap-2">
                     <Trophy className="w-5 h-5" />
-                    {lang === "ar" ? "سجّل نتيجتك في لوحة المتصدرين" : "Save to Leaderboard"}
+                    {t.gamePages.playUi.saveLeaderboard}
                   </button>
                 ) : (
                   <div className="space-y-3">
@@ -347,13 +343,14 @@ export default function ColorPlay() {
                       maxLength={20}
                       value={playerName}
                       onChange={e => setPlayerName(e.target.value)}
-                      placeholder={lang === "ar" ? "أدخل اسمك..." : "Enter your name..."}
+                      placeholder={t.gamePages.playUi.enterName}
+                      aria-label={t.gamePages.playUi.enterYourNameTitle}
                       className="w-full text-center text-lg font-bold py-3 px-4 rounded-xl bg-white/10 border-2 border-white/20 text-white focus:border-amber-500 focus:outline-none transition-colors"
                       onKeyDown={e => e.key === "Enter" && handleSaveScore()}
                       autoFocus
                     />
                     <button onClick={handleSaveScore} disabled={!playerName.trim() || saving} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg disabled:opacity-50">
-                      {saving ? (lang === "ar" ? "جاري الحفظ..." : "Saving...") : (lang === "ar" ? "حفظ" : "Save")}
+                      {saving ? t.gamePages.playUi.saving : t.gamePages.playUi.save}
                     </button>
                   </div>
                 )}
@@ -366,11 +363,11 @@ export default function ColorPlay() {
                   <div className="bg-gradient-to-r from-amber-500/10 to-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
                     <div className="text-4xl mb-2">🧠✨</div>
                     <p className="text-emerald-400 font-black text-base mb-1">{autoSaveMsg}</p>
-                    <p className="text-white/50 text-xs">{lang === "ar" ? "تم حفظ نتيجتك في لوحة المتصدرين!" : "Your score has been saved to the leaderboard!"}</p>
+                    <p className="text-white/50 text-xs">{t.gamePages.playUi.scoreSavedLeaderboard}</p>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <p className="text-emerald-400 font-bold text-sm">✓ {lang === "ar" ? "تم حفظ نتيجتك!" : "Score saved!"}</p>
+                    <p className="text-emerald-400 font-bold text-sm">✓ {t.gamePages.playUi.scoreSaved}</p>
                   </div>
                 )}
               </motion.div>
@@ -379,17 +376,20 @@ export default function ColorPlay() {
             <div className="flex flex-col gap-3">
               <button onClick={handleRestart} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-base shadow-lg flex items-center justify-center gap-2">
                 <RotateCcw className="w-5 h-5" />
-                {lang === "ar" ? "حاول مرة أخرى" : "Try Again"}
+                {t.gamePages.playUi.tryAgain}
               </button>
               <ShareButtons
-                text={lang === "ar"
-                  ? `🎨${playerName.trim() ? ` ${playerName.trim()} -` : ""} حصلت على ${score} نقطة ووصلت للمستوى ${finalLevel} في لعبة "لعبة الألوان"!\n⏱ ${timeStr} | 🔥 سلسلة ${maxStreak}\nجرّب تتغلب عليّ!`
-                  : `🎨${playerName.trim() ? ` ${playerName.trim()} -` : ""} I scored ${score} points and reached level ${finalLevel} in Color Game!\n⏱ ${timeStr} | 🔥 Streak ${maxStreak}\nTry to beat me!`}
+                text={t.gamePages.color.shareResult
+                  .replace("{name}", playerName.trim() ? ` ${playerName.trim()} -` : "")
+                  .replace("{score}", String(score))
+                  .replace("{level}", String(finalLevel))
+                  .replace("{time}", timeStr)
+                  .replace("{streak}", String(maxStreak))}
                 url={window.location.origin + (import.meta.env.BASE_URL || "/") + "game/color"}
               />
               <button onClick={() => setLocation("/game/color")} className="w-full py-2 text-sm font-medium text-white/50 hover:text-white transition-colors flex items-center justify-center gap-1.5">
                 <Home className="w-4 h-4" />
-                {lang === "ar" ? "العودة" : "Back"}
+                {t.gamePages.playUi.back}
               </button>
             </div>
 
@@ -409,17 +409,17 @@ export default function ColorPlay() {
       <LevelUpSplash show={splashLevel !== null} level={splashLevel ?? 0} theme="fuchsia" />
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-950 flex flex-col items-center justify-center px-3 py-4" dir={dir}>
         <div className="w-full max-w-sm mx-auto">
-          {isArenaMode && <ArenaBar myName={myName} myScore={score} opponents={opponents} results={results} isRtl={lang === "ar"} />}
+          {isArenaMode && <ArenaBar myName={myName} myScore={score} opponents={opponents} results={results} isRtl={dir === "rtl"} />}
 
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/15 border border-violet-500/30">
                 <Eye className="w-3.5 h-3.5 text-violet-400" />
                 <span className="text-xs font-black text-violet-300">
-                  {lang === "ar" ? `م${level}` : `Lv${level}`}
+                  {t.gamePages.levelShort}{level}
                 </span>
               </div>
-              <button onClick={toggleMute} className="p-1.5 rounded-lg bg-white/10 text-white/60 hover:text-white transition-colors">
+              <button aria-label={t.gamePages.playUi.toggleSound} onClick={toggleMute} className="p-1.5 rounded-lg bg-white/10 text-white/60 hover:text-white transition-colors">
                 {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
             </div>
@@ -440,7 +440,7 @@ export default function ColorPlay() {
               </AnimatePresence>
               <div className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/10">
                 <span className="font-black text-white text-sm">{score}</span>
-                <span className="text-white/40 text-[10px] ms-1">{lang === "ar" ? "نقطة" : "pts"}</span>
+                <span className="text-white/40 text-[10px] ms-1">{t.gamePages.playUi.pointsShort}</span>
               </div>
             </div>
           </div>
@@ -472,10 +472,10 @@ export default function ColorPlay() {
                   }`}>
                     <p className={`text-center text-sm font-bold mb-3 ${phase === "revealing" ? "text-red-400" : phase === "correct" ? "text-emerald-400" : "text-white/60"}`}>
                       {phase === "revealing"
-                        ? (lang === "ar" ? "المربع الصحيح هنا! ✓" : "The correct tile is here! ✓")
+                        ? t.gamePages.playUi.correctTile
                         : phase === "correct"
-                          ? (lang === "ar" ? "أحسنت! 🎯" : "Nice find! 🎯")
-                          : (lang === "ar" ? "ابحث عن المربع المختلف!" : "Find the different color!")}
+                          ? t.gamePages.playUi.niceFind
+                          : t.gamePages.playUi.findDifferent}
                     </p>
                     <div
                       className="grid mx-auto w-full"
@@ -514,7 +514,7 @@ export default function ColorPlay() {
 
                   <div className="text-center">
                     <p className="text-white/30 text-xs">
-                      {lang === "ar" ? `${currentLevel.gridSize}×${currentLevel.gridSize} شبكة` : `${currentLevel.gridSize}×${currentLevel.gridSize} grid`}
+                      {currentLevel.gridSize}×{currentLevel.gridSize} {t.gamePages.color.grid}
                     </p>
                   </div>
                 </motion.div>
@@ -527,22 +527,22 @@ export default function ColorPlay() {
 }
 
 function FillBlankInput({
-  isAr,
   disabled,
   onSubmit,
 }: {
-  isAr: boolean;
   disabled: boolean;
   onSubmit: (answer: string) => void;
 }) {
   const [value, setValue] = useState("");
+  const { t } = useI18n();
 
   return (
     <div className="flex gap-3">
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={isAr ? "اكتب الإجابة..." : "Type your answer..."}
+        placeholder={t.gamePages.playUi.typeAnswer}
+        aria-label={t.gamePages.playUi.typeAnswer}
         className="flex-1 text-lg font-bold px-4 py-3 rounded-xl border-2 border-border bg-background focus:outline-none focus:border-primary"
         disabled={disabled}
         onKeyDown={(e) => {
@@ -554,7 +554,7 @@ function FillBlankInput({
         disabled={disabled || !value.trim()}
         className="px-5 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm disabled:opacity-50"
       >
-        {isAr ? "إرسال" : "Submit"}
+        {t.gamePages.playUi.submit}
       </button>
     </div>
   );

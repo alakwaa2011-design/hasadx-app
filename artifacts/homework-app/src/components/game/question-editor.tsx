@@ -9,6 +9,7 @@ import {
   Check, Trash2, Edit3, Save, PenLine, Volume2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import AudioPicker from "@/components/AudioPicker";
 
 export type Correct = "A" | "B" | "C" | "D";
@@ -62,14 +63,17 @@ export function QuestionCard({
   showAudio?: boolean;
   audioUploadEndpoint?: string;
 }) {
+  const { t, dir } = useI18n();
+  const copy = t.questionEditor;
   const [editing, setEditing] = useState(q.text === "");
   const opts: Correct[] = ["A", "B", "C", "D"];
-  const labels = ["أ", "ب", "ج", "د"];
+  const labels = copy.optionLabels;
   const canPickType = allowedTypes.length > 1;
+  const withNumber = (value: string) => value.replace("{n}", String(index + 1));
 
   if (!editing) {
     return (
-      <div className="bg-card border border-border/60 rounded-2xl p-5 lg:p-6 hover:border-primary/30 transition-colors shadow-sm group" dir="rtl">
+      <div className="bg-card border border-border/60 rounded-2xl p-5 lg:p-6 hover:border-primary/30 transition-colors shadow-sm group" dir={dir}>
         <div className="flex items-start justify-between gap-3 lg:gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2 mb-3 lg:mb-3.5 flex-wrap">
@@ -77,12 +81,12 @@ export function QuestionCard({
               <span className="text-sm lg:text-base font-bold text-foreground leading-relaxed flex-1">{q.text}</span>
               {q.type === "fill_blank" && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 flex-shrink-0 flex items-center gap-1 mt-1">
-                  <PenLine className="w-3 h-3" /> أملأ الفراغ
+                  <PenLine className="w-3 h-3" /> {copy.typeFillBlank}
                 </span>
               )}
               {showAudio && q.audioUrl && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex-shrink-0 flex items-center gap-1 mt-1">
-                  <Volume2 className="w-3 h-3" /> صوت
+                  <Volume2 className="w-3 h-3" /> {copy.audioBadge}
                 </span>
               )}
               {showDifficulty && q.difficulty && (
@@ -92,7 +96,7 @@ export function QuestionCard({
                   q.difficulty === 2 ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
                   "bg-red-500/10 text-red-600 border-red-500/20"
                 )}>
-                  {q.difficulty === 1 ? "سهل" : q.difficulty === 2 ? "متوسط" : "صعب"}
+                  {q.difficulty === 1 ? copy.difficultyEasy : q.difficulty === 2 ? copy.difficultyMedium : copy.difficultyHard}
                 </span>
               )}
             </div>
@@ -115,8 +119,8 @@ export function QuestionCard({
             ) : q.type === "tf" ? (
               <div className="flex gap-2 lg:gap-3">
                 {([
-                  { val: "A" as Correct, label: "✓ صح",  active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 font-black shadow-sm" },
-                  { val: "B" as Correct, label: "✗ خطأ", active: "bg-red-500/10 text-red-700 border-red-500/30 font-black shadow-sm" },
+                  { val: "A" as Correct, label: copy.trueLabel,  active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 font-black shadow-sm" },
+                  { val: "B" as Correct, label: copy.falseLabel, active: "bg-red-500/10 text-red-700 border-red-500/30 font-black shadow-sm" },
                 ] as const).map(o => (
                   <div key={o.val} className={cn(
                     "flex-1 flex items-center justify-center gap-1.5 px-3 lg:px-4 py-2.5 lg:py-3 rounded-xl text-sm lg:text-base border",
@@ -151,10 +155,10 @@ export function QuestionCard({
             )}
           </div>
           <div className="flex flex-col gap-1.5 lg:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => setEditing(true)} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors border border-transparent hover:border-primary/20">
+            <button type="button" onClick={() => setEditing(true)} aria-label={withNumber(copy.editQuestion)} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors border border-transparent hover:border-primary/20">
               <Edit3 className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
-            <button onClick={onDelete} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors border border-transparent hover:border-red-500/20">
+            <button type="button" onClick={onDelete} aria-label={withNumber(copy.deleteQuestion)} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors border border-transparent hover:border-red-500/20">
               <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
           </div>
@@ -164,17 +168,17 @@ export function QuestionCard({
   }
 
   return (
-    <div className="bg-card border-2 border-primary/40 rounded-2xl p-5 lg:p-7 shadow-sm relative overflow-hidden" dir="rtl">
+    <div className="bg-card border-2 border-primary/40 rounded-2xl p-5 lg:p-7 shadow-sm relative overflow-hidden" dir={dir}>
       <div className="absolute top-0 start-0 w-full h-1 bg-gradient-to-r from-primary/60 to-primary/20" />
       <div className="flex items-center justify-between mb-4 lg:mb-5">
-        <span className="text-xs lg:text-sm font-black text-primary bg-primary/10 px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md border border-primary/20">سؤال {index + 1}</span>
+        <span className="text-xs lg:text-sm font-black text-primary bg-primary/10 px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md border border-primary/20">{withNumber(copy.question)}</span>
         <div className="flex gap-2">
           {q.text.trim() && (
-            <button onClick={() => setEditing(false)} className="px-3 lg:px-4 py-1.5 lg:py-2 rounded-xl bg-primary/10 text-primary font-bold text-xs lg:text-sm hover:bg-primary hover:text-primary-foreground transition-colors flex items-center gap-1.5 border border-primary/20 hover:border-primary">
-              <Save className="w-3.5 h-3.5" /> حفظ
+            <button type="button" onClick={() => setEditing(false)} aria-label={withNumber(copy.saveQuestion)} className="px-3 lg:px-4 py-1.5 lg:py-2 rounded-xl bg-primary/10 text-primary font-bold text-xs lg:text-sm hover:bg-primary hover:text-primary-foreground transition-colors flex items-center gap-1.5 border border-primary/20 hover:border-primary">
+              <Save className="w-3.5 h-3.5" /> {copy.save}
             </button>
           )}
-          <button onClick={onDelete} className="p-1.5 lg:p-2 rounded-xl hover:bg-red-500/10 text-muted-foreground hover:text-red-600 transition-colors">
+          <button type="button" onClick={onDelete} aria-label={withNumber(copy.deleteQuestion)} className="p-1.5 lg:p-2 rounded-xl hover:bg-red-500/10 text-muted-foreground hover:text-red-600 transition-colors">
             <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
           </button>
         </div>
@@ -182,22 +186,26 @@ export function QuestionCard({
       <textarea
         value={q.text}
         onChange={e => onChange({ ...q, text: e.target.value })}
-        placeholder="اكتب نص السؤال هنا..."
+        placeholder={copy.questionPlaceholder}
+        aria-label={withNumber(copy.questionAria)}
+        dir={dir}
         rows={2}
         className="w-full text-sm lg:text-base font-bold rounded-xl px-4 lg:px-5 py-3 lg:py-3.5 bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none mb-4 lg:mb-5 text-foreground placeholder:text-muted-foreground transition-all shadow-sm"
       />
 
       {/* Question type toggle */}
       {canPickType && (
-        <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50 mb-4 lg:mb-5">
+        <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50 mb-4 lg:mb-5" role="group" aria-label={copy.questionType}>
           {([
-            { val: "mcq"        as const, label: "اختيار متعدد" },
-            { val: "tf"         as const, label: "صح أو خطأ" },
-            { val: "fill_blank" as const, label: "أملأ الفراغ" },
+            { val: "mcq"        as const, label: copy.typeMcq },
+            { val: "tf"         as const, label: copy.typeTrueFalse },
+            { val: "fill_blank" as const, label: copy.typeFillBlank },
           ]).filter(t => allowedTypes.includes(t.val)).map(t => (
             <button
               key={t.val}
+              type="button"
               onClick={() => onChange({ ...q, type: t.val, correctAnswer: t.val === "tf" ? "A" : q.correctAnswer })}
+              aria-pressed={q.type === t.val}
               className={cn(
                 "flex-1 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all",
                 q.type === t.val
@@ -215,41 +223,45 @@ export function QuestionCard({
         <div className="space-y-3 lg:space-y-4 mb-4 lg:mb-5">
           <div>
             <label className="block text-[11px] lg:text-xs font-black text-foreground mb-1.5 lg:mb-2">
-              الإجابة الصحيحة <span className="text-red-500">*</span>
+              {copy.correctAnswer} <span className="text-red-500">*</span>
             </label>
             <input
               value={q.fillAnswer}
               onChange={e => onChange({ ...q, fillAnswer: e.target.value })}
-              placeholder="اكتب الإجابة الصحيحة هنا..."
+              placeholder={copy.fillAnswerPlaceholder}
+              aria-label={copy.correctAnswer}
               className="w-full text-sm lg:text-base font-bold rounded-xl px-4 lg:px-5 py-3 lg:py-3.5 bg-emerald-500/5 border-2 border-emerald-500/30 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-foreground placeholder:text-muted-foreground transition-all"
-              dir="rtl"
+              dir={dir}
             />
           </div>
           <div>
             <label className="block text-[11px] lg:text-xs font-black text-muted-foreground mb-1.5 lg:mb-2">
-              إجابات مقبولة أخرى (اختياري — افصل بفاصلة)
+              {copy.otherAnswers}
             </label>
             <input
               value={q.closeAnswers}
               onChange={e => onChange({ ...q, closeAnswers: e.target.value })}
-              placeholder="مثال: كلمة بديلة، كلمة قريبة، اختصار..."
+              placeholder={copy.otherAnswersPlaceholder}
+              aria-label={copy.otherAnswers}
               className="w-full text-sm lg:text-base rounded-xl px-4 lg:px-5 py-3 lg:py-3.5 bg-muted/40 border border-border/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground transition-all"
-              dir="rtl"
+              dir={dir}
             />
             <p className="text-[10px] lg:text-xs text-muted-foreground mt-1 font-medium">
-              التصحيح تلقائي — يقبل الإجابة الصحيحة وأي بديل مدرج هنا (غير حساس لحالة الأحرف)
+              {copy.gradingHint}
             </p>
           </div>
         </div>
       ) : q.type === "tf" ? (
         <div className="flex gap-3 lg:gap-4 mb-4 lg:mb-5">
           {([
-            { val: "A" as Correct, label: "✓ صح",  activeClass: "border-emerald-500 bg-emerald-500/10 text-emerald-700 shadow-sm" },
-            { val: "B" as Correct, label: "✗ خطأ", activeClass: "border-red-500 bg-red-500/10 text-red-700 shadow-sm" },
+            { val: "A" as Correct, label: copy.trueLabel,  activeClass: "border-emerald-500 bg-emerald-500/10 text-emerald-700 shadow-sm" },
+            { val: "B" as Correct, label: copy.falseLabel, activeClass: "border-red-500 bg-red-500/10 text-red-700 shadow-sm" },
           ] as const).map(o => (
             <button
               key={o.val}
+              type="button"
               onClick={() => onChange({ ...q, correctAnswer: o.val })}
+              aria-pressed={q.correctAnswer === o.val}
               className={cn(
                 "flex-1 py-3 lg:py-4 rounded-xl border-2 font-black text-sm lg:text-base transition-colors",
                 q.correctAnswer === o.val ? o.activeClass : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted",
@@ -268,6 +280,9 @@ export function QuestionCard({
             )}>
               <button
                 onClick={() => onChange({ ...q, correctAnswer: opt })}
+                type="button"
+                aria-label={copy.markCorrect.replace("{option}", labels[oi])}
+                aria-pressed={q.correctAnswer === opt}
                 className={cn(
                   "w-8 h-8 lg:w-9 lg:h-9 rounded-lg flex items-center justify-center shrink-0 text-xs lg:text-sm font-black transition-colors shadow-sm",
                   q.correctAnswer === opt
@@ -280,7 +295,9 @@ export function QuestionCard({
               <input
                 value={q[`option${opt}` as keyof Question] as string}
                 onChange={e => onChange({ ...q, [`option${opt}`]: e.target.value })}
-                placeholder={`الخيار ${labels[oi]}`}
+                placeholder={copy.optionPlaceholder.replace("{option}", labels[oi])}
+                aria-label={copy.optionPlaceholder.replace("{option}", labels[oi])}
+                dir={dir}
                 className="flex-1 text-xs lg:text-sm font-bold rounded-lg px-2 lg:px-2.5 py-1.5 lg:py-2 bg-transparent border-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground"
               />
             </div>
@@ -290,18 +307,20 @@ export function QuestionCard({
 
       {/* Difficulty tag */}
       {showDifficulty && (
-        <div className="flex items-center gap-2 mb-4 lg:mb-5 bg-muted/30 p-2 lg:p-2.5 rounded-xl border border-border/40">
-          <span className="text-[10px] lg:text-xs font-bold text-muted-foreground ms-1 shrink-0">مستوى الصعوبة:</span>
+        <div className="flex items-center gap-2 mb-4 lg:mb-5 bg-muted/30 p-2 lg:p-2.5 rounded-xl border border-border/40" role="group" aria-label={copy.difficultyLabel}>
+          <span className="text-[10px] lg:text-xs font-bold text-muted-foreground ms-1 shrink-0">{copy.difficultyLabel}</span>
           <div className="flex gap-1.5">
             {([
-              { val: null, label: "غير محدد" },
-              { val: 1,    label: "سهل" },
-              { val: 2,    label: "متوسط" },
-              { val: 3,    label: "صعب" },
+              { val: null, label: copy.difficultyUnset },
+              { val: 1,    label: copy.difficultyEasy },
+              { val: 2,    label: copy.difficultyMedium },
+              { val: 3,    label: copy.difficultyHard },
             ] as const).map(o => (
               <button
                 key={String(o.val)}
+                type="button"
                 onClick={() => onChange({ ...q, difficulty: o.val })}
+                aria-pressed={q.difficulty === o.val}
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[10px] font-bold border transition-colors shadow-sm",
                   q.difficulty === o.val
@@ -323,7 +342,7 @@ export function QuestionCard({
       {showAudio && (
         <div className="border-t border-border/40 pt-3">
           <p className="text-[11px] font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
-            <Volume2 className="w-3.5 h-3.5" /> مرفق صوتي (اختياري)
+            <Volume2 className="w-3.5 h-3.5" /> {copy.audioAttachment}
           </p>
           <AudioPicker
             value={q.audioUrl ?? null}

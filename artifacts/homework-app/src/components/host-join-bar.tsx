@@ -12,7 +12,7 @@ interface HostJoinBarProps {
 }
 
 export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }: HostJoinBarProps) {
-  const { lang } = useI18n();
+  const { lang, dir } = useI18n();
   const [copied, setCopied] = useState<"link" | "pin" | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
 
@@ -69,7 +69,7 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
 
   return (
     <>
-      <div className={`flex flex-wrap items-center gap-2 ${compact ? "" : "p-3 rounded-2xl"} ${
+      <div dir={dir} className={`flex flex-wrap items-center gap-2 ${compact ? "" : "p-3 rounded-2xl"} ${
         compact
           ? ""
           : isDark
@@ -83,6 +83,7 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
         <button
           type="button"
           onClick={() => copy(pin, "pin")}
+          aria-label={pinLabel}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${baseChip}`}
         >
           {copied === "pin" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -91,6 +92,7 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
         <button
           type="button"
           onClick={() => copy(joinUrl, "link")}
+          aria-label={linkLabel}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${baseChip}`}
         >
           {copied === "link" ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
@@ -99,6 +101,7 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
         <button
           type="button"
           onClick={() => setQrOpen(true)}
+          aria-label={lang === "ar" ? "فتح رمز QR" : "Open QR code"}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${baseChip}`}
         >
           <QrCode className="w-4 h-4" />
@@ -121,13 +124,14 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
               exit={{ scale: 0.85, y: 20 }}
               onClick={e => e.stopPropagation()}
               className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm w-full"
+              dir={dir}
             >
               <div className="flex items-center justify-between w-full">
                 <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                   <QrCode className="w-5 h-5 text-purple-500" />
                   {lang === "ar" ? "امسح الباركود للانضمام" : "Scan to join"}
                 </h3>
-                <button onClick={() => setQrOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+                <button onClick={() => setQrOpen(false)} aria-label={lang === "ar" ? "إغلاق" : "Close"} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>

@@ -11,6 +11,7 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Sparkles } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -71,17 +72,19 @@ export function useRefreshCreditsBalance() {
 
 export function CreditsChip() {
   const [, setLocation] = useLocation();
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
 
   const { data, isLoading } = useCreditsBalance();
 
-  const fmt = (n: number) => n.toLocaleString("en-US");
+  const fmt = (n: number) => n.toLocaleString(isAr ? "ar-EG-u-nu-latn" : "en-US");
 
   return (
     <button
       type="button"
       onClick={() => setLocation("/teacher/credits")}
-      aria-label="نقاط حصاد — انتقل إلى مركز النقاط"
-      title="نقاط حصاد"
+      aria-label={isAr ? "نقاط حصاد — انتقل إلى مركز النقاط" : "Hasad credits — go to the credits center"}
+      title={isAr ? "نقاط حصاد" : "Hasad credits"}
       className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
       style={{
         background: "rgba(34, 87, 57, 0.55)",
@@ -114,7 +117,7 @@ export function CreditsChip() {
           </span>
           {/* Label hidden on very small breakpoints, shown md+ */}
           <span className="hidden md:inline text-[10px] font-semibold opacity-75 ms-0.5">
-            نقطة
+            {isAr ? "نقطة" : "credits"}
           </span>
         </span>
       ) : null /* error: icon only, chip still clickable */}

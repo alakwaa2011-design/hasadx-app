@@ -15,8 +15,8 @@ type GameMode = "solo" | "multi";
 type SetupPhase = "mode" | "config" | "lobby";
 
 export default function FlagsSetup() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
+  const g = t.flagsGame;
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
   const goBack = useSmartBack("/");
@@ -130,9 +130,9 @@ export default function FlagsSetup() {
 
   const shareGame = () => {
     const link = `${window.location.origin}/game/flags/join/${pin}`;
-    const text = lang === "ar" ? `انضم للعبة أعلام الدول! الرمز: ${pin}` : `Join the Flag Quiz! Code: ${pin}`;
+    const text = g.shareText.replace("{pin}", pin);
     if (navigator.share) {
-      navigator.share({ title: lang === "ar" ? "أعلام الدول" : "Flag Quiz", text, url: link }).catch(() => {});
+      navigator.share({ title: g.shareTitle, text, url: link }).catch(() => {});
     } else {
       navigator.clipboard.writeText(`${text}\n${link}`).catch(() => {});
       setCopied(true);
@@ -151,14 +151,14 @@ export default function FlagsSetup() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-xl mb-4">
                 <Globe className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-2xl font-black text-foreground mb-1">{lang === "ar" ? "غرفة الانتظار" : "Waiting Room"}</h1>
+              <h1 className="text-2xl font-black text-foreground mb-1">{g.waitingRoom}</h1>
               <p className="text-muted-foreground text-sm">
-                {lang === "ar" ? "شارك الرمز مع اللاعبين للانضمام" : "Share the code with players to join"}
+                {g.shareCode}
               </p>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card border border-border/60 rounded-2xl p-6 shadow-lg mb-4 text-center">
-              <p className="text-xs font-bold text-muted-foreground mb-2">{lang === "ar" ? "رمز اللعبة" : "Game Code"}</p>
+              <p className="text-xs font-bold text-muted-foreground mb-2">{g.gameCode}</p>
               <div className="flex items-center justify-center gap-2 mb-4">
                 {pin.split("").map((d, i) => (
                   <motion.div key={i} initial={{ scale: 0, rotateY: 180 }} animate={{ scale: 1, rotateY: 0 }} transition={{ delay: i * 0.08, type: "spring" }}
@@ -170,15 +170,15 @@ export default function FlagsSetup() {
               <div className="flex items-center justify-center gap-2">
                 <button onClick={copyPin} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs font-bold hover:bg-sky-200 transition-colors">
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}
+                  {copied ? g.copied : g.copyLink}
                 </button>
                 <button onClick={shareGame} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-200 transition-colors">
                   <Share2 className="w-3.5 h-3.5" />
-                  {lang === "ar" ? "مشاركة" : "Share"}
+                  {g.share}
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                {lang === "ar" ? `أو ادخل على: /game/flags/join/${pin}` : `Or visit: /game/flags/join/${pin}`}
+                {g.visitLink} /game/flags/join/{pin}
               </p>
             </motion.div>
 
@@ -186,14 +186,14 @@ export default function FlagsSetup() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-sky-500" />
-                  <span className="font-bold text-sm text-foreground">{lang === "ar" ? "اللاعبون" : "Players"}</span>
+                  <span className="font-bold text-sm text-foreground">{g.players}</span>
                 </div>
                 <span className="text-xs font-bold text-sky-600 bg-sky-100 dark:bg-sky-900/30 px-2.5 py-1 rounded-full">{players.length}</span>
               </div>
               {players.length === 0 ? (
                 <div className="text-center py-6">
                   <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-3xl mb-2">👀</motion.div>
-                  <p className="text-sm text-muted-foreground">{lang === "ar" ? "في انتظار اللاعبين..." : "Waiting for players..."}</p>
+                  <p className="text-sm text-muted-foreground">{g.waitingPlayers}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
@@ -208,9 +208,9 @@ export default function FlagsSetup() {
             </motion.div>
 
             <div className="bg-sky-50 dark:bg-sky-950/20 border border-sky-200/50 rounded-xl p-3 mb-4 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">{lang === "ar" ? "المستوى:" : "Level:"} <span className="font-bold text-foreground">{level.icon} {lang === "ar" ? level.nameAr : level.nameEn}</span></span>
-              <span className="text-muted-foreground">{lang === "ar" ? "الأعلام:" : "Flags:"} <span className="font-bold text-foreground">{questionCount}</span></span>
-              <span className="text-muted-foreground">{lang === "ar" ? "الوقت:" : "Time:"} <span className="font-bold text-foreground">{duration}{lang === "ar" ? "ث" : "s"}</span></span>
+              <span className="text-muted-foreground">{g.level} <span className="font-bold text-foreground">{level.icon} {lang === "ar" ? level.nameAr : level.nameEn}</span></span>
+              <span className="text-muted-foreground">{g.flags} <span className="font-bold text-foreground">{questionCount}</span></span>
+              <span className="text-muted-foreground">{g.time} <span className="font-bold text-foreground">{duration}{g.secondsShort}</span></span>
             </div>
 
             {error && <p className="text-red-500 text-sm text-center mb-3">{error}</p>}
@@ -222,7 +222,7 @@ export default function FlagsSetup() {
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg shadow-xl shadow-green-500/30 hover:shadow-green-500/50 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-6 h-6" />
-              {lang === "ar" ? `ابدأ اللعبة (${players.length} لاعب)` : `Start Game (${players.length} players)`}
+              {g.startGamePlayers.replace("{count}", String(players.length))}
             </motion.button>
           </div>
         </div>
@@ -238,8 +238,8 @@ export default function FlagsSetup() {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-2xl shadow-sky-500/40 mb-4">
               <Globe className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-black text-foreground mb-1">{lang === "ar" ? "لعبة أعلام الدول" : "World Flags Game"}</h1>
-            <p className="text-muted-foreground text-sm">{lang === "ar" ? "اختبر معلوماتك في أعلام دول العالم!" : "Test your knowledge of world flags!"}</p>
+            <h1 className="text-3xl font-black text-foreground mb-1">{g.title}</h1>
+            <p className="text-muted-foreground text-sm">{g.subtitle}</p>
           </motion.div>
 
           {phase === "mode" && (
@@ -252,8 +252,8 @@ export default function FlagsSetup() {
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center mx-auto mb-2 shadow-lg group-hover:scale-110 transition-transform">
                     <User className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="font-black text-foreground text-sm mb-0.5">{lang === "ar" ? "لعب فردي" : "Solo Play"}</h3>
-                  <p className="text-xs text-muted-foreground">{lang === "ar" ? "تحدَّ نفسك واختبر معلوماتك" : "Challenge yourself"}</p>
+                  <h3 className="font-black text-foreground text-sm mb-0.5">{g.solo}</h3>
+                  <p className="text-xs text-muted-foreground">{g.soloDescription}</p>
                 </motion.button>
                 <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setMode("multi"); setPhase("config"); }}
                   className="bg-card border-2 border-border/40 hover:border-purple-400 rounded-2xl p-5 text-center transition-all hover:shadow-xl group relative overflow-hidden">
@@ -262,8 +262,8 @@ export default function FlagsSetup() {
                   <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mx-auto mb-2 shadow-lg group-hover:scale-110 transition-transform">
                     <Users className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="font-black text-foreground text-sm mb-0.5">{lang === "ar" ? "لعب جماعي" : "Multiplayer"}</h3>
-                  <p className="text-xs text-muted-foreground">{lang === "ar" ? "تنافس مع أصدقائك بالرمز" : "Compete with friends via code"}</p>
+                  <h3 className="font-black text-foreground text-sm mb-0.5">{g.multiplayer}</h3>
+                  <p className="text-xs text-muted-foreground">{g.multiplayerDescription}</p>
                 </motion.button>
               </motion.div>
 
@@ -271,14 +271,14 @@ export default function FlagsSetup() {
                 onClick={() => setShowArenaLobby(true)}
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all text-center mb-6 flex items-center justify-center gap-3">
                 <Swords className="w-5 h-5 text-white" />
-                <span className="font-black text-white">{lang === "ar" ? "تحدِّ صديقاً (Arena) ⚔️" : "Challenge a Friend (Arena) ⚔️"}</span>
+                <span className="font-black text-white">{g.challengeFriend}</span>
               </motion.button>
 
               <AnimatePresence>
                 {showArenaLobby && (
                   <MultiplayerLobby
                     gameId="flags"
-                    gameTitle={lang === "ar" ? "أعلام الدول" : "World Flags"}
+                    gameTitle={g.lobbyTitle}
                     playUrl={`/game/flags/play?tier=${level.tier}&count=${questionCount}`}
                     playerName=""
                     onClose={() => setShowArenaLobby(false)}
@@ -295,14 +295,14 @@ export default function FlagsSetup() {
                   <BackArrow className="w-4 h-4 text-foreground" />
                 </button>
                 <div className={`px-3 py-1 rounded-xl text-xs font-bold ${mode === "solo" ? "bg-sky-100 text-sky-700" : "bg-purple-100 text-purple-700"}`}>
-                  {mode === "solo" ? (lang === "ar" ? "🎮 فردي" : "🎮 Solo") : (lang === "ar" ? "👥 جماعي" : "👥 Multiplayer")}
+                  {mode === "solo" ? g.soloBadge : g.multiplayerBadge}
                 </div>
               </div>
 
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border/60 rounded-2xl p-5 shadow-md mb-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Trophy className="w-5 h-5 text-amber-500" />
-                  <span className="font-bold text-sm text-foreground">{lang === "ar" ? "اختر المستوى" : "Choose Level"}</span>
+                  <span className="font-bold text-sm text-foreground">{g.chooseLevel}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {LEVELS.map((lv, idx) => (
@@ -310,7 +310,7 @@ export default function FlagsSetup() {
                       className={`relative p-4 rounded-2xl border-2 transition-all text-center ${selectedLevel === idx ? "border-sky-500 bg-sky-500/10 shadow-lg shadow-sky-500/10" : "border-border/40 bg-background hover:border-sky-300/60"}`}>
                       <div className="text-3xl mb-2">{lv.icon}</div>
                       <p className="font-black text-foreground text-sm">{lang === "ar" ? lv.nameAr : lv.nameEn}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{lv.count} {lang === "ar" ? "علم" : "flags"}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{g.flagsCount.replace("{count}", String(lv.count))}</p>
                       {selectedLevel === idx && (
                         <motion.div layoutId="level-check" className="absolute top-2 end-2 w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center">
                           <Star className="w-3 h-3 text-white" />
@@ -325,13 +325,13 @@ export default function FlagsSetup() {
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card border border-border/60 rounded-2xl p-5 shadow-md mb-4">
                   <div className="flex items-center gap-2 mb-4">
                     <Clock className="w-5 h-5 text-indigo-500" />
-                    <span className="font-bold text-sm text-foreground">{lang === "ar" ? "وقت الإجابة" : "Answer Time"}</span>
+                    <span className="font-bold text-sm text-foreground">{g.answerTime}</span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {DURATIONS.map((d, idx) => (
                       <button key={d} onClick={() => setSelectedDuration(idx)}
                         className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${selectedDuration === idx ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "bg-background border border-border text-muted-foreground hover:border-indigo-400"}`}>
-                        {d} {lang === "ar" ? "ثانية" : "sec"}
+                        {d} {g.seconds}
                       </button>
                     ))}
                   </div>
@@ -340,12 +340,12 @@ export default function FlagsSetup() {
 
               <div className="bg-gradient-to-r from-sky-500/10 to-indigo-500/10 border border-sky-500/20 rounded-2xl p-4 mb-6">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground font-medium">{lang === "ar" ? "عدد الأعلام:" : "Flags:"}</span>
+                  <span className="text-muted-foreground font-medium">{g.flagCount}</span>
                   <span className="font-black text-sky-600 text-lg">{questionCount}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-muted-foreground font-medium">{lang === "ar" ? "وقت كل سؤال:" : "Time per question:"}</span>
-                  <span className="font-black text-indigo-600 text-lg">{mode === "solo" ? 7 : duration} {lang === "ar" ? "ث" : "s"}</span>
+                  <span className="text-muted-foreground font-medium">{g.timePerQuestion}</span>
+                  <span className="font-black text-indigo-600 text-lg">{mode === "solo" ? 7 : duration} {g.secondsShort}</span>
                 </div>
               </div>
 
@@ -358,13 +358,13 @@ export default function FlagsSetup() {
               >
                 <Play className="w-6 h-6" />
                 {mode === "solo"
-                  ? (lang === "ar" ? "ابدأ اللعبة!" : "Start Game!")
-                  : (lang === "ar" ? "إنشاء غرفة" : "Create Room")}
+                  ? g.startGame
+                  : g.createRoom}
               </motion.button>
 
               <button onClick={() => setPhase("mode")} className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
                 <BackArrow className="w-4 h-4" />
-                {lang === "ar" ? "العودة" : "Back"}
+                {g.back}
               </button>
             </>
           )}
@@ -374,7 +374,7 @@ export default function FlagsSetup() {
               onClick={goBack}
               className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
               <BackArrow className="w-4 h-4" />
-              {lang === "ar" ? "رجوع" : "Back"}
+              {g.backShort}
             </motion.button>
           )}
         </div>

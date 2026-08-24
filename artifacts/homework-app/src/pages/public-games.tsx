@@ -30,8 +30,8 @@ interface PublicAssignment {
 export default function PublicGamesPage() {
   const { t, lang } = useI18n();
   useSeo({
-    title: "الأنشطة العامة | منصة حصاد — واجبات ومسابقات مفتوحة للجميع",
-    description: "تصفّح الأنشطة والمسابقات التعليمية المفتوحة للجميع في منصة حصاد. حلّ الواجبات وشارك في المسابقات بدون تسجيل.",
+    title: t.publicGames.seoTitle,
+    description: t.publicGames.seoDescription,
     canonicalPath: "/public/games",
     ogImage: "/opengraph.jpg",
   });
@@ -68,7 +68,7 @@ export default function PublicGamesPage() {
   });
 
   const creatorName = (name: string | null) =>
-    name || (lang === "ar" ? "مجهول" : "Anonymous");
+    name || t.publicGames.anonymous;
 
   const handleOpenBotDialog = (a: PublicAssignment) => {
     setBotDialogAssignment(a);
@@ -85,10 +85,10 @@ export default function PublicGamesPage() {
         body: JSON.stringify({ withBots, botCount: bots }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "خطأ في بدء اللعبة");
+      if (!res.ok) throw new Error(data.message || t.publicGames.startError);
       setLocation(`/game/join/${data.pin}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "خطأ في بدء اللعبة";
+      const message = err instanceof Error ? err.message : t.publicGames.startError;
       toast.error(message);
     } finally {
       setStartingGameId(null);
@@ -118,17 +118,17 @@ export default function PublicGamesPage() {
             className="inline-flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
           >
             <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "رجوع" : "Back"}
+            {t.publicGames.back}
           </button>
           <span className="text-muted-foreground/40">·</span>
           <Link href="/" className="text-primary hover:underline font-bold flex items-center gap-1 w-fit">
             <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "القائمة الرئيسية" : "Main Menu"}
+            {t.publicGames.mainMenu}
           </Link>
           <span className="text-muted-foreground/40">·</span>
           <Link href="/teacher" className="text-primary hover:underline font-bold flex items-center gap-1 w-fit">
             <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "لوحة التحكم" : "Teacher Dashboard"}
+            {t.publicGames.teacherDashboard}
           </Link>
         </div>
 
@@ -153,14 +153,14 @@ export default function PublicGamesPage() {
           >
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0">🪢</div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-black text-sm">{lang === "ar" ? "شد الحبل المعرفي" : "Knowledge Tug of War"}</h3>
+              <h3 className="font-black text-sm">{t.publicGames.tugTitle}</h3>
               <p className="text-indigo-200 text-xs mt-0.5 line-clamp-1">
-                {lang === "ar" ? "فريقان يتنافسان على الحبل!" : "Two teams compete on the rope!"}
+                {t.publicGames.tugDescription}
               </p>
             </div>
             <div className="shrink-0">
               <span className="px-3 py-1.5 rounded-lg bg-green-500/90 text-white font-black text-xs">
-                {lang === "ar" ? "🎮 العب الآن" : "🎮 Play Now"}
+                {t.publicGames.tugAction}
               </span>
             </div>
           </motion.div>
@@ -176,14 +176,14 @@ export default function PublicGamesPage() {
               <Zap className="w-6 h-6" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-black text-sm">{lang === "ar" ? "وميض" : "Wameeth"}</h3>
+              <h3 className="font-black text-sm">{t.publicGames.wameethTitle}</h3>
               <p className="text-amber-100 text-xs mt-0.5 line-clamp-1">
-                {lang === "ar" ? "مسابقة تفاعلية مباشرة" : "Live interactive quiz"}
+                {t.publicGames.wameethDescription}
               </p>
             </div>
             <div className="shrink-0">
               <Link href="/game/join" className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-black text-xs hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors">
-                {lang === "ar" ? "انضم بكود" : "Join"}
+                {t.publicGames.joinWithCode}
               </Link>
             </div>
           </motion.div>
@@ -200,14 +200,14 @@ export default function PublicGamesPage() {
               <Terminal className="w-6 h-6 text-green-300" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-black text-sm font-mono tracking-wide">{lang === "ar" ? "لعبة الاختراق" : "H4CK_GAME"}</h3>
+              <h3 className="font-black text-sm font-mono tracking-wide">{t.publicGames.hackTitle}</h3>
               <p className="text-green-200 text-xs mt-0.5 line-clamp-1 font-mono">
-                {lang === "ar" ? "ماراثون كلمات سر وسحب نقاط" : "Password marathon + steal points"}
+                {t.publicGames.hackDescription}
               </p>
             </div>
             <div className="shrink-0">
               <span className="px-3 py-1.5 rounded-lg bg-green-400 text-black font-mono font-black text-xs">
-                {lang === "ar" ? "ابدأ ▶" : "START ▶"}
+                {t.publicGames.hackAction}
               </span>
             </div>
           </motion.div>
@@ -222,14 +222,14 @@ export default function PublicGamesPage() {
           >
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0">🎮</div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-black text-sm">{lang === "ar" ? "انضم برمز لعبة" : "Join with PIN"}</h3>
+              <h3 className="font-black text-sm">{t.publicGames.joinPinTitle}</h3>
               <p className="text-purple-200 text-xs mt-0.5 line-clamp-1">
-                {lang === "ar" ? "أدخل رمز اللعبة المُرسَل إليك" : "Enter the game PIN sent to you"}
+                {t.publicGames.joinPinDescription}
               </p>
             </div>
             <div className="shrink-0">
               <span className="px-3 py-1.5 rounded-lg bg-white/20 text-white font-black text-xs">
-                {lang === "ar" ? "انضم" : "Join"}
+                {t.publicGames.join}
               </span>
             </div>
           </motion.div>
@@ -350,7 +350,7 @@ export default function PublicGamesPage() {
                   <Zap className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-lg font-extrabold text-foreground">
-                  {lang === "ar" ? "ابدأ اللعبة" : "Start Game"}
+                  {t.publicGames.botDialogTitle}
                 </h2>
                 <p className="text-sm text-muted-foreground font-medium truncate max-w-[220px]">
                   {botDialogAssignment.title}
@@ -363,21 +363,17 @@ export default function PublicGamesPage() {
                     <Bot className="w-5 h-5 text-blue-500" />
                   </div>
                   <p className="font-bold text-foreground text-sm">
-                    {lang === "ar"
-                      ? "هل تريد منافسة لاعبين وهميين؟"
-                      : "Want to compete with bot players?"}
+                    {t.publicGames.botPrompt}
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-                  {lang === "ar"
-                    ? "سيتنافس معك لاعبون وهميون ويمكنك تجميدهم أو سرقة نقاطهم!"
-                    : "Bot players will compete with you — freeze them or steal their points!"}
+                    {t.publicGames.botDescription}
                 </p>
 
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-muted-foreground" />
-                    {lang === "ar" ? "عدد الوهميين" : "Bot count"}
+                    {t.publicGames.botCount}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -404,7 +400,7 @@ export default function PublicGamesPage() {
                   ) : (
                     <Bot className="w-4 h-4" />
                   )}
-                  {lang === "ar" ? `نعم، العب مع ${botCount} لاعبين وهميين` : `Yes, play with ${botCount} bots`}
+                  {t.publicGames.playWithBots.replace("{n}", String(botCount))}
                 </button>
                 <button
                   onClick={() => handleStartGame(botDialogAssignment.id, false, 0)}
@@ -416,7 +412,7 @@ export default function PublicGamesPage() {
                   ) : (
                     <Zap className="w-4 h-4" />
                   )}
-                  {lang === "ar" ? "لا، العب بمفردك" : "No, play solo"}
+                  {t.publicGames.playSolo}
                 </button>
               </div>
             </motion.div>

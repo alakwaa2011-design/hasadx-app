@@ -4,14 +4,17 @@ import "./index.css";
 import { initGA } from "./lib/gtag";
 import { initMetaPixel } from "./lib/meta-pixel";
 import { ErrorBoundary } from "./components/error-boundary";
+import { I18nProvider } from "./lib/i18n";
 
 initGA();
 initMetaPixel();
 
 createRoot(document.getElementById("root")!).render(
-  <ErrorBoundary label="منصة حصاد">
-    <App />
-  </ErrorBoundary>,
+  <I18nProvider>
+    <ErrorBoundary label="HasadX">
+      <App />
+    </ErrorBoundary>
+  </I18nProvider>,
 );
 
 // إخفاء شاشة التحميل بعد أن يحمّل React

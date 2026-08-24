@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Loader2, MessageSquare, ShieldCheck, ImagePlus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -53,6 +54,8 @@ interface Props {
 }
 
 export function DirectMessageDrawer({ open, onClose }: Props) {
+  const { lang, dir } = useI18n();
+  const isAr = lang === "ar";
   const [text, setText] = useState("");
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
       let imageUrl: string | undefined;
       if (image) {
         const objectPath = await uploadDmImage(image);
-        if (!objectPath) throw new Error("فشل رفع الصورة");
+        if (!objectPath) throw new Error(isAr ? "فشل رفع الصورة" : "Image upload failed");
         imageUrl = objectPath;
       }
       const res = await fetch(`${API_BASE}/api/direct-messages`, {
@@ -112,7 +115,7 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
         credentials: "include",
         body: JSON.stringify({ content, imageUrl }),
       });
-      if (!res.ok) throw new Error("فشل الإرسال");
+      if (!res.ok) throw new Error(isAr ? "فشل الإرسال" : "Failed to send message");
       return res.json();
     },
     onSuccess: () => {
@@ -141,18 +144,18 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
 
   function timeStr(iso: string) {
     const d = new Date(iso);
-    return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString(isAr ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" });
   }
 
   function dateLabel(iso: string) {
     const d = new Date(iso);
     const today = new Date();
     const isToday = d.toDateString() === today.toDateString();
-    if (isToday) return "اليوم";
+    if (isToday) return isAr ? "اليوم" : "Today";
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return "أمس";
-    return d.toLocaleDateString("ar-SA", { day: "numeric", month: "long" });
+    if (d.toDateString() === yesterday.toDateString()) return isAr ? "أمس" : "Yesterday";
+    return d.toLocaleDateString(isAr ? "ar-SA" : "en-US", { day: "numeric", month: "long" });
   }
 
   const messages = data?.messages ?? [];
@@ -180,23 +183,24 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
             onClick={onClose}
           />
           <motion.div
-            initial={{ x: "100%" }}
+            initial={{ x: dir === "rtl" ? "-100%" : "100%" }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
+            exit={{ x: dir === "rtl" ? "-100%" : "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="fixed inset-y-0 end-0 z-50 w-full max-w-sm bg-card border-s border-border flex flex-col shadow-2xl"
-            dir="rtl"
+            dir={dir}
           >
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-[#1E4D35]">
               <div className="w-9 h-9 rounded-full bg-[#C9A050]/20 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-4.5 h-4.5 text-[#C9A050]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">المسؤول</p>
-                <p className="text-xs text-white/60">مراسلة مباشرة</p>
+                <p className="text-sm font-bold text-white">{isAr ? "المسؤول" : "Administrator"}</p>
+                <p className="text-xs text-white/60">{isAr ? "مراسلة مباشرة" : "Direct messages"}</p>
               </div>
               <button
                 onClick={onClose}
+                  aria-label={isAr ? "إغلاق" : "Close"}
                 className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -213,9 +217,9 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                   <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
                     <MessageSquare className="w-7 h-7 text-muted-foreground/40" />
                   </div>
-                  <p className="text-sm font-bold text-foreground">ابدأ المحادثة</p>
+                  <p className="text-sm font-bold text-foreground">{isAr ? "ابدأ المحادثة" : "Start the conversation"}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    يمكنك التواصل مع المسؤول بشكل مباشر
+                    {isAr ? "يمكنك التواصل مع المسؤول بشكل مباشر" : "You can contact the administrator directly"}
                   </p>
                 </div>
               ) : (
@@ -238,14 +242,14 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                           {!m.mine && (
                             <p className="text-[10px] font-bold text-[#C9A050] mb-1 flex items-center gap-1">
                               <ShieldCheck className="w-3 h-3" />
-                              المسؤول
+                               {isAr ? "المسؤول" : "Administrator"}
                             </p>
                           )}
                           {m.imageUrl && (
                             <a href={dmImageSrc(m.imageUrl)} target="_blank" rel="noreferrer">
                               <img
                                 src={dmImageSrc(m.imageUrl)}
-                                alt="صورة مرفقة"
+                                 alt={isAr ? "صورة مرفقة" : "Attached image"}
                                 loading="lazy"
                                 className="rounded-lg max-h-52 w-auto mb-1.5 border border-black/10"
                               />
@@ -267,9 +271,10 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
             <div className="p-3 border-t border-border bg-background">
               {pendingPreview && (
                 <div className="relative inline-block mb-2">
-                  <img src={pendingPreview} alt="معاينة" className="h-16 rounded-lg border border-border" />
+                  <img src={pendingPreview} alt={isAr ? "معاينة" : "Preview"} className="h-16 rounded-lg border border-border" />
                   <button
                     onClick={() => pickImage(null)}
+                    aria-label={isAr ? "إزالة الصورة" : "Remove image"}
                     className="absolute -top-1.5 -start-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow"
                     data-testid="btn-remove-dm-image"
                   >
@@ -278,7 +283,7 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                 </div>
               )}
               {uploadError && (
-                <p className="text-[11px] text-red-500 mb-1.5">تعذّر إرفاق الصورة — تأكد أنها صورة وأصغر من 10MB</p>
+                <p className="text-[11px] text-red-500 mb-1.5">{isAr ? "تعذّر إرفاق الصورة — تأكد أنها صورة وأصغر من 10MB" : "Unable to attach image — use an image smaller than 10 MB"}</p>
               )}
               <div className="flex items-end gap-2">
                 <input
@@ -291,7 +296,8 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  title="إرفاق صورة"
+                  title={isAr ? "إرفاق صورة" : "Attach image"}
+                  aria-label={isAr ? "إرفاق صورة" : "Attach image"}
                   className="p-2.5 rounded-xl border border-input text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0"
                   data-testid="btn-attach-dm-image"
                 >
@@ -306,7 +312,7 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                       doSend();
                     }
                   }}
-                  placeholder="اكتب رسالتك للمسؤول…"
+                  placeholder={isAr ? "اكتب رسالتك للمسؤول…" : "Write a message to the administrator…"}
                   rows={2}
                   maxLength={2000}
                   className="flex-1 resize-none rounded-xl border border-input bg-muted/50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
@@ -314,6 +320,7 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                 <button
                   onClick={doSend}
                   disabled={!canSend}
+                  aria-label={isAr ? "إرسال" : "Send"}
                   className="p-2.5 rounded-xl bg-[#1E4D35] text-white disabled:opacity-50 hover:opacity-90 transition-opacity shrink-0"
                 >
                   {sendMsg.isPending
@@ -323,7 +330,7 @@ export function DirectMessageDrawer({ open, onClose }: Props) {
                 </button>
               </div>
               <p className="text-[10px] text-muted-foreground/50 mt-1.5 text-center">
-                Enter للإرسال · Shift+Enter لسطر جديد
+                {isAr ? "Enter للإرسال · Shift+Enter لسطر جديد" : "Enter to send · Shift+Enter for a new line"}
               </p>
             </div>
           </motion.div>

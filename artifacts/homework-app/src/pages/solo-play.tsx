@@ -123,7 +123,7 @@ export default function SoloPlayPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "خطأ");
+      if (!res.ok) throw new Error(data.message || (lang === "ar" ? "حدث خطأ" : "An error occurred"));
 
       // Store context for solo-only tweaks in play.tsx + score reporting
       sessionStorage.setItem("solo_challenge_slug", slug!);

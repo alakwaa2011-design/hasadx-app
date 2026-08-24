@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import {
   StudentDetailModal,
   type ActivityResult,
@@ -19,6 +20,7 @@ interface ResultsPayload {
 
 // Standalone fullscreen Student Insights page for sharing/bookmarking.
 export default function StudentInsightsPage() {
+  const { t, dir } = useI18n();
   const params = useParams<{ sessionId: string; studentKey: string }>();
   const [, setLocation] = useLocation();
   const sid = Number(params.sessionId);
@@ -30,7 +32,7 @@ export default function StudentInsightsPage() {
 
   useEffect(() => {
     if (!Number.isFinite(sid)) {
-      setError("معرّف غير صالح");
+      setError(t.presentation.invalidId);
       setLoading(false);
       return;
     }
@@ -43,7 +45,7 @@ export default function StudentInsightsPage() {
       .then((j) => setData(j))
       .catch((e: Error) => {
         if (e.message === "auth") setLocation("/login");
-        else setError("تعذّر تحميل بيانات الطالب");
+        else setError(t.presentation.studentLoadError);
       })
       .finally(() => setLoading(false));
   }, [sid, setLocation]);
@@ -52,24 +54,24 @@ export default function StudentInsightsPage() {
 
   if (loading) {
     return (
-      <div dir="rtl" className="fixed inset-0 bg-slate-900 flex items-center justify-center">
+      <div dir={dir} className="fixed inset-0 bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-white/70" />
       </div>
     );
   }
   if (error || !data) {
     return (
-      <div dir="rtl" className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center gap-3 text-white/80 p-6 text-center">
-        <div>{error ?? "تعذّر التحميل"}</div>
-        <button onClick={goBack} className="text-sm underline">العودة</button>
+      <div dir={dir} className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center gap-3 text-white/80 p-6 text-center">
+        <div>{error ?? t.presentation.loadError}</div>
+        <button onClick={goBack} className="text-sm underline">{t.presentation.back}</button>
       </div>
     );
   }
   if (!data.students.find((s) => s.studentKey === studentKey)) {
     return (
-      <div dir="rtl" className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center gap-3 text-white/80 p-6 text-center">
-        <div>الطالب غير موجود في هذه الجلسة</div>
-        <button onClick={goBack} className="text-sm underline">العودة لنتائج الجلسة</button>
+      <div dir={dir} className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center gap-3 text-white/80 p-6 text-center">
+        <div>{t.presentation.studentNotFound}</div>
+        <button onClick={goBack} className="text-sm underline">{t.presentation.backToResults}</button>
       </div>
     );
   }

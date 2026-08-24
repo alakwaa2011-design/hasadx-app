@@ -8,6 +8,7 @@
  *   uploadEndpoint  — API path that returns { uploadURL, objectPath }
  */
 import { useState, useRef } from "react";
+import { useI18n } from "@/lib/i18n";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -60,6 +61,14 @@ export default function AudioPicker({
   onChange: (url: string | null) => void;
   uploadEndpoint?: string;
 }) {
+  const { lang, dir } = useI18n();
+  const isAr = lang === "ar";
+  const copy = {
+    uploadFailed: isAr ? "فشل رفع الملف" : "File upload failed",
+    storageFailed: isAr ? "فشل رفع الملف إلى التخزين" : "Failed to upload file to storage",
+    microphone: isAr ? "تعذّر الوصول إلى الميكروفون — تأكد من منح الإذن" : "Unable to access the microphone — check its permission",
+    invalidYouTube: isAr ? "رابط يوتيوب غير صالح — تحقق من الرابط" : "Invalid YouTube link — check the URL",
+  };
   const [tab, setTab] = useState<Tab>("file");
   const [uploading, setUploading] = useState(false);
   const [error, setError]     = useState("");
@@ -105,7 +114,7 @@ export default function AudioPicker({
       setRecording(true);
       setAudioBlob(null);
     } catch {
-      setError("تعذّر الوصول إلى الميكروفون — تأكد من منح الإذن");
+      setError(copy.microphone);
     }
   }
 
@@ -129,7 +138,7 @@ export default function AudioPicker({
   function applyYt() {
     setYtError("");
     const id = extractYouTubeId(ytUrl);
-    if (!id) { setYtError("رابط يوتيوب غير صالح — تحقق من الرابط"); return; }
+    if (!id) { setYtError(copy.invalidYouTube); return; }
     onChange(`yt:${id}`);
     setYtUrl("");
   }
@@ -158,12 +167,12 @@ export default function AudioPicker({
   const recBlobUrl = audioBlob ? URL.createObjectURL(audioBlob) : null;
 
   return (
-    <div style={{ border: "1px solid #e8d8b8", borderRadius: 12, padding: 12, background: "#fffbf0", marginBottom: 4 }}>
+    <div dir={dir} style={{ border: "1px solid #e8d8b8", borderRadius: 12, padding: 12, background: "#fffbf0", marginBottom: 4 }}>
       {/* Tab bar */}
       <div style={{ display: "flex", gap: 3, marginBottom: 12, background: "#fef3c7", borderRadius: 10, padding: 3 }}>
-        <button style={tabBtn(tab === "file")}   onClick={() => setTab("file")}>📁 رفع ملف</button>
-        <button style={tabBtn(tab === "record")} onClick={() => setTab("record")}>🎙 تسجيل</button>
-        <button style={tabBtn(tab === "youtube")} onClick={() => setTab("youtube")}>▶ يوتيوب</button>
+        <button type="button" style={tabBtn(tab === "file")} onClick={() => setTab("file")}>📁 {isAr ? "رفع ملف" : "Upload file"}</button>
+        <button type="button" style={tabBtn(tab === "record")} onClick={() => setTab("record")}>🎙 {isAr ? "تسجيل" : "Record"}</button>
+        <button type="button" style={tabBtn(tab === "youtube")} onClick={() => setTab("youtube")}>▶ YouTube</button>
       </div>
 
       {/* ── File tab ── */}
@@ -171,9 +180,9 @@ export default function AudioPicker({
         <div>
           <input type="file" accept="audio/*,.mp3,.m4a,.ogg,.wav,.webm" onChange={handleFile}
             style={{ ...inp, padding: 6 }} disabled={uploading} />
-          {uploading && <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>⏳ جاري الرفع…</div>}
+          {uploading && <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>⏳ {isAr ? "جاري الرفع…" : "Uploading…"}</div>}
           <div style={{ fontSize: 11, color: "#a8a29e", marginTop: 4 }}>
-            صيغ مدعومة: MP3 · M4A · OGG · WAV · حتى 25 MB
+            {isAr ? "صيغ مدعومة: MP3 · M4A · OGG · WAV · حتى 25 MB" : "Supported formats: MP3 · M4A · OGG · WAV · up to 25 MB"}
           </div>
         </div>
       )}
@@ -183,18 +192,18 @@ export default function AudioPicker({
         <div>
           <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
             {!recording
-              ? <button onClick={startRec} disabled={uploading} style={actionBtn("#dc2626")}>⏺ بدء التسجيل</button>
-              : <button onClick={stopRec} style={actionBtn("#b45309")}>⏹ إيقاف</button>
+              ? <button type="button" onClick={startRec} disabled={uploading} style={actionBtn("#dc2626")}>⏺ {isAr ? "بدء التسجيل" : "Start recording"}</button>
+              : <button type="button" onClick={stopRec} style={actionBtn("#b45309")}>⏹ {isAr ? "إيقاف" : "Stop"}</button>
             }
             {recording && (
-              <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 700 }}>🔴 جاري التسجيل…</span>
+              <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 700 }}>🔴 {isAr ? "جاري التسجيل…" : "Recording…"}</span>
             )}
           </div>
           {recBlobUrl && !recording && (
             <div style={{ marginTop: 8 }}>
               <audio controls src={recBlobUrl} style={{ width: "100%", marginBottom: 8, borderRadius: 8 }} />
-              <button onClick={uploadRec} disabled={uploading} style={actionBtn()}>
-                {uploading ? "⏳ جاري الرفع…" : "⬆ رفع التسجيل"}
+              <button type="button" onClick={uploadRec} disabled={uploading} style={actionBtn()}>
+                {uploading ? `⏳ ${isAr ? "جاري الرفع…" : "Uploading…"}` : `⬆ ${isAr ? "رفع التسجيل" : "Upload recording"}`}
               </button>
             </div>
           )}
@@ -206,16 +215,16 @@ export default function AudioPicker({
         <div>
           <input
             type="url" dir="ltr" lang="en"
-            placeholder="https://youtube.com/watch?v=...  أو  youtu.be/..."
+            placeholder="https://youtube.com/watch?v=... or youtu.be/..."
             value={ytUrl}
             onChange={e => { setYtUrl(e.target.value); setYtError(""); }}
             onKeyDown={e => e.key === "Enter" && applyYt()}
             style={{ ...inp, marginBottom: 8, direction: "ltr" }}
           />
-          <button onClick={applyYt} style={actionBtn()}>إضافة</button>
+          <button type="button" onClick={applyYt} style={actionBtn()}>{isAr ? "إضافة" : "Add"}</button>
           {ytError && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 6 }}>{ytError}</div>}
           <div style={{ fontSize: 11, color: "#a8a29e", marginTop: 6 }}>
-            سيُشغَّل الصوت فقط — لن يظهر مشغّل يوتيوب للطلاب
+            {isAr ? "سيُشغَّل الصوت فقط — لن يظهر مشغّل يوتيوب للطلاب" : "Only the audio plays — students will not see a YouTube player"}
           </div>
         </div>
       )}
@@ -228,10 +237,10 @@ export default function AudioPicker({
           padding: "8px 12px", background: "rgba(180,83,9,0.07)", borderRadius: 8, border: "1px solid rgba(180,83,9,0.18)" }}>
           <span style={{ fontSize: 13, color: "#92400e", fontWeight: 600, flex: 1, wordBreak: "break-all" as const }}>
             {value.startsWith("yt:")
-              ? `🎬 يوتيوب · ${value.slice(3)}`
+              ? `🎬 YouTube · ${value.slice(3)}`
               : `🔊 ${value.split("/").pop()?.slice(0, 40) || value}`}
           </span>
-          <button onClick={() => onChange(null)}
+          <button type="button" onClick={() => onChange(null)} aria-label={isAr ? "إزالة الصوت" : "Remove audio"}
             style={{ padding: "2px 8px", background: "transparent", color: "#dc2626",
               border: "1px solid #fca5a5", borderRadius: 6, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
             ✕

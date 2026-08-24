@@ -1,60 +1,47 @@
 import { useState, useEffect } from "react";
 import { X, ArrowLeft, ArrowRight, Sparkles, Play, Plus, BookOpen, FolderOpen, CheckCircle } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const STORAGE_KEY = "hasadx-onboarding-done";
 
-interface Step {
+interface StepAppearance {
   icon: React.ReactNode;
-  title: string;
-  desc: string;
-  highlight?: string; // لون خلفية الأيقونة
+  highlight?: string;
 }
 
-const STEPS_AR: Step[] = [
+const STEP_APPEARANCES: StepAppearance[] = [
   {
     icon: <Sparkles className="w-7 h-7 text-white" />,
-    title: "أهلاً بك في حصاد 🎉",
-    desc: "المنصة التي تحوّل أسئلتك لتجربة تعليمية ممتعة — في ثوانٍ.",
     highlight: "#1e4d35",
   },
   {
     icon: <Play className="w-7 h-7 text-white" fill="white" />,
-    title: "ابدأ مسابقة مباشرة",
-    desc: "من الزر الذهبي في أعلى الصفحة تبدأ مسابقة حية مع طلابك أو جمهورك الآن.",
     highlight: "#b8860b",
   },
   {
     icon: <Plus className="w-7 h-7 text-white" />,
-    title: "أنشئ نشاطك",
-    desc: "أنشئ نشاطك بالذكاء الاصطناعي أو أضف أسئلتك بنفسك.",
     highlight: "#1e4d35",
   },
   {
     icon: <FolderOpen className="w-7 h-7 text-white" />,
-    title: "واجباتي",
-    desc: "بعد إنشاء نشاطك ستجده هنا دائماً وتقدر تشاركه أو تعيد استخدامه.",
     highlight: "#4a6fa5",
   },
   {
     icon: <BookOpen className="w-7 h-7 text-white" />,
-    title: "مكتبة الأنشطة",
-    desc: "هنا أنشطة أنشأها معلمون آخرون — استخدمها مباشرة أو عدّل عليها.",
     highlight: "#7c4d9f",
   },
   {
     icon: <CheckCircle className="w-7 h-7 text-white" />,
-    title: "جاهز تبدأ؟",
-    desc: "أنشئ أول نشاط لك الآن واكتشف كيف يصبح التعليم أكثر متعة.",
     highlight: "#1e4d35",
   },
 ];
 
 interface Props {
-  lang?: string;
   onCreateActivity?: () => void;
 }
 
-export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
+export function OnboardingTour({ onCreateActivity }: Props) {
+  const { t, dir } = useI18n();
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -80,7 +67,7 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
   }
 
   function next() {
-    if (step < STEPS_AR.length - 1) {
+    if (step < t.onboardingTour.steps.length - 1) {
       setStep((s) => s + 1);
     } else {
       close();
@@ -94,15 +81,22 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
 
   if (!visible) return null;
 
-  const current = STEPS_AR[step];
-  const isLast = step === STEPS_AR.length - 1;
+  const copy = t.onboardingTour;
+  const current = copy.steps[step];
+  const appearance = STEP_APPEARANCES[step];
+  const isLast = step === copy.steps.length - 1;
   const isFirst = step === 0;
+  const progressStatus = copy.progressStatus
+    .replace("{current}", String(step + 1))
+    .replace("{total}", String(copy.steps.length));
+  const PreviousIcon = dir === "rtl" ? ArrowRight : ArrowLeft;
+  const NextIcon = dir === "rtl" ? ArrowLeft : ArrowRight;
 
   return (
     <>
-      {/* الطبقة الداكنة خلف البطاقة */}
       <div
         onClick={close}
+        aria-hidden="true"
         style={{
           position: "fixed",
           inset: 0,
@@ -112,9 +106,12 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
         }}
       />
 
-      {/* البطاقة الرئيسية */}
       <div
-        dir="rtl"
+        dir={dir}
+        role="dialog"
+        aria-modal="true"
+        aria-label={copy.dialogLabel}
+        aria-describedby="onboarding-tour-description"
         style={{
           position: "fixed",
           zIndex: 9999,
@@ -131,13 +128,12 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
           gap: 18,
         }}
       >
-        {/* زر الإغلاق */}
         <button
           onClick={close}
           style={{
             position: "absolute",
             top: 14,
-            left: 14,
+            insetInlineEnd: 14,
             background: "none",
             border: "none",
             cursor: "pointer",
@@ -145,19 +141,18 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
             padding: 4,
             borderRadius: 8,
           }}
-          aria-label="إغلاق"
+          aria-label={copy.close}
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* الأيقونة والعنوان */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div
             style={{
               width: 52,
               height: 52,
               borderRadius: 14,
-              background: current.highlight ?? "#1e4d35",
+              background: appearance.highlight ?? "#1e4d35",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -165,21 +160,27 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
               transition: "background 0.3s ease",
             }}
           >
-            {current.icon}
+            {appearance.icon}
           </div>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.35 }}>
             {current.title}
           </h2>
         </div>
 
-        {/* الوصف */}
-        <p style={{ margin: 0, fontSize: 14.5, color: "#555", lineHeight: 1.7 }}>
+        <p id="onboarding-tour-description" style={{ margin: 0, fontSize: 14.5, color: "#555", lineHeight: 1.7 }}>
           {current.desc}
         </p>
 
-        {/* مؤشر الخطوات */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-          {STEPS_AR.map((_, i) => (
+        <div
+          role="progressbar"
+          aria-label={copy.progressLabel}
+          aria-valuemin={1}
+          aria-valuemax={copy.steps.length}
+          aria-valuenow={step + 1}
+          aria-valuetext={progressStatus}
+          style={{ display: "flex", justifyContent: "center", gap: 6 }}
+        >
+          {copy.steps.map((_, i) => (
             <div
               key={i}
               style={{
@@ -193,7 +194,6 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
           ))}
         </div>
 
-        {/* أزرار التنقل */}
         <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
           {!isFirst ? (
             <button
@@ -215,8 +215,8 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
                 fontFamily: "inherit",
               }}
             >
-              <ArrowRight className="w-4 h-4" />
-              السابق
+              <PreviousIcon className="w-4 h-4" />
+              {copy.previous}
             </button>
           ) : (
             <button
@@ -234,7 +234,7 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
                 fontFamily: "inherit",
               }}
             >
-              تخطّى
+              {copy.skip}
             </button>
           )}
 
@@ -258,8 +258,8 @@ export function OnboardingTour({ lang = "ar", onCreateActivity }: Props) {
               transition: "background 0.25s ease",
             }}
           >
-            {isLast ? "أنشئ أول نشاط 🚀" : "التالي"}
-            {!isLast && <ArrowLeft className="w-4 h-4" />}
+            {isLast ? copy.createActivity : copy.next}
+            {!isLast && <NextIcon className="w-4 h-4" />}
           </button>
         </div>
       </div>

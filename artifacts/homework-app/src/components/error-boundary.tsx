@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RotateCcw, Home } from "lucide-react";
 import { Link } from "wouter";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   children: ReactNode;
@@ -31,7 +32,11 @@ function isChunkLoadError(error: Error): boolean {
 
 const RELOAD_KEY = "eb_chunk_reload";
 
-export class ErrorBoundary extends Component<Props, State> {
+interface LocalizedProps extends Props {
+  lang: "ar" | "en";
+}
+
+class LocalizedErrorBoundary extends Component<LocalizedProps, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -70,13 +75,14 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error } = this.state;
     if (!error) return this.props.children;
 
-    const label = this.props.label ?? "هذه الصفحة";
-    const message = error.message || "خطأ غير متوقع";
+    const isAr = this.props.lang === "ar";
+    const label = this.props.label ?? (isAr ? "هذه الصفحة" : "this page");
+    const message = error.message || (isAr ? "خطأ غير متوقع" : "Unexpected error");
     const isChunk = isChunkLoadError(error);
 
     return (
       <div
-        dir="rtl"
+        dir={isAr ? "rtl" : "ltr"}
         className="min-h-screen flex items-center justify-center p-6"
         style={{
           background:
@@ -88,12 +94,12 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="w-8 h-8 text-amber-300" />
           </div>
           <h2 className="text-2xl font-extrabold mb-2 text-amber-100">
-            {isChunk ? "تحديث جديد متاح" : `حدث خطأ في ${label}`}
+             {isChunk ? (isAr ? "تحديث جديد متاح" : "A new update is available") : (isAr ? `حدث خطأ في ${label}` : `Something went wrong in ${label}`)}
           </h2>
           <p className="text-white/70 mb-1 text-sm">
             {isChunk
-              ? "تم تحديث المنصة. اضغط على إعادة التحميل لتفتح النسخة الجديدة."
-              : "لا تقلق — بياناتك الأخرى آمنة. جرّب إعادة المحاولة، وإن استمرت المشكلة عُد للصفحة الرئيسية."}
+               ? (isAr ? "تم تحديث المنصة. اضغط على إعادة التحميل لتفتح النسخة الجديدة." : "The platform has been updated. Reload to open the latest version.")
+               : (isAr ? "لا تقلق — بياناتك الأخرى آمنة. جرّب إعادة المحاولة، وإن استمرت المشكلة عُد للصفحة الرئيسية." : "Don't worry — your other data is safe. Try again, or return to the home page if the problem continues.")}
           </p>
           {!isChunk && (
             <div className="mt-3 mb-5 px-4 py-2 rounded-lg bg-rose-500/10 border border-rose-400/30 text-rose-200/90 text-xs font-mono break-all text-start">
@@ -109,7 +115,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
-              {isChunk ? "إعادة التحميل" : "إعادة المحاولة"}
+               {isChunk ? (isAr ? "إعادة التحميل" : "Reload") : (isAr ? "إعادة المحاولة" : "Try again")}
             </button>
             {!isChunk && (
               <Link
@@ -117,7 +123,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-colors"
               >
                 <Home className="w-4 h-4" />
-                الصفحة الرئيسية
+                 {isAr ? "الصفحة الرئيسية" : "Home"}
               </Link>
             )}
           </div>
@@ -125,4 +131,9 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
+}
+
+export function ErrorBoundary(props: Props) {
+  const { lang } = useI18n();
+  return <LocalizedErrorBoundary {...props} lang={lang} />;
 }

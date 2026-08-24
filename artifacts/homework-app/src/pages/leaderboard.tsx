@@ -4,6 +4,7 @@ import { Card } from "@/components/ui-elements";
 import { Link } from "wouter";
 import { Trophy, Crown } from "lucide-react";
 import { useSeo } from "@/lib/seo";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -21,9 +22,10 @@ interface Row {
 const RANK_BG = ["bg-yellow-100 border-yellow-300", "bg-slate-100 border-slate-300", "bg-amber-100 border-amber-300"];
 
 export default function Leaderboard() {
+  const { t, lang, dir } = useI18n();
   useSeo({
-    title: "لوحة المتصدرين | منصة حصاد — أفضل المعلمين والطلاب",
-    description: "تعرّف على أكثر المعلمين نشاطاً في منصة حصاد التعليمية. لوحة المتصدرين تُحدَّث يومياً بالنقاط والمستويات والشارات.",
+    title: lang === "ar" ? "لوحة المتصدرين | منصة حصاد — أفضل المعلمين والطلاب" : "Leaderboard | HasadX — Top Teachers",
+    description: lang === "ar" ? "تعرّف على أكثر المعلمين نشاطاً في منصة حصاد التعليمية. لوحة المتصدرين تُحدَّث يومياً بالنقاط والمستويات والشارات." : "Meet the most active teachers on HasadX. The leaderboard is updated with points, levels, and badges.",
     canonicalPath: "/leaderboard",
     ogImage: "/opengraph.jpg",
   });
@@ -51,16 +53,16 @@ export default function Leaderboard() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto p-4" dir="rtl">
+      <div className="max-w-3xl mx-auto p-4" dir={dir}>
         <div className="text-center mb-6">
           <Crown className="mx-auto text-yellow-500" size={48} />
-          <h1 className="text-3xl font-bold mt-2">لوحة صدارة المعلمين</h1>
-          <p className="text-gray-600 mt-1">أفضل المعلمين في الموسم الحالي</p>
+          <h1 className="text-3xl font-bold mt-2">{t.leaderboardPage.title}</h1>
+          <p className="text-gray-600 mt-1">{t.leaderboardPage.subtitle}</p>
         </div>
         {loading ? (
-          <div className="text-center text-gray-600 p-6">جارٍ التحميل…</div>
+          <div className="text-center text-gray-600 p-6">{t.leaderboardPage.loading}</div>
         ) : rows.length === 0 ? (
-          <div className="text-center text-gray-600 p-6">لا توجد بيانات بعد</div>
+          <div className="text-center text-gray-600 p-6">{t.leaderboardPage.empty}</div>
         ) : (
           <div className="space-y-2">
             {rows.map((r) => {
@@ -77,10 +79,10 @@ export default function Leaderboard() {
                     </Link>
                     {r.displaySchool && <p className="text-xs text-gray-600 truncate">{r.displaySchool}</p>}
                   </div>
-                  <div className="text-left shrink-0">
-                    <p className="font-bold text-indigo-700">{r.xp.toLocaleString("ar")} XP</p>
+                  <div className="text-end shrink-0">
+                    <p className="font-bold text-indigo-700">{Number(r.xp ?? 0).toLocaleString(lang === "ar" ? "ar" : "en-US")} XP</p>
                     <p className="text-xs text-gray-600 flex items-center gap-1 justify-end">
-                      <Trophy size={12} /> {r.badgeCount} · م. {r.level}
+                      <Trophy size={12} /> {r.badgeCount ?? 0} {t.leaderboardPage.badges} · {t.leaderboardPage.level} {r.level ?? 0}
                     </p>
                   </div>
                 </Card>

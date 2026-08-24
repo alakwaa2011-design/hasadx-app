@@ -58,9 +58,8 @@ function parseSettings(search: string): { difficulty: ScrambleDifficulty; catego
 }
 
 export default function ScramblePlay() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
-  const isRtl = lang === "ar";
+  const { lang, t, dir } = useI18n();
+  const isRtl = dir === "rtl";
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
@@ -497,7 +496,7 @@ export default function ScramblePlay() {
   const handleHint = () => {
     if (phase !== "playing" || !currentWord || hintUsed) return;
     setHintUsed(true);
-    setHintText(currentWord.hint || (lang === "ar" ? `يبدأ بـ "${currentWord.word[0]}"` : `Starts with "${currentWord.word[0]}"`));
+    setHintText(currentWord.hint || `${t.gamePages.scramble.startsWith} "${currentWord.word[0]}"`);
     scrambleSound.playHint();
   };
 
@@ -601,18 +600,19 @@ export default function ScramblePlay() {
               <UserRound className="w-8 h-8 text-purple-400" />
             </div>
             <h2 className="text-2xl font-black text-white mb-2">
-              {lang === "ar" ? "أدخل اسمك" : "Enter Your Name"}
+              {t.gamePages.playUi.enterYourNameTitle}
             </h2>
             {customTitle && <p className="text-purple-300 text-sm mb-1">{customTitle}</p>}
             <p className="text-white/40 text-xs mb-5">
-              {lang === "ar" ? "سيظهر اسمك للمعلم أثناء اللعب" : "Your name will be visible to the teacher during play"}
+              {t.gamePages.playUi.nameVisibleTeacher}
             </p>
             <input
               type="text"
               value={playerName}
               onChange={e => setPlayerName(e.target.value.slice(0, 30))}
               onKeyDown={e => { if (e.key === "Enter") handleNameSubmit(); }}
-              placeholder={lang === "ar" ? "اكتب اسمك هنا..." : "Type your name here..."}
+              placeholder={t.gamePages.playUi.typeName}
+              aria-label={t.gamePages.playUi.enterYourNameTitle}
               className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-center font-bold text-lg placeholder:text-white/30 focus:outline-none focus:border-purple-400 mb-4"
               dir={dir}
               autoFocus
@@ -622,7 +622,7 @@ export default function ScramblePlay() {
               disabled={!playerName.trim()}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-black text-lg shadow-lg disabled:opacity-40 transition-all flex items-center justify-center gap-2">
               <Users className="w-5 h-5" />
-              {lang === "ar" ? "انضم للغرفة" : "Join Room"}
+              {t.gamePages.playUi.joinRoom}
             </button>
           </motion.div>
         </div>
@@ -640,19 +640,19 @@ export default function ScramblePlay() {
               <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
             </div>
             <h2 className="text-2xl font-black text-white mb-2">
-              {lang === "ar" ? "في انتظار المعلم..." : "Waiting for Teacher..."}
+              {t.gamePages.playUi.waitingTeacher}
             </h2>
             {customTitle && <p className="text-purple-300 text-sm mb-1">{customTitle}</p>}
             <p className="text-white/40 text-xs mb-4">
-              {lang === "ar" ? "الغرفة غير متاحة بعد — سيتم الانضمام تلقائياً عند فتحها" : "Room not available yet — you'll join automatically when it opens"}
+              {t.gamePages.playUi.roomUnavailable}
             </p>
             <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 inline-block">
-              <p className="text-white/30 text-[10px] font-bold mb-0.5">{lang === "ar" ? "الرمز" : "PIN"}</p>
+              <p className="text-white/30 text-[10px] font-bold mb-0.5">{t.gamePages.pin}</p>
               <p className="text-xl font-black text-purple-400 tracking-widest" dir="ltr">{parsed.pin}</p>
             </div>
             <button onClick={() => setLocation("/game/scramble")}
               className="w-full mt-6 py-2.5 rounded-xl bg-white/10 text-white/60 font-bold text-sm hover:bg-white/15 transition-all">
-              {lang === "ar" ? "العودة" : "Go Back"}
+              {t.gamePages.playUi.goBack}
             </button>
           </motion.div>
         </div>
@@ -670,19 +670,19 @@ export default function ScramblePlay() {
               <Users className="w-8 h-8 text-green-400" />
             </div>
             <h2 className="text-2xl font-black text-white mb-2">
-              {lang === "ar" ? "أنت في غرفة الانتظار!" : "You're in the Lobby!"}
+              {t.gamePages.playUi.inLobby}
             </h2>
             {customTitle && <p className="text-purple-300 text-sm mb-1">{customTitle}</p>}
             <p className="text-white/40 text-xs mb-4">
-              {lang === "ar" ? "ستبدأ اللعبة عندما يضغط المعلم \"ابدأ\"" : "The game will start when the teacher presses \"Start\""}
+              {t.gamePages.playUi.startsWhenTeacher}
             </p>
             <div className="flex items-center justify-center gap-4 mb-4">
               <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-white/30 text-[10px] font-bold mb-0.5">{lang === "ar" ? "اسمك" : "Your Name"}</p>
+                <p className="text-white/30 text-[10px] font-bold mb-0.5">{t.gamePages.playUi.yourName}</p>
                 <p className="text-sm font-bold text-white">{playerName}</p>
               </div>
               <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-white/30 text-[10px] font-bold mb-0.5">{lang === "ar" ? "اللاعبون" : "Players"}</p>
+                <p className="text-white/30 text-[10px] font-bold mb-0.5">{t.gamePages.playUi.players}</p>
                 <p className="text-sm font-bold text-purple-400">{lobbyCount}</p>
               </div>
             </div>
@@ -692,7 +692,7 @@ export default function ScramblePlay() {
               className="flex items-center justify-center gap-2 text-white/50 text-sm"
             >
               <Loader2 className="w-4 h-4 animate-spin" />
-              {lang === "ar" ? "في انتظار بدء اللعبة..." : "Waiting for game to start..."}
+              {t.gamePages.playUi.waitingStart}
             </motion.div>
           </motion.div>
         </div>
@@ -707,14 +707,14 @@ export default function ScramblePlay() {
           <div className="max-w-md w-full text-center bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10">
             <div className="text-5xl mb-4">🔍</div>
             <h2 className="text-2xl font-black text-white mb-2">
-              {lang === "ar" ? "لم يتم العثور على الكلمات" : "Word Set Not Found"}
+              {t.gamePages.playUi.wordsNotFound}
             </h2>
             <p className="text-white/50 mb-6">
-              {lang === "ar" ? "الرمز المدخل غير صحيح أو منتهي الصلاحية" : "The PIN is invalid or the word set no longer exists"}
+              {t.gamePages.playUi.invalidWordPin}
             </p>
             <button onClick={() => setLocation("/game/scramble")}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold shadow-lg">
-              {lang === "ar" ? "العودة للعبة" : "Back to Game"}
+              {t.gamePages.playUi.backGame}
             </button>
           </div>
         </div>
@@ -752,7 +752,7 @@ export default function ScramblePlay() {
               animate={{ opacity: 1, y: 0 }}
               className="text-white/80 text-xl font-black tracking-wide"
             >
-              {countVal > 0 ? (lang === "ar" ? "استعد!" : "Get Ready!") : (lang === "ar" ? "انطلق!" : "GO!")}
+              {countVal > 0 ? t.gamePages.playUi.getReady : t.gamePages.playUi.go}
             </motion.p>
             {customTitle && <p className="text-violet-300/70 mt-2 text-sm font-medium">{customTitle}</p>}
           </div>
@@ -781,7 +781,7 @@ export default function ScramblePlay() {
                 >
                   {stars >= 4 ? "🏆" : stars >= 3 ? "🎉" : stars >= 2 ? "😤" : "😢"}
                 </motion.div>
-                <h1 className="text-3xl font-black text-white mb-2">{lang === "ar" ? "انتهت اللعبة!" : "Game Over!"}</h1>
+                <h1 className="text-3xl font-black text-white mb-2">{t.gamePages.playUi.gameOver}</h1>
                 {customTitle && <p className="text-purple-300 text-sm mb-2">{customTitle}</p>}
 
                 <div className="flex justify-center gap-1.5 my-3">
@@ -795,19 +795,19 @@ export default function ScramblePlay() {
 
                 <div className="grid grid-cols-4 gap-3 mt-4 bg-white/5 rounded-2xl p-4">
                   <div className="text-center">
-                    <p className="text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "النقاط" : "Score"}</p>
+                    <p className="text-white/50 text-[10px] font-bold mb-1">{t.gamePages.playUi.score}</p>
                     <p className="text-xl font-black text-amber-400">{score}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "المستوى" : "Level"}</p>
+                    <p className="text-white/50 text-[10px] font-bold mb-1">{t.gamePages.level}</p>
                     <p className="text-xl font-black text-emerald-400">{level}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "الوقت" : "Time"}</p>
+                    <p className="text-white/50 text-[10px] font-bold mb-1">{t.gamePages.playUi.time}</p>
                     <p className="text-xl font-black text-sky-400" dir="ltr">{timeStr}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "أعلى سلسلة" : "Best Streak"}</p>
+                    <p className="text-white/50 text-[10px] font-bold mb-1">{t.gamePages.playUi.bestStreak}</p>
                     <p className="text-xl font-black text-orange-400">{bestStreak}🔥</p>
                   </div>
                 </div>
@@ -816,40 +816,43 @@ export default function ScramblePlay() {
               <div className="flex flex-col gap-3 mb-5">
                 <button onClick={handleRestart} className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-black text-lg shadow-lg flex items-center justify-center gap-2">
                   <RotateCcw className="w-5 h-5" />
-                  {lang === "ar" ? "العب مرة أخرى" : "Play Again"}
+                  {t.gamePages.playUi.playAgain}
                 </button>
                 <button onClick={() => setLocation("/game/scramble")}
                   className="w-full py-3 rounded-xl bg-white/10 text-white font-bold text-sm flex items-center justify-center gap-1.5">
                   <Home className="w-4 h-4" />
-                  {lang === "ar" ? "الرئيسية" : "Home"}
+                  {t.gamePages.playUi.home}
                 </button>
               </div>
 
               <div className="mb-3">
                 <ShareButtons
-                  text={lang === "ar"
-                    ? `🔤${playerName.trim() ? ` ${playerName.trim()} -` : ""} وصلت للمستوى ${level} بنتيجة ${score} في لعبة الكلمات المبعثرة!\n🔥 أفضل سلسلة ${bestStreak}\nجرّب تتغلب عليّ!`
-                    : `🔤${playerName.trim() ? ` ${playerName.trim()} -` : ""} I reached level ${level} with score ${score} in Scrambled Words!\n🔥 Best streak ${bestStreak}\nTry to beat me!`}
+                  text={t.gamePages.scramble.shareResult
+                    .replace("{name}", playerName.trim() ? ` ${playerName.trim()} -` : "")
+                    .replace("{level}", String(level))
+                    .replace("{score}", String(score))
+                    .replace("{streak}", String(bestStreak))}
                   url={window.location.origin + (import.meta.env.BASE_URL || "/") + "game/scramble"}
                 />
               </div>
 
               {!parsed.pin && (
                 <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                  <p className="text-white/60 text-xs font-bold mb-2">{lang === "ar" ? "سجّل نتيجتك" : "Save your score"}</p>
+                  <p className="text-white/60 text-xs font-bold mb-2">{t.gamePages.playUi.saveYourScore}</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={playerName}
                       onChange={e => setPlayerName(e.target.value)}
-                      placeholder={lang === "ar" ? "اسمك" : "Your name"}
+                      placeholder={t.gamePages.playUi.name}
+                      aria-label={t.gamePages.playUi.name}
                       className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 text-sm font-bold"
                       maxLength={30}
                       disabled={saved}
                     />
                     <button onClick={handleSave} disabled={!playerName.trim() || saving || saved}
                       className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-sm disabled:opacity-40">
-                      {saved ? "✓" : saving ? "..." : (lang === "ar" ? "حفظ" : "Save")}
+                      {saved ? "✓" : saving ? "..." : t.gamePages.playUi.save}
                     </button>
                   </div>
                 </div>
@@ -861,7 +864,7 @@ export default function ScramblePlay() {
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-5 border border-white/10">
                   <div className="flex items-center gap-2 mb-4">
                     <Trophy className="w-5 h-5 text-amber-500" />
-                    <h2 className="font-black text-white text-base">{lang === "ar" ? "لوحة المتصدرين" : "Leaderboard"}</h2>
+                    <h2 className="font-black text-white text-base">{t.gamePages.leaderboard}</h2>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 ms-auto">
                       {getDifficultyLabel(parsed.difficulty, lang)}
                     </span>
@@ -876,7 +879,7 @@ export default function ScramblePlay() {
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-white text-sm truncate">{entry.name}</p>
                           <p className="text-[10px] text-white/40">
-                            {lang === "ar" ? `المستوى ${entry.level}` : `Lvl ${entry.level}`}
+                            {t.gamePages.levelShort} {entry.level}
                             {entry.streak > 0 && <span className="text-purple-400"> • 🔥{entry.streak}</span>}
                           </p>
                         </div>
@@ -898,9 +901,9 @@ export default function ScramblePlay() {
       <LevelUpSplash show={splashLevel !== null} level={splashLevel ?? 0} theme="violet" />
       <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-950/20 dark:via-purple-950/20 dark:to-fuchsia-950/20 py-4 px-4" dir={dir}>
         <div className="max-w-lg mx-auto">
-          {isArenaMode && <ArenaBar myName={myName} myScore={score} opponents={opponents} results={results} isRtl={lang === "ar"} />}
+          {isArenaMode && <ArenaBar myName={myName} myScore={score} opponents={opponents} results={results} isRtl={isRtl} />}
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => { clearTimer(); clearAllTimeouts(); scrambleSound.stopBackground(); setLocation("/game/scramble"); }}
+            <button aria-label={t.gamePages.playUi.exitGame} onClick={() => { clearTimer(); clearAllTimeouts(); scrambleSound.stopBackground(); setLocation("/game/scramble"); }}
               className="p-2 rounded-xl bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
               <BackArrow className="w-5 h-5" />
             </button>
@@ -919,14 +922,14 @@ export default function ScramblePlay() {
               </div>
               <div className="px-3 py-1.5 rounded-full bg-card border border-border/60">
                 <span className="text-xs font-bold text-muted-foreground">
-                  {lang === "ar" ? `المستوى ${level}` : `Lvl ${level}`}
+                  {t.gamePages.levelShort} {level}
                 </span>
               </div>
               <div className="px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
                 <span className="text-sm font-black text-purple-600 dark:text-purple-400">{score}</span>
               </div>
             </div>
-            <button onClick={handleToggleMute}
+            <button aria-label={t.gamePages.playUi.toggleSound} onClick={handleToggleMute}
               className="p-2 rounded-xl bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
               {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </button>
@@ -998,7 +1001,7 @@ export default function ScramblePlay() {
                   {phase === "wrong" && currentWord && (
                     <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="text-sm font-bold text-green-500 mb-2" dir="rtl">
-                      {lang === "ar" ? `الإجابة: ${currentWord.word}` : `Answer: ${currentWord.word}`}
+                      {t.gamePages.playUi.answer} {currentWord.word}
                     </motion.p>
                   )}
                   {hintText && (
@@ -1057,7 +1060,7 @@ export default function ScramblePlay() {
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-card border border-border/60 text-foreground font-bold text-sm disabled:opacity-30 transition-all hover:bg-muted shadow-sm"
             >
               <Delete className="w-4 h-4" />
-              {lang === "ar" ? "مسح" : "Undo"}
+              {t.gamePages.playUi.undo}
             </motion.button>
             {currentWord && currentWord.word.length > 5 && (
               <motion.button
@@ -1067,7 +1070,7 @@ export default function ScramblePlay() {
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 font-bold text-sm disabled:opacity-30 transition-all hover:bg-amber-100 dark:hover:bg-amber-950/40 shadow-sm"
               >
                 <Lightbulb className="w-4 h-4" />
-                {lang === "ar" ? "تلميح" : "Hint"}
+                {t.gamePages.playUi.hint}
               </motion.button>
             )}
           </div>

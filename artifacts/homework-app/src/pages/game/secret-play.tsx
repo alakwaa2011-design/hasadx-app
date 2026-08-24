@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { io as socketIO, Socket } from "socket.io-client";
 import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, QrCode, RotateCcw, CheckCircle2, Clock, Plus, EyeOff, Timer, Monitor } from "lucide-react";
 import QRCode from "react-qr-code";
+import { useI18n } from "@/lib/i18n";
 
 function playAllReadyChime() {
   try {
@@ -92,6 +93,7 @@ function playSound(type: "question" | "win" | "answer") {
 }
 
 function QRPanel({ token, teamName, teamColor, scanned }: { token: string; teamName: string; teamColor: string; scanned: boolean }) {
+  const { t } = useI18n();
   const url = `${BASE}/game/secret/reveal?token=${encodeURIComponent(token)}`;
   return (
     <div className="flex flex-col items-center gap-2 p-3 rounded-2xl border"
@@ -101,7 +103,7 @@ function QRPanel({ token, teamName, teamColor, scanned }: { token: string; teamN
         <QRCode value={url} size={110} />
       </div>
       <p className="text-[10px] font-bold" style={{ color: scanned ? "#22c55e" : teamColor }}>
-        {scanned ? "✅ تم المسح" : "امسح الباركود"}
+        {scanned ? t.secretGame.scanned : t.secretGame.scanCode}
       </p>
     </div>
   );
@@ -109,6 +111,8 @@ function QRPanel({ token, teamName, teamColor, scanned }: { token: string; teamN
 
 export default function SecretPlay() {
   const [, setLocation] = useLocation();
+  const { t, dir } = useI18n();
+  const strings = t.secretGame;
   const socketRef = useRef<Socket | null>(null);
   const pin = sessionStorage.getItem("secret_game_pin") ?? "";
   const tokenA = sessionStorage.getItem("secret_game_tokenA") ?? "";
@@ -271,19 +275,19 @@ export default function SecretPlay() {
   const pct = maxQuestions > 0 ? (totalQuestions / maxQuestions) * 100 : 0;
 
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg,#0d0d1a 0%,#120d1f 100%)" }}>
+    <div dir={dir} className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg,#0d0d1a 0%,#120d1f 100%)" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2">
           <Eye className="w-5 h-5 text-purple-400" />
-          <span className="text-white font-black text-lg">اكتشف السر</span>
+          <span className="text-white font-black text-lg">{t.secretGame.title}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-white/50 text-sm font-mono" dir="ltr">{pin}</div>
           <button
             onClick={handleDirectReveal}
             disabled={directLoading}
-            title="عرض الصورة مباشرة على الشاشة"
+            title={t.secretGame.showImageDirectly}
             className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50"
           >
             {directLoading
@@ -320,8 +324,8 @@ export default function SecretPlay() {
               <CheckCircle2 className="w-7 h-7 text-emerald-300 flex-shrink-0" />
             </motion.div>
             <div>
-              <p className="text-white font-black text-base leading-tight">جميع الفرق جاهزة! 🎉</p>
-              <p className="text-emerald-200/80 text-xs mt-0.5">يمكنك بدء اللعبة الآن</p>
+               <p className="text-white font-black text-base leading-tight">{t.secretGame.allTeamsReady}</p>
+               <p className="text-emerald-200/80 text-xs mt-0.5">{t.secretGame.canStartNow}</p>
             </div>
           </motion.div>
         )}
@@ -386,7 +390,7 @@ export default function SecretPlay() {
             className="overflow-hidden border-b border-white/10">
             <div className="p-4">
               <p className="text-center text-white/60 text-xs mb-3">
-                🔍 باركودات اكتشف السر — اضغط للإخفاء
+                 {t.secretGame.qrCodes}
               </p>
 
               {/* Scan progress indicator */}
@@ -427,7 +431,7 @@ export default function SecretPlay() {
                 <div className="flex justify-center mt-3">
                   <button onClick={() => socketRef.current?.emit("secret:force_start", { pin })}
                     className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors">
-                    بدء اللعبة فوراً
+                     {t.secretGame.startImmediately}
                   </button>
                 </div>
               )}
@@ -444,15 +448,15 @@ export default function SecretPlay() {
             style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}>
             <motion.div initial={{ scale: 0.8, y: 30 }} animate={{ scale: 1, y: 0 }}
               className="w-full max-w-md rounded-3xl p-6 text-center border-2"
-              dir="rtl"
+               dir={dir}
               style={{ background: "linear-gradient(160deg,#1a0e2e,#0d0720)", borderColor: endData.winner ? teams[endData.winner].color : "#6b7280" }}>
               <Trophy className="w-14 h-14 mx-auto mb-3" style={{ color: endData.winner ? teams[endData.winner].color : "#9ca3af" }} />
               <h2 className="text-3xl font-black text-white mb-1">{endData.winnerName}</h2>
-              <p className="text-white/50 mb-5">{endData.winner ? "عرف السر وفاز!" : "انتهى الحد الأقصى للأسئلة — تعادل"}</p>
+               <p className="text-white/50 mb-5">{endData.winner ? t.secretGame.knewSecretWon : t.secretGame.maxQuestionsTie}</p>
               <div className="grid grid-cols-2 gap-3 mb-5">
                 {(["A", "B"] as Team[]).map((t) => (
                   <div key={t} className="rounded-2xl p-3 border" style={{ background: `${teams[t].color}15`, borderColor: `${teams[t].color}40` }}>
-                    <p className="text-xs font-bold mb-2" style={{ color: teams[t].color }}>{teams[t].name} كان سرّه:</p>
+                     <p className="text-xs font-bold mb-2" style={{ color: teams[t].color }}>{teams[t].name} {strings.secretWas}</p>
                     {endData.secrets[t].image && (
                       <img src={`/api/image-proxy?url=${encodeURIComponent(endData.secrets[t].image!)}`} alt={endData.secrets[t].name} className="w-full h-20 object-cover rounded-xl mb-2" />
                     )}
@@ -465,11 +469,11 @@ export default function SecretPlay() {
                   className="flex-1 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-40"
                   style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}>
                   {nextRoundLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                  جولة جديدة
+                   {t.secretGame.newRound}
                 </button>
                 <button onClick={() => setLocation("/game/secret")}
                   className="flex-1 py-3 rounded-xl font-bold bg-white/10 text-white border border-white/20 hover:bg-white/20">
-                  إنهاء
+                   {t.secretGame.end}
                 </button>
               </div>
             </motion.div>
@@ -493,7 +497,7 @@ export default function SecretPlay() {
         {phase === "playing" && (
           <motion.div layout className="rounded-2xl border border-white/10 p-5 flex flex-col items-center gap-3"
             style={{ background: "rgba(255,255,255,0.04)" }}>
-            <p className="text-white/40 text-xs font-bold tracking-widest uppercase">عدد الأسئلة</p>
+             <p className="text-white/40 text-xs font-bold tracking-widest uppercase">{t.secretGame.questionCount}</p>
 
             {/* Big number */}
             <motion.div key={totalQuestions}
@@ -501,7 +505,7 @@ export default function SecretPlay() {
               className="text-7xl font-black text-white">
               {totalQuestions}
             </motion.div>
-            <p className="text-white/30 text-sm">من {maxQuestions}</p>
+             <p className="text-white/30 text-sm">{t.secretGame.of.replace("{count}", String(maxQuestions))}</p>
 
             {/* Progress bar */}
             <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -522,7 +526,7 @@ export default function SecretPlay() {
                       : "bg-red-500/20 border-red-400 text-red-300"
                   }`}>
                   {lastAnswer === "yes" ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
-                  {lastAnswer === "yes" ? "نعم ✓" : "لا ✗"}
+                   {lastAnswer === "yes" ? t.secretGame.yes : t.secretGame.no}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -534,11 +538,11 @@ export default function SecretPlay() {
           <div className="grid grid-cols-2 gap-3">
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => emitAnswer("yes")}
               className="py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 bg-green-500/15 border-2 border-green-500/50 text-green-300 hover:bg-green-500/25 transition-all">
-              <Check className="w-5 h-5" /> نعم
+               <Check className="w-5 h-5" /> {t.secretGame.yes}
             </motion.button>
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => emitAnswer("no")}
               className="py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 bg-red-500/15 border-2 border-red-500/50 text-red-300 hover:bg-red-500/25 transition-all">
-              <X className="w-5 h-5" /> لا
+               <X className="w-5 h-5" /> {t.secretGame.no}
             </motion.button>
           </div>
         )}
@@ -556,7 +560,7 @@ export default function SecretPlay() {
               ? <RefreshCw className="w-5 h-5 animate-spin" />
               : <Plus className="w-6 h-6" />
             }
-            سؤال جديد
+             {t.secretGame.newQuestion}
           </motion.button>
         )}
 
@@ -577,7 +581,7 @@ export default function SecretPlay() {
               >
                 <span className="text-xl">🎯</span>
                 <span>{teams[t].name}</span>
-                <span className="text-[10px] opacity-70">عرف السر!</span>
+                 <span className="text-[10px] opacity-70">{strings.knewSecret}</span>
               </motion.button>
             ))}
           </div>
@@ -594,12 +598,12 @@ export default function SecretPlay() {
           >
             <p className="text-white/50 text-xs font-bold flex items-center gap-1.5">
               <Timer className="w-3.5 h-3.5" />
-              التحكم في ظهور السر
+               {t.secretGame.secretVisibility}
             </p>
 
             {/* Duration Selector */}
             <div>
-              <p className="text-white/40 text-xs mb-2">مدة التعتيم التلقائي</p>
+               <p className="text-white/40 text-xs mb-2">{t.secretGame.automaticHide}</p>
               <div className="flex gap-2">
                 {([15, 30, 60] as const).map((d) => (
                   <button
@@ -612,7 +616,7 @@ export default function SecretPlay() {
                       color: hideDuration === d ? "#c4b5fd" : "rgba(255,255,255,0.4)",
                     }}
                   >
-                    {d}ث
+                     {t.secretGame.seconds.replace("{count}", String(d))}
                   </button>
                 ))}
               </div>
@@ -631,7 +635,7 @@ export default function SecretPlay() {
               }}
             >
               <EyeOff className="w-4 h-4" />
-              {forceHideSent ? "تم الإخفاء ✓" : "إخفاء السر فوراً"}
+               {forceHideSent ? t.secretGame.hidden : t.secretGame.hideNow}
             </motion.button>
           </motion.div>
         )}

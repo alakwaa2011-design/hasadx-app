@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const KEY = "hasad:presKey";
@@ -27,6 +28,7 @@ function loadStored(): Stored | null {
    with the PIN-info response so the screen can render in AR or EN
    before the student authenticates. */
 export default function PresentationJoin() {
+  const { t, dir } = useI18n();
   const [, setLocation] = useLocation();
   const [pin, setPin] = useState("");
   const [name, setName] = useState("");
@@ -35,10 +37,6 @@ export default function PresentationJoin() {
   const [step, setStep] = useState<"pin" | "name">("pin");
   const [busy, setBusy] = useState(false);
 
-  /* Until we know the deck language we render in Arabic (the platform
-     default). Once `info` arrives we flip per the deck. */
-  const isAr = info ? info.language !== "en" : true;
-  const dir = isAr ? "rtl" : "ltr";
 
   useEffect(() => {
     const stored = loadStored();
@@ -84,7 +82,7 @@ export default function PresentationJoin() {
   async function submitPin(pinArg?: string) {
     const p = pinArg ?? pin;
     if (!/^\d{6}$/.test(p)) {
-      toast.error(isAr ? "PIN من 6 أرقام" : "PIN must be 6 digits");
+      toast.error(t.presentation.pinSixDigits);
       return;
     }
     setBusy(true);
@@ -95,14 +93,13 @@ export default function PresentationJoin() {
         /* Server validation messages are Arabic-only; only surface
            them when we're in Arabic mode to avoid leaking AR text
            into the EN flow. */
-        const fallback = isAr ? "تعذّر العثور على الجلسة" : "Session not found";
-        toast.error(isAr ? (j?.message ?? fallback) : fallback);
+        toast.error(t.presentation.sessionNotFound);
         return;
       }
       setInfo(j as PinInfo);
       setStep("name");
     } catch {
-      toast.error(isAr ? "خطأ في الشبكة" : "Network error");
+      toast.error(t.presentation.networkError);
     } finally {
       setBusy(false);
     }
@@ -112,11 +109,11 @@ export default function PresentationJoin() {
     if (!info) return;
     const isClass = info.mode === "class";
     if (isClass && !pickedStudentId) {
-      toast.error(isAr ? "اختر اسمك من القائمة" : "Pick your name from the list");
+      toast.error(t.presentation.chooseStudent);
       return;
     }
     if (!isClass && !name.trim()) {
-      toast.error(isAr ? "الاسم مطلوب" : "Name is required");
+      toast.error(t.presentation.nameRequired);
       return;
     }
     setBusy(true);
@@ -136,15 +133,14 @@ export default function PresentationJoin() {
       });
       const j = await r.json();
       if (!r.ok) {
-        const fallback = isAr ? "تعذّر الانضمام" : "Could not join";
-        toast.error(isAr ? (j?.message ?? fallback) : fallback);
+        toast.error(t.presentation.couldNotJoin);
         return;
       }
       const stored: Stored = { sessionId: j.sessionId, studentKey: j.studentKey, name: j.name, joinToken: j.joinToken };
       localStorage.setItem(KEY, JSON.stringify(stored));
       setLocation(`/p/play/${j.sessionId}`);
     } catch {
-      toast.error(isAr ? "خطأ في الشبكة" : "Network error");
+      toast.error(t.presentation.networkError);
     } finally {
       setBusy(false);
     }
@@ -152,18 +148,18 @@ export default function PresentationJoin() {
 
   const isClass = info?.mode === "class";
 
-  const title = isAr ? "الانضمام للعرض المباشر" : "Join the live presentation";
+  const title = t.presentation.joinTitle;
   const helper =
     step === "pin"
-      ? (isAr ? "أدخل الرمز المعروض على الشاشة" : "Enter the code shown on screen")
+      ? t.presentation.enterCode
       : isClass
-        ? (isAr ? "اختر اسمك من قائمة الفصل" : "Pick your name from the class list")
-        : (isAr ? "ما اسمك؟" : "What's your name?");
-  const continueLabel = isAr ? "متابعة" : "Continue";
-  const enterLabel = isAr ? "ادخل" : "Enter";
-  const changePinLabel = isAr ? "تغيير الرمز" : "Change PIN";
-  const namePlaceholder = isAr ? "اسمك" : "Your name";
-  const emptyRosterLabel = isAr ? "لا يوجد طلاب في هذا الفصل" : "No students in this class";
+        ? t.presentation.chooseName
+        : t.presentation.whatsYourName;
+  const continueLabel = t.presentation.continue;
+  const enterLabel = t.presentation.enter;
+  const changePinLabel = t.presentation.changePin;
+  const namePlaceholder = t.presentation.yourName;
+  const emptyRosterLabel = t.presentation.emptyRoster;
 
   return (
     <div dir={dir} className="min-h-screen flex items-center justify-center p-4" style={{ background: "linear-gradient(135deg,#225739,#143523)" }}>

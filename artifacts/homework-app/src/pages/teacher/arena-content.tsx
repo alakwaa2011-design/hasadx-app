@@ -12,6 +12,7 @@ import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { Layout } from "@/components/layout";
 import { toast } from "@/components/ui/sonner";
 import AudioPlayer from "@/components/AudioPlayer";
+import { useI18n } from "@/lib/i18n";
 import {
   fetchArenaCategories, fetchArenaActivities,
   createArenaCategory, updateArenaCategory, deleteArenaCategory,
@@ -48,6 +49,8 @@ interface SearchResult {
 }
 
 function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerProps) {
+  const { t, dir } = useI18n();
+  const copy = t.arenaContent.imagePicker;
   const [tab, setTab] = useState<"upload" | "search" | "url">("search");
   const [uploading, setUploading] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -66,7 +69,7 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
 
   const doSearch = async () => {
     const q = query.trim();
-    if (!q) { toast.error("اكتب كلمة بحث"); return; }
+    if (!q) { toast.error(copy.searchRequired); return; }
     setSearching(true);
     try {
       const r = await fetch("/api/presentations/image-search", {
@@ -78,7 +81,7 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
       if (!r.ok) {
         const errBody = await r.text().catch(() => "");
         console.error("[arena image-search] HTTP error", r.status, errBody.slice(0, 500));
-        toast.error("تعذّر الوصول إلى خدمة البحث عن الصور حالياً. تحقق من الاتصال أو حاول لاحقاً.");
+        toast.error(copy.serviceError);
         setResults([]);
         return;
       }
@@ -86,7 +89,7 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
       setResults(Array.isArray(data?.results) ? data.results : []);
     } catch (e) {
       console.error("[arena image-search] network error", e);
-      toast.error("تعذّر الاتصال بالخادم أثناء البحث عن الصور. تحقق من الشبكة.");
+      toast.error(copy.networkError);
     } finally {
       setSearching(false);
     }
@@ -94,17 +97,17 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
 
   const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast.error("الملف يجب أن يكون صورة"); return; }
-    if (f.size > 10 * 1024 * 1024) { toast.error("الحد الأقصى 10 ميجابايت"); return; }
+    if (!f.type.startsWith("image/")) { toast.error(copy.invalidFile); return; }
+    if (f.size > 10 * 1024 * 1024) { toast.error(copy.maxSize); return; }
     setUploading(true);
     const url = await uploadImageFile(f);
     setUploading(false);
     if (url) {
       onPick(url);
       onClose();
-      toast.success("تم رفع الصورة");
+      toast.success(copy.uploaded);
     } else {
-      toast.error("فشل رفع الصورة");
+      toast.error(copy.uploadFailed);
     }
   };
 
@@ -115,7 +118,7 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
       onClick={onClose}
-      dir="rtl"
+      dir={dir}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -123,15 +126,18 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
         className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl bg-white border-2 flex flex-col"
         style={{ borderColor: BRAND.green }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={copy.title}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(34,87,57,0.15)" }}>
           <h3 className="text-lg font-extrabold" style={{ color: BRAND.green }}>
-            اختيار صورة
+            {copy.title}
           </h3>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-gray-100"
-            aria-label="إغلاق"
+            aria-label={copy.close}
           >
             <X className="w-5 h-5" />
           </button>
@@ -139,9 +145,9 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
 
         <div className="flex border-b" style={{ borderColor: "rgba(34,87,57,0.15)" }}>
           {[
-            { id: "search" as const, label: "بحث صور", icon: <Search className="w-4 h-4" /> },
-            { id: "upload" as const, label: "رفع من جهازك", icon: <Upload className="w-4 h-4" /> },
-            { id: "url" as const, label: "رابط مباشر", icon: <Globe className="w-4 h-4" /> },
+            { id: "search" as const, label: copy.searchTab, icon: <Search className="w-4 h-4" /> },
+            { id: "upload" as const, label: copy.uploadTab, icon: <Upload className="w-4 h-4" /> },
+            { id: "url" as const, label: copy.urlTab, icon: <Globe className="w-4 h-4" /> },
           ].map((t) => (
             <button
               key={t.id}
@@ -168,10 +174,10 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") doSearch(); }}
-                  placeholder="مثال: نخلة، الكعبة، أسد..."
+                  placeholder={copy.searchPlaceholder}
                   className="flex-1 px-4 py-2.5 rounded-lg border-2 focus:outline-none text-sm"
                   style={{ borderColor: "rgba(34,87,57,0.25)" }}
-                  dir="rtl"
+                  dir={dir}
                   data-testid="image-search-input"
                 />
                 <button
@@ -182,17 +188,18 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
                   data-testid="image-search-btn"
                 >
                   {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  بحث
+                  {copy.search}
                 </button>
               </div>
               {searching && (
-                <div className="flex items-center justify-center py-12 text-gray-500">
+                <div className="flex items-center justify-center py-12 text-gray-500" role="status" aria-label={copy.searching}>
                   <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="sr-only">{copy.searching}</span>
                 </div>
               )}
               {!searching && results.length === 0 && (
                 <div className="text-center py-12 text-gray-400 text-sm">
-                  ابحث عن صورة لإضافتها
+                  {copy.empty}
                 </div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -235,12 +242,15 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
                 style={{ borderColor: "rgba(34,87,57,0.4)" }}
               >
                 {uploading ? (
-                  <Loader2 className="w-12 h-12 animate-spin mx-auto" style={{ color: BRAND.green }} />
+                  <div role="status" aria-label={copy.uploading}>
+                    <Loader2 className="w-12 h-12 animate-spin mx-auto" style={{ color: BRAND.green }} />
+                    <span className="sr-only">{copy.uploading}</span>
+                  </div>
                 ) : (
                   <>
                     <Upload className="w-12 h-12 mx-auto mb-3" style={{ color: BRAND.green }} />
-                    <p className="font-bold text-gray-800 mb-1">اضغط لاختيار صورة</p>
-                    <p className="text-xs text-gray-500">PNG / JPG / WEBP — حتى 10 ميجابايت</p>
+                    <p className="font-bold text-gray-800 mb-1">{copy.chooseFile}</p>
+                    <p className="text-xs text-gray-500">{copy.fileHelp}</p>
                   </>
                 )}
               </div>
@@ -253,7 +263,7 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://example.com/image.jpg"
+                placeholder={copy.urlPlaceholder}
                 className="w-full px-4 py-2.5 rounded-lg border-2 focus:outline-none text-sm"
                 style={{ borderColor: "rgba(34,87,57,0.25)" }}
                 dir="ltr"
@@ -262,7 +272,7 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
                 <div className="rounded-lg overflow-hidden border" style={{ borderColor: "rgba(34,87,57,0.2)" }}>
                   <img
                     src={urlInput.trim()}
-                    alt="معاينة"
+                    alt={copy.preview}
                     className="w-full max-h-64 object-contain bg-gray-50"
                     onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
                   />
@@ -271,14 +281,14 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
               <button
                 onClick={() => {
                   const v = urlInput.trim();
-                  if (!v) { toast.error("ألصق رابط الصورة"); return; }
+                  if (!v) { toast.error(copy.urlRequired); return; }
                   onPick(v);
                   onClose();
                 }}
                 className="w-full px-5 py-2.5 rounded-lg font-bold text-white"
                 style={{ background: BRAND.green }}
               >
-                استخدام هذا الرابط
+                {copy.useUrl}
               </button>
             </div>
           )}
@@ -325,6 +335,8 @@ function CoverTile({
 /* ─────────────────────── Main page ─────────────────────── */
 
 export default function ArenaContentAdmin() {
+  const { t, dir } = useI18n();
+  const copy = t.arenaContent;
   const [, setLocation] = useLocation();
   const { data: teacherData, isLoading: teacherLoading } =
     useGetCurrentTeacher({ query: { retry: false, staleTime: 0 } as any });
@@ -428,14 +440,14 @@ export default function ArenaContentAdmin() {
   if (isLoggedIn === false) {
     return (
       <Layout>
-        <div className="min-h-[60vh] flex items-center justify-center p-6" dir="rtl">
+        <div className="min-h-[60vh] flex items-center justify-center p-6" dir={dir}>
           <div className="max-w-md w-full text-center bg-white rounded-2xl border-2 p-8" style={{ borderColor: BRAND.green }}>
             <Lock className="w-12 h-12 mx-auto mb-4" style={{ color: BRAND.green }} />
-            <h1 className="text-2xl font-extrabold mb-2" style={{ color: BRAND.green }}>تسجيل الدخول مطلوب</h1>
-            <p className="text-gray-600 mb-5">يجب تسجيل الدخول لإدارة محتوى تحدي حصاد.</p>
+            <h1 className="text-2xl font-extrabold mb-2" style={{ color: BRAND.green }}>{copy.authTitle}</h1>
+            <p className="text-gray-600 mb-5">{copy.authBody}</p>
             <Link href="/login">
               <button className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white" style={{ background: BRAND.green }}>
-                <LogIn className="w-4 h-4" /> تسجيل الدخول
+                <LogIn className="w-4 h-4" /> {copy.login}
               </button>
             </Link>
           </div>
@@ -448,7 +460,7 @@ export default function ArenaContentAdmin() {
 
   return (
     <Layout>
-      <div dir="rtl" className="min-h-[calc(100vh-4rem)]" style={{ background: BRAND.light }}>
+      <div dir={dir} className="min-h-[calc(100vh-4rem)]" style={{ background: BRAND.light }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-5 sm:py-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
@@ -456,16 +468,16 @@ export default function ArenaContentAdmin() {
               <button
                 onClick={() => setLocation("/teacher")}
                 className="p-2 rounded-lg hover:bg-white"
-                aria-label="رجوع"
+                aria-label={copy.back}
               >
-                <ArrowRight className="w-5 h-5" style={{ color: BRAND.green }} />
+                <ArrowRight className={`w-5 h-5 ${dir === "ltr" ? "rotate-180" : ""}`} style={{ color: BRAND.green }} />
               </button>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-extrabold truncate" style={{ color: BRAND.green }}>
-                  إدارة محتوى تحدي حصاد
+                  {copy.title}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  {isAdmin ? "أنت مدير — تدير المحتوى العام والخاص" : "فئاتك الخاصة — محفوظة في حسابك وتظهر في لعبتك"}
+                  {isAdmin ? copy.adminSubtitle : copy.teacherSubtitle}
                 </p>
               </div>
             </div>
@@ -474,13 +486,14 @@ export default function ArenaContentAdmin() {
                 onClick={() => void reload()}
                 className="p-2 rounded-lg border-2 bg-white hover:bg-gray-50"
                 style={{ borderColor: "rgba(34,87,57,0.3)" }}
-                title="تحديث"
+                title={copy.refresh}
+                aria-label={copy.refresh}
               >
                 <RefreshCw className="w-4 h-4" style={{ color: BRAND.green }} />
               </button>
               <Link href="/game/arena">
                 <button className="px-3 py-2 rounded-lg text-sm font-bold border-2 bg-white hover:bg-gray-50 inline-flex items-center gap-1.5" style={{ borderColor: BRAND.green, color: BRAND.green }}>
-                  <Eye className="w-4 h-4" /> معاينة في اللعبة
+                  <Eye className="w-4 h-4" /> {copy.previewGame}
                 </button>
               </Link>
             </div>
@@ -491,29 +504,31 @@ export default function ArenaContentAdmin() {
             <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl border text-sm" style={{ background: "#FFF9EC", borderColor: "#C9A050", color: "#7C5A0A" }}>
               <span className="text-lg shrink-0">🔒</span>
               <div>
-                <p className="font-bold mb-0.5">هذه فئاتك الخاصة فقط</p>
+                <p className="font-bold mb-0.5">{copy.privateTitle}</p>
                 <p className="font-medium opacity-80">
-                  يمكنك إنشاء أقسام وأسئلة خاصة بك وتبقى في حسابك — المحتوى العام لتحدي حصاد يُدار من المسؤول فقط ولا يظهر هنا.
+                  {copy.privateBody}
                 </p>
               </div>
             </div>
           )}
 
           {loading ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20" role="status" aria-label={copy.loading}>
               <Loader2 className="w-8 h-8 animate-spin" style={{ color: BRAND.green }} />
+              <span className="sr-only">{copy.loading}</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5">
               {/* Sections rail */}
               <aside className="lg:col-span-3 bg-white rounded-2xl border-2 p-3 lg:p-4" style={{ borderColor: "rgba(34,87,57,0.18)" }}>
                 <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="text-sm font-extrabold" style={{ color: BRAND.green }}>الأقسام</h2>
+                  <h2 className="text-sm font-extrabold" style={{ color: BRAND.green }}>{copy.sections}</h2>
                   <button
                     onClick={() => setCreatingType("section")}
                     className="p-1.5 rounded-md text-white hover:opacity-90"
                     style={{ background: BRAND.green }}
-                    title="إضافة قسم"
+                    title={copy.addSection}
+                    aria-label={copy.addSection}
                     data-testid="add-section-btn"
                   >
                     <Plus className="w-4 h-4" />
@@ -521,7 +536,7 @@ export default function ArenaContentAdmin() {
                 </div>
                 <div className="space-y-1.5 max-h-[60vh] lg:max-h-[70vh] overflow-y-auto">
                   {visibleSections.length === 0 && (
-                    <p className="text-xs text-gray-500 p-3 text-center">لا توجد أقسام بعد — أضف قسماً للبدء</p>
+                    <p className="text-xs text-gray-500 p-3 text-center">{copy.noSections}</p>
                   )}
                   {visibleSections.map(sec => {
                     const isMine = sec.teacherId === teacherId;
@@ -541,9 +556,9 @@ export default function ArenaContentAdmin() {
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-sm truncate" style={{ color: active ? BRAND.green : "#1f2937" }}>{sec.name}</div>
                           <div className="text-[10px] text-gray-500 flex items-center gap-1">
-                            {sec.isPublic ? <><Globe className="w-3 h-3" />عام</> : isMine ? <><UserIcon className="w-3 h-3" />خاص</> : "—"}
+                            {sec.isPublic ? <><Globe className="w-3 h-3" />{copy.public}</> : isMine ? <><UserIcon className="w-3 h-3" />{copy.private}</> : "—"}
                             <span>·</span>
-                            <span>{(subsBySection.get(sec.id) ?? []).length} فئة</span>
+                            <span>{copy.categoryCount.replace("{count}", String((subsBySection.get(sec.id) ?? []).length))}</span>
                           </div>
                         </div>
                       </button>
@@ -556,7 +571,7 @@ export default function ArenaContentAdmin() {
               <section className="lg:col-span-4 bg-white rounded-2xl border-2 p-3 lg:p-4" style={{ borderColor: "rgba(34,87,57,0.18)" }}>
                 <div className="flex items-center justify-between mb-3 px-1 gap-2">
                   <h2 className="text-sm font-extrabold truncate" style={{ color: BRAND.green }}>
-                    {selectedSection ? `فئات: ${selectedSection.name}` : "الفئات الفرعية"}
+                    {selectedSection ? copy.categoriesFor.replace("{name}", selectedSection.name) : copy.subcategories}
                   </h2>
                   <div className="flex items-center gap-1">
                     {selectedSection && (isAdmin || selectedSection.teacherId === teacherId) && (
@@ -565,7 +580,8 @@ export default function ArenaContentAdmin() {
                           onClick={() => setEditingCat(selectedSection)}
                           className="p-1.5 rounded-md border hover:bg-gray-50"
                           style={{ borderColor: "rgba(34,87,57,0.3)" }}
-                          title="تعديل القسم"
+                          title={copy.editSection}
+                          aria-label={copy.editSection}
                         >
                           <Pencil className="w-4 h-4" style={{ color: BRAND.green }} />
                         </button>
@@ -573,7 +589,8 @@ export default function ArenaContentAdmin() {
                           onClick={() => setConfirmDelete({ kind: "section", id: selectedSection.id, name: selectedSection.name })}
                           className="p-1.5 rounded-md border hover:bg-red-50"
                           style={{ borderColor: "rgba(220,38,38,0.3)" }}
-                          title="حذف القسم"
+                          title={copy.deleteSection}
+                          aria-label={copy.deleteSection}
                         >
                           <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
@@ -581,7 +598,8 @@ export default function ArenaContentAdmin() {
                           onClick={() => setCreatingType("sub")}
                           className="p-1.5 rounded-md text-white hover:opacity-90"
                           style={{ background: BRAND.green }}
-                          title="إضافة فئة"
+                          title={copy.addCategory}
+                          aria-label={copy.addCategory}
                           data-testid="add-sub-btn"
                         >
                           <Plus className="w-4 h-4" />
@@ -592,10 +610,10 @@ export default function ArenaContentAdmin() {
                 </div>
                 <div className="space-y-1.5 max-h-[60vh] lg:max-h-[70vh] overflow-y-auto">
                   {!selectedSection && (
-                    <p className="text-xs text-gray-500 p-3 text-center">اختر قسماً من اليمين</p>
+                    <p className="text-xs text-gray-500 p-3 text-center">{copy.chooseSection}</p>
                   )}
                   {selectedSection && subs.length === 0 && (
-                    <p className="text-xs text-gray-500 p-3 text-center">لا توجد فئات في هذا القسم</p>
+                    <p className="text-xs text-gray-500 p-3 text-center">{copy.noCategories}</p>
                   )}
                   {subs.map(sub => {
                     const active = sub.id === selectedSubId;
@@ -622,13 +640,13 @@ export default function ArenaContentAdmin() {
                                 className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black"
                                 style={{ background: "#7c3aed", color: "white", boxShadow: "0 2px 8px rgba(124,58,237,0.5)" }}
                               >
-                                🔍 اكتشف السر
+                                {copy.discoverSecret}
                               </span>
                             )}
                           </div>
                           <div className="text-[10px] text-gray-500">
-                            {count} سؤال
-                            {count < 6 && <span className="text-amber-600 font-bold"> · ينقص {6 - count}</span>}
+                            {copy.questionCount.replace("{count}", String(count))}
+                            {count < 6 && <span className="text-amber-600 font-bold">{copy.missingCount.replace("{count}", String(6 - count))}</span>}
                           </div>
                         </div>
                       </button>
@@ -641,17 +659,17 @@ export default function ArenaContentAdmin() {
               <section className="lg:col-span-5 bg-white rounded-2xl border-2 p-3 lg:p-4" style={{ borderColor: "rgba(34,87,57,0.18)" }}>
                 {!selectedSub ? (
                   <div className="text-center py-12 text-gray-500 text-sm">
-                    اختر فئة لتحرير أسئلتها
+                    {copy.chooseCategory}
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3 px-1">
                       <div className="min-w-0">
                         <h2 className="text-sm font-extrabold truncate" style={{ color: BRAND.green }}>
-                          أسئلة: {selectedSub.name}
+                          {copy.questionsFor.replace("{name}", selectedSub.name)}
                         </h2>
                         <p className="text-[11px] text-gray-500 mt-0.5">
-                          الإعداد المثالي: 200×2 · 400×2 · 600×2 = 6 أسئلة
+                          {copy.idealSetup}
                         </p>
                       </div>
                       {canEditSelectedSub && (
@@ -660,7 +678,8 @@ export default function ArenaContentAdmin() {
                             onClick={() => setEditingCat(selectedSub)}
                             className="p-1.5 rounded-md border hover:bg-gray-50"
                             style={{ borderColor: "rgba(34,87,57,0.3)" }}
-                            title="تعديل الفئة"
+                            title={copy.editCategory}
+                            aria-label={copy.editCategory}
                           >
                             <Pencil className="w-4 h-4" style={{ color: BRAND.green }} />
                           </button>
@@ -668,7 +687,8 @@ export default function ArenaContentAdmin() {
                             onClick={() => setConfirmDelete({ kind: "sub", id: selectedSub.id, name: selectedSub.name })}
                             className="p-1.5 rounded-md border hover:bg-red-50"
                             style={{ borderColor: "rgba(220,38,38,0.3)" }}
-                            title="حذف الفئة"
+                            title={copy.deleteCategory}
+                            aria-label={copy.deleteCategory}
                           >
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </button>
@@ -678,14 +698,14 @@ export default function ArenaContentAdmin() {
                             style={{ background: `linear-gradient(135deg, ${BRAND.gold}, #B8860B)` }}
                             data-testid="ai-generate-btn"
                           >
-                            <Sparkles className="w-3.5 h-3.5" /> توليد بالذكاء
+                            <Sparkles className="w-3.5 h-3.5" /> {copy.aiGenerate}
                           </button>
                         </div>
                       )}
                     </div>
 
                     {/* Slot grid */}
-                    <div className="space-y-2 max-h-[60vh] lg:max-h-[68vh] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[60vh] lg:max-h-[68vh] overflow-y-auto pe-1">
                       {POINTS.map((pt, idx) => {
                         const matching = subActs.filter(a => a.difficulty === pt);
                         const slotIdx = idx % 2;
@@ -718,7 +738,7 @@ export default function ArenaContentAdmin() {
                         if (extras.length === 0) return null;
                         return (
                           <div className="pt-3 mt-3 border-t" style={{ borderColor: "rgba(34,87,57,0.15)" }}>
-                            <div className="text-[11px] font-bold text-gray-500 mb-1.5 px-1">أسئلة إضافية</div>
+                            <div className="text-[11px] font-bold text-gray-500 mb-1.5 px-1">{copy.extraQuestions}</div>
                             {extras.map(act => (
                               <QuestionSlot
                                 key={act.id}
@@ -801,11 +821,11 @@ export default function ArenaContentAdmin() {
             onConfirm={async () => {
               if (confirmDelete.kind === "act") {
                 const ok = await deleteArenaActivity(confirmDelete.id);
-                if (ok) { toast.success("تم الحذف"); await reload(); } else toast.error("فشل الحذف");
+                if (ok) { toast.success(copy.deleted); await reload(); } else toast.error(copy.deleteFailed);
               } else {
                 const ok = await deleteArenaCategory(confirmDelete.id);
                 if (ok) {
-                  toast.success("تم الحذف");
+                  toast.success(copy.deleted);
                   if (confirmDelete.kind === "section") {
                     setSelectedSectionId(null);
                     setSelectedSubId(null);
@@ -813,7 +833,7 @@ export default function ArenaContentAdmin() {
                     setSelectedSubId(null);
                   }
                   await reload();
-                } else toast.error("فشل الحذف");
+                } else toast.error(copy.deleteFailed);
               }
               setConfirmDelete(null);
             }}
@@ -836,6 +856,7 @@ function QuestionSlot({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const copy = useI18n().t.arenaContent;
   const ptColor =
     points === 200 ? "#3b82f6" :
     points === 400 ? "#8b5cf6" :
@@ -853,14 +874,14 @@ function QuestionSlot({
         >
           {points}
         </span>
-        <span className="flex-1 text-xs text-gray-400 italic">سؤال فارغ</span>
+        <span className="flex-1 text-xs text-gray-400 italic">{copy.emptyQuestion}</span>
         {canEdit && (
           <button
             onClick={onAdd}
             className="px-2.5 py-1 rounded-md text-xs font-bold text-white inline-flex items-center gap-1"
             style={{ background: BRAND.green }}
           >
-            <Plus className="w-3 h-3" /> إضافة
+            <Plus className="w-3 h-3" /> {copy.add}
           </button>
         )}
       </div>
@@ -882,8 +903,8 @@ function QuestionSlot({
       <div className="flex-1 min-w-0">
         <div className="font-bold text-sm text-gray-800 line-clamp-2">{act.question}</div>
         <div className="text-[11px] text-gray-500 mt-0.5 truncate">
-          الإجابة: <span className="font-bold text-gray-700">{act.answer}</span>
-          {act.imageUrl && <span className="ms-2 inline-flex items-center gap-0.5 text-emerald-700"><ImageIcon className="w-3 h-3" />صورة</span>}
+          {copy.answerPrefix} <span className="font-bold text-gray-700">{act.answer}</span>
+          {act.imageUrl && <span className="ms-2 inline-flex items-center gap-0.5 text-emerald-700"><ImageIcon className="w-3 h-3" />{copy.image}</span>}
         </div>
       </div>
       {act.imageUrl && (
@@ -900,7 +921,8 @@ function QuestionSlot({
             onClick={onEdit}
             className="p-1.5 rounded border hover:bg-gray-50"
             style={{ borderColor: "rgba(34,87,57,0.25)" }}
-            title="تعديل"
+            title={copy.edit}
+            aria-label={copy.edit}
           >
             <Pencil className="w-3.5 h-3.5" style={{ color: BRAND.green }} />
           </button>
@@ -908,7 +930,8 @@ function QuestionSlot({
             onClick={onDelete}
             className="p-1.5 rounded border hover:bg-red-50"
             style={{ borderColor: "rgba(220,38,38,0.25)" }}
-            title="حذف"
+            title={copy.delete}
+            aria-label={copy.delete}
           >
             <Trash2 className="w-3.5 h-3.5 text-red-600" />
           </button>
@@ -930,6 +953,8 @@ function CategoryEditor({
   onClose: () => void;
   onSaved: (saved: DbArenaCategory | null) => void;
 }) {
+  const { t, dir } = useI18n();
+  const copy = t.arenaContent.categoryEditor;
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? "🎯");
   const [coverColor, setCoverColor] = useState(initial?.coverColor ?? BRAND.green);
@@ -938,12 +963,12 @@ function CategoryEditor({
   const [picker, setPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const titleAr = mode === "edit"
-    ? (initial?.parentId == null ? "تعديل القسم" : "تعديل الفئة")
-    : (mode === "new-section" ? "قسم جديد" : "فئة جديدة");
+  const title = mode === "edit"
+    ? (initial?.parentId == null ? copy.editSection : copy.editCategory)
+    : (mode === "new-section" ? copy.newSection : copy.newCategory);
 
   const save = async () => {
-    if (!name.trim()) { toast.error("اكتب الاسم"); return; }
+    if (!name.trim()) { toast.error(copy.nameRequired); return; }
     setSaving(true);
     const payload: Partial<DbArenaCategory> = {
       name: name.trim(),
@@ -958,10 +983,10 @@ function CategoryEditor({
       : await createArenaCategory(payload);
     setSaving(false);
     if (res) {
-      toast.success("تم الحفظ");
+      toast.success(copy.saved);
       onSaved(res);
     } else {
-      toast.error("فشل الحفظ");
+      toast.error(copy.saveFailed);
     }
   };
 
@@ -972,48 +997,51 @@ function CategoryEditor({
       className="fixed inset-0 z-[90] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
       onClick={onClose}
-      dir="rtl"
+      dir={dir}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="w-full max-w-lg bg-white rounded-2xl border-2 p-6 max-h-[90vh] overflow-y-auto"
         style={{ borderColor: BRAND.green }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-extrabold" style={{ color: BRAND.green }}>{titleAr}</h3>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+          <h3 className="text-lg font-extrabold" style={{ color: BRAND.green }}>{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100" aria-label={copy.close}><X className="w-5 h-5" /></button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">الاسم</label>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.name}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border-2 focus:outline-none text-sm"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
-              dir="rtl"
+              dir={dir}
               data-testid="cat-name-input"
             />
           </div>
 
           <div className="flex items-start gap-3">
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1.5">الغلاف</label>
+              <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.cover}</label>
               <CoverTile imageUrl={coverImageUrl} color={coverColor} emoji={emoji} onClick={() => setPicker(true)} size="lg" />
               <button onClick={() => setPicker(true)} className="text-[11px] mt-1 underline" style={{ color: BRAND.green }}>
-                {coverImageUrl ? "تغيير الصورة" : "اختر صورة"}
+                {coverImageUrl ? copy.changeImage : copy.chooseImage}
               </button>
               {coverImageUrl && (
                 <button onClick={() => setCoverImageUrl(null)} className="text-[11px] mt-1 underline text-red-600 ms-2">
-                  إزالة
+                  {copy.remove}
                 </button>
               )}
             </div>
             <div className="flex-1">
-              <label className="text-xs font-bold text-gray-700 block mb-1.5">رمز تعبيري</label>
+              <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.emoji}</label>
               <input
                 type="text"
                 value={emoji}
@@ -1021,7 +1049,7 @@ function CategoryEditor({
                 className="w-20 px-3 py-2 rounded-lg border-2 text-2xl text-center"
                 style={{ borderColor: "rgba(34,87,57,0.3)" }}
               />
-              <label className="text-xs font-bold text-gray-700 block mt-3 mb-1.5">اللون</label>
+              <label className="text-xs font-bold text-gray-700 block mt-3 mb-1.5">{copy.color}</label>
               <div className="flex flex-wrap gap-1.5">
                 {SECTION_COLORS.map(c => (
                   <button
@@ -1033,7 +1061,7 @@ function CategoryEditor({
                       borderColor: coverColor === c ? "#000" : "transparent",
                       boxShadow: coverColor === c ? "0 0 0 2px white inset" : undefined,
                     }}
-                    aria-label={c}
+                    aria-label={copy.colorAria.replace("{color}", c)}
                   />
                 ))}
               </div>
@@ -1049,7 +1077,7 @@ function CategoryEditor({
                 className="w-4 h-4"
               />
               <Globe className="w-4 h-4" style={{ color: BRAND.gold }} />
-              <span className="text-sm font-bold">محتوى عام (يراه جميع المعلمين)</span>
+              <span className="text-sm font-bold">{copy.publicContent}</span>
             </label>
           )}
 
@@ -1059,7 +1087,7 @@ function CategoryEditor({
               className="flex-1 px-4 py-2.5 rounded-lg font-bold border-2 hover:bg-gray-50"
               style={{ borderColor: "rgba(0,0,0,0.15)" }}
             >
-              إلغاء
+              {copy.cancel}
             </button>
             <button
               onClick={save}
@@ -1069,7 +1097,7 @@ function CategoryEditor({
               data-testid="save-cat-btn"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              حفظ
+              {copy.save}
             </button>
           </div>
         </div>
@@ -1107,6 +1135,8 @@ function ActivityEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t, dir } = useI18n();
+  const copy = t.arenaContent.activityEditor;
   const initialQType: QType =
     initial?.type === "audio" ? "audio" :
     initial?.type === "image" ? "image" : "text";
@@ -1166,7 +1196,7 @@ function ActivityEditor({
       setRecordSecs(0);
       timerRef.current = setInterval(() => setRecordSecs(s => s + 1), 1000);
     } catch {
-      toast.error("تعذّر الوصول للميكروفون");
+      toast.error(copy.microphoneError);
     }
   }, []);
 
@@ -1177,14 +1207,14 @@ function ActivityEditor({
     const file = new File([blob], `recording-${Date.now()}.webm`, { type: "audio/webm" });
     const url = await uploadAudioFile(file);
     setAudioUploading(false);
-    if (url) { setAudioUrl(url); toast.success("تم رفع التسجيل"); }
-    else toast.error("فشل رفع التسجيل");
+    if (url) { setAudioUrl(url); toast.success(copy.recordingUploaded); }
+    else toast.error(copy.recordingUploadFailed);
   }, [recordedUrl]);
 
   const save = async () => {
-    if (!question.trim()) { toast.error("اكتب نص السؤال أو وصف الصوت"); return; }
-    if (!answer.trim()) { toast.error("اكتب الإجابة"); return; }
-    if (qType === "audio" && !audioUrl.trim()) { toast.error("أضف رابطاً صوتياً أو سجّل صوتاً"); return; }
+    if (!question.trim()) { toast.error(copy.questionRequired); return; }
+    if (!answer.trim()) { toast.error(copy.answerRequired); return; }
+    if (qType === "audio" && !audioUrl.trim()) { toast.error(copy.audioRequired); return; }
     setSaving(true);
     const payload: Partial<DbArenaActivity> = {
       categoryId,
@@ -1200,8 +1230,8 @@ function ActivityEditor({
       ? await updateArenaActivity(initial.id, payload)
       : await createArenaActivity(payload, "manual");
     setSaving(false);
-    if (res) { toast.success("تم الحفظ"); onSaved(); }
-    else toast.error("فشل الحفظ");
+    if (res) { toast.success(copy.saved); onSaved(); }
+    else toast.error(copy.saveFailed);
   };
 
   const ytId = qType === "audio" && audioMode === "youtube" ? ytVideoId(ytInput) : null;
@@ -1212,31 +1242,34 @@ function ActivityEditor({
       className="fixed inset-0 z-[90] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
       onClick={onClose}
-      dir="rtl"
+      dir={dir}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="w-full max-w-xl bg-white rounded-2xl border-2 p-6 max-h-[90vh] overflow-y-auto"
         style={{ borderColor: BRAND.green }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={initial ? copy.editTitle : copy.newTitle}
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-extrabold" style={{ color: BRAND.green }}>
-            {initial ? "تعديل السؤال" : "سؤال جديد"}
+            {initial ? copy.editTitle : copy.newTitle}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100" aria-label={copy.close}><X className="w-5 h-5" /></button>
         </div>
 
         <div className="space-y-4">
 
           {/* ── Question type selector ── */}
           <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">نوع السؤال</label>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.type}</label>
             <div className="flex gap-2 flex-wrap">
               {([
-                { key: "text",  label: "نص",   icon: <Check className="w-3.5 h-3.5"/> },
-                { key: "image", label: "بصورة", icon: <ImageIcon className="w-3.5 h-3.5"/> },
-                { key: "audio", label: "🎵 صوت", icon: null },
+                { key: "text",  label: copy.text, icon: <Check className="w-3.5 h-3.5"/> },
+                { key: "image", label: copy.withImage, icon: <ImageIcon className="w-3.5 h-3.5"/> },
+                { key: "audio", label: copy.audio, icon: null },
               ] as { key: QType; label: string; icon: React.ReactNode }[]).map(({ key, label, icon }) => {
                 const sel = qType === key;
                 return (
@@ -1259,7 +1292,7 @@ function ActivityEditor({
 
           {/* ── Points ── */}
           <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">النقاط</label>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.points}</label>
             <div className="flex gap-2">
               {([200, 400, 600, 800] as Difficulty[]).map(d => {
                 const c = d === 200 ? "#3b82f6" : d === 400 ? "#8b5cf6" : d === 600 ? "#ef4444" : "#f59e0b";
@@ -1280,9 +1313,9 @@ function ActivityEditor({
             <div className="rounded-xl border-2 p-4 space-y-3" style={{ borderColor: "rgba(34,87,57,0.25)", background: "#f0faf4" }}>
               <div className="flex gap-2">
                 {([
-                  { m: "youtube" as AudioMode, label: "يوتيوب", icon: <Youtube className="w-4 h-4"/> },
-                  { m: "file"    as AudioMode, label: "ملف صوتي", icon: <Upload className="w-4 h-4"/> },
-                  { m: "record"  as AudioMode, label: "تسجيل", icon: <Mic className="w-4 h-4"/> },
+                  { m: "youtube" as AudioMode, label: copy.youtube, icon: <Youtube className="w-4 h-4"/> },
+                  { m: "file"    as AudioMode, label: copy.audioFile, icon: <Upload className="w-4 h-4"/> },
+                  { m: "record"  as AudioMode, label: copy.record, icon: <Mic className="w-4 h-4"/> },
                 ]).map(({ m, label, icon }) => (
                   <button key={m} onClick={() => setAudioMode(m)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all"
@@ -1297,7 +1330,7 @@ function ActivityEditor({
 
               {audioMode === "youtube" && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600">رابط يوتيوب</label>
+                  <label className="text-xs font-bold text-gray-600">{copy.youtubeUrl}</label>
                   <input
                     type="url"
                     value={ytInput}
@@ -1308,7 +1341,7 @@ function ActivityEditor({
                       const id = ytVideoId(raw);
                       setAudioUrl(id ? `yt:${id}` : raw);
                     }}
-                    placeholder="https://www.youtube.com/watch?v=..."
+                    placeholder={copy.youtubePlaceholder}
                     className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
                     style={{ borderColor: "rgba(34,87,57,0.3)" }}
                     dir="ltr"
@@ -1317,8 +1350,8 @@ function ActivityEditor({
                     <>
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold"
                         style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green, border: "1px solid rgba(34,87,57,0.2)" }}>
-                        ✓ تم التعرف على معرّف الفيديو: <span dir="ltr" className="font-mono">{ytId}</span>
-                        <span className="mr-auto text-xs font-normal opacity-70">سيُشغَّل صوتاً فقط</span>
+                        ✓ {copy.youtubeRecognized} <span dir="ltr" className="font-mono">{ytId}</span>
+                        <span className="ms-auto text-xs font-normal opacity-70">{copy.audioOnly}</span>
                       </div>
                       <div className="mt-1">
                         <AudioPlayer src={`yt:${ytId}`} />
@@ -1326,18 +1359,18 @@ function ActivityEditor({
                     </>
                   )}
                   {ytInput && !ytId && (
-                    <p className="text-xs text-red-600 font-medium">⚠ رابط يوتيوب غير صالح</p>
+                    <p className="text-xs text-red-600 font-medium">⚠ {copy.invalidYoutube}</p>
                   )}
                 </div>
               )}
 
               {audioMode === "file" && (
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-600">رفع ملف صوتي (mp3 / ogg / wav / m4a)</label>
+                  <label className="text-xs font-bold text-gray-600">{copy.uploadAudio}</label>
                   <label className="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer hover:bg-white transition-colors"
                     style={{ borderColor: "rgba(34,87,57,0.4)", color: BRAND.green }}>
                     {audioUploading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Upload className="w-5 h-5"/>}
-                    <span className="text-sm font-bold">{audioUploading ? "جارٍ الرفع…" : "اختر ملفاً"}</span>
+                    <span className="text-sm font-bold">{audioUploading ? copy.uploading : copy.chooseFile}</span>
                     <input
                       type="file"
                       accept="audio/*"
@@ -1346,12 +1379,12 @@ function ActivityEditor({
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 30 * 1024 * 1024) { toast.error("الحجم الأقصى 30 ميجا"); return; }
+                        if (file.size > 30 * 1024 * 1024) { toast.error(copy.audioMaxSize); return; }
                         setAudioUploading(true);
                         const url = await uploadAudioFile(file);
                         setAudioUploading(false);
-                        if (url) { setAudioUrl(url); toast.success("تم رفع الملف"); }
-                        else toast.error("فشل الرفع");
+                        if (url) { setAudioUrl(url); toast.success(copy.fileUploaded); }
+                        else toast.error(copy.uploadFailed);
                       }}
                     />
                   </label>
@@ -1370,14 +1403,14 @@ function ActivityEditor({
                       <button onClick={startRecording}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white text-sm"
                         style={{ background: "#dc2626" }}>
-                        <Mic className="w-4 h-4"/> ابدأ التسجيل
+                        <Mic className="w-4 h-4"/> {copy.startRecording}
                       </button>
                     ) : (
                       <button onClick={stopRecording}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white text-sm animate-pulse"
                         style={{ background: "#dc2626" }}>
                         <Square className="w-4 h-4"/>
-                        إيقاف ({Math.floor(recordSecs/60).toString().padStart(2,"0")}:{(recordSecs%60).toString().padStart(2,"0")})
+                        {copy.stopRecording.replace("{time}", `${Math.floor(recordSecs/60).toString().padStart(2,"0")}:${(recordSecs%60).toString().padStart(2,"0")}`)}
                       </button>
                     )}
                   </div>
@@ -1391,7 +1424,7 @@ function ActivityEditor({
                         style={{ background: BRAND.green }}
                       >
                         {audioUploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
-                        رفع التسجيل وحفظه
+                        {copy.uploadRecording}
                       </button>
                     </div>
                   )}
@@ -1409,44 +1442,44 @@ function ActivityEditor({
           {/* ── Question text ── */}
           <div>
             <label className="text-xs font-bold text-gray-700 block mb-1.5">
-              {qType === "audio" ? "وصف السؤال / ما المطلوب؟" : "نص السؤال"}
+              {qType === "audio" ? copy.audioQuestion : copy.questionText}
             </label>
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               rows={2}
-              placeholder={qType === "audio" ? "مثال: ما اسم المطرب الذي يغني هذه الأغنية؟" : ""}
+              placeholder={qType === "audio" ? copy.audioPlaceholder : ""}
               className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
-              dir="rtl"
+              dir={dir}
               data-testid="q-input"
             />
           </div>
 
           {/* ── Answer ── */}
           <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">الإجابة الصحيحة</label>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.correctAnswer}</label>
             <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
-              dir="rtl" data-testid="a-input"
+              dir={dir} data-testid="a-input"
             />
           </div>
 
           {/* ── Hint ── */}
           <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">تلميح (اختياري)</label>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.hint}</label>
             <input type="text" value={hint ?? ""} onChange={(e) => setHint(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
-              dir="rtl"
+              dir={dir}
             />
           </div>
 
           {/* ── Image (only when type=image) ── */}
           {qType === "image" && (
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1.5">الصورة</label>
+              <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.image}</label>
               <div className="flex items-start gap-3">
                 {imageUrl ? (
                   <div className="relative">
@@ -1455,7 +1488,8 @@ function ActivityEditor({
                       onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
                     />
                     <button onClick={() => setImageUrl(null)}
-                      className="absolute -top-2 -end-2 bg-red-500 text-white rounded-full p-1">
+                      className="absolute -top-2 -end-2 bg-red-500 text-white rounded-full p-1"
+                      aria-label={copy.removeImage}>
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -1465,14 +1499,14 @@ function ActivityEditor({
                     style={{ borderColor: "rgba(34,87,57,0.4)", color: BRAND.green }}
                     data-testid="add-image-btn"
                   >
-                    <ImageIcon className="w-6 h-6"/>أضف صورة
+                    <ImageIcon className="w-6 h-6"/>{copy.addImage}
                   </button>
                 )}
                 {imageUrl && (
                   <button onClick={() => setPicker(true)}
                     className="px-3 py-2 rounded-md text-xs font-bold border-2 hover:bg-gray-50"
                     style={{ borderColor: BRAND.green, color: BRAND.green }}>
-                    تغيير
+                    {copy.change}
                   </button>
                 )}
               </div>
@@ -1482,13 +1516,13 @@ function ActivityEditor({
           <div className="flex gap-2 pt-2">
             <button onClick={onClose}
               className="flex-1 px-4 py-2.5 rounded-lg font-bold border-2 hover:bg-gray-50"
-              style={{ borderColor: "rgba(0,0,0,0.15)" }}>إلغاء</button>
+              style={{ borderColor: "rgba(0,0,0,0.15)" }}>{copy.cancel}</button>
             <button onClick={save} disabled={saving}
               className="flex-1 px-4 py-2.5 rounded-lg font-bold text-white inline-flex items-center justify-center gap-2 disabled:opacity-50"
               style={{ background: BRAND.green }}
               data-testid="save-act-btn">
               {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Check className="w-4 h-4"/>}
-              حفظ
+              {copy.save}
             </button>
           </div>
         </div>
@@ -1514,6 +1548,8 @@ function AiGenerateModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t, dir, lang } = useI18n();
+  const copy = t.arenaContent.ai;
   const [topic, setTopic] = useState(categoryName);
   const [notes, setNotes] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -1522,19 +1558,19 @@ function AiGenerateModal({
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const generate = async () => {
-    if (!topic.trim()) { toast.error("اكتب الموضوع"); return; }
+    if (!topic.trim()) { toast.error(copy.topicRequired); return; }
     setGenerating(true);
     const r = await aiGenerateArenaQuestions({
       topic: topic.trim(),
       count: 6,
       includeBonus800: false,
-      language: "ar",
+      language: lang,
       notes: notes.trim() || undefined,
     });
     setGenerating(false);
     refreshCreditsBalance();
     if (r.error || r.questions.length === 0) {
-      toast.error(r.error || "فشل التوليد");
+      toast.error(r.error || copy.failed);
       return;
     }
     setGenerated(r.questions.map(q => ({ ...q, selected: true })));
@@ -1542,7 +1578,7 @@ function AiGenerateModal({
 
   const saveSelected = async () => {
     const sel = generated.filter(g => g.selected);
-    if (sel.length === 0) { toast.error("اختر سؤالاً واحداً على الأقل"); return; }
+    if (sel.length === 0) { toast.error(copy.selectRequired); return; }
     setSaving(true);
     let saved = 0;
     for (const g of sel) {
@@ -1557,7 +1593,7 @@ function AiGenerateModal({
       if (r) saved++;
     }
     setSaving(false);
-    toast.success(`تم حفظ ${saved} سؤال`);
+    toast.success(copy.savedCount.replace("{count}", String(saved)));
     onSaved();
   };
 
@@ -1567,44 +1603,47 @@ function AiGenerateModal({
       className="fixed inset-0 z-[90] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
       onClick={onClose}
-      dir="rtl"
+      dir={dir}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="w-full max-w-2xl bg-white rounded-2xl border-2 p-6 max-h-[90vh] overflow-y-auto"
         style={{ borderColor: BRAND.gold }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={copy.title}
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-extrabold inline-flex items-center gap-2" style={{ color: BRAND.gold }}>
-            <Sparkles className="w-5 h-5" /> توليد 6 أسئلة بالذكاء الاصطناعي
+            <Sparkles className="w-5 h-5" /> {copy.title}
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100" aria-label={copy.close}><X className="w-5 h-5" /></button>
         </div>
 
         {generated.length === 0 ? (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1.5">الموضوع</label>
+              <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.topic}</label>
               <input
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
                 style={{ borderColor: "rgba(217,165,33,0.5)" }}
-                dir="rtl"
+                dir={dir}
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1.5">ملاحظات (اختياري)</label>
+              <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.notes}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                placeholder="مثال: تركّز على المرحلة الابتدائية"
+                placeholder={copy.notesPlaceholder}
                 className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
                 style={{ borderColor: "rgba(217,165,33,0.5)" }}
-                dir="rtl"
+                dir={dir}
               />
             </div>
             <div className="flex gap-2 pt-2">
@@ -1613,7 +1652,7 @@ function AiGenerateModal({
                 className="flex-1 px-4 py-2.5 rounded-lg font-bold border-2"
                 style={{ borderColor: "rgba(0,0,0,0.15)" }}
               >
-                إلغاء
+                {copy.cancel}
               </button>
               <button
                 onClick={generate}
@@ -1622,13 +1661,13 @@ function AiGenerateModal({
                 style={{ background: `linear-gradient(135deg, ${BRAND.gold}, #B8860B)` }}
               >
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                توليد
+                {copy.generate}
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-gray-600 mb-2">راجع الأسئلة وحدد ما تريد حفظه:</p>
+            <p className="text-xs text-gray-600 mb-2">{copy.review}</p>
             {generated.map((g, i) => {
               const c = g.difficulty === 200 ? "#3b82f6" : g.difficulty === 400 ? "#8b5cf6" : g.difficulty === 600 ? "#ef4444" : "#f59e0b";
               return (
@@ -1646,8 +1685,8 @@ function AiGenerateModal({
                   <span className="px-2 py-0.5 rounded text-white text-xs font-extrabold shrink-0" style={{ background: c }}>{g.difficulty}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold text-gray-800">{g.q}</div>
-                    <div className="text-xs text-gray-600 mt-0.5">الإجابة: <span className="font-bold">{g.a}</span></div>
-                    {g.hint && <div className="text-[11px] text-gray-500 mt-0.5">تلميح: {g.hint}</div>}
+                    <div className="text-xs text-gray-600 mt-0.5">{copy.answer} <span className="font-bold">{g.a}</span></div>
+                    {g.hint && <div className="text-[11px] text-gray-500 mt-0.5">{copy.hint} {g.hint}</div>}
                   </div>
                 </label>
               );
@@ -1658,7 +1697,7 @@ function AiGenerateModal({
                 className="px-4 py-2.5 rounded-lg font-bold border-2"
                 style={{ borderColor: "rgba(0,0,0,0.15)" }}
               >
-                توليد مرة أخرى
+                {copy.regenerate}
               </button>
               <button
                 onClick={saveSelected}
@@ -1668,7 +1707,7 @@ function AiGenerateModal({
                 data-testid="ai-save-btn"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                حفظ المحدد ({generated.filter(g => g.selected).length})
+                {copy.saveSelected.replace("{count}", String(generated.filter(g => g.selected).length))}
               </button>
             </div>
           </div>
@@ -1688,31 +1727,36 @@ function ConfirmDeleteModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const { t, dir } = useI18n();
+  const copy = t.arenaContent.confirm;
   const [busy, setBusy] = useState(false);
-  const label = target.kind === "section" ? `قسم "${target.name}"` :
-                target.kind === "sub" ? `فئة "${target.name}"` : "هذا السؤال";
+  const label = target.kind === "section" ? copy.section.replace("{name}", target.name ?? "") :
+                target.kind === "sub" ? copy.category.replace("{name}", target.name ?? "") : copy.question;
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[95] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
       onClick={onClose}
-      dir="rtl"
+      dir={dir}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="w-full max-w-md bg-white rounded-2xl border-2 p-6"
         style={{ borderColor: "#dc2626" }}
         onClick={(e) => e.stopPropagation()}
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={copy.title}
       >
         <div className="flex items-start gap-3 mb-4">
           <AlertTriangle className="w-8 h-8 text-red-600 shrink-0" />
           <div>
-            <h3 className="text-lg font-extrabold text-red-700">تأكيد الحذف</h3>
-            <p className="text-sm text-gray-700 mt-1">سيتم حذف {label} نهائياً.</p>
+            <h3 className="text-lg font-extrabold text-red-700">{copy.title}</h3>
+            <p className="text-sm text-gray-700 mt-1">{copy.body.replace("{label}", label)}</p>
             {target.kind === "section" && childCount > 0 && (
               <p className="text-xs text-red-700 mt-2 font-bold">
-                ⚠️ سيتم حذف {childCount} فئة فرعية وكل أسئلتها أيضاً
+                {copy.children.replace("{count}", String(childCount))}
               </p>
             )}
           </div>
@@ -1724,7 +1768,7 @@ function ConfirmDeleteModal({
             className="flex-1 px-4 py-2.5 rounded-lg font-bold border-2"
             style={{ borderColor: "rgba(0,0,0,0.15)" }}
           >
-            إلغاء
+            {copy.cancel}
           </button>
           <button
             onClick={async () => { setBusy(true); await onConfirm(); setBusy(false); }}
@@ -1733,7 +1777,7 @@ function ConfirmDeleteModal({
             data-testid="confirm-delete-btn"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            حذف نهائي
+            {copy.delete}
           </button>
         </div>
       </motion.div>

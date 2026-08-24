@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { useI18n } from "@/lib/i18n";
 
 interface RevealData {
   team: "A" | "B";
@@ -15,6 +16,7 @@ const PROPHETS_CATEGORY_ID = 2;
 const AUTO_HIDE_SECONDS = 30;
 
 export default function SecretReveal() {
+  const { t, dir } = useI18n();
   const [location] = useLocation();
   const token =
     new URLSearchParams(window.location.search).get("token") ??
@@ -32,16 +34,16 @@ export default function SecretReveal() {
   const [autoHideSeconds, setAutoHideSeconds] = useState(AUTO_HIDE_SECONDS);
 
   useEffect(() => {
-    if (!token) { setError("رمز غير صالح"); setLoading(false); return; }
+    if (!token) { setError(t.secretGame.invalidCode); setLoading(false); return; }
     fetch(`/api/secret-game/reveal/${encodeURIComponent(token)}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) { setError(d.error); return; }
         setData(d as RevealData);
       })
-      .catch(() => setError("تعذّر الاتصال"))
+      .catch(() => setError(t.secretGame.connectionFailed))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, t.secretGame.invalidCode, t.secretGame.connectionFailed]);
 
   useEffect(() => {
     if (!data) return;
@@ -94,13 +96,13 @@ export default function SecretReveal() {
   if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "#0d0d1a" }}>
-        <p className="text-xl text-red-300 font-bold text-center dir-rtl">{error ?? "خطأ غير معروف"}</p>
+        <p className="text-xl text-red-300 font-bold text-center" dir={dir}>{error ?? t.secretGame.unknownError}</p>
       </div>
     );
   }
 
   const isProphet = data.categoryId === PROPHETS_CATEGORY_ID;
-  const displayName = isProphet ? `${data.secret.name} عليه السلام` : data.secret.name;
+  const displayName = isProphet ? `${data.secret.name} ${t.secretGame.peaceBeUponHim}` : data.secret.name;
   const bg = data.teamColor;
   const rawImage = data.secret.image;
   const proxiedImage = rawImage ? `/api/image-proxy?url=${encodeURIComponent(rawImage)}` : null;
@@ -109,7 +111,7 @@ export default function SecretReveal() {
   return (
     <div
       className="min-h-screen flex flex-col select-none"
-      dir="rtl"
+      dir={dir}
       style={{ background: "#0d0d1a" }}
       onClick={() => revealed && setRevealed(false)}
     >
@@ -130,7 +132,7 @@ export default function SecretReveal() {
             >
               {data.team === "A" ? "أ" : "ب"}
             </div>
-            <p className="text-white/60 text-lg font-bold">اضغط لإعادة العرض</p>
+            <p className="text-white/60 text-lg font-bold">{t.secretGame.tapToReveal}</p>
           </motion.div>
         ) : (
           /* ── Revealed: image + name only ── */

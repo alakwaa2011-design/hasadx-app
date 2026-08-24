@@ -28,6 +28,7 @@ import {
   Maximize2,
   LineChart,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_GREEN = "#225739";
@@ -125,6 +126,8 @@ interface ResultsPayload {
    presentation session. Lists every activity that exists on the deck
    with answer counts, % correct, and a per-student response table. */
 export default function PresentationResults() {
+  const { lang, dir, t } = useI18n();
+  const r = t.presentation.results;
   const params = useParams<{ sessionId: string }>();
   const [, setLocation] = useLocation();
   const sid = Number(params.sessionId);
@@ -144,21 +147,21 @@ export default function PresentationResults() {
       })
       .then((j: ResultsPayload) => setData(j))
       .catch((e: Error) => {
-        if (e.message === "forbidden") setError("هذه النتائج مخصّصة لصاحب الجلسة فقط");
-        else setError("تعذّر تحميل النتائج");
-        toast.error("تعذّر تحميل النتائج");
+        if (e.message === "forbidden") setError(r.forbidden);
+        else setError(t.presentation.loadError);
+        toast.error(t.presentation.loadError);
       })
       .finally(() => setLoading(false));
-  }, [sid]);
+  }, [sid, r.forbidden, t.presentation.loadError]);
 
   if (loading) {
     return <div className="fixed inset-0 bg-slate-950 flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
   }
   if (error || !data) {
     return (
-      <div dir="rtl" className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
-        <div>{error ?? "تعذّر تحميل النتائج"}</div>
-        <Button onClick={() => setLocation("/teacher/presentations")} variant="outline">العودة للعروض</Button>
+      <div dir={dir} className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+        <div>{error ?? t.presentation.loadError}</div>
+        <Button onClick={() => setLocation("/teacher/presentations")} variant="outline">{t.presentation.back}</Button>
       </div>
     );
   }
@@ -168,7 +171,7 @@ export default function PresentationResults() {
   const durationMin = data.summary.durationMin ?? (startedAt && endedAt ? Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000)) : null);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 text-white p-3 sm:p-6">
+    <div dir={dir} className="min-h-screen bg-slate-950 text-white p-3 sm:p-6">
       <div className="max-w-5xl mx-auto space-y-5">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -178,24 +181,24 @@ export default function PresentationResults() {
                 onClick={() => setLocation(`/teacher/presentations/${data.deck.id}/sessions`)}
                 className="text-xs sm:text-sm text-white/60 hover:text-white inline-flex items-center gap-1"
               >
-                <ChevronRight className="w-4 h-4" /> كل الجلسات
+                <ChevronRight className="w-4 h-4" /> {r.allSessions}
               </button>
               <span className="text-white/30">·</span>
               <button
                 onClick={() => setLocation(`/teacher/presentations/${data.deck.id}`)}
                 className="text-xs sm:text-sm text-white/60 hover:text-white"
               >
-                المحرّر
+                {r.editor}
               </button>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold break-words">{data.deck.title}</h1>
             <div className="text-xs sm:text-sm text-white/60 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>PIN <span className="tabular-nums" style={{ color: BRAND_GOLD }}>{data.session.pin}</span></span>
               <span>·</span>
-              <span>{data.session.status === "ended" ? "منتهية" : "قيد التشغيل"}</span>
-              {durationMin != null && (<><span>·</span><span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{durationMin} د</span></>)}
-              {data.session.targetClassName && (<><span>·</span><span>صف {data.session.targetClassName}</span></>)}
-              {data.session.mode === "guest" && (<><span>·</span><span>وضع الضيوف</span></>)}
+              <span>{data.session.status === "ended" ? r.ended : r.inProgress}</span>
+              {durationMin != null && (<><span>·</span><span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{durationMin} {r.minutes}</span></>)}
+              {data.session.targetClassName && (<><span>·</span><span>{r.class} {data.session.targetClassName}</span></>)}
+              {data.session.mode === "guest" && (<><span>·</span><span>{r.guestMode}</span></>)}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -206,7 +209,7 @@ export default function PresentationResults() {
               className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
             >
               <Download className="w-4 h-4 ml-1" />
-              CSV الإجابات
+              {r.answersCsv}
             </Button>
             <Button
               onClick={() => { window.location.href = `${API_BASE}/api/presentations/sessions/${sid}/students.csv`; }}
@@ -215,7 +218,7 @@ export default function PresentationResults() {
               className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
             >
               <Download className="w-4 h-4 ml-1" />
-              CSV الطلاب
+              {r.studentsCsv}
             </Button>
             <Button
               onClick={() => setLocation(`/teacher/presentations/${data.deck.id}/sessions`)}
@@ -224,7 +227,7 @@ export default function PresentationResults() {
               className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
             >
               <History className="w-4 h-4 ml-1" />
-              السابقة
+              {r.previous}
             </Button>
             <Button
               onClick={() => setLocation(`/teacher/presentations/${data.deck.id}/compare`)}
@@ -233,7 +236,7 @@ export default function PresentationResults() {
               className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
             >
               <GitCompare className="w-4 h-4 ml-1" />
-              مقارنة
+              {r.compare}
             </Button>
           </div>
         </div>
@@ -257,11 +260,11 @@ export default function PresentationResults() {
         {/* Per-activity breakdown */}
         <div className="flex items-center gap-2 text-sm text-white/70 pt-2">
           <BarChart3 className="w-4 h-4" />
-          <span className="font-bold">تفاصيل الأنشطة ({data.activities.length})</span>
+          <span className="font-bold">{r.activityDetails} ({data.activities.length})</span>
         </div>
         {data.activities.length === 0 ? (
           <div className="rounded-xl bg-white/5 border border-white/10 p-10 text-center text-white/70">
-            لا توجد أنشطة في هذا العرض.
+            {r.noActivities}
           </div>
         ) : (
           data.activities.map((a, i) => (
@@ -289,6 +292,8 @@ export default function PresentationResults() {
 
 // ─── Summary card with the 4 main numbers ─────────────────────────────
 function SummaryCard({ summary }: { summary: Summary }) {
+  const { t } = useI18n();
+  const r = t.presentation.results;
   const tile = (icon: React.ReactNode, label: string, value: string, sub?: string, accent?: string) => (
     <div className="rounded-xl bg-white/5 border border-white/10 p-3 sm:p-4 flex items-center gap-3">
       <div
@@ -309,30 +314,30 @@ function SummaryCard({ summary }: { summary: Summary }) {
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       {tile(
         <Users className="w-5 h-5" />,
-        "المشاركون",
+        r.participants,
         String(summary.participantsCount),
-        summary.classSize != null ? `من أصل ${summary.classSize}` : "وضع الضيوف",
+        summary.classSize != null ? `${r.outOf} ${summary.classSize}` : r.guestMode,
         "#6ba184",
       )}
       {tile(
         <Target className="w-5 h-5" />,
-        "نسبة المشاركة",
+        r.participationRate,
         summary.participationPct != null ? `${summary.participationPct}%` : "—",
-        summary.classSize != null ? `${summary.participantsCount} / ${summary.classSize}` : "غير متاح",
+        summary.classSize != null ? `${summary.participantsCount} / ${summary.classSize}` : r.unavailable,
         BRAND_GOLD,
       )}
       {tile(
         <Trophy className="w-5 h-5" />,
-        "متوسط الصحة",
+        r.averageCorrectness,
         summary.avgScorePct != null ? `${summary.avgScorePct}%` : "—",
-        `${summary.scorableActivities} نشاط مُقَيَّم`,
+        `${summary.scorableActivities} ${r.scoredActivities}`,
         "#6ba184",
       )}
       {tile(
         <BarChart3 className="w-5 h-5" />,
-        "إجمالي الإجابات",
+        r.totalAnswers,
         String(summary.totalAnswers),
-        `${summary.totalActivities} نشاط · ${summary.durationMin ?? "—"} د`,
+        `${summary.totalActivities} ${r.activity} · ${summary.durationMin ?? "—"} ${r.minutes}`,
         "#a78bfa",
       )}
     </div>
@@ -347,10 +352,12 @@ function InsightsSection({
   insights: InsightsPayload;
   activities: ActivityResult[];
 }) {
+  const { t } = useI18n();
+  const r = t.presentation.results;
   const fmtSec = (n: number | null) => {
     if (n == null) return "—";
-    if (n < 60) return `${n} ث`;
-    return `${Math.floor(n / 60)} د ${n % 60} ث`;
+    if (n < 60) return `${n} ${r.seconds}`;
+    return `${Math.floor(n / 60)} ${r.minutes} ${n % 60} ${r.seconds}`;
   };
 
   const tile = (icon: React.ReactNode, label: string, body: React.ReactNode, accent?: string) => (
@@ -381,48 +388,48 @@ function InsightsSection({
     <div className="rounded-2xl bg-gradient-to-br from-emerald-950/30 to-slate-900/40 border border-emerald-500/10 p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
         <Lightbulb className="w-4 h-4" style={{ color: BRAND_GOLD }} />
-        <h2 className="font-bold text-sm">رؤى تربوية</h2>
-        <span className="text-[10px] text-white/40">قراءة هادئة لأداء الجلسة</span>
+        <h2 className="font-bold text-sm">{r.educationalInsights}</h2>
+        <span className="text-[10px] text-white/40">{r.insightsSubtitle}</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {tile(
           <TrendingDown className="w-4 h-4" />,
-          "السؤال الأصعب",
+          r.hardestQuestion,
           hardest ? (
             <div>
               <div className="font-bold text-white/95 break-words text-[13px] line-clamp-2">{hardest.prompt || "—"}</div>
               <div className="text-[11px] text-white/55 mt-1 tabular-nums">
-                {hardest.correctPct}% صحيح · شريحة {hardest.slideIndex + 1}
+                {hardest.correctPct}% {r.correct} · {r.slide} {hardest.slideIndex + 1}
               </div>
             </div>
-          ) : <div className="text-white/50 text-[12px]">لا يوجد بيانات</div>,
+          ) : <div className="text-white/50 text-[12px]">{r.noData}</div>,
           "#fda4af",
         )}
 
         {tile(
           <Activity className="w-4 h-4" />,
-          "الشريحة الأكثر تفاعلاً",
+          r.mostEngagedSlide,
           eng ? (
             <div>
-              <div className="font-bold text-white/95 tabular-nums">شريحة {eng.slideIndex + 1}</div>
+              <div className="font-bold text-white/95 tabular-nums">{r.slide} {eng.slideIndex + 1}</div>
               <div className="text-[11px] text-white/55 mt-1 tabular-nums">
-                {eng.participants} طالب · {slideAnswers} إجابة
+                {eng.participants} {r.student} · {slideAnswers} {r.answer}
               </div>
             </div>
-          ) : <div className="text-white/50 text-[12px]">لا يوجد</div>,
+          ) : <div className="text-white/50 text-[12px]">{r.noData}</div>,
           "#6ba184",
         )}
 
         {tile(
           <Target className="w-4 h-4" />,
-          "نسبة المشاركة",
+          r.participationRate,
           <div>
             <div className="font-black text-2xl tabular-nums" style={{ color: BRAND_GOLD }}>
               {insights.participationPct != null ? `${insights.participationPct}%` : "—"}
             </div>
             <div className="text-[11px] text-white/55 mt-1">
-              {insights.participationPct != null ? "من طلاب الفصل" : "وضع الضيوف"}
+              {insights.participationPct != null ? r.classStudents : r.guestMode}
             </div>
           </div>,
           BRAND_GOLD,
@@ -430,47 +437,47 @@ function InsightsSection({
 
         {tile(
           <Trophy className="w-4 h-4" />,
-          "نسبة النجاح",
+          r.successRate,
           <div>
             <div className="font-black text-2xl tabular-nums" style={{ color: "#99c1ab" }}>
               {insights.successPct != null ? `${insights.successPct}%` : "—"}
             </div>
-            <div className="text-[11px] text-white/55 mt-1">متوسط الإجابات الصحيحة</div>
+            <div className="text-[11px] text-white/55 mt-1">{r.averageCorrectAnswers}</div>
           </div>,
           "#6ba184",
         )}
 
         {tile(
           <Hourglass className="w-4 h-4" />,
-          "متوسط زمن الإجابة",
+          r.averageAnswerTime,
           <div>
             <div className="font-black text-2xl tabular-nums">{fmtSec(insights.avgAnswerSec)}</div>
-            <div className="text-[11px] text-white/55 mt-1">لكل سؤال (تقديري)</div>
+            <div className="text-[11px] text-white/55 mt-1">{r.perQuestionEstimate}</div>
           </div>,
           "#a78bfa",
         )}
 
         {tile(
           <BarChart3 className="w-4 h-4" />,
-          "متوسط الفصل",
+          r.classAverage,
           <div>
             <div className="font-black text-2xl tabular-nums" style={{ color: BRAND_GOLD }}>
               {insights.classAvgPct != null ? `${insights.classAvgPct}%` : "—"}
             </div>
-            <div className="text-[11px] text-white/55 mt-1">مرجع للمقارنة الفردية</div>
+            <div className="text-[11px] text-white/55 mt-1">{r.individualComparisonReference}</div>
           </div>,
           BRAND_GOLD,
         )}
 
         {tile(
           <UserMinus className="w-4 h-4" />,
-          "لم يشاركوا",
+          r.didNotParticipate,
           insights.nonResponders.length === 0 ? (
-            <div className="text-white/55 text-[12px]">{insights.participationPct != null ? "شارك الجميع 🌱" : "—"}</div>
+            <div className="text-white/55 text-[12px]">{insights.participationPct != null ? r.everyoneParticipated : "—"}</div>
           ) : (
             <div className="space-y-1">
               <div className="text-[11px] text-white/55 tabular-nums">
-                {insights.nonResponders.length} طالب
+                {insights.nonResponders.length} {r.student}
               </div>
               <div className="flex flex-wrap gap-1 max-h-16 overflow-hidden">
                 {insights.nonResponders.slice(0, 6).map((r) => (
@@ -492,9 +499,9 @@ function InsightsSection({
 
         {tile(
           <TrendingDown className="w-4 h-4" />,
-          "أقل ٣ مشاركة",
+          r.lowestParticipation,
           insights.lowestParticipants.length === 0 ? (
-            <div className="text-white/55 text-[12px]">شارك الجميع بالكامل 🌱</div>
+            <div className="text-white/55 text-[12px]">{r.everyoneFullyParticipated}</div>
           ) : (
             <div className="space-y-1">
               {insights.lowestParticipants.map((s) => (
@@ -516,11 +523,13 @@ function InsightsSection({
 
 // ─── Hardest activities (top 3 by error rate) ─────────────────────────
 function HardestSection({ rows }: { rows: HardestRow[] }) {
+  const { t } = useI18n();
+  const r = t.presentation.results;
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
       <div className="p-3 sm:p-4 border-b border-white/10 flex items-center gap-2">
         <TrendingDown className="w-4 h-4 text-rose-300" />
-        <h2 className="font-bold">الأسئلة الأصعب</h2>
+        <h2 className="font-bold">{r.hardestQuestions}</h2>
         <span className="text-xs text-white/50">({rows.length})</span>
       </div>
       <div className="divide-y divide-white/5">
@@ -534,16 +543,16 @@ function HardestSection({ rows }: { rows: HardestRow[] }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs text-white/50 mb-0.5">
-                {r.slideIndex >= 0 ? `شريحة ${r.slideIndex + 1}` : "نشاط محذوف"}
+                {r.slideIndex >= 0 ? `${t.presentation.results.slide} ${r.slideIndex + 1}` : t.presentation.results.deletedActivity}
               </div>
-              <div className="font-bold text-white/95 break-words text-sm">{r.prompt || "(بدون نص)"}</div>
+              <div className="font-bold text-white/95 break-words text-sm">{r.prompt || t.presentation.results.noText}</div>
             </div>
             <div className="text-end flex-shrink-0">
               <div className="text-lg font-black tabular-nums" style={{ color: "#fda4af" }}>
                 {r.correctPct}%
               </div>
               <div className="text-[10px] text-white/50">
-                {r.correct}/{r.answered} صحيح
+                {r.correct}/{r.answered} {t.presentation.results.correct}
               </div>
             </div>
           </div>
@@ -555,25 +564,27 @@ function HardestSection({ rows }: { rows: HardestRow[] }) {
 
 // ─── Students table — one row per studentKey ──────────────────────────
 function StudentsCard({ students, onSelect }: { students: StudentRow[]; onSelect: (studentKey: string) => void }) {
+  const { t } = useI18n();
+  const r = t.presentation.results;
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
       <div className="p-3 sm:p-4 border-b border-white/10 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-emerald-300" />
-          <h2 className="font-bold">الطلاب</h2>
+          <h2 className="font-bold">{r.students}</h2>
           <span className="text-xs text-white/50">({students.length})</span>
         </div>
-        <div className="text-[11px] text-white/50">اضغط على اسم طالب لعرض تفاصيله</div>
+        <div className="text-[11px] text-white/50">{r.selectStudentHint}</div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-white/5 text-white/60 text-xs">
             <tr>
-              <th className="text-start p-2 px-3 sm:px-4">الطالب</th>
-              <th className="text-start p-2">النوع</th>
-              <th className="text-start p-2 tabular-nums">الإجابات</th>
-              <th className="text-start p-2 tabular-nums">الصحيحة</th>
-              <th className="text-start p-2 tabular-nums">النسبة</th>
+              <th className="text-start p-2 px-3 sm:px-4">{r.student}</th>
+              <th className="text-start p-2">{r.type}</th>
+              <th className="text-start p-2 tabular-nums">{r.answers}</th>
+              <th className="text-start p-2 tabular-nums">{r.correctAnswers}</th>
+              <th className="text-start p-2 tabular-nums">{r.percentage}</th>
               <th className="text-start p-2"></th>
             </tr>
           </thead>
@@ -588,7 +599,7 @@ function StudentsCard({ students, onSelect }: { students: StudentRow[]; onSelect
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onSelect(s.studentKey); }}
-                    aria-label={`عرض تفاصيل إجابات ${s.name}`}
+                    aria-label={r.viewStudentAnswers.replace("{name}", s.name)}
                     className="text-start hover:text-emerald-300 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded"
                   >
                     {s.name}
@@ -597,11 +608,11 @@ function StudentsCard({ students, onSelect }: { students: StudentRow[]; onSelect
                 <td className="p-2">
                   {s.kind === "class" ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-300">
-                      من الفصل
+                      {r.fromClass}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300">
-                      ضيف
+                      {r.guest}
                     </span>
                   )}
                 </td>
@@ -639,6 +650,8 @@ function StudentsCard({ students, onSelect }: { students: StudentRow[]; onSelect
 
 // ─── Per-activity card (existing structure preserved) ─────────────────
 function ActivityCard({ activity, index }: { activity: ActivityResult; index: number }) {
+  const { lang, t } = useI18n();
+  const tr = t.presentation.results;
   const { prompt, options, correctIndex, counts, answered, correct, correctPct, responses, slideIndex, skipped, avgResponseSec } = activity;
   const maxCount = Math.max(1, ...Object.values(counts));
   const wrong = correctIndex != null ? Math.max(0, answered - correct) : 0;
@@ -651,8 +664,8 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
 
   const fmtSec = (n: number | null) => {
     if (n == null) return "—";
-    if (n < 60) return `${n} ث`;
-    return `${Math.floor(n / 60)} د ${n % 60} ث`;
+    if (n < 60) return `${n} ${tr.seconds}`;
+    return `${Math.floor(n / 60)} ${tr.minutes} ${n % 60} ${tr.seconds}`;
   };
 
   return (
@@ -660,17 +673,17 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
       <div className="p-4 border-b border-white/10 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-xs text-white/50 mb-1">
-            النشاط {index}{slideIndex >= 0 ? ` · شريحة ${slideIndex + 1}` : ""}
+            {tr.activity} {index}{slideIndex >= 0 ? ` · ${tr.slide} ${slideIndex + 1}` : ""}
           </div>
-          <div className="font-bold text-white/95 break-words">{prompt || "(بدون نص)"}</div>
+          <div className="font-bold text-white/95 break-words">{prompt || tr.noText}</div>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <div className="rounded-lg bg-white/5 px-3 py-1.5">
-            <span className="text-white/60">إجابات:</span> <b>{answered}</b>
+            <span className="text-white/60">{tr.answers}:</span> <b>{answered}</b>
           </div>
           {correctPct != null && (
             <div className="rounded-lg bg-emerald-500/10 text-emerald-300 px-3 py-1.5">
-              {correctPct}% صحيح ({correct}/{answered})
+              {correctPct}% {tr.correct} ({correct}/{answered})
             </div>
           )}
         </div>
@@ -679,28 +692,28 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
       {/* Mini analytics — slim 3-tone progress + correct/wrong/skip + avg time */}
       <div className="px-4 pt-3">
         <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-white/5">
-          {correctW > 0 && <div className="h-full bg-emerald-500/70" style={{ width: `${correctW}%` }} title="صحيح" />}
-          {wrongW > 0 && <div className="h-full bg-rose-500/60" style={{ width: `${wrongW}%` }} title="خطأ" />}
-          {skipW > 0 && <div className="h-full bg-white/15" style={{ width: `${skipW}%` }} title="لم يجب" />}
+          {correctW > 0 && <div className="h-full bg-emerald-500/70" style={{ width: `${correctW}%` }} title={tr.correct} />}
+          {wrongW > 0 && <div className="h-full bg-rose-500/60" style={{ width: `${wrongW}%` }} title={tr.incorrect} />}
+          {skipW > 0 && <div className="h-full bg-white/15" style={{ width: `${skipW}%` }} title={tr.noAnswer} />}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-white/55">
           <span className="inline-flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500/70 inline-block" />
-            <span className="tabular-nums">{correct} صحيح</span>
+            <span className="tabular-nums">{correct} {tr.correct}</span>
           </span>
           {correctIndex != null && (
             <span className="inline-flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-rose-500/60 inline-block" />
-              <span className="tabular-nums">{wrong} خطأ</span>
+              <span className="tabular-nums">{wrong} {tr.incorrect}</span>
             </span>
           )}
           <span className="inline-flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-white/30 inline-block" />
-            <span className="tabular-nums">{skipped} لم يجب</span>
+            <span className="tabular-nums">{skipped} {tr.noAnswer}</span>
           </span>
           <span className="inline-flex items-center gap-1 mr-auto">
             <Hourglass className="w-3 h-3" />
-            <span className="tabular-nums">متوسط الزمن: {fmtSec(avgResponseSec)}</span>
+            <span className="tabular-nums">{tr.averageTime}: {fmtSec(avgResponseSec)}</span>
           </span>
         </div>
       </div>
@@ -737,10 +750,10 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
           <table className="w-full text-sm">
             <thead className="bg-white/5 text-white/60 text-xs">
               <tr>
-                <th className="text-start p-2 px-4">الطالب</th>
-                <th className="text-start p-2">الإجابة</th>
-                <th className="text-start p-2">الحالة</th>
-                <th className="text-start p-2 px-4">الوقت</th>
+                <th className="text-start p-2 px-4">{tr.student}</th>
+                <th className="text-start p-2">{tr.answer}</th>
+                <th className="text-start p-2">{tr.status}</th>
+                <th className="text-start p-2 px-4">{tr.time}</th>
               </tr>
             </thead>
             <tbody>
@@ -753,15 +766,15 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
                     <td className="p-2 text-white/85 break-words max-w-xs">{ans}</td>
                     <td className="p-2">
                       {r.isCorrect === true ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 className="w-4 h-4" /> صحيح</span>
+                        <span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 className="w-4 h-4" /> {tr.correct}</span>
                       ) : r.isCorrect === false ? (
-                        <span className="inline-flex items-center gap-1 text-rose-300"><XCircle className="w-4 h-4" /> خطأ</span>
+                        <span className="inline-flex items-center gap-1 text-rose-300"><XCircle className="w-4 h-4" /> {tr.incorrect}</span>
                       ) : (
                         <span className="text-white/50">—</span>
                       )}
                     </td>
                     <td className="p-2 px-4 text-white/50 tabular-nums">
-                      {new Date(r.createdAt).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(r.createdAt).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}
                     </td>
                   </tr>
                 );
@@ -770,7 +783,7 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
           </table>
         </div>
       ) : (
-        <div className="p-4 text-center text-white/50 text-sm">لا توجد إجابات على هذا النشاط</div>
+        <div className="p-4 text-center text-white/50 text-sm">{tr.noActivityAnswers}</div>
       )}
     </div>
   );
@@ -811,6 +824,8 @@ export function StudentDetailModal({
   classAvgPct: number | null;
   onClose: () => void;
 }) {
+  const { lang, dir, t } = useI18n();
+  const r = t.presentation.results;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -874,19 +889,19 @@ export function StudentDetailModal({
   const correct = rows.filter((r) => r.isCorrect === true).length;
   const total = rows.length;
   const pct = answered > 0 ? Math.round((correct / answered) * 100) : null;
-  const studentName = student?.name ?? "طالب";
+  const studentName = student?.name ?? r.student;
 
   const handlePrint = () => {
     const esc = (s: string | null | undefined) =>
       String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
     const fmtTime = (d: Date | null) =>
-      d ? d.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—";
+      d ? d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—";
     const fmtResp = (n: number | null) =>
-      n == null ? "—" : n < 60 ? `${n} ث` : `${Math.floor(n / 60)} د ${n % 60} ث`;
+      n == null ? "—" : n < 60 ? `${n} ${r.seconds}` : `${Math.floor(n / 60)} ${r.minutes} ${n % 60} ${r.seconds}`;
     const statusCell = (r: StudentActivityRow) => {
-      if (r.studentAnswer == null) return '<span style="color:#94a3b8">لم يُجِب</span>';
-      if (r.isCorrect === true) return '<span style="color:#225739;font-weight:bold">صحيح ✓</span>';
-      if (r.isCorrect === false) return '<span style="color:#b91c1c;font-weight:bold">خطأ ✗</span>';
+      if (r.studentAnswer == null) return `<span style="color:#94a3b8">${t.presentation.results.noAnswer}</span>`;
+      if (r.isCorrect === true) return `<span style="color:#225739;font-weight:bold">${t.presentation.results.correct} ✓</span>`;
+      if (r.isCorrect === false) return `<span style="color:#b91c1c;font-weight:bold">${t.presentation.results.incorrect} ✗</span>`;
       return "—";
     };
     const rowsHtml = rows
@@ -894,8 +909,8 @@ export function StudentDetailModal({
         (r, i) => `
         <tr>
           <td class="num">${i + 1}</td>
-          <td>${r.slideIndex >= 0 ? `شريحة ${r.slideIndex + 1}` : "—"}</td>
-          <td class="prompt">${esc(r.prompt) || "(بدون نص)"}</td>
+          <td>${r.slideIndex >= 0 ? `${t.presentation.results.slide} ${r.slideIndex + 1}` : "—"}</td>
+          <td class="prompt">${esc(r.prompt) || t.presentation.results.noText}</td>
           <td>${r.studentAnswer == null ? '<span style="color:#94a3b8">—</span>' : esc(r.studentAnswer)}</td>
           <td>${esc(r.correctText) || '<span style="color:#94a3b8">—</span>'}</td>
           <td>${statusCell(r)}</td>
@@ -905,7 +920,7 @@ export function StudentDetailModal({
       )
       .join("");
 
-    const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
+    const html = `<!doctype html><html lang="${lang}" dir="${dir}"><head><meta charset="utf-8"/>
 <title>${esc(studentName)} — ${esc(deckTitle)}</title>
 <style>
   @page { size: A4; margin: 14mm; }
@@ -928,31 +943,31 @@ export function StudentDetailModal({
   .noprint { position: fixed; top: 8px; left: 8px; }
   .noprint button { font: inherit; padding: 6px 12px; border: 1px solid ${BRAND_GREEN}; background: ${BRAND_GREEN}; color: #fff; border-radius: 6px; cursor: pointer; }
 </style></head><body>
-<div class="noprint"><button onclick="window.print()">طباعة</button></div>
-<h1>تفاصيل إجابات الطالب</h1>
-<div class="meta"><b>الطالب:</b> ${esc(studentName)}</div>
-<div class="meta"><b>العرض:</b> ${esc(deckTitle)} · <b>PIN:</b> ${esc(sessionPin)}</div>
+    <div class="noprint"><button onclick="window.print()">${r.print}</button></div>
+<h1>${r.studentDetails}</h1>
+<div class="meta"><b>${r.student}:</b> ${esc(studentName)}</div>
+<div class="meta"><b>${r.deck}:</b> ${esc(deckTitle)} · <b>PIN:</b> ${esc(sessionPin)}</div>
 <div class="summary">
-  <div class="stat">المُجابة<b>${answered} / ${total}</b></div>
-  <div class="stat">الصحيحة<b>${correct}</b></div>
-  <div class="stat">النسبة<b>${pct != null ? pct + "%" : "—"}</b></div>
+  <div class="stat">${r.answered}<b>${answered} / ${total}</b></div>
+  <div class="stat">${r.correctAnswers}<b>${correct}</b></div>
+  <div class="stat">${r.percentage}<b>${pct != null ? pct + "%" : "—"}</b></div>
 </div>
 <table>
   <thead>
     <tr>
-      <th>#</th><th>الشريحة</th><th>السؤال</th><th>إجابة الطالب</th>
-      <th>الإجابة الصحيحة</th><th>الحالة</th><th>الوقت</th><th>زمن الاستجابة (تقديري)</th>
+      <th>#</th><th>${r.slide}</th><th>${r.hardestQuestion}</th><th>${r.studentAnswer}</th>
+      <th>${r.correctAnswers}</th><th>${r.status}</th><th>${r.time}</th><th>${r.responseTimeEstimate}</th>
     </tr>
   </thead>
-  <tbody>${rowsHtml || '<tr><td colspan="8" style="text-align:center;color:#64748b">لا توجد أنشطة.</td></tr>'}</tbody>
+  <tbody>${rowsHtml || `<tr><td colspan="8" style="text-align:center;color:#64748b">${r.noActivities}</td></tr>`}</tbody>
 </table>
-<div class="footer">حصاد · ${new Date().toLocaleString("ar")}</div>
+<div class="footer">Hasad · ${new Date().toLocaleString(lang)}</div>
 <script>window.addEventListener("load",function(){setTimeout(function(){window.print();},250);});</script>
 </body></html>`;
 
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) {
-      toast.error("فشل فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة.");
+      toast.error(r.printPopupError);
       return;
     }
     w.document.open();
@@ -966,17 +981,17 @@ export function StudentDetailModal({
       return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
     };
     const fmtTime = (d: Date | null) =>
-      d ? d.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+      d ? d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
     const status = (r: StudentActivityRow) =>
-      r.studentAnswer == null ? "لم يُجِب" : r.isCorrect === true ? "صحيح" : r.isCorrect === false ? "خطأ" : "";
+      r.studentAnswer == null ? t.presentation.results.noAnswer : r.isCorrect === true ? t.presentation.results.correct : r.isCorrect === false ? t.presentation.results.incorrect : "";
     const headerLines = [
-      `# الطالب: ${studentName}`,
-      `# العرض: ${deckTitle}`,
+      `# ${r.student}: ${studentName}`,
+      `# ${r.deck}: ${deckTitle}`,
       `# PIN: ${sessionPin}`,
-      `# الصحيحة: ${correct} من ${answered} مُجابة (من أصل ${total})${pct != null ? ` · النسبة ${pct}%` : ""}`,
+      `# ${r.correctAnswers}: ${r.correctSummary.replace("{correct}", String(correct)).replace("{answered}", String(answered)).replace("{total}", String(total))}${pct != null ? ` · ${r.percentage} ${pct}%` : ""}`,
       "",
     ];
-    const cols = ["#", "الشريحة", "السؤال", "إجابة الطالب", "الإجابة الصحيحة", "الحالة", "الوقت", "زمن الاستجابة (ث)"];
+    const cols = ["#", r.slide, r.question, r.studentAnswer, r.correctAnswer, r.status, r.time, r.responseTimeSeconds];
     const dataLines = rows.map((r, i) =>
       [
         i + 1,
@@ -1006,7 +1021,7 @@ export function StudentDetailModal({
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-stretch sm:items-center justify-center p-0 sm:p-6"
       onClick={onClose}
     >
@@ -1021,24 +1036,24 @@ export function StudentDetailModal({
               onClick={onClose}
               className="text-xs text-white/60 hover:text-white inline-flex items-center gap-1 mb-1"
             >
-              <ChevronRight className="w-4 h-4" /> العودة لنتائج الجلسة
+              <ChevronRight className="w-4 h-4" /> {r.closeResults}
             </button>
             <h2 className="text-lg sm:text-xl font-bold text-white break-words">
-              {student?.name ?? "طالب"}
+              {student?.name ?? r.student}
             </h2>
             <div className="text-xs text-white/60 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               {student?.kind === "class" ? (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-300">
-                  من الفصل
+                  {r.fromClass}
                 </span>
               ) : (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300">
-                  ضيف
+                  {r.guest}
                 </span>
               )}
               <span>·</span>
               <span className="tabular-nums">
-                <b>{correct}</b> صحيح من <b>{answered}</b> مُجابة (من أصل {total})
+                {r.answeredSummary.replace("{correct}", String(correct)).replace("{answered}", String(answered)).replace("{total}", String(total))}
               </span>
               {pct != null && (
                 <>
@@ -1063,18 +1078,18 @@ export function StudentDetailModal({
             <button
               type="button"
               onClick={handlePrint}
-              aria-label="طباعة تفاصيل الطالب"
-              title="طباعة"
+              aria-label={r.printDetails}
+              title={r.print}
               className="h-9 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white inline-flex items-center gap-1 text-xs font-bold"
             >
               <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">طباعة</span>
+              <span className="hidden sm:inline">{r.print}</span>
             </button>
             <button
               type="button"
               onClick={handleDownloadCsv}
-              aria-label="تنزيل تفاصيل الطالب بصيغة CSV"
-              title="تنزيل CSV"
+              aria-label={r.downloadDetailsCsv}
+              title={r.downloadCsv}
               className="h-9 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white inline-flex items-center gap-1 text-xs font-bold"
             >
               <Download className="w-4 h-4" />
@@ -1085,12 +1100,12 @@ export function StudentDetailModal({
                 href={`/p/results/${sessionId}/students/${encodeURIComponent(studentKey)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="عرض موسّع في صفحة مستقلة"
-                title="عرض موسّع"
+                aria-label={r.expandedViewAria}
+                title={r.expandedView}
                 className="h-9 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white inline-flex items-center gap-1 text-xs font-bold"
               >
                 <Maximize2 className="w-4 h-4" />
-                <span className="hidden sm:inline">عرض موسّع</span>
+                <span className="hidden sm:inline">{r.expandedView}</span>
               </a>
             )}
             {student?.kind === "class" && student?.classStudentId != null ? (
@@ -1098,27 +1113,27 @@ export function StudentDetailModal({
                 href={`/teacher/students/${student.classStudentId}/timeline`}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="سجل تطور الطالب عبر العروض"
-                title="سجل تطور الطالب"
+                aria-label={r.progressHistoryAria}
+                title={r.progressHistory}
                 className="h-9 px-2.5 rounded-lg border inline-flex items-center gap-1 text-xs font-bold"
                 style={{ background: "rgba(217,165,33,0.15)", borderColor: "rgba(217,165,33,0.4)", color: BRAND_GOLD }}
               >
                 <LineChart className="w-4 h-4" />
-                <span className="hidden sm:inline">📈 سجل تطور الطالب</span>
+                <span className="hidden sm:inline">📈 {r.progressHistory}</span>
               </a>
             ) : student?.kind === "guest" ? (
               <span
-                title="الضيوف بلا سجل دائم"
+                title={r.guestsNoHistory}
                 className="h-9 px-2.5 rounded-lg bg-white/5 border border-white/10 text-white/40 inline-flex items-center gap-1 text-xs font-bold cursor-not-allowed"
               >
                 <LineChart className="w-4 h-4" />
-                <span className="hidden sm:inline">الضيوف بلا سجل دائم</span>
+                <span className="hidden sm:inline">{r.guestsNoHistory}</span>
               </span>
             ) : null}
             <button
               onClick={onClose}
               className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center"
-              aria-label="إغلاق"
+              aria-label={r.close}
             >
               <X className="w-5 h-5" />
             </button>
@@ -1135,13 +1150,13 @@ export function StudentDetailModal({
             <div className="p-3 sm:p-4 border-b border-white/10 bg-emerald-950/10">
               <div className="flex items-center gap-2 mb-3">
                 <Lightbulb className="w-4 h-4" style={{ color: BRAND_GOLD }} />
-                <h3 className="text-sm font-bold text-white/90">رؤى عن الطالب</h3>
+                <h3 className="text-sm font-bold text-white/90">{r.studentInsights}</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Comparison bars */}
                 <div className="rounded-xl bg-white/[0.04] border border-white/10 p-3">
-                  <div className="text-[11px] text-white/55 font-bold mb-2">مقارنة بمتوسط الفصل</div>
+                  <div className="text-[11px] text-white/55 font-bold mb-2">{r.comparedToClassAverage}</div>
                   {(() => {
                     const stuPct = pct ?? 0;
                     const cls = classAvgPct ?? 0;
@@ -1159,7 +1174,7 @@ export function StudentDetailModal({
                         </div>
                         <div>
                           <div className="flex items-center justify-between text-[11px] mb-1">
-                            <span className="text-white/70">متوسط الفصل</span>
+                            <span className="text-white/70">{r.classAverage}</span>
                             <span className="tabular-nums font-bold text-white/95">{classAvgPct != null ? `${classAvgPct}%` : "—"}</span>
                           </div>
                           <div className="h-2 rounded-full bg-white/5 overflow-hidden">
@@ -1172,13 +1187,13 @@ export function StudentDetailModal({
                               <>
                                 <TrendingUp className="w-3 h-3 text-emerald-300" />
                                 <span className="text-emerald-300/90 tabular-nums font-bold">+{gap}</span>
-                                <span>نقطة فوق المتوسط</span>
+                                <span>{r.pointsAboveAverage}</span>
                               </>
                             ) : (
                               <>
                                 <TrendingDown className="w-3 h-3 text-rose-300" />
                                 <span className="text-rose-300/90 tabular-nums font-bold">{gap}</span>
-                                <span>نقطة تحت المتوسط</span>
+                                <span>{r.pointsBelowAverage}</span>
                               </>
                             )}
                           </div>
@@ -1192,8 +1207,8 @@ export function StudentDetailModal({
                 <div className="grid grid-cols-1 gap-2">
                   <div className="rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15 p-3">
                     <div className="text-[11px] text-emerald-300 font-bold mb-1.5 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> نقاط القوة
-                      <span className="text-white/40 font-normal">· إجابات سريعة وصحيحة</span>
+                      <CheckCircle2 className="w-3 h-3" /> {r.strengths}
+                      <span className="text-white/40 font-normal">· {r.quickCorrectAnswers}</span>
                     </div>
                     {(() => {
                       const strengths = rows
@@ -1206,16 +1221,16 @@ export function StudentDetailModal({
                         })
                         .slice(0, 3);
                       if (strengths.length === 0) {
-                        return <div className="text-[11px] text-white/45">لا توجد إجابات صحيحة بعد</div>;
+                        return <div className="text-[11px] text-white/45">{r.noCorrectAnswers}</div>;
                       }
                       return (
                         <ul className="space-y-1">
                           {strengths.map((r) => (
                             <li key={r.elementId} className="text-[12px] text-white/85 flex items-center gap-2" title={r.prompt}>
-                              <span className="truncate flex-1">· {r.prompt || "(بدون نص)"}</span>
+                              <span className="truncate flex-1">· {r.prompt || t.presentation.results.noText}</span>
                               {r.responseSec != null && (
                                 <span className="tabular-nums text-emerald-300/80 text-[10px] flex-shrink-0">
-                                  {r.responseSec < 60 ? `${r.responseSec}ث` : `${Math.floor(r.responseSec / 60)}د`}
+                                  {r.responseSec < 60 ? `${r.responseSec}${t.presentation.results.seconds}` : `${Math.floor(r.responseSec / 60)}${t.presentation.results.minutes}`}
                                 </span>
                               )}
                             </li>
@@ -1226,8 +1241,8 @@ export function StudentDetailModal({
                   </div>
                   <div className="rounded-xl bg-rose-500/[0.06] border border-rose-500/15 p-3">
                     <div className="text-[11px] text-rose-300 font-bold mb-1.5 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" /> نقاط للتحسين
-                      <span className="text-white/40 font-normal">· الأبطأ أولاً</span>
+                      <XCircle className="w-3 h-3" /> {r.improvements}
+                      <span className="text-white/40 font-normal">· {r.slowestFirst}</span>
                     </div>
                     {(() => {
                       const weak = rows
@@ -1236,16 +1251,16 @@ export function StudentDetailModal({
                         .sort((a, b) => (b.responseSec ?? 0) - (a.responseSec ?? 0))
                         .slice(0, 3);
                       if (weak.length === 0) {
-                        return <div className="text-[11px] text-white/45">لا توجد إجابات خاطئة 🌱</div>;
+                        return <div className="text-[11px] text-white/45">{r.noIncorrectAnswers}</div>;
                       }
                       return (
                         <ul className="space-y-1">
                           {weak.map((r) => (
                             <li key={r.elementId} className="text-[12px] text-white/85 flex items-center gap-2" title={r.prompt}>
-                              <span className="truncate flex-1">· {r.prompt || "(بدون نص)"}</span>
+                              <span className="truncate flex-1">· {r.prompt || t.presentation.results.noText}</span>
                               {r.responseSec != null && (
                                 <span className="tabular-nums text-rose-300/80 text-[10px] flex-shrink-0">
-                                  {r.responseSec < 60 ? `${r.responseSec}ث` : `${Math.floor(r.responseSec / 60)}د`}
+                                  {r.responseSec < 60 ? `${r.responseSec}${t.presentation.results.seconds}` : `${Math.floor(r.responseSec / 60)}${t.presentation.results.minutes}`}
                                 </span>
                               )}
                             </li>
@@ -1260,7 +1275,7 @@ export function StudentDetailModal({
           )}
 
           {rows.length === 0 ? (
-            <div className="p-10 text-center text-white/60 text-sm">لا توجد أنشطة في هذا العرض.</div>
+            <div className="p-10 text-center text-white/60 text-sm">{r.noActivities}</div>
           ) : (
             <ol className="divide-y divide-white/5">
               {rows.map((r, i) => (
@@ -1271,19 +1286,19 @@ export function StudentDetailModal({
                   <div className="min-w-0 flex-1 space-y-2">
                     <div>
                       <div className="text-[11px] text-white/50 mb-0.5">
-                        {r.slideIndex >= 0 ? `شريحة ${r.slideIndex + 1}` : "نشاط محذوف"}
+                        {r.slideIndex >= 0 ? `${t.presentation.results.slide} ${r.slideIndex + 1}` : t.presentation.results.deletedActivity}
                       </div>
                       <div className="font-bold text-white/95 break-words text-sm">
-                        {r.prompt || "(بدون نص)"}
+                        {r.prompt || t.presentation.results.noText}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       <div className="rounded-lg bg-white/5 border border-white/10 p-2">
-                        <div className="text-white/50 mb-1">إجابة الطالب</div>
+                        <div className="text-white/50 mb-1">{t.presentation.results.studentAnswer}</div>
                         {r.studentAnswer == null ? (
                           <div className="inline-flex items-center gap-1 text-white/50">
-                            <MinusCircle className="w-4 h-4" /> لم يُجِب
+                            <MinusCircle className="w-4 h-4" /> {t.presentation.results.noAnswer}
                           </div>
                         ) : (
                           <div
@@ -1302,7 +1317,7 @@ export function StudentDetailModal({
                         )}
                       </div>
                       <div className="rounded-lg bg-white/5 border border-white/10 p-2">
-                        <div className="text-white/50 mb-1">الإجابة الصحيحة</div>
+                        <div className="text-white/50 mb-1">{t.presentation.results.correctAnswer}</div>
                         {r.correctText != null ? (
                           <div className="inline-flex items-start gap-1 text-emerald-300 font-bold break-words">
                             <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -1322,8 +1337,8 @@ export function StudentDetailModal({
                         </span>
                       )}
                       {r.responseSec != null && (
-                        <span className="tabular-nums" title="محسوب من الفارق الزمني عن الإجابة السابقة">
-                          زمن الاستجابة (تقديري): {r.responseSec < 60 ? `${r.responseSec} ث` : `${Math.floor(r.responseSec / 60)} د ${r.responseSec % 60} ث`}
+                        <span className="tabular-nums" title={t.presentation.results.responseTimeHint}>
+                          {t.presentation.results.responseTimeEstimate}: {r.responseSec < 60 ? `${r.responseSec} ${t.presentation.results.seconds}` : `${Math.floor(r.responseSec / 60)} ${t.presentation.results.minutes} ${r.responseSec % 60} ${t.presentation.results.seconds}`}
                         </span>
                       )}
                     </div>
@@ -1343,7 +1358,7 @@ export function StudentDetailModal({
             className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
           >
             <ChevronRight className="w-4 h-4 ml-1" />
-            العودة لنتائج الجلسة
+            {r.closeResults}
           </Button>
         </div>
       </div>

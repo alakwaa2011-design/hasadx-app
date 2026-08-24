@@ -194,7 +194,7 @@ function newSlide(type: SlideType): Slide {
 
 export default function PresentationEditPage() {
   const { id } = useParams<{ id: string }>();
-  const { lang } = useI18n();
+  const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
 
   const [pres, setPres] = useState<Presentation | null>(null);
@@ -401,6 +401,24 @@ export default function PresentationEditPage() {
   const exportPDF = () => {
     if (!pres) return;
     setShowExportMenu(false);
+    const exportLabels =
+      lang === "ar"
+        ? {
+            question: "سؤال",
+            questions: "أسئلة",
+            interactiveActivity: "نشاط تفاعلي",
+            game: "لعبة",
+            discussion: "نقاش",
+          }
+        : {
+            question: "Question",
+            questions: "Questions",
+            interactiveActivity: "Interactive activity",
+            game: "Game",
+            discussion: "Discussion",
+          };
+    const questionCountLabel = (count: number) =>
+      count === 1 ? exportLabels.question : exportLabels.questions;
     const themeGrad: Record<string, string> = {
       harvest: "linear-gradient(135deg,#468064,#225739 50%,#d97706)",
       ocean: "linear-gradient(135deg,#0ea5e9,#1d4ed8 50%,#3730a3)",
@@ -467,7 +485,7 @@ export default function PresentationEditPage() {
             })
             .join("");
           body = `
-          <div style="font-size:18px;color:#fde047;margin-bottom:12px">❓ سؤال</div>
+          <div style="font-size:18px;color:#fde047;margin-bottom:12px">❓ ${exportLabels.question}</div>
           <h2 style="font-size:36px;font-weight:900;margin:0 0 24px">${escape(q.text)}</h2>
           ${opts}
           ${q.explanation ? `<div style="margin-top:20px;padding:14px;background:rgba(0,0,0,.25);border-radius:10px;font-size:16px">💡 ${escape(q.explanation)}</div>` : ""}`;
@@ -475,10 +493,10 @@ export default function PresentationEditPage() {
           body = `
           <div style="text-align:center">
             <div style="font-size:80px;margin-bottom:16px">🎮</div>
-            <h2 style="font-size:44px;font-weight:900;margin:0 0 16px">${title || "نشاط تفاعلي"}</h2>
+            <h2 style="font-size:44px;font-weight:900;margin:0 0 16px">${title || exportLabels.interactiveActivity}</h2>
             <p style="font-size:22px;opacity:.9;margin:0 0 20px">${escape(s.activity.instructions || "")}</p>
             <div style="display:inline-block;padding:12px 24px;border-radius:12px;background:rgba(255,255,255,.15);font-weight:bold">
-              لعبة: ${escape(s.activity.gameType)} · ${s.activity.questions.length} سؤال
+              ${exportLabels.game}: ${escape(s.activity.gameType)} · ${s.activity.questions.length} ${questionCountLabel(s.activity.questions.length)}
             </div>
           </div>`;
         } else if (s.type === "discussion") {
@@ -489,7 +507,7 @@ export default function PresentationEditPage() {
             )
             .join("");
           body = `
-          <div style="font-size:18px;color:#fde047;margin-bottom:12px">💬 نقاش</div>
+          <div style="font-size:18px;color:#fde047;margin-bottom:12px">💬 ${exportLabels.discussion}</div>
           <h2 style="font-size:38px;font-weight:900;margin:0 0 24px">${escape(s.discussionPrompt || s.title || "")}</h2>
           ${points ? `<ul style="padding-inline-start:32px">${points}</ul>` : ""}`;
         } else if (s.type === "image") {
@@ -516,7 +534,7 @@ export default function PresentationEditPage() {
       .join("");
 
     const html = `<!doctype html>
-<html dir="rtl" lang="ar">
+<html dir="${dir}" lang="${lang}">
 <head>
   <meta charset="utf-8" />
   <title>${escape(pres.title)}</title>

@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useI18n } from "@/lib/i18n";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -47,6 +48,7 @@ const GEOMETRIC_PATTERN =
 /* ─── NavBar ──────────────────────────────────────────────────────────────── */
 export function IslamicNavBar() {
   const [, setLocation] = useLocation();
+  const { t, dir } = useI18n();
   const [isTeacher, setIsTeacher] = useState(false);
 
   useEffect(() => {
@@ -80,16 +82,16 @@ export function IslamicNavBar() {
   };
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20, justifyContent: "flex-start" }} dir="rtl">
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20, justifyContent: "flex-start" }} dir={dir}>
       <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else setLocation("/"); }} style={linkStyle}>
-        ← رجوع
+        ← {t.islamic.back}
       </button>
       <button type="button" onClick={() => setLocation("/")} style={linkStyle}>
-        🏠 القائمة الرئيسية
+        🏠 {t.islamic.home}
       </button>
       {isTeacher && (
         <button type="button" onClick={() => setLocation("/teacher")} style={linkStyle}>
-          📋 لوحة التحكم
+          📋 {t.islamic.dashboard}
         </button>
       )}
     </div>
@@ -100,6 +102,7 @@ export function IslamicNavBar() {
 export function IslamicShell({ children, title, subtitle, topSlot }: {
   children: ReactNode; title?: string; subtitle?: string; topSlot?: ReactNode;
 }) {
+  const { lang, dir } = useI18n();
   useEffect(() => {
     if (document.getElementById("islamic-cairo-font")) return;
     const link = document.createElement("link");
@@ -110,7 +113,7 @@ export function IslamicShell({ children, title, subtitle, topSlot }: {
   }, []);
 
   return (
-    <div dir="rtl" lang="ar" style={{
+    <div dir={dir} lang={lang} style={{
       minHeight: "100vh",
       fontFamily: "'Cairo', system-ui, sans-serif",
       color: "#2c1a06",
@@ -300,9 +303,10 @@ export function GhostButton({ children, onClick, style, disabled }: {
 /* ─── BackLink ────────────────────────────────────────────────────────────── */
 export function BackLink() {
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
   return (
     <GhostButton onClick={() => setLocation("/islamic")} style={{ marginBottom: 16 }}>
-      ← العودة
+      ← {t.islamic.back}
     </GhostButton>
   );
 }

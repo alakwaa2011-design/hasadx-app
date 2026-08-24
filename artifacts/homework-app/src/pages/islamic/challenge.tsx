@@ -6,6 +6,7 @@ import {
   ISLAMIC_GOLD, playCorrect, playWrong,
 } from "./_shared";
 import AudioPlayer from "@/components/AudioPlayer";
+import { useI18n } from "@/lib/i18n";
 
 interface Section {
   id: number; name: string; ownerId?: number | null;
@@ -35,6 +36,7 @@ const SYNC_DELAY_MS = 4000;
 
 /* ── Shared category picker ──────────────────────────────────── */
 function CategoryPicker({ onPick, title, expertsOnly }: { onPick: (id: number) => void; title: string; expertsOnly?: boolean }) {
+  const { t } = useI18n();
   const [sections, setSections] = useState<Section[]>([]);
   const [myName, setMyName] = useState("");
   const [myDesc, setMyDesc] = useState("");
@@ -80,7 +82,7 @@ function CategoryPicker({ onPick, title, expertsOnly }: { onPick: (id: number) =
                   >
                     <div style={{ fontWeight: 700, fontSize: "clamp(13px, 3.5vw, 15px)" }}>{c.name}</div>
                     <div style={{ fontSize: "clamp(11px, 3vw, 13px)", opacity: 0.8 }}>
-                      {expertsOnly ? `${hard} سؤال صعب` : `${c.questionCount} سؤال`}
+                      {expertsOnly ? `${hard} ${t.islamic.hardQuestions}` : `${c.questionCount} ${t.islamic.questions}`}
                     </div>
                     {expertsOnly && !eligible && (
                       <div style={{ fontSize: 11, color: "#fca5a5", marginTop: 4 }}>
@@ -99,16 +101,16 @@ function CategoryPicker({ onPick, title, expertsOnly }: { onPick: (id: number) =
         <div style={{ fontWeight: 700, color: ISLAMIC_GOLD, marginBottom: 10, fontSize: 15 }}>➕ أنشئ فئة خاصة بك</div>
         <input
           value={myName} onChange={(e) => setMyName(e.target.value)}
-          placeholder="اسم الفئة (مثال: أسئلة مادتي)"
+          placeholder={t.islamic.personalCategoryName}
           style={{ display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8", border: `1px solid ${ISLAMIC_GOLD}55`, borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontFamily: "inherit", fontSize: 14, boxSizing: "border-box" }}
         />
         <input
           value={myDesc} onChange={(e) => setMyDesc(e.target.value)}
-          placeholder="وصف اختياري"
+          placeholder={t.islamic.optionalDescription}
           style={{ display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8", border: `1px solid ${ISLAMIC_GOLD}55`, borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontFamily: "inherit", fontSize: 14, boxSizing: "border-box" }}
         />
-        <GhostButton onClick={createMyCat} disabled={!myName.trim() || creating}>{creating ? "جاري الإنشاء…" : "إنشاء الفئة"}</GhostButton>
-        <p style={{ fontSize: 12, opacity: 0.7, marginTop: 8, marginBottom: 0 }}>بعد الإنشاء، اطلب من الأدمن إضافة الأسئلة لفئتك.</p>
+        <GhostButton onClick={createMyCat} disabled={!myName.trim() || creating}>{creating ? t.islamic.loading : t.islamic.addCategory}</GhostButton>
+        <p style={{ fontSize: 12, opacity: 0.7, marginTop: 8, marginBottom: 0 }}>{t.islamic.personalCategoryHint}</p>
       </IslamicCard>
     </>
   );
@@ -116,12 +118,13 @@ function CategoryPicker({ onPick, title, expertsOnly }: { onPick: (id: number) =
 
 /* ── 1. Create new challenge ─────────────────────────────────── */
 export function IslamicChallengeNew() {
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<"choose" | "challenge" | "tournament">("choose");
   const [created, setCreated] = useState<Challenge | null>(null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [tourName, setTourName] = useState("");
-  const [teams, setTeams] = useState<string[]>(["الفريق الأول", "الفريق الثاني"]);
+  const [teams, setTeams] = useState<string[]>([`${t.islamic.team} 1`, `${t.islamic.team} 2`]);
   const [creating, setCreating] = useState(false);
   const [tourStep, setTourStep] = useState<"setup" | "category">("setup");
   const [expertsOnly, setExpertsOnly] = useState(false);
@@ -133,7 +136,7 @@ export function IslamicChallengeNew() {
       const c = await api<Challenge>("/islamic/challenges", { method: "POST", body: JSON.stringify({ categoryId, expertsOnly }) });
       setCreated(c);
     } catch (e) {
-      setCreateErr(e instanceof Error ? e.message : "تعذر إنشاء التحدي");
+      setCreateErr(e instanceof Error ? e.message : t.islamic.createChallengeFailed);
     }
   }
 
@@ -150,7 +153,7 @@ export function IslamicChallengeNew() {
       });
       setTournament(t);
     } catch (e) {
-      setCreateErr(e instanceof Error ? e.message : "تعذر إنشاء البطولة");
+      setCreateErr(e instanceof Error ? e.message : t.islamic.createTournamentFailed);
     } finally { setCreating(false); }
   }
 
@@ -188,18 +191,18 @@ export function IslamicChallengeNew() {
   if (created) {
     const url = `${window.location.origin}${import.meta.env.BASE_URL}islamic/challenge/play/${created.pin}`;
     return (
-      <IslamicShell title="تحدي جديد">
+        <IslamicShell title={t.islamic.newChallenge}>
         <BackLink />
         <IslamicCard glow>
-          <p style={{ textAlign: "center", fontSize: "clamp(15px, 4vw, 17px)" }}>أرسل هذا الرابط أو الرمز لخصمك:</p>
+          <p style={{ textAlign: "center", fontSize: "clamp(15px, 4vw, 17px)" }}>{t.islamic.shareWithOpponent}</p>
           <div style={{ textAlign: "center", marginTop: 12 }}>
             <div style={{ fontSize: "clamp(28px, 9vw, 40px)", fontWeight: 900, color: ISLAMIC_GOLD, letterSpacing: 4 }}>{created.pin}</div>
             <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6, wordBreak: "break-all", padding: "0 4px" }}>{url}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 16 }}>
-            <GoldButton onClick={() => navigator.clipboard?.writeText(url)}>نسخ الرابط</GoldButton>
-            <GoldButton onClick={() => setLocation(`/islamic/challenge/play/${created.pin}?role=creator`)}>ابدأ جولتك</GoldButton>
-            <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`تحدي حصاد: ${url}`)}`)}>واتساب</GhostButton>
+            <GoldButton onClick={() => navigator.clipboard?.writeText(url)}>{t.islamic.copyLink}</GoldButton>
+            <GoldButton onClick={() => setLocation(`/islamic/challenge/play/${created.pin}?role=creator`)}>{t.islamic.startRound}</GoldButton>
+            <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`تحدي حصاد: ${url}`)}`)}>{t.islamic.whatsapp}</GhostButton>
           </div>
         </IslamicCard>
       </IslamicShell>
@@ -210,15 +213,15 @@ export function IslamicChallengeNew() {
   if (tournament) {
     const base = `${window.location.origin}${import.meta.env.BASE_URL}islamic/tournament/play/${tournament.pin}`;
     return (
-      <IslamicShell title={`بطولة: ${tournament.name}`}>
+      <IslamicShell title={`${t.islamic.tournament}: ${tournament.name}`}>
         <BackLink />
         <IslamicCard glow style={{ marginBottom: 16 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>رمز البطولة</div>
+            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>{t.islamic.tournamentCode}</div>
             <div style={{ fontSize: "clamp(30px, 9vw, 44px)", fontWeight: 900, color: ISLAMIC_GOLD, letterSpacing: 4 }}>{tournament.pin}</div>
           </div>
         </IslamicCard>
-        <p style={{ color: ISLAMIC_GOLD, fontWeight: 700, fontSize: 15, marginBottom: 8 }}>روابط الفرق — شارك كل رابط مع فريقه:</p>
+        <p style={{ color: ISLAMIC_GOLD, fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t.islamic.tournamentLinks}</p>
         {tournament.teamNames.map((team) => {
           const token = (tournament.teamLinks || {})[team] || "";
           const link = `${base}?team=${encodeURIComponent(team)}&token=${token}`;
@@ -227,8 +230,8 @@ export function IslamicChallengeNew() {
               <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 15 }}>🏅 {team}</div>
               <div style={{ fontSize: 11, opacity: 0.75, wordBreak: "break-all", marginBottom: 8 }}>{link}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <GhostButton onClick={() => navigator.clipboard?.writeText(link)}>نسخ</GhostButton>
-                <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`رابط ${team}: ${link}`)}`)}>واتساب</GhostButton>
+                <GhostButton onClick={() => navigator.clipboard?.writeText(link)}>{t.islamic.copy}</GhostButton>
+                <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`رابط ${team}: ${link}`)}`)}>{t.islamic.whatsapp}</GhostButton>
               </div>
             </IslamicCard>
           );
@@ -243,18 +246,18 @@ export function IslamicChallengeNew() {
   /* ── Mode choose ────────────────────────────────────────────── */
   if (mode === "choose") {
     return (
-      <IslamicShell title="تحدي حصاد">
+        <IslamicShell title={t.islamic.challenge}>
         <BackLink />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24, maxWidth: 480, margin: "0 auto 24px" }}>
           <IslamicCard glow onClick={() => setMode("challenge")} style={{ textAlign: "center", padding: "24px 12px" }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>⚔️</div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: ISLAMIC_GOLD }}>تحدي 1 ضد 1</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>أرسل رابطاً لخصمك</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: ISLAMIC_GOLD }}>{t.islamic.challengeType}</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{t.islamic.challengeTypeDescription}</div>
           </IslamicCard>
           <IslamicCard glow onClick={() => setMode("tournament")} style={{ textAlign: "center", padding: "24px 12px" }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>🏆</div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: ISLAMIC_GOLD }}>بطولة فرق</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>فرق متعددة — لوحة نتائج</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: ISLAMIC_GOLD }}>{t.islamic.teamTournament}</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{t.islamic.teamTournamentDescription}</div>
           </IslamicCard>
         </div>
       </IslamicShell>
@@ -265,34 +268,34 @@ export function IslamicChallengeNew() {
   if (mode === "tournament") {
     if (tourStep === "category") {
       return (
-        <IslamicShell title="اختر فئة البطولة">
+        <IslamicShell title={t.islamic.chooseTournamentCategory}>
           <GhostButton onClick={() => setTourStep("setup")} style={{ marginBottom: 16 }}>← رجوع</GhostButton>
           <CreateError />
           <ExpertsToggle />
-          <CategoryPicker title="اختر الفئة التي ستلعب بها جميع الفرق:" onPick={createTournament} expertsOnly={expertsOnly} />
-          {creating && <p style={{ textAlign: "center", color: ISLAMIC_GOLD }}>جاري إنشاء البطولة…</p>}
+          <CategoryPicker title={t.islamic.chooseTournamentCategoryHint} onPick={createTournament} expertsOnly={expertsOnly} />
+          {creating && <p style={{ textAlign: "center", color: ISLAMIC_GOLD }}>{t.islamic.loading}</p>}
         </IslamicShell>
       );
     }
 
     return (
-      <IslamicShell title="إعداد البطولة">
+      <IslamicShell title={t.islamic.tournamentSetup}>
         <GhostButton onClick={() => setMode("choose")} style={{ marginBottom: 16 }}>← رجوع</GhostButton>
         <IslamicCard style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, color: ISLAMIC_GOLD, marginBottom: 10 }}>اسم البطولة</div>
+          <div style={{ fontWeight: 700, color: ISLAMIC_GOLD, marginBottom: 10 }}>{t.islamic.tournamentName}</div>
           <input
             value={tourName} onChange={(e) => setTourName(e.target.value)}
-            placeholder="مثال: بطولة الفصل السادس"
+            placeholder={t.islamic.tournamentExample}
             style={{ display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8", border: `1px solid ${ISLAMIC_GOLD}55`, borderRadius: 8, padding: "10px 12px", fontFamily: "inherit", fontSize: 15, boxSizing: "border-box" }}
           />
         </IslamicCard>
         <IslamicCard style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, color: ISLAMIC_GOLD, marginBottom: 10 }}>أسماء الفرق ({teams.length})</div>
+          <div style={{ fontWeight: 700, color: ISLAMIC_GOLD, marginBottom: 10 }}>{t.islamic.teamNames} ({teams.length})</div>
           {teams.map((team, i) => (
             <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <input
                 value={team} onChange={(e) => setTeams((prev) => prev.map((t, j) => j === i ? e.target.value : t))}
-                placeholder={`الفريق ${i + 1}`}
+                placeholder={`${t.islamic.team} ${i + 1}`}
                 style={{ flex: 1, background: "rgba(0,0,0,0.3)", color: "#fefce8", border: `1px solid ${ISLAMIC_GOLD}55`, borderRadius: 8, padding: "8px 12px", fontFamily: "inherit", fontSize: 14 }}
               />
               {teams.length > 2 && (
@@ -302,7 +305,7 @@ export function IslamicChallengeNew() {
             </div>
           ))}
           {teams.length < 16 && (
-            <GhostButton onClick={() => setTeams((prev) => [...prev, `الفريق ${prev.length + 1}`])} style={{ marginTop: 4 }}>+ إضافة فريق</GhostButton>
+            <GhostButton onClick={() => setTeams((prev) => [...prev, `${t.islamic.team} ${prev.length + 1}`])} style={{ marginTop: 4 }}>+ {t.islamic.addTeam}</GhostButton>
           )}
         </IslamicCard>
         <GoldButton disabled={!tourName.trim() || teams.filter((t) => t.trim()).length < 2} onClick={() => setTourStep("category")}>
@@ -314,12 +317,12 @@ export function IslamicChallengeNew() {
 
   /* ── Regular challenge category picker ─────────────────────── */
   return (
-    <IslamicShell title="أنشئ تحدياً">
+    <IslamicShell title={t.islamic.createChallenge}>
       <GhostButton onClick={() => setMode("choose")} style={{ marginBottom: 16 }}>← رجوع</GhostButton>
       <CreateError />
       <ExpertsToggle />
       <CategoryPicker
-        title={expertsOnly ? "اختر فئة (الأسئلة الصعبة فقط):" : "اختر فئة لتنشئ تحدياً مع 10 أسئلة عشوائية:"}
+        title={expertsOnly ? t.islamic.chooseExpertsCategory : t.islamic.chooseChallengeCategory}
         onPick={createChallenge}
         expertsOnly={expertsOnly}
       />
@@ -329,18 +332,19 @@ export function IslamicChallengeNew() {
 
 /* ── 2. Join challenge ───────────────────────────────────────── */
 export function IslamicChallengeJoin() {
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   function go() {
     if (pin.trim()) setLocation(`/islamic/challenge/play/${pin.trim()}`);
-    else setErr("أدخل الرمز");
+    else setErr(t.islamic.enterCode);
   }
   return (
-    <IslamicShell title="ادخل تحدي">
+    <IslamicShell title={t.islamic.enterChallenge}>
       <BackLink />
       <IslamicCard>
-        <p>أدخل رمز التحدي أو البطولة (PIN):</p>
+        <p>{t.islamic.enterChallengeCode}</p>
         <input
           value={pin} onChange={(e) => setPin(e.target.value.toUpperCase())}
           onKeyDown={(e) => e.key === "Enter" && go()}
@@ -350,10 +354,10 @@ export function IslamicChallengeJoin() {
         <div style={{ textAlign: "center", marginTop: 12 }}>
           <GoldButton onClick={() => {
             const p = pin.trim();
-            if (!p) { setErr("أدخل الرمز"); return; }
+            if (!p) { setErr(t.islamic.enterCode); return; }
             if (p.startsWith("T")) setLocation(`/islamic/tournament/play/${p}`);
             else setLocation(`/islamic/challenge/play/${p}`);
-          }}>دخول</GoldButton>
+          }}>{t.islamic.join}</GoldButton>
         </div>
       </IslamicCard>
     </IslamicShell>
@@ -376,12 +380,15 @@ function ShareResultCard({
   total: number;
   outcome: "win" | "lose" | "draw" | "done";
 }) {
+  const { t, lang } = useI18n();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const outcomeEmoji = outcome === "win" ? "🏆" : outcome === "draw" ? "🤝" : outcome === "done" ? "✅" : "😤";
-  const outcomeLabel = outcome === "win" ? "فزت!" : outcome === "draw" ? "تعادل!" : outcome === "done" ? "أكملت التحدي" : "أحسنت المحاولة";
+  const outcomeLabel = lang === "en"
+    ? (outcome === "win" ? "You won!" : outcome === "draw" ? "Draw!" : outcome === "done" ? "Challenge complete" : "Good try")
+    : (outcome === "win" ? "فزت!" : outcome === "draw" ? "تعادل!" : outcome === "done" ? "أكملت التحدي" : "أحسنت المحاولة");
 
   async function downloadImage() {
     if (!cardRef.current || downloading) return;
@@ -471,21 +478,21 @@ function ShareResultCard({
           border: "1px solid rgba(251,191,36,0.4)",
         }}>
           <div style={{ fontSize: 32, fontWeight: 900, color: ISLAMIC_GOLD, lineHeight: 1 }}>{score}</div>
-          <div style={{ fontSize: 11, color: "#fde68a", marginTop: 2 }}>نقطة</div>
+          <div style={{ fontSize: 11, color: "#fde68a", marginTop: 2 }}>{t.islamic.pointsUnit}</div>
         </div>
         <div style={{
           background: "rgba(0,0,0,0.25)", borderRadius: 12, padding: "10px 18px",
           border: "1px solid rgba(251,191,36,0.4)",
         }}>
           <div style={{ fontSize: 32, fontWeight: 900, color: "#86efac", lineHeight: 1 }}>{correct}/{total}</div>
-          <div style={{ fontSize: 11, color: "#fde68a", marginTop: 2 }}>إجابة صحيحة</div>
+          <div style={{ fontSize: 11, color: "#fde68a", marginTop: 2 }}>{t.islamic.correctAnswers}</div>
         </div>
       </div>
 
       {/* accuracy bar */}
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#fde68a", marginBottom: 4 }}>
-          <span>الدقة</span><span>{pct}%</span>
+          <span>{t.islamic.accuracy}</span><span>{pct}%</span>
         </div>
         <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.12)" }}>
           <div style={{
@@ -515,7 +522,7 @@ function ShareResultCard({
             transition: "all 0.3s",
           }}
         >
-          {copied ? "✓ تم النسخ!" : "📤 شارك النتيجة"}
+           {copied ? `✓ ${t.islamic.copied}` : `📤 ${t.islamic.shareResult}`}
         </button>
         <button
           onClick={downloadImage}
@@ -532,7 +539,7 @@ function ShareResultCard({
             opacity: downloading ? 0.7 : 1,
           }}
         >
-          {downloading ? "⏳ جاري الحفظ…" : "🖼️ حفظ كصورة"}
+           {downloading ? `⏳ ${t.islamic.saving}` : `🖼️ ${t.islamic.saveImage}`}
         </button>
       </div>
     </div>
@@ -541,6 +548,7 @@ function ShareResultCard({
 
 /* ── 3. Play challenge (1v1) with auto-start 20s timer ──────── */
 export function IslamicChallengePlay() {
+  const { t } = useI18n();
   const [, params] = useRoute("/islamic/challenge/play/:pin");
   const [, setLocation] = useLocation();
   const pin = params?.pin || "";
@@ -580,7 +588,7 @@ export function IslamicChallengePlay() {
           startSyncCountdown(r.challenge.startedAt);
         }
       })
-      .catch((e: Error) => setLoadError(e.message || "التحدي غير موجود"));
+      .catch((e: Error) => setLoadError(e.message || t.islamic.challenge));
   }, [pin]);
 
   /* Creator polls every 2 s until the opponent joins (status → "active") */
@@ -708,7 +716,7 @@ export function IslamicChallengePlay() {
       setNameReady(true);
       startSyncCountdown(joined.startedAt);
     } catch (e) {
-      setJoiningErr(e instanceof Error ? e.message : "تعذر الانضمام للتحدي");
+      setJoiningErr(e instanceof Error ? e.message : t.islamic.createChallengeFailed);
     } finally {
       setJoining(false);
     }
@@ -716,11 +724,11 @@ export function IslamicChallengePlay() {
 
   if (loadError) {
     return (
-      <IslamicShell title="تحدي حصاد">
+      <IslamicShell title={t.islamic.challenge}>
         <IslamicCard>
           <p style={{ textAlign: "center", color: "#fca5a5", fontSize: 18, marginBottom: 16 }}>❌ {loadError}</p>
           <div style={{ textAlign: "center" }}>
-            <GhostButton onClick={() => window.history.back()}>رجوع</GhostButton>
+            <GhostButton onClick={() => window.history.back()}>{t.islamic.back}</GhostButton>
           </div>
         </IslamicCard>
       </IslamicShell>
@@ -728,33 +736,33 @@ export function IslamicChallengePlay() {
   }
 
   if (!challenge || questions.length === 0) {
-    return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>جاري التحميل…</p></IslamicCard></IslamicShell>;
+    return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>{t.islamic.loading}</p></IslamicCard></IslamicShell>;
   }
 
   /* Creator waiting for opponent to join */
   if (role === "creator" && waitingForOpponent) {
     const url = `${window.location.origin}${import.meta.env.BASE_URL}islamic/challenge/play/${pin}`;
     return (
-      <IslamicShell title="تحدي حصاد">
+      <IslamicShell title={t.islamic.challenge}>
         <IslamicCard glow>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 12, animation: "pulse 1.5s ease-in-out infinite" }}>⚔️</div>
             <div style={{ fontSize: "clamp(17px, 5vw, 22px)", fontWeight: 800, color: ISLAMIC_GOLD, marginBottom: 8 }}>
-              في انتظار الخصم…
+              {t.islamic.waitingOpponent}
             </div>
             <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 20, lineHeight: 1.7 }}>
-              شارك الرابط أو الرمز مع خصمك، وسيبدأ التحدي تلقائياً عند انضمامه
+              {t.islamic.shareChallenge}
             </div>
             <div style={{ fontSize: "clamp(28px, 9vw, 40px)", fontWeight: 900, color: ISLAMIC_GOLD, letterSpacing: 4, marginBottom: 12 }}>
               {pin}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-              <GoldButton onClick={() => navigator.clipboard?.writeText(url)}>نسخ الرابط</GoldButton>
-              <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`تحدي حصاد: ${url}`)}`)}> واتساب</GhostButton>
+              <GoldButton onClick={() => navigator.clipboard?.writeText(url)}>{t.islamic.copyLink}</GoldButton>
+              <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Challenge: ${url}`)}`)}>{t.islamic.whatsapp}</GhostButton>
             </div>
             <div style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0.7, fontSize: 13 }}>
               <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: ISLAMIC_GOLD, animation: "pulse 1s ease-in-out infinite" }} />
-              يتم التحقق تلقائياً…
+              {t.islamic.checking}
             </div>
           </div>
         </IslamicCard>
@@ -765,11 +773,11 @@ export function IslamicChallengePlay() {
   /* Synchronized countdown — shown to both players between "join" and Q1 */
   if (nameReady && !waitingForOpponent && countdownSec !== null) {
     return (
-      <IslamicShell title="تحدي حصاد">
+      <IslamicShell title={t.islamic.challenge}>
         <IslamicCard glow>
           <div style={{ textAlign: "center", padding: "24px 0" }}>
             <div style={{ fontSize: 14, color: ISLAMIC_GOLD, opacity: 0.9, marginBottom: 16, letterSpacing: 1 }}>
-              يبدأ التحدي بعد…
+              {t.islamic.startsIn}
             </div>
             <div style={{
               fontSize: "clamp(72px, 20vw, 100px)", fontWeight: 900, color: ISLAMIC_GOLD,
@@ -778,7 +786,7 @@ export function IslamicChallengePlay() {
             }}>
               {countdownSec}
             </div>
-            <div style={{ fontSize: 16, marginTop: 16, opacity: 0.7 }}>⚔️ استعد!</div>
+            <div style={{ fontSize: 16, marginTop: 16, opacity: 0.7 }}>⚔️ {t.islamic.getReady}</div>
           </div>
         </IslamicCard>
       </IslamicShell>
@@ -788,20 +796,20 @@ export function IslamicChallengePlay() {
   /* Opponent must enter their name before the game starts */
   if (role === "opponent" && !nameReady) {
     return (
-      <IslamicShell title="تحدي حصاد">
+      <IslamicShell title={t.islamic.challenge}>
         <IslamicCard glow>
           <div style={{ textAlign: "center", marginBottom: 16 }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>⚔️</div>
             <div style={{ fontSize: "clamp(16px, 5vw, 20px)", fontWeight: 800, color: ISLAMIC_GOLD, marginBottom: 4 }}>
-              أنت مدعو لتحدي!
+              {t.islamic.invitedChallenge}
             </div>
-            <div style={{ fontSize: 14, opacity: 0.85 }}>أدخل اسمك ليظهر للخصم</div>
+            <div style={{ fontSize: 14, opacity: 0.85 }}>{t.islamic.enterName}</div>
           </div>
           <input
             value={opName}
             onChange={(e) => setOpName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && opName.trim() && !joining) joinAndStart(); }}
-            placeholder="اسمك…"
+            placeholder={t.islamic.yourName}
             style={{
               display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8",
               border: `1px solid ${ISLAMIC_GOLD}`, borderRadius: 8, padding: "12px 14px",
@@ -813,7 +821,7 @@ export function IslamicChallengePlay() {
             disabled={!opName.trim() || joining}
             onClick={joinAndStart}
           >
-            {joining ? "جاري الانضمام…" : "ابدأ التحدي ⚔️"}
+            {joining ? t.islamic.joining : `${t.islamic.startChallenge} ⚔️`}
           </GoldButton>
         </IslamicCard>
       </IslamicShell>
@@ -824,13 +832,13 @@ export function IslamicChallengePlay() {
     const isCreator = role === "creator";
     const oppScore = isCreator ? challenge.opponentScore : challenge.creatorScore;
     const oppDone = isCreator ? challenge.status === "completed" : true;
-    const myName = role === "creator" ? "أنت (المنشئ)" : opName || "أنت";
+    const myName = role === "creator" ? t.islamic.youCreator : opName || t.islamic.you;
     const outcome = !oppDone ? "done" : score > oppScore ? "win" : score < oppScore ? "lose" : "draw";
     return (
-      <IslamicShell title="نتيجة التحدي">
+      <IslamicShell title={t.islamic.challengeResult}>
         <ShareResultCard
           headline={myName}
-          subline={oppDone ? (score > oppScore ? "فزت على خصمك! 🎉" : score < oppScore ? `خصمك حصل على ${oppScore} نقطة` : "تعادل مع خصمك") : "في انتظار نتيجة الخصم…"}
+          subline={oppDone ? (score > oppScore ? t.islamic.win : score < oppScore ? `${oppScore} ${t.islamic.pointsUnit}` : t.islamic.draw) : t.islamic.waitingOpponentResult}
           score={score}
           correct={correct}
           total={questions.length}
@@ -838,12 +846,12 @@ export function IslamicChallengePlay() {
         />
         {oppDone && (
           <IslamicCard style={{ marginBottom: 12, textAlign: "center", padding: "12px 16px" }}>
-            <div style={{ fontSize: 14, opacity: 0.8 }}>نقاط الخصم</div>
+            <div style={{ fontSize: 14, opacity: 0.8 }}>{t.islamic.opponentPoints}</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: score > oppScore ? "#fca5a5" : "#86efac" }}>{oppScore}</div>
           </IslamicCard>
         )}
         <div style={{ textAlign: "center" }}>
-          <GhostButton onClick={() => setLocation("/islamic")}>الرئيسية</GhostButton>
+          <GhostButton onClick={() => setLocation("/islamic")}>{t.islamic.home}</GhostButton>
         </div>
       </IslamicShell>
     );
@@ -854,11 +862,11 @@ export function IslamicChallengePlay() {
   const timerColor = secondsLeft > 10 ? ISLAMIC_GOLD : secondsLeft > 5 ? "#fb923c" : "#ef4444";
 
   return (
-    <IslamicShell title="تحدي">
+    <IslamicShell title={t.islamic.challenge}>
       {/* Timer bar */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13, opacity: 0.9 }}>
-          <span>السؤال {idx + 1}/{questions.length} · النقاط: <strong style={{ color: ISLAMIC_GOLD }}>{score}</strong></span>
+          <span>{t.islamic.question} {idx + 1}/{questions.length} · {t.islamic.points} <strong style={{ color: ISLAMIC_GOLD }}>{score}</strong></span>
           <span style={{ color: timerColor, fontWeight: 700 }}>⏱ {secondsLeft}ث</span>
         </div>
         <div style={{ height: 6, borderRadius: 4, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
@@ -878,14 +886,14 @@ export function IslamicChallengePlay() {
       <style>{`
         .ch-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
           font-family: inherit; font-size: clamp(14px, 4vw, 17px); font-weight: 600; line-height: 1.7;
-          text-align: right; cursor: pointer; transition: all .18s ease; width: 100%;
+          text-align: start; cursor: pointer; transition: all .18s ease; width: 100%;
           border: 2px solid transparent; color: #1c1208;
           box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
         .ch-opt:hover:not(:disabled) { transform: translateY(-3px);
           box-shadow: 0 8px 22px rgba(0,0,0,0.13); filter: brightness(0.96); }
         .ch-opt:active:not(:disabled) { transform: translateY(0); }
         .ch-opt:disabled { cursor: default; }
-        .ch-opt .ltr { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        .ch-opt .ltr { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%);
           width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
           font-weight: 800; font-size: 16px; background: rgba(0,0,0,0.1); color: inherit;
           border: 2px solid rgba(0,0,0,0.12); }
@@ -908,7 +916,7 @@ export function IslamicChallengePlay() {
           const isCorrect = revealed && o === q.correctAnswer;
           const isWrong = revealed && isSel && o !== q.correctAnswer;
           const dim = revealed && !isCorrect && !isWrong;
-          const letter = ["أ", "ب", "ج", "د"][i] || String(i + 1);
+          const letter = ["A", "B", "C", "D"][i] || String(i + 1);
           const cls = [
             "ch-opt",
             !revealed ? `ch-opt-${i}` : "",
@@ -929,8 +937,8 @@ export function IslamicChallengePlay() {
 
       {revealed && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
-          {selected === null && <div style={{ color: "#fca5a5", marginBottom: 8, fontWeight: 700 }}>⌛ انتهى الوقت!</div>}
-          <GoldButton onClick={next}>{idx + 1 >= questions.length ? "إنهاء" : "التالي"}</GoldButton>
+          {selected === null && <div style={{ color: "#fca5a5", marginBottom: 8, fontWeight: 700 }}>⌛ {t.islamic.timeUp}</div>}
+          <GoldButton onClick={next}>{idx + 1 >= questions.length ? t.islamic.finish : t.islamic.next}</GoldButton>
         </div>
       )}
     </IslamicShell>
@@ -939,6 +947,7 @@ export function IslamicChallengePlay() {
 
 /* ── 4. Tournament play ──────────────────────────────────────── */
 export function IslamicTournamentPlay() {
+  const { t } = useI18n();
   const [, params] = useRoute("/islamic/tournament/play/:pin");
   const [, setLocation] = useLocation();
   const pin = params?.pin || "";
@@ -966,7 +975,7 @@ export function IslamicTournamentPlay() {
   useEffect(() => {
     api<Tournament>(`/islamic/tournaments/${pin}`)
       .then(setTournament)
-      .catch((e: Error) => setTourLoadError(e.message || "البطولة غير موجودة"));
+      .catch((e: Error) => setTourLoadError(e.message || t.islamic.tournament));
   }, [pin]);
 
   useEffect(() => {
@@ -1046,11 +1055,11 @@ export function IslamicTournamentPlay() {
 
   if (tourLoadError) {
     return (
-      <IslamicShell title="تحدي الفرق">
+      <IslamicShell title={t.islamic.challenge}>
         <IslamicCard>
           <p style={{ textAlign: "center", color: "#fca5a5", fontSize: 18, marginBottom: 16 }}>❌ {tourLoadError}</p>
           <div style={{ textAlign: "center" }}>
-            <GhostButton onClick={() => window.history.back()}>رجوع</GhostButton>
+            <GhostButton onClick={() => window.history.back()}>{t.islamic.back}</GhostButton>
           </div>
         </IslamicCard>
       </IslamicShell>
@@ -1058,7 +1067,7 @@ export function IslamicTournamentPlay() {
   }
 
   if (!tournament) {
-    return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>جاري التحميل…</p></IslamicCard></IslamicShell>;
+    return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>{t.islamic.loading}</p></IslamicCard></IslamicShell>;
   }
 
   if (done) {
@@ -1074,10 +1083,10 @@ export function IslamicTournamentPlay() {
       : "done";
 
     return (
-      <IslamicShell title="انتهت جولتك!">
+      <IslamicShell title={t.islamic.sessionEnded}>
         <ShareResultCard
           headline={teamName}
-          subline={`بطولة: ${finalT.name}`}
+          subline={`${t.islamic.tournament}: ${finalT.name}`}
           score={score}
           correct={correct}
           total={finalT.questions.length}
@@ -1085,11 +1094,11 @@ export function IslamicTournamentPlay() {
         />
         {!isCompleted && (
           <IslamicCard style={{ marginBottom: 12, textAlign: "center", padding: "10px 16px" }}>
-            <div style={{ fontSize: 13, color: "#fde68a", opacity: 0.85 }}>في انتظار نتائج الفرق الأخرى…</div>
+            <div style={{ fontSize: 13, color: "#fde68a", opacity: 0.85 }}>{t.islamic.waitingTeams}</div>
           </IslamicCard>
         )}
         <div style={{ textAlign: "center" }}>
-          <GoldButton onClick={() => setLocation(`/islamic/tournament/host/${pin}`)}>🏆 لوحة النتائج</GoldButton>
+          <GoldButton onClick={() => setLocation(`/islamic/tournament/host/${pin}`)}>🏆 {t.islamic.resultsBoard}</GoldButton>
         </div>
       </IslamicShell>
     );
@@ -1100,10 +1109,10 @@ export function IslamicTournamentPlay() {
   const timerColor = secondsLeft > 10 ? ISLAMIC_GOLD : secondsLeft > 5 ? "#fb923c" : "#ef4444";
 
   return (
-    <IslamicShell title={`بطولة: ${tournament.name}`}>
+    <IslamicShell title={`${t.islamic.tournament}: ${tournament.name}`}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 13, opacity: 0.9 }}>
-          <span>🏅 {teamName} · السؤال {idx + 1}/{tournament.questions.length} · نقاط: <strong style={{ color: ISLAMIC_GOLD }}>{score}</strong></span>
+          <span>🏅 {teamName} · {t.islamic.question} {idx + 1}/{tournament.questions.length} · {t.islamic.points} <strong style={{ color: ISLAMIC_GOLD }}>{score}</strong></span>
           <span style={{ color: timerColor, fontWeight: 700 }}>⏱ {secondsLeft}ث</span>
         </div>
         <div style={{ height: 6, borderRadius: 4, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
@@ -1123,14 +1132,14 @@ export function IslamicTournamentPlay() {
       <style>{`
         .tour-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
           font-family: inherit; font-size: clamp(14px, 4vw, 17px); font-weight: 600; line-height: 1.7;
-          text-align: right; cursor: pointer; transition: all .18s ease; width: 100%;
+          text-align: start; cursor: pointer; transition: all .18s ease; width: 100%;
           border: 2px solid transparent; color: #1c1208;
           box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
         .tour-opt:hover:not(:disabled) { transform: translateY(-3px);
           box-shadow: 0 8px 22px rgba(0,0,0,0.13); filter: brightness(0.96); }
         .tour-opt:active:not(:disabled) { transform: translateY(0); }
         .tour-opt:disabled { cursor: default; }
-        .tour-opt .ltr { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        .tour-opt .ltr { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%);
           width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
           font-weight: 800; font-size: 16px; background: rgba(0,0,0,0.1); color: inherit;
           border: 2px solid rgba(0,0,0,0.12); }
@@ -1153,7 +1162,7 @@ export function IslamicTournamentPlay() {
           const isCorrect = revealed && o === q.correctAnswer;
           const isWrong = revealed && isSel && o !== q.correctAnswer;
           const dim = revealed && !isCorrect && !isWrong;
-          const letter = ["أ", "ب", "ج", "د"][i] || String(i + 1);
+          const letter = ["A", "B", "C", "D"][i] || String(i + 1);
           const cls = [
             "tour-opt",
             !revealed ? `tour-opt-${i}` : "",
@@ -1174,8 +1183,8 @@ export function IslamicTournamentPlay() {
 
       {revealed && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
-          {selected === null && <div style={{ color: "#fca5a5", marginBottom: 8, fontWeight: 700 }}>⌛ انتهى الوقت!</div>}
-          <GoldButton onClick={next}>{idx + 1 >= tournament.questions.length ? "إنهاء وإرسال النتيجة" : "التالي"}</GoldButton>
+          {selected === null && <div style={{ color: "#fca5a5", marginBottom: 8, fontWeight: 700 }}>⌛ {t.islamic.timeUp}</div>}
+          <GoldButton onClick={next}>{idx + 1 >= tournament.questions.length ? t.islamic.finish : t.islamic.next}</GoldButton>
         </div>
       )}
     </IslamicShell>
@@ -1184,6 +1193,7 @@ export function IslamicTournamentPlay() {
 
 /* ── 5. Tournament host/scoreboard ──────────────────────────── */
 export function IslamicTournamentHost() {
+  const { t } = useI18n();
   const [, params] = useRoute("/islamic/tournament/host/:pin");
   const [, setLocation] = useLocation();
   const pin = params?.pin || "";
@@ -1199,7 +1209,7 @@ export function IslamicTournamentHost() {
   }, [pin]);
 
   if (!data) {
-    return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>جاري التحميل…</p></IslamicCard></IslamicShell>;
+    return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>{t.islamic.loading}</p></IslamicCard></IslamicShell>;
   }
 
   const sorted = [...data.teamNames].sort((a, b) => {
@@ -1214,9 +1224,9 @@ export function IslamicTournamentHost() {
     <IslamicShell title={`🏆 ${data.name}`}>
       <BackLink />
       <div style={{ textAlign: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 13, opacity: 0.75 }}>رمز البطولة: <strong style={{ color: ISLAMIC_GOLD, letterSpacing: 3 }}>{pin}</strong></div>
+        <div style={{ fontSize: 13, opacity: 0.75 }}>{t.islamic.tournamentCode} <strong style={{ color: ISLAMIC_GOLD, letterSpacing: 3 }}>{pin}</strong></div>
         <div style={{ fontSize: 12, color: data.status === "completed" ? "#86efac" : "#fbbf24", marginTop: 4 }}>
-          {data.status === "completed" ? "✅ اكتملت البطولة" : "⏳ جارية…"}
+          {data.status === "completed" ? `✅ ${t.islamic.tournamentComplete}` : `⏳ ${t.islamic.tournamentActive}`}
         </div>
       </div>
 
@@ -1235,14 +1245,14 @@ export function IslamicTournamentHost() {
                 <div style={{ fontWeight: 800, fontSize: 16, color: i === 0 ? ISLAMIC_GOLD : "#fefce8" }}>{team}</div>
                 {isDone && (
                   <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
-                    {ts.correct}/{data.questions.length} صحيحة · {Math.round(ts.timeMs / 1000)}ث
+                    {ts.correct}/{data.questions.length} {t.islamic.correct} · {Math.round(ts.timeMs / 1000)}s
                   </div>
                 )}
-                {!isDone && <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 2 }}>لم يكمل بعد…</div>}
+                {!isDone && <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 2 }}>{t.islamic.notComplete}</div>}
               </div>
               <div style={{ textAlign: "center", minWidth: 56 }}>
                 <div style={{ fontSize: 26, fontWeight: 900, color: ISLAMIC_GOLD }}>{ts?.score ?? 0}</div>
-                <div style={{ fontSize: 11, opacity: 0.7 }}>نقطة</div>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>{t.islamic.pointsUnit}</div>
               </div>
             </div>
             {isDone && data.status === "completed" && (
@@ -1264,8 +1274,8 @@ export function IslamicTournamentHost() {
       {data.status === "completed" && (
         <IslamicCard glow style={{ marginTop: 16, textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 6 }}>🎉</div>
-          <div style={{ fontWeight: 900, fontSize: 20, color: ISLAMIC_GOLD }}>الفائز: {sorted[0]}</div>
-          <div style={{ fontSize: 14, opacity: 0.8, marginTop: 4 }}>بـ {data.teamScores[sorted[0]]?.score ?? 0} نقطة</div>
+          <div style={{ fontWeight: 900, fontSize: 20, color: ISLAMIC_GOLD }}>{t.islamic.winner} {sorted[0]}</div>
+          <div style={{ fontSize: 14, opacity: 0.8, marginTop: 4 }}>{data.teamScores[sorted[0]]?.score ?? 0} {t.islamic.pointsUnit}</div>
         </IslamicCard>
       )}
     </IslamicShell>

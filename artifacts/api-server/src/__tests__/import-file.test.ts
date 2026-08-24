@@ -99,6 +99,7 @@ vi.mock("../lib/presentations-tier", () => ({
 import express from "express";
 import request from "supertest";
 import router from "../routes/presentations";
+import { localizeApiMessages } from "../lib/request-locale";
 import {
   parsePptx,
   parsePdf,
@@ -129,6 +130,7 @@ function makeApp(session: Session | null) {
     (req as unknown as { log: typeof noopLog }).log = noopLog;
     next();
   });
+  app.use("/api", localizeApiMessages);
   app.use("/api", router);
   return app;
 }
@@ -190,6 +192,54 @@ describe("POST /api/presentations/import-file — file type validation", () => {
       .post("/api/presentations/import-file")
       .attach("file", Buffer.from("hello"), "test.exe");
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/presentations/import-url — localized URL validation", () => {
+  const cases = [
+    {
+      name: "invalid URLs",
+      url: "not-a-url",
+      status: 400,
+      english: "Please enter a valid URL",
+      arabic: "يرجى إدخال رابط صحيح",
+    },
+    {
+      name: "Canva URLs",
+      url: "https://www.canva.com/design/example",
+      status: 422,
+      english: "Canva links don't support direct download — please export your design from Canva as PPTX and upload it here.",
+      arabic: "روابط Canva لا تدعم التنزيل المباشر — يرجى تصدير العرض من Canva كملف PPTX ثم رفعه هنا",
+    },
+    {
+      name: "unsupported URLs",
+      url: "https://example.com/presentation",
+      status: 422,
+      english: "Unsupported link. Only public Google Slides links are supported.",
+      arabic: "الرابط غير مدعوم. الروابط المدعومة: Google Slides العامة فقط",
+    },
+  ];
+
+  it.each(cases)("$name return English feedback for English requests", async ({ url, status, english }) => {
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-url")
+      .set("Accept-Language", "en")
+      .send({ url });
+
+    expect(res.status).toBe(status);
+    expect(res.body).toEqual({ message: english });
+    expect(res.headers["content-language"]).toBe("en");
+  });
+
+  it.each(cases)("$name return Arabic feedback for Arabic requests", async ({ url, status, arabic }) => {
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-url")
+      .set("Accept-Language", "ar")
+      .send({ url });
+
+    expect(res.status).toBe(status);
+    expect(res.body).toEqual({ message: arabic });
+    expect(res.headers["content-language"]).toBe("ar");
   });
 });
 

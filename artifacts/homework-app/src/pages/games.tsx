@@ -20,14 +20,13 @@ interface GameCard {
 }
 
 export default function GamesPage() {
-  const { lang } = useI18n();
+  const { lang, t, dir } = useI18n();
   useSeo({
-    title: "الألعاب التعليمية | منصة حصاد — مسابقات ووميض وملايين وهاك",
-    description: "استعرض كل الألعاب التعليمية في منصة حصاد: وميض، أرينا، شد الحبل، من سيربح المليون، هاك، مراقي، لترلي، الأعلام وعواصم العالم والمزيد.",
+    title: t.gamesPage.seoTitle,
+    description: t.gamesPage.seoDescription,
     canonicalPath: "/games",
     ogImage: "/opengraph.jpg",
   });
-  const dir = lang === "ar" ? "rtl" : "ltr";
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
   const ChevronIcon = lang === "ar" ? ArrowLeft : ArrowRight;
 
@@ -51,106 +50,84 @@ export default function GamesPage() {
     ...(secretVisible ? [{
       href: "/game/secret",
       icon: Eye,
-      title: lang === "ar" ? "اكتشف السر" : "Discover the Secret",
-      desc: lang === "ar"
-        ? "فريقان يمسحان باركوداً سرياً ويتبادلان الأسئلة نعم/لا حتى يكتشفا سر الخصم"
-        : "Two teams scan secret QR codes and ask yes/no questions to discover each other's secret",
+      title: t.gamesPage.secretTitle, desc: t.gamesPage.secretDescription,
       iconBg: "bg-purple-500/10",
       iconColor: "text-purple-600",
     }] : []),
     {
       href: "/game/hack",
       icon: Terminal,
-      title: lang === "ar" ? "لعبة الاختراق" : "Hack Game",
-      desc: lang === "ar"
-        ? "ماراثون اختراق: كلمات سر، صناديق غامضة، وسحب نقاط الخصوم"
-        : "Hack marathon: passwords, mystery boxes, and stealing opponents' points",
+      title: t.gamesPage.hackTitle, desc: t.gamesPage.hackDescription,
       iconBg: "bg-green-900/30",
       iconColor: "text-green-500",
     },
     {
       href: "/game/flags",
       icon: Globe,
-      title: lang === "ar" ? "لعبة أعلام الدول" : "World Flags Game",
-      desc: lang === "ar" ? "اختبر معلوماتك في أعلام دول العالم" : "Test your knowledge of world flags",
+      title: t.gamesPage.flagsTitle, desc: t.gamesPage.flagsDescription,
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
     },
     {
       href: "/game/capitals",
       icon: Landmark,
-      title: lang === "ar" ? "لعبة عواصم العالم" : "World Capitals Game",
-      desc: lang === "ar" ? "اختبر معلوماتك في عواصم دول العالم" : "Test your knowledge of world capitals",
+      title: t.gamesPage.capitalsTitle, desc: t.gamesPage.capitalsDescription,
       iconBg: "bg-teal-500/10",
       iconColor: "text-teal-600",
     },
     {
       href: "/game/color",
       icon: Sparkles,
-      title: lang === "ar" ? "لعبة الألوان" : "Color Game",
-      desc: lang === "ar" ? "هل عينك حادة؟ ابحث عن المربع المختلف" : "Find the odd square in the grid",
+      title: t.gamesPage.colorTitle, desc: t.gamesPage.colorDescription,
       iconBg: "bg-secondary/15",
       iconColor: "text-secondary",
     },
     {
       href: "/game/memory",
       icon: Brain,
-      title: lang === "ar" ? "لعبة الذاكرة" : "Memory Match",
-      desc: lang === "ar" ? "اقلب البطاقات وابحث عن الأزواج المتطابقة" : "Flip cards and find matching pairs",
+      title: t.gamesPage.memoryTitle, desc: t.gamesPage.memoryDescription,
       iconBg: "bg-secondary/15",
       iconColor: "text-secondary",
     },
     {
       href: "/game/multiply",
       icon: Calculator,
-      title: lang === "ar" ? "جدول الضرب" : "Multiplication",
-      desc: lang === "ar" ? "اختبر سرعتك في جدول الضرب مع مضاعفات السلسلة" : "Test your multiplication speed with streak bonuses",
+      title: t.gamesPage.multiplicationTitle, desc: t.gamesPage.multiplicationDescription,
       iconBg: "bg-secondary/15",
       iconColor: "text-secondary",
     },
     {
       href: "/game/letrly",
       icon: Type,
-      title: lang === "ar" ? "تحدي الكلمة" : "Word Challenge",
-      desc: lang === "ar"
-        ? "خمّن الكلمة العربية في ٦ محاولات — لعبة الكلمات الأشهر بنكهة عربية"
-        : "Guess the Arabic word in 6 tries — the famous word game in Arabic",
+      title: t.gamesPage.wordTitle, desc: t.gamesPage.wordDescription,
       iconBg: "bg-emerald-500/10",
       iconColor: "text-emerald-600",
     },
     {
       href: "/game/scramble",
       icon: Shuffle,
-      title: lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words",
-      desc: lang === "ar" ? "رتّب الحروف المبعثرة لتكوّن الكلمة الصحيحة" : "Unscramble letters to form the correct word",
+      title: t.gamesPage.scrambleTitle, desc: t.gamesPage.scrambleDescription,
       iconBg: "bg-secondary/15",
       iconColor: "text-secondary",
     },
     {
       href: "/game/stroop",
       icon: Brain,
-      title: lang === "ar" ? "لعبة ارتباك" : "Stroop Game",
-      desc: lang === "ar" ? "اضغط على لون الحبر وليس معنى الكلمة — تحدٍّ لعقلك!" : "Click the ink color, not the word — challenge your brain!",
+      title: t.gamesPage.stroopTitle, desc: t.gamesPage.stroopDescription,
       iconBg: "bg-red-500/10",
       iconColor: "text-red-600",
     },
     ...(maraquiVisible ? [{
       href: "/game/maraqui",
       icon: Landmark,
-      title: lang === "ar" ? "مَراقي" : "Maraqui",
-      desc: lang === "ar"
-        ? "المسابقة الأكثر حماسا وثقافة عبر مراحلها    —    "
-        : "Progress through stages and master the content — graded MCQ questions",
+      title: t.gamesPage.maraquiTitle, desc: t.gamesPage.maraquiDescription,
       iconBg: "bg-teal-500/10",
       iconColor: "text-teal-600",
     }] : []),
     {
       href: "/game/million",
       icon: Trophy,
-      title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?",
-      desc: lang === "ar"
-        ? "15 سؤالاً تتصاعد صعوبةً حتى المليون — وساعدك بثلاثة أطواق نجاة"
-        : "15 escalating questions toward a million — with 3 lifelines to help you",
+      title: t.gamesPage.millionTitle, desc: t.gamesPage.millionDescription,
       iconBg: "bg-amber-500/10",
       iconColor: "text-amber-600",
     },
@@ -168,7 +145,7 @@ export default function GamesPage() {
             <Link href="/">
               <button className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                 <BackIcon className="w-4 h-4" />
-                {lang === "ar" ? "الصفحة الرئيسية" : "Home"}
+                {t.gamesPage.home}
               </button>
             </Link>
           </div>
@@ -180,15 +157,13 @@ export default function GamesPage() {
           >
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[hsl(145,40%,28%)]/10 text-[hsl(145,40%,28%)] text-xs font-bold mb-3 border border-[hsl(145,40%,28%)]/15">
               <Gamepad2 className="w-3.5 h-3.5" />
-              {lang === "ar" ? "ألعاب تعليمية" : "Educational Games"}
+              {t.gamesPage.badge}
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-2">
-              {lang === "ar" ? "كل الألعاب" : "All Games"}
+              {t.gamesPage.title}
             </h1>
             <p className="text-muted-foreground text-sm">
-              {lang === "ar"
-                ? "ألعاب يمكنك الاستمتاع بها فوراً بدون تسجيل"
-                : "Games you can enjoy instantly without registration"}
+              {t.gamesPage.subtitle}
             </p>
           </motion.div>
 
@@ -217,18 +192,16 @@ export default function GamesPage() {
                   <div className="flex-1 text-center sm:text-right">
                     <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-300/20 text-amber-200 text-[10px] font-bold mb-2 border border-amber-300/30">
                       <Sparkles className="w-3 h-3" />
-                      {lang === "ar" ? "جديد · لعبة الشاشة الكبيرة" : "New · Big Screen Game"}
+                      {t.gamesPage.featuredBadge}
                     </div>
                     <h2 className="text-2xl sm:text-4xl font-extrabold mb-1 text-transparent bg-clip-text bg-gradient-to-l from-amber-200 via-yellow-300 to-amber-400">
-                      {lang === "ar" ? "تحدّي حصاد" : "Hasaad Arena"}
+                      {t.gamesPage.featuredTitle}
                     </h2>
                     <p className="text-emerald-100/80 text-sm sm:text-base mb-3">
-                      {lang === "ar"
-                        ? "مسابقة معرفة بين فريقين على شاشة كبيرة — 6 فئات، أسئلة بقيم متصاعدة، ووسائل مساعدة استراتيجية"
-                        : "Two-team knowledge battle on a big screen — 6 categories, escalating points, and strategic helpers"}
+                      {t.gamesPage.featuredDescription}
                     </p>
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-emerald-950 font-extrabold text-sm group-hover:gap-3 transition-all">
-                      {lang === "ar" ? "ابدأ التحدي" : "Start Challenge"}
+                      {t.gamesPage.featuredAction}
                       <ChevronIcon className="w-4 h-4" />
                     </div>
                   </div>
@@ -255,7 +228,7 @@ export default function GamesPage() {
                     <h3 className="font-bold text-foreground text-sm mb-1">{game.title}</h3>
                     <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{game.desc}</p>
                     <div className="flex items-center gap-1 mt-3 text-[hsl(145,40%,35%)] font-bold text-xs group-hover:gap-2 transition-all">
-                      {lang === "ar" ? "العب الآن" : "Play Now"}
+                       {t.gamesPage.playNow}
                       <ChevronIcon className="w-3.5 h-3.5" />
                     </div>
                   </div>

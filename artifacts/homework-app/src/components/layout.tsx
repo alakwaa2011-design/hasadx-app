@@ -306,7 +306,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                 ) : (
                   <img
                     src={`${import.meta.env.BASE_URL}images/logo-mark-transparent.png`}
-                    alt="حصاد"
+                    alt={t.nav.siteName}
                     className="w-9 h-9 sm:w-10 sm:h-10 object-contain flex-shrink-0"
                   />
                 )}
@@ -315,7 +315,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     className="block font-extrabold text-sm sm:text-base text-center"
                     style={{ color: "#C9A050" }}
                   >
-                    حــصــاد
+                    {lang === "ar" ? "حــصــاد" : "HASAAD"}
                   </span>
                   <span
                     className="block font-black text-[11px] sm:text-[12px] uppercase w-full text-center"
@@ -350,7 +350,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   )}
                 >
                   <Languages className="w-3.5 h-3.5" />
-                  {lang === "ar" ? "EN" : "عربي"}
+                  {lang === "ar" ? "EN" : "AR"}
                 </button>
 
                 {isLoading ? (
@@ -555,7 +555,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       variant="icon"
                     />
                     <div className="h-5 w-px bg-border mx-1" />
-                    <div className="flex gap-2 flex-row-reverse">
+                    <div className="flex gap-2">
                       <Link
                         href="/login"
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
@@ -588,7 +588,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       onClick={toggleLang}
                       className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                       aria-label={lang === "ar" ? "English" : "العربية"}
-                      title={lang === "ar" ? "English" : "العربية"}
+                      title={lang === "ar" ? "English" : "Arabic"}
                     >
                       <Languages className="w-4 h-4" />
                     </button>
@@ -907,11 +907,11 @@ export function Layout({ children, noHeader }: LayoutProps) {
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <img
                   src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-                  alt="حصاد"
+                    alt={t.nav.siteName}
                   className="w-5 h-5 rounded object-cover opacity-70"
                 />
                 <span className="flex flex-col leading-none items-center" style={{ gap: 1 }}>
-                  <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>حــصــاد</span>
+                  <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>{lang === "ar" ? "حــصــاد" : "HASAAD"}</span>
                   <span className="block font-black text-[8px] uppercase w-full text-center" style={{ color: "#C9A050", opacity: 0.8, letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
                 </span>
               </div>

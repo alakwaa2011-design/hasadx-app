@@ -48,3 +48,4 @@
 - [Replit Build session recovery](replit-build-session.md) — a crossed Wi‑Fi icon and missing Agent usually indicate an editor WebSocket/session issue, not app code.
 - [Playwright cache fallback](playwright-cache-fallback.md) — after clearing Playwright’s browser cache, use the managed Chromium binary for local browser checks.
 - [AI content language precedence](ai-content-language-precedence.md) — new AI content uses explicit request, then clear English input, then UI fallback; persist the resolved language with multi-step artifacts.
+- [UI locale startup ordering](ui-locale-startup-ordering.md) — root boundaries need the locale provider outside them, and first API requests need locale decoration before descendant effects.

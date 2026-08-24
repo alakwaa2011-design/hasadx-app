@@ -12,6 +12,7 @@ import {
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -33,6 +34,8 @@ interface SoloChallengeRow {
 
 export default function SoloChallengesPage() {
   const [, setLocation] = useLocation();
+  const { t, dir } = useI18n();
+  const s = t.soloChallenges;
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
   const [challenges, setChallenges] = useState<SoloChallengeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,26 +54,26 @@ export default function SoloChallengesPage() {
   const copyLink = (slug: string) => {
     const url = `${window.location.origin}/solo/${slug}`;
     navigator.clipboard.writeText(url).catch(() => {});
-    toast.success("تم نسخ الرابط");
+    toast.success(s.linkCopied);
   };
 
   const shareWhatsApp = (slug: string, title: string) => {
     const url = `${window.location.origin}/solo/${slug}`;
-    const text = `شاركوا في مسابقة "${title}" وتنافسوا على المراكز الأولى!\n${url}`;
+    const text = `${s.shareText.replace("{title}", title)}\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 
   const deleteChallenge = async (slug: string, title: string) => {
-    if (!confirm(`هل تريد حذف مسابقة "${title}"؟ سيُحذف تاريخ اللاعبين أيضاً.`)) return;
+    if (!confirm(s.deleteConfirm.replace("{title}", title))) return;
     const res = await fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug)}`, {
       method: "DELETE",
       credentials: "include",
     });
     if (res.ok) {
       setChallenges(prev => prev.filter(c => c.slug !== slug));
-      toast.success("تم حذف المسابقة");
+      toast.success(s.deleted);
     } else {
-      toast.error("فشل الحذف");
+      toast.error(s.deleteFailed);
     }
   };
 
@@ -95,7 +98,7 @@ export default function SoloChallengesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div className="min-h-screen bg-background" dir={dir}>
       {/* ── Header ── */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -108,8 +111,8 @@ export default function SoloChallengesPage() {
                 <Target className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-black text-foreground tracking-tight">المسابقات الذاتية</h1>
-                <p className="text-xs text-muted-foreground font-medium">مسابقات مفتوحة للتدريب الفردي</p>
+                <h1 className="text-lg font-black text-foreground tracking-tight">{s.title}</h1>
+                <p className="text-xs text-muted-foreground font-medium">{s.subtitle}</p>
               </div>
             </div>
           </div>
@@ -118,7 +121,7 @@ export default function SoloChallengesPage() {
             className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-md hover:shadow-primary/25 hover:scale-[1.02] active:scale-95"
           >
             <Plus className="w-4 h-4" />
-            إنشاء مسابقة جديدة
+            {s.newChallenge}
           </Link>
           <Link
             href="/teacher/solo-challenges/new"
@@ -135,9 +138,9 @@ export default function SoloChallengesPage() {
         {challenges.length > 0 && (
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
             {([
-              { label: "المسابقات", value: challenges.length, icon: Target,      bg: "bg-primary/10", fg: "text-primary" },
-              { label: "النشطة",       value: activeCount,       icon: CheckCircle, bg: "bg-emerald-500/10",  fg: "text-emerald-600" },
-              { label: "إجمالي اللعبات", value: totalPlays,   icon: Activity,    bg: "bg-amber-500/10",   fg: "text-amber-600"  },
+              { label: s.challenges, value: challenges.length, icon: Target, bg: "bg-primary/10", fg: "text-primary" },
+              { label: s.active, value: activeCount, icon: CheckCircle, bg: "bg-emerald-500/10", fg: "text-emerald-600" },
+              { label: s.totalPlays, value: totalPlays, icon: Activity, bg: "bg-amber-500/10", fg: "text-amber-600" },
             ] as const).map((s, i) => (
               <motion.div 
                 key={s.label}
@@ -162,14 +165,14 @@ export default function SoloChallengesPage() {
         {challenges.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-black text-foreground">مسابقاتي</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{challenges.length} مسابقة محفوظة</p>
+              <h2 className="text-base font-black text-foreground">{s.myChallenges}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{s.savedChallenges.replace("{n}", String(challenges.length))}</p>
             </div>
             <div className="flex items-center bg-muted/60 p-1 rounded-xl shrink-0 self-start sm:self-auto border border-border/40">
               {([
-                { key: "all",     label: "الكل"    },
-                { key: "active",  label: "نشطة"    },
-                { key: "expired", label: "منتهية"  },
+                { key: "all", label: s.all },
+                { key: "active", label: s.active },
+                { key: "expired", label: s.expired },
               ] as const).map(tab => {
                 const cnt = tabCounts[tab.key];
                 const active = filter === tab.key;
@@ -215,16 +218,16 @@ export default function SoloChallengesPage() {
                   <Target className="w-6 h-6 text-primary" />
                 </div>
                 <div className="space-y-2 relative z-10">
-                  <h2 className="text-base font-black text-foreground tracking-tight">ما هي المسابقة الذاتية؟</h2>
+                  <h2 className="text-base font-black text-foreground tracking-tight">{s.whatIsTitle}</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                    أنشئ تحديات مخصصة بأسئلة اختيار من متعدد أو صح وخطأ. شارك الرابط مع طلابك ليتنافسوا فردياً في أي وقت، دون الحاجة لجلسة مباشرة. وتُجمع النتائج تلقائياً في قائمة المتصدرين.
+                    {s.whatIsBody}
                   </p>
                   <div className="flex flex-wrap gap-x-5 gap-y-2 pt-3">
                     {[
-                      { icon: Clock,   text: "مؤقت لكل سؤال" },
-                      { icon: Trophy,  text: "قائمة متصدرين" },
-                      { icon: Users,   text: "لعب فردي مستقل" },
-                      { icon: Share2,  text: "رابط قابل للمشاركة" },
+                      { icon: Clock, text: s.timedQuestion },
+                      { icon: Trophy, text: s.leaderboard },
+                      { icon: Users, text: s.independentPlay },
+                      { icon: Share2, text: s.shareableLink },
                     ].map(({ icon: Icon, text }) => (
                       <span key={text} className="flex items-center gap-1.5 text-xs font-bold text-primary/80">
                         <Icon className="w-3.5 h-3.5" />{text}
@@ -237,14 +240,14 @@ export default function SoloChallengesPage() {
                 <div className="w-16 h-16 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-5 border border-border">
                   <Target className="w-8 h-8 text-muted-foreground/60" />
                 </div>
-                <h2 className="text-lg font-black text-foreground mb-2">لا توجد مسابقات بعد</h2>
-                <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">ابدأ الآن وأنشئ أول مسابقة ذاتية لطلابك، سواء من واجب موجود أو بأسئلة جديدة كلياً.</p>
+                <h2 className="text-lg font-black text-foreground mb-2">{s.emptyTitle}</h2>
+                <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">{s.emptyBody}</p>
                 <Link
                   href="/teacher/solo-challenges/new"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <Plus className="w-5 h-5" />
-                  إنشاء مسابقة جديدة
+                  {s.newChallenge}
                 </Link>
               </div>
             </motion.div>
@@ -254,7 +257,7 @@ export default function SoloChallengesPage() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="text-center py-16 text-sm text-muted-foreground bg-muted/30 rounded-2xl border border-border border-dashed"
             >
-              لا توجد مسابقات في هذا التصنيف
+              {s.emptyFilter}
             </motion.div>
           ) : (
             <motion.div key="grid" className="grid gap-4 sm:grid-cols-2" layout>
@@ -280,11 +283,11 @@ export default function SoloChallengesPage() {
                             : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
                         )}>
                           {ch.isExpired ? <XCircle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-                          {ch.isExpired ? "منتهية" : "نشطة"}
+                          {ch.isExpired ? s.expired : s.active}
                         </span>
                         {ch.isStandalone && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                            <Target className="w-3 h-3" />مستقلة
+                            <Target className="w-3 h-3" />{s.standalone}
                           </span>
                         )}
                       </div>
@@ -298,24 +301,24 @@ export default function SoloChallengesPage() {
 
                       {/* Meta row */}
                       <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground font-medium p-3 bg-muted/40 rounded-xl border border-border/40">
-                        <span className="flex items-center gap-1.5" title="اللاعبين">
+                        <span className="flex items-center gap-1.5" title={s.players}>
                           <Users className="w-3.5 h-3.5 text-primary/60" />
                           {ch.playCount}
                         </span>
-                        <span className="flex items-center gap-1.5" title="الوقت لكل سؤال">
+                        <span className="flex items-center gap-1.5" title={s.timePerQuestion}>
                           <Clock className="w-3.5 h-3.5 text-amber-500/60" />
-                          {ch.timePerQuestion ?? 20}ث
+                          {ch.timePerQuestion ?? 20}{s.secondsShort}
                         </span>
-                        <span className="flex items-center gap-1.5" title="المتصدرين">
+                        <span className="flex items-center gap-1.5" title={s.leaders}>
                           <Trophy className="w-3.5 h-3.5 text-emerald-500/60" />
-                          {ch.leaderboardDisplay === "top3" ? "أفضل 3" : ch.leaderboardDisplay === "all" ? "الكل" : "أفضل 20"}
+                          {ch.leaderboardDisplay === "top3" ? s.top3 : ch.leaderboardDisplay === "all" ? s.all : s.top20}
                         </span>
                       </div>
 
                       {ch.expiresAt && (
                         <p className="text-[10px] text-muted-foreground mt-3 font-medium flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          ينتهي: <span dir="ltr">{new Date(ch.expiresAt).toLocaleDateString("en-GB")}</span>
+                          {s.expires} <span dir="ltr">{new Date(ch.expiresAt).toLocaleDateString("en-GB")}</span>
                         </p>
                       )}
                     </div>
@@ -327,20 +330,20 @@ export default function SoloChallengesPage() {
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground transition-colors"
                       >
                         <Settings className="w-3.5 h-3.5" />
-                        إدارة
+                        {s.manage}
                       </Link>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => copyLink(ch.slug)}
                           className="p-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          title="نسخ الرابط"
+                          title={s.copyLink}
                         >
                           <Copy className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => shareWhatsApp(ch.slug, ch.assignmentTitle)}
                           className="p-2 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/15 transition-colors text-emerald-600"
-                          title="مشاركة واتساب"
+                          title={s.shareWhatsApp}
                         >
                           <Share2 className="w-4 h-4" />
                         </button>
@@ -349,7 +352,7 @@ export default function SoloChallengesPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                          title="فتح رابط اللعبة"
+                          title={s.openGameLink}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>
@@ -357,7 +360,7 @@ export default function SoloChallengesPage() {
                         <button
                           onClick={() => deleteChallenge(ch.slug, ch.assignmentTitle)}
                           className="p-2 rounded-xl hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-600"
-                          title="حذف"
+                          title={s.delete}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

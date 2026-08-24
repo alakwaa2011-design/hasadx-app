@@ -2,6 +2,7 @@ import { useState } from "react";
 import QRCode from "react-qr-code";
 import { X, QrCode, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useI18n } from "@/lib/i18n";
 
 interface GameQRCodeProps {
   url: string;
@@ -29,6 +30,8 @@ interface QRModalButtonProps {
 }
 
 export function QRModalButton({ url, pin, label, variant = "light" }: QRModalButtonProps) {
+  const { lang, dir } = useI18n();
+  const isAr = lang === "ar";
   const [open, setOpen] = useState(false);
 
   const downloadQR = () => {
@@ -83,13 +86,14 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
               exit={{ scale: 0.85, y: 20 }}
               onClick={(e) => e.stopPropagation()}
               className="bg-card rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-5 max-w-xs w-full border border-border"
+              dir={dir}
             >
               <div className="flex items-center justify-between w-full">
                 <h3 className="text-lg font-black text-foreground flex items-center gap-2">
                   <QrCode className="w-5 h-5 text-primary" />
-                  باركود اللعبة
+                   {isAr ? "رمز QR للعبة" : "Game QR code"}
                 </h3>
-                <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-muted transition-colors">
+                 <button onClick={() => setOpen(false)} aria-label={isAr ? "إغلاق" : "Close"} className="p-2 rounded-xl hover:bg-muted transition-colors">
                   <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
@@ -112,7 +116,7 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
                 className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex items-center justify-center gap-2 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                تحميل الباركود
+                 {isAr ? "تنزيل رمز QR" : "Download QR code"}
               </button>
             </motion.div>
           </motion.div>
@@ -128,6 +132,8 @@ interface InlineQRProps {
 }
 
 export function InlineQR({ url, pin }: InlineQRProps) {
+  const { lang } = useI18n();
+  const isAr = lang === "ar";
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -137,7 +143,7 @@ export function InlineQR({ url, pin }: InlineQRProps) {
         className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 border border-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
       >
         <QrCode className="w-3.5 h-3.5" />
-        {expanded ? "إخفاء" : "باركود"}
+         {expanded ? (isAr ? "إخفاء" : "Hide") : (isAr ? "رمز QR" : "QR code")}
       </button>
       <AnimatePresence>
         {expanded && (

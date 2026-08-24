@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useSeo } from "@/lib/seo";
+import { useI18n } from "@/lib/i18n";
 import { api, IslamicShell, IslamicCard, IslamicNavBar, GoldButton, GhostButton, ISLAMIC_GOLD, ISLAMIC_GOLD_LIGHT } from "./_shared";
 
 interface Category {
@@ -31,14 +32,19 @@ interface Progress {
 
 const ONBOARDING_KEY = "islamic_onboarded_v1";
 
-const LEVEL_LABELS: Record<number, string> = { 1: "المستوى ١", 2: "المستوى ٢", 3: "المستوى ٣" };
 const LEVEL_ICONS: Record<number, string>  = { 1: "🌱", 2: "🔥", 3: "💎" };
 const LEVEL_COLORS: Record<number, string> = { 1: "#16a34a", 2: "#d97706", 3: "#dc2626" };
 
 export default function IslamicHome() {
+  const { t, lang, dir } = useI18n();
+  const levelLabels: Record<number, string> = {
+    1: `${t.islamic.level} 1`,
+    2: `${t.islamic.level} 2`,
+    3: `${t.islamic.level} 3`,
+  };
   useSeo({
-    title: "المسابقات الإسلامية | منصة حصاد — قرآن وسيرة وفقه وتاريخ إسلامي",
-    description: "خصّص وقتك للتعلم الإسلامي مع منصة حصاد: مسابقات في القرآن الكريم، السيرة النبوية، الفقه، التاريخ الإسلامي، مع شهادات ولوحة متصدرين وتحديات بين الأصدقاء.",
+    title: lang === "ar" ? "المسابقات الإسلامية | منصة حصاد — قرآن وسيرة وفقه وتاريخ إسلامي" : "Islamic Challenges | HasadX",
+    description: lang === "ar" ? "خصّص وقتك للتعلم الإسلامي مع منصة حصاد: مسابقات في القرآن الكريم، السيرة النبوية، الفقه، التاريخ الإسلامي، مع شهادات ولوحة متصدرين وتحديات بين الأصدقاء." : "Islamic challenges in Quran, biography, jurisprudence, and Islamic history.",
     canonicalPath: "/islamic",
     ogImage: "/opengraph.jpg",
   });
@@ -63,32 +69,32 @@ export default function IslamicHome() {
     api<Progress>("/islamic/my-progress").then((p) => {
       setProgress(p);
       const msgs: string[] = [];
-      if (p.streak === 6)       msgs.push("تبقى لك يوم واحد لمكافأة 7 أيام! 🔥");
-      else if (p.streak >= 3)   msgs.push(`أنت في سلسلة ${p.streak} أيام! استمر 🔥`);
-      else if (p.streak === 0)  msgs.push("اقتربت تخسر سلسلتك 🔥 — ابدأ اليوم!");
-      else                      msgs.push("جاهز تكسر رقمك السابق؟");
-      if (p.todayBonus) msgs.push(`+${p.todayBonus} نقاط لدخولك اليومي 🎉`);
+      if (p.streak === 6)       msgs.push(t.islamic.streakAlmost);
+      else if (p.streak >= 3)   msgs.push(t.islamic.streakKeepGoing.replace("{n}", String(p.streak)));
+      else if (p.streak === 0)  msgs.push(t.islamic.streakAtRisk);
+      else                      msgs.push(t.islamic.streakReady);
+      if (p.todayBonus) msgs.push(t.islamic.dailyBonus.replace("{n}", String(p.todayBonus)));
       setWelcome(msgs.join("  ·  "));
     }).catch(() => {});
-  }, [access?.hasAccess]);
+  }, [access?.hasAccess, t]);
 
   if (access === null) {
     return (
       <IslamicShell topSlot={<IslamicNavBar />}>
-        <div style={{ textAlign: "center", padding: 60, opacity: 0.6 }}>جاري التحميل…</div>
+        <div style={{ textAlign: "center", padding: 60, opacity: 0.6 }}>{t.islamic.loading}</div>
       </IslamicShell>
     );
   }
 
   if (!access.hasAccess) {
     return (
-      <IslamicShell title="مسابقات عامة" topSlot={<IslamicNavBar />}>
+      <IslamicShell title={t.islamic.publicChallenges} topSlot={<IslamicNavBar />}>
         <IslamicCard>
           <p style={{ textAlign: "center", fontSize: 18, lineHeight: 1.8 }}>
-            يجب تسجيل الدخول للوصول إلى مسابقات عامة.
+            {t.islamic.accessRequired}
           </p>
           <div style={{ textAlign: "center", marginTop: 24 }}>
-            <GhostButton onClick={() => setLocation("/")}>العودة للقائمة الرئيسية</GhostButton>
+            <GhostButton onClick={() => setLocation("/")}>{t.islamic.returnHome}</GhostButton>
           </div>
         </IslamicCard>
       </IslamicShell>
@@ -96,7 +102,7 @@ export default function IslamicHome() {
   }
 
   return (
-    <IslamicShell title="مسابقات عامة" topSlot={<IslamicNavBar />}>
+    <IslamicShell title={t.islamic.publicChallenges} topSlot={<IslamicNavBar />}>
 
       {/* ── Onboarding overlay (dark overlay stays intentionally dark) ── */}
       {showOnboarding && (
@@ -114,14 +120,14 @@ export default function IslamicHome() {
             }}
           >
             <h2 style={{ color: "#92400e", fontSize: 24, marginBottom: 20, textAlign: "center", fontWeight: 900 }}>
-              أهلاً بك في مسابقات حصاد!
+              {t.islamic.welcomeTitle}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
               {[
-                ["🎮", "اختر فئة وأجب قبل انتهاء الوقت"],
-                ["⭐", "أجب أسرع لتحصل على ⭐⭐⭐"],
-                ["🔥", "ادخل يومياً للحفاظ على سلسلتك"],
-                ["🏆", "أجب بدون خطأ لفتح مستوى أصعب"],
+                ["🎮", t.islamic.onboardingChoose],
+                ["⭐", t.islamic.onboardingFast],
+                ["🔥", t.islamic.onboardingStreak],
+                ["🏆", t.islamic.onboardingLevel],
               ].map(([icon, text]) => (
                 <div key={text} style={{
                   display: "flex", alignItems: "center", gap: 14,
@@ -138,7 +144,7 @@ export default function IslamicHome() {
             </div>
             <div style={{ textAlign: "center" }}>
               <GoldButton onClick={() => { localStorage.setItem(ONBOARDING_KEY, "1"); setShowOnboarding(false); }}>
-                لنبدأ! 🚀
+                {t.islamic.start} 🚀
               </GoldButton>
             </div>
           </div>
@@ -174,14 +180,14 @@ export default function IslamicHome() {
           boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
         }}>
           <div style={{ flex: 1, padding: "18px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 11, color: "#78716c", marginBottom: 5, letterSpacing: "0.04em" }}>إجمالي نقاطك</div>
+            <div style={{ fontSize: 11, color: "#78716c", marginBottom: 5, letterSpacing: "0.04em" }}>{t.islamic.totalPoints}</div>
             <div style={{ fontSize: 30, fontWeight: 900, color: ISLAMIC_GOLD, lineHeight: 1 }}>
               {progress.totalPoints.toLocaleString()}
             </div>
           </div>
           <div style={{ width: 1, background: "rgba(180,83,9,0.15)" }} />
           <div style={{ flex: 1, padding: "18px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 11, color: "#78716c", marginBottom: 5, letterSpacing: "0.04em" }}>سلسلة الأيام</div>
+            <div style={{ fontSize: 11, color: "#78716c", marginBottom: 5, letterSpacing: "0.04em" }}>{t.islamic.dayStreak}</div>
             <div style={{ fontSize: 30, fontWeight: 900, color: "#1c1208", lineHeight: 1 }}>
               {progress.streak}
               <span style={{ fontSize: 20, marginRight: 4 }}>
@@ -193,7 +199,7 @@ export default function IslamicHome() {
             <>
               <div style={{ width: 1, background: "rgba(180,83,9,0.15)" }} />
               <div style={{ flex: 1, padding: "18px 16px", textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#78716c", marginBottom: 5 }}>الشهادات</div>
+                <div style={{ fontSize: 11, color: "#78716c", marginBottom: 5 }}>{t.islamic.certificates}</div>
                 <div style={{ fontSize: 30, fontWeight: 900, color: "#1c1208", lineHeight: 1 }}>
                   {progress.certificates.length} 🏆
                 </div>
@@ -209,26 +215,26 @@ export default function IslamicHome() {
           onClick={() => setLocation("/islamic/leaderboard")}
           style={{ borderRadius: 16, padding: "14px 12px", fontSize: 15, width: "100%", justifyContent: "center" }}
         >
-          🏆 لوحات المتصدرين
+          🏆 {t.islamic.leaderboards}
         </GoldButton>
         <GhostButton
           onClick={() => setLocation("/islamic/challenge/new")}
           style={{ borderRadius: 16, padding: "14px 12px", fontSize: 15, width: "100%", textAlign: "center" }}
         >
-          ⚔️ أنشئ تحدياً
+          ⚔️ {t.islamic.createChallenge}
         </GhostButton>
         <GhostButton
           onClick={() => setLocation("/islamic/challenge/join")}
           style={{ borderRadius: 16, padding: "14px 12px", fontSize: 15, width: "100%", textAlign: "center" }}
         >
-          🎯 ادخل تحدياً
+          🎯 {t.islamic.joinChallenge}
         </GhostButton>
         {(access.isAdmin || access.hasAccess) && (
           <GhostButton
             onClick={() => setLocation("/islamic/admin")}
             style={{ borderRadius: 16, padding: "14px 12px", fontSize: 15, width: "100%", textAlign: "center" }}
           >
-            ⚙️ لوحة التحكم
+            ⚙️ {t.islamic.dashboard}
           </GhostButton>
         )}
       </div>
@@ -236,7 +242,7 @@ export default function IslamicHome() {
       {/* ── Sections ── */}
       {sections.length === 0 && (
         <IslamicCard>
-          <p style={{ textAlign: "center", opacity: 0.65 }}>لا توجد أقسام بعد. اطلب من المسؤول إضافة الأسئلة.</p>
+          <p style={{ textAlign: "center", opacity: 0.65 }}>{t.islamic.noSections}</p>
         </IslamicCard>
       )}
 
@@ -300,13 +306,13 @@ export default function IslamicHome() {
                           border: "1px solid rgba(180,83,9,0.2)",
                           color: ISLAMIC_GOLD,
                         }}>
-                          {c.questionCount} سؤال
+                          {c.questionCount} {t.islamic.questions}
                         </span>
                         {!hasMultipleLevels && canPlay && (
-                          <span style={{ fontSize: 13, fontWeight: 700, color: ISLAMIC_GOLD }}>ابدأ ←</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: ISLAMIC_GOLD }}>{t.islamic.start} ←</span>
                         )}
                         {hasMultipleLevels && (
-                          <span style={{ fontSize: 11, color: "#a8a29e" }}>{c.availableLevels.length} مستويات</span>
+                          <span style={{ fontSize: 11, color: "#a8a29e" }}>{c.availableLevels.length} {t.islamic.levels}</span>
                         )}
                       </div>
 
@@ -323,7 +329,7 @@ export default function IslamicHome() {
                                   color: isUnlocked ? "#fff" : "#a8a29e",
                                   border: isUnlocked ? "none" : "1px solid rgba(0,0,0,0.1)",
                                 }}>
-                                  {isUnlocked ? LEVEL_ICONS[lv] : "🔒"} {LEVEL_LABELS[lv]}
+                                  {isUnlocked ? LEVEL_ICONS[lv] : "🔒"} {levelLabels[lv]}
                                 </span>
                               );
                             })}
@@ -344,20 +350,20 @@ export default function IslamicHome() {
                                       color: isUnlocked ? "#1c1208" : "#a8a29e",
                                       cursor: isUnlocked ? "pointer" : "not-allowed",
                                       fontFamily: "inherit", fontSize: 14, fontWeight: 700,
-                                      textAlign: "right", direction: "rtl",
+                                      textAlign: "start", direction: dir,
                                       display: "flex", alignItems: "center", justifyContent: "space-between",
                                       transition: "all 0.15s",
                                     }}>
                                     <span style={{ fontSize: 18 }}>{isUnlocked ? LEVEL_ICONS[lv] : "🔒"}</span>
                                     <span>
-                                      {LEVEL_LABELS[lv]}
-                                      {lv === 1 && " — أساسي"}
-                                      {lv === 2 && " — متقدم"}
-                                      {lv === 3 && " — خبراء"}
+                                      {levelLabels[lv]}
+                                      {lv === 1 && ` — ${t.islamic.basic}`}
+                                      {lv === 2 && ` — ${t.islamic.advanced}`}
+                                      {lv === 3 && ` — ${t.islamic.experts}`}
                                     </span>
                                     {isUnlocked
-                                      ? <span style={{ fontSize: 12, color: LEVEL_COLORS[lv], fontWeight: 800 }}>ابدأ ←</span>
-                                      : <span style={{ fontSize: 11, color: "#a8a29e" }}>أكمل السابق</span>
+                                      ? <span style={{ fontSize: 12, color: LEVEL_COLORS[lv], fontWeight: 800 }}>{t.islamic.start} ←</span>
+                                      : <span style={{ fontSize: 11, color: "#a8a29e" }}>{t.islamic.completePrevious}</span>
                                     }
                                   </button>
                                 );
@@ -367,14 +373,14 @@ export default function IslamicHome() {
 
                           {!isExpanded && (
                             <div style={{ fontSize: 12, color: "#a8a29e", textAlign: "center", marginTop: 4 }}>
-                              اضغط لاختيار المستوى ↓
+                              {t.islamic.chooseLevel}
                             </div>
                           )}
                         </>
                       )}
 
                       {!canPlay && (
-                        <div style={{ fontSize: 11, color: "#a8a29e", marginTop: 8 }}>لم تُضف أسئلة بعد</div>
+                        <div style={{ fontSize: 11, color: "#a8a29e", marginTop: 8 }}>{t.islamic.noQuestions}</div>
                       )}
                     </IslamicCard>
                   );

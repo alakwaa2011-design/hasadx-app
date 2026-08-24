@@ -287,7 +287,8 @@ function GameCard({
   );
 }
 
-function NewCardBackReveal({ level, lang }: { level: number; lang: string }) {
+function NewCardBackReveal({ level }: { level: number }) {
+  const { t } = useI18n();
   const theme = getBackTheme(level);
   const patternSize = 8;
   return (
@@ -327,10 +328,10 @@ function NewCardBackReveal({ level, lang }: { level: number; lang: string }) {
       </motion.div>
       <div className="text-start">
         <div className="text-[10px] sm:text-xs font-bold text-amber-600 dark:text-amber-300 uppercase tracking-wide leading-tight">
-          {lang === "ar" ? "✨ ستايل جديد" : "✨ New style unlocked"}
+           {t.gamePages.playUi.newStyle}
         </div>
         <div className="text-[11px] sm:text-xs text-gray-600 dark:text-white/70 leading-tight">
-          {lang === "ar" ? "تصميم بطاقة جديد" : "New card back design"}
+           {t.gamePages.playUi.newCardDesign}
         </div>
       </div>
     </motion.div>
@@ -338,8 +339,7 @@ function NewCardBackReveal({ level, lang }: { level: number; lang: string }) {
 }
 
 export default function MemoryPlay() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { t, dir } = useI18n();
   const [, setLocation] = useLocation();
   const params = useParams<{ setId?: string }>();
   const { isArenaMode, myName, opponents, results, updateScore, finishArena } = useArena("memory");
@@ -641,16 +641,16 @@ export default function MemoryPlay() {
           <div className="max-w-md w-full text-center bg-black/5 dark:bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-black/10 dark:border-white/10">
             <div className="text-5xl mb-4">🔍</div>
             <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">
-              {lang === "ar" ? "لم يتم العثور على البطاقات" : "Card Set Not Found"}
+              {t.gamePages.playUi.cardsNotFound}
             </h2>
             <p className="text-gray-500 dark:text-white/50 mb-6">
-              {lang === "ar" ? "الرمز المدخل غير صحيح أو منتهي الصلاحية" : "The PIN is invalid or the card set no longer exists"}
+              {t.gamePages.playUi.invalidCardPin}
             </p>
             <button
               onClick={() => setLocation("/game/memory")}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold shadow-lg"
             >
-              {lang === "ar" ? "العودة للعبة الذاكرة" : "Back to Memory Game"}
+              {t.gamePages.playUi.backMemory}
             </button>
           </div>
         </div>
@@ -690,10 +690,10 @@ export default function MemoryPlay() {
               animate={{ opacity: 1, y: 0 }}
               className="text-gray-700 dark:text-white/80 text-xl font-black tracking-wide"
             >
-              {countdownNum > 0 ? (lang === "ar" ? "استعد!" : "Get Ready!") : (lang === "ar" ? "انطلق!" : "GO!")}
+              {countdownNum > 0 ? t.gamePages.playUi.getReady : t.gamePages.playUi.go}
             </motion.p>
             <p className="text-indigo-500 dark:text-indigo-300/60 text-sm mt-2 font-medium">
-              {lang === "ar" ? "لعبة الذاكرة" : "Memory Match"}
+              {t.gamePages.memoryGame}
             </p>
           </div>
         </div>
@@ -730,7 +730,7 @@ export default function MemoryPlay() {
                   >
                     {stars >= 4 ? "🏆" : stars >= 3 ? "🎉" : stars >= 2 ? "😤" : "😢"}
                   </motion.div>
-                  <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">{lang === "ar" ? "انتهت اللعبة!" : "Game Over!"}</h1>
+                  <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2">{t.gamePages.playUi.gameOver}</h1>
                   {customTitle && <p className="text-purple-600 dark:text-purple-300 text-sm mb-2">{customTitle}</p>}
 
                   <div className="flex justify-center gap-1.5 my-3">
@@ -748,19 +748,19 @@ export default function MemoryPlay() {
 
                   <div className="grid grid-cols-4 gap-3 mt-4 bg-black/5 dark:bg-white/5 rounded-2xl p-4">
                     <div className="text-center">
-                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "النقاط" : "Score"}</p>
+                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{t.gamePages.playUi.score}</p>
                       <p className="text-xl font-black text-amber-500 dark:text-amber-400">{score}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "المستوى" : "Level"}</p>
+                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{t.gamePages.level}</p>
                       <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{level}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "الوقت" : "Time"}</p>
+                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{t.gamePages.playUi.time}</p>
                       <p className="text-xl font-black text-sky-600 dark:text-sky-400" dir="ltr">{timeStr}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{lang === "ar" ? "أعلى سلسلة" : "Best Streak"}</p>
+                      <p className="text-gray-500 dark:text-white/50 text-[10px] font-bold mb-1">{t.gamePages.playUi.bestStreak}</p>
                       <p className="text-xl font-black text-orange-500 dark:text-orange-400">{maxStreak}🔥</p>
                     </div>
                   </div>
@@ -769,17 +769,20 @@ export default function MemoryPlay() {
                 <div className="flex flex-col gap-3 mb-5">
                   <button onClick={handleRestart} className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-black text-lg shadow-lg flex items-center justify-center gap-2">
                     <RotateCcw className="w-6 h-6" />
-                    {lang === "ar" ? "حاول مرة أخرى" : "Try Again"}
+                    {t.gamePages.playUi.tryAgain}
                   </button>
                   <ShareButtons
-                    text={lang === "ar"
-                      ? `🧠${playerName.trim() ? ` ${playerName.trim()} -` : ""} حصلت على ${score} نقطة ووصلت للمستوى ${level} في لعبة الذاكرة!\n⏱ ${timeStr} | 🔥 سلسلة ${maxStreak}\nجرّب تتغلب عليّ!`
-                      : `🧠${playerName.trim() ? ` ${playerName.trim()} -` : ""} I scored ${score} points and reached level ${level} in Memory Match!\n⏱ ${timeStr} | 🔥 Streak ${maxStreak}\nTry to beat me!`}
+                    text={t.gamePages.playUi.memoryShareResult
+                      .replace("{name}", playerName.trim() ? ` ${playerName.trim()} -` : "")
+                      .replace("{score}", String(score))
+                      .replace("{level}", String(level))
+                      .replace("{time}", timeStr)
+                      .replace("{streak}", String(maxStreak))}
                     url={window.location.origin + (import.meta.env.BASE_URL || "/") + "game/memory"}
                   />
                   <button onClick={() => setLocation("/game/memory")} className="w-full py-2.5 text-sm font-medium text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center justify-center gap-1.5">
                     <Home className="w-4 h-4" />
-                    {lang === "ar" ? "العودة" : "Back"}
+                    {t.gamePages.playUi.back}
                   </button>
                 </div>
               </div>
@@ -788,19 +791,20 @@ export default function MemoryPlay() {
                 {beatLeaderboard && !saved && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-4">
                     <p className="text-center text-amber-600 dark:text-amber-400 font-black text-sm mb-3">
-                      🎉 {lang === "ar" ? "نتيجة مميزة! سجّل اسمك في لوحة المتصدرين!" : "Amazing score! Save your name to the leaderboard!"}
+                      🎉 {t.gamePages.playUi.amazingScore}
                     </p>
                     <input
                       type="text"
                       maxLength={20}
                       value={playerName}
                       onChange={e => setPlayerName(e.target.value)}
-                      placeholder={lang === "ar" ? "أدخل اسمك..." : "Enter your name..."}
+                      placeholder={t.gamePages.playUi.enterName}
+                      aria-label={t.gamePages.playUi.enterYourNameTitle}
                       className="w-full text-center text-lg font-bold py-3 px-4 rounded-xl bg-black/10 dark:bg-white/10 border-2 border-amber-500/30 text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors mb-3"
                       onKeyDown={e => e.key === "Enter" && handleSaveScore()}
                     />
                     <button onClick={handleSaveScore} disabled={!playerName.trim() || saving} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg disabled:opacity-50">
-                      {saving ? (lang === "ar" ? "جاري الحفظ..." : "Saving...") : (lang === "ar" ? "سجّل نتيجتك" : "Save Score")}
+                      {saving ? t.gamePages.playUi.saving : t.gamePages.playUi.saveScore}
                     </button>
                   </motion.div>
                 )}
@@ -812,12 +816,13 @@ export default function MemoryPlay() {
                       maxLength={20}
                       value={playerName}
                       onChange={e => setPlayerName(e.target.value)}
-                      placeholder={lang === "ar" ? "أدخل اسمك..." : "Enter your name..."}
+                      placeholder={t.gamePages.playUi.enterName}
+                      aria-label={t.gamePages.playUi.enterYourNameTitle}
                       className="w-full text-center text-lg font-bold py-3 px-4 rounded-xl bg-black/10 dark:bg-white/10 border-2 border-black/20 dark:border-white/20 text-gray-900 dark:text-white focus:border-amber-500 focus:outline-none transition-colors mb-3"
                       onKeyDown={e => e.key === "Enter" && handleSaveScore()}
                     />
                     <button onClick={handleSaveScore} disabled={!playerName.trim() || saving} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg disabled:opacity-50">
-                      {saving ? (lang === "ar" ? "جاري الحفظ..." : "Saving...") : (lang === "ar" ? "سجّل نتيجتك" : "Save Score")}
+                      {saving ? t.gamePages.playUi.saving : t.gamePages.playUi.saveScore}
                     </button>
                   </motion.div>
                 )}
@@ -827,12 +832,12 @@ export default function MemoryPlay() {
                     {isNewRecord ? (
                       <div className="bg-gradient-to-r from-amber-500/10 to-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
                         <div className="text-4xl mb-2">🧠✨</div>
-                        <p className="text-emerald-600 dark:text-emerald-400 font-black text-base mb-1">{lang === "ar" ? "ذاكرتك خارقة! أنت بطل حقيقي 🏆" : "Super memory! You're a true champion 🏆"}</p>
-                        <p className="text-gray-500 dark:text-white/50 text-xs">{lang === "ar" ? "تم حفظ نتيجتك في لوحة المتصدرين!" : "Your score has been saved to the leaderboard!"}</p>
+                        <p className="text-emerald-600 dark:text-emerald-400 font-black text-base mb-1">{t.gamePages.playUi.superMemory}</p>
+                        <p className="text-gray-500 dark:text-white/50 text-xs">{t.gamePages.playUi.scoreSavedLeaderboard}</p>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <p className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">✓ {lang === "ar" ? "تم حفظ نتيجتك!" : "Score saved!"}</p>
+                        <p className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">✓ {t.gamePages.playUi.scoreSaved}</p>
                       </div>
                     )}
                   </motion.div>
@@ -844,10 +849,10 @@ export default function MemoryPlay() {
               <div className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl p-3 w-full">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Trophy className="w-4 h-4 text-amber-500" />
-                  <span className="text-xs font-black text-gray-700 dark:text-white/80">{lang === "ar" ? "المتصدرون" : "Top Players"}</span>
+                  <span className="text-xs font-black text-gray-700 dark:text-white/80">{t.gamePages.playUi.topPlayers}</span>
                 </div>
                 {leaderboard.length === 0 ? (
-                  <p className="text-gray-400 dark:text-white/30 text-[10px] text-center py-2">{lang === "ar" ? "لا نتائج بعد" : "No scores yet"}</p>
+                  <p className="text-gray-400 dark:text-white/30 text-[10px] text-center py-2">{t.gamePages.playUi.noScores}</p>
                 ) : (
                   <div className="space-y-1">
                     {leaderboard.map((e, i) => (
@@ -880,16 +885,16 @@ export default function MemoryPlay() {
 
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-950 flex items-center justify-center px-4" dir={dir}>
         <div className="max-w-2xl mx-auto w-full">
-          {isArenaMode && <ArenaBar myName={myName} myScore={score} opponents={opponents} results={results} isRtl={lang === "ar"} />}
+          {isArenaMode && <ArenaBar myName={myName} myScore={score} opponents={opponents} results={results} isRtl={dir === "rtl"} />}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30">
                 <Brain className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-300" />
                 <span className="text-xs font-black text-indigo-700 dark:text-indigo-200">
-                  {lang === "ar" ? `م${level}` : `Lv${level}`}
+                  {t.gamePages.levelShort}{level}
                 </span>
               </div>
-              <button onClick={toggleMute} className="p-1.5 rounded-lg bg-black/10 dark:bg-white/10 text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <button aria-label={t.gamePages.playUi.toggleSound} onClick={toggleMute} className="p-1.5 rounded-lg bg-black/10 dark:bg-white/10 text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
             </div>
@@ -914,7 +919,7 @@ export default function MemoryPlay() {
               </AnimatePresence>
               <div className="px-2.5 py-1 rounded-lg bg-black/10 dark:bg-white/10 border border-black/10 dark:border-white/10">
                 <span className="font-black text-gray-900 dark:text-white text-xs">{score}</span>
-                <span className="text-gray-400 dark:text-white/40 text-[10px] ms-1">{lang === "ar" ? "ن" : "pt"}</span>
+                <span className="text-gray-400 dark:text-white/40 text-[10px] ms-1">{t.gamePages.playUi.pointsShort}</span>
               </div>
             </div>
           </div>
@@ -944,7 +949,7 @@ export default function MemoryPlay() {
               >
                 <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-700 dark:text-purple-200 text-sm font-black shadow-lg shadow-purple-500/10">
                   <Brain className="w-4 h-4" />
-                  {lang === "ar" ? "احفظ البطاقات! 🧠" : "Memorize the cards! 🧠"}
+                  {t.gamePages.playUi.memorizeCards}
                 </span>
               </motion.div>
             )}
@@ -960,11 +965,11 @@ export default function MemoryPlay() {
               >
                 <span className="inline-flex items-center gap-2.5 px-6 py-2 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/40 text-emerald-700 dark:text-emerald-200 text-sm font-black shadow-lg shadow-emerald-500/10">
                   <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                  {lang === "ar" ? `مستوى جديد! ${level + 1} 🎉` : `New Level! ${level + 1} 🎉`}
+                  {t.gamePages.level} {level + 1} 🎉
                   <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                 </span>
                 {getBackTheme(level + 1) !== getBackTheme(level) && (
-                  <NewCardBackReveal level={level + 1} lang={lang} />
+                  <NewCardBackReveal level={level + 1} />
                 )}
               </motion.div>
             )}

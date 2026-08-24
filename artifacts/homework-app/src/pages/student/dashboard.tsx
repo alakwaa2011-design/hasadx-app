@@ -75,21 +75,21 @@ interface RecentScore {
   createdAt: string;
 }
 
-const GAME_LABELS: Record<string, { ar: string; en: string; color: string }> = {
-  flags: { ar: "أعلام الدول", en: "Flag Quiz", color: "text-emerald-600 bg-emerald-500/10" },
-  color: { ar: "لعبة الألوان", en: "Color Game", color: "text-orange-600 bg-orange-500/10" },
-  memory: { ar: "لعبة الذاكرة", en: "Memory Match", color: "text-pink-600 bg-pink-500/10" },
-  multiply: { ar: "جدول الضرب", en: "Multiplication", color: "text-cyan-600 bg-cyan-500/10" },
-  scramble: { ar: "الكلمات المبعثرة", en: "Scrambled Words", color: "text-violet-600 bg-violet-500/10" },
-  capitals: { ar: "عواصم العالم", en: "World Capitals", color: "text-teal-600 bg-teal-500/10" },
-  wameeth: { ar: "وميض", en: "Wameeth", color: "text-amber-600 bg-amber-500/10" },
-  stroop: { ar: "ارتباك", en: "Stroop", color: "text-red-600 bg-red-500/10" },
+const GAME_LABELS: Record<string, { key: keyof typeof import("@/locales/ar").ar.studentDashboard; color: string }> = {
+  flags: { key: "flags", color: "text-emerald-600 bg-emerald-500/10" },
+  color: { key: "color", color: "text-orange-600 bg-orange-500/10" },
+  memory: { key: "memory", color: "text-pink-600 bg-pink-500/10" },
+  multiply: { key: "multiply", color: "text-cyan-600 bg-cyan-500/10" },
+  scramble: { key: "scramble", color: "text-violet-600 bg-violet-500/10" },
+  capitals: { key: "capitals", color: "text-teal-600 bg-teal-500/10" },
+  wameeth: { key: "wameeth", color: "text-amber-600 bg-amber-500/10" },
+  stroop: { key: "stroop", color: "text-red-600 bg-red-500/10" },
 };
 
 export default function StudentDashboard() {
   const [, setLocation] = useLocation();
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
+  const copy = t.studentDashboard;
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [recentScores, setRecentScores] = useState<RecentScore[]>([]);
   const [activityDays, setActivityDays] = useState<string[]>([]);
@@ -174,10 +174,10 @@ export default function StudentDashboard() {
         body: JSON.stringify({ withBots, botCount: bots }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "خطأ في بدء اللعبة");
+      if (!res.ok) throw new Error(data.message || t.publicGames.startError);
       setLocation(`/game/join/${data.pin}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "خطأ في بدء اللعبة";
+      const message = err instanceof Error ? err.message : t.publicGames.startError;
       toast.error(message);
     } finally {
       setStartingGameId(null);
@@ -189,15 +189,16 @@ export default function StudentDashboard() {
       method: "POST",
       credentials: "include",
     });
-    toast.success(lang === "ar" ? "تم تسجيل الخروج" : "Logged out");
+    toast.success(copy.loggedOut);
     setLocation("/");
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
+        <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center" role="status" aria-label={t.solve.loading}>
           <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1E4D35" }} />
+          <span className="sr-only">{t.solve.loading}</span>
         </div>
       </Layout>
     );
@@ -235,61 +236,61 @@ export default function StudentDashboard() {
     {
       href: "/game/flags",
       icon: Globe,
-      title: lang === "ar" ? "أعلام الدول" : "Flag Quiz",
+      title: copy.flags,
       color: "bg-emerald-500/10 text-emerald-600",
     },
     {
       href: "/game/color",
       icon: Palette,
-      title: lang === "ar" ? "لعبة الألوان" : "Color Game",
+      title: copy.color,
       color: "bg-orange-500/10 text-orange-600",
     },
     {
       href: "/game/memory",
       icon: Brain,
-      title: lang === "ar" ? "لعبة الذاكرة" : "Memory Match",
+      title: copy.memory,
       color: "bg-pink-500/10 text-pink-600",
     },
     {
       href: "/game/multiply",
       icon: Calculator,
-      title: lang === "ar" ? "جدول الضرب" : "Multiplication",
+      title: copy.multiply,
       color: "bg-cyan-500/10 text-cyan-600",
     },
     {
       href: "/game/scramble",
       icon: Shuffle,
-      title: lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words",
+      title: copy.scramble,
       color: "bg-violet-500/10 text-violet-600",
     },
     {
       href: "/game/letrly",
       icon: Type,
-      title: lang === "ar" ? "تحدي الكلمة" : "Word Challenge",
+      title: copy.wordChallenge,
       color: "bg-emerald-500/10 text-emerald-600",
     },
     {
       href: "/game/capitals",
       icon: Landmark,
-      title: lang === "ar" ? "عواصم العالم" : "World Capitals",
+      title: copy.capitals,
       color: "bg-teal-500/10 text-teal-600",
     },
     {
       href: "/game/stroop",
       icon: CircleDot,
-      title: lang === "ar" ? "ارتباك" : "Stroop",
+      title: copy.stroop,
       color: "bg-red-500/10 text-red-600",
     },
     {
       href: "/game/million",
       icon: DollarSign,
-      title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wins a Million?",
+      title: copy.million,
       color: "bg-amber-500/10 text-amber-600",
     },
     {
       href: "/game/maraqui",
       icon: Route,
-      title: lang === "ar" ? "المراقي" : "Maraqui",
+      title: copy.maraqui,
       color: "bg-indigo-500/10 text-indigo-600",
     },
   ];
@@ -302,18 +303,12 @@ export default function StudentDashboard() {
     const diffHr = Math.floor(diffMs / 3600000);
     const diffDay = Math.floor(diffMs / 86400000);
 
-    if (lang === "ar") {
-      if (diffMin < 1) return "الآن";
-      if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
-      if (diffHr < 24) return `منذ ${diffHr} ساعة`;
-      if (diffDay < 7) return `منذ ${diffDay} يوم`;
-      return d.toLocaleDateString("ar-EG");
-    }
-    if (diffMin < 1) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHr < 24) return `${diffHr}h ago`;
-    if (diffDay < 7) return `${diffDay}d ago`;
-    return d.toLocaleDateString("en");
+    const relative = new Intl.RelativeTimeFormat(lang === "ar" ? "ar" : "en", { numeric: "auto" });
+    if (diffMin < 1) return relative.format(0, "minute");
+    if (diffMin < 60) return relative.format(-diffMin, "minute");
+    if (diffHr < 24) return relative.format(-diffHr, "hour");
+    if (diffDay < 7) return relative.format(-diffDay, "day");
+    return d.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
   };
 
   return (
@@ -347,7 +342,7 @@ export default function StudentDashboard() {
                   </div>
                   <div className="min-w-0">
                     <h1 className="text-2xl font-extrabold truncate">
-                      {lang === "ar" ? `مرحباً، ${student.displayName}!` : `Welcome, ${student.displayName}!`}
+                      {copy.welcome.replace("{name}", student.displayName)}
                     </h1>
                     <p className="text-white/75 text-sm mt-0.5">@{student.username}</p>
                     {/* Daily streak chip */}
@@ -365,14 +360,10 @@ export default function StudentDashboard() {
                       />
                       <span className="text-xs font-bold text-white">
                         {streakInfo.streak === 0
-                          ? (lang === "ar" ? "ابدأ سلسلتك اليوم!" : "Start your streak!")
+                          ? copy.startStreak
                           : streakInfo.playedToday
-                            ? (lang === "ar"
-                                ? `${arDigit(streakInfo.streak)} ${streakInfo.streak === 1 ? "يوم" : streakInfo.streak === 2 ? "يومان" : "أيام"} متتالية`
-                                : `${streakInfo.streak} day${streakInfo.streak === 1 ? "" : "s"} streak`)
-                            : (lang === "ar"
-                                ? `${arDigit(streakInfo.streak)} ${streakInfo.streak === 1 ? "يوم" : streakInfo.streak === 2 ? "يومان" : "أيام"} • العب اليوم!`
-                                : `${streakInfo.streak} day${streakInfo.streak === 1 ? "" : "s"} • play today!`)}
+                            ? copy.streak.replace("{n}", arDigit(streakInfo.streak))
+                            : copy.playToday.replace("{n}", arDigit(streakInfo.streak))}
                       </span>
                     </div>
                   </div>
@@ -380,7 +371,7 @@ export default function StudentDashboard() {
                 <button
                   onClick={handleLogout}
                   className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors shrink-0"
-                  title={lang === "ar" ? "تسجيل الخروج" : "Logout"}
+                  title={copy.logout}
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -397,7 +388,7 @@ export default function StudentDashboard() {
             <Link href={`/stu/${student.username}`}>
               <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer">
                 <span className="text-sm font-medium text-emerald-800">
-                  {lang === "ar" ? "عرض ملفك العام" : "View your public profile"}
+                  {copy.publicProfile}
                 </span>
                 <ExternalLink className="w-4 h-4 text-emerald-600 shrink-0" />
               </div>
@@ -406,9 +397,7 @@ export default function StudentDashboard() {
               <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                 <BadgeCheck className="w-4 h-4 shrink-0" />
                 <span>
-                  {lang === "ar"
-                    ? <>حسابك غير موثّق. سجّل الدخول بـ <strong>Google</strong> لإظهار شارة التوثيق على ملفك العام.</>
-                    : <>Your account isn't verified. Sign in with <strong>Google</strong> to earn the verified badge on your public profile.</>}
+                  {copy.unverified}
                 </span>
               </div>
             )}
@@ -426,7 +415,7 @@ export default function StudentDashboard() {
                 {student.totalScore.toLocaleString(lang === "ar" ? "ar-EG" : "en")}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                {lang === "ar" ? "إجمالي النقاط" : "Total Score"}
+                {copy.totalScore}
               </p>
             </Card>
             <Card className="p-4 sm:p-5 text-center hover:shadow-md transition-shadow">
@@ -440,7 +429,7 @@ export default function StudentDashboard() {
                 {student.gamesPlayed.toLocaleString(lang === "ar" ? "ar-EG" : "en")}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                {lang === "ar" ? "الألعاب المُنجزة" : "Games Played"}
+                {copy.gamesPlayed}
               </p>
             </Card>
             <Card className="p-4 sm:p-5 text-center hover:shadow-md transition-shadow">
@@ -454,7 +443,7 @@ export default function StudentDashboard() {
                 #{student.rank.toLocaleString(lang === "ar" ? "ar-EG" : "en")}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                {lang === "ar" ? "الترتيب" : "Rank"}
+                {copy.rank}
               </p>
             </Card>
           </div>
@@ -463,7 +452,7 @@ export default function StudentDashboard() {
             <div className="mb-8 animate-in fade-in duration-300 delay-150">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5" style={{ color: "#1E4D35" }} />
-                {lang === "ar" ? "آخر النتائج" : "Recent Results"}
+                {copy.recentResults}
               </h2>
               <Card className="divide-y divide-border">
                 {recentScores.map((s) => {
@@ -472,7 +461,7 @@ export default function StudentDashboard() {
                     <div key={`${s.game}-${s.id}`} className="flex items-center justify-between px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${label?.color || "bg-muted text-muted-foreground"}`}>
-                          {lang === "ar" ? label?.ar : label?.en}
+                          {label ? copy[label.key] : s.game}
                         </span>
                         {s.game === "wameeth" && s.name && (
                           <span className="text-xs text-muted-foreground truncate max-w-[120px]">{s.name}</span>
@@ -497,7 +486,7 @@ export default function StudentDashboard() {
           <div className="animate-in fade-in duration-300 delay-100 mb-8">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-amber-500" />
-              {lang === "ar" ? "مسابقات متاحة الآن" : "Available Now"}
+              {copy.availableNow}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Open live rooms — join via PIN */}
@@ -538,7 +527,7 @@ export default function StudentDashboard() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-[11px] font-bold tracking-wide text-white/70 uppercase mb-0.5">
-                        {lang === "ar" ? "غرف مفتوحة الآن" : "Open rooms now"}
+                        {copy.openRooms}
                       </div>
                       <div className="text-2xl font-black tabular-nums leading-tight">
                         {liveCount === null
@@ -546,9 +535,7 @@ export default function StudentDashboard() {
                           : (liveCount as number).toLocaleString(lang === "ar" ? "ar-EG" : "en")}
                       </div>
                       <div className="text-xs text-white/80 mt-0.5">
-                        {lang === "ar"
-                          ? "ادخل برمز PIN للانضمام لمسابقة"
-                          : "Enter a PIN to join a contest"}
+                         {copy.pinHint}
                       </div>
                     </div>
                   </div>
@@ -589,15 +576,13 @@ export default function StudentDashboard() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-[11px] font-bold tracking-wide text-white/80 uppercase mb-0.5">
-                        {lang === "ar" ? "بنك مسابقات" : "Quiz bank"}
+                        {copy.quizBank}
                       </div>
                       <div className="text-base font-extrabold leading-tight">
-                        {lang === "ar" ? "مسابقات عامة" : "General Quizzes"}
+                        {copy.generalQuizzes}
                       </div>
                       <div className="text-xs text-white/85 mt-0.5">
-                        {lang === "ar"
-                          ? "أسئلة جاهزة في مختلف المجالات"
-                          : "Ready questions across topics"}
+                         {copy.topicsHint}
                       </div>
                     </div>
                   </div>
@@ -609,7 +594,7 @@ export default function StudentDashboard() {
           <div className="animate-in fade-in duration-300 delay-200">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <Star className="w-5 h-5" style={{ color: "#E8A80E" }} />
-              {lang === "ar" ? "الألعاب المتاحة" : "Available Games"}
+              {copy.availableGames}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {games.map((game) => {
@@ -631,7 +616,7 @@ export default function StudentDashboard() {
                             {game.title}
                           </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {lang === "ar" ? "اضغط للعب" : "Click to play"}
+                            {copy.clickToPlay}
                           </p>
                         </div>
                       </div>
@@ -647,14 +632,14 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                   <Zap className="w-5 h-5 text-amber-500" />
-                  {lang === "ar" ? "أسئلة ومسابقات جاهزة" : "Ready-made Quizzes"}
+                  {copy.readyQuizzes}
                 </h2>
                 <Link
                   href="/public/games"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-bold text-muted-foreground hover:text-foreground hover:border-amber-400/40 transition-all"
                 >
-                  {lang === "ar" ? "عرض الكل" : "View All"}
-                  {lang === "ar" ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  {copy.viewAll}
+                  {dir === "rtl" ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 </Link>
               </div>
 
@@ -680,11 +665,11 @@ export default function StudentDashboard() {
                           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {a.teacherName || (lang === "ar" ? "مجهول" : "Anonymous")}
+                              {a.teacherName || copy.anonymous}
                             </span>
                             <span className="flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
-                              {a.questionCount} {lang === "ar" ? "سؤال" : "Q"}
+                              {a.questionCount} {copy.questionShort}
                             </span>
                           </div>
                         </div>
@@ -702,13 +687,13 @@ export default function StudentDashboard() {
                             <Play className="w-3.5 h-3.5" />
                           )}
                           {startingGameId === a.id
-                            ? (lang === "ar" ? "جارٍ..." : "Starting...")
-                            : (lang === "ar" ? "ابدأ اللعبة" : "Start Game")}
+                            ? copy.starting
+                            : copy.startGame}
                         </button>
                         <button
                           onClick={() => copyLink(a)}
                           className="flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-border bg-background text-foreground font-bold text-xs hover:bg-muted transition-colors"
-                          title={lang === "ar" ? "نسخ الرابط" : "Copy Link"}
+                          title={copy.copyLink}
                         >
                           {copiedId === a.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
@@ -725,7 +710,7 @@ export default function StudentDashboard() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border hover:border-amber-400/40 text-sm font-bold text-muted-foreground hover:text-foreground transition-all"
                   >
                     <Globe className="w-4 h-4" />
-                    {lang === "ar" ? "عرض جميع المسابقات" : "View All Quizzes"}
+                    {copy.viewAllQuizzes}
                   </Link>
                 </div>
               )}
@@ -767,7 +752,7 @@ export default function StudentDashboard() {
                   <Zap className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-lg font-extrabold text-foreground">
-                  {lang === "ar" ? "ابدأ اللعبة" : "Start Game"}
+                  {copy.startGame}
                 </h2>
                 <p className="text-sm text-muted-foreground font-medium truncate max-w-[220px]">
                   {botDialogAssignment.title}
@@ -783,18 +768,16 @@ export default function StudentDashboard() {
                     <Bot className="w-5 h-5" style={{ color: "#1E4D35" }} />
                   </div>
                   <p className="font-bold text-foreground text-sm">
-                    {lang === "ar" ? "هل تريد منافسة لاعبين وهميين؟" : "Want to compete with bot players?"}
+                    {t.publicGames.botPrompt}
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-                  {lang === "ar"
-                    ? "سيتنافس معك لاعبون وهميون ويمكنك تجميدهم أو سرقة نقاطهم!"
-                    : "Bot players will compete with you — freeze them or steal their points!"}
+                  {t.publicGames.botDescription}
                 </p>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-muted-foreground" />
-                    {lang === "ar" ? "عدد الوهميين" : "Bot count"}
+                    {t.publicGames.botCount}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -822,7 +805,7 @@ export default function StudentDashboard() {
                   ) : (
                     <Bot className="w-4 h-4" />
                   )}
-                  {lang === "ar" ? `نعم، العب مع ${botCount} لاعبين وهميين` : `Yes, play with ${botCount} bots`}
+                  {t.publicGames.playWithBots.replace("{n}", String(botCount))}
                 </button>
                 <button
                   onClick={() => handleStartGame(botDialogAssignment.id, false, 0)}
@@ -835,7 +818,7 @@ export default function StudentDashboard() {
                   ) : (
                     <Zap className="w-4 h-4" />
                   )}
-                  {lang === "ar" ? "لا، العب بمفردك" : "No, play solo"}
+                  {t.publicGames.playSolo}
                 </button>
               </div>
             </motion.div>

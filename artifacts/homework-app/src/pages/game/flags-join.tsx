@@ -6,8 +6,7 @@ import { Globe, ArrowLeft, ArrowRight, LogIn } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 export default function FlagsJoin() {
-  const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const { lang, t, dir } = useI18n();
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
   const params = useParams<{ pin?: string }>();
@@ -20,11 +19,11 @@ export default function FlagsJoin() {
     const trimmedName = name.trim();
     const trimmedPin = pin.trim();
     if (!trimmedPin || trimmedPin.length !== 6) {
-      setError(lang === "ar" ? "أدخل رمز اللعبة (٦ أرقام)" : "Enter game code (6 digits)");
+      setError(t.gamePages.invalidGameCode);
       return;
     }
     if (!trimmedName || trimmedName.length < 2) {
-      setError(lang === "ar" ? "أدخل اسمك (حرفين على الأقل)" : "Enter your name (at least 2 chars)");
+      setError(t.gamePages.invalidPlayerName);
       return;
     }
     setLocation(`/game/flags/multi?pin=${trimmedPin}&name=${encodeURIComponent(trimmedName)}`);
@@ -40,14 +39,14 @@ export default function FlagsJoin() {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-2xl shadow-sky-500/40 mb-4">
               <Globe className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-black text-foreground mb-1">{lang === "ar" ? "انضم للعبة" : "Join Game"}</h1>
-            <p className="text-muted-foreground text-sm">{lang === "ar" ? "أعلام الدول - لعبة تنافسية" : "Flag Quiz - Competitive Game"}</p>
+            <h1 className="text-3xl font-black text-foreground mb-1">{t.gamePages.joinGame}</h1>
+            <p className="text-muted-foreground text-sm">{t.gamePages.flagCompetitiveSubtitle}</p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border/60 rounded-2xl p-6 shadow-lg">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-foreground mb-2">{lang === "ar" ? "رمز اللعبة" : "Game Code"}</label>
+                <label className="block text-sm font-bold text-foreground mb-2">{t.gamePages.gameCode}</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -61,13 +60,13 @@ export default function FlagsJoin() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-foreground mb-2">{lang === "ar" ? "اسمك" : "Your Name"}</label>
+                <label className="block text-sm font-bold text-foreground mb-2">{t.gamePages.yourName}</label>
                 <input
                   type="text"
                   maxLength={20}
                   value={name}
                   onChange={e => { setName(e.target.value); setError(""); }}
-                  placeholder={lang === "ar" ? "أدخل اسمك..." : "Enter your name..."}
+                  placeholder={t.gamePages.enterName}
                   className="w-full text-lg font-bold py-3.5 px-4 rounded-xl bg-background border-2 border-border focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 focus:outline-none transition-colors text-foreground placeholder:text-muted-foreground"
                   onKeyDown={e => e.key === "Enter" && handleJoin()}
                 />
@@ -86,14 +85,14 @@ export default function FlagsJoin() {
                 className="w-full py-4 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-black text-lg shadow-xl shadow-sky-500/30 hover:shadow-sky-500/50 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <LogIn className="w-6 h-6" />
-                {lang === "ar" ? "انضم للعبة" : "Join Game"}
+                {t.gamePages.joinGame}
               </motion.button>
             </div>
           </motion.div>
 
           <button onClick={() => setLocation("/game/flags")} className="w-full mt-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
             <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "العودة" : "Back"}
+            {t.gamePages.back}
           </button>
         </div>
       </div>

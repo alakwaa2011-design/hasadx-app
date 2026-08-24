@@ -14,8 +14,9 @@
  * ملاحظة: نستدعي OpenCV مباشرة (بدل دوال jscanify) لأن نسخته الحالية تسرّب
  * كائنات Mat في كل إطار تحليل — حزمة jscanify تبقى مصدر ملف public/opencv.js فقط.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Loader2, RefreshCcw, CheckCircle2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 /* ── تحميل OpenCV مرة واحدة على مستوى الصفحة ── */
 declare global {
@@ -215,6 +216,20 @@ export type DocScannerCameraProps = {
 };
 
 export default function DocScannerCamera({ onCapture, onClose, hint }: DocScannerCameraProps) {
+  const { lang, dir } = useI18n();
+  const isAr = lang === "ar";
+  const text = useMemo(() => ({
+    starting: isAr ? "جارٍ تشغيل الكاميرا…" : "Starting camera…",
+    cameraError: isAr ? "تعذّر الوصول للكاميرا" : "Unable to access camera",
+    manualOnly: isAr ? "الاكتشاف التلقائي غير متاح — استخدم زر التصوير" : "Automatic detection is unavailable — use the capture button",
+    preparing: isAr ? "جارٍ تجهيز الاكتشاف التلقائي…" : "Preparing automatic detection…",
+    aim: isAr ? "وجّه الكاميرا نحو الورقة" : "Point the camera at the page",
+    closer: isAr ? "اقترب أكثر من الورقة" : "Move closer to the page",
+    inside: isAr ? "أدخل الورقة كاملة داخل الكادر" : "Fit the whole page inside the frame",
+    light: isAr ? "الإضاءة ضعيفة — حسّن الإضاءة" : "Lighting is low — improve the lighting",
+    steady: isAr ? "ثبّت الجهاز…" : "Hold the device steady…",
+    next: isAr ? "ارفع الورقة ثم ضع التالية" : "Remove this page, then place the next one",
+  }), [isAr]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -230,7 +245,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
 
   const [phase, setPhase] = useState<"starting" | "scanning" | "preview">("starting");
   const [cvReady, setCvReady] = useState<boolean | null>(null); // null=يُحمَّل، false=فشل (وضع يدوي)
-  const [status, setStatus] = useState("جارٍ تشغيل الكاميرا…");
+  const [status, setStatus] = useState(text.starting);
   const [holdPct, setHoldPct] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
   const [autoLeft, setAutoLeft] = useState(0);
@@ -250,7 +265,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
         streamRef.current = s;
         setPhase("scanning");
       } catch {
-        setStatus("تعذّر الوصول للكاميرا");
+        setStatus(text.cameraError);
         onClose();
         return;
       }
@@ -330,7 +345,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
       const v = videoRef.current, overlay = overlayRef.current;
       if (!v || !overlay || v.videoWidth === 0) return;
       if (cvReady !== true) {
-        setStatus(cvReady === false ? "الاكتشاف التلقائي غير متاح — استخدم زر التصوير" : "جارٍ تجهيز الاكتشاف التلقائي…");
+        setStatus(cvReady === false ? text.manualOnly : text.preparing);
         return;
       }
 
@@ -350,19 +365,19 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
       // فحوص الجودة
       const now = performance.now();
       let ok = false;
-      let msg = "وجّه الكاميرا نحو الورقة";
+      let msg = text.aim;
       if (quad) {
         const area = quadArea(quad) / (w * h);
         const m = EDGE_MARGIN_RATIO * Math.max(w, h);
         const inside = [quad.tl, quad.tr, quad.bl, quad.br].every(
           (p) => p.x > m && p.y > m && p.x < w - m && p.y < h - m
         );
-        if (area < MIN_AREA_RATIO) msg = "اقترب أكثر من الورقة";
-        else if (!inside || area > MAX_AREA_RATIO) msg = "أدخل الورقة كاملة داخل الكادر";
+        if (area < MIN_AREA_RATIO) msg = text.closer;
+        else if (!inside || area > MAX_AREA_RATIO) msg = text.inside;
         else {
           const { brightness, sharpness } = frameStats(wctx.getImageData(0, 0, w, h).data, w, h);
-          if (brightness < MIN_BRIGHTNESS) msg = "الإضاءة ضعيفة — حسّن الإضاءة";
-          else if (sharpness < MIN_SHARPNESS) msg = "الصورة غير واضحة — ثبّت الجهاز";
+          if (brightness < MIN_BRIGHTNESS) msg = text.light;
+          else if (sharpness < MIN_SHARPNESS) msg = text.steady;
           else ok = true;
         }
       }
@@ -390,7 +405,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
           if (stableSinceRef.current == null) stableSinceRef.current = now;
           const held = now - stableSinceRef.current;
           pct = Math.min(1, held / HOLD_MS);
-          msg = armedRef.current ? "ثبّت الجهاز…" : "ارفع الورقة ثم ضع التالية";
+          msg = armedRef.current ? text.steady : text.next;
           if (held >= HOLD_MS && armedRef.current && !capturingRef.current) {
             armedRef.current = false; // لا التقاط ثانياً حتى تخرج الورقة من الكادر
             doCapture(quad, w, h);
@@ -398,7 +413,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
           }
         } else {
           stableSinceRef.current = null;
-          msg = "ثبّت الجهاز…";
+          msg = text.steady;
         }
       } else {
         stableSinceRef.current = null;
@@ -430,7 +445,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [phase, cvReady, doCapture]);
+  }, [phase, cvReady, doCapture, text]);
 
   /* ── معاينة: اعتماد تلقائي سريع مع خيار إعادة التصوير ── */
   useEffect(() => {
@@ -476,11 +491,11 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
   /* ── واجهة ── */
   if (phase === "preview" && preview) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" dir={dir}>
         <div className="relative">
-          <img src={preview} alt="الصفحة الملتقطة" className="w-full rounded-xl border-2 border-emerald-400" />
+          <img src={preview} alt={isAr ? "الصفحة الملتقطة" : "Captured page"} className="w-full rounded-xl border-2 border-emerald-400" />
           <span className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> تم القص والتصحيح
+            <CheckCircle2 className="w-3.5 h-3.5" /> {isAr ? "تم القص والتصحيح" : "Cropped and corrected"}
           </span>
         </div>
         <div className="flex gap-2">
@@ -489,13 +504,13 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700"
           >
             <CheckCircle2 className="w-4 h-4" />
-            اعتماد {autoLeft > 0 ? `(${Math.ceil(autoLeft / 1000)})` : ""}
+             {isAr ? "اعتماد" : "Use page"} {autoLeft > 0 ? `(${Math.ceil(autoLeft / 1000)})` : ""}
           </button>
           <button
             onClick={retake}
             className="px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1"
           >
-            <RefreshCcw className="w-4 h-4" /> إعادة التصوير
+             <RefreshCcw className="w-4 h-4" /> {isAr ? "إعادة التصوير" : "Retake"}
           </button>
         </div>
       </div>
@@ -503,7 +518,7 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" dir={dir}>
       {hint && <p className="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">{hint}</p>}
       <div className="relative">
         <video ref={videoRef} playsInline muted className="w-full rounded-xl bg-black aspect-[3/4] object-cover" />
@@ -532,13 +547,13 @@ export default function DocScannerCamera({ onCapture, onClose, hint }: DocScanne
           onClick={manualCapture}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700"
         >
-          <Camera className="w-4 h-4" /> التقاط يدوي
+          <Camera className="w-4 h-4" /> {isAr ? "التقاط يدوي" : "Capture manually"}
         </button>
         <button
           onClick={onClose}
           className="px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
         >
-          إلغاء
+          {isAr ? "إلغاء" : "Cancel"}
         </button>
       </div>
     </div>

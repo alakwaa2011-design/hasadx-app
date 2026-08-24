@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { Trophy, Flame, Star, Users, UserPlus, UserMinus, Loader2, BadgeCheck } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -37,17 +38,20 @@ interface ProfileResp {
 
 export default function TeacherPublicProfile() {
   const { idOrSlug } = useParams<{ idOrSlug: string }>();
+  const { t, lang, dir } = useI18n();
+  const copy = t.publicProfiles.teacher;
+  const common = t.publicProfiles.common;
   const [data, setData] = useState<ProfileResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [following, setFollowing] = useState(false);
   useSeo({
     title: data?.teacher?.name
-      ? `${data.teacher.name} | منصة حصاد`
-      : "ملف المعلم | منصة حصاد",
+      ? copy.seoTitleNamed.replace("{name}", data.teacher.name)
+      : copy.seoTitle,
     description: data?.teacher?.name
-      ? `تعرّف على ${data.teacher.name} — معلم في منصة حصاد التعليمية. اطّلع على إنجازاته وأنشطته ومسابقاته.`
-      : "ملف معلم في منصة حصاد التعليمية.",
+      ? copy.seoDescriptionNamed.replace("{name}", data.teacher.name)
+      : copy.seoDescription,
     canonicalPath: `/t/${idOrSlug}`,
   });
 
@@ -91,18 +95,18 @@ export default function TeacherPublicProfile() {
       );
       const j = await res.json().catch(() => ({}));
       if (res.status === 401) {
-        toast.error("سجّل الدخول لتتمكن من المتابعة");
+        toast.error(copy.signInToFollow);
         return;
       }
-      if (!res.ok) throw new Error(j?.message || "Failed");
+      if (!res.ok) throw new Error(j?.message || copy.followError);
       setData({
         ...data,
         isFollowing: !!j.isFollowing,
         followerCount: typeof j.followerCount === "number" ? j.followerCount : data.followerCount,
       });
-      toast.success(j.isFollowing ? "تمت المتابعة" : "تم إلغاء المتابعة");
+      toast.success(j.isFollowing ? copy.followed : copy.unfollowed);
     } catch (err: any) {
-      toast.error(err?.message || "تعذّر تنفيذ الإجراء");
+      toast.error(err?.message || copy.followError);
     } finally {
       setFollowing(false);
     }
@@ -111,28 +115,29 @@ export default function TeacherPublicProfile() {
   if (loading) {
     return (
       <Layout>
-        <div className="p-8 text-center text-gray-600">جارٍ التحميل…</div>
+        <div className="p-8 text-center text-gray-600" role="status">{common.loading}</div>
       </Layout>
     );
   }
   if (notFound || !data) {
     return (
       <Layout>
-        <div className="p-8 text-center text-red-600">الملف غير موجود أو غير عام</div>
+        <div className="p-8 text-center text-red-600" role="alert">{copy.notFound}</div>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto p-4 space-y-4" dir="rtl">
+      <div className="max-w-3xl mx-auto p-4 space-y-4" dir={dir}>
         <Card className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 text-center">
           <div className="text-5xl">👨‍🏫</div>
           <h1 className="text-2xl font-bold mt-2 flex items-center justify-center gap-2">
             {data.teacher.name}
             {data.teacher.emailVerified && (
               <motion.span
-                title="حساب موثّق"
+                title={common.verifiedAccount}
+                aria-label={common.verifiedAccount}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 400, damping: 18, delay: 0.2 }}
@@ -143,14 +148,18 @@ export default function TeacherPublicProfile() {
           </h1>
           {data.teacher.displaySchool && <p className="text-gray-700">{data.teacher.displaySchool}</p>}
           <p className="text-indigo-700 font-semibold mt-2">
-            {data.stats.levelNameAr} · المستوى {data.stats.level}
+            {copy.levelStatus
+              .replace("{name}", data.stats.levelNameAr)
+              .replace("{level}", data.stats.level.toLocaleString(lang))}
           </p>
-          <p className="text-gray-700">{data.stats.totalXp.toLocaleString("ar")} نقطة خبرة</p>
+          <p className="text-gray-700">
+            {copy.xp.replace("{count}", data.stats.totalXp.toLocaleString(lang))}
+          </p>
           <div className="flex justify-center gap-6 mt-4 flex-wrap">
-            <Stat icon={<Trophy className="text-amber-600" />} label="شارات" value={data.stats.badgeCount} />
-            <Stat icon={<Flame className="text-orange-500" />} label="السلسلة" value={`${data.stats.currentStreakDays}`} />
-            <Stat icon={<Star className="text-yellow-500" />} label="الأطول" value={`${data.stats.longestStreakDays}`} />
-            <Stat icon={<Users className="text-emerald-600" />} label="متابعون" value={data.followerCount.toLocaleString("ar")} />
+            <Stat icon={<Trophy className="text-amber-600" />} label={copy.badges} value={data.stats.badgeCount.toLocaleString(lang)} />
+            <Stat icon={<Flame className="text-orange-500" />} label={copy.streak} value={data.stats.currentStreakDays.toLocaleString(lang)} />
+            <Stat icon={<Star className="text-yellow-500" />} label={copy.longestStreak} value={data.stats.longestStreakDays.toLocaleString(lang)} />
+            <Stat icon={<Users className="text-emerald-600" />} label={copy.followers} value={data.followerCount.toLocaleString(lang)} />
           </div>
           {data.canFollow && (
             <div className="mt-5">
@@ -164,13 +173,13 @@ export default function TeacherPublicProfile() {
                 }
               >
                 {following ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : data.isFollowing ? (
                   <UserMinus className="w-4 h-4" />
                 ) : (
                   <UserPlus className="w-4 h-4" />
                 )}
-                {data.isFollowing ? "إلغاء المتابعة" : "متابعة"}
+                {following ? copy.updatingFollow : data.isFollowing ? copy.unfollow : copy.follow}
               </Button>
             </div>
           )}
@@ -178,19 +187,19 @@ export default function TeacherPublicProfile() {
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
               <BadgeCheck className="w-4 h-4 shrink-0" />
               <span>
-                حسابك غير موثّق بعد.{" "}
+                {copy.unverifiedBefore}{" "}
                 <Link href="/teacher/settings#verify" className="font-semibold underline">
-                  وثّق حسابك الآن
+                  {copy.verifyNow}
                 </Link>
-                {" "}لإظهار شارة التوثيق.
+                {" "}{copy.unverifiedAfter}
               </span>
             </div>
           )}
           {data.isOwner && (
             <p className="mt-3 text-xs text-gray-500">
-              هذا ملفك العام. يمكنك تعديل إعداداته من{" "}
+              {copy.ownerBefore}{" "}
               <Link href="/teacher/settings" className="text-indigo-700 underline">
-                الإعدادات
+                {copy.settings}
               </Link>
               .
             </p>
@@ -198,7 +207,7 @@ export default function TeacherPublicProfile() {
         </Card>
         {data.badges.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-lg font-bold mb-3">الشارات المكتسبة</h3>
+            <h3 className="text-lg font-bold mb-3">{copy.earnedBadges}</h3>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {data.badges.map((b, i) => (
                 <div key={i} className="text-center border rounded-lg p-2">
@@ -213,7 +222,7 @@ export default function TeacherPublicProfile() {
           <Card className="p-5">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
               <Users className="w-5 h-5 text-emerald-600" />
-              المتابعون ({data.followerCount.toLocaleString("ar")})
+              {copy.followersHeading.replace("{count}", data.followerCount.toLocaleString(lang))}
             </h3>
             {data.followers && data.followers.length > 0 ? (
               <ul className="divide-y divide-gray-200">
@@ -232,15 +241,21 @@ export default function TeacherPublicProfile() {
                           <p className="text-xs text-gray-500 truncate">{f.displaySchool}</p>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500 shrink-0">
-                        {new Date(f.followedAt).toLocaleDateString("ar")}
+                      <span
+                        className="text-xs text-gray-500 shrink-0"
+                        aria-label={copy.followedOn.replace(
+                          "{date}",
+                          new Date(f.followedAt).toLocaleDateString(lang),
+                        )}
+                      >
+                        {new Date(f.followedAt).toLocaleDateString(lang)}
                       </span>
                     </li>
                   );
                 })}
               </ul>
             ) : (
-              <p className="text-sm text-gray-600">لا يوجد متابعون بعد. شارك ملفك ليبدأ الناس بمتابعتك!</p>
+              <p className="text-sm text-gray-600">{copy.noFollowers}</p>
             )}
           </Card>
         )}

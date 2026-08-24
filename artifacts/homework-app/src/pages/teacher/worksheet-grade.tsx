@@ -15,8 +15,14 @@ import {
 import { toast } from "sonner";
 import jsQR from "jsqr";
 import DocScannerCamera from "@/components/doc-scanner-camera";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const UNKNOWN_EXTRACTED_NAMES = new Set(["Unknown", "\u063A\u064A\u0631 \u0645\u0639\u0631\u0648\u0641"]);
+
+function format(message: string, values: Record<string, string | number>) {
+  return message.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""));
+}
 
 /**
  * قراءة QR المطبوع داخل الصورة الملتقطة لمعرفة رقم الصفحة تلقائياً.
@@ -113,6 +119,8 @@ type GradeResult = {
 };
 
 export default function WorksheetGrade() {
+  const { t, dir } = useI18n();
+  const copy = t.worksheetGrade;
   const [, params] = useRoute("/teacher/worksheets/:id/grade");
   // نفس الصفحة تخدم أيضاً تصحيح أي واجب عادي بالتصوير
   const [, aParams] = useRoute("/teacher/assignments/:id/grade");
@@ -194,7 +202,7 @@ export default function WorksheetGrade() {
         setLoadState("ready");
         void loadSubmissions(data.assignmentId);
       } catch {
-        toast.error("تعذّر تحميل صفحة التصحيح");
+        toast.error(copy.loadError);
         setLoadState("disabled");
       }
     })();
@@ -242,11 +250,11 @@ export default function WorksheetGrade() {
         let page = qr?.page;
         if (!page) {
           page = Array.from({ length: total }, (_, i) => i + 1).find((n) => !prev[n]) ?? total;
-          toast.info(`لم يُقرأ QR من الصورة — اعتُبرت الصفحة ${page} (يمكنك تغييرها)`);
+          toast.info(format(copy.qrMissing, { page }));
         } else if (prev[page]) {
-          toast.warning(`الصفحة ${page} ملتقطة مسبقاً — استُبدلت بالصورة الجديدة`);
+          toast.warning(format(copy.pageReplaced, { page }));
         } else {
-          toast.success(`تم استلام الصفحة ${page} من ${total}`);
+          toast.success(format(copy.pageReceived, { page, total }));
         }
         return { ...prev, [page]: dataUrl };
       });
@@ -254,7 +262,7 @@ export default function WorksheetGrade() {
     } finally {
       setDetecting(false);
     }
-  }, [worksheetId]);
+  }, [worksheetId, copy]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -299,8 +307,8 @@ export default function WorksheetGrade() {
         return;
       }
       const room = BATCH_MAX - batchItemsRef.current.length;
-      if (room <= 0) { toast.error(`الحد الأقصى ${BATCH_MAX} صورة في الدفعة`); return; }
-      if (raws.length > room) toast.warning(`أُضيفت أول ${room} صورة — الحد الأقصى ${BATCH_MAX}`);
+      if (room <= 0) { toast.error(format(copy.batchLimit, { max: BATCH_MAX })); return; }
+      if (raws.length > room) toast.warning(format(copy.batchAddedLimit, { count: room, max: BATCH_MAX }));
       const items: BatchItem[] = [];
       for (const raw of raws.slice(0, room)) {
         items.push({
@@ -363,9 +371,9 @@ export default function WorksheetGrade() {
     } finally {
       setBatchGrading(false);
       if (info) void loadSubmissions(info.assignmentId);
-      if (batchCancelRef.current) toast.info(`أُوقفت الدفعة — صُحّح ${ok} قبل الإيقاف`);
-      else if (fail === 0 && ok > 0) toast.success(`اكتمل تصحيح الدفعة — ${ok} ورقة`);
-      else if (ok + fail > 0) toast.warning(`صُحّحت ${ok} ورقة، وتعذّرت ${fail} — أعد المحاولة للمتعثرة`);
+      if (batchCancelRef.current) toast.info(format(copy.batchStopped, { count: ok }));
+      else if (fail === 0 && ok > 0) toast.success(format(copy.batchComplete, { count: ok }));
+      else if (ok + fail > 0) toast.warning(format(copy.batchPartial, { ok, fail }));
     }
   };
 
@@ -382,7 +390,7 @@ export default function WorksheetGrade() {
       const img = n[from];
       if (!img) return prev;
       delete n[from];
-      if (n[to]) toast.warning(`الصفحة ${to} كانت ملتقطة — استُبدلت`);
+      if (n[to]) toast.warning(format(copy.pageSlotReplaced, { page: to }));
       n[to] = img;
       return n;
     });
@@ -394,7 +402,7 @@ export default function WorksheetGrade() {
     const ordered = Array.from({ length: totalPages }, (_, i) => pagesMap[i + 1]).filter(Boolean) as string[];
     if (ordered.length === 0) return;
     if (isMulti && missingPages.length > 0) {
-      toast.error(`ما زالت الصفحة ${missingPages.join(" و")} مطلوبة قبل التصحيح`);
+      toast.error(format(copy.pagesRequired, { pages: missingPages.join(copy.and) }));
       return;
     }
     // الاسم يُستخرج تلقائياً من الورقة — الإدخال اليدوي اختياري ويتقدم عليه.
@@ -416,14 +424,14 @@ export default function WorksheetGrade() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.message || "فشل التصحيح — حاول مرة أخرى");
+        toast.error(data.message || copy.gradeFailed);
         return;
       }
       setResult(data);
-      setNameFix(data?.nameExtraction?.extractedName && data.nameExtraction.extractedName !== "غير معروف" ? data.nameExtraction.extractedName : "");
+      setNameFix(data?.nameExtraction?.extractedName && !UNKNOWN_EXTRACTED_NAMES.has(data.nameExtraction.extractedName) ? data.nameExtraction.extractedName : "");
       // إضافة النتيجة لقائمة الجلسة — النتيجة محفوظة في الخادم بالفعل
       setSessionResults((prev) => [...prev, data]);
-      toast.success("تم التصحيح");
+      toast.success(copy.gradeSuccess);
       void loadSubmissions(info.assignmentId);
       setStudentName("");
       setStudentClass("");
@@ -432,7 +440,7 @@ export default function WorksheetGrade() {
       setImageB64(null);
       setPagesMap({});
     } catch {
-      toast.error("حدث خطأ في الاتصال");
+      toast.error(copy.connectionError);
     } finally {
       setGrading(false);
     }
@@ -459,44 +467,44 @@ export default function WorksheetGrade() {
   /* ── حالات التحميل ── */
   if (loadState === "loading") {
     return (
-      <div dir="rtl" className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#f4f7f5] dark:bg-[#0B100E]">
+      <div dir={dir} className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#f4f7f5] dark:bg-[#0B100E]">
         <div className="w-20 h-20 relative flex items-center justify-center">
            <div className="absolute inset-0 rounded-full border-4 border-emerald-100 dark:border-emerald-900" />
            <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
            <Camera className="w-6 h-6 text-emerald-600 dark:text-emerald-500 animate-pulse" />
         </div>
-        <p className="mt-6 font-extrabold text-emerald-800 dark:text-emerald-300 animate-pulse">جاري تجهيز التصحيح الذكي...</p>
+        <p className="mt-6 font-extrabold text-emerald-800 dark:text-emerald-300 animate-pulse">{copy.loading}</p>
       </div>
     );
   }
 
   if (loadState === "forbidden" || loadState === "disabled") {
     return (
-      <div dir="rtl" className="min-h-[100dvh] flex flex-col items-center justify-center gap-6 bg-[#f4f7f5] dark:bg-[#0B100E] p-6 text-center">
+      <div dir={dir} className="min-h-[100dvh] flex flex-col items-center justify-center gap-6 bg-[#f4f7f5] dark:bg-[#0B100E] p-6 text-center">
         <div className="w-24 h-24 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shadow-inner relative overflow-hidden">
            <div className="absolute inset-0 bg-rose-500/10 animate-pulse" />
            <XCircle className="w-10 h-10 text-rose-500 relative z-10" />
         </div>
         <div className="max-w-sm">
-          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">عذراً</h2>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">{copy.sorry}</h2>
           <p className="text-base font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
             {loadState === "forbidden"
-              ? "هذه الصفحة خاصة بمالك ورقة العمل فقط. لا تملك صلاحية الوصول."
-              : "التصحيح الذكي غير مفعّل لهذه الورقة. فضلاً، فعّله من إعدادات الورقة ثم حاول مجدداً."}
+              ? copy.forbidden
+              : copy.disabled}
           </p>
         </div>
         <button
           onClick={() => setLocation("/teacher/worksheets/create")}
           className="mt-4 px-8 py-3.5 rounded-2xl bg-slate-800 text-white dark:bg-white dark:text-slate-900 font-extrabold text-base hover:bg-slate-700 dark:hover:bg-slate-100 shadow-xl shadow-slate-900/10 hover:-translate-y-0.5 transition-all btn-bounce"
         >
-          العودة لأوراق العمل
+          {copy.backToWorksheets}
         </button>
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] pb-24 font-display">
+    <div dir={dir} className="min-h-[100dvh] bg-[#f4f7f5] dark:bg-[#0B100E] pb-24 font-display">
       {/* الترويسة */}
       <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 dark:bg-[#111A16]/80 border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 sm:py-4 flex items-center gap-4 transition-all">
         <button
@@ -508,16 +516,16 @@ export default function WorksheetGrade() {
             )
           }
           className="p-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full hover:scale-105 transition-transform"
-          aria-label="رجوع"
+          aria-label={copy.back}
         >
-          <ArrowRight className="w-5 h-5" />
+          <ArrowRight className={`w-5 h-5 ${dir === "ltr" ? "rotate-180" : ""}`} />
         </button>
         <div className="flex-1 min-w-0 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate">
-            التصحيح الورقي الذكي
+            {copy.title}
           </h1>
         </div>
       </header>
@@ -532,9 +540,13 @@ export default function WorksheetGrade() {
                 <Users className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-emerald-50">إنجاز الجلسة</p>
+                <p className="text-sm font-medium text-emerald-50">{copy.sessionProgress}</p>
                 <p className="font-extrabold text-lg">
-                  {sessionResults.length === 1 ? "طالب واحد" : sessionResults.length === 2 ? "طالبين" : `${sessionResults.length} طلاب`}
+                  {sessionResults.length === 1
+                    ? copy.oneStudent
+                    : sessionResults.length === 2
+                      ? copy.twoStudents
+                      : format(copy.studentsCount, { count: sessionResults.length })}
                 </p>
               </div>
             </div>
@@ -553,14 +565,14 @@ export default function WorksheetGrade() {
                 <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                الاسم يُقرأ تلقائياً من الورقة
+                 {copy.autoName}
               </span>
             </div>
             <button
               onClick={() => setShowManualName((v) => !v)}
               className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             >
-              {showManualName ? "إلغاء" : "إدخال يدوي"}
+              {showManualName ? copy.cancel : copy.manualEntry}
             </button>
           </div>
           {showManualName && (
@@ -568,13 +580,15 @@ export default function WorksheetGrade() {
               <input
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
-                placeholder="اسم الطالب (يتقدم على المقروء من الورقة)"
+                placeholder={copy.studentNameOverride}
+                aria-label={copy.studentName}
                 className="w-full rounded-2xl border-2 border-slate-100 focus:border-emerald-400 focus:ring-emerald-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 px-4 py-3.5 text-sm font-bold outline-none transition-all shadow-sm"
               />
               <input
                 value={studentClass}
                 onChange={(e) => setStudentClass(e.target.value)}
-                placeholder="الصف (اختياري)"
+                placeholder={copy.classOptional}
+                aria-label={copy.classOptional}
                 className="w-full rounded-2xl border-2 border-slate-100 focus:border-emerald-400 focus:ring-emerald-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 px-4 py-3.5 text-sm font-bold outline-none transition-all shadow-sm"
               />
             </div>
@@ -585,11 +599,11 @@ export default function WorksheetGrade() {
         <section className="bg-white dark:bg-[#15201B] rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2 font-black text-lg text-slate-800 dark:text-slate-100">
-              <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> صورة الورقة
+              <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> {copy.paperImage}
             </div>
             {detecting && (
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> نعالج الصورة…
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {copy.processingImage}
               </span>
             )}
           </div>
@@ -608,7 +622,7 @@ export default function WorksheetGrade() {
                     }`}
                   >
                     {pagesMap[n] && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    صفحة {n}
+                    {format(copy.page, { page: n })}
                   </div>
                 ))}
               </div>
@@ -619,23 +633,23 @@ export default function WorksheetGrade() {
                     .sort(([a], [b]) => Number(a) - Number(b))
                     .map(([n, img]) => (
                       <div key={n} className="group relative rounded-2xl overflow-hidden border-2 border-emerald-200 dark:border-emerald-800 shadow-sm aspect-[3/4]">
-                        <img src={img} alt={`صفحة ${n}`} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
+                        <img src={img} alt={format(copy.page, { page: n })} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <div className="flex items-center justify-between">
                             <select
                               value={n}
                               onChange={(e) => movePage(Number(n), Number(e.target.value))}
                               className="text-xs font-bold bg-white/20 text-white rounded-lg px-2 py-1 outline-none backdrop-blur-md appearance-none"
-                              aria-label="تغيير رقم الصفحة"
+                              aria-label={copy.changePageNumber}
                             >
                               {Array.from({ length: totalPages }, (_, i) => i + 1).map((k) => (
-                                <option key={k} value={k} className="text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900">صفحة {k}</option>
+                                <option key={k} value={k} className="text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900">{format(copy.page, { page: k })}</option>
                               ))}
                             </select>
                             <button
                               onClick={() => setPagesMap((prev) => { const c = { ...prev }; delete c[Number(n)]; return c; })}
                               className="p-1.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors shadow-sm"
-                              aria-label={`حذف صفحة ${n}`}
+                              aria-label={format(copy.deletePage, { page: n })}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -650,14 +664,14 @@ export default function WorksheetGrade() {
                 <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50">
                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                    <p className="text-sm font-bold leading-relaxed">
-                     بقيت الصفحة {missingPages.join(" و")} — التقطها لإكمال أوراق الطالب
+                     {format(copy.remainingPages, { pages: missingPages.join(copy.and) })}
                    </p>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50">
                    <CheckCircle2 className="w-5 h-5 shrink-0" />
                    <p className="text-sm font-bold leading-relaxed">
-                     اكتملت جميع الصفحات ({totalPages}/{totalPages}) — الورقة جاهزة للتصحيح!
+                     {format(copy.allPagesReady, { count: totalPages, total: totalPages })}
                    </p>
                 </div>
               )}
@@ -671,13 +685,13 @@ export default function WorksheetGrade() {
                   {grading ? (
                      <>
                        <Loader2 className="w-5 h-5 animate-spin relative z-10" />
-                       <span className="relative z-10">الذكاء الاصطناعي يصحح...</span>
+                       <span className="relative z-10">{copy.aiGrading}</span>
                        <div className="absolute inset-0 bg-emerald-400/20 animate-shimmer relative z-0" />
                      </>
                   ) : (
                      <>
                        <Sparkles className="w-5 h-5" />
-                       <span>صحّح الآن {isMulti && `(${capturedCount}/${totalPages})`}</span>
+                       <span>{copy.gradeNow} {isMulti && `(${capturedCount}/${totalPages})`}</span>
                      </>
                   )}
                 </button>
@@ -686,7 +700,7 @@ export default function WorksheetGrade() {
                     onClick={resetCapture}
                     disabled={grading}
                     className="px-5 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors btn-bounce"
-                    aria-label="مسح الصفحات"
+                    aria-label={copy.clearPages}
                   >
                     <RefreshCcw className="w-5 h-5" />
                   </button>
@@ -700,7 +714,7 @@ export default function WorksheetGrade() {
             <div className="space-y-5 animate-in fade-in duration-300">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-black text-slate-700 dark:text-slate-200">
-                  دفعة أوراق: {batchItems.length} صورة — كل صورة ورقة طالب
+                  {format(copy.batchSummary, { count: batchItems.length })}
                 </p>
                 {!batchGrading && (
                   <button
@@ -708,7 +722,7 @@ export default function WorksheetGrade() {
                     disabled={batchItems.length >= BATCH_MAX}
                     className="px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-black hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-50 transition-colors"
                   >
-                    + إضافة صور ({batchItems.length}/{BATCH_MAX})
+                    {format(copy.addImages, { count: batchItems.length, max: BATCH_MAX })}
                   </button>
                 )}
               </div>
@@ -718,7 +732,7 @@ export default function WorksheetGrade() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
                     <span>
-                      {batchGrading ? "الذكاء الاصطناعي يصحح الدفعة…" : "نتيجة الدفعة"}
+                      {batchGrading ? copy.gradingBatch : copy.batchResult}
                     </span>
                     <span>
                       {batchItems.filter((b) => b.status === "done").length}/{batchItems.length}
@@ -747,28 +761,28 @@ export default function WorksheetGrade() {
                             : "border-slate-200 dark:border-slate-700"
                     }`}
                   >
-                    <img src={b.img} alt={`ورقة ${i + 1}`} className="w-full h-full object-cover" />
-                    <div className="absolute top-1 right-1 text-[10px] font-black bg-black/60 text-white rounded-md px-1.5 py-0.5">{i + 1}</div>
+                    <img src={b.img} alt={format(copy.paperAlt, { number: i + 1 })} className="w-full h-full object-cover" />
+                    <div className="absolute top-1 end-1 text-[10px] font-black bg-black/60 text-white rounded-md px-1.5 py-0.5">{i + 1}</div>
                     {b.status === "grading" && (
                       <div className="absolute inset-0 bg-emerald-600/40 flex items-center justify-center">
                         <Loader2 className="w-6 h-6 text-white animate-spin" />
                       </div>
                     )}
                     {b.status === "done" && (
-                      <div className="absolute bottom-1 left-1 bg-emerald-500 text-white rounded-full p-1 shadow">
+                      <div className="absolute bottom-1 start-1 bg-emerald-500 text-white rounded-full p-1 shadow">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
                     )}
                     {b.status === "failed" && (
-                      <div className="absolute bottom-1 left-1 bg-rose-500 text-white rounded-full p-1 shadow">
+                      <div className="absolute bottom-1 start-1 bg-rose-500 text-white rounded-full p-1 shadow">
                         <XCircle className="w-4 h-4" />
                       </div>
                     )}
                     {!batchGrading && b.status !== "done" && (
                       <button
                         onClick={() => setBatchItems((prev) => prev.filter((x) => x.id !== b.id))}
-                        className="absolute top-1 left-1 p-1 bg-black/60 text-white rounded-md hover:bg-rose-600 transition-colors"
-                        aria-label={`حذف الورقة ${i + 1}`}
+                        className="absolute top-1 start-1 p-1 bg-black/60 text-white rounded-md hover:bg-rose-600 transition-colors"
+                        aria-label={format(copy.deletePaper, { number: i + 1 })}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -783,7 +797,7 @@ export default function WorksheetGrade() {
                     onClick={() => { batchCancelRef.current = true; }}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-2xl bg-slate-800 dark:bg-slate-700 text-white font-black hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                   >
-                    <X className="w-5 h-5" /> إيقاف بعد الورقة الحالية
+                    <X className="w-5 h-5" /> {copy.stopAfterCurrent}
                   </button>
                 ) : (
                   <>
@@ -794,13 +808,13 @@ export default function WorksheetGrade() {
                     >
                       <Sparkles className="w-5 h-5" />
                       {batchItems.some((b) => b.status === "failed")
-                        ? `أعد تصحيح المتعثرة (${batchItems.filter((b) => b.status !== "done").length})`
-                        : `صحّح الكل (${batchItems.filter((b) => b.status !== "done").length})`}
+                        ? format(copy.retryFailed, { count: batchItems.filter((b) => b.status !== "done").length })
+                        : format(copy.gradeAll, { count: batchItems.filter((b) => b.status !== "done").length })}
                     </button>
                     <button
                       onClick={() => setBatchItems([])}
                       className="px-5 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors btn-bounce"
-                      aria-label="إفراغ الدفعة"
+                      aria-label={copy.clearBatch}
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -812,7 +826,7 @@ export default function WorksheetGrade() {
           ) : !isMulti && imgPrev ? (
             <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
               <div className="relative rounded-3xl overflow-hidden shadow-lg border-2 border-emerald-200 dark:border-emerald-800/60 max-w-sm mx-auto">
-                <img src={imgPrev} alt="ورقة الطالب" className="w-full aspect-[3/4] object-cover" />
+                <img src={imgPrev} alt={copy.studentPaperAlt} className="w-full aspect-[3/4] object-cover" />
                 <div className="absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.1)] pointer-events-none" />
               </div>
               <div className="flex items-center gap-2">
@@ -824,13 +838,13 @@ export default function WorksheetGrade() {
                   {grading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin relative z-10" />
-                      <span className="relative z-10">الذكاء الاصطناعي يصحح...</span>
+                      <span className="relative z-10">{copy.aiGrading}</span>
                       <div className="absolute inset-0 bg-white/20 animate-shimmer z-0" />
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5" />
-                      <span>تصحيح الورقة</span>
+                      <span>{copy.gradePaper}</span>
                     </>
                   )}
                 </button>
@@ -838,7 +852,7 @@ export default function WorksheetGrade() {
                   onClick={resetCapture}
                   disabled={grading}
                   className="px-5 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors btn-bounce"
-                  aria-label="إعادة التصوير"
+                  aria-label={copy.retake}
                 >
                   <RefreshCcw className="w-5 h-5" />
                 </button>
@@ -849,7 +863,7 @@ export default function WorksheetGrade() {
               <DocScannerCamera
                 hint={
                   isMulti && missingPages.length > 0
-                    ? `صوّر الصفحة ${missingPages[0]} (الترتيب يقرأ من الـ QR)`
+                    ? format(copy.scanHint, { page: missingPages[0] })
                     : undefined
                 }
                 onCapture={(url) => {
@@ -872,7 +886,7 @@ export default function WorksheetGrade() {
                 <div className="w-14 h-14 rounded-full bg-emerald-200/50 dark:bg-emerald-800/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 group-hover:scale-110 transition-transform shadow-sm">
                   <Camera className="w-7 h-7" />
                 </div>
-                <span className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm sm:text-base">مسح بالكاميرا</span>
+                <span className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm sm:text-base">{copy.cameraScan}</span>
               </button>
               <button
                 onClick={() => fileRef.current?.click()}
@@ -881,7 +895,7 @@ export default function WorksheetGrade() {
                 <div className="w-14 h-14 rounded-full bg-slate-200/50 dark:bg-slate-800/80 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform shadow-sm">
                   <ImageIcon className="w-7 h-7" />
                 </div>
-                <span className="font-extrabold text-slate-700 dark:text-slate-300 text-sm sm:text-base">اختيار صورة</span>
+                <span className="font-extrabold text-slate-700 dark:text-slate-300 text-sm sm:text-base">{copy.chooseImage}</span>
               </button>
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
             </div>
@@ -892,11 +906,11 @@ export default function WorksheetGrade() {
         {result && (
           <section className="bg-gradient-to-b from-emerald-50 to-white dark:from-[#11241A] dark:to-[#15201B] rounded-3xl border border-emerald-200 dark:border-emerald-800 p-6 shadow-xl shadow-emerald-100/50 dark:shadow-none animate-in zoom-in-95 duration-500 relative overflow-hidden">
             {/* Decorative background */}
-            <div className="absolute -top-32 -left-32 w-64 h-64 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-32 -start-32 w-64 h-64 bg-emerald-400/20 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex items-start justify-between relative z-10">
               <div>
-                 <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">النتيجة النهائية</p>
+                 <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">{copy.finalResult}</p>
                  <h2 className="text-6xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
                    {result.earnedPoints} <span className="text-3xl text-slate-400 dark:text-slate-500 font-bold">/ {result.totalPoints ?? info?.totalPoints}</span>
                  </h2>
@@ -920,11 +934,11 @@ export default function WorksheetGrade() {
                   )}
                   {result.nameExtraction?.matchedStudentId != null ? (
                     <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-black border border-emerald-200/50 dark:border-emerald-800">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> مرتبط بطالب
+                       <CheckCircle2 className="w-3.5 h-3.5" /> {copy.linkedStudent}
                     </span>
                   ) : result.nameExtraction && (
                     <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-[11px] font-black border border-slate-200/50 dark:border-slate-700">
-                      <User className="w-3.5 h-3.5" /> اسم مقروء
+                       <User className="w-3.5 h-3.5" /> {copy.readName}
                     </span>
                   )}
                </div>
@@ -938,20 +952,21 @@ export default function WorksheetGrade() {
                     <User className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">الاسم غير واضح تماماً</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400/80 mt-0.5">هل هذا هو اسم الطالب الصحيح؟</p>
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">{copy.unclearName}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400/80 mt-0.5">{copy.correctNameQuestion}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <input
                     value={nameFix}
                     onChange={(e) => setNameFix(e.target.value)}
-                    placeholder="اسم الطالب"
+                    placeholder={copy.studentName}
+                    aria-label={copy.studentName}
                     className="flex-1 rounded-xl border-amber-200 focus:border-amber-400 focus:ring-amber-400 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100 px-4 py-2.5 text-sm font-bold outline-none transition-all shadow-sm"
                   />
                   <button
                     onClick={async () => {
-                      if (!result?.id || nameFix.trim().length < 2) { toast.error("اكتب اسماً صحيحاً"); return; }
+                      if (!result?.id || nameFix.trim().length < 2) { toast.error(copy.validNameRequired); return; }
                       setSavingName(true);
                       try {
                         const r = await fetch(`${API_BASE}/api/submissions/${result.id}/student-name`, {
@@ -961,7 +976,7 @@ export default function WorksheetGrade() {
                           body: JSON.stringify({ studentName: nameFix.trim() }),
                         });
                         const d = await r.json().catch(() => ({}));
-                        if (!r.ok) { toast.error(d.message || "تعذّر تحديث الاسم"); return; }
+                        if (!r.ok) { toast.error(d.message || copy.updateNameFailed); return; }
                         setResult((prev) => prev ? {
                           ...prev,
                           studentName: d.studentName,
@@ -969,10 +984,10 @@ export default function WorksheetGrade() {
                             ? { ...prev.nameExtraction, nameConfidence: "clear", matchedStudentId: d.matchedStudentId }
                             : prev.nameExtraction,
                         } : prev);
-                        toast.success("تم تحديث الاسم");
+                        toast.success(copy.nameUpdated);
                         if (info) void loadSubmissions(info.assignmentId);
                       } catch {
-                        toast.error("حدث خطأ في الاتصال");
+                        toast.error(copy.connectionError);
                       } finally {
                         setSavingName(false);
                       }
@@ -980,7 +995,7 @@ export default function WorksheetGrade() {
                     disabled={savingName}
                     className="px-5 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-black hover:bg-amber-600 disabled:opacity-60 shadow-md shadow-amber-500/20 hover:-translate-y-0.5 transition-all flex items-center justify-center shrink-0"
                   >
-                    {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد"}
+                    {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : copy.confirm}
                   </button>
                 </div>
               </div>
@@ -990,7 +1005,7 @@ export default function WorksheetGrade() {
               <div className="mt-6 p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="font-bold text-sm text-emerald-800 dark:text-emerald-300">ملاحظات الذكاء الاصطناعي</span>
+                  <span className="font-bold text-sm text-emerald-800 dark:text-emerald-300">{copy.aiFeedback}</span>
                 </div>
                 <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200 leading-relaxed">
                   {result.aiFeedback}
@@ -1000,7 +1015,7 @@ export default function WorksheetGrade() {
             
             {Array.isArray(result.answers) && result.answers.length > 0 && (
               <div className="mt-6 space-y-2">
-                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-3 px-1">تفاصيل الإجابات</h3>
+                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-3 px-1">{copy.answerDetails}</h3>
                 <ul className="grid grid-cols-1 gap-2">
                   {result.answers.map((r, i) => (
                     <li key={i} className="flex items-stretch overflow-hidden rounded-xl border border-white/60 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 shadow-sm transition-all hover:border-emerald-200 dark:hover:border-emerald-800">
@@ -1030,14 +1045,14 @@ export default function WorksheetGrade() {
                 onClick={nextStudent}
                 className="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black text-lg hover:from-emerald-700 hover:to-emerald-600 shadow-xl shadow-emerald-600/20 hover:-translate-y-0.5 transition-all btn-bounce"
               >
-                <UserPlus className="w-5 h-5" /> تصحيح طالب آخر
+                <UserPlus className="w-5 h-5" /> {copy.gradeAnother}
               </button>
               {info?.worksheetId != null && (
                 <button
                   onClick={() => setLocation(`/teacher/worksheets/${info?.worksheetId}/report`)}
                   className="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-4 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-white/50 dark:bg-slate-900/50 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all btn-bounce"
                 >
-                  <BarChart3 className="w-5 h-5" /> تقرير التصحيح
+                  <BarChart3 className="w-5 h-5" /> {copy.gradingReport}
                 </button>
               )}
             </div>
@@ -1052,7 +1067,7 @@ export default function WorksheetGrade() {
                 <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <h3 className="font-extrabold text-slate-800 dark:text-slate-100">
-                طلاب هذه الجلسة <span className="text-emerald-600 dark:text-emerald-400 text-sm">({sessionResults.length})</span>
+                {copy.sessionStudents} <span className="text-emerald-600 dark:text-emerald-400 text-sm">({sessionResults.length})</span>
               </h3>
             </div>
             
@@ -1068,7 +1083,7 @@ export default function WorksheetGrade() {
                       {i + 1}
                     </span>
                     <p className="font-bold text-sm text-slate-700 dark:text-slate-200 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
-                      {r.studentName || "غير معروف"}
+                      {r.studentName || copy.unknown}
                     </p>
                   </div>
                   <span className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 font-black text-emerald-600 dark:text-emerald-400 text-sm border border-emerald-100 dark:border-emerald-900/30">
@@ -1087,7 +1102,7 @@ export default function WorksheetGrade() {
             onClick={() => setReviewIdx(null)}
           >
             <div
-              dir="rtl"
+              dir={dir}
               onClick={(e) => e.stopPropagation()}
               className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto bg-white dark:bg-[#15201B] rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-emerald-900/30 animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300"
             >
@@ -1097,14 +1112,14 @@ export default function WorksheetGrade() {
                      <User className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
                   </div>
                   <span className="font-black text-lg text-slate-800 dark:text-slate-100 truncate">
-                    {sessionResults[reviewIdx].studentName || "غير معروف"}
+                    {sessionResults[reviewIdx].studentName || copy.unknown}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
                   <span className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/40 font-black text-lg text-emerald-700 dark:text-emerald-400">
                     {sessionResults[reviewIdx].earnedPoints} / {sessionResults[reviewIdx].totalPoints ?? info?.totalPoints}
                   </span>
-                  <button onClick={() => setReviewIdx(null)} aria-label="إغلاق" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-500">
+                  <button onClick={() => setReviewIdx(null)} aria-label={copy.close} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-500">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -1126,7 +1141,7 @@ export default function WorksheetGrade() {
                         <div className={`w-1.5 shrink-0 ${r.isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`} />
                         <div className="flex-1 flex items-center justify-between p-3 min-w-0">
                            <div className="flex items-center gap-3 min-w-0">
-                             <span className="text-xs font-bold text-slate-400 w-5 text-center shrink-0">س{i + 1}</span>
+                             <span className="text-xs font-bold text-slate-400 w-5 text-center shrink-0">{format(copy.questionShort, { number: i + 1 })}</span>
                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
                                {r.selectedAnswer || "—"}
                              </span>
@@ -1152,7 +1167,7 @@ export default function WorksheetGrade() {
                 <ListChecks className="w-4 h-4 text-slate-600 dark:text-slate-400" />
               </div>
               <h3 className="font-extrabold text-slate-800 dark:text-slate-100">
-                الأوراق المصححة <span className="text-slate-500 text-sm">({subs.length})</span>
+                {copy.gradedPapers} <span className="text-slate-500 text-sm">({subs.length})</span>
               </h3>
             </div>
             {subs.length > 0 && info?.worksheetId != null && (
@@ -1160,7 +1175,7 @@ export default function WorksheetGrade() {
                 onClick={() => setLocation(`/teacher/worksheets/${info?.worksheetId}/report`)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
               >
-                <BarChart3 className="w-4 h-4" /> تقرير
+                <BarChart3 className="w-4 h-4" /> {copy.report}
               </button>
             )}
           </div>
@@ -1170,8 +1185,8 @@ export default function WorksheetGrade() {
               <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
                 <ListChecks className="w-6 h-6 text-slate-400" />
               </div>
-              <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">لم تُصحَّح أي ورقة بعد</p>
-              <p className="text-xs text-slate-500 mt-1">ابدأ بتصوير الأوراق وستظهر النتائج هنا</p>
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">{copy.noPapers}</p>
+              <p className="text-xs text-slate-500 mt-1">{copy.noPapersHint}</p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
