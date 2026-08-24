@@ -405,8 +405,8 @@ export default function RocketCreate() {
 
   const filteredAssignments = assignSearch.trim()
     ? assignments.filter(a => (
-      a.title.toLowerCase().includes(assignSearch.trim().toLowerCase())
-      || a.subject.toLowerCase().includes(assignSearch.trim().toLowerCase())
+      (a.title ?? "").toLowerCase().includes(assignSearch.trim().toLowerCase())
+      || (a.subject ?? "").toLowerCase().includes(assignSearch.trim().toLowerCase())
     ))
     : assignments;
 
