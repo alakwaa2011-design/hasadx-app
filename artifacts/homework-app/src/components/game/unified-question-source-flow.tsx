@@ -33,7 +33,13 @@ export interface UnifiedQuestionSourceFlowProps {
   minQuestions: number;
   maxQuestions: number;
   onComplete: (data: {
-    questions: Array<{ text: string; options: string[]; correct: number; imageUrl?: string | null }>;
+    questions: Array<{
+      text: string;
+      options: string[];
+      correct: number;
+      type?: "mcq" | "true_false";
+      imageUrl?: string | null;
+    }>;
     sourceTitle: string | null;
     source: "assignment" | "ai" | "manual" | "bank";
   }) => void;
@@ -302,12 +308,24 @@ export function UnifiedQuestionSourceFlow({
       toast.error(ar ? `يجب إكمال ${minQuestions} أسئلة صالحة على الأقل` : `Complete at least ${minQuestions} valid questions`);
       return;
     }
-    const qList = validQs.map(q => ({
-      text: q.text,
-      options: [q.optionA, q.optionB, q.optionC, q.optionD],
-      correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer) !== -1 ? ["A", "B", "C", "D"].indexOf(q.correctAnswer) : 0,
-      imageUrl: null
-    })).slice(0, maxQuestions);
+    const qList = validQs.map(q => {
+      if (q.type === "tf") {
+        return {
+          text: q.text,
+          options: ["صح", "خطأ"],
+          correct: q.correctAnswer === "B" ? 1 : 0,
+          type: "true_false" as const,
+          imageUrl: null,
+        };
+      }
+
+      return {
+        text: q.text,
+        options: [q.optionA, q.optionB, q.optionC, q.optionD],
+        correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer) !== -1 ? ["A", "B", "C", "D"].indexOf(q.correctAnswer) : 0,
+        imageUrl: null,
+      };
+    }).slice(0, maxQuestions);
     onComplete({ questions: qList, sourceTitle: activeTitle || null, source: editorSource });
   };
 
@@ -777,7 +795,7 @@ export function UnifiedQuestionSourceFlow({
                     key={i}
                     q={q}
                     index={i}
-                    allowedTypes={["mcq"]}
+                    allowedTypes={editorSource === "manual" ? ["mcq", "tf"] : ["mcq"]}
                     showDifficulty={false}
                     showAudio={false}
                     onChange={updated => {

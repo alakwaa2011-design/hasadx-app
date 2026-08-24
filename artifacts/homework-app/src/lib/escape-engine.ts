@@ -287,10 +287,11 @@ export function escapeReducer(state: EscapeState, action: EscapeAction): EscapeS
       if (state.status !== "playing" || state.phase !== "question") return state;
       if (state.hintsLeft <= 0 || state.removed.length > 0) return state;
       const q = currentQuestion(state);
-      if (!q || q.options.length < 3) return state;
-      // Remove the two wrong options with the highest indexes (deterministic).
+      if (!q || q.options.length < 2) return state;
+      // Remove up to two wrong options (one for a true/false question).
       const wrong = q.options.map((_, i) => i).filter((i) => i !== q.correct);
       const removed = wrong.slice(-2);
+      if (removed.length === 0) return state;
       return { ...state, removed, hintsLeft: state.hintsLeft - 1 };
     }
 

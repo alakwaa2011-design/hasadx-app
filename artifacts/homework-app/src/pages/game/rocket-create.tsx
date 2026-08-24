@@ -152,7 +152,7 @@ export default function RocketCreate() {
       return;
     }
     if (questions.some(q => !q.text.trim() || q.options.some(option => !option.trim()))) {
-      toast.error(ar ? "أكمل نص كل سؤال وخياراته الأربعة أولاً" : "Complete each question and its four options first");
+      toast.error(ar ? "أكمل نص كل سؤال وخياراته أولاً" : "Complete each question and its answer options first");
       return;
     }
     setCreating(true);
@@ -528,7 +528,7 @@ export default function RocketCreate() {
               minQuestions={1}
               maxQuestions={30}
               onComplete={({ questions: prepared, sourceTitle }) => {
-                setQuestions(prepared.map(question => ({ ...question, type: "mcq" })));
+                setQuestions(prepared.map(question => ({ ...question, type: question.type ?? "mcq" })));
                 if (sourceTitle) setTitle(sourceTitle);
                 setStep("settings");
                 window.scrollTo({ top: 0, behavior: "smooth" });

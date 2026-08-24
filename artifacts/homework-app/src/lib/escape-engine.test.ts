@@ -148,6 +148,23 @@ describe("escapeReducer — hints (50/50)", () => {
     const again = escapeReducer(s, { type: "fifty" });
     expect(again).toBe(s);
   });
+
+  it("removes the one wrong option for a true/false question", () => {
+    let s = createEscapeState(
+      {
+        questions: [{ text: "True or false", options: ["صح", "خطأ"], correct: 0 }],
+        totalTime: 300,
+        lockCount: 1,
+        hints: 1,
+      },
+      rng,
+    );
+    s = escapeReducer(s, { type: "start" });
+    s = escapeReducer(s, { type: "fifty" });
+
+    expect(s.hintsLeft).toBe(0);
+    expect(s.removed).toEqual([1]);
+  });
 });
 
 describe("escapeReducer — guards", () => {

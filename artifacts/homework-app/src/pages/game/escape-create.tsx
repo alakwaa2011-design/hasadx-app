@@ -401,7 +401,7 @@ export default function EscapeCreate() {
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700"><KeyRound className="h-4 w-4" /></span>
                     <div>
                       <h3 className="text-sm font-black text-gray-800">{ar ? "مفاتيح المساعدة" : "Hint keys"}</h3>
-                      <p className="text-xs font-medium text-gray-500">{ar ? "تزيل خيارين خاطئين" : "Removes two wrong answers"}</p>
+                        <p className="text-xs font-medium text-gray-500">{ar ? "تزيل حتى خيارين خاطئين" : "Removes up to two wrong answers"}</p>
                     </div>
                   </div>
                   <select value={hints} onChange={e => setHints(Number(e.target.value))}
