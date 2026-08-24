@@ -4,13 +4,14 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Clock, ChevronDown, ChevronUp,
+  Play, Clock, ChevronDown, ChevronUp, Plus, Sparkles, PenLine, Wand2,
   Check, X, Loader2, FileText, FolderOpen,
   GraduationCap, Trash2, BookOpen, Rocket, Copy,
   ExternalLink, Users,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
+import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
 import { toast } from "@/components/ui/sonner";
 import QRCode from "react-qr-code";
 
@@ -90,6 +91,7 @@ export default function RocketCreate() {
   const [, setLocation] = useLocation();
 
   const [questions, setQuestions] = useState<RocketQuestion[]>([]);
+  const [questionsEditorOpen, setQuestionsEditorOpen] = useState(false);
   const [duration, setDuration] = useState(20);
   // Race timer: 1-15 minutes; defaults to 5. Race auto-ends when timer hits zero.
   const [gameDurationMins, setGameDurationMins] = useState(5);
@@ -98,6 +100,12 @@ export default function RocketCreate() {
   const [title, setTitle] = useState("");
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiSubject, setAiSubject] = useState("");
+  const [aiCount, setAiCount] = useState(10);
+  const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   // Game created state
   const [gamePin, setGamePin] = useState<string | null>(null);
@@ -160,7 +168,11 @@ export default function RocketCreate() {
 
   const handleCreate = () => {
     if (questions.length === 0) {
-      toast.error(ar ? "أضف أسئلة أولاً (من بنك الأسئلة أو من واجب)" : "Add questions first");
+      toast.error(ar ? "أضف أسئلة أولاً" : "Add questions first");
+      return;
+    }
+    if (questions.some(q => !q.text.trim() || q.options.some(option => !option.trim()))) {
+      toast.error(ar ? "أكمل نص كل سؤال وخياراته الأربعة أولاً" : "Complete each question and its four options first");
       return;
     }
     setCreating(true);
@@ -181,6 +193,79 @@ export default function RocketCreate() {
         setLocation(`/game/rocket/host/${res.pin}`);
       }
     });
+  };
+
+  const addManualQuestion = () => {
+    if (questions.length >= 30) {
+      toast.error(ar ? "الحد الأقصى هو 30 سؤالاً للسباق" : "The race supports up to 30 questions");
+      return;
+    }
+    setQuestions(previous => [...previous, {
+      text: "",
+      type: "mcq",
+      options: ["", "", "", ""],
+      correct: 0,
+    }]);
+    setQuestionsEditorOpen(true);
+    setAiOpen(false);
+  };
+
+  const updateQuestion = (index: number, patch: Partial<RocketQuestion>) => {
+    setQuestions(previous => previous.map((question, questionIndex) =>
+      questionIndex === index ? { ...question, ...patch } : question,
+    ));
+  };
+
+  const updateQuestionOption = (questionIndex: number, optionIndex: number, value: string) => {
+    setQuestions(previous => previous.map((question, index) => {
+      if (index !== questionIndex) return question;
+      const options = [...question.options];
+      options[optionIndex] = value;
+      return { ...question, options };
+    }));
+  };
+
+  const generateWithAI = async () => {
+    if (!aiTopic.trim()) {
+      toast.error(ar ? "أدخل موضوع السباق أولاً" : "Enter a topic first");
+      return;
+    }
+    setAiGenerating(true);
+    try {
+      const res = await creditAwareFetch(`${API_BASE}/api/ai/generate-questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          topic: aiTopic.trim(),
+          subject: aiSubject.trim(),
+          count: aiCount,
+          difficulty: aiDifficulty,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || (ar ? "فشل التوليد" : "Generation failed"));
+      }
+      const generated: RocketQuestion[] = (data.questions || []).map((question: any) => ({
+        text: question.text || "",
+        type: "mcq" as const,
+        options: [question.optionA || "", question.optionB || "", question.optionC || "", question.optionD || ""],
+        correct: ["A", "B", "C", "D"].indexOf(question.correctAnswer) >= 0
+          ? ["A", "B", "C", "D"].indexOf(question.correctAnswer)
+          : 0,
+      }));
+      setQuestions(previous => [...previous, ...generated].slice(0, 30));
+      setQuestionsEditorOpen(true);
+      setAiOpen(false);
+      if (!title.trim()) setTitle(aiTopic.trim());
+      toast.success(ar ? `تم توليد ${generated.length} سؤال` : `Generated ${generated.length} questions`);
+    } catch (error: any) {
+      toast.error(error.message || (ar ? "حدث خطأ في التوليد" : "Generation error"));
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const joinUrl = gamePin ? `${window.location.origin}/game/rocket/join/${gamePin}` : "";
@@ -337,7 +422,7 @@ export default function RocketCreate() {
               </div>
             </motion.div>
             <h1 style={{ color: "#fff", fontWeight: 900, fontSize: 22, margin: "14px 0 4px" }}>
-              {ar ? "🌌 المغامرة جاهزة للانطلاق!" : "🌌 Adventure is Ready!"}
+               {ar ? "سباق الصواريخ جاهز للانطلاق!" : "Rocket Race is Ready!"}
             </h1>
             {title && (
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: 0 }}>{title}</p>
@@ -453,7 +538,7 @@ export default function RocketCreate() {
                 gap: 8,
               }}
             >
-              {ar ? "مغامرة جديدة" : "New Adventure"}
+               {ar ? "سباق صواريخ جديد" : "New Rocket Race"}
             </button>
             <button
               onClick={() => setLocation(`/game/rocket/host/${gamePin}`)}
@@ -501,237 +586,127 @@ export default function RocketCreate() {
               <Rocket className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-black mb-1" style={{ color: BRAND_PRIMARY }}>
-              {ar ? "أنشئ مغامرة الفضاء" : "Create Space Adventure"}
+              {ar ? "أنشئ سباق الصواريخ" : "Create Rocket Race"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {ar ? "كلما أجاب الطالب أسرع وأصح، حلّق أعلى في الفضاء!" : "Faster correct answers = fly higher in space!"}
+              {ar ? "كلما كانت الإجابة أسرع وأصح، ارتفع الصاروخ أكثر!" : "Faster, more accurate answers send rockets higher!"}
             </p>
           </motion.div>
 
-          {/* Title */}
-          <Card className="p-4 mb-3 flex items-center gap-3">
-            <span className="text-xl">📛</span>
-            <input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={ar ? "اسم المغامرة (اختياري)" : "Adventure title (optional)"}
-              className="flex-1 bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/60"
-              maxLength={60}
-            />
-          </Card>
+           {/* Compact settings panel */}
+           <Card className="p-4 sm:p-5 mb-4 border-primary/15 shadow-sm">
+             <div className="flex items-center gap-2 mb-4">
+               <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Rocket className="w-4 h-4" /></span>
+               <div>
+                 <h2 className="font-black text-base" style={{ color: BRAND_PRIMARY }}>{ar ? "تفاصيل سباق الصواريخ" : "Rocket race details"}</h2>
+                 <p className="text-xs text-muted-foreground mt-0.5">{ar ? "اضبط القيم الأساسية قبل الانطلاق" : "Set the essentials before launch"}</p>
+               </div>
+             </div>
+             <div className="space-y-3">
+               <div>
+                 <label className="block text-xs font-bold text-foreground mb-1.5">{ar ? "اسم السباق" : "Race name"}</label>
+                 <input
+                   value={title}
+                   onChange={e => setTitle(e.target.value)}
+                   placeholder={ar ? "مثال: مراجعة الوحدة الأولى" : "e.g. Unit 1 review"}
+                   className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary"
+                   maxLength={60}
+                 />
+               </div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                 <div>
+                   <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" style={{ color: BRAND_PRIMARY }} />{ar ? "وقت كل سؤال" : "Time per question"}</label>
+                   <select value={duration} onChange={e => setDuration(parseInt(e.target.value, 10))} className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary">
+                     {[10, 15, 20, 30, 45].map(seconds => <option key={seconds} value={seconds}>{seconds} {ar ? "ثانية" : "seconds"}</option>)}
+                   </select>
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-foreground mb-1.5">{ar ? "مدة السباق" : "Race duration"}</label>
+                   <select value={gameDurationMins} onChange={e => setGameDurationMins(parseInt(e.target.value, 10))} className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary">
+                     {Array.from({ length: 15 }, (_, index) => index + 1).map(minutes => <option key={minutes} value={minutes}>{minutes} {ar ? "دقيقة" : "minutes"}</option>)}
+                   </select>
+                 </div>
+               </div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                 <div>
+                   <label className="block text-xs font-bold text-foreground mb-1.5">{ar ? "طريقة تقدّم الأسئلة" : "Question pacing"}</label>
+                   <select value={advanceMode} onChange={e => setAdvanceMode(e.target.value as typeof advanceMode)} className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary">
+                     <option value="per_player">{ar ? "تلقائي — لكل طالب" : "Auto — per student"}</option>
+                     <option value="host_sync">{ar ? "يدوي — سؤال واحد للجميع" : "Teacher sync — one question for all"}</option>
+                   </select>
+                 </div>
+                 {gradeLevels.length > 0 && (
+                   <div>
+                     <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" style={{ color: BRAND_PRIMARY }} />{ar ? "الصف المستهدف" : "Target class"}</label>
+                     <select value={targetClass} onChange={e => setTargetClass(e.target.value)} className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary">
+                       <option value="">{ar ? "جميع الصفوف" : "All classes"}</option>
+                       {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})</option>)}
+                     </select>
+                   </div>
+                 )}
+               </div>
+             </div>
+           </Card>
 
-          {/* Duration per question */}
-          <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
-            <Clock className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} />
-            <span className="font-bold text-sm flex-1">{ar ? "وقت كل سؤال" : "Time per question"}</span>
-            <div className="flex gap-2 flex-wrap">
-              {[10, 15, 20, 30, 45].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setDuration(s)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-bold transition-all border"
-                  style={{
-                    background: duration === s ? BRAND_PRIMARY : "#fff",
-                    color: duration === s ? "#fff" : "#374151",
-                    borderColor: duration === s ? BRAND_PRIMARY : "#e5e7eb",
-                  }}
-                >
-                  {s}{ar ? "ث" : "s"}
-                </button>
-              ))}
-            </div>
-          </Card>
+           {/* Prepared questions */}
+           <AnimatePresence>
+             {questions.length > 0 && (
+               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                 <Card className="p-4 mb-3 border-primary/15">
+                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                     <div className="flex items-center gap-2.5">
+                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white" style={{ background: BRAND_PRIMARY }}>{questions.length}</div>
+                       <div><h2 className="font-black text-sm" style={{ color: BRAND_PRIMARY }}>{ar ? "أسئلة سباق الصواريخ جاهزة" : "Rocket Race questions are ready"}</h2><p className="text-xs text-muted-foreground mt-0.5">{ar ? "راجعها أو أضف سؤالاً جديداً قبل البدء." : "Review them or add a new question before starting."}</p></div>
+                     </div>
+                     <div className="flex flex-wrap gap-2">
+                       <button type="button" onClick={() => setQuestionsEditorOpen(open => !open)} className="px-3 py-2 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />{questionsEditorOpen ? (ar ? "إخفاء الأسئلة" : "Hide questions") : (ar ? "معاينة وتعديل" : "Review & edit")}</button>
+                       <button type="button" onClick={addManualQuestion} className="px-3 py-2 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" />{ar ? "إضافة سؤال" : "Add question"}</button>
+                       <button onClick={() => { setQuestions([]); setQuestionsEditorOpen(false); }} className="p-2 rounded-xl text-red-400 hover:bg-red-50 transition-colors" title={ar ? "مسح الأسئلة" : "Clear questions"}><Trash2 className="w-4 h-4" /></button>
+                     </div>
+                   </div>
+                 </Card>
+                 {questionsEditorOpen && (
+                   <Card className="p-3 sm:p-4 mb-3 space-y-3">
+                     {questions.map((question, index) => (
+                       <div key={index} className="rounded-2xl border border-border p-3 sm:p-4">
+                         <div className="flex items-center gap-2 mb-2.5"><span className="w-7 h-7 rounded-lg text-white text-xs font-black flex items-center justify-center" style={{ background: BRAND_PRIMARY }}>{index + 1}</span><span className="text-xs font-bold text-muted-foreground">{ar ? "سؤال اختيار متعدد" : "Multiple-choice question"}</span><button type="button" onClick={() => setQuestions(previous => previous.filter((_, questionIndex) => questionIndex !== index))} className="ms-auto p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button></div>
+                         <input value={question.text} onChange={e => updateQuestion(index, { text: e.target.value })} placeholder={ar ? "نص السؤال" : "Question text"} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" />
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">{question.options.map((option, optionIndex) => <input key={optionIndex} value={option} onChange={e => updateQuestionOption(index, optionIndex, e.target.value)} placeholder={`${String.fromCharCode(65 + optionIndex)}. ${ar ? "الخيار" : "Option"}`} className="px-3 py-2 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" />)}</div>
+                         <div className="mt-2 flex items-center gap-2"><label className="text-xs font-bold text-muted-foreground">{ar ? "الإجابة الصحيحة" : "Correct answer"}</label><select value={question.correct} onChange={e => updateQuestion(index, { correct: parseInt(e.target.value, 10) })} className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-bold outline-none focus:border-primary">{["A", "B", "C", "D"].map((letter, optionIndex) => <option key={letter} value={optionIndex}>{letter}</option>)}</select></div>
+                       </div>
+                     ))}
+                   </Card>
+                 )}
+               </motion.div>
+             )}
+           </AnimatePresence>
 
-          {/* Advance mode: synced (teacher) vs independent pace */}
-          <Card className="p-4 mb-3">
-            <p className="font-bold text-sm mb-3" style={{ color: BRAND_PRIMARY }}>
-              {ar ? "طريقة تقدّم الأسئلة" : "Question pacing"}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setAdvanceMode("per_player")}
-                className="text-left rounded-xl border-2 p-3 transition-all"
-                style={{
-                  borderColor: advanceMode === "per_player" ? BRAND_PRIMARY : "#e5e7eb",
-                  background: advanceMode === "per_player" ? "rgba(34, 87, 57, 0.06)" : "#fff",
-                }}
-              >
-                <span className="font-black text-sm block" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "⚡ تلقائي (كل طالب)" : "⚡ Auto / per student"}
-                </span>
-                <span className="text-xs text-muted-foreground leading-snug block mt-1">
-                  {ar
-                    ? "كل طالب يتلقى أسئلة بوتيرته؛ الفوز للأسرع والأدق."
-                    : "Each student cycles at their own pace; highest score wins."}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAdvanceMode("host_sync")}
-                className="text-left rounded-xl border-2 p-3 transition-all"
-                style={{
-                  borderColor: advanceMode === "host_sync" ? BRAND_GOLD : "#e5e7eb",
-                  background: advanceMode === "host_sync" ? "rgba(217, 165, 33, 0.08)" : "#fff",
-                }}
-              >
-                <span className="font-black text-sm block" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "👨‍🏫 يدوي — سؤال واحد للجميع" : "👨‍🏫 Teacher sync"}
-                </span>
-                <span className="text-xs text-muted-foreground leading-snug block mt-1">
-                  {ar
-                    ? "المعلم يرى نفس سؤال الطلاب والانتقال يدوياً بعد الإجابة."
-                    : "Same question for everyone; you advance questions manually."}
-                </span>
-              </button>
-            </div>
-          </Card>
+           {/* Question sources */}
+           <Card className="p-4 mb-4">
+             <div className="flex items-center justify-between gap-3 mb-3"><div><h2 className="font-black text-sm text-foreground">{ar ? "جهّز أسئلة السباق" : "Prepare race questions"}</h2><p className="text-xs text-muted-foreground mt-0.5">{ar ? "اختر مصدراً أو أضف أسئلتك بنفسك." : "Choose a source or write your own questions."}</p></div><Rocket className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} /></div>
+             <div className="grid grid-cols-2 gap-2">
+               <button onClick={() => setAssignOpen(true)} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><FileText className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />{ar ? "من واجب" : "Assignment"}</button>
+               <button onClick={() => setBankOpen(true)} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><BookOpen className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />{ar ? "بنك الأسئلة" : "Question bank"}</button>
+               <button onClick={() => { setAiOpen(open => !open); setQuestionsEditorOpen(false); }} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><Sparkles className="w-4 h-4" style={{ color: BRAND_GOLD }} />{ar ? "بالذكاء الاصطناعي" : "With AI"}</button>
+               <button onClick={addManualQuestion} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><PenLine className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />{ar ? "إضافة يدوية" : "Add manually"}</button>
+             </div>
+             <button onClick={() => { setSavedOpen(true); loadTemplates(); }} className="mt-2.5 w-full py-2.5 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center justify-center gap-1.5"><FolderOpen className="w-4 h-4" />{ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}</button>
+           </Card>
 
-          {/* Race timer — teacher picks 1-15 minutes */}
-          <Card className="p-4 mb-3">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">⏱️</span>
-              <div className="flex-1">
-                <p className="font-bold text-sm" style={{ color: BRAND_PRIMARY }}>
-                  {ar ? "مدة السباق" : "Race duration"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {ar
-                    ? "السباق ينتهي تلقائياً عند انتهاء الوقت. التحذير الذهبي عند ٦٠ ث، الأحمر عند ٣٠ ث."
-                    : "Race auto-ends when time runs out. Gold warning at 60s, red at 30s."}
-                </p>
-              </div>
-              <div
-                className="px-3 py-1.5 rounded-lg font-black text-lg tabular-nums"
-                style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY, minWidth: 60, textAlign: "center" }}
-              >
-                {gameDurationMins} {ar ? "د" : "m"}
-              </div>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={15}
-              step={1}
-              value={gameDurationMins}
-              onChange={(e) => setGameDurationMins(parseInt(e.target.value, 10))}
-              className="w-full accent-current"
-              style={{ accentColor: BRAND_PRIMARY }}
-              aria-label={ar ? "مدة السباق بالدقائق" : "Race duration in minutes"}
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1 tabular-nums px-1">
-              <span>1</span><span>5</span><span>10</span><span>15</span>
-            </div>
-          </Card>
+           <AnimatePresence>
+             {aiOpen && (
+               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                 <Card className="p-4 mb-4 border-amber-500/25">
+                   <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4" style={{ color: BRAND_GOLD }} /><div><h2 className="font-black text-sm">{ar ? "توليد أسئلة للسباق" : "Generate race questions"}</h2><p className="text-xs text-muted-foreground mt-0.5">{ar ? "ستتمكن من مراجعة الأسئلة وتعديلها بعد التوليد." : "You can review and edit the questions after generation."}</p></div></div>
+                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2"><input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={ar ? "الموضوع — مثال: الكواكب" : "Topic — e.g. planets"} className="sm:col-span-3 px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" /><input value={aiSubject} onChange={e => setAiSubject(e.target.value)} placeholder={ar ? "المادة (اختياري)" : "Subject (optional)"} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" /><select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value, 10))} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm font-bold outline-none focus:border-primary">{[5, 10, 15, 20].map(count => <option key={count} value={count}>{count} {ar ? "أسئلة" : "questions"}</option>)}</select><select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value as typeof aiDifficulty)} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm font-bold outline-none focus:border-primary"><option value="easy">{ar ? "سهل" : "Easy"}</option><option value="medium">{ar ? "متوسط" : "Medium"}</option><option value="hard">{ar ? "صعب" : "Hard"}</option></select></div>
+                   <button type="button" disabled={aiGenerating} onClick={generateWithAI} className="mt-3 px-4 py-2.5 rounded-xl text-white text-sm font-black flex items-center gap-2 disabled:opacity-60" style={{ background: BRAND_PRIMARY }}>{aiGenerating ? <><Loader2 className="w-4 h-4 animate-spin" />{ar ? "جارٍ التوليد…" : "Generating…"}</> : <><Wand2 className="w-4 h-4" />{ar ? "ولّد الأسئلة" : "Generate questions"}</>}</button>
+                 </Card>
+               </motion.div>
+             )}
+           </AnimatePresence>
 
-          {/* Target class */}
-          {gradeLevels.length > 0 && (
-            <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
-              <GraduationCap className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} />
-              <span className="font-bold text-sm flex-1">{ar ? "الصف المستهدف" : "Target class"}</span>
-              <select
-                value={targetClass}
-                onChange={e => setTargetClass(e.target.value)}
-                className="min-w-[160px] max-w-[260px] rounded-lg border bg-background px-3 py-1.5 text-sm font-medium"
-                style={{ borderColor: "#e5e7eb" }}
-              >
-                <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
-                {gradeLevels.map(g => (
-                  <option key={g.gradeLevel} value={g.gradeLevel}>
-                    {g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})
-                  </option>
-                ))}
-              </select>
-            </Card>
-          )}
-
-          {/* Questions counter */}
-          <AnimatePresence>
-            {questions.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-              >
-                <Card className="p-4 mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white"
-                      style={{ background: BRAND_PRIMARY }}
-                    >
-                      {questions.length}
-                    </div>
-                    <span className="font-bold text-sm" style={{ color: BRAND_PRIMARY }}>
-                      {ar ? `سؤال محمّل` : `questions loaded`}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setQuestions([])}
-                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-                    title={ar ? "مسح الأسئلة" : "Clear questions"}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Import buttons */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            <button
-              onClick={() => setBankOpen(true)}
-              className="py-4 rounded-xl text-white font-bold text-sm transition-all flex items-center justify-center gap-2 hover:opacity-90"
-              style={{ background: BRAND_PRIMARY, boxShadow: `0 8px 20px -6px ${BRAND_PRIMARY}60` }}
-            >
-              <BookOpen className="w-4 h-4" />
-              {ar ? "بنك الأسئلة" : "Question Bank"}
-            </button>
-            <button
-              onClick={() => setAssignOpen(true)}
-              className="py-4 rounded-xl text-white font-bold text-sm transition-all flex items-center justify-center gap-2 hover:opacity-90"
-              style={{ background: BRAND_GOLD, boxShadow: `0 8px 20px -6px ${BRAND_GOLD}60` }}
-            >
-              <FileText className="w-4 h-4" />
-              {ar ? "من واجب" : "From Assignment"}
-            </button>
-            <button
-              onClick={() => { setSavedOpen(true); loadTemplates(); }}
-              className="py-4 rounded-xl font-bold text-sm border-2 transition-all flex items-center justify-center gap-2 col-span-2 hover:opacity-80"
-              style={{ background: "#fff", color: BRAND_PRIMARY, borderColor: BRAND_PRIMARY }}
-            >
-              <FolderOpen className="w-4 h-4" />
-              {ar ? "المغامرات المحفوظة" : "Saved Adventures"}
-            </button>
-          </div>
-
-          {/* Launch button */}
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.01 }}
-            onClick={handleCreate}
-            disabled={creating || questions.length === 0}
-            className="w-full py-5 rounded-2xl font-black text-xl text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-            style={{
-              background: questions.length > 0
-                ? `linear-gradient(135deg, ${BRAND_GOLD} 0%, #c89212 100%)`
-                : "#e5e7eb",
-              boxShadow: questions.length > 0 ? `0 16px 32px -8px ${BRAND_GOLD}80` : "none",
-              color: questions.length > 0 ? "#000" : "#9ca3af",
-            }}
-          >
-            {creating ? (
-              <><Loader2 className="w-6 h-6 animate-spin" />{ar ? "جاري الإنشاء..." : "Creating..."}</>
-            ) : (
-              <><Rocket className="w-6 h-6" />{ar ? "أطلق المغامرة!" : "Launch Adventure!"}</>
-            )}
-          </motion.button>
-
-          {questions.length === 0 && (
-            <p className="text-center text-xs text-muted-foreground mt-3">
-              {ar ? "اختر مصدر الأسئلة أولاً ثم أطلق المغامرة" : "Select a question source first, then launch"}
-            </p>
-          )}
+           <motion.button whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleCreate} disabled={creating || questions.length === 0} className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: questions.length > 0 ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: questions.length > 0 ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: questions.length > 0 ? "#fff" : "#9ca3af" }}>{creating ? <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جارٍ الإنشاء…" : "Creating…"}</> : <><Rocket className="w-5 h-5" />{ar ? "ابدأ سباق الصواريخ" : "Start Rocket Race"}</>}</motion.button>
+           {questions.length === 0 && <p className="text-center text-xs text-muted-foreground mt-3">{ar ? "اختر مصدراً للأسئلة أولاً ثم ابدأ السباق." : "Choose a question source first, then start the race."}</p>}
         </div>
       </div>
 
@@ -857,7 +832,7 @@ export default function RocketCreate() {
               <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "#e5e7eb" }}>
                 <h3 className="text-lg font-black flex items-center gap-2" style={{ color: BRAND_PRIMARY }}>
                   <FolderOpen className="w-5 h-5" />
-                  {ar ? "المغامرات المحفوظة" : "Saved Adventures"}
+                  {ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}
                 </h3>
                 <button onClick={() => setSavedOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
               </div>
