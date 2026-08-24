@@ -26,6 +26,8 @@ export interface UnifiedQuestionSourceFlowProps {
   /** Escape Room: reveals a fixed continue card as soon as an assignment is ready. */
   floatingAssignmentContinue?: boolean;
   header?: React.ReactNode;
+  /** Optional action shown below the source cards, only while choosing a source. */
+  menuFooter?: React.ReactNode;
   minQuestions: number;
   maxQuestions: number;
   onComplete: (data: {
@@ -46,6 +48,7 @@ export function UnifiedQuestionSourceFlow({
   tugPresentation = false,
   floatingAssignmentContinue = false,
   header,
+  menuFooter,
   minQuestions,
   maxQuestions,
   onComplete,
@@ -129,7 +132,9 @@ export function UnifiedQuestionSourceFlow({
   const filteredAssignments = wameethSourceAssignments.filter((a: any) => {
     if ((a.questionCount ?? 0) === 0) return false;
     if (!assignSearch.trim()) return true;
-    return a.title.toLowerCase().includes(assignSearch.toLowerCase());
+    const query = assignSearch.trim().toLowerCase();
+    return (a.title ?? "").toLowerCase().includes(query)
+      || (a.subject ?? "").toLowerCase().includes(query);
   });
 
   const handleSelectAssignment = async (a: any) => {
@@ -497,64 +502,67 @@ export function UnifiedQuestionSourceFlow({
           transition={{ duration: 0.2 }}
         >
           {viewState === "menu" && (
-            <div className={cn("grid gap-4 mx-auto", tugPresentation ? "sm:grid-cols-2" : "max-w-3xl sm:grid-cols-2 lg:gap-6")}>
-              {[
-                {
-                  id: "assignment" as const,
-                  icon: <BookOpen className="w-6 h-6 text-blue-500" />,
-                  title: ar ? "من واجب موجود" : "From an assignment",
-                  desc: ar ? "استيراد الأسئلة من واجباتك السابقة" : "Import questions from past assignments",
-                  bg: "bg-blue-500/10",
-                  border: "border-blue-500/20",
-                  hoverBorder: "hover:border-blue-500/50"
-                },
-                {
-                  id: "ai_form" as const,
-                  icon: <Sparkles className="w-6 h-6 text-amber-500" />,
-                  title: ar ? "بالذكاء الاصطناعي" : "With AI",
-                  desc: ar ? "توليد أسئلة تلقائياً في أي موضوع" : "Generate questions on any topic",
-                  bg: "bg-amber-500/10",
-                  border: "border-amber-500/20",
-                  hoverBorder: "hover:border-amber-500/50"
-                },
-                {
-                  id: "editor" as const,
-                  icon: <PenLine className="w-6 h-6 text-emerald-600" />,
-                  title: ar ? "إضافة يدوية" : "Add manually",
-                  desc: ar ? "كتابة الأسئلة من الصفر" : "Write questions from scratch",
-                  bg: "bg-emerald-500/10",
-                  border: "border-emerald-500/20",
-                  hoverBorder: "hover:border-emerald-500/50"
-                },
-                {
-                  id: "bank" as const,
-                  icon: <Database className="w-6 h-6 text-purple-500" />,
-                  title: ar ? "بنك الأسئلة" : "Question Bank",
-                  desc: ar ? "اختيار أسئلة جاهزة من بنك حصاد" : "Select ready questions from the bank",
-                  bg: "bg-purple-500/10",
-                  border: "border-purple-500/20",
-                  hoverBorder: "hover:border-purple-500/50"
-                }
-              ].map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    if (opt.id === "editor") setEditorSource("manual");
-                    setViewState(opt.id);
-                  }}
-                  className={cn(
-                    "group relative overflow-hidden rounded-2xl border bg-card p-5 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg",
-                    !tugPresentation && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
-                    opt.hoverBorder
-                  )}
-                >
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors border shadow-sm", opt.bg, opt.border)}>
-                    {opt.icon}
-                  </div>
-                  <h3 className="font-bold text-foreground text-lg mb-1.5">{opt.title}</h3>
-                  <p className="text-sm text-muted-foreground font-medium">{opt.desc}</p>
-                </button>
-              ))}
+            <div className="mx-auto">
+              <div className={cn("grid gap-4", tugPresentation ? "sm:grid-cols-2" : "max-w-3xl sm:grid-cols-2 lg:gap-6")}>
+                {[
+                  {
+                    id: "assignment" as const,
+                    icon: <BookOpen className="w-6 h-6 text-blue-500" />,
+                    title: ar ? "من واجب موجود" : "From an assignment",
+                    desc: ar ? "استيراد الأسئلة من واجباتك السابقة" : "Import questions from past assignments",
+                    bg: "bg-blue-500/10",
+                    border: "border-blue-500/20",
+                    hoverBorder: "hover:border-blue-500/50"
+                  },
+                  {
+                    id: "ai_form" as const,
+                    icon: <Sparkles className="w-6 h-6 text-amber-500" />,
+                    title: ar ? "بالذكاء الاصطناعي" : "With AI",
+                    desc: ar ? "توليد أسئلة تلقائياً في أي موضوع" : "Generate questions on any topic",
+                    bg: "bg-amber-500/10",
+                    border: "border-amber-500/20",
+                    hoverBorder: "hover:border-amber-500/50"
+                  },
+                  {
+                    id: "editor" as const,
+                    icon: <PenLine className="w-6 h-6 text-emerald-600" />,
+                    title: ar ? "إضافة يدوية" : "Add manually",
+                    desc: ar ? "كتابة الأسئلة من الصفر" : "Write questions from scratch",
+                    bg: "bg-emerald-500/10",
+                    border: "border-emerald-500/20",
+                    hoverBorder: "hover:border-emerald-500/50"
+                  },
+                  {
+                    id: "bank" as const,
+                    icon: <Database className="w-6 h-6 text-purple-500" />,
+                    title: ar ? "بنك الأسئلة" : "Question Bank",
+                    desc: ar ? "اختيار أسئلة جاهزة من بنك حصاد" : "Select ready questions from the bank",
+                    bg: "bg-purple-500/10",
+                    border: "border-purple-500/20",
+                    hoverBorder: "hover:border-purple-500/50"
+                  }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      if (opt.id === "editor") setEditorSource("manual");
+                      setViewState(opt.id);
+                    }}
+                    className={cn(
+                      "group relative overflow-hidden rounded-2xl border bg-card p-5 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg",
+                      !tugPresentation && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
+                      opt.hoverBorder
+                    )}
+                  >
+                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors border shadow-sm", opt.bg, opt.border)}>
+                      {opt.icon}
+                    </div>
+                    <h3 className="font-bold text-foreground text-lg mb-1.5">{opt.title}</h3>
+                    <p className="text-sm text-muted-foreground font-medium">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+              {menuFooter && <div className="mt-4">{menuFooter}</div>}
             </div>
           )}
 

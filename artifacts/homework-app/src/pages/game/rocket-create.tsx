@@ -1,18 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Clock, ChevronDown, ChevronUp, Plus, Sparkles, PenLine, Wand2,
-  Check, X, Loader2, FileText, FolderOpen,
-  GraduationCap, Trash2, BookOpen, Rocket, Copy,
-  ExternalLink, Users, Database, Search,
+  Clock, Check, X, Loader2, FolderOpen, GraduationCap,
+  Trash2, Rocket, Copy, ExternalLink, Users,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
-import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
 import { toast } from "@/components/ui/sonner";
+import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import QRCode from "react-qr-code";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -91,7 +89,6 @@ export default function RocketCreate() {
   const [, setLocation] = useLocation();
 
   const [questions, setQuestions] = useState<RocketQuestion[]>([]);
-  const [questionsEditorOpen, setQuestionsEditorOpen] = useState(false);
   const [step, setStep] = useState<"questions" | "settings">("questions");
   const [duration, setDuration] = useState(20);
   // Race timer: 1-15 minutes; defaults to 5. Race auto-ends when timer hits zero.
@@ -101,30 +98,10 @@ export default function RocketCreate() {
   const [title, setTitle] = useState("");
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiTopic, setAiTopic] = useState("");
-  const [aiSubject, setAiSubject] = useState("");
-  const [aiCount, setAiCount] = useState(10);
-  const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
-  const [aiGenerating, setAiGenerating] = useState(false);
 
   // Game created state
   const [gamePin, setGamePin] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // Bank
-  const [bankOpen, setBankOpen] = useState(false);
-  const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([]);
-  const [bankLoading, setBankLoading] = useState(false);
-  const [bankSearch, setBankSearch] = useState("");
-  const [bankSelected, setBankSelected] = useState<Set<number>>(new Set());
-
-  // Assignments
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number }[]>([]);
-  const [assignLoading, setAssignLoading] = useState(false);
-  const [assignImporting, setAssignImporting] = useState<number | null>(null);
-  const [assignSearch, setAssignSearch] = useState("");
 
   // Templates
   const [savedOpen, setSavedOpen] = useState(false);
@@ -161,6 +138,7 @@ export default function RocketCreate() {
         if (qs.length > 0) {
           setQuestions(qs);
           if (data.title) setTitle(data.title);
+          setStep("settings");
           toast.success(ar ? `تم تحميل ${qs.length} سؤال من الواجب!` : `Loaded ${qs.length} questions!`);
         }
       } catch { /* ignore */ }
@@ -200,93 +178,6 @@ export default function RocketCreate() {
   const hasCompleteQuestions = questions.length > 0
     && !questions.some(q => !q.text.trim() || q.options.some(option => !option.trim()));
 
-  const handleNextToSettings = () => {
-    if (questions.length === 0) {
-      toast.error(ar ? "أضف سؤالاً واحداً على الأقل أولاً" : "Add at least one question first");
-      return;
-    }
-    if (!hasCompleteQuestions) {
-      toast.error(ar ? "أكمل نص كل سؤال وخياراته الأربعة أولاً" : "Complete each question and its four options first");
-      setQuestionsEditorOpen(true);
-      return;
-    }
-    setStep("settings");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const addManualQuestion = () => {
-    if (questions.length >= 30) {
-      toast.error(ar ? "الحد الأقصى هو 30 سؤالاً للسباق" : "The race supports up to 30 questions");
-      return;
-    }
-    setQuestions(previous => [...previous, {
-      text: "",
-      type: "mcq",
-      options: ["", "", "", ""],
-      correct: 0,
-    }]);
-    setQuestionsEditorOpen(true);
-    setAiOpen(false);
-  };
-
-  const updateQuestion = (index: number, patch: Partial<RocketQuestion>) => {
-    setQuestions(previous => previous.map((question, questionIndex) =>
-      questionIndex === index ? { ...question, ...patch } : question,
-    ));
-  };
-
-  const updateQuestionOption = (questionIndex: number, optionIndex: number, value: string) => {
-    setQuestions(previous => previous.map((question, index) => {
-      if (index !== questionIndex) return question;
-      const options = [...question.options];
-      options[optionIndex] = value;
-      return { ...question, options };
-    }));
-  };
-
-  const generateWithAI = async () => {
-    if (!aiTopic.trim()) {
-      toast.error(ar ? "أدخل موضوع السباق أولاً" : "Enter a topic first");
-      return;
-    }
-    setAiGenerating(true);
-    try {
-      const res = await creditAwareFetch(`${API_BASE}/api/ai/generate-questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          topic: aiTopic.trim(),
-          subject: aiSubject.trim(),
-          count: aiCount,
-          difficulty: aiDifficulty,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (isInsufficientCreditsResponse(res)) return;
-        throw new Error(data.message || (ar ? "فشل التوليد" : "Generation failed"));
-      }
-      const generated: RocketQuestion[] = (data.questions || []).map((question: any) => ({
-        text: question.text || "",
-        type: "mcq" as const,
-        options: [question.optionA || "", question.optionB || "", question.optionC || "", question.optionD || ""],
-        correct: ["A", "B", "C", "D"].indexOf(question.correctAnswer) >= 0
-          ? ["A", "B", "C", "D"].indexOf(question.correctAnswer)
-          : 0,
-      }));
-      setQuestions(previous => [...previous, ...generated].slice(0, 30));
-      setQuestionsEditorOpen(true);
-      setAiOpen(false);
-      if (!title.trim()) setTitle(aiTopic.trim());
-      toast.success(ar ? `تم توليد ${generated.length} سؤال` : `Generated ${generated.length} questions`);
-    } catch (error: any) {
-      toast.error(error.message || (ar ? "حدث خطأ في التوليد" : "Generation error"));
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-
   const joinUrl = gamePin ? `${window.location.origin}/game/rocket/join/${gamePin}` : "";
 
   const copyLink = async () => {
@@ -299,78 +190,6 @@ export default function RocketCreate() {
     } catch {
       toast.error(ar ? "فشل النسخ" : "Copy failed");
     }
-  };
-
-  // Bank
-  const loadBank = useCallback(async () => {
-    setBankLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/question-bank`, { credentials: "include" });
-      if (res.status === 401) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setBankOpen(false); return; }
-      if (res.ok) {
-        const data = await res.json();
-        setBankQuestions(data.filter((q: BankQuestion) => q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer));
-      }
-    } catch { /* ignore */ } finally { setBankLoading(false); }
-  }, [ar]);
-
-  useEffect(() => {
-    if (bankOpen) { loadBank(); setBankSelected(new Set()); setBankSearch(""); }
-  }, [bankOpen, loadBank]);
-
-  const importBankSelected = () => {
-    const selected = bankQuestions.filter(q => bankSelected.has(q.id));
-    if (selected.length === 0) return;
-    const merged = [...questions, ...selected.map(bankToRocket)].slice(0, 30);
-    setQuestions(merged);
-    setBankOpen(false);
-    toast.success(ar ? `تم استيراد ${selected.length} سؤال` : `Imported ${selected.length}`);
-  };
-
-  // Assignments
-  const loadAssignments = useCallback(async () => {
-    setAssignLoading(true);
-    try {
-      const meRes = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
-      if (!meRes.ok) { toast.error(ar ? "يجب تسجيل الدخول" : "Please log in"); setAssignOpen(false); return; }
-      const me = await meRes.json();
-      const teacherId = me.teacherId || me.id;
-      const res = await fetch(`${API_BASE}/api/assignments?teacherId=${teacherId}&include=shared`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setAssignments(data.filter((a: { questionCount: number }) => a.questionCount > 0));
-      }
-    } catch { /* ignore */ } finally { setAssignLoading(false); }
-  }, [ar]);
-
-  useEffect(() => {
-    if (assignOpen) {
-      setAssignSearch("");
-      loadAssignments();
-    }
-  }, [assignOpen, loadAssignments]);
-
-  const importAllFromAssignment = async (assignmentId: number, assignmentTitle: string) => {
-    setAssignImporting(assignmentId);
-    try {
-      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
-      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
-      const data = await res.json();
-      const qs = (data.questions || [])
-        .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
-          q.questionType === "mcq" && q.optionA && q.correctAnswer)
-        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; imageUrl?: string | null }) => bankToRocket({
-          id: q.id, subject: data.subject || "", text: q.text,
-          optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-          correctAnswer: q.correctAnswer, points: 1, tags: null, imageUrl: q.imageUrl || null,
-        } as BankQuestion));
-      if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد" : "No MCQ questions found"); return; }
-      setQuestions(qs.slice(0, 30));
-      if (data.title) setTitle(data.title);
-      setAssignOpen(false);
-      toast.success(ar ? `تم استيراد ${qs.length} سؤال من "${assignmentTitle}"` : `Imported ${qs.length} questions from "${assignmentTitle}"`);
-    } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
-    finally { setAssignImporting(null); }
   };
 
   // Templates
@@ -387,6 +206,7 @@ export default function RocketCreate() {
   const handleLoadTemplate = (t: typeof savedTemplates[0]) => {
     setQuestions(t.questions);
     setDuration(t.duration);
+    setStep("settings");
     setSavedOpen(false);
     toast.success(ar ? `تم تحميل "${t.title}"` : `Loaded "${t.title}"`);
   };
@@ -398,17 +218,6 @@ export default function RocketCreate() {
       toast.success(ar ? "تم الحذف" : "Deleted");
     } catch { toast.error(ar ? "خطأ في الحذف" : "Delete error"); }
   };
-
-  const filteredBank = bankSearch.trim()
-    ? bankQuestions.filter(q => q.text.includes(bankSearch) || q.subject.includes(bankSearch))
-    : bankQuestions;
-
-  const filteredAssignments = assignSearch.trim()
-    ? assignments.filter(a => (
-      (a.title ?? "").toLowerCase().includes(assignSearch.trim().toLowerCase())
-      || (a.subject ?? "").toLowerCase().includes(assignSearch.trim().toLowerCase())
-    ))
-    : assignments;
 
   // ── Game Created Screen ────────────────────────────────────────────────────
   if (gamePin) {
@@ -698,228 +507,39 @@ export default function RocketCreate() {
           )}
 
           {step === "questions" && (
-          <>
-           {/* Prepared questions */}
-           <AnimatePresence>
-             {questions.length > 0 && (
-               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-                 <Card className="p-4 mb-3 border-primary/15">
-                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                     <div className="flex items-center gap-2.5">
-                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white" style={{ background: BRAND_PRIMARY }}>{questions.length}</div>
-                       <div><h2 className="font-black text-sm" style={{ color: BRAND_PRIMARY }}>{ar ? "أسئلة سباق الصواريخ جاهزة" : "Rocket Race questions are ready"}</h2><p className="text-xs text-muted-foreground mt-0.5">{ar ? "راجعها أو أضف سؤالاً جديداً قبل البدء." : "Review them or add a new question before starting."}</p></div>
-                     </div>
-                     <div className="flex flex-wrap gap-2">
-                       <button type="button" onClick={() => setQuestionsEditorOpen(open => !open)} className="px-3 py-2 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />{questionsEditorOpen ? (ar ? "إخفاء الأسئلة" : "Hide questions") : (ar ? "معاينة وتعديل" : "Review & edit")}</button>
-                       <button type="button" onClick={addManualQuestion} className="px-3 py-2 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" />{ar ? "إضافة سؤال" : "Add question"}</button>
-                       <button onClick={() => { setQuestions([]); setQuestionsEditorOpen(false); }} className="p-2 rounded-xl text-red-400 hover:bg-red-50 transition-colors" title={ar ? "مسح الأسئلة" : "Clear questions"}><Trash2 className="w-4 h-4" /></button>
-                     </div>
-                   </div>
-                 </Card>
-                 {questionsEditorOpen && (
-                   <Card className="p-3 sm:p-4 mb-3 space-y-3">
-                     {questions.map((question, index) => (
-                       <div key={index} className="rounded-2xl border border-border p-3 sm:p-4">
-                         <div className="flex items-center gap-2 mb-2.5"><span className="w-7 h-7 rounded-lg text-white text-xs font-black flex items-center justify-center" style={{ background: BRAND_PRIMARY }}>{index + 1}</span><span className="text-xs font-bold text-muted-foreground">{ar ? "سؤال اختيار متعدد" : "Multiple-choice question"}</span><button type="button" onClick={() => setQuestions(previous => previous.filter((_, questionIndex) => questionIndex !== index))} className="ms-auto p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></button></div>
-                         <input value={question.text} onChange={e => updateQuestion(index, { text: e.target.value })} placeholder={ar ? "نص السؤال" : "Question text"} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" />
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">{question.options.map((option, optionIndex) => <input key={optionIndex} value={option} onChange={e => updateQuestionOption(index, optionIndex, e.target.value)} placeholder={`${String.fromCharCode(65 + optionIndex)}. ${ar ? "الخيار" : "Option"}`} className="px-3 py-2 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" />)}</div>
-                         <div className="mt-2 flex items-center gap-2"><label className="text-xs font-bold text-muted-foreground">{ar ? "الإجابة الصحيحة" : "Correct answer"}</label><select value={question.correct} onChange={e => updateQuestion(index, { correct: parseInt(e.target.value, 10) })} className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-bold outline-none focus:border-primary">{["A", "B", "C", "D"].map((letter, optionIndex) => <option key={letter} value={optionIndex}>{letter}</option>)}</select></div>
-                       </div>
-                     ))}
-                   </Card>
-                 )}
-               </motion.div>
-             )}
-           </AnimatePresence>
-
-           {/* Question sources */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white shadow-sm border border-primary/10 shrink-0">
-                  <Rocket className="w-6 h-6" style={{ color: BRAND_PRIMARY }} />
-                </div>
-                <div>
-                  <h2 className="font-black text-base sm:text-lg text-foreground">{ar ? "كيف تريد تجهيز أسئلة السباق؟" : "How would you like to prepare the race?"}</h2>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{ar ? "اختر مصدراً للأسئلة، ويمكنك مراجعتها وتعديلها قبل البدء." : "Choose a question source. You can review and edit everything before starting."}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
-                <button type="button" onClick={() => setAssignOpen(true)} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-blue-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-lg">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-blue-500/10 border border-blue-500/20 shadow-sm"><BookOpen className="w-6 h-6 text-blue-500" /></div>
-                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "من واجب موجود" : "From an assignment"}</h3>
-                  <p className="text-sm text-muted-foreground font-medium">{ar ? "استورد أسئلة واجبك السابق في ثوانٍ" : "Import questions from an existing assignment"}</p>
+            <UnifiedQuestionSourceFlow
+              gameTitle={ar ? "أنشئ سباق الصواريخ" : "Create Rocket Race"}
+              gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط السباق وابدأ اللعب." : "Prepare questions, configure the race, then launch."}
+              gameIcon={<Rocket className="h-8 w-8 text-white" />}
+              accentColor={BRAND_PRIMARY}
+              tugPresentation
+              header={<></>}
+              menuFooter={
+                <button
+                  type="button"
+                  onClick={() => { setSavedOpen(true); loadTemplates(); }}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-card text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  {ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}
                 </button>
-                <button type="button" onClick={() => { setAiOpen(open => !open); setQuestionsEditorOpen(false); }} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-amber-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-lg">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-500/10 border border-amber-500/20 shadow-sm"><Sparkles className="w-6 h-6 text-amber-500" /></div>
-                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "بالذكاء الاصطناعي" : "With AI"}</h3>
-                  <p className="text-sm text-muted-foreground font-medium">{ar ? "ولّد أسئلة مناسبة لموضوعك تلقائياً" : "Generate questions for your topic automatically"}</p>
-                </button>
-                <button type="button" onClick={addManualQuestion} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-emerald-500/10 border border-emerald-500/20 shadow-sm"><PenLine className="w-6 h-6 text-emerald-600" /></div>
-                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "إضافة يدوية" : "Add manually"}</h3>
-                  <p className="text-sm text-muted-foreground font-medium">{ar ? "اكتب أسئلتك وخيارات الإجابة بنفسك" : "Write your own questions and answer choices"}</p>
-                </button>
-                <button type="button" onClick={() => setBankOpen(true)} className="group relative min-h-[172px] overflow-hidden rounded-2xl border-2 border-purple-500/20 bg-card p-6 sm:p-7 text-start transition-all hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-lg">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-purple-500/10 border border-purple-500/20 shadow-sm"><Database className="w-6 h-6 text-purple-500" /></div>
-                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "بنك الأسئلة" : "Question bank"}</h3>
-                  <p className="text-sm text-muted-foreground font-medium">{ar ? "اختر من أسئلتك المحفوظة في بنك حصاد" : "Pick from your saved questions in Hasad"}</p>
-                </button>
-              </div>
-              <button type="button" onClick={() => { setSavedOpen(true); loadTemplates(); }} className="mt-4 w-full min-h-11 rounded-xl text-sm font-bold border border-primary/25 bg-card text-primary hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"><FolderOpen className="w-4 h-4" />{ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}</button>
-            </div>
-
-           <AnimatePresence>
-             {aiOpen && (
-               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                 <Card className="p-4 mb-4 border-amber-500/25">
-                   <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4" style={{ color: BRAND_GOLD }} /><div><h2 className="font-black text-sm">{ar ? "توليد أسئلة للسباق" : "Generate race questions"}</h2><p className="text-xs text-muted-foreground mt-0.5">{ar ? "ستتمكن من مراجعة الأسئلة وتعديلها بعد التوليد." : "You can review and edit the questions after generation."}</p></div></div>
-                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2"><input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={ar ? "الموضوع — مثال: الكواكب" : "Topic — e.g. planets"} className="sm:col-span-3 px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" /><input value={aiSubject} onChange={e => setAiSubject(e.target.value)} placeholder={ar ? "المادة (اختياري)" : "Subject (optional)"} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" /><select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value, 10))} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm font-bold outline-none focus:border-primary">{[5, 10, 15, 20].map(count => <option key={count} value={count}>{count} {ar ? "أسئلة" : "questions"}</option>)}</select><select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value as typeof aiDifficulty)} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm font-bold outline-none focus:border-primary"><option value="easy">{ar ? "سهل" : "Easy"}</option><option value="medium">{ar ? "متوسط" : "Medium"}</option><option value="hard">{ar ? "صعب" : "Hard"}</option></select></div>
-                   <button type="button" disabled={aiGenerating} onClick={generateWithAI} className="mt-3 px-4 py-2.5 rounded-xl text-white text-sm font-black flex items-center gap-2 disabled:opacity-60" style={{ background: BRAND_PRIMARY }}>{aiGenerating ? <><Loader2 className="w-4 h-4 animate-spin" />{ar ? "جارٍ التوليد…" : "Generating…"}</> : <><Wand2 className="w-4 h-4" />{ar ? "ولّد الأسئلة" : "Generate questions"}</>}</button>
-                 </Card>
-               </motion.div>
-             )}
-           </AnimatePresence>
-
-            <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleNextToSettings} disabled={!hasCompleteQuestions} className="w-full py-3.5 rounded-2xl font-black text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: hasCompleteQuestions ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: hasCompleteQuestions ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: hasCompleteQuestions ? "#fff" : "#9ca3af" }}><span>{ar ? "التالي: إعدادات السباق" : "Next: race settings"}</span><span aria-hidden="true">{ar ? "←" : "→"}</span></motion.button>
-            {questions.length === 0 && <p className="text-center text-xs text-muted-foreground mt-3">{ar ? "اختر مصدراً للأسئلة أولاً ثم انتقل إلى الإعدادات." : "Choose a question source first, then continue to settings."}</p>}
-           </>
-           )}
+              }
+              minQuestions={1}
+              maxQuestions={30}
+              onComplete={({ questions: prepared, sourceTitle }) => {
+                setQuestions(prepared.map(question => ({ ...question, type: "mcq" })));
+                if (sourceTitle) setTitle(sourceTitle);
+                setStep("settings");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          )}
 
            {step === "settings" && (
              <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleCreate} disabled={creating || !hasCompleteQuestions} className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: hasCompleteQuestions ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: hasCompleteQuestions ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: hasCompleteQuestions ? "#fff" : "#9ca3af" }}>{creating ? <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جارٍ الإنشاء…" : "Creating…"}</> : <><Rocket className="w-5 h-5" />{ar ? "ابدأ سباق الصواريخ" : "Start Rocket Race"}</>}</motion.button>
            )}
         </div>
       </div>
-
-      {/* Bank modal */}
-      <AnimatePresence>
-        {bankOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setBankOpen(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-              <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "#e5e7eb" }}>
-                <h3 className="text-lg font-black flex items-center gap-2" style={{ color: BRAND_PRIMARY }}>
-                  <BookOpen className="w-5 h-5" />
-                  {ar ? "بنك الأسئلة" : "Question Bank"}
-                </h3>
-                <button onClick={() => setBankOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-4">
-                <input
-                  value={bankSearch}
-                  onChange={e => setBankSearch(e.target.value)}
-                  placeholder={ar ? "بحث..." : "Search..."}
-                  className="w-full py-2 px-3 rounded-xl border-2 text-sm"
-                  style={{ borderColor: "#e5e7eb" }}
-                />
-              </div>
-              <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
-                {bankLoading && <div className="text-center py-8 text-sm text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /></div>}
-                {!bankLoading && filteredBank.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد أسئلة" : "No questions"}</div>}
-                {filteredBank.map(q => {
-                  const checked = bankSelected.has(q.id);
-                  return (
-                    <div key={q.id} onClick={() => { const n = new Set(bankSelected); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); setBankSelected(n); }}
-                      className="p-3 rounded-xl border-2 cursor-pointer transition-all"
-                      style={{ borderColor: checked ? BRAND_PRIMARY : "#e5e7eb", background: checked ? `${BRAND_PRIMARY}10` : "#fff" }}>
-                      <div className="flex items-start gap-2">
-                        <div className="w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
-                          style={{ borderColor: checked ? BRAND_PRIMARY : "#d1d5db", background: checked ? BRAND_PRIMARY : "#fff" }}>
-                          {checked && <Check className="w-3.5 h-3.5 text-white" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold line-clamp-2">{q.text}</p>
-                          {q.subject && <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs" style={{ background: `${BRAND_GOLD}25`, color: "#7c4a06" }}>{q.subject}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="p-4 border-t flex gap-2" style={{ borderColor: "#e5e7eb" }}>
-                <button onClick={() => setBankOpen(false)} className="px-4 py-2 rounded-xl bg-gray-100 font-bold text-sm">{ar ? "إلغاء" : "Cancel"}</button>
-                <button onClick={importBankSelected} disabled={bankSelected.size === 0}
-                  className="flex-1 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                  style={{ background: BRAND_PRIMARY }}>
-                  {ar ? `استيراد (${bankSelected.size})` : `Import (${bankSelected.size})`}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Assignments modal */}
-      <AnimatePresence>
-        {assignOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setAssignOpen(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-              <div className="p-5 border-b" style={{ background: "linear-gradient(135deg, #225739, #1a4a2e)", borderColor: "#e5e7eb" }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-black text-white flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      {ar ? "اختر واجباً" : "Select Assignment"}
-                    </h3>
-                    <p className="text-white/70 text-xs mt-0.5">{ar ? "اضغط على الواجب لاستيراد جميع أسئلته" : "Tap to import all questions"}</p>
-                  </div>
-                  <button onClick={() => setAssignOpen(false)} className="p-2 rounded-xl hover:bg-white/20 text-white"><X className="w-5 h-5" /></button>
-                </div>
-              </div>
-               <div className="p-4 border-b bg-white dark:bg-gray-900" style={{ borderColor: "#e5e7eb" }}>
-                 <label htmlFor="rocket-assignment-search" className="sr-only">{ar ? "البحث في الواجبات" : "Search assignments"}</label>
-                 <div className="relative">
-                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                   <input
-                     id="rocket-assignment-search"
-                     type="search"
-                     value={assignSearch}
-                     onChange={e => setAssignSearch(e.target.value)}
-                     placeholder={ar ? "ابحث في الواجبات..." : "Search assignments..."}
-                     className="w-full py-3 ps-10 pe-4 rounded-xl border-2 text-sm font-medium outline-none transition-colors focus:border-primary"
-                     style={{ borderColor: "#e5e7eb" }}
-                   />
-                 </div>
-                 <p className="mt-2 text-xs text-muted-foreground">
-                   {assignSearch.trim()
-                     ? `${filteredAssignments.length} ${ar ? "واجب مطابق" : "matching assignments"}`
-                     : `${assignments.length} ${ar ? "واجب متاح" : "assignments available"}`}
-                 </p>
-               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {assignLoading && <div className="text-center py-8"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>}
-                 {!assignLoading && filteredAssignments.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{assignSearch.trim() ? (ar ? "لا توجد واجبات مطابقة" : "No matching assignments") : (ar ? "لا توجد واجبات" : "No assignments")}</div>}
-                 {filteredAssignments.map(a => (
-                  <motion.button key={a.id} whileTap={{ scale: 0.97 }}
-                    onClick={() => importAllFromAssignment(a.id, a.title)}
-                    disabled={assignImporting !== null}
-                    className="w-full p-4 rounded-2xl border-2 flex items-center gap-3 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-start"
-                    style={{ borderColor: BRAND_PRIMARY, background: assignImporting === a.id ? "#f0fdf4" : "#fff" }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: "linear-gradient(135deg, #225739, #388e3c)" }}>
-                      {assignImporting === a.id
-                        ? <Loader2 className="w-5 h-5 text-white animate-spin" />
-                        : <FileText className="w-5 h-5 text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-gray-800 dark:text-gray-100 truncate">{a.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
-                    </div>
-                    <Check className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} />
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Saved templates modal */}
       <AnimatePresence>
