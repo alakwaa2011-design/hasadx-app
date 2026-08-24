@@ -7,7 +7,7 @@ import {
   Play, Clock, ChevronDown, ChevronUp, Plus, Sparkles, PenLine, Wand2,
   Check, X, Loader2, FileText, FolderOpen,
   GraduationCap, Trash2, BookOpen, Rocket, Copy,
-  ExternalLink, Users,
+  ExternalLink, Users, Database,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
@@ -92,6 +92,7 @@ export default function RocketCreate() {
 
   const [questions, setQuestions] = useState<RocketQuestion[]>([]);
   const [questionsEditorOpen, setQuestionsEditorOpen] = useState(false);
+  const [step, setStep] = useState<"questions" | "settings">("questions");
   const [duration, setDuration] = useState(20);
   // Race timer: 1-15 minutes; defaults to 5. Race auto-ends when timer hits zero.
   const [gameDurationMins, setGameDurationMins] = useState(5);
@@ -193,6 +194,23 @@ export default function RocketCreate() {
         setLocation(`/game/rocket/host/${res.pin}`);
       }
     });
+  };
+
+  const hasCompleteQuestions = questions.length > 0
+    && !questions.some(q => !q.text.trim() || q.options.some(option => !option.trim()));
+
+  const handleNextToSettings = () => {
+    if (questions.length === 0) {
+      toast.error(ar ? "أضف سؤالاً واحداً على الأقل أولاً" : "Add at least one question first");
+      return;
+    }
+    if (!hasCompleteQuestions) {
+      toast.error(ar ? "أكمل نص كل سؤال وخياراته الأربعة أولاً" : "Complete each question and its four options first");
+      setQuestionsEditorOpen(true);
+      return;
+    }
+    setStep("settings");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const addManualQuestion = () => {
@@ -593,7 +611,22 @@ export default function RocketCreate() {
             </p>
           </motion.div>
 
-           {/* Compact settings panel */}
+          {/* Two-step progress */}
+          <div className="flex items-center justify-center gap-2 mb-5" aria-label={ar ? "خطوات إعداد السباق" : "Race setup steps"}>
+            <div className="flex items-center gap-2 rounded-full px-3 py-2 text-xs font-black" style={{ background: step === "questions" ? BRAND_PRIMARY : `${BRAND_PRIMARY}12`, color: step === "questions" ? "#fff" : BRAND_PRIMARY }}>
+              <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: step === "questions" ? "rgba(255,255,255,.2)" : `${BRAND_PRIMARY}20` }}>1</span>
+              {ar ? "تجهيز الأسئلة" : "Prepare questions"}
+            </div>
+            <div className="w-8 h-px" style={{ background: `${BRAND_PRIMARY}35` }} />
+            <div className="flex items-center gap-2 rounded-full px-3 py-2 text-xs font-black" style={{ background: step === "settings" ? BRAND_PRIMARY : `${BRAND_PRIMARY}12`, color: step === "settings" ? "#fff" : BRAND_PRIMARY }}>
+              <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: step === "settings" ? "rgba(255,255,255,.2)" : `${BRAND_PRIMARY}20` }}>2</span>
+              {ar ? "إعدادات السباق" : "Race settings"}
+            </div>
+          </div>
+
+          {step === "settings" && (
+            <>
+            {/* Compact settings panel */}
            <Card className="p-4 sm:p-5 mb-4 border-primary/15 shadow-sm">
              <div className="flex items-center gap-2 mb-4">
                <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Rocket className="w-4 h-4" /></span>
@@ -647,7 +680,14 @@ export default function RocketCreate() {
                </div>
              </div>
            </Card>
+            <button type="button" onClick={() => { setStep("questions"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mb-4 px-3 py-2 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center gap-1.5">
+              {ar ? "السابق: تجهيز الأسئلة" : "Back: prepare questions"}
+            </button>
+            </>
+          )}
 
+          {step === "questions" && (
+          <>
            {/* Prepared questions */}
            <AnimatePresence>
              {questions.length > 0 && (
@@ -682,16 +722,40 @@ export default function RocketCreate() {
            </AnimatePresence>
 
            {/* Question sources */}
-           <Card className="p-4 mb-4">
-             <div className="flex items-center justify-between gap-3 mb-3"><div><h2 className="font-black text-sm text-foreground">{ar ? "جهّز أسئلة السباق" : "Prepare race questions"}</h2><p className="text-xs text-muted-foreground mt-0.5">{ar ? "اختر مصدراً أو أضف أسئلتك بنفسك." : "Choose a source or write your own questions."}</p></div><Rocket className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} /></div>
-             <div className="grid grid-cols-2 gap-2">
-               <button onClick={() => setAssignOpen(true)} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><FileText className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />{ar ? "من واجب" : "Assignment"}</button>
-               <button onClick={() => setBankOpen(true)} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><BookOpen className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />{ar ? "بنك الأسئلة" : "Question bank"}</button>
-               <button onClick={() => { setAiOpen(open => !open); setQuestionsEditorOpen(false); }} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><Sparkles className="w-4 h-4" style={{ color: BRAND_GOLD }} />{ar ? "بالذكاء الاصطناعي" : "With AI"}</button>
-               <button onClick={addManualQuestion} className="min-h-16 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-colors"><PenLine className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />{ar ? "إضافة يدوية" : "Add manually"}</button>
-             </div>
-             <button onClick={() => { setSavedOpen(true); loadTemplates(); }} className="mt-2.5 w-full py-2.5 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center justify-center gap-1.5"><FolderOpen className="w-4 h-4" />{ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}</button>
-           </Card>
+            <Card className="p-5 sm:p-7 mb-4 border-primary/15 shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}08, ${BRAND_GOLD}12)` }}>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white shadow-sm border border-primary/10 shrink-0">
+                  <Rocket className="w-6 h-6" style={{ color: BRAND_PRIMARY }} />
+                </div>
+                <div>
+                  <h2 className="font-black text-base sm:text-lg text-foreground">{ar ? "كيف تريد تجهيز أسئلة السباق؟" : "How would you like to prepare the race?"}</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{ar ? "اختر مصدراً للأسئلة، ويمكنك مراجعتها وتعديلها قبل البدء." : "Choose a question source. You can review and edit everything before starting."}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <button type="button" onClick={() => setAssignOpen(true)} className="group relative overflow-hidden rounded-2xl border-2 border-blue-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-blue-500/10 border border-blue-500/20 shadow-sm"><BookOpen className="w-6 h-6 text-blue-500" /></div>
+                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "من واجب موجود" : "From an assignment"}</h3>
+                  <p className="text-sm text-muted-foreground font-medium">{ar ? "استورد أسئلة واجبك السابق في ثوانٍ" : "Import questions from an existing assignment"}</p>
+                </button>
+                <button type="button" onClick={() => { setAiOpen(open => !open); setQuestionsEditorOpen(false); }} className="group relative overflow-hidden rounded-2xl border-2 border-amber-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-amber-500/50 hover:shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-500/10 border border-amber-500/20 shadow-sm"><Sparkles className="w-6 h-6 text-amber-500" /></div>
+                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "بالذكاء الاصطناعي" : "With AI"}</h3>
+                  <p className="text-sm text-muted-foreground font-medium">{ar ? "ولّد أسئلة مناسبة لموضوعك تلقائياً" : "Generate questions for your topic automatically"}</p>
+                </button>
+                <button type="button" onClick={addManualQuestion} className="group relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-emerald-500/10 border border-emerald-500/20 shadow-sm"><PenLine className="w-6 h-6 text-emerald-600" /></div>
+                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "إضافة يدوية" : "Add manually"}</h3>
+                  <p className="text-sm text-muted-foreground font-medium">{ar ? "اكتب أسئلتك وخيارات الإجابة بنفسك" : "Write your own questions and answer choices"}</p>
+                </button>
+                <button type="button" onClick={() => setBankOpen(true)} className="group relative overflow-hidden rounded-2xl border-2 border-purple-500/20 bg-card p-5 sm:p-6 text-start transition-all hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-purple-500/10 border border-purple-500/20 shadow-sm"><Database className="w-6 h-6 text-purple-500" /></div>
+                  <h3 className="font-bold text-foreground text-lg mb-1.5">{ar ? "بنك الأسئلة" : "Question bank"}</h3>
+                  <p className="text-sm text-muted-foreground font-medium">{ar ? "اختر من أسئلتك المحفوظة في بنك حصاد" : "Pick from your saved questions in Hasad"}</p>
+                </button>
+              </div>
+              <button type="button" onClick={() => { setSavedOpen(true); loadTemplates(); }} className="mt-4 w-full min-h-11 rounded-xl text-sm font-bold border border-primary/25 bg-card text-primary hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"><FolderOpen className="w-4 h-4" />{ar ? "سباقات الصواريخ المحفوظة" : "Saved Rocket Races"}</button>
+            </Card>
 
            <AnimatePresence>
              {aiOpen && (
@@ -705,8 +769,14 @@ export default function RocketCreate() {
              )}
            </AnimatePresence>
 
-           <motion.button whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleCreate} disabled={creating || questions.length === 0} className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: questions.length > 0 ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: questions.length > 0 ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: questions.length > 0 ? "#fff" : "#9ca3af" }}>{creating ? <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جارٍ الإنشاء…" : "Creating…"}</> : <><Rocket className="w-5 h-5" />{ar ? "ابدأ سباق الصواريخ" : "Start Rocket Race"}</>}</motion.button>
-           {questions.length === 0 && <p className="text-center text-xs text-muted-foreground mt-3">{ar ? "اختر مصدراً للأسئلة أولاً ثم ابدأ السباق." : "Choose a question source first, then start the race."}</p>}
+            <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleNextToSettings} disabled={!hasCompleteQuestions} className="w-full py-3.5 rounded-2xl font-black text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: hasCompleteQuestions ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: hasCompleteQuestions ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: hasCompleteQuestions ? "#fff" : "#9ca3af" }}><span>{ar ? "التالي: إعدادات السباق" : "Next: race settings"}</span><span aria-hidden="true">{ar ? "←" : "→"}</span></motion.button>
+            {questions.length === 0 && <p className="text-center text-xs text-muted-foreground mt-3">{ar ? "اختر مصدراً للأسئلة أولاً ثم انتقل إلى الإعدادات." : "Choose a question source first, then continue to settings."}</p>}
+           </>
+           )}
+
+           {step === "settings" && (
+             <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleCreate} disabled={creating || !hasCompleteQuestions} className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: hasCompleteQuestions ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: hasCompleteQuestions ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: hasCompleteQuestions ? "#fff" : "#9ca3af" }}>{creating ? <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جارٍ الإنشاء…" : "Creating…"}</> : <><Rocket className="w-5 h-5" />{ar ? "ابدأ سباق الصواريخ" : "Start Rocket Race"}</>}</motion.button>
+           )}
         </div>
       </div>
 
@@ -839,7 +909,7 @@ export default function RocketCreate() {
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {savedLoading && <Loader2 className="w-5 h-5 animate-spin mx-auto" />}
                 {!savedLoading && savedTemplates.length === 0 && (
-                  <p className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد مغامرات محفوظة" : "No saved adventures"}</p>
+                  <p className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد سباقات صواريخ محفوظة" : "No saved Rocket Races"}</p>
                 )}
                 {savedTemplates.map(t => (
                   <div key={t.id} className="rounded-xl border-2 p-3 flex items-center gap-3" style={{ borderColor: "#e5e7eb" }}>
