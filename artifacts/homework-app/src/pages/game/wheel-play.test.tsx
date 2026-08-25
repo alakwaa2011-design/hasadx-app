@@ -106,12 +106,21 @@ describe("WheelPlay turn modes", () => {
     expect(container.textContent).toContain("TURN NOW:");
     expect(container.textContent).toContain("Alpha");
     expect(container.textContent).toContain("Additional teams");
+    expect(buttonContaining("+50")).toBeFalsy();
+    expect(buttonContaining("+100")).toBeFalsy();
+    const activeCard = Array.from(container.querySelectorAll('[role="button"]')).find((element) =>
+      element.textContent?.includes("Alpha"),
+    ) as HTMLElement | undefined;
+    expect(activeCard?.textContent).toContain("TURN NOW");
+    expect(activeCard?.style.borderWidth).toBe("3px");
 
     await act(async () => {
       buttonContaining("Spin the Wheel")!.click();
       await vi.advanceTimersByTimeAsync(400);
     });
 
+    expect(container.textContent).toMatch(/(First|Second) question/);
+    expect(buttonContaining("Reveal Answer")).toBeTruthy();
     expect(buttonContaining("+100 · Alpha")).toBeTruthy();
     expect(buttonContaining("+100 · Beta")).toBeFalsy();
     await act(async () => buttonContaining("+100 · Alpha")!.click());

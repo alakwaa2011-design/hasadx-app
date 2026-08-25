@@ -311,13 +311,16 @@ export default function WheelPlay() {
       ctx.strokeStyle = "rgba(0,0,0,0.25)";
       ctx.stroke();
 
-      // Wedge label (rotated to align with the wedge)
+      // Wedge labels follow the segment while keeping their reading direction
+      // upright, so they can be scanned quickly from the classroom display.
       ctx.save();
-      ctx.rotate(start + arc / 2);
-      ctx.textAlign = "right";
+      const midAngle = start + arc / 2;
+      const readableAngle = Math.cos(midAngle) < 0 ? midAngle + Math.PI : midAngle;
+      ctx.rotate(readableAngle);
+      ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = used ? "#888" : "#fff";
-      ctx.font = "bold 18px system-ui, -apple-system, sans-serif";
+      ctx.font = "900 20px system-ui, -apple-system, sans-serif";
 
       // Points on outer
       const pointsLabel = seg.kind === "bonus"
@@ -327,15 +330,16 @@ export default function WheelPlay() {
           : seg.bonusType === "lose" ? "−½"
           : "★")
         : `${seg.points}`;
-      ctx.fillText(pointsLabel, radius - 18, 0);
+      ctx.fillText(pointsLabel, radius - 20, 0);
 
       // Truncated text on inner
       const text = seg.text || "";
-      const maxLen = 22;
+      const maxLen = n <= 8 ? 28 : n <= 12 ? 23 : 18;
       const display = text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
-      ctx.font = "600 13px system-ui, -apple-system, sans-serif";
+      const textSize = n <= 8 ? 18 : n <= 12 ? 16 : 14;
+      ctx.font = `800 ${textSize}px system-ui, -apple-system, sans-serif`;
       ctx.fillStyle = used ? "#666" : "rgba(255,255,255,0.92)";
-      ctx.fillText(display, radius - 70, 0);
+      ctx.fillText(display, radius - 76, 0);
 
       ctx.restore();
     });
@@ -678,7 +682,8 @@ export default function WheelPlay() {
         style={{
           background: isActive ? `linear-gradient(145deg, ${color}45, rgba(7,21,14,0.94))` : "rgba(255,255,255,0.045)",
           borderColor: isActive ? BRAND_GOLD : (isLeader ? color : "rgba(255,255,255,0.12)"),
-          boxShadow: isActive ? `0 0 0 2px ${color}55, 0 14px 30px ${color}22` : "none",
+          borderWidth: isActive ? 3 : 2,
+          boxShadow: isActive ? `0 0 0 3px ${BRAND_GOLD}55, 0 14px 30px ${BRAND_GOLD}22` : "none",
         }}
       >
         <div className="flex items-center justify-between gap-2">
@@ -705,24 +710,6 @@ export default function WheelPlay() {
           >
             {ar ? "تخطّي الدور ⏭" : "SKIP TURN ⏭"}
           </button>
-        )}
-        {!compact && (
-          <div className="flex items-center gap-1.5 mt-3">
-            {[50, 100, 200, -50].map(points => (
-              <button
-                type="button"
-                key={points}
-                onClick={(event) => { event.stopPropagation(); awardPoints(teamIdx, points); }}
-                className="flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-colors hover:bg-white/15"
-                style={{
-                  background: points > 0 ? "rgba(255,255,255,0.08)" : "rgba(239,68,68,0.15)",
-                  color: points > 0 ? "#fff" : "#fca5a5",
-                }}
-              >
-                {points > 0 ? `+${points}` : points}
-              </button>
-            ))}
-          </div>
         )}
       </div>
     );

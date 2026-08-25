@@ -3021,6 +3021,7 @@ export const en: typeof ar = {
     pointsPerQuestion: "Points per question",
     spinDuration: "Spin duration",
     secondsShort: "s",
+     spinDurationValue: "{seconds} seconds per spin",
     sound: "Sound",
     on: "On",
     off: "Off",
