@@ -8,6 +8,7 @@ import {
   Wand2, X, Gift, HelpCircle, Edit3, Check,
   Globe, BookOpen, GraduationCap, Users, FileDown, Database,
   PenLine, Settings2, Volume2, RotateCw, ListChecks, ArrowLeft, ArrowRight,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -77,6 +78,9 @@ interface WheelConfig {
   turnMode?: TurnMode;
   pointsMode?: PointsMode;
   uniformPoints?: number;
+  bonusesEnabled?: boolean;
+  bonusCount?: number;
+  bonusTypes?: BonusType[];
 }
 
 interface Template {
@@ -141,6 +145,9 @@ export default function WheelCreate() {
     turnMode: "team_first",
     pointsMode: "varied",
     uniformPoints: 100,
+    bonusesEnabled: true,
+    bonusCount: 1,
+    bonusTypes: [...BONUS_TYPES],
   });
 
   // AI panel
@@ -148,7 +155,6 @@ export default function WheelCreate() {
   const [aiTopic, setAiTopic] = useState("");
   const [aiCount, setAiCount] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">("mixed");
-  const [aiBonus, setAiBonus] = useState(true);
   const [generating, setGenerating] = useState(false);
 
   // Templates
@@ -194,6 +200,49 @@ export default function WheelCreate() {
     });
   }, [config.teamCount, contentLang]);
 
+  const selectedBonusTypes = () => {
+    const configured = config.bonusTypes?.filter(type => BONUS_TYPES.includes(type));
+    return configured && configured.length > 0 ? configured : [...BONUS_TYPES];
+  };
+
+  const configuredBonusCount = () =>
+    config.bonusesEnabled ? Math.min(3, Math.max(1, config.bonusCount ?? 1)) : 0;
+
+  const createConfiguredBonus = (type: BonusType, index: number): Segment => ({
+    id: newId(),
+    text: bonusLabel(type, contentLang),
+    points: type === "lucky" ? 100 : 0,
+    kind: "bonus",
+    bonusType: type,
+    color: WHEEL_PALETTE[index % WHEEL_PALETTE.length],
+  });
+
+  const applyBonusSettings = (sourceSegments: Segment[]) => {
+    const desiredCount = configuredBonusCount();
+    const questions = sourceSegments.filter(segment => segment.kind === "question");
+    if (desiredCount === 0) return questions.slice(0, 16);
+
+    const types = selectedBonusTypes();
+    const existingBonuses = sourceSegments
+      .filter(segment => segment.kind === "bonus")
+      .slice(0, desiredCount)
+      .map((segment, index) => ({
+        ...segment,
+        bonusType: types.includes(segment.bonusType ?? "lucky")
+          ? segment.bonusType
+          : types[index % types.length],
+      }));
+    const missingBonuses = Array.from(
+      { length: Math.max(0, desiredCount - existingBonuses.length) },
+      (_, index) => createConfiguredBonus(types[(existingBonuses.length + index) % types.length], questions.length + existingBonuses.length + index),
+    );
+    return colorize([
+      ...questions.slice(0, 16 - desiredCount),
+      ...existingBonuses,
+      ...missingBonuses,
+    ]);
+  };
+
   const generateAI = async () => {
     if (!aiTopic.trim()) {
       toast.error(w.enterTopic);
@@ -211,7 +260,9 @@ export default function WheelCreate() {
           gradeLevel: gradeLevel.trim() || null,
           segmentCount: aiCount,
           language: contentLang,
-          includeBonus: aiBonus,
+          includeBonus: config.bonusesEnabled,
+          bonusCount: configuredBonusCount(),
+          bonusTypes: selectedBonusTypes(),
           difficulty: aiDifficulty,
         }),
       });
@@ -225,7 +276,7 @@ export default function WheelCreate() {
         return;
       }
       const generated = (data.segments || []).map((s: Segment) => ({ ...s, id: s.id || newId() }));
-      setSegments(colorize(generated));
+      setSegments(applyBonusSettings(generated));
       setSegmentsEditorOpen(true);
       if (!title.trim()) setTitle(aiTopic.trim().slice(0, 80));
       toast.success(w.generatedSegments.replace("{count}", String(generated.length)));
@@ -257,10 +308,11 @@ export default function WheelCreate() {
   };
 
   const validate = (): string | null => {
+    const finalSegments = applyBonusSettings(segments);
     if (!title.trim()) return w.enterTitle;
-    if (segments.length < 2) return w.minimumSegments;
-    if (segments.length > 16) return w.maximumSegments;
-    for (const s of segments) {
+    if (finalSegments.length < 2) return w.minimumSegments;
+    if (finalSegments.length > 16) return w.maximumSegments;
+    for (const s of finalSegments) {
       if (!s.text.trim()) return w.fillSegments;
       if (s.kind === "question" && !(s.answer ?? "").trim()) return w.enterAnswers;
     }
@@ -272,7 +324,7 @@ export default function WheelCreate() {
     language: contentLang,
     gradeLevel: gradeLevel.trim() || null,
     subject: subject.trim() || null,
-    segments: colorize(segments),
+    segments: applyBonusSettings(segments),
     config,
   });
 
@@ -369,6 +421,9 @@ export default function WheelCreate() {
       turnMode: t.config.turnMode ?? "wheel_first",
       pointsMode: t.config.pointsMode ?? "varied",
       uniformPoints: t.config.uniformPoints ?? 100,
+      bonusesEnabled: t.config.bonusesEnabled ?? false,
+      bonusCount: t.config.bonusCount ?? 1,
+      bonusTypes: t.config.bonusTypes?.length ? t.config.bonusTypes : [...BONUS_TYPES],
     });
     setEditingTemplateId(t.isOwn ? t.id : null); // shared admin templates clone, don't overwrite
     setSavedOpen(false);
@@ -431,7 +486,7 @@ export default function WheelCreate() {
         return q.correctAnswer ?? "";
       };
 
-      const newSegs: Segment[] = compatible.slice(0, 16).map(q => ({
+      const newSegs: Segment[] = compatible.slice(0, 16 - configuredBonusCount()).map(q => ({
         id: newId(),
         text: q.text,
         answer: mcqAnswerText(q),
@@ -440,7 +495,7 @@ export default function WheelCreate() {
         kind: "question" as const,
         imageUrl: q.imageUrl || null,
       }));
-      setSegments(colorize(newSegs));
+      setSegments(applyBonusSettings(newSegs));
       setActiveSource("assignment");
       setSegmentsEditorOpen(false);
       setSetupStep("source");
@@ -520,7 +575,8 @@ export default function WheelCreate() {
         next.delete(id);
         return next;
       }
-      const availableSlots = 16 - segments.length;
+      const missingBonuses = Math.max(0, configuredBonusCount() - segments.filter(segment => segment.kind === "bonus").length);
+      const availableSlots = 16 - segments.length - missingBonuses;
       if (availableSlots <= 0) {
         toast.error(w.wheelFull);
         return previous;
@@ -540,7 +596,8 @@ export default function WheelCreate() {
       toast.error(w.selectQuestion);
       return;
     }
-    const availableSlots = 16 - segments.length;
+    const missingBonuses = Math.max(0, configuredBonusCount() - segments.filter(segment => segment.kind === "bonus").length);
+    const availableSlots = 16 - segments.length - missingBonuses;
     if (availableSlots <= 0) {
       toast.error(w.wheelFull);
       return;
@@ -553,7 +610,7 @@ export default function WheelCreate() {
       kind: "question" as const,
       imageUrl: question.imageUrl || null,
     }));
-    setSegments(previous => colorize([...previous, ...newSegments]));
+    setSegments(previous => applyBonusSettings([...previous, ...newSegments]));
     setActiveSource("bank");
     setSegmentsEditorOpen(true);
     setBankOpen(false);
@@ -589,6 +646,8 @@ export default function WheelCreate() {
       || (question.subject ?? "").includes(bankSearch),
     )
     : bankQuestions;
+  const bonusTypesValue = selectedBonusTypes();
+  const bonusPreset = bonusTypesValue.length === BONUS_TYPES.length ? "mixed" : bonusTypesValue[0];
 
   return (
     <Layout>
@@ -710,7 +769,7 @@ export default function WheelCreate() {
                         <select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value as typeof aiDifficulty)} className="px-3 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold text-sm">
                           <option value="easy">{w.easy}</option><option value="medium">{w.medium}</option><option value="hard">{w.hard}</option><option value="mixed">{w.mixed}</option>
                         </select>
-                        <button type="button" onClick={() => setAiBonus(value => !value)} className={`rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all ${aiBonus ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}><Gift className="w-4 h-4" />{w.bonuses}</button>
+                        <button type="button" onClick={() => setConfig(current => ({ ...current, bonusesEnabled: !current.bonusesEnabled }))} className={`rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all ${config.bonusesEnabled ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}><Gift className="w-4 h-4" />{config.bonusesEnabled ? w.bonuses : w.bonusesDisabled}</button>
                       </div>
                       <button type="button" disabled={generating} onClick={generateAI} className="mt-3 w-full sm:w-auto sm:min-w-56 px-5 py-2.5 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>
                         {generating ? <><Loader2 className="w-4 h-4 animate-spin" />{w.generating}</> : <><Wand2 className="w-4 h-4" />{w.generateSegments}</>}
@@ -777,96 +836,56 @@ export default function WheelCreate() {
                 </div>
               </section>
               <Card className="max-w-4xl mx-auto overflow-hidden border-primary/15 shadow-sm">
-                <div className="p-4 sm:p-6 space-y-5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Edit3 className="w-4 h-4" /></span>
-                    <h3 className="font-black text-foreground">{w.gameDetails}</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div><label className="block text-xs font-bold text-foreground mb-1.5">{w.gameTitle}</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={w.gameTitlePlaceholder} className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" /></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.contentLanguage}</label><select value={contentLang} onChange={e => setContentLang(e.target.value as "ar" | "en")} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm"><option value="ar">{w.languageArabic}</option><option value="en">{w.languageEnglish}</option></select></div><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.subject}</label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder={w.optional} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" /></div></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.grade}</label>{gradeLevels.length > 0 ? <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm"><option value="">{w.optional}</option>{gradeLevels.map(grade => <option key={grade.gradeLevel} value={grade.gradeLevel}>{grade.gradeLevel}</option>)}</select> : <input type="text" value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} placeholder={w.optional} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" />}</div><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.teamCount}</label><select value={config.teamCount} onChange={e => setConfig(current => ({ ...current, teamCount: parseInt(e.target.value, 10) }))} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm">{[2, 3, 4, 5, 6].map(count => <option key={count} value={count}>{count} {w.teams}</option>)}</select></div></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{config.teamNames.map((name, index) => <input key={index} type="text" value={name} onChange={e => { const names = [...config.teamNames]; names[index] = e.target.value; setConfig(current => ({ ...current, teamNames: names })); }} placeholder={defaultTeamName(index, contentLang)} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" />)}</div>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-4 border-t border-border">
-                    <section className="rounded-2xl border border-border bg-muted/20 p-3.5">
-                      <div className="flex items-start gap-2 mb-3">
-                        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Users className="w-4 h-4" /></span>
-                        <div>
-                          <h3 className="text-sm font-black text-foreground">{w.turnMode}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">{w.turnModeDescription}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {([
-                          { value: "team_first" as const, title: w.teamFirst, description: w.teamFirstDescription },
-                          { value: "wheel_first" as const, title: w.wheelFirst, description: w.wheelFirstDescription },
-                        ]).map(option => {
-                          const selected = config.turnMode === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => setConfig(current => ({ ...current, turnMode: option.value }))}
-                              className="text-start rounded-xl border-2 px-3 py-2.5 transition-all"
-                              style={{ borderColor: selected ? BRAND_PRIMARY : "transparent", background: selected ? `${BRAND_PRIMARY}10` : "var(--background)" }}
-                            >
-                              <span className="flex items-center gap-2 font-black text-sm" style={{ color: selected ? BRAND_PRIMARY : undefined }}>
-                                <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: selected ? BRAND_PRIMARY : "#9ca3af" }}>{selected && <span className="w-2 h-2 rounded-full" style={{ background: BRAND_PRIMARY }} />}</span>
-                                {option.title}
-                              </span>
-                              <span className="block text-xs text-muted-foreground mt-1 ms-6">{option.description}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
-                    <section className="rounded-2xl border border-border bg-muted/20 p-3.5">
-                      <div className="flex items-start gap-2 mb-3">
-                        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${BRAND_GOLD}1f`, color: BRAND_GOLD }}><Gift className="w-4 h-4" /></span>
-                        <div>
-                          <h3 className="text-sm font-black text-foreground">{w.pointsSystem}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">{w.pointsSystemDescription}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {([
-                          { value: "uniform" as const, title: w.uniformPoints, description: w.uniformPointsDescription },
-                          { value: "varied" as const, title: w.variedPoints, description: w.variedPointsDescription },
-                        ]).map(option => {
-                          const selected = config.pointsMode === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => setConfig(current => ({ ...current, pointsMode: option.value }))}
-                              className="text-start rounded-xl border-2 px-3 py-2.5 transition-all"
-                              style={{ borderColor: selected ? BRAND_GOLD : "transparent", background: selected ? `${BRAND_GOLD}12` : "var(--background)" }}
-                            >
-                              <span className="block font-black text-sm" style={{ color: selected ? BRAND_GOLD : undefined }}>{option.title}</span>
-                              <span className="block text-[11px] leading-relaxed text-muted-foreground mt-1">{option.description}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {config.pointsMode === "uniform" && (
-                        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
-                          <label className="text-xs font-bold text-foreground">{w.pointsPerQuestion}</label>
-                          <select
-                            value={config.uniformPoints}
-                            onChange={e => setConfig(current => ({ ...current, uniformPoints: parseInt(e.target.value, 10) }))}
-                            className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-black"
-                          >
-                            {POINT_OPTIONS.map(points => <option key={points} value={points}>{points} {w.point}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </section>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-border">
-                     <div className="rounded-xl border border-border bg-muted/20 px-3.5 py-3"><div className="flex items-center justify-between gap-2 mb-2"><label className="text-xs font-bold text-foreground flex items-center gap-1.5"><RotateCw className="w-3.5 h-3.5" style={{ color: BRAND_PRIMARY }} />{w.spinDuration}</label><span className="text-xs font-black" style={{ color: BRAND_PRIMARY }}>{w.spinDurationValue.replace("{seconds}", String(config.spinSeconds))}</span></div><input type="range" min={3} max={10} value={config.spinSeconds} onChange={e => setConfig(current => ({ ...current, spinSeconds: parseInt(e.target.value, 10) }))} className="w-full accent-primary" /></div>
-                    <button type="button" onClick={() => setConfig(current => ({ ...current, soundOn: !current.soundOn }))} className={`rounded-xl border px-3.5 py-3 font-bold text-sm transition-all flex items-center justify-between gap-2 ${config.soundOn ? "border-primary/30 bg-primary/5 text-primary" : "border-border bg-muted/20 text-muted-foreground"}`}><span className="flex items-center gap-2"><Volume2 className="w-4 h-4" />{w.sound}</span><span className="text-xs">{config.soundOn ? w.on : w.off}</span></button>
-                  </div>
+                <div className="p-3 sm:p-4 space-y-2.5">
+                  <details open className="group rounded-2xl border border-border bg-card overflow-hidden">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
+                      <div className="flex items-center gap-2 min-w-0"><span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Edit3 className="w-4 h-4" /></span><div className="min-w-0"><h3 className="text-sm font-black text-foreground">{w.gameInformation}</h3><p className="text-xs text-muted-foreground truncate">{title || w.addGameTitle}</p></div></div>
+                      <span className="text-xs font-bold text-muted-foreground group-open:rotate-180 transition-transform">⌄</span>
+                    </summary>
+                    <div className="border-t border-border p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="sm:col-span-2"><label className="block text-xs font-bold text-foreground mb-1">{w.gameTitle}</label><input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={w.gameTitlePlaceholder} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" /></div>
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.contentLanguage}</label><select value={contentLang} onChange={e => setContentLang(e.target.value as "ar" | "en")} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm"><option value="ar">{w.languageArabic}</option><option value="en">{w.languageEnglish}</option></select></div>
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.subject}</label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder={w.optional} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" /></div>
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.grade}</label>{gradeLevels.length > 0 ? <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm"><option value="">{w.optional}</option>{gradeLevels.map(grade => <option key={grade.gradeLevel} value={grade.gradeLevel}>{grade.gradeLevel}</option>)}</select> : <input type="text" value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} placeholder={w.optional} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" />}</div>
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.teamCount}</label><select value={config.teamCount} onChange={e => setConfig(current => ({ ...current, teamCount: parseInt(e.target.value, 10) }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm">{[2, 3, 4, 5, 6].map(count => <option key={count} value={count}>{count} {w.teams}</option>)}</select></div>
+                      <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-2">{config.teamNames.map((name, index) => <input key={index} type="text" value={name} onChange={e => { const names = [...config.teamNames]; names[index] = e.target.value; setConfig(current => ({ ...current, teamNames: names })); }} placeholder={defaultTeamName(index, contentLang)} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" />)}</div>
+                    </div>
+                  </details>
+
+                  <details open className="group rounded-2xl border border-border bg-card overflow-hidden">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
+                      <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Users className="w-4 h-4" /></span><div><h3 className="text-sm font-black text-foreground">{w.gameRules}</h3><p className="text-xs text-muted-foreground">{w.turnMode} · {w.pointsSystem}</p></div></div>
+                      <span className="text-xs font-bold text-muted-foreground group-open:rotate-180 transition-transform">⌄</span>
+                    </summary>
+                    <div className="border-t border-border p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.turnMode}</label><select value={config.turnMode} onChange={e => setConfig(current => ({ ...current, turnMode: e.target.value as TurnMode }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm font-bold"><option value="team_first">{w.teamFirst}</option><option value="wheel_first">{w.wheelFirst}</option></select></div>
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.pointsSystem}</label><select value={config.pointsMode} onChange={e => setConfig(current => ({ ...current, pointsMode: e.target.value as PointsMode }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm font-bold"><option value="uniform">{w.uniformPoints}</option><option value="varied">{w.variedPoints}</option></select></div>
+                      {config.pointsMode === "uniform" && <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-muted/35 px-3 py-2"><label className="text-xs font-bold text-foreground">{w.pointsPerQuestion}</label><select value={config.uniformPoints} onChange={e => setConfig(current => ({ ...current, uniformPoints: parseInt(e.target.value, 10) }))} className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-black">{POINT_OPTIONS.map(points => <option key={points} value={points}>{points} {w.point}</option>)}</select></div>}
+                    </div>
+                  </details>
+
+                  <details open className="group rounded-2xl overflow-hidden border" style={{ borderColor: `${BRAND_GOLD}55`, background: `${BRAND_GOLD}08` }}>
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
+                      <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${BRAND_GOLD}20`, color: BRAND_GOLD }}><Gift className="w-4 h-4" /></span><div><h3 className="text-sm font-black text-foreground">{w.bonusSettings}</h3><p className="text-xs text-muted-foreground">{w.bonusSettingsDescription}</p></div></div>
+                      <span className="text-xs font-bold text-muted-foreground group-open:rotate-180 transition-transform">⌄</span>
+                    </summary>
+                    <div className="border-t p-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5" style={{ borderColor: `${BRAND_GOLD}35` }}>
+                      <button type="button" onClick={() => setConfig(current => ({ ...current, bonusesEnabled: !current.bonusesEnabled }))} className={`min-h-10 rounded-xl border px-3 text-sm font-black transition-colors ${config.bonusesEnabled ? "bg-primary/10 text-primary border-primary/35" : "bg-background text-muted-foreground border-border"}`}>{config.bonusesEnabled ? w.bonusesEnabled : w.bonusesDisabled}</button>
+                      <label className="block"><span className="text-xs font-bold text-foreground block mb-1">{w.bonusCount}</span><select disabled={!config.bonusesEnabled} value={config.bonusCount} onChange={e => setConfig(current => ({ ...current, bonusCount: parseInt(e.target.value, 10) }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm font-bold disabled:opacity-50"><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option></select></label>
+                      <label className="block"><span className="text-xs font-bold text-foreground block mb-1">{w.bonusStyle}</span><select disabled={!config.bonusesEnabled} value={bonusPreset} onChange={e => setConfig(current => ({ ...current, bonusTypes: e.target.value === "mixed" ? [...BONUS_TYPES] : [e.target.value as BonusType] }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm font-bold disabled:opacity-50"><option value="mixed">{w.mixedBonuses}</option>{BONUS_TYPES.map(type => <option key={type} value={type}>{bonusLabel(type, contentLang)}</option>)}</select></label>
+                    </div>
+                  </details>
+
+                  <details className="group rounded-2xl border border-border bg-card overflow-hidden">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
+                      <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><SlidersHorizontal className="w-4 h-4" /></span><h3 className="text-sm font-black text-foreground">{w.additionalOptions}</h3></div>
+                      <span className="text-xs font-bold text-muted-foreground group-open:rotate-180 transition-transform">⌄</span>
+                    </summary>
+                    <div className="border-t border-border p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="rounded-xl border border-border bg-muted/20 px-3 py-2.5"><div className="flex items-center justify-between gap-2 mb-2"><label className="text-xs font-bold text-foreground flex items-center gap-1.5"><RotateCw className="w-3.5 h-3.5" style={{ color: BRAND_PRIMARY }} />{w.spinDuration}</label><span className="text-xs font-black" style={{ color: BRAND_PRIMARY }}>{w.spinDurationValue.replace("{seconds}", String(config.spinSeconds))}</span></div><input type="range" min={3} max={10} value={config.spinSeconds} onChange={e => setConfig(current => ({ ...current, spinSeconds: parseInt(e.target.value, 10) }))} className="w-full accent-primary" /></div>
+                      <button type="button" onClick={() => setConfig(current => ({ ...current, soundOn: !current.soundOn }))} className={`rounded-xl border px-3 py-2.5 font-bold text-sm transition-all flex items-center justify-between gap-2 ${config.soundOn ? "border-primary/30 bg-primary/5 text-primary" : "border-border bg-muted/20 text-muted-foreground"}`}><span className="flex items-center gap-2"><Volume2 className="w-4 h-4" />{w.sound}</span><span className="text-xs">{config.soundOn ? w.on : w.off}</span></button>
+                    </div>
+                  </details>
                 </div>
                 <div className="p-4 sm:px-6 sm:py-5 border-t border-border bg-muted/20 flex flex-col sm:flex-row gap-2.5">
                   <button type="button" disabled={launching || segments.length < 2} onClick={launchPlay} className="flex-1 py-3 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>{launching ? <><Loader2 className="w-4 h-4 animate-spin" />{w.launching}</> : <><Play className="w-4 h-4" />{w.startPlaying}</>}</button>

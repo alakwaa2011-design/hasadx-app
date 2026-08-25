@@ -316,13 +316,13 @@ export default function WheelPlay() {
       // would move the label into the opposite wedge.
       const midAngle = start + arc / 2;
       const textFlip = Math.cos(midAngle) < 0 ? Math.PI : 0;
-      const drawRadialLabel = (value: string, distance: number) => {
+      const drawRadialLabel = (value: string, distance: number, offset = 0) => {
         ctx.save();
         ctx.translate(Math.cos(midAngle) * distance, Math.sin(midAngle) * distance);
         ctx.rotate(midAngle + textFlip);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(value, 0, 0);
+        ctx.fillText(value, 0, offset);
         ctx.restore();
       };
 
@@ -340,19 +340,39 @@ export default function WheelPlay() {
         drawRadialLabel(bonusMarker, radius - 25);
       }
 
-      // Fit the segment title to the radial space so every wedge retains a
-      // visible, distinct label even when the wheel has 12–16 segments.
+      // Use two balanced preview lines instead of one long, uneven strip.
+      // The question itself remains fully visible in the result dialog.
       const text = seg.text || "";
-      const textSize = n <= 6 ? 18 : n <= 10 ? 16 : 14;
+      const textSize = n <= 6 ? 18 : n <= 10 ? 16 : n <= 14 ? 14 : 12;
       ctx.font = `800 ${textSize}px system-ui, -apple-system, sans-serif`;
-      const maxLabelWidth = Math.max(72, Math.min(190, radius * (n <= 6 ? 0.62 : n <= 10 ? 0.52 : 0.44)));
-      let display = text;
-      while (display.length > 1 && ctx.measureText(`${display}…`).width > maxLabelWidth) {
-        display = display.slice(0, -1);
+      const maxLabelWidth = Math.max(86, Math.min(210, radius * (n <= 6 ? 0.66 : n <= 10 ? 0.58 : 0.5)));
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let line = "";
+      for (const word of words) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (ctx.measureText(candidate).width <= maxLabelWidth || !line) {
+          line = candidate;
+          continue;
+        }
+        lines.push(line);
+        line = word;
+        if (lines.length === 2) break;
       }
-      if (display !== text) display += "…";
+      if (line && lines.length < 2) lines.push(line);
+      const consumedWords = lines.join(" ").split(/\s+/).filter(Boolean).length;
+      if (consumedWords < words.length && lines.length > 0) {
+        let lastLine = lines[lines.length - 1];
+        while (lastLine.length > 1 && ctx.measureText(`${lastLine}…`).width > maxLabelWidth) {
+          lastLine = lastLine.slice(0, -1);
+        }
+        lines[lines.length - 1] = `${lastLine}…`;
+      }
       ctx.fillStyle = used ? "#666" : "rgba(255,255,255,0.92)";
-      drawRadialLabel(display, radius * 0.56);
+      const lineHeight = textSize * 1.12;
+      lines.slice(0, 2).forEach((label, lineIndex) => {
+        drawRadialLabel(label, radius * 0.56, (lineIndex - (Math.min(lines.length, 2) - 1) / 2) * lineHeight);
+      });
     });
     ctx.restore();
 

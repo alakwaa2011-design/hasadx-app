@@ -52,6 +52,8 @@ const WHEEL_PALETTE = [
   "#2d6a4f", // emerald
   "#b08440", // ochre
 ];
+const BONUS_TYPES = ["double", "skip", "swap", "lucky", "lose"] as const;
+const bonusTypeSchema = z.enum(BONUS_TYPES);
 
 const segmentSchema = z.object({
   id: z.string().min(1),
@@ -62,7 +64,7 @@ const segmentSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   imageUrl: z.string().max(2000).optional().nullable(),
   kind: z.enum(["question", "bonus"]).default("question"),
-  bonusType: z.enum(["double", "skip", "swap", "lucky", "lose"]).optional(),
+  bonusType: bonusTypeSchema.optional(),
 });
 
 const configSchema = z.object({
@@ -77,6 +79,9 @@ const configSchema = z.object({
   uniformPoints: z.union([
     z.literal(50), z.literal(100), z.literal(200), z.literal(300), z.literal(500),
   ]).optional(),
+  bonusesEnabled: z.boolean().optional(),
+  bonusCount: z.number().int().min(1).max(3).optional(),
+  bonusTypes: z.array(bonusTypeSchema).min(1).max(BONUS_TYPES.length).optional(),
 }).refine((c) => c.teamNames.length === c.teamCount, {
   message: "teamNames length must equal teamCount",
   path: ["teamNames"],
@@ -307,6 +312,8 @@ const generateBody = z.object({
   segmentCount: z.number().int().min(6).max(16).default(10),
   language: z.enum(["ar", "en"]).default("ar"),
   includeBonus: z.boolean().default(true),
+  bonusCount: z.number().int().min(1).max(3).default(1),
+  bonusTypes: z.array(bonusTypeSchema).min(1).max(BONUS_TYPES.length).default([...BONUS_TYPES]),
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("mixed"),
 });
 
@@ -320,7 +327,7 @@ router.post("/wheel-templates/generate", async (req, res) => {
     res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
     return;
   }
-  const { topic, subject, gradeLevel, segmentCount, includeBonus, difficulty } = parsed.data;
+  const { topic, subject, gradeLevel, segmentCount, includeBonus, bonusCount, bonusTypes, difficulty } = parsed.data;
   const language = resolveAiContentLanguage({
     preferredLanguage: parsed.data.language,
     primaryText: topic,
@@ -328,7 +335,17 @@ router.post("/wheel-templates/generate", async (req, res) => {
   });
   try {
     const tier = await resolveTier(req.session.teacherId, (req.body as { tier?: string })?.tier);
-    const prompt = buildWheelPrompt({ topic, subject: subject ?? null, gradeLevel: gradeLevel ?? null, segmentCount, language, includeBonus, difficulty });
+    const prompt = buildWheelPrompt({
+      topic,
+      subject: subject ?? null,
+      gradeLevel: gradeLevel ?? null,
+      segmentCount,
+      language,
+      includeBonus,
+      bonusCount,
+      bonusTypes,
+      difficulty,
+    });
     const text = await runTierCompletion({ tier, prompt, maxTokens: 6000 });
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) {
@@ -343,7 +360,7 @@ router.post("/wheel-templates/generate", async (req, res) => {
       return;
     }
     const raw = Array.isArray(json.segments) ? json.segments : [];
-    const cleaned = sanitizeGeneratedSegments(raw, includeBonus, language);
+    const cleaned = sanitizeGeneratedSegments(raw, includeBonus, bonusTypes, language);
     // Final safety net: re-validate the cleaned segments through the same Zod
     // schema used by save endpoints so AI output that passes generation can
     // never fail later on save with a confusing 400.
@@ -372,6 +389,7 @@ function colorizeSegments<T extends { color?: string }>(segments: T[]): T[] {
 function sanitizeGeneratedSegments(
   raw: unknown[],
   includeBonus: boolean,
+  bonusTypes: readonly (typeof BONUS_TYPES)[number][],
   language: "ar" | "en",
 ): Array<z.infer<typeof segmentSchema>> {
   const out: Array<z.infer<typeof segmentSchema>> = [];
@@ -395,9 +413,9 @@ function sanitizeGeneratedSegments(
       seg.explanation = typeof o.explanation === "string" ? o.explanation.trim().slice(0, 800) : undefined;
     } else {
       const bt = typeof o.bonusType === "string" ? o.bonusType : "lucky";
-      seg.bonusType = (["double", "skip", "swap", "lucky", "lose"] as const).includes(bt as never)
+      seg.bonusType = BONUS_TYPES.includes(bt as never) && bonusTypes.includes(bt as never)
         ? (bt as "double" | "skip" | "swap" | "lucky" | "lose")
-        : "lucky";
+        : bonusTypes[0];
       // Bonus tiles always carry their own copy so the play page can render it
       // without re-translating. The label written by the AI is honored.
       seg.text = text || (language === "ar" ? "مفاجأة!" : "Surprise!");
@@ -429,11 +447,14 @@ function buildWheelPrompt(opts: {
   segmentCount: number;
   language: "ar" | "en";
   includeBonus: boolean;
+  bonusCount: number;
+  bonusTypes: readonly (typeof BONUS_TYPES)[number][];
   difficulty: "easy" | "medium" | "hard" | "mixed";
 }): string {
-  const { topic, subject, gradeLevel, segmentCount, language, includeBonus, difficulty } = opts;
-  const bonusCount = includeBonus ? Math.max(1, Math.floor(segmentCount * 0.2)) : 0;
-  const questionCount = segmentCount - bonusCount;
+  const { topic, subject, gradeLevel, segmentCount, language, includeBonus, bonusCount, bonusTypes, difficulty } = opts;
+  const resolvedBonusCount = includeBonus ? Math.min(bonusCount, segmentCount - 2) : 0;
+  const questionCount = segmentCount - resolvedBonusCount;
+  const bonusTypesText = bonusTypes.join(", ");
 
   if (language === "en") {
     return `You are an expert teacher designing a "Wheel of Fortune" classroom game.
@@ -443,7 +464,7 @@ ${subject ? `Subject: ${subject}` : ""}
 ${gradeLevel ? `Grade level: ${gradeLevel}` : ""}
 Total segments needed: ${segmentCount}
 Question segments: ${questionCount}
-${includeBonus ? `Bonus segments: ${bonusCount}` : "No bonus segments."}
+${includeBonus ? `Bonus segments: ${resolvedBonusCount}. Allowed bonus types: ${bonusTypesText}.` : "No bonus segments."}
 Difficulty: ${difficulty}
 
 Return JSON ONLY in this exact shape (no prose, no markdown):
@@ -482,7 +503,7 @@ ${subject ? `المادة: ${subject}` : ""}
 ${gradeLevel ? `الصف: ${gradeLevel}` : ""}
 عدد القطاعات الكلي: ${segmentCount}
 قطاعات الأسئلة: ${questionCount}
-${includeBonus ? `قطاعات المكافأة: ${bonusCount}` : "بدون قطاعات مكافأة."}
+${includeBonus ? `قطاعات المكافأة: ${resolvedBonusCount}. الأنواع المسموحة فقط: ${bonusTypesText}.` : "بدون قطاعات مكافأة."}
 الصعوبة: ${difficulty === "easy" ? "سهلة" : difficulty === "hard" ? "صعبة" : difficulty === "medium" ? "متوسطة" : "مختلطة"}
 
 أعد JSON فقط بهذا الشكل بالضبط (بدون شرح، بدون Markdown):
