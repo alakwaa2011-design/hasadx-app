@@ -336,12 +336,13 @@ export function UnifiedQuestionSourceFlow({
   };
 
   // ─── Shared UI Components ───
-  const SubmitBtn = ({ onClick, disabled, label }: { onClick: () => void, disabled: boolean, label: string }) => (
+  const SubmitBtn = ({ onClick, disabled, label, className }: { onClick: () => void, disabled: boolean, label: string, className?: string }) => (
     <button
       onClick={onClick}
       disabled={disabled}
       className={cn(
         "px-6 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm",
+        className,
         !accentColor && (accentClass || "bg-primary text-primary-foreground hover:bg-primary/90")
       )}
       style={accentColor ? { backgroundColor: accentColor, color: '#fff' } : {}}
@@ -352,11 +353,11 @@ export function UnifiedQuestionSourceFlow({
 
   const AssignmentPicker = ({ inOverlay = false }: { inOverlay?: boolean }) => (
     <div className={cn(
-      "flex min-h-0 flex-col",
-      inOverlay ? "h-[min(680px,82vh)]" : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8",
+      "flex min-h-0 flex-1 flex-col overflow-hidden",
+      inOverlay ? "h-full" : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8",
       floatingAssignmentContinue && assignmentReady && "pb-40 sm:pb-8"
     )}>
-      <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", inOverlay ? "px-1 pb-4" : "mb-6")}>
+      <div className={cn("flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", inOverlay ? "px-1 pb-4" : "mb-6")}>
         <div className="flex items-center gap-3">
           <BackBtn />
           <div>
@@ -442,10 +443,10 @@ export function UnifiedQuestionSourceFlow({
         </motion.div>
       ) : (
         <div className={cn(
-          "mt-4 border-t border-border/60 pt-3",
-          inOverlay && "sticky bottom-0 bg-background pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          "mt-3 shrink-0 border-t border-border/60 bg-background pt-3",
+          inOverlay && "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         )}>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 text-xs text-muted-foreground">
               {assignmentReady
                 ? <span className="font-bold text-[#0B4B35]">{selectedAssignTitle} · {selectedAssignQs.length} {ar ? "أسئلة جاهزة" : "questions ready"}</span>
@@ -455,6 +456,7 @@ export function UnifiedQuestionSourceFlow({
               onClick={handleAssignComplete}
               disabled={!assignmentReady || assignLoading}
               label={ar ? "متابعة إلى الإعدادات" : "Continue to settings"}
+              className="w-full shrink-0 sm:w-auto"
             />
           </div>
         </div>
@@ -465,16 +467,16 @@ export function UnifiedQuestionSourceFlow({
   const assignmentView = tugPresentation ? (
     isCompactViewport ? (
       <Sheet open onOpenChange={(open) => { if (!open) goBack(); }}>
-        <SheetContent side="bottom" className="rounded-t-[1.75rem] border-[#0B4B35]/15 px-4 pt-5" dir={dir}>
+        <SheetContent side="bottom" className="flex h-[min(760px,92dvh)] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[1.75rem] border-[#0B4B35]/15 px-3 pb-0 pt-4 sm:px-4" dir={dir}>
           <SheetTitle className="sr-only">{ar ? "اختيار واجب موجود" : "Choose an assignment"}</SheetTitle>
           <SheetDescription className="sr-only">{ar ? "ابحث عن واجب واختره لاستيراد أسئلته." : "Search for an assignment and select it to import its questions."}</SheetDescription>
-          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted" />
+          <div className="mx-auto mb-3 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
           <AssignmentPicker inOverlay />
         </SheetContent>
       </Sheet>
     ) : (
       <Dialog open onOpenChange={(open) => { if (!open) goBack(); }}>
-        <DialogContent className="max-w-2xl rounded-3xl border-[#0B4B35]/15 p-6" dir={dir}>
+        <DialogContent className="flex h-[min(760px,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-3xl border-[#0B4B35]/15 p-4 sm:p-6" dir={dir}>
           <DialogTitle className="sr-only">{ar ? "اختيار واجب موجود" : "Choose an assignment"}</DialogTitle>
           <DialogDescription className="sr-only">{ar ? "ابحث عن واجب واختره لاستيراد أسئلته." : "Search for an assignment and select it to import its questions."}</DialogDescription>
           <AssignmentPicker inOverlay />
