@@ -55,6 +55,7 @@ const PrivacyPage = lazy(() => import("@/pages/privacy"));
 const TermsPage = lazy(() => import("@/pages/terms"));
 const FaqPage = lazy(() => import("@/pages/faq"));
 const AboutPage = lazy(() => import("@/pages/about"));
+const MarwanPersonalAssistantLandingPage = lazy(() => import("@/pages/marwan-personal-assistant"));
 const TeacherProfile = lazy(() => import("@/pages/teacher/profile"));
 const TeacherSettings = lazy(() => import("@/pages/teacher/settings"));
 const TeacherAchievements = lazy(() => import("@/pages/teacher/achievements"));
@@ -288,6 +289,7 @@ function Router() {
         <Route path="/features/smart-whiteboard" component={FeatureSmartWhiteboard} />
         <Route path="/features/escape-room"      component={FeatureEscapeRoom} />
         <Route path="/features/lesson-plan-ai"   component={FeatureLessonPlanAI} />
+        <Route path="/marwan-personal-assistant" component={MarwanPersonalAssistantLandingPage} />
 
         <Route path="/" component={Home} />
         <Route path="/login" component={Auth} />

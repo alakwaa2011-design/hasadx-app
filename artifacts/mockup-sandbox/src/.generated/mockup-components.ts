@@ -2,6 +2,7 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/activities-library/Redesign.tsx": () => import("../components/mockups/activities-library/Redesign.tsx"),
+  "./components/mockups/hasad-mobile-editor/MobileEditor.tsx": () => import("../components/mockups/hasad-mobile-editor/MobileEditor.tsx"),
   "./components/mockups/homepage-atelier/Atelier.tsx": () => import("../components/mockups/homepage-atelier/Atelier.tsx"),
   "./components/mockups/homepage-bayan/Bayan.tsx": () => import("../components/mockups/homepage-bayan/Bayan.tsx"),
   "./components/mockups/homepage-bayan-v2/BayanV2.tsx": () => import("../components/mockups/homepage-bayan-v2/BayanV2.tsx"),
@@ -9,7 +10,6 @@ export const modules: ModuleMap = {
   "./components/mockups/homepage-madrasa/Madrasa.tsx": () => import("../components/mockups/homepage-madrasa/Madrasa.tsx"),
   "./components/mockups/teacher-dashboard/OldDashboardDesign.tsx": () => import("../components/mockups/teacher-dashboard/OldDashboardDesign.tsx"),
   "./components/mockups/teacher-dashboard/ProposedDesign.tsx": () => import("../components/mockups/teacher-dashboard/ProposedDesign.tsx"),
-  "./components/mockups/hasad-mobile-editor/MobileEditor.tsx": () => import("../components/mockups/hasad-mobile-editor/MobileEditor.tsx"),
   "./components/mockups/teacher-dashboard-v2/AtelierDesktop.tsx": () => import("../components/mockups/teacher-dashboard-v2/AtelierDesktop.tsx"),
   "./components/mockups/teacher-dashboard-v2/CommandDesktop.tsx": () => import("../components/mockups/teacher-dashboard-v2/CommandDesktop.tsx"),
   "./components/mockups/teacher-dashboard-v2/Desktop.tsx": () => import("../components/mockups/teacher-dashboard-v2/Desktop.tsx"),
