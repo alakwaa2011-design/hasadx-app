@@ -70,6 +70,13 @@ const configSchema = z.object({
   teamNames: z.array(z.string().min(1).max(40)).min(2).max(6),
   spinSeconds: z.number().int().min(3).max(10).default(5),
   soundOn: z.boolean().default(true),
+  // Optional on purpose: absence identifies a legacy template, which the
+  // client keeps on the old wheel-first/per-segment behavior.
+  turnMode: z.enum(["team_first", "wheel_first"]).optional(),
+  pointsMode: z.enum(["uniform", "varied"]).optional(),
+  uniformPoints: z.union([
+    z.literal(50), z.literal(100), z.literal(200), z.literal(300), z.literal(500),
+  ]).optional(),
 }).refine((c) => c.teamNames.length === c.teamCount, {
   message: "teamNames length must equal teamCount",
   path: ["teamNames"],

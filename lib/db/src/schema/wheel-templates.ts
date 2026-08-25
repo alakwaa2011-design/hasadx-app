@@ -26,6 +26,10 @@ import { teachersTable } from "./teachers";
        teamNames: string[];           // length === teamCount
        spinSeconds: number;           // 4..8, default 5
        soundOn: boolean;              // tick + win sounds
+       turnMode?: "team_first" | "wheel_first";
+                                    // absent means legacy wheel-first behavior
+       pointsMode?: "uniform" | "varied";
+       uniformPoints?: 50 | 100 | 200 | 300 | 500;
      }
 */
 export const wheelTemplatesTable = pgTable("wheel_templates", {

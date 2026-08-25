@@ -54,6 +54,8 @@ const POINT_OPTIONS = [50, 100, 200, 300, 500] as const;
 const BONUS_TYPES = ["double", "skip", "swap", "lucky", "lose"] as const;
 
 type BonusType = (typeof BONUS_TYPES)[number];
+type TurnMode = "team_first" | "wheel_first";
+type PointsMode = "uniform" | "varied";
 
 interface Segment {
   id: string;
@@ -72,6 +74,9 @@ interface WheelConfig {
   teamNames: string[];
   spinSeconds: number;
   soundOn: boolean;
+  turnMode?: TurnMode;
+  pointsMode?: PointsMode;
+  uniformPoints?: number;
 }
 
 interface Template {
@@ -133,6 +138,9 @@ export default function WheelCreate() {
     teamNames: [defaultTeamName(0, lang), defaultTeamName(1, lang)],
     spinSeconds: 5,
     soundOn: true,
+    turnMode: "team_first",
+    pointsMode: "varied",
+    uniformPoints: 100,
   });
 
   // AI panel
@@ -354,7 +362,14 @@ export default function WheelCreate() {
     setGradeLevel(t.gradeLevel ?? "");
     setSegments(colorize(t.segments));
     setSegmentsEditorOpen(true);
-    setConfig(t.config);
+    // Older templates have no turn/points mode. Keep their existing
+    // wheel-first, per-segment behavior instead of silently changing a game.
+    setConfig({
+      ...t.config,
+      turnMode: t.config.turnMode ?? "wheel_first",
+      pointsMode: t.config.pointsMode ?? "varied",
+      uniformPoints: t.config.uniformPoints ?? 100,
+    });
     setEditingTemplateId(t.isOwn ? t.id : null); // shared admin templates clone, don't overwrite
     setSavedOpen(false);
     setAiOpen(false);
@@ -727,7 +742,12 @@ export default function WheelCreate() {
                                 <span className="text-[10px] font-black px-2 py-1 rounded-full" style={segment.kind === "bonus" ? { background: `${BRAND_GOLD}20`, color: BRAND_GOLD } : { background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}>
                                   {segment.kind === "bonus" ? <span className="inline-flex items-center gap-1"><Gift className="w-3 h-3" />{w.bonus}</span> : <span className="inline-flex items-center gap-1"><HelpCircle className="w-3 h-3" />{w.question}</span>}
                                 </span>
-                                <select value={segment.points} onChange={e => updateSegment(segment.id, { points: parseInt(e.target.value, 10) })} className="text-xs font-bold rounded-lg px-2 py-1 border border-border bg-background">
+                                <select
+                                  value={segment.kind === "question" && config.pointsMode === "uniform" ? config.uniformPoints : segment.points}
+                                  disabled={segment.kind === "question" && config.pointsMode === "uniform"}
+                                  onChange={e => updateSegment(segment.id, { points: parseInt(e.target.value, 10) })}
+                                  className="text-xs font-bold rounded-lg px-2 py-1 border border-border bg-background disabled:opacity-55 disabled:cursor-not-allowed"
+                                >
                                   {(segment.kind === "bonus" ? [0, 100, 200] : POINT_OPTIONS).map(points => <option key={points} value={points}>{points} {w.point}</option>)}
                                 </select>
                                 {segment.kind === "bonus" && <select value={segment.bonusType ?? "lucky"} onChange={e => updateSegment(segment.id, { bonusType: e.target.value as BonusType })} className="text-xs font-bold rounded-lg px-2 py-1 border border-border bg-background">{BONUS_TYPES.map(type => <option key={type} value={type}>{bonusLabel(type, contentLang)}</option>)}</select>}
@@ -767,6 +787,81 @@ export default function WheelCreate() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.contentLanguage}</label><select value={contentLang} onChange={e => setContentLang(e.target.value as "ar" | "en")} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm"><option value="ar">{w.languageArabic}</option><option value="en">{w.languageEnglish}</option></select></div><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.subject}</label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder={w.optional} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" /></div></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.grade}</label>{gradeLevels.length > 0 ? <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm"><option value="">{w.optional}</option>{gradeLevels.map(grade => <option key={grade.gradeLevel} value={grade.gradeLevel}>{grade.gradeLevel}</option>)}</select> : <input type="text" value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} placeholder={w.optional} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" />}</div><div><label className="text-xs font-bold text-foreground block mb-1.5">{w.teamCount}</label><select value={config.teamCount} onChange={e => setConfig(current => ({ ...current, teamCount: parseInt(e.target.value, 10) }))} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none font-bold text-sm">{[2, 3, 4, 5, 6].map(count => <option key={count} value={count}>{count} {w.teams}</option>)}</select></div></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{config.teamNames.map((name, index) => <input key={index} type="text" value={name} onChange={e => { const names = [...config.teamNames]; names[index] = e.target.value; setConfig(current => ({ ...current, teamNames: names })); }} placeholder={defaultTeamName(index, contentLang)} className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm" />)}</div>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-4 border-t border-border">
+                    <section className="rounded-2xl border border-border bg-muted/20 p-3.5">
+                      <div className="flex items-start gap-2 mb-3">
+                        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${BRAND_PRIMARY}12`, color: BRAND_PRIMARY }}><Users className="w-4 h-4" /></span>
+                        <div>
+                          <h3 className="text-sm font-black text-foreground">{w.turnMode}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">{w.turnModeDescription}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {([
+                          { value: "team_first" as const, title: w.teamFirst, description: w.teamFirstDescription },
+                          { value: "wheel_first" as const, title: w.wheelFirst, description: w.wheelFirstDescription },
+                        ]).map(option => {
+                          const selected = config.turnMode === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setConfig(current => ({ ...current, turnMode: option.value }))}
+                              className="text-start rounded-xl border-2 px-3 py-2.5 transition-all"
+                              style={{ borderColor: selected ? BRAND_PRIMARY : "transparent", background: selected ? `${BRAND_PRIMARY}10` : "var(--background)" }}
+                            >
+                              <span className="flex items-center gap-2 font-black text-sm" style={{ color: selected ? BRAND_PRIMARY : undefined }}>
+                                <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: selected ? BRAND_PRIMARY : "#9ca3af" }}>{selected && <span className="w-2 h-2 rounded-full" style={{ background: BRAND_PRIMARY }} />}</span>
+                                {option.title}
+                              </span>
+                              <span className="block text-xs text-muted-foreground mt-1 ms-6">{option.description}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                    <section className="rounded-2xl border border-border bg-muted/20 p-3.5">
+                      <div className="flex items-start gap-2 mb-3">
+                        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${BRAND_GOLD}1f`, color: BRAND_GOLD }}><Gift className="w-4 h-4" /></span>
+                        <div>
+                          <h3 className="text-sm font-black text-foreground">{w.pointsSystem}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">{w.pointsSystemDescription}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { value: "uniform" as const, title: w.uniformPoints, description: w.uniformPointsDescription },
+                          { value: "varied" as const, title: w.variedPoints, description: w.variedPointsDescription },
+                        ]).map(option => {
+                          const selected = config.pointsMode === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setConfig(current => ({ ...current, pointsMode: option.value }))}
+                              className="text-start rounded-xl border-2 px-3 py-2.5 transition-all"
+                              style={{ borderColor: selected ? BRAND_GOLD : "transparent", background: selected ? `${BRAND_GOLD}12` : "var(--background)" }}
+                            >
+                              <span className="block font-black text-sm" style={{ color: selected ? BRAND_GOLD : undefined }}>{option.title}</span>
+                              <span className="block text-[11px] leading-relaxed text-muted-foreground mt-1">{option.description}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {config.pointsMode === "uniform" && (
+                        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
+                          <label className="text-xs font-bold text-foreground">{w.pointsPerQuestion}</label>
+                          <select
+                            value={config.uniformPoints}
+                            onChange={e => setConfig(current => ({ ...current, uniformPoints: parseInt(e.target.value, 10) }))}
+                            className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-black"
+                          >
+                            {POINT_OPTIONS.map(points => <option key={points} value={points}>{points} {w.point}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </section>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-border">
                     <div className="rounded-xl border border-border bg-muted/20 px-3.5 py-3"><div className="flex items-center justify-between gap-2 mb-2"><label className="text-xs font-bold text-foreground flex items-center gap-1.5"><RotateCw className="w-3.5 h-3.5" style={{ color: BRAND_PRIMARY }} />{w.spinDuration}</label><span className="text-xs font-black" style={{ color: BRAND_PRIMARY }}>{config.spinSeconds}{w.secondsShort}</span></div><input type="range" min={3} max={10} value={config.spinSeconds} onChange={e => setConfig(current => ({ ...current, spinSeconds: parseInt(e.target.value, 10) }))} className="w-full accent-primary" /></div>

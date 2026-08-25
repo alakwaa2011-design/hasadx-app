@@ -20,6 +20,8 @@ const WHEEL_PALETTE = [
 ];
 
 type BonusType = "double" | "skip" | "swap" | "lucky" | "lose";
+type TurnMode = "team_first" | "wheel_first";
+type PointsMode = "uniform" | "varied";
 
 interface Segment {
   id: string;
@@ -38,6 +40,9 @@ interface WheelConfig {
   teamNames: string[];
   spinSeconds: number;
   soundOn: boolean;
+  turnMode?: TurnMode;
+  pointsMode?: PointsMode;
+  uniformPoints?: number;
 }
 
 interface Template {
@@ -186,8 +191,10 @@ export default function WheelPlay() {
 
   // Pending bonus modifiers — applied to the *next* question that resolves.
   const [doubleMultiplier, setDoubleMultiplier] = useState(1);
-  // Teams whose next turn is skipped — purely informational; the teacher
-  // sees a visible badge and remembers not to call on them.
+  const [activeTeamIndex, setActiveTeamIndex] = useState<number | null>(null);
+  const [questionAwarded, setQuestionAwarded] = useState(false);
+  // Teams whose next turn is skipped. Team-first mode consumes these marks
+  // automatically while it advances to the next eligible team.
   const [skippedTeams, setSkippedTeams] = useState<Set<number>>(new Set());
   // Two-team selection state for the swap bonus.
   const [swapPicks, setSwapPicks] = useState<number[]>([]);
@@ -235,9 +242,18 @@ export default function WheelPlay() {
           ...s,
           color: s.color || WHEEL_PALETTE[i % WHEEL_PALETTE.length],
         }));
-        setTemplate({ ...t, segments: segs });
-        setScores(new Array(t.config.teamCount).fill(0));
-        setSoundOn(t.config.soundOn);
+        // Missing fields mean this was saved before turn/points modes existed.
+        // Preserve the old UI's wheel-first, segment-specific behavior.
+        const config: WheelConfig = {
+          ...t.config,
+          turnMode: t.config.turnMode ?? "wheel_first",
+          pointsMode: t.config.pointsMode ?? "varied",
+          uniformPoints: t.config.uniformPoints ?? 100,
+        };
+        setTemplate({ ...t, segments: segs, config });
+        setScores(new Array(config.teamCount).fill(0));
+        setSoundOn(config.soundOn);
+        setActiveTeamIndex(config.turnMode === "team_first" ? 0 : null);
       })
       .catch(() => setError(ar ? "تعذّر تحميل اللعبة" : "Failed to load game"))
       .finally(() => setLoading(false));
@@ -354,6 +370,11 @@ export default function WheelPlay() {
   /* ── Spin animation ───────────────────────────────────────── */
   const spin = useCallback(() => {
     if (!template || spinning) return;
+    const turnMode = template.config.turnMode ?? "wheel_first";
+    if (turnMode === "team_first" && activeTeamIndex === null) {
+      toast.error(ar ? "اختر الفريق صاحب الدور أولاً" : "Choose the active team first");
+      return;
+    }
     const segs = template.segments;
     const available = segs.map((s, i) => i).filter(i => !usedIds.has(segs[i].id));
     if (available.length === 0) {
@@ -379,6 +400,7 @@ export default function WheelPlay() {
     setShowResult(false);
     setShowAnswer(false);
     setResultIndex(null);
+    setQuestionAwarded(false);
     audio.startTicking(durationMs);
 
     const tick = (now: number) => {
@@ -402,7 +424,7 @@ export default function WheelPlay() {
       }
     };
     animFrameRef.current = requestAnimationFrame(tick);
-  }, [template, spinning, usedIds, rotation, audio, scheduleTimeout]);
+  }, [template, spinning, usedIds, rotation, audio, scheduleTimeout, activeTeamIndex, ar]);
 
   useEffect(() => () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -479,7 +501,7 @@ export default function WheelPlay() {
     setSwapPicks([]);
   };
 
-  // "skip" — mark a team to skip its next turn (visual badge only).
+  // "skip" — mark a team to skip its next turn.
   const applySkip = (teamIdx: number) => {
     setSkippedTeams((prev) => {
       const next = new Set(prev);
@@ -488,13 +510,32 @@ export default function WheelPlay() {
     });
   };
 
-  // Clear a team's skip badge once the teacher acknowledges it has passed.
+  // Remove a pending skip after it has been consumed or cleared manually.
   const clearSkip = (teamIdx: number) => {
     setSkippedTeams((prev) => {
       const next = new Set(prev);
       next.delete(teamIdx);
       return next;
     });
+  };
+
+  const advanceActiveTeam = () => {
+    if (!template || template.config.turnMode !== "team_first") return;
+    const count = template.config.teamCount;
+    let next = ((activeTeamIndex ?? -1) + 1 + count) % count;
+    const consumedSkips: number[] = [];
+    for (let attempt = 0; attempt < count - 1 && skippedTeams.has(next); attempt += 1) {
+      consumedSkips.push(next);
+      next = (next + 1) % count;
+    }
+    if (consumedSkips.length > 0) {
+      setSkippedTeams((previous) => {
+        const updated = new Set(previous);
+        consumedSkips.forEach((teamIdx) => updated.delete(teamIdx));
+        return updated;
+      });
+    }
+    setActiveTeamIndex(next);
   };
 
   const resolveAndClose = () => {
@@ -516,6 +557,8 @@ export default function WheelPlay() {
     setShowAnswer(false);
     setResultIndex(null);
     setSwapPicks([]);
+    setQuestionAwarded(false);
+    advanceActiveTeam();
     // Auto-show end-of-game when no segments remain.
     if (template && usedIds.size + 1 >= template.segments.length) {
       scheduleTimeout(() => {
@@ -537,6 +580,8 @@ export default function WheelPlay() {
     setDoubleMultiplier(1);
     setSkippedTeams(new Set());
     setSwapPicks([]);
+    setQuestionAwarded(false);
+    setActiveTeamIndex(template?.config.turnMode === "team_first" ? 0 : null);
   };
 
   /* ── Fullscreen ───────────────────────────────────────────── */
@@ -557,8 +602,9 @@ export default function WheelPlay() {
   /* ── Sizing: square canvas that fits the column ───────────── */
   const wheelSize = useMemo(() => {
     if (typeof window === "undefined") return 560;
-    const minDim = Math.min(window.innerWidth - 32, window.innerHeight - 240);
-    return Math.max(320, Math.min(640, minDim));
+    const sideReserve = window.innerWidth >= 1024 ? 420 : 32;
+    const minDim = Math.min(window.innerWidth - sideReserve, window.innerHeight - 220);
+    return Math.max(280, Math.min(620, minDim));
   }, []);
 
   /* ── Renders ──────────────────────────────────────────────── */
@@ -592,6 +638,95 @@ export default function WheelPlay() {
   const currentSeg = resultIndex !== null ? template.segments[resultIndex] : null;
   const segsLeft = template.segments.length - usedIds.size;
   const winnerIdx = scores.length === 0 ? -1 : scores.reduce((best, v, i) => v > scores[best] ? i : best, 0);
+  const turnMode = template.config.turnMode ?? "wheel_first";
+  const isTeamFirst = turnMode === "team_first";
+  const pointsMode = template.config.pointsMode ?? "varied";
+  const pointsForQuestion = (segment: Segment) =>
+    pointsMode === "uniform" ? (template.config.uniformPoints ?? 100) : segment.points;
+  const activeTeamName = activeTeamIndex === null ? null : template.config.teamNames[activeTeamIndex];
+
+  const awardCurrentTeamQuestion = () => {
+    if (!currentSeg || currentSeg.kind !== "question" || activeTeamIndex === null || questionAwarded) return;
+    const awarded = awardQuestionPoints(activeTeamIndex, pointsForQuestion(currentSeg));
+    setQuestionAwarded(true);
+    toast.success(ar
+      ? `+${awarded} لـ ${template.config.teamNames[activeTeamIndex]}`
+      : `+${awarded} to ${template.config.teamNames[activeTeamIndex]}`);
+  };
+
+  const renderTeamCard = (teamIdx: number, compact = false) => {
+    const name = template.config.teamNames[teamIdx];
+    const score = scores[teamIdx] ?? 0;
+    const color = WHEEL_PALETTE[teamIdx % WHEEL_PALETTE.length];
+    const isLeader = score > 0 && teamIdx === winnerIdx;
+    const isActive = isTeamFirst && activeTeamIndex === teamIdx;
+    const canChooseTurn = isTeamFirst && !spinning && !showResult && !showFinal && !skippedTeams.has(teamIdx);
+    return (
+      <div
+        key={teamIdx}
+        dir={dir}
+        role={canChooseTurn ? "button" : undefined}
+        tabIndex={canChooseTurn ? 0 : undefined}
+        onClick={() => canChooseTurn && setActiveTeamIndex(teamIdx)}
+        onKeyDown={(event) => {
+          if (canChooseTurn && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            setActiveTeamIndex(teamIdx);
+          }
+        }}
+        className={`rounded-2xl border-2 transition-all ${canChooseTurn ? "cursor-pointer hover:-translate-y-0.5" : ""} ${compact ? "p-3" : "p-4 sm:p-5"}`}
+        style={{
+          background: isActive ? `linear-gradient(145deg, ${color}45, rgba(7,21,14,0.94))` : "rgba(255,255,255,0.045)",
+          borderColor: isActive ? BRAND_GOLD : (isLeader ? color : "rgba(255,255,255,0.12)"),
+          boxShadow: isActive ? `0 0 0 2px ${color}55, 0 14px 30px ${color}22` : "none",
+        }}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_10px_currentColor]" style={{ color, background: color }} />
+            <span className={`font-black truncate ${compact ? "text-sm" : "text-base sm:text-lg"}`}>{name}</span>
+            {isLeader && <Sparkles className="w-4 h-4 shrink-0" style={{ color: BRAND_GOLD }} />}
+          </div>
+          <span className={`${compact ? "text-xl" : "text-3xl sm:text-4xl"} font-black tabular-nums`} style={{ color: isLeader || isActive ? BRAND_GOLD : "#fff" }}>{score}</span>
+        </div>
+        {isActive && (
+          <div className="mt-3 rounded-lg px-2.5 py-1.5 text-center text-[11px] font-black border"
+            style={{ color: BRAND_GOLD, borderColor: `${BRAND_GOLD}88`, background: `${BRAND_GOLD}16` }}>
+            {ar ? "الدور الآن" : "TURN NOW"}
+          </div>
+        )}
+        {skippedTeams.has(teamIdx) && (
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); clearSkip(teamIdx); }}
+            title={ar ? "اضغط للإلغاء" : "Click to clear"}
+            className="mt-2 w-full text-[10px] font-black px-1.5 py-1 rounded-md border"
+            style={{ borderColor: "#fca5a5", color: "#fca5a5", background: "rgba(239,68,68,0.12)" }}
+          >
+            {ar ? "تخطّي الدور ⏭" : "SKIP TURN ⏭"}
+          </button>
+        )}
+        {!compact && (
+          <div className="flex items-center gap-1.5 mt-3">
+            {[50, 100, 200, -50].map(points => (
+              <button
+                type="button"
+                key={points}
+                onClick={(event) => { event.stopPropagation(); awardPoints(teamIdx, points); }}
+                className="flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-colors hover:bg-white/15"
+                style={{
+                  background: points > 0 ? "rgba(255,255,255,0.08)" : "rgba(239,68,68,0.15)",
+                  color: points > 0 ? "#fff" : "#fca5a5",
+                }}
+              >
+                {points > 0 ? `+${points}` : points}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -641,123 +776,94 @@ export default function WheelPlay() {
         </div>
       </div>
 
-      {/* Body grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-4 p-4 max-w-7xl mx-auto">
-        {/* Wheel column */}
-        <div className="flex flex-col items-center justify-center py-2">
-          <div className="relative" style={{ width: wheelSize, height: wheelSize + 40 }}>
-            {/* Pointer */}
-            <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-10 pointer-events-none">
-              <div
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeft: "18px solid transparent",
-                  borderRight: "18px solid transparent",
-                  borderTop: `30px solid ${BRAND_GOLD}`,
-                  filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.4))",
-                }}
-              />
-            </div>
-            <canvas
-              ref={canvasRef}
-              width={wheelSize}
-              height={wheelSize}
-              className="block mt-6"
-              style={{ width: wheelSize, height: wheelSize }}
-            />
+      {/* Game arena: primary teams frame the wheel, extra teams stay compact below. */}
+      <main className="relative max-w-[1440px] mx-auto p-3 sm:p-5">
+        <div className="absolute inset-x-1/4 top-10 h-64 pointer-events-none blur-3xl opacity-30" style={{ background: `radial-gradient(circle, ${BRAND_GOLD}, transparent 68%)` }} />
+        <div className="relative rounded-[2rem] border border-white/10 bg-black/10 p-3 sm:p-5 backdrop-blur-sm">
+          <div className="mx-auto mb-3 max-w-xl rounded-2xl border px-4 py-2.5 text-center"
+            style={{ borderColor: isTeamFirst ? `${BRAND_GOLD}99` : "rgba(255,255,255,0.14)", background: isTeamFirst ? `${BRAND_GOLD}12` : "rgba(255,255,255,0.04)" }}>
+            {isTeamFirst ? (
+              <p className="text-sm font-black">
+                <span style={{ color: BRAND_GOLD }}>{ar ? "الدور الآن:" : "TURN NOW:"}</span>{" "}
+                <span>{activeTeamName ?? (ar ? "اختر فريقاً" : "Choose a team")}</span>
+              </p>
+            ) : (
+              <p className="text-xs sm:text-sm font-bold text-white/80">{ar ? "أدر العجلة ثم اختر الفريق الذي سيجيب" : "Spin the wheel, then choose the team that answers"}</p>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={spin}
-            disabled={spinning || segsLeft === 0}
-            className="mt-4 px-10 py-4 rounded-2xl font-black text-xl shadow-2xl flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 active:scale-95"
-            style={{
-              background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})`,
-              color: "#fff",
-              border: `2px solid ${BRAND_GOLD}`,
-            }}
-          >
-            {spinning
-              ? <><Loader2 className="w-6 h-6 animate-spin" /> {ar ? "تدور…" : "Spinning…"}</>
-              : segsLeft === 0
-                ? <><Trophy className="w-6 h-6" /> {ar ? "انتهت اللعبة" : "Game Over"}</>
-                : <><RotateCw className="w-6 h-6" /> {ar ? "أدر العجلة" : "Spin the Wheel"}</>}
-          </button>
-        </div>
-
-        {/* Scoreboard column */}
-        <div className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm p-4 self-start">
-          <h2 className="text-sm font-black uppercase tracking-wider mb-3 flex items-center gap-2"
-            style={{ color: BRAND_GOLD }}>
-            <Trophy className="w-4 h-4" />
-            {ar ? "النتائج" : "Scoreboard"}
-          </h2>
           {doubleMultiplier > 1 && (
-            <div
-              className="mb-3 rounded-lg px-3 py-2 text-center text-xs font-black border-2 animate-pulse"
-              style={{ background: `${BRAND_GOLD}25`, borderColor: BRAND_GOLD, color: BRAND_GOLD }}
-            >
+            <div className="mx-auto mb-3 max-w-xl rounded-xl px-3 py-2 text-center text-xs font-black border-2 animate-pulse"
+              style={{ background: `${BRAND_GOLD}25`, borderColor: BRAND_GOLD, color: BRAND_GOLD }}>
               ×{doubleMultiplier} {ar ? "النقاط مضاعفة في السؤال القادم" : "Points doubled on next question"}
             </div>
           )}
-          <div className="space-y-2">
-            {template.config.teamNames.map((name, i) => {
-              const score = scores[i] ?? 0;
-              const isLeader = score > 0 && i === winnerIdx;
-              const color = WHEEL_PALETTE[i % WHEEL_PALETTE.length];
-              return (
-                <div
-                  key={i}
-                  className="rounded-xl p-3 border-2 transition-all"
-                  style={{
-                    background: isLeader ? `${color}30` : "rgba(255,255,255,0.04)",
-                    borderColor: isLeader ? color : "rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-                      <span className="font-black truncate">{name}</span>
-                      {isLeader && <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: BRAND_GOLD }} />}
-                      {skippedTeams.has(i) && (
-                        <button
-                          type="button"
-                          onClick={() => clearSkip(i)}
-                          title={ar ? "اضغط للإلغاء" : "Click to clear"}
-                          className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-md border"
-                          style={{ borderColor: "#fca5a5", color: "#fca5a5", background: "rgba(239,68,68,0.12)" }}
-                        >
-                          {ar ? "تخطّي ⏭" : "Skip ⏭"}
-                        </button>
-                      )}
-                    </div>
-                    <span className="text-2xl font-black tabular-nums" style={{ color: isLeader ? BRAND_GOLD : "#fff" }}>
-                      {score}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    {[50, 100, 200, -50].map(p => (
-                      <button
-                        key={p}
-                        onClick={() => awardPoints(i, p)}
-                        className="flex-1 text-[11px] font-bold py-1 rounded-md transition-colors"
-                        style={{
-                          background: p > 0 ? "rgba(255,255,255,0.08)" : "rgba(239,68,68,0.15)",
-                          color: p > 0 ? "#fff" : "#fca5a5",
-                        }}
-                      >
-                        {p > 0 ? `+${p}` : p}
-                      </button>
-                    ))}
-                  </div>
+
+          <div dir="ltr" className="grid grid-cols-1 lg:grid-cols-[minmax(180px,0.72fr)_minmax(320px,2fr)_minmax(180px,0.72fr)] items-center gap-3 sm:gap-5">
+            <aside className="order-2 lg:order-1">{renderTeamCard(0)}</aside>
+
+            <section className="order-1 lg:order-2 flex flex-col items-center justify-center py-1" dir={dir}>
+              <div className="relative" style={{ width: wheelSize, height: wheelSize + 40 }}>
+                <div className="absolute inset-3 rounded-full pointer-events-none" style={{ boxShadow: `0 0 45px ${BRAND_GOLD}55, 0 0 100px ${BRAND_PRIMARY}55` }} />
+                {/* Pointer */}
+                <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-10 pointer-events-none">
+                  <div
+                    style={{
+                      width: 0,
+                      height: 0,
+                      borderLeft: "18px solid transparent",
+                      borderRight: "18px solid transparent",
+                      borderTop: `30px solid ${BRAND_GOLD}`,
+                      filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.4))",
+                    }}
+                  />
                 </div>
-              );
-            })}
+                <canvas
+                  ref={canvasRef}
+                  width={wheelSize}
+                  height={wheelSize}
+                  className="relative block mt-6 rounded-full"
+                  style={{ width: wheelSize, height: wheelSize }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={spin}
+                disabled={spinning || segsLeft === 0 || (isTeamFirst && activeTeamIndex === null)}
+                className="mt-4 px-7 sm:px-10 py-3.5 rounded-2xl font-black text-lg sm:text-xl shadow-2xl flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 active:scale-95"
+                style={{
+                  background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})`,
+                  color: "#fff",
+                  border: `2px solid ${BRAND_GOLD}`,
+                }}
+              >
+                {spinning
+                  ? <><Loader2 className="w-6 h-6 animate-spin" /> {ar ? "تدور…" : "Spinning…"}</>
+                  : segsLeft === 0
+                    ? <><Trophy className="w-6 h-6" /> {ar ? "انتهت اللعبة" : "Game Over"}</>
+                    : <><RotateCw className="w-6 h-6" /> {ar ? "أدر العجلة" : "Spin the Wheel"}</>}
+              </button>
+            </section>
+
+            <aside className="order-3">{renderTeamCard(1)}</aside>
           </div>
+
+          {template.config.teamNames.length > 2 && (
+            <section className="mt-4 pt-4 border-t border-white/10" dir={dir}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <Trophy className="w-4 h-4" style={{ color: BRAND_GOLD }} />
+                <h2 className="text-xs font-black uppercase tracking-wider" style={{ color: BRAND_GOLD }}>
+                  {ar ? "الفرق الإضافية" : "Additional teams"}
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                {template.config.teamNames.slice(2).map((_, index) => renderTeamCard(index + 2, true))}
+              </div>
+            </section>
+          )}
         </div>
-      </div>
+      </main>
 
       {/* Result modal — shown after spin lands */}
       <AnimatePresence>
@@ -787,7 +893,7 @@ export default function WheelPlay() {
                   <span className="font-black text-white text-lg">
                     {currentSeg.kind === "bonus"
                       ? (ar ? "قطاع مكافأة!" : "Bonus Segment!")
-                      : `${currentSeg.points} ${ar ? "نقطة" : "points"}`}
+                      : `${pointsForQuestion(currentSeg)} ${ar ? "نقطة" : "points"}`}
                   </span>
                 </div>
                 <button
@@ -833,39 +939,74 @@ export default function WheelPlay() {
                       </button>
                     )}
 
-                    <div>
-                      <p className="text-sm font-bold mb-2 text-white/70">
-                        {ar ? "امنح النقاط لأحد الفرق:" : "Award points to a team:"}
-                        {doubleMultiplier > 1 && (
-                          <span className="ms-2 inline-block px-2 py-0.5 rounded-md text-[11px] font-black"
-                            style={{ background: BRAND_GOLD, color: "#1a1a1a" }}>
-                            ×{doubleMultiplier}
-                          </span>
-                        )}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {template.config.teamNames.map((name, i) => {
-                          const total = currentSeg.points * doubleMultiplier;
-                          return (
-                            <button
-                              key={i}
-                              onClick={() => {
-                                const awarded = awardQuestionPoints(i, currentSeg.points);
-                                toast.success(ar ? `+${awarded} لـ ${name}` : `+${awarded} to ${name}`);
-                              }}
-                              className="rounded-xl py-2.5 px-3 text-sm font-bold border-2 hover:scale-[1.02] transition-transform"
-                              style={{
-                                borderColor: WHEEL_PALETTE[i % WHEEL_PALETTE.length],
-                                background: `${WHEEL_PALETTE[i % WHEEL_PALETTE.length]}30`,
-                                color: "#fff",
-                              }}
-                            >
-                              +{total} · {name}
-                            </button>
-                          );
-                        })}
+                    {isTeamFirst ? (
+                      <div className="rounded-2xl border p-3.5" style={{ borderColor: `${BRAND_GOLD}66`, background: `${BRAND_GOLD}0d` }}>
+                        <p className="text-sm font-bold text-white/80 text-center">
+                          {ar ? "النقاط الصحيحة تُمنح للفريق صاحب الدور فقط:" : "Correct points go only to the active team:"}
+                          {doubleMultiplier > 1 && (
+                            <span className="ms-2 inline-block px-2 py-0.5 rounded-md text-[11px] font-black"
+                              style={{ background: BRAND_GOLD, color: "#1a1a1a" }}>
+                              ×{doubleMultiplier}
+                            </span>
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={activeTeamIndex === null || questionAwarded}
+                          onClick={awardCurrentTeamQuestion}
+                          className="mt-3 w-full rounded-xl py-3 px-4 text-base font-black border-2 disabled:opacity-55 disabled:cursor-not-allowed"
+                          style={{
+                            borderColor: activeTeamIndex === null ? "rgba(255,255,255,0.2)" : WHEEL_PALETTE[activeTeamIndex % WHEEL_PALETTE.length],
+                            background: activeTeamIndex === null ? "rgba(255,255,255,0.06)" : `${WHEEL_PALETTE[activeTeamIndex % WHEEL_PALETTE.length]}45`,
+                            color: "#fff",
+                          }}
+                        >
+                          {questionAwarded
+                            ? (ar ? `تم منح النقاط لـ ${activeTeamName}` : `Points awarded to ${activeTeamName}`)
+                            : activeTeamIndex === null
+                              ? (ar ? "لا يوجد فريق نشط" : "No active team")
+                              : `+${pointsForQuestion(currentSeg) * doubleMultiplier} · ${activeTeamName}`}
+                        </button>
                       </div>
-                    </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-bold mb-2 text-white/70">
+                          {ar ? "امنح النقاط لأحد الفرق:" : "Award points to a team:"}
+                          {doubleMultiplier > 1 && (
+                            <span className="ms-2 inline-block px-2 py-0.5 rounded-md text-[11px] font-black"
+                              style={{ background: BRAND_GOLD, color: "#1a1a1a" }}>
+                              ×{doubleMultiplier}
+                            </span>
+                          )}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {template.config.teamNames.map((name, i) => {
+                            const total = pointsForQuestion(currentSeg) * doubleMultiplier;
+                            return (
+                              <button
+                                type="button"
+                                key={i}
+                                disabled={questionAwarded}
+                                onClick={() => {
+                                  if (questionAwarded) return;
+                                  const awarded = awardQuestionPoints(i, pointsForQuestion(currentSeg));
+                                  setQuestionAwarded(true);
+                                  toast.success(ar ? `+${awarded} لـ ${name}` : `+${awarded} to ${name}`);
+                                }}
+                                className="rounded-xl py-2.5 px-3 text-sm font-bold border-2 hover:scale-[1.02] transition-transform disabled:opacity-55 disabled:cursor-not-allowed"
+                                style={{
+                                  borderColor: WHEEL_PALETTE[i % WHEEL_PALETTE.length],
+                                  background: `${WHEEL_PALETTE[i % WHEEL_PALETTE.length]}30`,
+                                  color: "#fff",
+                                }}
+                              >
+                                {questionAwarded ? (ar ? "تم منح النقاط" : "Points awarded") : `+${total} · ${name}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
