@@ -311,37 +311,48 @@ export default function WheelPlay() {
       ctx.strokeStyle = "rgba(0,0,0,0.25)";
       ctx.stroke();
 
-      // Wedge labels follow the segment while keeping their reading direction
-      // upright, so they can be scanned quickly from the classroom display.
-      ctx.save();
+      // Keep the label's position in its own wedge, then flip only the text
+      // baseline on the left side. Rotating the whole drawing context by PI
+      // would move the label into the opposite wedge.
       const midAngle = start + arc / 2;
-      const readableAngle = Math.cos(midAngle) < 0 ? midAngle + Math.PI : midAngle;
-      ctx.rotate(readableAngle);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = used ? "#888" : "#fff";
-      ctx.font = "900 20px system-ui, -apple-system, sans-serif";
+      const textFlip = Math.cos(midAngle) < 0 ? Math.PI : 0;
+      const drawRadialLabel = (value: string, distance: number) => {
+        ctx.save();
+        ctx.translate(Math.cos(midAngle) * distance, Math.sin(midAngle) * distance);
+        ctx.rotate(midAngle + textFlip);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(value, 0, 0);
+        ctx.restore();
+      };
 
-      // Points on outer
-      const pointsLabel = seg.kind === "bonus"
-        ? (seg.bonusType === "double" ? "×2"
+      // Keep numeric point values out of the wheel. They compete with the
+      // question text and remain clearly visible in the result dialog and
+      // team score cards. Bonus tiles retain a short visual marker.
+      if (seg.kind === "bonus") {
+        const bonusMarker = seg.bonusType === "double" ? "×2"
           : seg.bonusType === "skip" ? "→→"
           : seg.bonusType === "swap" ? "⇄"
           : seg.bonusType === "lose" ? "−½"
-          : "★")
-        : `${seg.points}`;
-      ctx.fillText(pointsLabel, radius - 20, 0);
+          : "★";
+        ctx.fillStyle = used ? "#888" : "#fff";
+        ctx.font = "900 20px system-ui, -apple-system, sans-serif";
+        drawRadialLabel(bonusMarker, radius - 25);
+      }
 
-      // Truncated text on inner
+      // Fit the segment title to the radial space so every wedge retains a
+      // visible, distinct label even when the wheel has 12–16 segments.
       const text = seg.text || "";
-      const maxLen = n <= 8 ? 28 : n <= 12 ? 23 : 18;
-      const display = text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
-      const textSize = n <= 8 ? 18 : n <= 12 ? 16 : 14;
+      const textSize = n <= 6 ? 18 : n <= 10 ? 16 : 14;
       ctx.font = `800 ${textSize}px system-ui, -apple-system, sans-serif`;
+      const maxLabelWidth = Math.max(72, Math.min(190, radius * (n <= 6 ? 0.62 : n <= 10 ? 0.52 : 0.44)));
+      let display = text;
+      while (display.length > 1 && ctx.measureText(`${display}…`).width > maxLabelWidth) {
+        display = display.slice(0, -1);
+      }
+      if (display !== text) display += "…";
       ctx.fillStyle = used ? "#666" : "rgba(255,255,255,0.92)";
-      ctx.fillText(display, radius - 76, 0);
-
-      ctx.restore();
+      drawRadialLabel(display, radius * 0.56);
     });
     ctx.restore();
 
@@ -767,12 +778,12 @@ export default function WheelPlay() {
       <main className="relative max-w-[1440px] mx-auto p-3 sm:p-5">
         <div className="absolute inset-x-1/4 top-10 h-64 pointer-events-none blur-3xl opacity-30" style={{ background: `radial-gradient(circle, ${BRAND_GOLD}, transparent 68%)` }} />
         <div className="relative rounded-[2rem] border border-white/10 bg-black/10 p-3 sm:p-5 backdrop-blur-sm">
-          <div className="mx-auto mb-3 max-w-xl rounded-2xl border px-4 py-2.5 text-center"
+          <div className="mx-auto mb-3 max-w-xl rounded-2xl border px-4 py-3.5 text-center"
             style={{ borderColor: isTeamFirst ? `${BRAND_GOLD}99` : "rgba(255,255,255,0.14)", background: isTeamFirst ? `${BRAND_GOLD}12` : "rgba(255,255,255,0.04)" }}>
             {isTeamFirst ? (
-              <p className="text-sm font-black">
+              <p className="text-lg sm:text-xl leading-relaxed font-black">
                 <span style={{ color: BRAND_GOLD }}>{ar ? "الدور الآن:" : "TURN NOW:"}</span>{" "}
-                <span>{activeTeamName ?? (ar ? "اختر فريقاً" : "Choose a team")}</span>
+                <span className="font-black">{activeTeamName ?? (ar ? "اختر فريقاً" : "Choose a team")}</span>
               </p>
             ) : (
               <p className="text-xs sm:text-sm font-bold text-white/80">{ar ? "أدر العجلة ثم اختر الفريق الذي سيجيب" : "Spin the wheel, then choose the team that answers"}</p>
