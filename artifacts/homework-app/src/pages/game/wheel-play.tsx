@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, ArrowLeft, RotateCw, Volume2, VolumeX, Trophy, X,
   Eye, Plus, Minus, Sparkles, Gift, RefreshCw, Maximize2, Minimize2,
-  Link2, Copy, Check,
+  Link2, Copy, Check, Pencil,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -181,6 +181,12 @@ export default function WheelPlay() {
   const [error, setError] = useState<string | null>(null);
 
   const [scores, setScores] = useState<number[]>([]);
+  // Local-only team names for this play session — never written back to the
+  // template, so a guest opening a shared link can rename teams without
+  // needing edit rights on the owner's saved wheel.
+  const [teamNames, setTeamNames] = useState<string[]>([]);
+  const [editingTeamIdx, setEditingTeamIdx] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const [soundOn, setSoundOn] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -262,6 +268,7 @@ export default function WheelPlay() {
         };
         setTemplate({ ...t, segments: segs, config });
         setScores(new Array(config.teamCount).fill(0));
+        setTeamNames(config.teamNames);
         setSoundOn(config.soundOn);
         setActiveTeamIndex(config.turnMode === "team_first" ? 0 : null);
       })
@@ -280,7 +287,7 @@ export default function WheelPlay() {
     if (directPlayLink) {
       try {
         await navigator.clipboard.writeText(directPlayLink);
-        toast.success(ar ? "تم نسخ الرابط المباشر" : "Direct link copied");
+        toast.success(ar ? "تم نسخ رابط اللعبة" : "Game link copied");
       } catch {
         toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
       }
@@ -583,8 +590,8 @@ export default function WheelPlay() {
       next[b] = tmp;
       return next;
     });
-    const an = template.config.teamNames[a];
-    const bn = template.config.teamNames[b];
+    const an = teamNames[a];
+    const bn = teamNames[b];
     toast.success(ar ? `تم تبادل نقاط ${an} و${bn}` : `Swapped scores between ${an} and ${bn}`);
     setSwapPicks([]);
   };
@@ -669,6 +676,7 @@ export default function WheelPlay() {
     setSkippedTeams(new Set());
     setSwapPicks([]);
     setQuestionAwarded(false);
+    setEditingTeamIdx(null);
     setActiveTeamIndex(template?.config.turnMode === "team_first" ? 0 : null);
   };
 
@@ -733,19 +741,31 @@ export default function WheelPlay() {
   const pointsMode = template.config.pointsMode ?? "varied";
   const pointsForQuestion = (segment: Segment) =>
     pointsMode === "uniform" ? (template.config.uniformPoints ?? 100) : segment.points;
-  const activeTeamName = activeTeamIndex === null ? null : template.config.teamNames[activeTeamIndex];
+  const activeTeamName = activeTeamIndex === null ? null : teamNames[activeTeamIndex];
 
   const awardCurrentTeamQuestion = () => {
     if (!currentSeg || currentSeg.kind !== "question" || activeTeamIndex === null || questionAwarded) return;
     const awarded = awardQuestionPoints(activeTeamIndex, pointsForQuestion(currentSeg));
     setQuestionAwarded(true);
     toast.success(ar
-      ? `+${awarded} لـ ${template.config.teamNames[activeTeamIndex]}`
-      : `+${awarded} to ${template.config.teamNames[activeTeamIndex]}`);
+      ? `+${awarded} لـ ${teamNames[activeTeamIndex]}`
+      : `+${awarded} to ${teamNames[activeTeamIndex]}`);
+  };
+
+  const commitTeamNameEdit = (teamIdx: number) => {
+    const trimmed = editingValue.trim();
+    if (trimmed) {
+      setTeamNames((prev) => {
+        const next = [...prev];
+        next[teamIdx] = trimmed;
+        return next;
+      });
+    }
+    setEditingTeamIdx(null);
   };
 
   const renderTeamCard = (teamIdx: number, compact = false) => {
-    const name = template.config.teamNames[teamIdx];
+    const name = teamNames[teamIdx];
     const score = scores[teamIdx] ?? 0;
     const color = WHEEL_PALETTE[teamIdx % WHEEL_PALETTE.length];
     const isLeader = score > 0 && teamIdx === winnerIdx;
@@ -773,12 +793,41 @@ export default function WheelPlay() {
         }}
       >
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex items-center gap-2">
+          <div className="min-w-0 flex items-center gap-1.5 flex-1">
             <span className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_10px_currentColor]" style={{ color, background: color }} />
-            <span className={`font-black truncate ${compact ? "text-sm" : "text-base sm:text-lg"}`}>{name}</span>
-            {isLeader && <Sparkles className="w-4 h-4 shrink-0" style={{ color: BRAND_GOLD }} />}
+            {editingTeamIdx === teamIdx ? (
+              <input
+                autoFocus
+                value={editingValue}
+                maxLength={30}
+                onChange={(event) => setEditingValue(event.target.value)}
+                onClick={(event) => event.stopPropagation()}
+                onBlur={() => commitTeamNameEdit(teamIdx)}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key === "Enter") { event.preventDefault(); commitTeamNameEdit(teamIdx); }
+                  if (event.key === "Escape") { event.preventDefault(); setEditingTeamIdx(null); }
+                }}
+                className={`font-black bg-transparent border-b outline-none min-w-0 flex-1 ${compact ? "text-sm" : "text-base sm:text-lg"}`}
+                style={{ borderColor: BRAND_GOLD, color: "#fff" }}
+              />
+            ) : (
+              <>
+                <span className={`font-black truncate ${compact ? "text-sm" : "text-base sm:text-lg"}`}>{name}</span>
+                {isLeader && <Sparkles className="w-4 h-4 shrink-0" style={{ color: BRAND_GOLD }} />}
+                <button
+                  type="button"
+                  onClick={(event) => { event.stopPropagation(); setEditingValue(name); setEditingTeamIdx(teamIdx); }}
+                  className="p-1 rounded-md hover:bg-white/10 shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                  aria-label={ar ? "تعديل اسم الفريق" : "Edit team name"}
+                  title={ar ? "تعديل اسم الفريق" : "Edit team name"}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </div>
-          <span className={`${compact ? "text-xl" : "text-3xl sm:text-4xl"} font-black tabular-nums`} style={{ color: isLeader || isActive ? BRAND_GOLD : "#fff" }}>{score}</span>
+          <span className={`${compact ? "text-xl" : "text-3xl sm:text-4xl"} font-black tabular-nums shrink-0`} style={{ color: isLeader || isActive ? BRAND_GOLD : "#fff" }}>{score}</span>
         </div>
         {isActive && (
           <div className="mt-3 rounded-lg px-2.5 py-1.5 text-center text-[11px] font-black border"
@@ -845,7 +894,7 @@ export default function WheelPlay() {
                 {directLinkLoading
                   ? (ar ? "جارٍ إنشاء الرابط…" : "Creating…")
                   : directPlayLink
-                    ? (ar ? "نسخ الرابط" : "Copy link")
+                    ? (ar ? "نسخ رابط اللعبة" : "Copy game link")
                     : (ar ? "رابط لعب مباشر" : "Direct link")}
               </span>
             </button>
@@ -947,7 +996,7 @@ export default function WheelPlay() {
             <aside className="order-3">{renderTeamCard(1)}</aside>
           </div>
 
-          {template.config.teamNames.length > 2 && (
+          {teamNames.length > 2 && (
             <section className="mt-4 pt-4 border-t border-white/10" dir={dir}>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <Trophy className="w-4 h-4" style={{ color: BRAND_GOLD }} />
@@ -956,7 +1005,7 @@ export default function WheelPlay() {
                 </h2>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {template.config.teamNames.slice(2).map((_, index) => renderTeamCard(index + 2, true))}
+                {teamNames.slice(2).map((_, index) => renderTeamCard(index + 2, true))}
               </div>
             </section>
           )}
@@ -1078,7 +1127,7 @@ export default function WheelPlay() {
                           )}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
-                          {template.config.teamNames.map((name, i) => {
+                          {teamNames.map((name, i) => {
                             const total = pointsForQuestion(currentSeg) * doubleMultiplier;
                             return (
                               <button
@@ -1133,7 +1182,7 @@ export default function WheelPlay() {
                           {ar ? "اختر الفريق المحظوظ:" : "Pick the lucky team:"}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
-                          {template.config.teamNames.map((name, i) => (
+                          {teamNames.map((name, i) => (
                             <button
                               key={i}
                               onClick={() => {
@@ -1162,7 +1211,7 @@ export default function WheelPlay() {
                           {ar ? "اختر الفريق الذي يخسر نصف نقاطه:" : "Pick the team that loses half:"}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
-                          {template.config.teamNames.map((name, i) => {
+                          {teamNames.map((name, i) => {
                             const lostPreview = Math.floor((scores[i] ?? 0) / 2);
                             return (
                               <button
@@ -1194,7 +1243,7 @@ export default function WheelPlay() {
                           {ar ? "اختر الفريق الذي يخسر دوره القادم:" : "Pick the team that skips its next turn:"}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
-                          {template.config.teamNames.map((name, i) => {
+                          {teamNames.map((name, i) => {
                             const isMarked = skippedTeams.has(i);
                             return (
                               <button
@@ -1228,7 +1277,7 @@ export default function WheelPlay() {
                             : `Pick two teams whose scores will swap (${swapPicks.length}/2):`}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
-                          {template.config.teamNames.map((name, i) => {
+                          {teamNames.map((name, i) => {
                             const picked = swapPicks.includes(i);
                             return (
                               <button
@@ -1369,7 +1418,7 @@ export default function WheelPlay() {
                     className="text-4xl font-black mb-2"
                     style={{ color: BRAND_GOLD, textShadow: `0 0 20px ${BRAND_GOLD}88` }}
                   >
-                    {template.config.teamNames[winnerIdx]}
+                    {teamNames[winnerIdx]}
                   </motion.p>
                   <p className="text-2xl font-black mb-6">
                     {scores[winnerIdx]} {ar ? "نقطة" : "points"}

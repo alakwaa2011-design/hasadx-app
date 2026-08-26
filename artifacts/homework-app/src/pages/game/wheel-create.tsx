@@ -941,7 +941,7 @@ export default function WheelCreate() {
                   {directPlayLink ? (
                     <div className="flex gap-2 shrink-0">
                       <button type="button" onClick={copyDirectPlayLink} className="px-4 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 text-white" style={{ background: BRAND_PRIMARY }}>
-                        <Copy className="w-4 h-4" />{contentLang === "ar" ? "نسخ الرابط" : "Copy link"}
+                        <Copy className="w-4 h-4" />{contentLang === "ar" ? "نسخ رابط اللعبة" : "Copy game link"}
                       </button>
                       <button type="button" disabled={directLinkLoading} onClick={cancelDirectPlayLink} className="px-3 py-2.5 rounded-xl font-bold border border-red-500/35 text-red-600 hover:bg-red-500/5 flex items-center justify-center gap-2 disabled:opacity-60" title={contentLang === "ar" ? "إلغاء رابط العرض" : "Cancel display link"}>
                         {directLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
