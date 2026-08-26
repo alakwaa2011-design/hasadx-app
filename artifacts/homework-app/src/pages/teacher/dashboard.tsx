@@ -2442,6 +2442,22 @@ function CompetitiveTab({
   return (
     <>
     <div className="space-y-10">
+      <GameCatalogSection
+        title={
+          lang === "ar"
+            ? "مسابقات حية مع الصفّ"
+            : "Live classroom games"
+        }
+        subtitle={
+          lang === "ar"
+            ? "ألعاب جماعية بوقت حقيقي — اربط واجباتك أو أنشئ غرفة وشارك الرمز أو الرابط مع الطلاب."
+            : "Real-time whole-class modes — tie to assignments or create a room and share PIN/link."
+        }
+        accentClass="text-primary"
+        games={liveGames}
+        delayOffset={0}
+      />
+
       {/* ألعاب ومسابقات جماهيرية — تحدّي حصاد + مسابقات عامة */}
       <section className="space-y-4">
         <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
@@ -2541,22 +2557,6 @@ function CompetitiveTab({
           </Card>
         </div>
       </section>
-
-      <GameCatalogSection
-        title={
-          lang === "ar"
-            ? "مسابقات حية مع الصفّ"
-            : "Live classroom games"
-        }
-        subtitle={
-          lang === "ar"
-            ? "ألعاب جماعية بوقت حقيقي — اربط واجباتك أو أنشئ غرفة وشارك الرمز أو الرابط مع الطلاب."
-            : "Real-time whole-class modes — tie to assignments or create a room and share PIN/link."
-        }
-        accentClass="text-primary"
-        games={liveGames}
-        delayOffset={0}
-      />
 
       {/* ── Modal: وميض — اختر الواجب ── */}
       <AnimatePresence>
