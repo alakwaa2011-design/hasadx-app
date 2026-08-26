@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, ArrowLeft, RotateCw, Volume2, VolumeX, Trophy, X,
   Eye, Plus, Minus, Sparkles, Gift, RefreshCw, Maximize2, Minimize2,
+  Link2, Copy, Check,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -51,6 +52,7 @@ interface Template {
   language: "ar" | "en";
   segments: Segment[];
   config: WheelConfig;
+  isOwn?: boolean;
 }
 
 const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
@@ -182,6 +184,8 @@ export default function WheelPlay() {
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const [soundOn, setSoundOn] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [directPlayLink, setDirectPlayLink] = useState<string | null>(null);
+  const [directLinkLoading, setDirectLinkLoading] = useState(false);
 
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0); // degrees
@@ -269,6 +273,45 @@ export default function WheelPlay() {
       })
       .finally(() => setLoading(false));
   }, [directToken, isDirectPlay, templateId, uiLang]);
+
+  const createOrCopyDirectPlayLink = useCallback(async () => {
+    if (isDirectPlay || isNaN(templateId)) return;
+
+    if (directPlayLink) {
+      try {
+        await navigator.clipboard.writeText(directPlayLink);
+        toast.success(ar ? "تم نسخ الرابط المباشر" : "Direct link copied");
+      } catch {
+        toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
+      }
+      return;
+    }
+
+    setDirectLinkLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/wheel-templates/${templateId}/play-links`,
+        { method: "POST", credentials: "include" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.token !== "string") {
+        toast.error(data.message || (ar ? "تعذّر إنشاء الرابط المباشر" : "Could not create the direct link"));
+        return;
+      }
+      const link = `${window.location.origin}/play/${data.token}`;
+      setDirectPlayLink(link);
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success(ar ? "تم إنشاء الرابط ونسخه" : "Direct link created and copied");
+      } catch {
+        toast.success(ar ? "تم إنشاء الرابط المباشر" : "Direct link created");
+      }
+    } catch {
+      toast.error(ar ? "تعذّر إنشاء الرابط المباشر" : "Could not create the direct link");
+    } finally {
+      setDirectLinkLoading(false);
+    }
+  }, [ar, directPlayLink, isDirectPlay, templateId]);
 
   /* ── Draw the wheel on canvas ─────────────────────────────── */
   const drawWheel = useCallback((rot: number) => {
@@ -784,6 +827,29 @@ export default function WheelPlay() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          {!isDirectPlay && template.isOwn !== false && (
+            <button
+              type="button"
+              onClick={createOrCopyDirectPlayLink}
+              disabled={directLinkLoading}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs sm:text-sm font-black transition-colors disabled:opacity-60"
+              style={{
+                color: BRAND_GOLD,
+                background: `${BRAND_GOLD}18`,
+                border: `1px solid ${BRAND_GOLD}88`,
+              }}
+              title={ar ? "إنشاء ونسخ رابط اللعب المباشر" : "Create and copy direct play link"}
+            >
+              {directLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : directPlayLink ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+              <span className="hidden sm:inline">
+                {directLinkLoading
+                  ? (ar ? "جارٍ إنشاء الرابط…" : "Creating…")
+                  : directPlayLink
+                    ? (ar ? "نسخ الرابط" : "Copy link")
+                    : (ar ? "رابط لعب مباشر" : "Direct link")}
+              </span>
+            </button>
+          )}
           <button
             onClick={() => setSoundOn(s => !s)}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"

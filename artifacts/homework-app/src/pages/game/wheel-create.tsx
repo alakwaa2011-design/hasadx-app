@@ -922,6 +922,40 @@ export default function WheelCreate() {
                   </button>
                 </div>
               </section>
+              {editingTemplateId !== null && (
+                <section
+                  className="rounded-2xl border-2 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  style={{ borderColor: `${BRAND_GOLD}99`, background: `${BRAND_GOLD}10` }}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${BRAND_GOLD}22`, color: BRAND_GOLD }}>
+                      <Link2 className="w-5 h-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="font-black text-foreground">{contentLang === "ar" ? "جاهز؟ شارك اللعبة الآن" : "Ready? Share the game now"}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {contentLang === "ar" ? "أنشئ رابطاً يفتح العجلة مباشرة على شاشة اللعب." : "Create a link that opens the wheel directly on the play screen."}
+                      </p>
+                    </div>
+                  </div>
+                  {directPlayLink ? (
+                    <div className="flex gap-2 shrink-0">
+                      <button type="button" onClick={copyDirectPlayLink} className="px-4 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 text-white" style={{ background: BRAND_PRIMARY }}>
+                        <Copy className="w-4 h-4" />{contentLang === "ar" ? "نسخ الرابط" : "Copy link"}
+                      </button>
+                      <button type="button" disabled={directLinkLoading} onClick={cancelDirectPlayLink} className="px-3 py-2.5 rounded-xl font-bold border border-red-500/35 text-red-600 hover:bg-red-500/5 flex items-center justify-center gap-2 disabled:opacity-60" title={contentLang === "ar" ? "إلغاء رابط العرض" : "Cancel display link"}>
+                        {directLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{contentLang === "ar" ? "إلغاء" : "Cancel"}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" disabled={directLinkLoading} onClick={createDirectPlayLink} className="shrink-0 px-4 py-2.5 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>
+                      {directLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                      {directLinkLoading ? (contentLang === "ar" ? "جارٍ الإنشاء…" : "Creating…") : (contentLang === "ar" ? "إنشاء الرابط المباشر" : "Create direct link")}
+                    </button>
+                  )}
+                </section>
+              )}
               <Card className="max-w-4xl mx-auto overflow-hidden border-primary/15 shadow-sm">
                 <div className="p-3 sm:p-4 space-y-2.5">
                   <details open className="group rounded-2xl border border-border bg-card overflow-hidden">
@@ -976,16 +1010,6 @@ export default function WheelCreate() {
                 </div>
                 <div className="p-4 sm:px-6 sm:py-5 border-t border-border bg-muted/20 flex flex-col sm:flex-row gap-2.5">
                   <button type="button" disabled={launching || segments.length < 2} onClick={launchPlay} className="flex-1 py-3 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>{launching ? <><Loader2 className="w-4 h-4 animate-spin" />{w.launching}</> : <><Play className="w-4 h-4" />{w.startPlaying}</>}</button>
-                  {editingTemplateId !== null && (
-                    directPlayLink ? (
-                      <div className="flex gap-2">
-                        <button type="button" onClick={copyDirectPlayLink} className="py-3 px-3.5 rounded-xl font-bold bg-card border border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all text-sm" title={contentLang === "ar" ? "نسخ رابط العرض" : "Copy display link"}><Copy className="w-4 h-4" />{contentLang === "ar" ? "نسخ الرابط" : "Copy link"}</button>
-                        <button type="button" disabled={directLinkLoading} onClick={cancelDirectPlayLink} className="py-3 px-3.5 rounded-xl font-bold border border-red-500/35 text-red-600 hover:bg-red-500/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm" title={contentLang === "ar" ? "إلغاء رابط العرض" : "Cancel display link"}>{directLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}{contentLang === "ar" ? "إلغاء الرابط" : "Cancel"}</button>
-                      </div>
-                    ) : (
-                      <button type="button" disabled={directLinkLoading} onClick={createDirectPlayLink} className="sm:min-w-44 py-3 px-4 rounded-xl font-bold border border-primary/35 text-primary bg-primary/5 hover:bg-primary/10 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm">{directLinkLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{contentLang === "ar" ? "جارٍ الإنشاء..." : "Creating..."}</> : <><Link2 className="w-4 h-4" />{contentLang === "ar" ? "إنشاء رابط لعب مباشر" : "Create display link"}</>}</button>
-                    )
-                  )}
                   <button type="button" disabled={saving} onClick={saveTemplate} className="sm:min-w-44 py-3 px-5 rounded-xl font-bold bg-card border border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm">{saving ? <><Loader2 className="w-4 h-4 animate-spin" />{w.saving}</> : editingTemplateId !== null ? <><Check className="w-4 h-4" />{w.updateTemplate}</> : <><Save className="w-4 h-4" />{w.saveToLibrary}</>}</button>
                 </div>
               </Card>
