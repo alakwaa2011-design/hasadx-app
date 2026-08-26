@@ -2356,12 +2356,14 @@ function CompetitiveTab({
     accentClass,
     games,
     delayOffset,
+    extraContent,
   }: {
     title: string;
     subtitle: string;
     accentClass: string;
     games: typeof liveGames;
     delayOffset: number;
+    extraContent?: ReactNode;
   }) => (
     <section className="space-y-4">
       <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
@@ -2435,6 +2437,7 @@ function CompetitiveTab({
             </Card>
           </motion.div>
         ))}
+          {extraContent}
       </div>
     </section>
   );
@@ -2456,6 +2459,36 @@ function CompetitiveTab({
         accentClass="text-primary"
         games={liveGames}
         delayOffset={0}
+        extraContent={
+          <Card
+            onClick={() => setLocation("/teacher/solo-challenges")}
+            className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="rounded-xl flex items-center justify-center shadow-lg shrink-0">
+                <WameethIcon height={40} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                  <h3 className="text-base sm:text-lg font-black text-foreground">
+                    {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/25">
+                    {lang === "ar" ? "بالرابط" : "Link"}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                  {lang === "ar"
+                    ? "أنشئ مسابقة وأرسل رابطها — يجيب المشاركون في أي وقت بشكل فردي."
+                    : "Create a quiz, share the link — participants answer anytime, individually."}
+                </p>
+              </div>
+              <ChevronLeft
+                className={`w-5 h-5 text-muted-foreground group-hover:text-yellow-500 shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+              />
+            </div>
+          </Card>
+        }
       />
 
       {/* ألعاب ومسابقات جماهيرية — تحدّي حصاد + مسابقات عامة */}
@@ -2526,35 +2559,6 @@ function CompetitiveTab({
             </div>
           </Card>
 
-          {/* مسابقة ذاتية — مسابقة فردية بالرابط */}
-          <Card
-            onClick={() => setLocation("/teacher/solo-challenges")}
-            className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
-          >
-            <div className="flex items-center gap-4">
-              <div className="rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                <WameethIcon height={40} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                  <h3 className="text-base sm:text-lg font-black text-foreground">
-                    {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
-                  </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/25">
-                    {lang === "ar" ? "بالرابط" : "Link"}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                  {lang === "ar"
-                    ? "أنشئ مسابقة وأرسل رابطها — يجيب المشاركون في أي وقت بشكل فردي."
-                    : "Create a quiz, share the link — participants answer anytime, individually."}
-                </p>
-              </div>
-              <ChevronLeft
-                className={`w-5 h-5 text-muted-foreground group-hover:text-yellow-500 shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
-              />
-            </div>
-          </Card>
         </div>
       </section>
 
