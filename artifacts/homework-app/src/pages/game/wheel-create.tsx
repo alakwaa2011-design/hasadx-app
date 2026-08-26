@@ -243,6 +243,25 @@ export default function WheelCreate() {
     ]);
   };
 
+  const applyPointsSettings = (
+    sourceSegments: Segment[],
+    mode: PointsMode = config.pointsMode ?? "varied",
+    uniformPoints = config.uniformPoints ?? 100,
+  ) => {
+    const questionSegments = sourceSegments.filter(segment => segment.kind === "question");
+    const alreadyVaried = new Set(questionSegments.map(segment => segment.points)).size > 1;
+    let questionIndex = 0;
+    return sourceSegments.map(segment => {
+      if (segment.kind !== "question") return segment;
+      const points = mode === "uniform"
+        ? uniformPoints
+        : alreadyVaried
+          ? segment.points
+          : POINT_OPTIONS[questionIndex++ % POINT_OPTIONS.length];
+      return { ...segment, points };
+    });
+  };
+
   const generateAI = async () => {
     if (!aiTopic.trim()) {
       toast.error(w.enterTopic);
@@ -276,7 +295,7 @@ export default function WheelCreate() {
         return;
       }
       const generated = (data.segments || []).map((s: Segment) => ({ ...s, id: s.id || newId() }));
-      setSegments(applyBonusSettings(generated));
+      setSegments(applyPointsSettings(applyBonusSettings(generated)));
       setSegmentsEditorOpen(true);
       if (!title.trim()) setTitle(aiTopic.trim().slice(0, 80));
       toast.success(w.generatedSegments.replace("{count}", String(generated.length)));
@@ -324,7 +343,7 @@ export default function WheelCreate() {
     language: contentLang,
     gradeLevel: gradeLevel.trim() || null,
     subject: subject.trim() || null,
-    segments: applyBonusSettings(segments),
+    segments: applyPointsSettings(applyBonusSettings(segments)),
     config,
   });
 
@@ -412,7 +431,7 @@ export default function WheelCreate() {
     setContentLang(t.language);
     setSubject(t.subject ?? "");
     setGradeLevel(t.gradeLevel ?? "");
-    setSegments(colorize(t.segments));
+      setSegments(applyPointsSettings(colorize(t.segments), t.config.pointsMode ?? "varied", t.config.uniformPoints ?? 100));
     setSegmentsEditorOpen(true);
     // Older templates have no turn/points mode. Keep their existing
     // wheel-first, per-segment behavior instead of silently changing a game.
@@ -495,7 +514,7 @@ export default function WheelCreate() {
         kind: "question" as const,
         imageUrl: q.imageUrl || null,
       }));
-      setSegments(applyBonusSettings(newSegs));
+      setSegments(applyPointsSettings(applyBonusSettings(newSegs), config.pointsMode, config.uniformPoints));
       setActiveSource("assignment");
       setSegmentsEditorOpen(false);
       setSetupStep("source");
@@ -610,7 +629,7 @@ export default function WheelCreate() {
       kind: "question" as const,
       imageUrl: question.imageUrl || null,
     }));
-    setSegments(previous => applyBonusSettings([...previous, ...newSegments]));
+    setSegments(previous => applyPointsSettings(applyBonusSettings([...previous, ...newSegments]), config.pointsMode, config.uniformPoints));
     setActiveSource("bank");
     setSegmentsEditorOpen(true);
     setBankOpen(false);
@@ -859,8 +878,8 @@ export default function WheelCreate() {
                     </summary>
                     <div className="border-t border-border p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div><label className="text-xs font-bold text-foreground block mb-1">{w.turnMode}</label><select value={config.turnMode} onChange={e => setConfig(current => ({ ...current, turnMode: e.target.value as TurnMode }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm font-bold"><option value="team_first">{w.teamFirst}</option><option value="wheel_first">{w.wheelFirst}</option></select></div>
-                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.pointsSystem}</label><select value={config.pointsMode} onChange={e => setConfig(current => ({ ...current, pointsMode: e.target.value as PointsMode }))} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm font-bold"><option value="uniform">{w.uniformPoints}</option><option value="varied">{w.variedPoints}</option></select></div>
-                      {config.pointsMode === "uniform" && <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-muted/35 px-3 py-2"><label className="text-xs font-bold text-foreground">{w.pointsPerQuestion}</label><select value={config.uniformPoints} onChange={e => setConfig(current => ({ ...current, uniformPoints: parseInt(e.target.value, 10) }))} className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-black">{POINT_OPTIONS.map(points => <option key={points} value={points}>{points} {w.point}</option>)}</select></div>}
+                      <div><label className="text-xs font-bold text-foreground block mb-1">{w.pointsSystem}</label><select value={config.pointsMode} onChange={e => { const mode = e.target.value as PointsMode; setConfig(current => ({ ...current, pointsMode: mode })); setSegments(previous => applyPointsSettings(previous, mode, config.uniformPoints)); }} className="w-full px-3 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none text-sm font-bold"><option value="uniform">{w.uniformPoints}</option><option value="varied">{w.variedPoints}</option></select></div>
+                      {config.pointsMode === "uniform" && <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-muted/35 px-3 py-2"><label className="text-xs font-bold text-foreground">{w.pointsPerQuestion}</label><select value={config.uniformPoints} onChange={e => { const points = parseInt(e.target.value, 10); setConfig(current => ({ ...current, uniformPoints: points })); setSegments(previous => applyPointsSettings(previous, "uniform", points)); }} className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-black">{POINT_OPTIONS.map(points => <option key={points} value={points}>{points} {w.point}</option>)}</select></div>}
                     </div>
                   </details>
 
