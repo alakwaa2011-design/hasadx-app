@@ -457,7 +457,7 @@ function buildWheelPrompt(opts: {
   const bonusTypesText = bonusTypes.join(", ");
 
   if (language === "en") {
-    return `You are an expert teacher designing a "Wheel of Fortune" classroom game.
+    return `You are an expert teacher designing a "Wheel of Challenge" classroom game.
 
 Topic: ${topic}
 ${subject ? `Subject: ${subject}` : ""}

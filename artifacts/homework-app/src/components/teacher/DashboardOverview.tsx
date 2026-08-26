@@ -2832,7 +2832,7 @@ function GamesArcade({
     { icon: <WameethIcon height={32} />, name: isAr ? "مسابقة ذاتية" : "Solo Challenge", to: "/teacher/solo-challenges" },
     { icon: <RocketIcon size={32} />,    name: isAr ? "سباق الصواريخ" : "Rocket Race",    to: "/game/rocket/create" },
     { icon: <MillionIcon size={32} />,   name: isAr ? "المليون" : "Million",               to: "/game/million" },
-    { icon: <WheelIcon size={32} />,     name: isAr ? "عجلة الحظ" : "Lucky Wheel",         to: "/game/wheel/create" },
+    { icon: <WheelIcon size={32} />,     name: isAr ? "عجلة التحدي" : "Wheel of Challenge", to: "/game/wheel/create" },
     { icon: <TugWarIcon size={32} />,    name: isAr ? "شد الحبل" : "Tug of War",           to: "/game/tug/create" },
     { icon: <HotSeatIcon size={32} />,   name: isAr ? "تحديات ذكاء" : "Brain Challenges",  to: "/teacher/games#solo" },
   ];

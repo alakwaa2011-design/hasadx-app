@@ -1,7 +1,7 @@
 import { pgTable, serial, text, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 
-/* Wheel of Fortune (عجلة الحظ) — teacher-driven classroom game.
+/* Wheel of Challenge (عجلة التحدي) — teacher-driven classroom game.
    The teacher spins a wheel on the class display, the wheel lands on a
    "segment" (most are questions, a few may be bonus actions), the teacher
    reads the question to the class, students answer aloud, and the teacher
