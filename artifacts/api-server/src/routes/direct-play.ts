@@ -1,20 +1,29 @@
 /**
  * Direct Play — رابط لعب مباشر
  *
- * Provides stable, opaque share-links for assignments.
- * Teachers create links (auth required); anyone can play with the link (no auth).
+ * Provides stable, opaque share-links for assignments and wheel templates.
+ * Teachers create links (auth required); anyone can open a display link (no auth).
  *
  * Routes:
  *   POST /api/assignments/:id/play-links   — teacher creates/fetches a link for a game type
+ *   POST /api/wheel-templates/:id/play-links — teacher creates/fetches a display link
+ *   DELETE /api/wheel-templates/:id/play-links — teacher cancels a display link
  *   GET  /api/play/:token/info             — public info for the landing page
+ *   GET  /api/play/:token/wheel            — public display setup for Wheel of Challenge
  *   POST /api/play/:token/start            — public: create solo game session, return PIN
  *   GET  /api/play/:token/wameeth-class    — public: load split-screen class setup
  *
- * Supported game types: "wameeth" | "wameeth_class" | "rocket_race"
+ * Supported game types: "wameeth" | "wameeth_class" | "rocket_race" | "wheel"
  */
 import { Router, type IRouter } from "express";
 import { randomBytes } from "crypto";
-import { db, assignmentsTable, questionsTable, directPlayLinksTable } from "@workspace/db";
+import {
+  db,
+  assignmentsTable,
+  questionsTable,
+  directPlayLinksTable,
+  wheelTemplatesTable,
+} from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { createGame, deleteGame, getGame, type GameQuestion } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
@@ -53,6 +62,10 @@ function getDbErrorCode(err: unknown): string | undefined {
   return undefined;
 }
 
+function isValidDirectToken(token: string | undefined): token is string {
+  return !!token && token.length === 32 && /^[0-9a-f]+$/.test(token);
+}
+
 // Cleanup buckets every 5 minutes to avoid unbounded growth
 setInterval(() => {
   const now = Date.now();
@@ -64,6 +77,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 const SUPPORTED_GAME_TYPES = new Set(["wameeth", "wameeth_class", "rocket_race"]);
+const WHEEL_GAME_TYPE = "wheel";
 const QUESTION_TYPES = ["mcq", "true_false", "fill_blank", "dictation"] as const;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -325,40 +339,200 @@ router.post("/assignments/:id/play-links", async (req, res) => {
   }
 });
 
+// ── Wheel of Challenge display links ─────────────────────────────────────────
+// A display link is deliberately owner-only and has no student join path. It
+// opens the local teacher-controlled wheel directly; the token is the only
+// public identifier and no teacher/template IDs leave this route.
+router.post("/wheel-templates/:id/play-links", async (req, res) => {
+  try {
+    const session = (req as any).session as Record<string, unknown> | undefined;
+    const teacherId = session?.teacherId as number | undefined;
+    if (!teacherId) return res.status(401).json({ message: "يجب تسجيل الدخول" });
+
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) return res.status(400).json({ message: "معرّف غير صالح" });
+
+    const [template] = await db
+      .select({
+        id: wheelTemplatesTable.id,
+        teacherId: wheelTemplatesTable.teacherId,
+        segments: wheelTemplatesTable.segments,
+      })
+      .from(wheelTemplatesTable)
+      .where(eq(wheelTemplatesTable.id, id))
+      .limit(1);
+    if (!template || template.teacherId !== teacherId) {
+      return res.status(404).json({ message: "قالب العجلة غير موجود" });
+    }
+    if (!Array.isArray(template.segments) || template.segments.length < 2) {
+      return res.status(400).json({ message: "يجب أن تحتوي العجلة على قطاعين على الأقل" });
+    }
+
+    const [existing] = await db
+      .select({ token: directPlayLinksTable.token })
+      .from(directPlayLinksTable)
+      .where(and(
+        eq(directPlayLinksTable.wheelTemplateId, id),
+        eq(directPlayLinksTable.gameType, WHEEL_GAME_TYPE),
+        eq(directPlayLinksTable.teacherId, teacherId),
+      ))
+      .limit(1);
+    if (existing) return res.json({ token: existing.token });
+
+    const token = randomBytes(16).toString("hex");
+    try {
+      await db.insert(directPlayLinksTable).values({
+        token,
+        wheelTemplateId: id,
+        gameType: WHEEL_GAME_TYPE,
+        teacherId,
+      });
+    } catch (err) {
+      if (getDbErrorCode(err) !== "23505") throw err;
+      const [racedExisting] = await db
+        .select({ token: directPlayLinksTable.token })
+        .from(directPlayLinksTable)
+        .where(and(
+          eq(directPlayLinksTable.wheelTemplateId, id),
+          eq(directPlayLinksTable.gameType, WHEEL_GAME_TYPE),
+          eq(directPlayLinksTable.teacherId, teacherId),
+        ))
+        .limit(1);
+      if (!racedExisting) throw err;
+      return res.json({ token: racedExisting.token });
+    }
+    return res.json({ token });
+  } catch (err) {
+    req.log.error(err, "wheel play-link create error");
+    return res.status(500).json({ message: "تعذّر إنشاء رابط العرض" });
+  }
+});
+
+router.delete("/wheel-templates/:id/play-links", async (req, res) => {
+  try {
+    const session = (req as any).session as Record<string, unknown> | undefined;
+    const teacherId = session?.teacherId as number | undefined;
+    if (!teacherId) return res.status(401).json({ message: "يجب تسجيل الدخول" });
+
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) return res.status(400).json({ message: "معرّف غير صالح" });
+
+    const [template] = await db
+      .select({ teacherId: wheelTemplatesTable.teacherId })
+      .from(wheelTemplatesTable)
+      .where(eq(wheelTemplatesTable.id, id))
+      .limit(1);
+    if (!template || template.teacherId !== teacherId) {
+      return res.status(404).json({ message: "قالب العجلة غير موجود" });
+    }
+
+    await db.delete(directPlayLinksTable).where(and(
+      eq(directPlayLinksTable.wheelTemplateId, id),
+      eq(directPlayLinksTable.gameType, WHEEL_GAME_TYPE),
+      eq(directPlayLinksTable.teacherId, teacherId),
+    ));
+    return res.json({ success: true });
+  } catch (err) {
+    req.log.error(err, "wheel play-link cancel error");
+    return res.status(500).json({ message: "تعذّر إلغاء رابط العرض" });
+  }
+});
+
 // ── GET /api/play/:token/info  (public, no auth) ─────────────────────────────
 // Returns just enough info to render the landing page. Returns 404 for any
 // invalid/expired token — no info leakage about the assignment.
 router.get("/play/:token/info", async (req, res) => {
   try {
     const { token } = req.params;
-    if (!token || token.length !== 32 || !/^[0-9a-f]+$/.test(token)) {
+    if (!isValidDirectToken(token)) {
       return res.status(404).json({ message: "الرابط غير صالح" });
     }
 
     const [link] = await db
       .select({
         assignmentId: directPlayLinksTable.assignmentId,
+        wheelTemplateId: directPlayLinksTable.wheelTemplateId,
         gameType: directPlayLinksTable.gameType,
-        title: assignmentsTable.title,
+        assignmentTitle: assignmentsTable.title,
+        wheelTitle: wheelTemplatesTable.title,
+        wheelSegments: wheelTemplatesTable.segments,
       })
       .from(directPlayLinksTable)
-      .innerJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .leftJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .leftJoin(wheelTemplatesTable, eq(directPlayLinksTable.wheelTemplateId, wheelTemplatesTable.id))
       .where(eq(directPlayLinksTable.token, token))
       .limit(1);
 
     if (!link) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (link.gameType === WHEEL_GAME_TYPE) {
+      const questionCount = Array.isArray(link.wheelSegments)
+        ? link.wheelSegments.filter((segment) =>
+          !!segment && typeof segment === "object" && (segment as { kind?: unknown }).kind === "question",
+        ).length
+        : 0;
+      if (!link.wheelTemplateId || !link.wheelTitle || questionCount < 1) {
+        return res.status(404).json({ message: "رابط العجلة لم يعد متاحاً" });
+      }
+      return res.json({ title: link.wheelTitle, questionCount, gameType: WHEEL_GAME_TYPE });
+    }
+    if (!link.assignmentId || !link.assignmentTitle) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
 
     const questionCount = await countPlayableQuestions(link.assignmentId);
     if (questionCount < 1) return res.status(404).json({ message: "لا توجد أسئلة في هذا النشاط" });
 
     return res.json({
-      title: link.title,
+      title: link.assignmentTitle,
       questionCount,
       gameType: link.gameType,
     });
   } catch (err) {
     req.log.error(err, "play-info error");
     return res.status(500).json({ message: "خطأ" });
+  }
+});
+
+// ── GET /api/play/:token/wheel  (public, no auth) ────────────────────────────
+// This returns only the data needed for the classroom display. It intentionally
+// omits template and teacher identifiers, ownership and library metadata.
+router.get("/play/:token/wheel", async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!isValidDirectToken(token)) {
+      return res.status(404).json({ message: "الرابط غير صالح" });
+    }
+
+    const [link] = await db
+      .select({
+        gameType: directPlayLinksTable.gameType,
+        title: wheelTemplatesTable.title,
+        language: wheelTemplatesTable.language,
+        segments: wheelTemplatesTable.segments,
+        config: wheelTemplatesTable.config,
+      })
+      .from(directPlayLinksTable)
+      .innerJoin(wheelTemplatesTable, eq(directPlayLinksTable.wheelTemplateId, wheelTemplatesTable.id))
+      .where(eq(directPlayLinksTable.token, token))
+      .limit(1);
+    if (
+      !link
+      || link.gameType !== WHEEL_GAME_TYPE
+      || !Array.isArray(link.segments)
+      || link.segments.length < 2
+    ) {
+      return res.status(404).json({ message: "رابط العجلة لم يعد متاحاً" });
+    }
+
+    return res.json({
+      title: link.title,
+      language: link.language,
+      segments: link.segments,
+      config: link.config,
+    });
+  } catch (err) {
+    req.log.error(err, "wheel direct-play load error");
+    return res.status(500).json({ message: "تعذّر تحميل عجلة التحدي" });
   }
 });
 
@@ -383,7 +557,7 @@ router.get("/play/:token/wameeth-class", async (req, res) => {
       .where(eq(directPlayLinksTable.token, token))
       .limit(1);
 
-    if (!link || link.gameType !== "wameeth_class") {
+    if (!link || link.gameType !== "wameeth_class" || link.assignmentId === null) {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
 
@@ -424,7 +598,9 @@ router.post("/play/:token/start", async (req, res) => {
       .where(eq(directPlayLinksTable.token, token))
       .limit(1);
 
-    if (!link) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (!link || link.assignmentId === null) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
 
     // Bound session creation by the verified high-entropy public link itself.
     // This deliberately avoids proxy trust and X-Forwarded-For assumptions.

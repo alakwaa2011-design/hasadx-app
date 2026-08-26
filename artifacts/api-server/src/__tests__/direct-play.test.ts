@@ -48,6 +48,7 @@ vi.mock("@workspace/db", () => {
     assignmentsTable:    stub,
     questionsTable:      stub,
     directPlayLinksTable: stub,
+    wheelTemplatesTable: stub,
   };
 });
 
@@ -102,9 +103,26 @@ const SHARED_LIBRARY_ASSIGNMENT = {
   hiddenByAdmin: false,
   accessMode: "public",
 };
-const LINK_ROW_WAMEETH   = { assignmentId: 1, gameType: "wameeth",     title: "نشاط تجريبي" };
+const LINK_ROW_WAMEETH   = { assignmentId: 1, gameType: "wameeth", title: "نشاط تجريبي", assignmentTitle: "نشاط تجريبي" };
 const LINK_ROW_CLASS     = { assignmentId: 1, gameType: "wameeth_class", title: "نشاط تجريبي" };
 const LINK_ROW_ROCKET    = { assignmentId: 1, gameType: "rocket_race", title: "نشاط تجريبي" };
+const WHEEL_TEMPLATE_ROW = {
+  id: 9,
+  teacherId: 42,
+  title: "عجلة العلوم",
+  language: "ar",
+  segments: [
+    { id: "q1", text: "ما الماء؟", answer: "سائل", points: 100, kind: "question" },
+    { id: "q2", text: "ما الشمس؟", answer: "نجم", points: 200, kind: "question" },
+  ],
+  config: { teamCount: 2, teamNames: ["الفريق الأول", "الفريق الثاني"], spinSeconds: 5, soundOn: true },
+};
+const LINK_ROW_WHEEL = {
+  wheelTemplateId: 9,
+  gameType: "wheel",
+  wheelTitle: "عجلة العلوم",
+  wheelSegments: WHEEL_TEMPLATE_ROW.segments,
+};
 const Q_COUNT            = [{ count: 5 }];
 const WAMEETH_QS         = [
   { id: 1, text: "Q1", questionType: "mcq",
@@ -556,5 +574,85 @@ describe("AC-5  إنشاء الرابط — idempotent", () => {
       .post("/api/assignments/1/play-links")
       .send({ gameType: "wameeth" });
     expect(res.status).toBe(400);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AC-6  عجلة التحدي — رابط عرض معلّم مباشر
+// ═══════════════════════════════════════════════════════════════════════════
+describe("AC-6  رابط عرض عجلة التحدي", () => {
+  it("ينشئ المالك token عشوائياً ثابتاً للقالب المحفوظ", async () => {
+    push(
+      [WHEEL_TEMPLATE_ROW],
+      [],
+      [],
+    );
+    const res = await request(makeApp({ teacherId: 42 }))
+      .post("/api/wheel-templates/9/play-links");
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(dbState.insertPayloads[0]).toMatchObject({
+      wheelTemplateId: 9,
+      gameType: "wheel",
+      teacherId: 42,
+    });
+  });
+
+  it("يرفض إنشاء الرابط لمعلّم ليس مالك القالب بلا تسريب", async () => {
+    push([{ ...WHEEL_TEMPLATE_ROW, teacherId: 77 }]);
+    const res = await request(makeApp({ teacherId: 42 }))
+      .post("/api/wheel-templates/9/play-links");
+
+    expect(res.status).toBe(404);
+    expect(res.body).not.toHaveProperty("teacherId");
+    expect(dbState.insertPayloads).toEqual([]);
+  });
+
+  it("يفتح العرض العام بأقل بيانات ضرورية ودون معرف القالب", async () => {
+    push([LINK_ROW_WHEEL]);
+    const info = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/info`);
+    expect(info.status).toBe(200);
+    expect(info.body).toEqual({
+      title: "عجلة العلوم",
+      questionCount: 2,
+      gameType: "wheel",
+    });
+    expect(info.body).not.toHaveProperty("wheelTemplateId");
+
+    push([{
+      gameType: "wheel",
+      title: WHEEL_TEMPLATE_ROW.title,
+      language: WHEEL_TEMPLATE_ROW.language,
+      segments: WHEEL_TEMPLATE_ROW.segments,
+      config: WHEEL_TEMPLATE_ROW.config,
+    }]);
+    const display = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/wheel`);
+    expect(display.status).toBe(200);
+    expect(display.body).toMatchObject({
+      title: "عجلة العلوم",
+      language: "ar",
+      segments: WHEEL_TEMPLATE_ROW.segments,
+      config: WHEEL_TEMPLATE_ROW.config,
+    });
+    expect(display.body).not.toHaveProperty("id");
+    expect(display.body).not.toHaveProperty("teacherId");
+  });
+
+  it("إلغاء الرابط يجعله غير متاح ويقتصر على المالك", async () => {
+    push([{ teacherId: 42 }], []);
+    const cancelled = await request(makeApp({ teacherId: 42 }))
+      .delete("/api/wheel-templates/9/play-links");
+    expect(cancelled.status).toBe(200);
+
+    push([]);
+    const unavailable = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/wheel`);
+    expect(unavailable.status).toBe(404);
+    expect(unavailable.body.message).toContain("لم يعد متاحاً");
+
+    push([{ teacherId: 77 }]);
+    const forbidden = await request(makeApp({ teacherId: 42 }))
+      .delete("/api/wheel-templates/9/play-links");
+    expect(forbidden.status).toBe(404);
   });
 });

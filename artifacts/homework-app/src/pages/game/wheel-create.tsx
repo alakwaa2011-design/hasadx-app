@@ -8,7 +8,7 @@ import {
   Wand2, X, Gift, HelpCircle, Edit3, Check,
   Globe, BookOpen, GraduationCap, Users, FileDown, Database,
   PenLine, Settings2, Volume2, RotateCw, ListChecks, ArrowLeft, ArrowRight,
-  SlidersHorizontal,
+  SlidersHorizontal, Link2, Copy, Ban,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -165,6 +165,8 @@ export default function WheelCreate() {
 
   const [saving, setSaving] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [directPlayLink, setDirectPlayLink] = useState<string | null>(null);
+  const [directLinkLoading, setDirectLinkLoading] = useState(false);
   const [setupStep, setSetupStep] = useState<SetupStep>("source");
   const [activeSource, setActiveSource] = useState<QuestionSource | null>(null);
   const [segmentsEditorOpen, setSegmentsEditorOpen] = useState(false);
@@ -369,11 +371,75 @@ export default function WheelCreate() {
       }
       const saved = await res.json();
       setEditingTemplateId(saved.id);
+      setDirectPlayLink(null);
       toast.success(w.saved);
     } catch {
       toast.error(w.error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const createDirectPlayLink = async () => {
+    if (editingTemplateId === null) return;
+    setDirectLinkLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/wheel-templates/${editingTemplateId}/play-links`,
+        { method: "POST", credentials: "include" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.token !== "string") {
+        toast.error(data.message || (contentLang === "ar" ? "تعذّر إنشاء رابط العرض" : "Couldn't create display link"));
+        return;
+      }
+      const link = `${window.location.origin}/play/${data.token}`;
+      setDirectPlayLink(link);
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success(contentLang === "ar" ? "تم إنشاء الرابط ونسخه" : "Link created and copied");
+      } catch {
+        toast.success(contentLang === "ar" ? "تم إنشاء رابط العرض" : "Display link created");
+      }
+    } catch {
+      toast.error(contentLang === "ar" ? "تعذّر إنشاء رابط العرض" : "Couldn't create display link");
+    } finally {
+      setDirectLinkLoading(false);
+    }
+  };
+
+  const copyDirectPlayLink = async () => {
+    if (!directPlayLink) return;
+    try {
+      await navigator.clipboard.writeText(directPlayLink);
+      toast.success(contentLang === "ar" ? "تم نسخ الرابط" : "Link copied");
+    } catch {
+      toast.error(contentLang === "ar" ? "تعذّر نسخ الرابط" : "Couldn't copy link");
+    }
+  };
+
+  const cancelDirectPlayLink = async () => {
+    if (editingTemplateId === null || !directPlayLink) return;
+    if (!window.confirm(contentLang === "ar" ? "هل تريد إلغاء رابط العرض؟ لن يعمل الرابط بعد ذلك." : "Cancel this display link? It will stop working.")) {
+      return;
+    }
+    setDirectLinkLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/wheel-templates/${editingTemplateId}/play-links`,
+        { method: "DELETE", credentials: "include" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.message || (contentLang === "ar" ? "تعذّر إلغاء رابط العرض" : "Couldn't cancel display link"));
+        return;
+      }
+      setDirectPlayLink(null);
+      toast.success(contentLang === "ar" ? "تم إلغاء رابط العرض" : "Display link cancelled");
+    } catch {
+      toast.error(contentLang === "ar" ? "تعذّر إلغاء رابط العرض" : "Couldn't cancel display link");
+    } finally {
+      setDirectLinkLoading(false);
     }
   };
 
@@ -445,6 +511,7 @@ export default function WheelCreate() {
       bonusTypes: t.config.bonusTypes?.length ? t.config.bonusTypes : [...BONUS_TYPES],
     });
     setEditingTemplateId(t.isOwn ? t.id : null); // shared admin templates clone, don't overwrite
+    setDirectPlayLink(null);
     setSavedOpen(false);
     setAiOpen(false);
     toast.success(w.loadedTemplate.replace("{title}", t.title));
@@ -456,6 +523,7 @@ export default function WheelCreate() {
       await fetch(`${API_BASE}/api/wheel-templates/${id}`, { method: "DELETE", credentials: "include" });
       setSavedTemplates(prev => prev.filter(t => t.id !== id));
       if (editingTemplateId === id) setEditingTemplateId(null);
+      if (editingTemplateId === id) setDirectPlayLink(null);
       toast.success(w.deleted);
     } catch {
       toast.error(w.deleteError);
@@ -908,6 +976,16 @@ export default function WheelCreate() {
                 </div>
                 <div className="p-4 sm:px-6 sm:py-5 border-t border-border bg-muted/20 flex flex-col sm:flex-row gap-2.5">
                   <button type="button" disabled={launching || segments.length < 2} onClick={launchPlay} className="flex-1 py-3 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>{launching ? <><Loader2 className="w-4 h-4 animate-spin" />{w.launching}</> : <><Play className="w-4 h-4" />{w.startPlaying}</>}</button>
+                  {editingTemplateId !== null && (
+                    directPlayLink ? (
+                      <div className="flex gap-2">
+                        <button type="button" onClick={copyDirectPlayLink} className="py-3 px-3.5 rounded-xl font-bold bg-card border border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all text-sm" title={contentLang === "ar" ? "نسخ رابط العرض" : "Copy display link"}><Copy className="w-4 h-4" />{contentLang === "ar" ? "نسخ الرابط" : "Copy link"}</button>
+                        <button type="button" disabled={directLinkLoading} onClick={cancelDirectPlayLink} className="py-3 px-3.5 rounded-xl font-bold border border-red-500/35 text-red-600 hover:bg-red-500/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm" title={contentLang === "ar" ? "إلغاء رابط العرض" : "Cancel display link"}>{directLinkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}{contentLang === "ar" ? "إلغاء الرابط" : "Cancel"}</button>
+                      </div>
+                    ) : (
+                      <button type="button" disabled={directLinkLoading} onClick={createDirectPlayLink} className="sm:min-w-44 py-3 px-4 rounded-xl font-bold border border-primary/35 text-primary bg-primary/5 hover:bg-primary/10 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm">{directLinkLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{contentLang === "ar" ? "جارٍ الإنشاء..." : "Creating..."}</> : <><Link2 className="w-4 h-4" />{contentLang === "ar" ? "إنشاء رابط لعب مباشر" : "Create display link"}</>}</button>
+                    )
+                  )}
                   <button type="button" disabled={saving} onClick={saveTemplate} className="sm:min-w-44 py-3 px-5 rounded-xl font-bold bg-card border border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm">{saving ? <><Loader2 className="w-4 h-4 animate-spin" />{w.saving}</> : editingTemplateId !== null ? <><Check className="w-4 h-4" />{w.updateTemplate}</> : <><Save className="w-4 h-4" />{w.saveToLibrary}</>}</button>
                 </div>
               </Card>

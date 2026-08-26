@@ -17,7 +17,7 @@ const API = import.meta.env.VITE_API_URL || "";
 interface PlayInfo {
   title: string;
   questionCount: number;
-  gameType: "wameeth" | "rocket_race";
+  gameType: "wameeth" | "wameeth_class" | "rocket_race" | "wheel";
 }
 
 const GAME_META = {
@@ -64,6 +64,15 @@ export default function DirectPlayPage() {
         setLoadError(t.directPlay.loadActivityError),
       );
   }, [token]);
+
+  // A Wheel of Challenge link is a teacher-controlled classroom display, not a
+  // student activity. Hand it straight to the public wheel route: no name,
+  // room, QR flow, or mobile participant controls are involved.
+  useEffect(() => {
+    if (token && info?.gameType === "wheel") {
+      setLocation(`/play/wheel/${encodeURIComponent(token)}`, { replace: true });
+    }
+  }, [info?.gameType, setLocation, token]);
 
   const handleStart = async () => {
     const name = playerName.trim();
@@ -128,7 +137,10 @@ export default function DirectPlayPage() {
   }, [info?.gameType, lang, setLocation, token]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if ((!info && !loadError) || (info?.gameType === "wameeth" && !loadError)) {
+  if (
+    (!info && !loadError)
+    || ((info?.gameType === "wameeth" || info?.gameType === "wheel") && !loadError)
+  ) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -168,7 +180,7 @@ export default function DirectPlayPage() {
     );
   }
 
-  const meta = GAME_META[info!.gameType] ?? GAME_META.wameeth;
+  const meta = GAME_META[info!.gameType === "rocket_race" ? "rocket_race" : "wameeth"];
   const gameLabel = info!.gameType === "wameeth" ? t.directPlay.wameethName : t.directPlay.rocketRaceName;
   const gameDesc = info!.gameType === "wameeth" ? t.directPlay.wameethDescription : t.directPlay.rocketRaceDescription;
 

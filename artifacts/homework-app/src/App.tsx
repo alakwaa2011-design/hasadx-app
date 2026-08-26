@@ -484,6 +484,7 @@ function Router() {
         <Route path="/game/rocket/host/:pin" component={RocketHost} />
         <Route path="/game/wheel/create" component={WheelCreate} />
         <Route path="/game/wheel/play/:id" component={WheelPlay} />
+        <Route path="/play/wheel/:token" component={WheelPlay} />
         <Route path="/teacher/worksheets/create" component={WorksheetCreate} />
         <Route path="/teacher/worksheets/:id/print" component={WorksheetPrint} />
         <Route path="/teacher/worksheets/:id/grade" component={WorksheetGrade} />

@@ -168,8 +168,10 @@ function useWheelAudio(enabled: boolean) {
 
 export default function WheelPlay() {
   const { lang: uiLang } = useI18n();
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id?: string; token?: string }>();
   const [, setLocation] = useLocation();
+  const directToken = params.token;
+  const isDirectPlay = typeof directToken === "string" && directToken.length > 0;
   const templateId = parseInt(params.id || "", 10);
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -227,15 +229,19 @@ export default function WheelPlay() {
 
   /* ── Load template ────────────────────────────────────────── */
   useEffect(() => {
-    if (isNaN(templateId)) {
-      setError(ar ? "معرّف غير صالح" : "Invalid template id");
+    if (!isDirectPlay && isNaN(templateId)) {
+      setError(uiLang === "ar" ? "معرّف غير صالح" : "Invalid template id");
       setLoading(false);
       return;
     }
-    fetch(`${API_BASE}/api/wheel-templates/${templateId}`, { credentials: "include" })
+    const url = isDirectPlay
+      ? `${API_BASE}/api/play/${encodeURIComponent(directToken!)}/wheel`
+      : `${API_BASE}/api/wheel-templates/${templateId}`;
+    fetch(url, isDirectPlay ? undefined : { credentials: "include" })
       .then(async r => {
-        if (!r.ok) throw new Error("not found");
-        return r.json();
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.message || "not found");
+        return data;
       })
       .then((t: Template) => {
         const segs = (t.segments || []).map((s, i) => ({
@@ -255,10 +261,14 @@ export default function WheelPlay() {
         setSoundOn(config.soundOn);
         setActiveTeamIndex(config.turnMode === "team_first" ? 0 : null);
       })
-      .catch(() => setError(ar ? "تعذّر تحميل اللعبة" : "Failed to load game"))
+      .catch((loadErr: unknown) => {
+        const message = loadErr instanceof Error ? loadErr.message : "";
+        setError(message && message !== "not found"
+          ? message
+          : (uiLang === "ar" ? "تعذّر تحميل اللعبة" : "Failed to load game"));
+      })
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateId]);
+  }, [directToken, isDirectPlay, templateId, uiLang]);
 
   /* ── Draw the wheel on canvas ─────────────────────────────── */
   const drawWheel = useCallback((rot: number) => {
@@ -658,13 +668,15 @@ export default function WheelPlay() {
         style={{ background: "linear-gradient(180deg, #0a1f15 0%, #0f2a1c 100%)" }}>
         <div className="text-center">
           <p className="text-xl font-black mb-4">{error || (ar ? "غير موجود" : "Not found")}</p>
-          <button
-            onClick={() => setLocation("/teacher")}
-            className="px-5 py-2.5 rounded-xl font-bold"
-            style={{ background: BRAND_GOLD, color: "#1a1a1a" }}
-          >
-            {ar ? "العودة" : "Back"}
-          </button>
+          {!isDirectPlay && (
+            <button
+              onClick={() => setLocation("/teacher")}
+              className="px-5 py-2.5 rounded-xl font-bold"
+              style={{ background: BRAND_GOLD, color: "#1a1a1a" }}
+            >
+              {ar ? "العودة" : "Back"}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -755,13 +767,15 @@ export default function WheelPlay() {
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => setLocation("/teacher")}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-            aria-label="back"
-          >
-            <ArrowLeft className={`w-5 h-5 ${ar ? "rotate-180" : ""}`} />
-          </button>
+          {!isDirectPlay && (
+            <button
+              onClick={() => setLocation("/teacher")}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="back"
+            >
+              <ArrowLeft className={`w-5 h-5 ${ar ? "rotate-180" : ""}`} />
+            </button>
+          )}
           <div className="min-w-0">
             <h1 className="font-black text-lg truncate">{template.title}</h1>
             <p className="text-xs text-white/60">
@@ -1308,13 +1322,15 @@ export default function WheelPlay() {
                 >
                   {ar ? "العب مجدّداً" : "Play Again"}
                 </button>
-                <button
-                  onClick={() => setLocation("/teacher")}
-                  className="w-full py-3 rounded-xl font-black border-2"
-                  style={{ borderColor: BRAND_GOLD, color: BRAND_GOLD }}
-                >
-                  {ar ? "العودة للوحة" : "Back to Dashboard"}
-                </button>
+                {!isDirectPlay && (
+                  <button
+                    onClick={() => setLocation("/teacher")}
+                    className="w-full py-3 rounded-xl font-black border-2"
+                    style={{ borderColor: BRAND_GOLD, color: BRAND_GOLD }}
+                  >
+                    {ar ? "العودة للوحة" : "Back to Dashboard"}
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

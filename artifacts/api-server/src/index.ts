@@ -756,6 +756,23 @@ async function runSchemaMigrations() {
       CREATE UNIQUE INDEX IF NOT EXISTS direct_play_links_assignment_game_unique_idx
         ON direct_play_links(assignment_id, game_type, teacher_id)
     `);
+    // Wheel of Challenge links use the same opaque-token table as assignment
+    // links. Existing rows remain assignment-backed; a wheel link has a null
+    // assignment_id and is removed automatically with its template.
+    await db.execute(sql`
+      ALTER TABLE direct_play_links
+        ALTER COLUMN assignment_id DROP NOT NULL
+    `);
+    await db.execute(sql`
+      ALTER TABLE direct_play_links
+        ADD COLUMN IF NOT EXISTS wheel_template_id INTEGER
+          REFERENCES wheel_templates(id) ON DELETE CASCADE
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS direct_play_links_wheel_game_unique_idx
+        ON direct_play_links(wheel_template_id, game_type, teacher_id)
+        WHERE wheel_template_id IS NOT NULL
+    `);
     logger.info("Direct play links table ready");
   } catch (err) {
     logger.error(err, "Direct play links migration failed");
