@@ -54,15 +54,23 @@ export interface MissingTeacher {
 // Query helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Only flags teachers who actually completed activation (verified_at set —
+ * via OTP/email link or Google login) but still have no 'free' credit_batch.
+ * Accounts still stuck in pending-verification are excluded on purpose: they
+ * never establish a session, so a missing welcome grant there is expected
+ * behavior, not a bug — including them just buries the real anomalies in noise.
+ */
 export async function fetchTeachersMissingWelcomeCredits(): Promise<MissingTeacher[]> {
   const result = await db.execute(sql`
     SELECT t.id, t.name, t.email, t.created_at
     FROM teachers t
-    WHERE NOT EXISTS (
-      SELECT 1 FROM credit_batches cb
-      WHERE cb.teacher_id = t.id
-        AND cb.source = 'free'
-    )
+    WHERE t.verified_at IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM credit_batches cb
+        WHERE cb.teacher_id = t.id
+          AND cb.source = 'free'
+      )
     ORDER BY t.created_at DESC
     LIMIT 200
   `);
