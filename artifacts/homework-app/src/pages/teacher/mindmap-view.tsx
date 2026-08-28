@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useParams } from "wouter";
 import { useI18n } from "@/lib/i18n";
-import { Loader2, ArrowRight, ArrowLeft, Brain, Layers, Printer, Copy, ImageDown, FileImage } from "lucide-react";
+import { Loader2, ArrowRight, ArrowLeft, Brain, Layers, Printer, Copy, ImageDown, FileImage, Pencil, Save, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { MindMapSVG, type MindMap } from "@/pages/teacher/mindmap-create";
+import { MindMapSVG } from "@/pages/teacher/mindmap-create";
+import MindMapEditor from "./mindmap-editor";
+import { isMindMapValid, type MindMap } from "./mindmap-shared";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -17,10 +19,21 @@ export default function MindMapView() {
 
   const [loading, setLoading] = useState(true);
   const [mapData, setMapData] = useState<{ topic: string; language: string; map: MindMap } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const saveRevisionRef = useRef(0);
   
   const lang = mapData?.language || globalLang;
   const isAr = lang === "ar";
   const dir = isAr ? "rtl" : "ltr";
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchMap = async () => {
@@ -49,6 +62,50 @@ export default function MindMapView() {
     };
     if (id) fetchMap();
   }, [id, isAr, setLocation]);
+
+  const saveMap = useCallback((nextMap: MindMap) => {
+    if (!mapData || !id) return false;
+    const revision = ++saveRevisionRef.current;
+    const topic = mapData.topic;
+    const language = mapData.language;
+    setSaveStatus("saving");
+    const run = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/mindmaps/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: nextMap.center,
+            topic,
+            language,
+            map: nextMap,
+          }),
+        });
+        if (!res.ok) throw new Error("Save failed");
+        await res.json();
+        if (revision === saveRevisionRef.current) setSaveStatus("saved");
+        return true;
+      } catch {
+        if (revision === saveRevisionRef.current) {
+          setSaveStatus("error");
+          toast.error(isAr ? "تعذّر حفظ التعديلات" : "Failed to save changes");
+        }
+        return false;
+      }
+    };
+    const queued = saveQueueRef.current.then(run, run);
+    saveQueueRef.current = queued;
+    return queued;
+  }, [id, isAr, mapData]);
+
+  const handleMapChange = useCallback((nextMap: MindMap) => {
+    setMapData((current) => current ? { ...current, map: nextMap } : current);
+    setSaveStatus("idle");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (!isMindMapValid(nextMap)) return;
+    saveTimerRef.current = setTimeout(() => void saveMap(nextMap), 700);
+  }, [saveMap]);
 
   const handlePrint = useCallback(() => {
     const svgEl = document.getElementById("mindmap-svg") as SVGSVGElement | null;
@@ -201,6 +258,30 @@ export default function MindMapView() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <button
+                type="button"
+                onClick={() => setEditing((value) => !value)}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black transition-colors ${editing ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                data-testid="btn-edit-map"
+              >
+                <Pencil className="w-4 h-4" />
+                <span>{editing ? (isAr ? "إغلاق المحرر" : "Close editor") : (isAr ? "تعديل الخريطة" : "Edit map")}</span>
+              </button>
+              {saveStatus === "saving" && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400" data-testid="status-saving">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />{isAr ? "جاري الحفظ" : "Saving"}
+                </span>
+              )}
+              {saveStatus === "saved" && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400" data-testid="status-saved">
+                  <CheckCheck className="h-3.5 w-3.5" />{isAr ? "تم الحفظ" : "Saved"}
+                </span>
+              )}
+              {saveStatus === "error" && (
+                <span className="text-xs font-bold text-red-500" data-testid="status-error">
+                  {isAr ? "تعذّر الحفظ — أعد المحاولة" : "Save failed — try again"}
+                </span>
+              )}
+              <button
                 onClick={handleCopyText}
                 data-testid="btn-copy-text"
                 className="flex items-center gap-1.5 bg-white dark:bg-[#15201B] hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-emerald-50 dark:border-emerald-900/30 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm"
@@ -235,13 +316,43 @@ export default function MindMapView() {
             </div>
           </div>
 
-          <div className="w-full bg-white dark:bg-transparent rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 overflow-hidden" data-testid="map-container">
-            <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
-              <div className="min-w-[800px] p-6">
+          {editing && (
+            <div className="grid gap-4 rounded-3xl border border-emerald-100 bg-white p-3 shadow-sm dark:border-emerald-900/30 dark:bg-[#15201B] lg:grid-cols-[minmax(280px,360px)_1fr]">
+              <div className="max-h-[720px] overflow-y-auto pe-1">
+                <MindMapEditor map={mapData.map} isAr={isAr} onChange={handleMapChange} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isMindMapValid(mapData.map)) {
+                      toast.error(isAr ? "أكمل النصوص الفارغة قبل الحفظ" : "Complete empty fields before saving");
+                      return;
+                    }
+                    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+                    void saveMap(mapData.map);
+                  }}
+                  disabled={saveStatus === "saving"}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  data-testid="btn-save-map-edits"
+                >
+                  {saveStatus === "saved" ? <CheckCheck className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                  {isAr ? "حفظ التعديلات الآن" : "Save changes now"}
+                </button>
+              </div>
+              <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-100 bg-[#F8FAFC] dark:border-slate-800 dark:bg-[#15201B]">
                 <MindMapSVG map={mapData.map} isAr={isAr} variant="screen" />
               </div>
             </div>
-          </div>
+          )}
+
+          {!editing && (
+            <div className="w-full bg-white dark:bg-transparent rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 overflow-hidden" data-testid="map-container">
+              <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
+                <div className="min-w-[800px] p-6">
+                  <MindMapSVG map={mapData.map} isAr={isAr} variant="screen" />
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="hidden">
             <MindMapSVG map={mapData.map} isAr={isAr} variant="print" />

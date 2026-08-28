@@ -6,7 +6,7 @@ import {
   Loader2, RefreshCw, Printer, Copy, ArrowRight, ArrowLeft,
   Sparkles, Brain, BookOpen, Lightbulb, Zap,
   ChevronDown, Globe, Layers, CheckCheck, Home,
-  ImageDown, FileImage,
+  ImageDown, FileImage, Pencil, Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
@@ -15,30 +15,18 @@ import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
+import MindMapEditor from "./mindmap-editor";
+import { isMindMapValid, PALETTE, paletteForColor, type MindMap } from "./mindmap-shared";
 
 const BRAND_GREEN = "#225739";
 const API_BASE = import.meta.env.VITE_API_URL || "";
-
-/* ── Colour palette for branches — works on light background ────────── */
-const PALETTE = [
-  { bg: "#5B5BD6", soft: "#EEF0FF", border: "#5B5BD6" },
-  { bg: "#0891B2", soft: "#E0F7FA", border: "#0891B2" },
-  { bg: "#2f684d", soft: "#e0ede5", border: "#2f684d" },
-  { bg: "#D97706", soft: "#FEF3C7", border: "#D97706" },
-  { bg: "#DC2626", soft: "#FEE2E2", border: "#DC2626" },
-  { bg: "#7C3AED", soft: "#EDE9FE", border: "#7C3AED" },
-  { bg: "#EA580C", soft: "#FFEDD5", border: "#EA580C" },
-  { bg: "#0369A1", soft: "#E0F2FE", border: "#0369A1" },
-];
 
 /* ── Light background colours ─────────────────────────────────────────── */
 const BG_LIGHT  = "#F8FAFC";
 const BG_LIGHT2 = "#F0F5F1";
 const GRID_DOT  = "#CBD5E1";
 
-/* ── Types ───────────────────────────────────────────────────────────── */
-export interface MindMapBranch { label: string; icon: string; color: string; children: string[] }
-export interface MindMap { center: string; branches: MindMapBranch[] }
+export type { MindMap, MindMapBranch } from "./mindmap-shared";
 
 /* ── Layout constants (balanced left/right tree — no overlap possible) ── */
 const H_GAP1 = 130;   // centre edge → branch pill
@@ -108,7 +96,7 @@ function layoutMindMap(map: MindMap) {
     const leavesH = leaves.reduce((s, l) => s + l.h, 0) + Math.max(0, leaves.length - 1) * LEAF_GAP;
     return {
       label: b.label, icon: hasIcon ? b.icon : "",
-      pal: PALETTE[i % PALETTE.length],
+      pal: paletteForColor(b.color, i),
       lines, w, h, leaves,
       blockH: Math.max(h + 14, leavesH),
       side: 1 as 1 | -1, x: 0, y: 0,
@@ -334,6 +322,7 @@ export default function MindMapCreate() {
   const [depth, setDepth] = useState<"standard" | "detailed">("standard");
   const [loading, setLoading]         = useState(false);
   const [map, setMap]                 = useState<MindMap | null>(null);
+  const [editing, setEditing]         = useState(false);
   const [copied, setCopied]           = useState(false);
   const [exporting, setExporting]     = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -356,44 +345,83 @@ export default function MindMapCreate() {
   const lastGenRef = useRef<{ topic: string; lang: string; depth: string; map: MindMap } | null>(null);
   const generationInFlightRef = useRef(false);
   const saveBlockedRef = useRef(false);
+  const editSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const saveRevisionRef = useRef(0);
 
-  const saveMap = useCallback(async (t: string, l: string, d: string, m: MindMap): Promise<boolean> => {
+  const saveMap = useCallback((t: string, l: string, d: string, m: MindMap): Promise<boolean> => {
+    const revision = ++saveRevisionRef.current;
     setSaveStatus("saving");
-    try {
-      const payload = {
-        title: m.center || t,
-        topic: t,
-        language: l,
-        depth: d,
-        map: m,
-        clientRequestId,
-      };
-      const currentId = savedIdRef.current;
-      const res = await fetch(
-        currentId ? `${API_BASE}/api/mindmaps/${currentId}` : `${API_BASE}/api/mindmaps`,
-        {
-        method: currentId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-        },
-      );
-      if (!res.ok) throw new Error("Save failed");
-      const row = await res.json();
-      const nextId = Number(row?.id ?? currentId);
-      if (!Number.isInteger(nextId) || nextId <= 0) {
-        throw new Error("Saved mind map id is missing");
+    const run = async () => {
+      try {
+        const payload = {
+          title: m.center || t,
+          topic: t,
+          language: l,
+          depth: d,
+          map: m,
+          clientRequestId,
+        };
+        const currentId = savedIdRef.current;
+        const res = await fetch(
+          currentId ? `${API_BASE}/api/mindmaps/${currentId}` : `${API_BASE}/api/mindmaps`,
+          {
+            method: currentId ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+          },
+        );
+        if (!res.ok) throw new Error("Save failed");
+        const row = await res.json();
+        const nextId = Number(row?.id ?? currentId);
+        if (!Number.isInteger(nextId) || nextId <= 0) {
+          throw new Error("Saved mind map id is missing");
+        }
+        savedIdRef.current = nextId;
+        saveBlockedRef.current = false;
+        if (revision === saveRevisionRef.current) setSaveStatus("saved");
+        return true;
+      } catch {
+        saveBlockedRef.current = true;
+        if (revision === saveRevisionRef.current) setSaveStatus("error");
+        return false;
       }
-      savedIdRef.current = nextId;
-      saveBlockedRef.current = false;
-      setSaveStatus("saved");
-      return true;
-    } catch {
-      saveBlockedRef.current = true;
-      setSaveStatus("error");
-      return false;
-    }
+    };
+    const queued = saveQueueRef.current.then(run, run);
+    saveQueueRef.current = queued;
+    return queued;
   }, [clientRequestId]);
+
+  useEffect(() => {
+    return () => {
+      if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    };
+  }, []);
+
+  const handleMapChange = useCallback((next: MindMap) => {
+    setMap(next);
+    if (lastGenRef.current) {
+      lastGenRef.current = { ...lastGenRef.current, map: next };
+    }
+    setSaveStatus("idle");
+    if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    if (!isMindMapValid(next)) return;
+    editSaveTimerRef.current = setTimeout(() => {
+      const source = lastGenRef.current;
+      if (source) void saveMap(source.topic, source.lang, source.depth, next);
+    }, 700);
+  }, [saveMap]);
+
+  const saveEditedMap = useCallback(() => {
+    if (!map || !lastGenRef.current) return;
+    if (!isMindMapValid(map)) {
+      toast.error(isAr ? "أكمل النصوص الفارغة قبل الحفظ" : "Complete empty fields before saving");
+      return;
+    }
+    if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    void saveMap(lastGenRef.current.topic, lastGenRef.current.lang, lastGenRef.current.depth, map);
+  }, [isAr, map, saveMap]);
 
   /* ── Generate ─────────────────────────────────────────────────────── */
   const generate = useCallback(async (overrideTopic?: string) => {
@@ -708,49 +736,83 @@ export default function MindMapCreate() {
               className="w-full"
             >
               <div className="bg-white dark:bg-[#15201B] rounded-3xl shadow-sm border border-emerald-50 dark:border-emerald-900/30 p-2 sm:p-4">
-                <div className="flex items-center justify-between mb-4 px-2" data-testid="save-status-container">
-                  {saveStatus === 'saving' && (
-                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-bold" data-testid="status-saving">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isAr ? "جاري الحفظ..." : "Saving..."}</span>
-                    </div>
-                  )}
-                  {saveStatus === 'saved' && (
-                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-bold" data-testid="status-saved">
-                      <CheckCheck className="w-5 h-5" />
-                      <span>{isAr ? "تم الحفظ تلقائياً" : "Saved automatically"}</span>
-                    </div>
-                  )}
-                  {saveStatus === 'error' && (
-                    <div className="flex items-center gap-2 text-red-500 text-sm font-bold" data-testid="status-error">
-                      <span>{isAr ? "تعذّر حفظ الخريطة" : "Failed to save map"}</span>
+                <div className="flex flex-col gap-3 mb-4 px-2 sm:flex-row sm:items-center sm:justify-between" data-testid="save-status-container">
+                  <div className="min-h-6">
+                    {saveStatus === 'saving' && (
+                      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-bold" data-testid="status-saving">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{isAr ? "جاري الحفظ..." : "Saving..."}</span>
+                      </div>
+                    )}
+                    {saveStatus === 'saved' && (
+                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-bold" data-testid="status-saved">
+                        <CheckCheck className="w-5 h-5" />
+                        <span>{isAr ? "تم الحفظ تلقائياً" : "Saved automatically"}</span>
+                      </div>
+                    )}
+                    {saveStatus === 'error' && (
+                      <div className="flex items-center gap-2 text-red-500 text-sm font-bold" data-testid="status-error">
+                        <span>{isAr ? "تعذّر حفظ الخريطة" : "Failed to save map"}</span>
+                        <button
+                          type="button"
+                          data-testid="btn-retry-save"
+                          onClick={() => {
+                            if (lastGenRef.current) {
+                              void saveMap(lastGenRef.current.topic, lastGenRef.current.lang, lastGenRef.current.depth, lastGenRef.current.map);
+                            }
+                          }}
+                          className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                        >
+                          {isAr ? "إعادة المحاولة" : "Retry"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing((value) => !value)}
+                      className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-black transition-colors ${editing ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                      data-testid="btn-edit-map"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      <span>{editing ? (isAr ? "إغلاق المحرر" : "Close editor") : (isAr ? "تعديل الخريطة" : "Edit map")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/teacher/mindmaps")}
+                      className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+                    >
+                      <span>{isAr ? "عرض كل الخرائط" : "View all maps"}</span>
+                      <ArrowLeft className={`w-4 h-4 ${isAr ? "" : "rotate-180"}`} />
+                    </button>
+                  </div>
+                </div>
+                {editing && (
+                  <div className="mb-4 grid gap-4 rounded-2xl border border-emerald-100 bg-[#f8fbf9] p-3 dark:border-emerald-900/40 dark:bg-[#0f1713] lg:grid-cols-[minmax(280px,360px)_1fr]">
+                    <div className="max-h-[720px] overflow-y-auto pe-1">
+                      <MindMapEditor map={map} isAr={isAr} onChange={handleMapChange} />
                       <button
                         type="button"
-                        data-testid="btn-retry-save"
-                        onClick={() => {
-                          if (lastGenRef.current) {
-                            void saveMap(lastGenRef.current.topic, lastGenRef.current.lang, lastGenRef.current.depth, lastGenRef.current.map);
-                          }
-                        }}
-                        className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                        onClick={saveEditedMap}
+                        disabled={saveStatus === "saving"}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        data-testid="btn-save-map-edits"
                       >
-                        {isAr ? "إعادة المحاولة" : "Retry"}
+                        <Save className="h-4 w-4" />
+                        {isAr ? "حفظ التعديلات الآن" : "Save changes now"}
                       </button>
                     </div>
-                  )}
-                  {saveStatus === 'idle' && <div />}
-                  <button
-                    type="button"
-                    onClick={() => setLocation("/teacher/mindmaps")}
-                    className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
-                  >
-                    <span>{isAr ? "عرض كل الخرائط" : "View all maps"}</span>
-                    <ArrowLeft className={`w-4 h-4 ${isAr ? "" : "rotate-180"}`} />
-                  </button>
-                </div>
-                <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-[#F8FAFC]">
-                  <MindMapSVG map={map} isAr={isAr} />
-                </div>
+                    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-[#15201B]">
+                      <MindMapSVG map={map} isAr={isAr} />
+                    </div>
+                  </div>
+                )}
+                {!editing && (
+                  <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-[#F8FAFC]">
+                    <MindMapSVG map={map} isAr={isAr} />
+                  </div>
+                )}
               </div>
             </motion.div>
           ) : null}

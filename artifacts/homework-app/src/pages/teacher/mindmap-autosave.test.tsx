@@ -97,6 +97,7 @@ async function generateMap(topic = "دورة الماء") {
 }
 
 beforeEach(() => {
+  (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -110,6 +111,7 @@ afterEach(() => {
   container.remove();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  delete (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT;
 });
 
 describe("الحفظ التلقائي للخريطة الذهنية", () => {
@@ -254,6 +256,98 @@ describe("الحفظ التلقائي للخريطة الذهنية", () => {
       map: SECOND_MAP,
     });
     expect(container.textContent).toContain("دورة الصخور");
+    expect(container.querySelector('[data-testid="status-saved"]')).toBeTruthy();
+  });
+
+  it("يعدّل الخريطة المولدة ويحفظ النسخة نفسها عبر PUT", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(true, GENERATED_MAP))
+      .mockResolvedValueOnce(response(true, { id: 95 }, 201))
+      .mockResolvedValueOnce(response(true, { id: 95 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateMap();
+
+    const editButton = container.querySelector('[data-testid="btn-edit-map"]') as HTMLButtonElement;
+    act(() => editButton.click());
+
+    const centerInput = container.querySelector('[data-testid="input-map-center"]') as HTMLInputElement;
+    expect(centerInput).toBeTruthy();
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )!.set!;
+    act(() => {
+      valueSetter.call(centerInput, "دورة الماء المعدّلة");
+      centerInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    });
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[2][0])).toBe("/api/mindmaps/95");
+    expect(fetchMock.mock.calls[2][1]?.method).toBe("PUT");
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
+      title: "دورة الماء المعدّلة",
+      map: {
+        center: "دورة الماء المعدّلة",
+      },
+    });
+    expect((container.querySelector('[data-testid="input-map-center"]') as HTMLInputElement).value).toBe("دورة الماء المعدّلة");
+    expect(container.querySelector('[data-testid="status-saved"]')).toBeTruthy();
+  });
+
+  it("لا يفقد تعديلاً تم أثناء انتظار حفظ الخريطة الجديدة", async () => {
+    let resolveInitialSave!: (value: Response) => void;
+    const initialSave = new Promise<Response>((resolve) => {
+      resolveInitialSave = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(true, GENERATED_MAP))
+      .mockReturnValueOnce(initialSave)
+      .mockResolvedValueOnce(response(true, { id: 96 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateMap();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      (container.querySelector('[data-testid="btn-edit-map"]') as HTMLButtonElement).click();
+    });
+    const centerInput = container.querySelector('[data-testid="input-map-center"]') as HTMLInputElement;
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )!.set!;
+    act(() => {
+      valueSetter.call(centerInput, "تعديل أثناء الحفظ");
+      centerInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveInitialSave(response(true, { id: 96 }, 201));
+      await Promise.resolve();
+    });
+    await flushPromises();
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[2][0])).toBe("/api/mindmaps/96");
+    expect(fetchMock.mock.calls[2][1]?.method).toBe("PUT");
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({
+      title: "تعديل أثناء الحفظ",
+      map: { center: "تعديل أثناء الحفظ" },
+    });
     expect(container.querySelector('[data-testid="status-saved"]')).toBeTruthy();
   });
 });
