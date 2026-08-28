@@ -142,7 +142,7 @@ export default function TugCreate() {
 
   const startClassMode = () => {
     if (questions.length < 2) {
-      toast.error(ar ? "وضع الصف يحتاج سؤالين على الأقل" : "Class Mode needs at least 2 questions");
+      toast.error(ar ? "وضع السبورة يحتاج سؤالين على الأقل" : "Board mode needs at least 2 questions");
       return;
     }
     try {
@@ -633,10 +633,10 @@ export default function TugCreate() {
               >
                 <span className="flex items-center gap-2 text-base font-black">
                   <Monitor className="h-5 w-5" />
-                  {ar ? "وضع الصف" : "Class mode"}
+                  {ar ? "على السبورة" : "On the board"}
                 </span>
                 <span className="text-xs font-medium text-white/75">
-                  {ar ? "فريقان على شاشة العرض نفسها" : "Two teams on the same display"}
+                  {ar ? "فريقان يتنافسان على السبورة نفسها" : "Two teams compete on the same board"}
                 </span>
               </button>
               <button
@@ -647,7 +647,7 @@ export default function TugCreate() {
               >
                 <span className="flex items-center gap-2 text-base font-black">
                   {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Smartphone className="h-5 w-5" />}
-                  {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "إنشاء غرفة لعب مباشر" : "Create live game room")}
+                  {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "على الأجهزة" : "On devices")}
                 </span>
                 {!creating && (
                   <span className="text-xs font-medium text-slate-500">

@@ -2386,20 +2386,25 @@ export default function GamePlay() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[90] flex items-center justify-center bg-[#07150F]/75 p-5 backdrop-blur-md"
+                 className="fixed inset-0 z-[120] flex items-center justify-center bg-[#020807]/88 p-4 sm:p-6 backdrop-blur-sm"
                 dir={dir}
                 data-testid="overlay-independent-paused"
               >
                 <motion.div
                   initial={{ scale: 0.9, y: 12 }}
                   animate={{ scale: 1, y: 0 }}
-                  className="w-full max-w-sm rounded-3xl border border-orange-300/25 bg-[#102A1E] p-7 text-center shadow-2xl"
+                   role="dialog"
+                   aria-modal="true"
+                   className="w-full max-w-md overflow-hidden rounded-[2rem] border border-orange-200/80 bg-white text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)] dark:border-orange-300/30 dark:bg-[#183528]"
                 >
-                  <Pause className="w-14 h-14 text-orange-300 mx-auto mb-4" />
-                  <h2 className="text-2xl font-black text-white">
+                   <div className="px-6 pb-6 pt-8 sm:px-9 sm:pb-8 sm:pt-10">
+                     <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-400/15 dark:text-orange-300">
+                       <Pause className="h-8 w-8" />
+                     </div>
+                   <h2 className="text-2xl font-black text-slate-900 dark:text-white">
                     {lang === "ar" ? "اللعبة متوقفة مؤقتاً" : "Game paused"}
                   </h2>
-                  <p className="mt-2 text-sm font-medium text-white/60">
+                   <p className="mx-auto mt-3 max-w-sm text-sm font-medium leading-7 text-slate-600 dark:text-white/65">
                     {lang === "ar" ? "تم تجميد السؤال والمؤقت حتى تستأنف اللعب." : "The question and timer are frozen until you resume."}
                   </p>
                   <button
@@ -2408,11 +2413,12 @@ export default function GamePlay() {
                       runControlOnPointerDown(event, toggleIndependentPause)
                     }
                     onClick={(event) => runControlOnClick(event, toggleIndependentPause)}
-                    className="mt-6 w-full rounded-2xl bg-emerald-500 px-5 py-3.5 font-black text-white shadow-lg hover:bg-emerald-400 active:scale-[0.98] transition-all"
+                     className="mt-7 w-full rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 active:scale-[0.98] dark:bg-emerald-500 dark:hover:bg-emerald-400"
                     data-testid="button-resume-independent-overlay"
                   >
                     {lang === "ar" ? "متابعة اللعب" : "Resume game"}
                   </button>
+                   </div>
                 </motion.div>
               </motion.div>
             )}
@@ -2424,34 +2430,42 @@ export default function GamePlay() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-5 backdrop-blur-md"
+                 className="fixed inset-0 z-[130] flex items-center justify-center bg-[#020807]/88 p-4 sm:p-6 backdrop-blur-sm"
                 dir={dir}
-                onPointerDown={(event) => event.stopPropagation()}
+                 onPointerDown={(event) => event.stopPropagation()}
+                 onClick={(event) => event.stopPropagation()}
+                 data-testid="overlay-independent-exit"
               >
                 <motion.div
                   initial={{ scale: 0.92, y: 16 }}
                   animate={{ scale: 1, y: 0 }}
-                  className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#102A1E] p-7 text-center shadow-2xl"
+                   role="dialog"
+                   aria-modal="true"
+                   aria-labelledby="independent-exit-title"
+                   className="w-full max-w-md overflow-hidden rounded-[2rem] border border-red-200/80 bg-white text-center shadow-[0_24px_80px_rgba(0,0,0,0.5)] dark:border-red-300/25 dark:bg-[#183528]"
                 >
-                  <LogOut className="w-12 h-12 text-red-300 mx-auto mb-4" />
-                  <h2 className="text-xl font-black text-white">
+                   <div className="px-6 pb-6 pt-8 sm:px-9 sm:pb-8 sm:pt-10">
+                   <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600 dark:bg-red-400/15 dark:text-red-300">
+                     <LogOut className="h-8 w-8" />
+                   </div>
+                   <h2 id="independent-exit-title" className="text-2xl font-black text-slate-900 dark:text-white">
                     {independentExitAction === "back"
                       ? (lang === "ar" ? "الرجوع من اللعبة؟" : "Go back from the game?")
                       : (lang === "ar" ? "إنهاء اللعبة والخروج؟" : "End and exit the game?")}
                   </h2>
-                  <p className="mt-2 text-sm font-medium text-white/60">
+                   <p className="mx-auto mt-3 max-w-sm text-sm font-medium leading-7 text-slate-600 dark:text-white/65">
                     {lang === "ar" ? "سيتم إنهاء هذه الجولة ولن تُحفظ إجاباتها المتبقية." : "This round will end and remaining answers will not be saved."}
                   </p>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
+                   <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button
                       type="button"
                       onPointerDown={(event) =>
                         runControlOnPointerDown(event, cancelIndependentExit)
                       }
                       onClick={(event) => runControlOnClick(event, cancelIndependentExit)}
-                      className="rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3 font-bold text-white/80 hover:bg-white/10"
+                       className="order-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 font-black text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.07] dark:text-white/85 dark:hover:bg-white/10 sm:order-1"
                     >
-                      {lang === "ar" ? "إلغاء" : "Cancel"}
+                       {lang === "ar" ? "متابعة اللعب" : "Continue playing"}
                     </button>
                     <button
                       type="button"
@@ -2462,12 +2476,15 @@ export default function GamePlay() {
                         runControlOnClick(event, () => leaveIndependentGame(independentExitAction))
                       }
                       disabled={isEndingIndependentGame}
-                      className="rounded-2xl bg-red-500 px-4 py-3 font-black text-white hover:bg-red-400 disabled:cursor-wait disabled:opacity-60"
+                       className="order-1 rounded-2xl bg-red-600 px-4 py-3.5 font-black text-white shadow-lg shadow-red-600/20 transition-colors hover:bg-red-700 disabled:cursor-wait disabled:opacity-60 dark:bg-red-500 dark:hover:bg-red-400 sm:order-2"
                       data-testid="button-confirm-independent-exit"
                     >
-                      {lang === "ar" ? "تأكيد" : "Confirm"}
+                       {isEndingIndependentGame
+                         ? (lang === "ar" ? "جارٍ الإنهاء..." : "Ending...")
+                         : (lang === "ar" ? "نعم، اخرج" : "Yes, exit")}
                     </button>
                   </div>
+                   </div>
                 </motion.div>
               </motion.div>
             )}
@@ -5460,7 +5477,7 @@ export default function GamePlay() {
           token={independentTokenParam}
           lang={lang}
           dir={dir}
-          onHome={() => setLocation("/")}
+           onHome={() => setLocation(independentReturnTo)}
         />
       );
     }
