@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { Bell, Check, CheckCheck, FileText, MessageSquare } from "lucide-react";
+import { Bell, CheckCheck, FileText, Gift, Crown, Infinity, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
@@ -74,7 +74,9 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
 
   function handleNotifClick(n: Notification) {
     if (!n.isRead) markRead.mutate(n.id);
-    if (n.type === "direct_message") {
+    if (["credit_award", "plan_award", "unlimited_award"].includes(n.type)) {
+      setOpen(false);
+    } else if (n.type === "direct_message") {
       onDirectMessageClick?.();
       setOpen(false);
     } else if (n.type === "maraqui_approval") {
@@ -162,14 +164,17 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
                     }`}
                   >
                     <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
-                      n.type === "direct_message"
-                        ? !n.isRead ? "bg-[#1E4D35]/15 text-[#1E4D35]" : "bg-muted text-muted-foreground"
-                        : !n.isRead ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                      n.type === "credit_award" || n.type === "plan_award" || n.type === "unlimited_award"
+                        ? !n.isRead ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"
+                        : n.type === "direct_message"
+                          ? !n.isRead ? "bg-[#1E4D35]/15 text-[#1E4D35]" : "bg-muted text-muted-foreground"
+                          : !n.isRead ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                     }`}>
-                      {n.type === "direct_message"
-                        ? <MessageSquare className="w-4 h-4" />
-                        : <FileText className="w-4 h-4" />
-                      }
+                      {n.type === "credit_award" ? <Gift className="w-4 h-4" />
+                        : n.type === "plan_award" ? <Crown className="w-4 h-4" />
+                        : n.type === "unlimited_award" ? <Infinity className="w-4 h-4" />
+                        : n.type === "direct_message" ? <MessageSquare className="w-4 h-4" />
+                        : <FileText className="w-4 h-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm truncate ${!n.isRead ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}>

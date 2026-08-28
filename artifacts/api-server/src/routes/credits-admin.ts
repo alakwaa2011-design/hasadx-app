@@ -10,6 +10,10 @@ import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
+import {
+  notifyTeacherOfAward,
+  notifyTeachersOfCreditAward,
+} from "../lib/credit-award-notifications";
 
 const router: IRouter = Router();
 
@@ -189,6 +193,13 @@ router.post("/teachers/:id/toggle-unlimited", requireAdmin, async (req, res) => 
       });
     });
 
+    if (newValue) {
+      await notifyTeacherOfAward(teacherId, {
+        kind: "unlimited",
+        reason,
+      });
+    }
+
     res.json({ teacherId, unlimitedCredits: newValue });
   } catch (err: any) {
     if (err instanceof z.ZodError) { res.status(400).json({ message: "السبب مطلوب", issues: err.issues }); return; }
@@ -201,8 +212,16 @@ router.post("/teachers/:id/adjust", async (req, res) => {
     const teacherId = parseInt(req.params.id);
     const { delta, reason, mode } = AdjustSchema.parse(req.body);
     const adminId = req.session!.teacherId!;
-    const newBalance = await CreditService.adjustBalance(teacherId, delta, reason, adminId, mode);
-    res.json({ teacherId, newBalance });
+    const result = await CreditService.adjustBalance(teacherId, delta, reason, adminId, mode);
+    if (result.actualDelta > 0) {
+      await notifyTeacherOfAward(teacherId, {
+        kind: "credits",
+        amount: result.actualDelta,
+        newBalance: result.newBalance,
+        reason,
+      });
+    }
+    res.json({ teacherId, newBalance: result.newBalance });
   } catch (err) {
     if (err instanceof z.ZodError) { res.status(400).json({ message: "بيانات غير صحيحة", issues: err.issues }); return; }
     res.status(500).json({ message: "فشل تعديل الرصيد" });
@@ -218,8 +237,18 @@ router.post("/teachers/bulk-adjust", async (req, res) => {
   try {
     const { delta, reason } = BulkAdjustSchema.parse(req.body);
     const adminId = req.session!.teacherId!;
-    const count = await CreditService.bulkAdjustBalance(delta, reason, adminId);
-    res.json({ count, message: `تم تعديل رصيد ${count} معلم` });
+    const results = await CreditService.bulkAdjustBalance(delta, reason, adminId);
+    if (delta > 0) {
+      await notifyTeachersOfCreditAward(
+        results.map((result) => ({
+          teacherId: result.teacherId,
+          amount: result.actualDelta,
+          newBalance: result.newBalance,
+        })),
+        reason,
+      );
+    }
+    res.json({ count: results.length, message: `تم تعديل رصيد ${results.length} معلم` });
   } catch (err) {
     if (err instanceof z.ZodError) { res.status(400).json({ message: "بيانات غير صحيحة", issues: err.issues }); return; }
     res.status(500).json({ message: "فشل التعديل الجماعي" });
@@ -499,7 +528,16 @@ router.post("/missing-welcome/grant/:id", async (req, res) => {
   try {
     const teacherId = parseInt(req.params.id);
     if (Number.isNaN(teacherId)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
-    await CreditService.grantWelcomeCredits(teacherId);
+    const granted = await CreditService.grantWelcomeCredits(teacherId);
+    if (granted > 0) {
+      const newBalance = await CreditService.getBalance(teacherId);
+      await notifyTeacherOfAward(teacherId, {
+        kind: "credits",
+        amount: granted,
+        newBalance,
+        reason: "هدية ترحيبية من منصة حصاد",
+      });
+    }
     res.json({ teacherId, ok: true });
   } catch (err) {
     console.error("[missing-welcome] single grant failed:", err);
@@ -523,17 +561,27 @@ router.post("/missing-welcome/grant-all", async (req, res) => {
     const ids = (missingRows.rows as { id: number }[]).map((r) => r.id);
     let succeeded = 0;
     let failed    = 0;
+    const grants: Array<{ teacherId: number; amount: number; newBalance: number }> = [];
 
     // Process sequentially to avoid hammering the DB with concurrent locks.
     for (const id of ids) {
       try {
-        await CreditService.grantWelcomeCredits(id);
+        const granted = await CreditService.grantWelcomeCredits(id);
+        if (granted > 0) {
+          grants.push({
+            teacherId: id,
+            amount: granted,
+            newBalance: await CreditService.getBalance(id),
+          });
+        }
         succeeded++;
       } catch (e) {
         console.error(`[missing-welcome] grant failed for teacher ${id}:`, e);
         failed++;
       }
     }
+
+    await notifyTeachersOfCreditAward(grants, "هدية ترحيبية من منصة حصاد");
 
     res.json({
       total: ids.length,

@@ -23,6 +23,7 @@
 - [Credit hold idempotency races](hold-idempotency-races.md) — hold needs in-lock recheck + 23505 catch (err.cause.code) + 409 for completed/refunded replays, or races double-charge/run free.
 - [Extract format normalization](extract-equivalent-format-normalization.md) — Sonnet emits `question` not `prompt`; sanitize must normalize equivalent keys, never invent/default answers.
 - [Central credits balance query](credits-balance-central-query.md) — one react-query key for نقاط حصاد; every AI call site must invalidate it on settle; no local deduction math.
+- [Positive-only award notifications](positive-award-notifications.md) — email and in-app alerts celebrate admin grants only; never notify on deductions, unlimited removal, or plan downgrades.
 - [Welcome credits grant paths](welcome-credits-grant-paths.md) — every session-establishing auth route (login/OTP/link/Google) must call the shared grant helper; idempotency is in the service, not the DB.
 - [checkCredits fail-closed](credits-fail-closed.md) — unexpected verification errors return 503, never next(); guest AI routes stay deliberately uncharged.
 - [TTS audio cache invariants](tts-audio-cache.md) — serve only after confirmed capture ({captured} flag); credit_request_id fences all row writes; compensate only on definitive 404, never on missing key or transient errors.

@@ -5,11 +5,16 @@
  * المستعار "ca" بينما كان الـ join بلا alias → «missing FROM-clause entry
  * for table "ca"» → 500 «فشل تحميل الأرصدة».
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+
+vi.mock("../lib/email", () => ({
+  sendEmail: vi.fn().mockResolvedValue({ delivered: true }),
+  getAppBaseUrl: () => "https://hasaadx.com",
+}));
 
 const RUN_INTEGRATION =
   !!process.env.TEST_DATABASE_URL &&
@@ -47,6 +52,9 @@ describe.skipIf(!RUN_INTEGRATION)("GET /api/admin/credits/teachers", () => {
   });
 
   afterAll(async () => {
+    await db.execute(sql`DELETE FROM notifications WHERE teacher_id = ${teacherId}`);
+    await db.execute(sql`DELETE FROM credit_batches WHERE teacher_id = ${teacherId}`);
+    await db.execute(sql`DELETE FROM credit_transactions WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM credit_accounts WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM teachers WHERE id IN (${teacherId}, ${adminId})`);
   });
@@ -85,5 +93,51 @@ describe.skipIf(!RUN_INTEGRATION)("GET /api/admin/credits/teachers", () => {
     expect(Number(res.body.total)).toBe(1);
     expect(res.body.rows).toHaveLength(1);
     expect(res.body.rows[0].id).toBe(teacherId);
+  });
+
+  it("يرسل إشعارًا عند زيادة الرصيد فقط ولا يرسل عند الخصم", async () => {
+    await request(app)
+      .post(`/api/admin/credits/teachers/${teacherId}/adjust`)
+      .send({ delta: 25, reason: "هدية اختبار", mode: "add" })
+      .expect(200);
+
+    let notifications = await db.execute(sql`
+      SELECT type FROM notifications WHERE teacher_id = ${teacherId} ORDER BY id`);
+    expect(notifications.rows.map((row: any) => row.type)).toEqual(["credit_award"]);
+
+    await request(app)
+      .post(`/api/admin/credits/teachers/${teacherId}/adjust`)
+      .send({ delta: 10, reason: "خصم اختبار", mode: "deduct" })
+      .expect(200);
+
+    notifications = await db.execute(sql`
+      SELECT type FROM notifications WHERE teacher_id = ${teacherId} ORDER BY id`);
+    expect(notifications.rows.map((row: any) => row.type)).toEqual(["credit_award"]);
+  });
+
+  it("يرسل إشعارًا عند تفعيل غير محدود فقط ولا يرسل عند إلغائه", async () => {
+    await request(app)
+      .post(`/api/admin/credits/teachers/${teacherId}/toggle-unlimited`)
+      .send({ reason: "مكافأة اختبار" })
+      .expect(200);
+
+    let notifications = await db.execute(sql`
+      SELECT type FROM notifications WHERE teacher_id = ${teacherId} ORDER BY id`);
+    expect(notifications.rows.map((row: any) => row.type)).toEqual([
+      "credit_award",
+      "unlimited_award",
+    ]);
+
+    await request(app)
+      .post(`/api/admin/credits/teachers/${teacherId}/toggle-unlimited`)
+      .send({ reason: "إلغاء اختبار" })
+      .expect(200);
+
+    notifications = await db.execute(sql`
+      SELECT type FROM notifications WHERE teacher_id = ${teacherId} ORDER BY id`);
+    expect(notifications.rows.map((row: any) => row.type)).toEqual([
+      "credit_award",
+      "unlimited_award",
+    ]);
   });
 });

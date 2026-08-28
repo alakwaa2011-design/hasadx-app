@@ -4,8 +4,10 @@ import { z } from "zod";
 import { db, plansTable, subscriptionsTable, teachersTable, platformSettingsTable } from "@workspace/db";
 import { featureAccess, FEATURES } from "@workspace/billing";
 import { CreditService } from "../lib/credit-service";
+import { notifyTeacherOfAward } from "../lib/credit-award-notifications";
 
 const router: IRouter = Router();
+const PLAN_RANK: Record<string, number> = { free: 0, basic: 1, pro: 2 };
 
 function requireAuth(req: any, res: any, next: any) {
   if (!req.session?.teacherId) {
@@ -79,11 +81,18 @@ router.post("/billing/admin/assign", requireAdminMw, async (req: any, res) => {
     return res.status(400).json({ message: "هذه الباقة خارج نظام نقاط حصاد ولا يمكن تعيينها" });
   }
   const [plan] = await db
-    .select({ id: plansTable.id })
+    .select({ id: plansTable.id, nameAr: plansTable.nameAr })
     .from(plansTable)
     .where(eq(plansTable.code, planCode))
     .limit(1);
   if (!plan) return res.status(404).json({ message: "الباقة غير موجودة" });
+
+  const [current] = await db
+    .select({ code: plansTable.code })
+    .from(subscriptionsTable)
+    .innerJoin(plansTable, eq(plansTable.id, subscriptionsTable.planId))
+    .where(eq(subscriptionsTable.teacherId, teacherId))
+    .limit(1);
 
   await db
     .insert(subscriptionsTable)
@@ -93,6 +102,16 @@ router.post("/billing/admin/assign", requireAdminMw, async (req: any, res) => {
       set: { planId: plan.id, status: "active", updatedAt: new Date() },
     });
   featureAccess.invalidate(teacherId);
+  if (
+    planCode !== "free" &&
+    (PLAN_RANK[planCode] ?? 0) > (PLAN_RANK[current?.code ?? "free"] ?? 0)
+  ) {
+    await notifyTeacherOfAward(teacherId, {
+      kind: "plan",
+      planNameAr: plan.nameAr,
+      credits: 0,
+    });
+  }
   res.json({ ok: true });
 });
 
@@ -124,8 +143,14 @@ router.post("/billing/admin/grant-plan", requireAdminMw, async (req: any, res) =
   const invoiceId = `manual_plan_grant_${grantId}`;
 
   const [teacher] = await db
-    .select({ id: teachersTable.id, name: teachersTable.name })
+    .select({
+      id: teachersTable.id,
+      name: teachersTable.name,
+      currentPlanCode: plansTable.code,
+    })
     .from(teachersTable)
+    .leftJoin(subscriptionsTable, eq(subscriptionsTable.teacherId, teachersTable.id))
+    .leftJoin(plansTable, eq(plansTable.id, subscriptionsTable.planId))
     .where(eq(teachersTable.id, teacherId))
     .limit(1);
   if (!teacher) return res.status(404).json({ message: "المعلم غير موجود" });
@@ -142,6 +167,17 @@ router.post("/billing/admin/grant-plan", requireAdminMw, async (req: any, res) =
 
   featureAccess.invalidate(teacherId);
   const newBalance = await CreditService.getBalance(teacherId);
+  const isDowngrade =
+    (PLAN_RANK[result.planCode] ?? 0) <
+    (PLAN_RANK[teacher.currentPlanCode ?? "free"] ?? 0);
+  if (!result.alreadyGranted && !isDowngrade) {
+    await notifyTeacherOfAward(teacherId, {
+      kind: "plan",
+      planNameAr: plan?.nameAr ?? result.planCode,
+      credits: result.granted,
+      expiresAt: result.expiresAt,
+    });
+  }
   res.json({
     ok: true,
     alreadyGranted: result.alreadyGranted,

@@ -844,14 +844,14 @@ export const CreditService = {
    * Called non-blocking on login (safe to call repeatedly — the guard inside
    * guarantees at-most-once grant per teacher lifetime).
    */
-  async grantWelcomeCredits(teacherId: number): Promise<void> {
+  async grantWelcomeCredits(teacherId: number): Promise<number> {
     // Read the configured welcome amount before opening the transaction.
     // Fallback to 50 if the row or column is absent / zero.
     const psRows = await db.execute(sql`SELECT welcome_credits FROM platform_settings LIMIT 1`);
     const rawAmount = Number((psRows.rows[0] as any)?.welcome_credits ?? 0);
     const welcomeAmount = rawAmount > 0 ? rawAmount : 50;
 
-    await db.transaction(async (tx) => {
+    return await db.transaction(async (tx) => {
       await lockAccount(tx, teacherId);
 
       // Guard: if any free batch has ever been created, do nothing.
@@ -861,7 +861,7 @@ export const CreditService = {
           AND source = 'free'
         LIMIT 1
       `);
-      if (existing.rows.length > 0) return;
+      if (existing.rows.length > 0) return 0;
 
       // Grant welcome points with no expiry (one-time, permanent).
       await this._grantBatchInTx(
@@ -874,6 +874,7 @@ export const CreditService = {
         null,
         "رصيد ترحيبي (مرة واحدة)"
       );
+      return welcomeAmount;
     });
   },
 
@@ -1048,7 +1049,7 @@ export const CreditService = {
     reason: string,
     adminId: number,
     mode: "add" | "deduct" | "set" = "add"
-  ): Promise<number> {
+  ): Promise<{ newBalance: number; actualDelta: number }> {
     return await db.transaction(async (tx) => {
       const acct = await lockAccount(tx, teacherId);
       const current = Number(acct?.balance ?? 0);
@@ -1106,7 +1107,7 @@ export const CreditService = {
           creditType: "promo",
           source: "admin_adjustment",
         });
-        return newBalance;
+        return { newBalance, actualDelta };
       }
 
       // Zero delta or handled above
@@ -1123,18 +1124,24 @@ export const CreditService = {
         });
       }
 
-      return newBalance;
+      return { newBalance, actualDelta };
     });
   },
 
-  async bulkAdjustBalance(delta: number, reason: string, adminId: number): Promise<number> {
+  async bulkAdjustBalance(
+    delta: number,
+    reason: string,
+    adminId: number,
+  ): Promise<Array<{ teacherId: number; newBalance: number; actualDelta: number }>> {
     const accounts = await db
       .select({ teacherId: creditAccountsTable.teacherId })
       .from(creditAccountsTable);
+    const results: Array<{ teacherId: number; newBalance: number; actualDelta: number }> = [];
     for (const { teacherId } of accounts) {
-      await this.adjustBalance(teacherId, delta, reason, adminId, "add");
+      const result = await this.adjustBalance(teacherId, delta, reason, adminId, "add");
+      results.push({ teacherId, ...result });
     }
-    return accounts.length;
+    return results;
   },
 
   // ── Queries ──────────────────────────────────────────────────────────────────

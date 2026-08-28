@@ -8,11 +8,16 @@
  * 4. النقاط الترحيبية/المشتراة القائمة لا تُمس.
  * 5. planCode غير مسموح (free/school) → 400.
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+
+vi.mock("../lib/email", () => ({
+  sendEmail: vi.fn().mockResolvedValue({ delivered: true }),
+  getAppBaseUrl: () => "https://hasaadx.com",
+}));
 
 const RUN_INTEGRATION =
   !!process.env.TEST_DATABASE_URL &&
@@ -63,6 +68,7 @@ describe.skipIf(!RUN_INTEGRATION)("POST /api/billing/admin/grant-plan", () => {
   });
 
   afterAll(async () => {
+    await db.execute(sql`DELETE FROM notifications WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM subscription_credit_grants WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM credit_batches WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM credit_transactions WHERE teacher_id = ${teacherId}`);
@@ -112,6 +118,10 @@ describe.skipIf(!RUN_INTEGRATION)("POST /api/billing/admin/grant-plan", () => {
     expect(txs.rows.length).toBe(1);
     expect((txs.rows[0] as any).type).toBe("earn");
     expect((txs.rows[0] as any).status).toBe("completed");
+
+    const notifications = await db.execute(sql`
+      SELECT type FROM notifications WHERE teacher_id = ${teacherId}`);
+    expect(notifications.rows.map((row: any) => row.type)).toEqual(["plan_award"]);
   });
 
   it("إعادة نفس الطلب: لا دفعة ثانية ولا مضاعفة رصيد", async () => {
@@ -127,6 +137,10 @@ describe.skipIf(!RUN_INTEGRATION)("POST /api/billing/admin/grant-plan", () => {
       SELECT COUNT(*)::int AS n FROM credit_batches
       WHERE teacher_id = ${teacherId} AND source = 'subscription'`);
     expect(Number((batches.rows[0] as any).n)).toBe(1);
+
+    const notifications = await db.execute(sql`
+      SELECT COUNT(*)::int AS n FROM notifications WHERE teacher_id = ${teacherId}`);
+    expect(Number((notifications.rows[0] as any).n)).toBe(1);
   });
 
   it("منح Pro بعده: دفعة Pro جديدة والرصيد يرتفع بقيمة Pro (ضمن الحدود)", async () => {
@@ -146,6 +160,24 @@ describe.skipIf(!RUN_INTEGRATION)("POST /api/billing/admin/grant-plan", () => {
       SELECT p.code FROM subscriptions s JOIN plans p ON p.id = s.plan_id
       WHERE s.teacher_id = ${teacherId}`);
     expect((sub.rows[0] as any).code).toBe("pro");
+
+    const notifications = await db.execute(sql`
+      SELECT COUNT(*)::int AS n FROM notifications WHERE teacher_id = ${teacherId}`);
+    expect(Number((notifications.rows[0] as any).n)).toBe(2);
+  });
+
+  it("الخفض من Pro إلى Basic لا يرسل إشعار هدية", async () => {
+    const before = await db.execute(sql`
+      SELECT COUNT(*)::int AS n FROM notifications WHERE teacher_id = ${teacherId}`);
+
+    await request(app)
+      .post("/api/billing/admin/grant-plan")
+      .send({ teacherId, planCode: "basic", grantId: `${RUN_ID}-downgrade` })
+      .expect(200);
+
+    const after = await db.execute(sql`
+      SELECT COUNT(*)::int AS n FROM notifications WHERE teacher_id = ${teacherId}`);
+    expect(Number((after.rows[0] as any).n)).toBe(Number((before.rows[0] as any).n));
   });
 
   it("النقاط الترحيبية والمشتراة القائمة لم تُمس", async () => {
