@@ -78,6 +78,8 @@ vi.mock("../lib/generate-mcq-slides", () => ({
 vi.mock("../lib/file-to-outline", () => ({
   fileToOutline: vi.fn(),
   multiImagesToOutline: vi.fn(),
+  estimateSlideCount: vi.fn(() => 2),
+  minimumInteractiveSlides: vi.fn(() => 1),
 }));
 
 vi.mock("../lib/file-extractor", () => ({
@@ -422,7 +424,7 @@ describe("POST /api/presentations/import-file — PPTX", () => {
     expect(res.body.warning).toBe("content_extraction_failed");
   });
 
-  it("still returns the full content deck when fallback question generation fails", async () => {
+  it("rejects an incomplete deck when fallback question generation fails", async () => {
     const parsedSlides = [{ title: "Slide 1", bullets: ["content"] }];
     const builtSlides  = [{ id: "s1", layout: "title-only", background: "#ffffff", elements: [] }];
 
@@ -440,17 +442,14 @@ describe("POST /api/presentations/import-file — PPTX", () => {
     });
     vi.mocked(generateMcqQuestions).mockRejectedValue(new Error("OpenAI timeout"));
 
-    pushQueue([DECK_STUB], [ASSET_STUB]);
-
     const pptxBuf = await makePptxBuffer();
     const res = await request(makeApp({ teacherId: 1 }))
       .post("/api/presentations/import-file")
       .attach("file", pptxBuf, { filename: "Fail.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
 
-    expect(res.status).toBe(201);
-    expect(res.body.slideCount).toBe(1);
-    expect(res.body.interactiveSlideCount).toBe(0);
-    expect(res.body.warning).toBe("interactive_generation_failed");
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe("IMPORT_QUALITY_FAILED");
+    expect(res.body.presentationId).toBeUndefined();
   });
 });
 

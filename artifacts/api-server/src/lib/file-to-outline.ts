@@ -55,14 +55,16 @@ const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
 Never repeat the same kind more than 3 times in a row.`;
 
 const GAMES_RULES_AR = `أسئلة النشاط (gameQuestions):
-- أنتج 4-6 أسئلة على الشرائح التفاعلية فقط (interactionHint="quiz" أو "activity").
+- وزّع التفاعل داخل الدرس: شريحة اختبار قصيرة، وشريحة تصويت/نقاش إذا كان العرض 10 شرائح أو أكثر.
+- شريحة الاختبار تحمل 2-3 أسئلة فقط حتى يبقى العرض كاملاً ولا ينقطع JSON.
 - لا أسئلة على العنوان أو الخاتمة أو الشرح النظري.
 - كل سؤال: { "prompt": "...", "options": ["أ","ب","ج","د"], "correctIndex": 0 }
 - اترك gameSuggestion = null دائماً.
 - لا تنتج gameQuestions على الشرائح غير التفاعلية.`;
 
 const GAMES_RULES_EN = `Activity questions (gameQuestions):
-- Produce 4-6 questions only on interactive slides (interactionHint="quiz" or "activity").
+- Distribute interaction through the lesson: one short quiz, plus a poll/discussion when the deck has 10+ slides.
+- Keep the quiz to 2-3 questions so the complete deck JSON fits reliably.
 - No questions on title, closure, or pure-explanation slides.
 - Each: { "prompt": "...", "options": ["A","B","C","D"], "correctIndex": 0 }
 - Always leave gameSuggestion = null.`;
@@ -99,7 +101,18 @@ const outlineCardSchema = z.object({
   slideTheme: z.any().nullable().optional().transform(() => null),
   visualDirection: z.object({
     icon: z.string().max(40).optional(),
-    shape: z.enum(["rect", "circle", "line", "arrow", "divider"]).optional(),
+    shape: z
+      .any()
+      .optional()
+      .transform((value): "rect" | "circle" | "line" | "arrow" | "divider" | undefined => {
+        if (value === "rect" || value === "circle" || value === "line" || value === "arrow" || value === "divider") {
+          return value;
+        }
+        if (value === "rounded" || value === "box" || value === "card" || value === "square") {
+          return "rect";
+        }
+        return undefined;
+      }),
     layoutHint: z.string().max(40).optional(),
   }),
   source: z.string().max(200).optional(),
@@ -220,6 +233,11 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
     ? [
         `أنتج بالضبط ${slideCount} شريحة تعالج محتوى الملف بعمق — استخرج كل الأفكار الرئيسية والتفاصيل المهمة والأمثلة والأدلة الموجودة في الملف. لا تختصر أو تحذف شيئاً مهماً.`,
         `ابدأ بشريحة عنوان (title)، أنهِ بشريحة خاتمة (closure).`,
+        slideCount >= 10
+          ? `يجب أن يحتوي العرض على شريحتين تفاعليتين على الأقل موزعتين داخل الدرس: اختبار قصير + تصويت أو نقاش.`
+          : `يجب أن يحتوي العرض على شريحة تفاعلية واحدة على الأقل قبل الخاتمة.`,
+        `استخدم ستة أنواع تخطيط مختلفة على الأقل عندما يكون العرض 10 شرائح أو أكثر، ولا تكرر concept-card أكثر من مرتين متتاليتين.`,
+        `ابنِ تسلسلاً تعليمياً حقيقياً: تمهيد، أهداف، شرح المفاهيم، مثال أو تطبيق، تحقق من الفهم، تدريب، ثم خلاصة.`,
         `اللغة: ${ar ? "عربية فصحى مبسّطة" : "English"}.`,
         `الكثافة: مفصّلة (3-5 نقاط لكل شريحة، كل نقطة تحمل معلومة حقيقية محددة وليست تسمية عامة، أسلوب عناوين مكثّفة لا فقرات). إذا الموضوع يستحق أكثر من شريحة فقسّمه — لا تكدّس كل شيء في نقطتين.`,
         `إذا ظهرت عناوين أو أرقام صفحات في الملف، اذكرها في حقل source للشريحة المناسبة.`,
@@ -234,6 +252,11 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
     : [
         `Produce exactly ${slideCount} slides that thoroughly cover the document's content — extract ALL main ideas, details, examples, and evidence from the file. Do not skip important material or over-simplify.`,
         `Start with a title slide, end with a closure slide.`,
+        slideCount >= 10
+          ? `The deck must contain at least two interactive slides distributed through the lesson: a short quiz plus a poll or discussion.`
+          : `The deck must contain at least one interactive slide before the closure.`,
+        `Use at least six distinct layout kinds for decks of 10+ slides, and never repeat concept-card more than twice in a row.`,
+        `Build a real teaching sequence: opener, objectives, concept explanation, example/application, understanding check, practice, and closure.`,
         `Language: English.`,
         `Density: detailed (3-5 points per slide; each point must carry a real, specific piece of information — not a generic label. Use headline style, not paragraphs). If a section has rich content, split it into multiple slides rather than cramming it into two bullet points.`,
         `If headings or page numbers appear in the document, cite them in the source field.`,
@@ -269,35 +292,56 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
 
 /* Estimate slide count: 1 per detected heading (capped), or a fixed
    count based on content length. */
-function estimateSlideCount(ef: ExtractedFile): number {
+export function estimateSlideCount(ef: ExtractedFile): number {
   if (ef.fileType === "image") return 8;
-  const headingDriven = ef.headings.length > 2 ? Math.min(ef.headings.length + 2, 14) : 0;
-  const textDriven    = ef.text.length > 3000 ? 12 : ef.text.length > 1500 ? 10 : 8;
-  return headingDriven || textDriven;
+  const pageDriven = ef.pageCount ? Math.min(18, Math.max(8, Math.ceil(ef.pageCount * 1.35) + 2)) : 0;
+  const headingDriven = ef.headings.length > 2 ? Math.min(18, Math.max(8, ef.headings.length + 3)) : 0;
+  const textDriven =
+    ef.text.length > 16000 ? 16 :
+    ef.text.length > 9000 ? 14 :
+    ef.text.length > 4000 ? 12 :
+    ef.text.length > 1800 ? 10 : 8;
+  return Math.max(8, pageDriven, headingDriven, textDriven);
 }
 
-/* ── Main entry point ────────────────────────────────────────────── */
-const FILE_OUTLINE_MODEL = "gpt-5";
+export function minimumInteractiveSlides(slideCount: number): number {
+  return slideCount >= 10 ? 2 : 1;
+}
 
-export async function fileToOutline(
+function inspectOutline(outline: FileOutline, expectedSlides: number): string[] {
+  const issues: string[] = [];
+  if (outline.slides.length < expectedSlides) {
+    issues.push(`Only ${outline.slides.length}/${expectedSlides} slides were returned.`);
+  }
+  const interactive = outline.slides.filter((slide) => slide.kind === "interactive");
+  const minInteractive = minimumInteractiveSlides(expectedSlides);
+  if (interactive.length < minInteractive) {
+    issues.push(`Only ${interactive.length}/${minInteractive} required interactive slides were returned.`);
+  }
+  const quiz = interactive.find((slide) =>
+    slide.interactionHint === "quiz" &&
+    Array.isArray(slide.gameQuestions) &&
+    slide.gameQuestions.length >= 2
+  );
+  if (!quiz) {
+    issues.push("No interactive quiz slide contains at least two complete questions.");
+  }
+  const distinctKinds = new Set(outline.slides.map((slide) => slide.kind)).size;
+  const requiredKinds = expectedSlides >= 10 ? 6 : 4;
+  if (distinctKinds < requiredKinds) {
+    issues.push(`Only ${distinctKinds}/${requiredKinds} distinct slide layouts were used.`);
+  }
+  return issues;
+}
+
+async function runFileOutlineCompletion(
   ef: ExtractedFile,
-  filename: string,
-): Promise<FileOutline> {
-  const lang: OutlineLanguage = ef.detectedLanguage;
-  const systemPrompt = systemPromptFor(lang);
-
-  let rawJson: string;
-
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
   if (ef.fileType === "image" && ef.imageBase64 && ef.imageMime) {
-    /* Vision path: send image directly to GPT-4o. */
-    const userPrompt = lang === "ar"
-      ? `الصورة المرفوعة تحتوي على مادة تعليمية. استخرج كل المحتوى الظاهر في الصورة وحوّله إلى عرض تقديمي بـ 8 شرائح.\n\n${buildDocPrompt(ef, filename)}`
-      : `The attached image contains educational material. Extract all visible content and turn it into an 8-slide presentation.\n\n${buildDocPrompt(ef, filename)}`;
-
     const resp = await openai.chat.completions.create({
       model: FILE_OUTLINE_MODEL,
-      /* gpt-5 counts hidden reasoning tokens against max_completion_tokens;
-         minimal effort + a large budget prevents empty truncated replies. */
       max_completion_tokens: 16000,
       reasoning_effort: "minimal",
       response_format: { type: "json_object" },
@@ -312,31 +356,65 @@ export async function fileToOutline(
         },
       ],
     });
-    rawJson = resp.choices[0]?.message?.content ?? "";
-  } else {
-    /* Text path. */
-    const userPrompt = buildDocPrompt(ef, filename);
-    const resp = await openai.chat.completions.create({
-      model: FILE_OUTLINE_MODEL,
-      max_completion_tokens: 16000,
-      reasoning_effort: "minimal",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    });
-    rawJson = resp.choices[0]?.message?.content ?? "";
+    return resp.choices[0]?.message?.content ?? "";
   }
 
-  const raw = parseJsonLoose(rawJson);
-  const parsed = fileOutlineSchema.safeParse(raw);
+  const resp = await openai.chat.completions.create({
+    model: FILE_OUTLINE_MODEL,
+    max_completion_tokens: 16000,
+    reasoning_effort: "minimal",
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+  return resp.choices[0]?.message?.content ?? "";
+}
+
+/* ── Main entry point ────────────────────────────────────────────── */
+const FILE_OUTLINE_MODEL = "gpt-5";
+
+export async function fileToOutline(
+  ef: ExtractedFile,
+  filename: string,
+): Promise<FileOutline> {
+  const lang: OutlineLanguage = ef.detectedLanguage;
+  const systemPrompt = systemPromptFor(lang);
+
+  const expectedSlides = estimateSlideCount(ef);
+  const userPrompt = ef.fileType === "image" && ef.imageBase64 && ef.imageMime
+    ? (lang === "ar"
+      ? `الصورة المرفوعة تحتوي على مادة تعليمية. استخرج كل المحتوى الظاهر في الصورة وحوّله إلى عرض تقديمي بـ 8 شرائح.\n\n${buildDocPrompt(ef, filename)}`
+      : `The attached image contains educational material. Extract all visible content and turn it into an 8-slide presentation.\n\n${buildDocPrompt(ef, filename)}`)
+    : buildDocPrompt(ef, filename);
+
+  const rawJson = await runFileOutlineCompletion(ef, systemPrompt, userPrompt);
+  const parsed = fileOutlineSchema.safeParse(parseJsonLoose(rawJson));
   if (!parsed.success) {
     throw new Error(
       `AI outline parse failed: ${JSON.stringify(parsed.error.issues.slice(0, 3))}`,
     );
   }
-  return parsed.data;
+
+  const initialIssues = inspectOutline(parsed.data, expectedSlides);
+  if (initialIssues.length === 0) return parsed.data;
+
+  const correction = lang === "ar"
+    ? `\n\nالمحاولة السابقة غير مكتملة:\n- ${initialIssues.join("\n- ")}\nأعد JSON كاملاً من الصفر. أنتج بالضبط ${expectedSlides} شريحة، مع ${minimumInteractiveSlides(expectedSlides)} شريحة تفاعلية على الأقل، واختبار يحوي 2-3 أسئلة حقيقية. لا ترسل تصحيحاً جزئياً.`
+    : `\n\nThe previous attempt was incomplete:\n- ${initialIssues.join("\n- ")}\nRegenerate the complete JSON from scratch. Return exactly ${expectedSlides} slides, at least ${minimumInteractiveSlides(expectedSlides)} interactive slides, and a quiz with 2-3 real questions. Do not return a partial patch.`;
+  const retryJson = await runFileOutlineCompletion(ef, systemPrompt, userPrompt + correction);
+  const retried = fileOutlineSchema.safeParse(parseJsonLoose(retryJson));
+  if (!retried.success) {
+    throw new Error(
+      `AI outline corrective retry parse failed: ${JSON.stringify(retried.error.issues.slice(0, 3))}`,
+    );
+  }
+  const retryIssues = inspectOutline(retried.data, expectedSlides);
+  if (retryIssues.length > 0) {
+    throw new Error(`AI outline remained incomplete: ${retryIssues.join(" | ")}`);
+  }
+  return retried.data;
 }
 
 /* ── Multi-image outline ─────────────────────────────────────────────

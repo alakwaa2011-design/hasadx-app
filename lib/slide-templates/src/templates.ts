@@ -230,9 +230,10 @@ function buildBullets(opts: {
 }): TextElement[] {
   const { seed, items, x, y, w, cfg, lang, palette, warnings, marker = "◆" } = opts;
   const align = alignFor(lang);
-  /* Each bullet reserves enough vertical space for up to 2 wrapped lines
-     so the renderer never paints text over the bullet beneath it. */
-  const stride = Math.round(cfg.bulletFont * 2.4);
+  /* Arabic glyphs and side-image layouts wrap earlier than a raw character
+     count suggests. Reserve three lines per item; the final materializer
+     performs a second fit pass after image-column reflow. */
+  const stride = Math.round(cfg.bulletFont * 3.15);
   return items.slice(0, cfg.maxBullets).map((raw, i) => {
     const text = clip(raw.trim(), cfg.maxBulletChars, warnings, `سطر ${i + 1}`, lang);
     const bullet = `${marker}  ${text}`;

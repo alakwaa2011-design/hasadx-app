@@ -101,18 +101,31 @@ function addVisualFallback(
   slide.visualFallback = fallback;
 }
 
-/* Bump small body fonts so 30-something readers in a classroom can
-   actually skim a slide from the back row. Anything ≤ 24 pt gets
-   roughly +3, capped at +4, to avoid blowing up titles that are
-   already 50–80 pt. */
-function bumpFontSizes(elements: Element[]): void {
+function estimatedWrappedLines(text: string, width: number, fontSize: number): number {
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) ?? []).length;
+  const arabicRatio = text.length > 0 ? arabicChars / text.length : 0;
+  const averageGlyphWidth = fontSize * (arabicRatio > 0.25 ? 0.62 : 0.54);
+  const charsPerLine = Math.max(4, Math.floor(width / averageGlyphWidth));
+  return text.split("\n").reduce(
+    (sum, line) => sum + Math.max(1, Math.ceil(line.length / charsPerLine)),
+    0,
+  );
+}
+
+/* Fit every text element to its allocated box after images and layout
+   adjustments. This deliberately prefers a smaller readable font over
+   clipping or painting wrapped Arabic text into the next element. */
+function fitTextElements(elements: Element[]): void {
   for (const el of elements) {
     if (el.kind !== "text") continue;
-    const cur = el.fontSize;
-    if (typeof cur !== "number") continue;
-    if (cur >= 30) continue;
-    const bumped = Math.min(cur + 3, cur + 4);
-    el.fontSize = bumped;
+    let fontSize = typeof el.fontSize === "number" ? el.fontSize : 28;
+    const minFont = fontSize >= 40 ? 26 : 16;
+    while (fontSize > minFont) {
+      const lines = estimatedWrappedLines(el.text, el.w, fontSize);
+      if (lines * fontSize * 1.22 <= el.h) break;
+      fontSize -= 1;
+    }
+    el.fontSize = fontSize;
   }
 }
 
@@ -130,7 +143,7 @@ function avoidColumn(
   colX: number,
   colW: number,
   side: "left" | "right",
-): void {
+): boolean {
   const colLeft = colX;
   const colRight = colX + colW;
   const colTop = IMG_Y;
@@ -149,20 +162,31 @@ function avoidColumn(
       if (elRight > colLeft - IMG_GUTTER && el.x < colRight) {
         const newRight = colLeft - IMG_GUTTER;
         const newW = newRight - el.x;
-        if (newW >= MIN_REMAINING_W) el.w = newW;
+        if (newW < MIN_REMAINING_W) return false;
       }
     } else {
       if (el.x < colRight + IMG_GUTTER && elRight > colLeft) {
         const newX = colRight + IMG_GUTTER;
         const delta = newX - el.x;
         const newW = el.w - delta;
-        if (newW >= MIN_REMAINING_W) {
-          el.x = newX;
-          el.w = newW;
-        }
+        if (newW < MIN_REMAINING_W) return false;
       }
     }
   }
+  for (const el of elements) {
+    const elRight = el.x + el.w;
+    const elBottom = el.y + el.h;
+    const yOverlap = elBottom > colTop && el.y < colBottom;
+    if (!yOverlap) continue;
+    if (side === "right" && elRight > colLeft - IMG_GUTTER && el.x < colRight) {
+      el.w = colLeft - IMG_GUTTER - el.x;
+    } else if (side === "left" && el.x < colRight + IMG_GUTTER && elRight > colLeft) {
+      const newX = colRight + IMG_GUTTER;
+      el.w -= newX - el.x;
+      el.x = newX;
+    }
+  }
+  return true;
 }
 
 export function buildOneSlide(input: BuildOneInput): BuildOneResult {
@@ -216,7 +240,7 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
          Then clamp any text/icon/shape that would overlap it. */
       const side: "left" | "right" = input.lang === "ar" ? "left" : "right";
       const colX = side === "right" ? CANVAS_W - IMG_W - IMG_MARGIN : IMG_MARGIN;
-      avoidColumn(out.slide.elements, colX, IMG_W, side);
+      const hasRoomForImage = avoidColumn(out.slide.elements, colX, IMG_W, side);
       /* Insert the image BEFORE text/icon/shape elements so the renderer
          (which paints in array order) draws text on top of the photo
          when residual overlap remains. We still place it after any
@@ -229,27 +253,32 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
         out.slide.elements[0].w >= CANVAS_W - 1
           ? 1
           : 0;
-      out.slide.elements.splice(insertAt, 0, {
-        id: `${out.slide.id}-img`,
-        kind: "image",
-        x: colX,
-        y: IMG_Y,
-        w: IMG_W,
-        h: IMG_H,
-        url: input.backgroundImageUrl,
-        objectFit: "cover",
-        imageBorderRadius: 24,
-      });
+      if (hasRoomForImage) {
+        out.slide.elements.splice(insertAt, 0, {
+          id: `${out.slide.id}-img`,
+          kind: "image",
+          x: colX,
+          y: IMG_Y,
+          w: IMG_W,
+          h: IMG_H,
+          url: input.backgroundImageUrl,
+          objectFit: "cover",
+          imageBorderRadius: 24,
+        });
+      } else {
+        out.warnings.push(
+          input.lang === "ar"
+            ? "تم حذف الصورة الجانبية لأن مساحة النص لا تسمح بها."
+            : "Side image removed because the text layout did not have enough room.",
+        );
+      }
     } else {
       /* A requested image must never degrade into a text-only slide. Keep
          the deck self-contained with a deterministic, topic-directed visual. */
       addVisualFallback(out.slide, input.card, palette, input.lang);
     }
 
-    /* Slightly larger body type for classroom readability. Runs after
-       any layout reflow so we don't bump fonts on elements we then
-       resize. */
-    bumpFontSizes(out.slide.elements);
+    fitTextElements(out.slide.elements);
 
     return { slide: out.slide, warnings: out.warnings };
   } catch (err) {

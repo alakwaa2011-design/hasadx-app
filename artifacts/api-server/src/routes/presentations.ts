@@ -19,7 +19,12 @@ import { buildPdf } from "../lib/presentation-pdf";
 import { mintExportToken, verifyExportToken } from "../lib/export-token";
 import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentations-tier";
 import { extractFileContent, type ExtractedFile } from "../lib/file-extractor";
-import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
+import {
+  estimateSlideCount,
+  fileToOutline,
+  minimumInteractiveSlides,
+  multiImagesToOutline,
+} from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
 import { generateMcqQuestions, materializeMcqSlides, type McqQuestion } from "../lib/generate-mcq-slides";
@@ -688,6 +693,13 @@ function countInteractiveSlides(slides: unknown[]): number {
   }).length;
 }
 
+class ImportQualityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ImportQualityError";
+  }
+}
+
 async function materializeImportedDeck(
   extracted: ExtractedFile,
   title: string,
@@ -697,8 +709,20 @@ async function materializeImportedDeck(
   language: "ar" | "en";
   themeKey: string;
   interactiveSlideCount: number;
+  expectedSlideCount: number;
+  materializationWarnings: string[];
 }> {
-  const outline = await fileToOutline(extracted, title);
+  const expectedSlideCount = estimateSlideCount(extracted);
+  let outline: Awaited<ReturnType<typeof fileToOutline>>;
+  try {
+    outline = await fileToOutline(extracted, title);
+  } catch (error) {
+    throw new ImportQualityError(
+      `The AI could not produce a complete structured lesson: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
   const themeKey = pickServerDefaultTheme();
   const docQueries = outline.slides.map(
     (card) => (card as { imageQuery?: string }).imageQuery || "",
@@ -709,6 +733,7 @@ async function materializeImportedDeck(
   });
 
   const slides: unknown[] = [];
+  const materializationWarnings: string[] = [];
   for (let i = 0; i < outline.slides.length; i++) {
     const card = outline.slides[i];
     const placement = (card as {
@@ -722,8 +747,21 @@ async function materializeImportedDeck(
       backgroundImageUrl: docHits[i]?.url ?? undefined,
       imagePlacement: placement,
     });
+    materializationWarnings.push(...out.warnings);
     const parsedOne = slideSchema.safeParse(out.slide);
-    if (parsedOne.success) slides.push(parsedOne.data);
+    if (parsedOne.success) {
+      slides.push(parsedOne.data);
+    } else {
+      materializationWarnings.push(
+        `Slide ${card.index} rejected: ${parsedOne.error.issues[0]?.message ?? "invalid slide"}`,
+      );
+    }
+  }
+
+  if (slides.length < expectedSlideCount) {
+    throw new ImportQualityError(
+      `Only ${slides.length}/${expectedSlideCount} complete slides survived materialization.`,
+    );
   }
 
   /* The outline prompt requests interactive cards, but model output can still
@@ -731,7 +769,8 @@ async function materializeImportedDeck(
      interactive presentation, so add grounded comprehension slides when the
      outline did not materialize any activity element. */
   let interactiveSlideCount = countInteractiveSlides(slides);
-  if (interactiveSlideCount === 0 && extracted.text.trim()) {
+  const requiredInteractiveSlides = minimumInteractiveSlides(expectedSlideCount);
+  if (interactiveSlideCount < requiredInteractiveSlides && extracted.text.trim()) {
     try {
       const questions = await generateMcqQuestions(extracted.text, outline.language);
       const activitySlides = materializeMcqSlides(
@@ -746,11 +785,18 @@ async function materializeImportedDeck(
       req.log.warn({ err }, "Import: fallback interactive slides generation failed");
     }
   }
+  if (interactiveSlideCount < requiredInteractiveSlides) {
+    throw new ImportQualityError(
+      `Only ${interactiveSlideCount}/${requiredInteractiveSlides} interactive slides were created.`,
+    );
+  }
 
   req.log.info(
     {
       slides: slides.length,
+      expectedSlides: expectedSlideCount,
       interactiveSlides: interactiveSlideCount,
+      warnings: materializationWarnings.length,
       webRequested: docQueries.filter(Boolean).length,
       webResolved: docHits.filter(Boolean).length,
     },
@@ -762,6 +808,8 @@ async function materializeImportedDeck(
     language: outline.language,
     themeKey,
     interactiveSlideCount,
+    expectedSlideCount,
+    materializationWarnings,
   };
 }
 
@@ -974,6 +1022,8 @@ router.post(
       let contentExtractionFailed = false;
       let aiGenerated = false;
       let interactiveSlideCount = 0;
+      let expectedSlideCount = 0;
+      let materializationWarningCount = 0;
       let deckTheme = pickServerDefaultTheme();
 
       if (mime === "application/pdf" || ext === ".pdf") {
@@ -988,8 +1038,11 @@ router.post(
           deckLanguage = built.language;
           deckTheme = built.themeKey;
           interactiveSlideCount = built.interactiveSlideCount;
+          expectedSlideCount = built.expectedSlideCount;
+          materializationWarningCount = built.materializationWarnings.length;
           aiGenerated = true;
         } catch (err) {
+          if (err instanceof ImportQualityError) throw err;
           req.log.warn({ err }, "Import: PDF outline generation failed — preserving original pages");
           try {
             const pages = await parsePdf(file.buffer);
@@ -1041,8 +1094,11 @@ router.post(
           deckLanguage = built.language;
           deckTheme = built.themeKey;
           interactiveSlideCount = built.interactiveSlideCount;
+          expectedSlideCount = built.expectedSlideCount;
+          materializationWarningCount = built.materializationWarnings.length;
           aiGenerated = true;
         } catch (err) {
+          if (err instanceof ImportQualityError) throw err;
           req.log.warn({ err }, "Import: PPTX full-deck generation failed — preserving extracted slides");
           contentExtractionFailed = true;
           try {
@@ -1084,8 +1140,11 @@ router.post(
           deckLanguage = built.language;
           deckTheme = built.themeKey;
           interactiveSlideCount = built.interactiveSlideCount;
+          expectedSlideCount = built.expectedSlideCount;
+          materializationWarningCount = built.materializationWarnings.length;
           aiGenerated = true;
         } catch (err) {
+          if (err instanceof ImportQualityError) throw err;
           req.log.warn({ err }, "Import: DOCX full-deck generation failed — preserving extracted content");
           contentExtractionFailed = true;
           try {
@@ -1112,8 +1171,11 @@ router.post(
           deckLanguage = built.language;
           deckTheme = built.themeKey;
           interactiveSlideCount = built.interactiveSlideCount;
+          expectedSlideCount = built.expectedSlideCount;
+          materializationWarningCount = built.materializationWarnings.length;
           aiGenerated = true;
         } catch (err) {
+          if (err instanceof ImportQualityError) throw err;
           req.log.warn({ err }, "Import: AI extraction failed — using blank deck");
           contentExtractionFailed = true;
           finalSlides = defaultSlides(deckLanguage);
@@ -1158,7 +1220,10 @@ router.post(
         presentationId: deck.id,
         title: deck.title,
         slideCount: (finalSlides as unknown[]).length,
+        expectedSlideCount: expectedSlideCount || (finalSlides as unknown[]).length,
         interactiveSlideCount,
+        materializationWarningCount,
+        fallbackUsed: contentExtractionFailed,
         aiGenerated,
         ...(contentExtractionFailed
           ? { warning: "content_extraction_failed" }
@@ -1168,6 +1233,16 @@ router.post(
       });
     } catch (err) {
       req.log.error({ err }, "Import presentation file failed");
+      if (err instanceof ImportQualityError) {
+        const isArabic = (req as Request & { locale?: string }).locale === "ar";
+        res.status(422).json({
+          message: isArabic
+            ? "لم يصل العرض إلى مستوى الجودة المطلوب. لم نحفظ نتيجة ناقصة؛ حاول مرة أخرى أو استخدم ملفاً أوضح."
+            : "The presentation did not meet the required quality level. An incomplete result was not saved; please try again or use a clearer file.",
+          code: "IMPORT_QUALITY_FAILED",
+        });
+        return;
+      }
       res.status(500).json({ message: "Failed to import file" });
     }
   },

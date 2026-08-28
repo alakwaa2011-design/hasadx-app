@@ -90,7 +90,10 @@ interface ImportResult {
   presentationId: number;
   title: string;
   slideCount: number;
+  expectedSlideCount?: number;
   interactiveSlideCount?: number;
+  materializationWarningCount?: number;
+  fallbackUsed?: boolean;
   aiGenerated: boolean;
   warning?: string;
 }
@@ -1559,14 +1562,19 @@ export default function NewPresentationPage() {
             <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-black">
               <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300">
                 {isAr
-                  ? `${importResult.slideCount} شريحة محتوى`
-                  : `${importResult.slideCount} content slides`}
+                  ? `${importResult.slideCount} شريحة مكتملة`
+                  : `${importResult.slideCount} complete slides`}
               </span>
               {(importResult.interactiveSlideCount ?? 0) > 0 && (
                 <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
                   {isAr
                     ? `${importResult.interactiveSlideCount} شريحة تفاعلية`
                     : `${importResult.interactiveSlideCount} interactive slides`}
+                </span>
+              )}
+              {(importResult.materializationWarningCount ?? 0) === 0 && !importResult.fallbackUsed && (
+                <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sky-700 dark:border-sky-900/40 dark:bg-sky-900/20 dark:text-sky-300">
+                  {isAr ? "اجتاز فحص التخطيط" : "Layout verified"}
                 </span>
               )}
             </div>
