@@ -75,6 +75,24 @@ vi.mock("../lib/generate-mcq-slides", () => ({
   materializeMcqSlides: vi.fn(),
 }));
 
+vi.mock("../lib/file-to-outline", () => ({
+  fileToOutline: vi.fn(),
+  multiImagesToOutline: vi.fn(),
+}));
+
+vi.mock("../lib/file-extractor", () => ({
+  extractFileContent: vi.fn(),
+}));
+
+vi.mock("../lib/materialize-slide", () => ({
+  buildOneSlide: vi.fn(),
+}));
+
+vi.mock("../lib/web-image-search", () => ({
+  findWebImagesBatch: vi.fn().mockResolvedValue([]),
+  searchPresentationWebImages: vi.fn(),
+}));
+
 /* ── ObjectStorageService mock ───────────────────────────────────────────────── */
 vi.mock("../lib/objectStorage", () => ({
   ObjectStorageService: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
@@ -107,7 +125,10 @@ import {
   buildSlidesFromParsed,
   buildSlidesFromPdfPages,
 } from "../lib/import-file-parser";
-import { generateMcqQuestions } from "../lib/generate-mcq-slides";
+import { generateMcqQuestions, materializeMcqSlides } from "../lib/generate-mcq-slides";
+import { fileToOutline } from "../lib/file-to-outline";
+import { extractFileContent } from "../lib/file-extractor";
+import { buildOneSlide } from "../lib/materialize-slide";
 import JSZip from "jszip";
 
 type Session = { teacherId?: number };
@@ -149,7 +170,21 @@ const MCQ_SLIDE_STUB = {
   id: "mcq-1",
   layout: "interactive",
   background: "#ffffff",
-  elements: [],
+  elements: [{
+    id: "mcq-activity",
+    kind: "hasad-game",
+    x: 80,
+    y: 120,
+    w: 1120,
+    h: 480,
+    gameKind: "kahoot",
+    prompt: "What is the main topic?",
+    questions: [{
+      prompt: "What is the main topic?",
+      options: ["Option A", "Option B"],
+      correctIndex: 0,
+    }],
+  }],
 };
 
 /* A minimal McqQuestion stub that satisfies the McqQuestion type. */
@@ -169,8 +204,68 @@ beforeEach(() => {
   vi.mocked(buildSlidesFromParsed).mockReset();
   vi.mocked(buildSlidesFromPdfPages).mockReset();
   vi.mocked(generateMcqQuestions).mockReset();
-  /* Default: MCQ generator returns one stub question (pending review, not yet a slide). */
+  vi.mocked(materializeMcqSlides).mockReset();
+  vi.mocked(fileToOutline).mockReset();
+  vi.mocked(extractFileContent).mockReset();
+  vi.mocked(buildOneSlide).mockReset();
   vi.mocked(generateMcqQuestions).mockResolvedValue([MCQ_QUESTION_STUB]);
+  vi.mocked(materializeMcqSlides).mockReturnValue([MCQ_SLIDE_STUB]);
+  vi.mocked(fileToOutline).mockResolvedValue({
+    language: "en",
+    density: "balanced",
+    totalEstimatedMinutes: 30,
+    objectives: ["Understand the topic", "Apply the topic"],
+    teachingFlow: [
+      { stage: "opener", slideIndices: [1], estimatedMinutes: 5 },
+      { stage: "concept", slideIndices: [2], estimatedMinutes: 15 },
+      { stage: "practice", slideIndices: [3], estimatedMinutes: 7 },
+      { stage: "closure", slideIndices: [4], estimatedMinutes: 3 },
+    ],
+    slides: [
+      {
+        index: 1,
+        kind: "title",
+        title: "Imported lesson",
+        purpose: "Introduce the lesson",
+        talkingPoints: ["Lesson overview"],
+        interactionHint: null,
+        gameSuggestion: null,
+        gameQuestions: [],
+        slideTheme: null,
+        visualDirection: { icon: "BookOpen" },
+        imageQuery: "",
+      },
+      {
+        index: 2,
+        kind: "interactive",
+        title: "Check understanding",
+        purpose: "Check student understanding",
+        talkingPoints: ["Choose the correct answer"],
+        interactionHint: "quiz",
+        gameSuggestion: null,
+        gameQuestions: [{
+          prompt: "What is the main topic?",
+          options: ["Option A", "Option B"],
+          correctIndex: 0,
+        }],
+        slideTheme: null,
+        visualDirection: { icon: "HelpCircle" },
+        imageQuery: "",
+      },
+    ],
+  });
+  vi.mocked(buildOneSlide).mockImplementation(({ card }) => ({
+    slide: card.kind === "interactive"
+      ? MCQ_SLIDE_STUB as any
+      : { id: `slide-${card.index}`, layout: "blank", background: "#ffffff", elements: [] } as any,
+    warnings: [],
+  }));
+  vi.mocked(extractFileContent).mockResolvedValue({
+    fileType: "pdf",
+    text: "Imported document content",
+    headings: ["Imported lesson"],
+    detectedLanguage: "en",
+  });
 });
 
 // ─── Auth guard ────────────────────────────────────────────────────────────────
@@ -259,14 +354,12 @@ describe("POST /api/presentations/import-file — PPTX", () => {
     return (await zip.generateAsync({ type: "nodebuffer" })) as Buffer;
   }
 
-  it("calls parsePptx and creates a deck with extracted slides; MCQ questions returned for review", async () => {
+  it("creates a complete deck with embedded interactive slides from PPTX", async () => {
     const parsedSlides = [{ title: "Slide 1", bullets: [] }];
     const builtSlides  = [{ id: "s1", layout: "title-only", background: "#ffffff", elements: [] }];
 
     vi.mocked(parsePptx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
-    /* MCQ generator returns one stub question by default from beforeEach. */
-
     /* DB: insert deck → insert asset */
     pushQueue([DECK_STUB], [ASSET_STUB]);
 
@@ -277,17 +370,15 @@ describe("POST /api/presentations/import-file — PPTX", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.presentationId).toBe(42);
-    /* MCQ questions are returned as pendingMcqQuestions (not appended as slides).
-       slideCount reflects content slides only. */
-    expect(res.body.slideCount).toBe(1);
+    expect(res.body.slideCount).toBe(2);
+    expect(res.body.interactiveSlideCount).toBe(1);
     expect(res.body.aiGenerated).toBe(true);
-    expect(res.body.pendingMcqQuestions).toHaveLength(1);
+    expect(res.body.pendingMcqQuestions).toBeUndefined();
     expect(parsePptx).toHaveBeenCalledOnce();
-    expect(buildSlidesFromParsed).toHaveBeenCalledWith(parsedSlides, expect.any(String));
-    expect(generateMcqQuestions).toHaveBeenCalledOnce();
+    expect(fileToOutline).toHaveBeenCalledOnce();
   });
 
-  it("sets aiGenerated true and returns MCQ questions as pendingMcqQuestions for review", async () => {
+  it("returns the materialized full-deck counts instead of detached questions", async () => {
     const parsedSlides = [
       { title: "Intro", bullets: ["Point 1", "Point 2"] },
       { title: "Topic", bullets: ["Detail A", "Detail B"] },
@@ -303,8 +394,6 @@ describe("POST /api/presentations/import-file — PPTX", () => {
 
     vi.mocked(parsePptx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
-    vi.mocked(generateMcqQuestions).mockResolvedValue(mcqQuestions);
-
     pushQueue([DECK_STUB], [ASSET_STUB]);
 
     const pptxBuf = await makePptxBuffer();
@@ -314,10 +403,9 @@ describe("POST /api/presentations/import-file — PPTX", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.aiGenerated).toBe(true);
-    /* MCQ questions are pending review — slideCount is content slides only. */
     expect(res.body.slideCount).toBe(2);
-    expect(res.body.pendingMcqQuestions).toHaveLength(2);
-    expect(generateMcqQuestions).toHaveBeenCalledOnce();
+    expect(res.body.interactiveSlideCount).toBe(1);
+    expect(res.body.pendingMcqQuestions).toBeUndefined();
   });
 
   it("falls back to a blank deck when parsePptx throws", async () => {
@@ -334,14 +422,22 @@ describe("POST /api/presentations/import-file — PPTX", () => {
     expect(res.body.warning).toBe("content_extraction_failed");
   });
 
-  it("still returns 201 when MCQ generation fails (falls back to blank deck)", async () => {
+  it("still returns the full content deck when fallback question generation fails", async () => {
     const parsedSlides = [{ title: "Slide 1", bullets: ["content"] }];
     const builtSlides  = [{ id: "s1", layout: "title-only", background: "#ffffff", elements: [] }];
 
     vi.mocked(parsePptx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
-    /* generateMcqQuestions is called inside the same try/catch as parsePptx, so
-       a throw here causes the entire PPTX branch to fall back to a blank deck. */
+    const contentOnlyOutline = await vi.mocked(fileToOutline).getMockImplementation()!({
+      fileType: "pptx",
+      text: "content",
+      headings: [],
+      detectedLanguage: "en",
+    }, "Fail");
+    vi.mocked(fileToOutline).mockResolvedValue({
+      ...contentOnlyOutline,
+      slides: contentOnlyOutline.slides.filter((slide) => slide.kind !== "interactive"),
+    });
     vi.mocked(generateMcqQuestions).mockRejectedValue(new Error("OpenAI timeout"));
 
     pushQueue([DECK_STUB], [ASSET_STUB]);
@@ -352,7 +448,9 @@ describe("POST /api/presentations/import-file — PPTX", () => {
       .attach("file", pptxBuf, { filename: "Fail.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
 
     expect(res.status).toBe(201);
-    expect(res.body.warning).toBe("content_extraction_failed");
+    expect(res.body.slideCount).toBe(1);
+    expect(res.body.interactiveSlideCount).toBe(0);
+    expect(res.body.warning).toBe("interactive_generation_failed");
   });
 });
 
@@ -368,7 +466,7 @@ describe("POST /api/presentations/import-file — DOCX", () => {
     return (await zip.generateAsync({ type: "nodebuffer" })) as Buffer;
   }
 
-  it("calls parseDocx, applies balanced distribution, and returns MCQ questions for review", async () => {
+  it("creates a complete deck with embedded interactive slides from DOCX", async () => {
     const parsedSlides = [
       { title: "Chapter 1", bullets: ["Some content here."] },
     ];
@@ -376,8 +474,6 @@ describe("POST /api/presentations/import-file — DOCX", () => {
 
     vi.mocked(parseDocx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
-    /* MCQ generator returns one stub question by default from beforeEach. */
-
     pushQueue([DECK_STUB], [ASSET_STUB]);
 
     const docxBuf = await makeMinimalDocx();
@@ -386,16 +482,15 @@ describe("POST /api/presentations/import-file — DOCX", () => {
       .attach("file", docxBuf, { filename: "Notes.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 
     expect(res.status).toBe(201);
-    /* MCQ questions are pending review — slideCount is content slides only. */
-    expect(res.body.slideCount).toBe(1);
+    expect(res.body.slideCount).toBe(2);
+    expect(res.body.interactiveSlideCount).toBe(1);
     expect(res.body.aiGenerated).toBe(true);
-    expect(res.body.pendingMcqQuestions).toHaveLength(1);
+    expect(res.body.pendingMcqQuestions).toBeUndefined();
     expect(parseDocx).toHaveBeenCalledOnce();
-    expect(buildSlidesFromParsed).toHaveBeenCalledWith(parsedSlides, expect.any(String));
-    expect(generateMcqQuestions).toHaveBeenCalledOnce();
+    expect(fileToOutline).toHaveBeenCalledOnce();
   });
 
-  it("sets aiGenerated true for DOCX and returns multiple MCQ questions for review", async () => {
+  it("returns the complete materialized DOCX deck instead of pending questions", async () => {
     const parsedSlides = [
       { title: "Chapter 1", bullets: ["Detail A"] },
       { title: "Chapter 2", bullets: ["Detail B"] },
@@ -410,8 +505,6 @@ describe("POST /api/presentations/import-file — DOCX", () => {
 
     vi.mocked(parseDocx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
-    vi.mocked(generateMcqQuestions).mockResolvedValue(mcqQuestions);
-
     pushQueue([DECK_STUB], [ASSET_STUB]);
 
     const docxBuf = await makeMinimalDocx();
@@ -421,10 +514,9 @@ describe("POST /api/presentations/import-file — DOCX", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.aiGenerated).toBe(true);
-    /* MCQ questions are pending review — slideCount is content slides only. */
     expect(res.body.slideCount).toBe(2);
-    expect(res.body.pendingMcqQuestions).toHaveLength(1);
-    expect(generateMcqQuestions).toHaveBeenCalledOnce();
+    expect(res.body.interactiveSlideCount).toBe(1);
+    expect(res.body.pendingMcqQuestions).toBeUndefined();
   });
 
   it("falls back to a blank deck when parseDocx throws", async () => {
@@ -458,7 +550,7 @@ describe("POST /api/presentations/import-file — Arabic RTL", () => {
     return (await zip.generateAsync({ type: "nodebuffer" })) as Buffer;
   }
 
-  it("calls buildSlidesFromParsed with 'ar' when PPTX text is predominantly Arabic", async () => {
+  it("sends Arabic PPTX content to the full-deck generator as Arabic", async () => {
     const arabicParsed = [
       { title: "عنوان الدرس الأول", bullets: ["النقطة الأولى بالعربية", "النقطة الثانية بالعربية"] },
     ];
@@ -478,7 +570,10 @@ describe("POST /api/presentations/import-file — Arabic RTL", () => {
         contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       });
 
-    expect(buildSlidesFromParsed).toHaveBeenCalledWith(arabicParsed, "ar");
+    expect(fileToOutline).toHaveBeenCalledWith(
+      expect.objectContaining({ detectedLanguage: "ar" }),
+      "arabic",
+    );
   });
 
   it("accepts slides with dir/lang/textDirection RTL fields through slidesSchema validation", async () => {
@@ -523,7 +618,8 @@ describe("POST /api/presentations/import-file — Arabic RTL", () => {
 
     /* 201 means slidesSchema accepted the RTL slide — no fallback to defaultSlides */
     expect(res.status).toBe(201);
-    expect(res.body.slideCount).toBe(1);
+    expect(res.body.slideCount).toBe(2);
+    expect(res.body.interactiveSlideCount).toBe(1);
   });
 });
 
@@ -540,7 +636,7 @@ describe("POST /api/presentations/import-file — PDF", () => {
     "trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF",
   );
 
-  it("calls parsePdf, uploads page images, and produces background-image slides", async () => {
+  it("turns PDF text into a complete interactive presentation", async () => {
     const fakeImageBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47]); // PNG magic bytes
     vi.mocked(parsePdf).mockResolvedValue([
       { imageBuffer: fakeImageBuffer, pageNumber: 1 },
@@ -559,14 +655,13 @@ describe("POST /api/presentations/import-file — PDF", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.slideCount).toBe(2);
-    expect(parsePdf).toHaveBeenCalledOnce();
-    /* buildSlidesFromPdfPages should have been called with URLs, not raw buffers. */
-    expect(buildSlidesFromPdfPages).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.stringContaining("http")]),
-    );
+    expect(extractFileContent).toHaveBeenCalledOnce();
+    expect(fileToOutline).toHaveBeenCalledOnce();
+    expect(parsePdf).not.toHaveBeenCalled();
+    expect(res.body.interactiveSlideCount).toBe(1);
   });
 
-  it("produces slides with backgroundImage on each slide (image-first layout)", async () => {
+  it("uses the full-deck path rather than treating each PDF page as the final slide", async () => {
     const fakeImageBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
     vi.mocked(parsePdf).mockResolvedValue([
       { imageBuffer: fakeImageBuffer, pageNumber: 1 },
@@ -588,10 +683,13 @@ describe("POST /api/presentations/import-file — PDF", () => {
       .attach("file", MINIMAL_PDF, { filename: "slides.pdf", contentType: "application/pdf" });
 
     expect(res.status).toBe(201);
-    expect(res.body.slideCount).toBe(1);
+    expect(res.body.slideCount).toBe(2);
+    expect(res.body.interactiveSlideCount).toBe(1);
+    expect(buildSlidesFromPdfPages).not.toHaveBeenCalled();
   });
 
-  it("falls back to a blank deck when parsePdf throws", async () => {
+  it("falls back safely when both PDF outline extraction and page preservation fail", async () => {
+    vi.mocked(extractFileContent).mockRejectedValue(new Error("text extraction failed"));
     vi.mocked(parsePdf).mockRejectedValue(new Error("pdftoppm not found"));
 
     pushQueue([DECK_STUB], [ASSET_STUB]);

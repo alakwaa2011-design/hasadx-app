@@ -18,7 +18,7 @@ import { buildPptx, type PresentationForExport } from "../lib/presentation-pptx"
 import { buildPdf } from "../lib/presentation-pdf";
 import { mintExportToken, verifyExportToken } from "../lib/export-token";
 import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentations-tier";
-import { extractFileContent } from "../lib/file-extractor";
+import { extractFileContent, type ExtractedFile } from "../lib/file-extractor";
 import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
@@ -677,6 +677,94 @@ function decodeMulterFilename(name: string): string {
   }
 }
 
+function countInteractiveSlides(slides: unknown[]): number {
+  return slides.filter((slide) => {
+    const parsed = slideSchema.safeParse(slide);
+    return parsed.success && parsed.data.elements.some((element) =>
+      element.kind === "activity" ||
+      element.kind === "hasad-game" ||
+      element.kind === "hasad-activity"
+    );
+  }).length;
+}
+
+async function materializeImportedDeck(
+  extracted: ExtractedFile,
+  title: string,
+  req: Request,
+): Promise<{
+  slides: unknown[];
+  language: "ar" | "en";
+  themeKey: string;
+  interactiveSlideCount: number;
+}> {
+  const outline = await fileToOutline(extracted, title);
+  const themeKey = pickServerDefaultTheme();
+  const docQueries = outline.slides.map(
+    (card) => (card as { imageQuery?: string }).imageQuery || "",
+  );
+  const docHits = await findWebImagesBatch(docQueries, {
+    concurrency: 6,
+    timeoutMs: 4000,
+  });
+
+  const slides: unknown[] = [];
+  for (let i = 0; i < outline.slides.length; i++) {
+    const card = outline.slides[i];
+    const placement = (card as {
+      imagePlacement?: "side" | "background" | "none";
+    }).imagePlacement;
+    const out = buildOneSlide({
+      card,
+      themeKey,
+      density: outline.density,
+      lang: outline.language,
+      backgroundImageUrl: docHits[i]?.url ?? undefined,
+      imagePlacement: placement,
+    });
+    const parsedOne = slideSchema.safeParse(out.slide);
+    if (parsedOne.success) slides.push(parsedOne.data);
+  }
+
+  /* The outline prompt requests interactive cards, but model output can still
+     contain only content slides. A file import must produce a genuinely
+     interactive presentation, so add grounded comprehension slides when the
+     outline did not materialize any activity element. */
+  let interactiveSlideCount = countInteractiveSlides(slides);
+  if (interactiveSlideCount === 0 && extracted.text.trim()) {
+    try {
+      const questions = await generateMcqQuestions(extracted.text, outline.language);
+      const activitySlides = materializeMcqSlides(
+        questions,
+        outline.language,
+        themeKey,
+        slides.length + 1,
+      );
+      slides.push(...activitySlides);
+      interactiveSlideCount = countInteractiveSlides(slides);
+    } catch (err) {
+      req.log.warn({ err }, "Import: fallback interactive slides generation failed");
+    }
+  }
+
+  req.log.info(
+    {
+      slides: slides.length,
+      interactiveSlides: interactiveSlideCount,
+      webRequested: docQueries.filter(Boolean).length,
+      webResolved: docHits.filter(Boolean).length,
+    },
+    "Import: full interactive presentation materialized",
+  );
+
+  return {
+    slides,
+    language: outline.language,
+    themeKey,
+    interactiveSlideCount,
+  };
+}
+
 router.post(
   "/presentations/import-file",
   requireTeacher,
@@ -885,33 +973,47 @@ router.post(
       let deckLanguage: "ar" | "en" = "ar";
       let contentExtractionFailed = false;
       let aiGenerated = false;
-      let pendingMcqQuestions: McqQuestion[] | undefined;
+      let interactiveSlideCount = 0;
+      let deckTheme = pickServerDefaultTheme();
 
       if (mime === "application/pdf" || ext === ".pdf") {
-        /* PDF → render each page as a PNG image via pdftoppm, upload to
-           object storage, and use as slide backgroundImage. This preserves
-           the original visual layout of the document. */
+        /* PDF text → a complete AI-authored lesson deck. Scanned/image-only
+           PDFs retain the original page-image fallback so import never loses
+           the teacher's source material. */
         try {
-          const pages = await parsePdf(file.buffer);
-          const pageUrls = await Promise.all(
-            pages.map((p) =>
-              svc.uploadBufferAsPublic({
-                buffer: p.imageBuffer,
-                contentType: "image/png",
-                extension: ".png",
-              }),
-            ),
-          );
-          const built = buildSlidesFromPdfPages(pageUrls);
-          const validated = slidesSchema.safeParse(built);
-          finalSlides =
-            validated.success && validated.data.length > 0
-              ? validated.data
-              : defaultSlides(deckLanguage);
+          const extracted = await extractFileContent(file.buffer, "application/pdf", rawName);
+          if (!extracted.text.trim()) throw new Error("PDF contains no extractable text");
+          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          finalSlides = built.slides;
+          deckLanguage = built.language;
+          deckTheme = built.themeKey;
+          interactiveSlideCount = built.interactiveSlideCount;
+          aiGenerated = true;
         } catch (err) {
-          req.log.warn({ err }, "Import: PDF page rendering failed — using blank deck");
-          contentExtractionFailed = true;
-          finalSlides = defaultSlides(deckLanguage);
+          req.log.warn({ err }, "Import: PDF outline generation failed — preserving original pages");
+          try {
+            const pages = await parsePdf(file.buffer);
+            const pageUrls = await Promise.all(
+              pages.map((p) =>
+                svc.uploadBufferAsPublic({
+                  buffer: p.imageBuffer,
+                  contentType: "image/png",
+                  extension: ".png",
+                }),
+              ),
+            );
+            const built = buildSlidesFromPdfPages(pageUrls);
+            const validated = slidesSchema.safeParse(built);
+            finalSlides =
+              validated.success && validated.data.length > 0
+                ? validated.data
+                : defaultSlides(deckLanguage);
+            contentExtractionFailed = true;
+          } catch (fallbackErr) {
+            req.log.warn({ fallbackErr }, "Import: PDF page preservation failed");
+            contentExtractionFailed = true;
+            finalSlides = defaultSlides(deckLanguage);
+          }
         }
       } else if (
         mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
@@ -919,32 +1021,42 @@ router.post(
         ext === ".pptx" ||
         ext === ".ppt"
       ) {
-        /* PPTX → extract slide text, lay out as styled slides, then generate
-           2-3 AI MCQ questions for teacher review (not saved yet). */
+        /* PPTX → extract source text, then rebuild it as a complete lesson
+           presentation with content and embedded interactive slides. */
         try {
           const parsed = await parsePptx(file.buffer);
-          const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+          const extractedText = parsed
+            .map((s) => [s.title ?? "", ...s.bullets].filter(Boolean).join("\n"))
+            .join("\n\n")
+            .slice(0, 24000);
           deckLanguage = detectLangFromText(extractedText);
-          const built = buildSlidesFromParsed(parsed, deckLanguage);
-          const validated = slidesSchema.safeParse(built);
-          const contentSlides =
-            validated.success && validated.data.length > 0
+          const extracted: ExtractedFile = {
+            fileType: "pptx",
+            text: extractedText,
+            headings: parsed.map((slide) => slide.title?.trim()).filter((title): title is string => Boolean(title)),
+            detectedLanguage: deckLanguage,
+          };
+          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          finalSlides = built.slides;
+          deckLanguage = built.language;
+          deckTheme = built.themeKey;
+          interactiveSlideCount = built.interactiveSlideCount;
+          aiGenerated = true;
+        } catch (err) {
+          req.log.warn({ err }, "Import: PPTX full-deck generation failed — preserving extracted slides");
+          contentExtractionFailed = true;
+          try {
+            const parsed = await parsePptx(file.buffer);
+            const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+            deckLanguage = detectLangFromText(extractedText);
+            const basicSlides = buildSlidesFromParsed(parsed, deckLanguage);
+            const validated = slidesSchema.safeParse(basicSlides);
+            finalSlides = validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
-          finalSlides = contentSlides;
-          aiGenerated = true;
-          const pendingQuestions = await generateMcqQuestions(extractedText, deckLanguage);
-          if (pendingQuestions.length > 0) {
-            pendingMcqQuestions = pendingQuestions;
+          } catch {
+            finalSlides = defaultSlides(deckLanguage);
           }
-          req.log.info(
-            { contentSlides: contentSlides.length, pendingMcq: pendingQuestions.length },
-            "Import (PPTX): content slides built, MCQ pending review",
-          );
-        } catch (err) {
-          req.log.warn({ err }, "Import: PPTX parsing failed — using blank deck");
-          contentExtractionFailed = true;
-          finalSlides = defaultSlides(deckLanguage);
         }
       } else if (
         mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
@@ -952,32 +1064,42 @@ router.post(
         ext === ".docx" ||
         ext === ".doc"
       ) {
-        /* DOCX → extract headings and paragraphs, distribute across slides, then
-           generate 2-3 AI MCQ questions for teacher review (not saved yet). */
+        /* DOCX → a structured, complete lesson deck rather than a detached
+           assignment-question extraction result. */
         try {
           const parsed = await parseDocx(file.buffer);
-          const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+          const extractedText = parsed
+            .map((s) => [s.title ?? "", ...s.bullets].filter(Boolean).join("\n"))
+            .join("\n\n")
+            .slice(0, 24000);
           deckLanguage = detectLangFromText(extractedText);
-          const built = buildSlidesFromParsed(parsed, deckLanguage);
-          const validated = slidesSchema.safeParse(built);
-          const contentSlides =
-            validated.success && validated.data.length > 0
+          const extracted: ExtractedFile = {
+            fileType: "docx",
+            text: extractedText,
+            headings: parsed.map((slide) => slide.title?.trim()).filter((title): title is string => Boolean(title)),
+            detectedLanguage: deckLanguage,
+          };
+          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          finalSlides = built.slides;
+          deckLanguage = built.language;
+          deckTheme = built.themeKey;
+          interactiveSlideCount = built.interactiveSlideCount;
+          aiGenerated = true;
+        } catch (err) {
+          req.log.warn({ err }, "Import: DOCX full-deck generation failed — preserving extracted content");
+          contentExtractionFailed = true;
+          try {
+            const parsed = await parseDocx(file.buffer);
+            const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+            deckLanguage = detectLangFromText(extractedText);
+            const basicSlides = buildSlidesFromParsed(parsed, deckLanguage);
+            const validated = slidesSchema.safeParse(basicSlides);
+            finalSlides = validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
-          finalSlides = contentSlides;
-          aiGenerated = true;
-          const pendingQuestions = await generateMcqQuestions(extractedText, deckLanguage);
-          if (pendingQuestions.length > 0) {
-            pendingMcqQuestions = pendingQuestions;
+          } catch {
+            finalSlides = defaultSlides(deckLanguage);
           }
-          req.log.info(
-            { contentSlides: contentSlides.length, pendingMcq: pendingQuestions.length },
-            "Import (DOCX): content slides built, MCQ pending review",
-          );
-        } catch (err) {
-          req.log.warn({ err }, "Import: DOCX parsing failed — using blank deck");
-          contentExtractionFailed = true;
-          finalSlides = defaultSlides(deckLanguage);
         }
       } else {
         /* Images, spreadsheets, and other types — use the AI outline path
@@ -985,46 +1107,11 @@ router.post(
         try {
           const extracted = await extractFileContent(file.buffer, mime, rawName);
           deckLanguage = extracted.detectedLanguage ?? "ar";
-          const outline = await fileToOutline(extracted, titleFromFile);
-          const themeForOutline = pickServerDefaultTheme();
-
-          /* Fetch a real web photo for every slide that supplied an
-             imageQuery so single-doc imports look just as polished as
-             the multi-image flow. Bounded concurrency keeps latency low. */
-          const docQueries = outline.slides.map(
-            (c) => (c as { imageQuery?: string }).imageQuery || "",
-          );
-          const docHits = await findWebImagesBatch(docQueries, {
-            concurrency: 6,
-            timeoutMs: 4000,
-          });
-          req.log.info(
-            {
-              slides: outline.slides.length,
-              webRequested: docQueries.filter(Boolean).length,
-              webResolved: docHits.filter(Boolean).length,
-            },
-            "Import (doc): web images fetched",
-          );
-
-          const validSlides: unknown[] = [];
-          for (let i = 0; i < outline.slides.length; i++) {
-            const placement = (outline.slides[i] as {
-              imagePlacement?: "side" | "background" | "none";
-            }).imagePlacement;
-            const out = buildOneSlide({
-              card: outline.slides[i],
-              themeKey: themeForOutline,
-              density: outline.density,
-              lang: outline.language,
-              backgroundImageUrl: docHits[i]?.url ?? undefined,
-              imagePlacement: placement,
-            });
-            const parsedOne = slideSchema.safeParse(out.slide);
-            if (parsedOne.success) validSlides.push(parsedOne.data);
-          }
-          finalSlides = validSlides.length > 0 ? validSlides : defaultSlides(deckLanguage);
-          deckLanguage = outline.language ?? deckLanguage;
+          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          finalSlides = built.slides.length > 0 ? built.slides : defaultSlides(deckLanguage);
+          deckLanguage = built.language;
+          deckTheme = built.themeKey;
+          interactiveSlideCount = built.interactiveSlideCount;
           aiGenerated = true;
         } catch (err) {
           req.log.warn({ err }, "Import: AI extraction failed — using blank deck");
@@ -1034,14 +1121,13 @@ router.post(
       }
 
       /* ── Step 2: Create deck row with slides included ─────────────── */
-      const themeKey = pickServerDefaultTheme();
       const [deck] = await db
         .insert(presentationsTable)
         .values({
           teacherId,
           title: titleFromFile,
           language: deckLanguage,
-          theme: themeKey,
+          theme: deckTheme,
           pattern: "solid",
           coverEmoji: "📄",
           slides: finalSlides,
@@ -1072,11 +1158,13 @@ router.post(
         presentationId: deck.id,
         title: deck.title,
         slideCount: (finalSlides as unknown[]).length,
+        interactiveSlideCount,
         aiGenerated,
-        ...(pendingMcqQuestions && pendingMcqQuestions.length > 0
-          ? { pendingMcqQuestions }
-          : {}),
-        ...(contentExtractionFailed ? { warning: "content_extraction_failed" } : {}),
+        ...(contentExtractionFailed
+          ? { warning: "content_extraction_failed" }
+          : aiGenerated && interactiveSlideCount === 0
+            ? { warning: "interactive_generation_failed" }
+            : {}),
       });
     } catch (err) {
       req.log.error({ err }, "Import presentation file failed");

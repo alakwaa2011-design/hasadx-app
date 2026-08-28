@@ -12,7 +12,7 @@ import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 
 export interface ExtractedFile {
-  fileType: "pdf" | "docx" | "xlsx" | "image";
+  fileType: "pdf" | "pptx" | "docx" | "xlsx" | "image";
   /** Concatenated readable text (empty for pure-image files). */
   text: string;
   /** Page count (PDF only). */
@@ -61,10 +61,10 @@ function extractHeadingsFromText(text: string): string[] {
   return [...new Set(headings)].slice(0, 30);
 }
 
-/* Cap text to ~6 000 chars so we don't blow the model context.
-   Strategy: keep the first 2 000 chars (usually the most info-dense),
-   skip to mid-document for 2 000, and the last 2 000. */
-function truncateText(text: string, limit = 6000): string {
+/* Keep a broad cross-section of longer documents within the model budget.
+   The first, middle, and final sections are all retained so conclusions and
+   later units are not silently omitted from the generated presentation. */
+function truncateText(text: string, limit = 24000): string {
   if (text.length <= limit) return text;
   const third = Math.floor(limit / 3);
   const mid = Math.floor(text.length / 2);

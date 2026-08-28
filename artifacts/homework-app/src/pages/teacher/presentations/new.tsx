@@ -90,9 +90,9 @@ interface ImportResult {
   presentationId: number;
   title: string;
   slideCount: number;
+  interactiveSlideCount?: number;
   aiGenerated: boolean;
   warning?: string;
-  pendingMcqQuestions?: McqQuestion[];
 }
 
 function inferQuickSlideCount(topic: string, subject: string, grade: string): number {
@@ -576,19 +576,14 @@ export default function NewPresentationPage() {
     setQuickRenameConfirmed(false);
   };
 
-  /* Transition to the next phase after an import response.
-     Always initialises the rename fields so the preview panel is ready
-     whether we go through the MCQ review step or skip it. */
+  /* A successful import already contains the complete deck, including
+     embedded interactive slides. Go straight to the completed preview
+     instead of presenting the output as detached assignment questions. */
   const handleImportResult = useCallback((result: ImportResult) => {
     setImportResult(result);
     setRenameValue(result.title);
     setRenameConfirmed(false);
-    if (result.pendingMcqQuestions && result.pendingMcqQuestions.length > 0) {
-      setReviewQuestions(result.pendingMcqQuestions);
-      setImportPhase("review");
-    } else {
-      setImportPhase("preview");
-    }
+    setImportPhase("preview");
   }, []);
 
   /* Upload a file to the import endpoint and handle the result. */
@@ -1556,8 +1551,25 @@ export default function NewPresentationPage() {
               <CheckCircle2 className="w-12 h-12 text-emerald-500" />
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 mb-6">
-              {isAr ? "تم الاستيراد!" : "Import complete!"}
+              {importResult.warning === "content_extraction_failed"
+                ? (isAr ? "تم استيراد الملف" : "File imported")
+                : (isAr ? "تم إنشاء العرض الكامل!" : "Full presentation created!")}
             </h2>
+
+            <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-black">
+              <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300">
+                {isAr
+                  ? `${importResult.slideCount} شريحة محتوى`
+                  : `${importResult.slideCount} content slides`}
+              </span>
+              {(importResult.interactiveSlideCount ?? 0) > 0 && (
+                <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+                  {isAr
+                    ? `${importResult.interactiveSlideCount} شريحة تفاعلية`
+                    : `${importResult.interactiveSlideCount} interactive slides`}
+                </span>
+              )}
+            </div>
 
             {/* ── Inline rename prompt ── */}
             {!renameConfirmed ? (
@@ -1625,16 +1637,35 @@ export default function NewPresentationPage() {
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <span>
                   {isAr
-                    ? "تعذّر استخراج المحتوى تلقائياً — تم إنشاء عرض فارغ يمكنك تعديله في المحرر."
-                    : "Content could not be extracted automatically — a blank deck was created. Edit it in the editor."}
+                    ? "تعذّر إعادة بناء المحتوى تلقائياً، لذلك احتفظنا به بتخطيط أساسي يمكنك تحسينه في المحرر."
+                    : "The content could not be rebuilt automatically, so it was preserved in a basic layout you can improve in the editor."}
+                </span>
+              </div>
+            )}
+
+            {importResult.warning === "interactive_generation_failed" && (
+              <div className="mb-6 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 rounded-xl px-5 py-4 text-start text-sm text-amber-700 dark:text-amber-300 font-bold shadow-sm">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <span>
+                  {isAr
+                    ? "تم إنشاء العرض الكامل من محتوى الملف، لكن تعذّر إنشاء الشرائح التفاعلية تلقائياً. يمكنك إضافتها من المحرر."
+                    : "The full content deck was created, but interactive slides could not be generated automatically. You can add them in the editor."}
                 </span>
               </div>
             )}
 
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-8">
               {isAr
-                ? "راجع وعدّل الشرائح في Pro Studio قبل الإطلاق"
-                : "Review and edit slides in Pro Studio before launching"}
+                ? importResult.warning === "content_extraction_failed"
+                  ? "راجع المحتوى المستورد وحسّن تنسيقه، ثم أضف الأنشطة التي تناسب الدرس."
+                  : (importResult.interactiveSlideCount ?? 0) > 0
+                  ? "تم تحويل محتوى الملف إلى عرض منظم مع أنشطة تفاعلية داخله. راجعه وعدّله قبل الإطلاق."
+                  : "تم تحويل محتوى الملف إلى عرض كامل ومنظم. راجعه وعدّله قبل الإطلاق."
+                : importResult.warning === "content_extraction_failed"
+                  ? "Review the imported content, refine its layout, and add the activities that fit your lesson."
+                  : (importResult.interactiveSlideCount ?? 0) > 0
+                  ? "Your file is now a structured deck with embedded interactive activities. Review it before launching."
+                  : "Your file is now a complete, structured presentation. Review it before launching."}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
