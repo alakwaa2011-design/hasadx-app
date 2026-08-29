@@ -211,38 +211,18 @@ function derivePedagogicalRole(
   }
 }
 
-const DEFAULT_FALLBACK_FOR_KIND: Record<string, SanitizedImageFallback> = {
-  title: "icon",
-  objectives: "relationshipMap",
-  "concept-card": "diagram",
-  comparison: "coloredExample",
-  "visual-hero": "diagram",
-  steps: "timeline",
-  interactive: "coloredExample",
-  closure: "relationshipMap",
-  timeline: "timeline",
-  formula: "coloredExample",
-  stat: "diagram",
-  quote: "icon",
-  callout: "coloredExample",
-};
-
 function deriveDefaultImagePlan(
-  kind: string,
-  role: SanitizedPedagogicalRole,
+  _kind: string,
+  _role: SanitizedPedagogicalRole,
   title: string,
   lang: OutlineLanguage,
 ): SanitizedImagePlan {
-  const fallback = role === "example" || role === "practice" || role === "assess"
-    ? "coloredExample"
-    : DEFAULT_FALLBACK_FOR_KIND[kind] ?? "diagram";
   return {
     reason: lang === "ar"
-      ? `عنصر تعليمي محلي يوضح: ${title}`
-      : `Local educational visual supporting: ${title}`,
-    mediaType: fallback === "icon" ? "icon" : fallback === "timeline" ? "diagram" : "diagram",
+      ? `لا يوجد مرئي تعليمي مؤكد لشريحة: ${title}`
+      : `No verified educational visual for: ${title}`,
     placement: "none",
-    fallback,
+    fallback: "none",
   };
 }
 
@@ -696,7 +676,7 @@ export function sanitizeOutline(
           : undefined,
         fallback: ALLOWED_IMAGE_FALLBACKS.has(fallbackRaw as SanitizedImageFallback)
           ? fallbackRaw as SanitizedImageFallback
-          : "icon",
+          : "none",
       };
       if (candidate.imageQuery && !["photo", "illustration"].includes(candidate.mediaType ?? "")) {
         feedback.push(`Slide ${i + 1}: imageQuery requires mediaType photo or illustration; search was disabled.`);
@@ -705,7 +685,7 @@ export function sanitizeOutline(
       imagePlan = candidate;
     } else {
       imagePlan = deriveDefaultImagePlan(kind, pedagogicalRole, title, brief.language);
-      feedback.push(`Slide ${i + 1}: missing visual plan — added a deterministic ${imagePlan.fallback} visual.`);
+      feedback.push(`Slide ${i + 1}: missing visual plan — kept the slide text-led instead of inventing decoration.`);
     }
 
     const out: SanitizedSlide = {
@@ -804,6 +784,21 @@ export function sanitizeOutline(
     if (topRole && topRole[1] > Math.floor(slides.length / 2)) {
       if (fullLessonContract) structuralFatal = true;
       feedback.push(`Pedagogical role "${topRole[0]}" repeats on ${topRole[1]}/${slides.length} slides. Give each slide a distinct teaching function.`);
+    }
+    if (fullLessonContract && brief.density !== "minimal") {
+      const shallowRoles = new Set<SanitizedPedagogicalRole>(["explain", "example", "practice"]);
+      const shallowSlides = slides.filter((slide) => {
+        if (!slide.pedagogicalRole || !shallowRoles.has(slide.pedagogicalRole)) return false;
+        const totalWords = slide.talkingPoints.reduce((sum, point) => sum + wordsOf(point), 0);
+        return slide.talkingPoints.length < 2 || totalWords < 14;
+      });
+      if (shallowSlides.length > 0) {
+        structuralFatal = true;
+        feedback.push(
+          `Shallow teaching content on slide(s) ${shallowSlides.map((slide) => slide.index).join(", ")}. ` +
+          `Explanation, worked examples, and guided practice need at least two complete information-bearing statements and enough detail to teach from.`,
+        );
+      }
     }
   }
 

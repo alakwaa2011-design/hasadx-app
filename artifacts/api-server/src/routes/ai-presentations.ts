@@ -178,6 +178,9 @@ const outlineSlideCardSchema = z.object({
     imageQuery: z.string().max(180).optional(),
     mediaType: z.enum(["photo", "illustration", "diagram", "chart", "icon"]).optional(),
     placement: z.enum(["background", "side", "none"]).optional(),
+    /* Uploaded/edited searched images still need a non-empty fallback if the
+       remote asset disappears. The materializer only records this metadata
+       for semantic native layouts; it no longer draws generic side boxes. */
     fallback: z.enum(["diagram", "timeline", "coloredExample", "relationshipMap", "icon", "none"]).default("icon"),
   }).nullable().optional(),
   visualDirection: z.object({
@@ -254,7 +257,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
   // v3: reverted per-slide color variety — ONE deck theme, null per slide.
   //     Added structural layout personality per deck instead (May 2026).
   //     Bump this constant whenever DESIGN_RULES or system prompt changes.
-  const PROMPT_VERSION = "v7-teachable-visual-depth-6-7-questions";
+  const PROMPT_VERSION = "v8-deep-teaching-no-generic-visuals";
   const obj = {
     _pv: PROMPT_VERSION,
     m: model,

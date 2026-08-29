@@ -16,7 +16,7 @@ function card(overrides: Partial<OutlineCard> = {}): OutlineCard {
 }
 
 describe("materialized presentation visual quality", () => {
-  it("adds a deterministic visual for legacy cards without imagePlan", () => {
+  it("keeps legacy cards text-led instead of inventing a generic side panel", () => {
     const out = buildOneSlide({
       card: card({ layoutVariant: "editorial" }),
       themeKey: "harvest",
@@ -24,18 +24,14 @@ describe("materialized presentation visual quality", () => {
       lang: "ar",
     });
 
-    expect(out.slide.visualFallback).toBe("diagram");
-    expect(out.slide.elements.some((el) => el.id.includes("-fallback-center"))).toBe(true);
-    const atmosphereIndex = out.slide.elements.findIndex((el) => el.id.includes("-atm-panel"));
-    const fallbackIndex = out.slide.elements.findIndex((el) => el.id.includes("-fallback-panel"));
-    expect(atmosphereIndex).toBeGreaterThanOrEqual(0);
-    expect(fallbackIndex).toBeGreaterThan(atmosphereIndex);
-    expect(out.slide.elements.some((el) =>
-      el.kind === "text" && el.id.includes("-fallback-node-label-"),
-    )).toBe(true);
+    expect(out.slide.visualFallback).toBeUndefined();
+    expect(out.slide.elements.some((el) => el.id.includes("-fallback-"))).toBe(false);
+    expect(out.slide.elements.some((el) => el.id.includes("-atm-panel"))).toBe(false);
+    const contentCard = out.slide.elements.find((el) => el.id.endsWith("-card"));
+    expect(contentCard).toMatchObject({ x: 96, w: 1088 });
   });
 
-  it("labels colored fallback cards from the lesson instead of drawing empty rectangles", () => {
+  it("does not draw colored placeholder rectangles on a non-semantic layout", () => {
     const out = buildOneSlide({
       card: card({
         kind: "concept-card",
@@ -46,20 +42,12 @@ describe("materialized presentation visual quality", () => {
       density: "balanced",
       lang: "ar",
     });
-    const labels = out.slide.elements.filter((el) =>
-      el.kind === "text" && el.id.includes("-fallback-example-label-"),
-    );
-    expect(labels).toHaveLength(3);
-    expect(labels.every((el) =>
-      el.kind === "text" &&
-      el.text.length <= 20 &&
-      (el.fontSize ?? 99) <= 12 &&
-      el.y + el.h <= 720
-    )).toBe(true);
-    expect(labels.map((el) => el.kind === "text" ? el.text : "")).toContain("التبخر بحرارة الشمس");
+    expect(out.slide.visualFallback).toBeUndefined();
+    expect(out.slide.elements.some((el) => el.id.includes("-fallback-"))).toBe(false);
+    expect(out.slide.elements.filter((el) => el.kind === "text" && el.id.includes("-b"))).toHaveLength(3);
   });
 
-  it("keeps long Arabic diagram labels inside their compact nodes", () => {
+  it("preserves long Arabic explanations rather than shrinking them into diagram-node labels", () => {
     const out = buildOneSlide({
       card: card({
         imagePlan: { fallback: "diagram", placement: "none" },
@@ -74,14 +62,13 @@ describe("materialized presentation visual quality", () => {
       density: "balanced",
       lang: "ar",
     });
-    const labels = out.slide.elements.filter((el) =>
-      el.kind === "text" && el.id.includes("-fallback-node-label-"),
+    const points = out.slide.elements.filter((el) =>
+      el.kind === "text" && el.id.includes("-b"),
     );
-    expect(labels).toHaveLength(4);
-    expect(labels.every((el) =>
+    expect(points).toHaveLength(4);
+    expect(points.every((el) =>
       el.kind === "text" &&
-      el.text.length <= 14 &&
-      (el.fontSize ?? 99) <= 12 &&
+      el.text.length > 30 &&
       el.x >= 0 && el.x + el.w <= 1280 &&
       el.y >= 0 && el.y + el.h <= 720
     )).toBe(true);
@@ -103,13 +90,21 @@ describe("materialized presentation visual quality", () => {
 
   it("maps process and examples to distinct local visual families", () => {
     const process = buildOneSlide({
-      card: card({ kind: "steps", slideType: "process" }),
+      card: card({
+        kind: "steps",
+        slideType: "process",
+        imagePlan: { fallback: "timeline", placement: "none" },
+      }),
       themeKey: "harvest",
       density: "balanced",
       lang: "ar",
     });
     const example = buildOneSlide({
-      card: card({ kind: "formula", slideType: "workedExample" }),
+      card: card({
+        kind: "formula",
+        slideType: "workedExample",
+        imagePlan: { fallback: "coloredExample", placement: "none" },
+      }),
       themeKey: "harvest",
       density: "balanced",
       lang: "ar",
@@ -384,4 +379,5 @@ describe("materialized presentation visual quality", () => {
     expect(out.slide.elements.some((el) => el.kind === "image")).toBe(false);
     expect(out.slide.elements.some((el) => el.kind === "activity")).toBe(true);
   });
+
 });

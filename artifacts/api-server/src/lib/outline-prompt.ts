@@ -624,9 +624,9 @@ export function bannedPhrasesFor(lang: OutlineLanguage): string[] {
    prompt asks the model to respect them; guardrails truncate / drop
    anything that slips through.
 
-   Tightened vs the original "Phase 1A" caps so the model is forced to
-   write headlines, not paragraphs. Walls of text are the #1 cause of
-   the deck looking like a generated essay instead of a presentation. */
+   These limits preserve complete teaching statements while keeping each
+   slide readable. The renderer fits text to its box, so useful explanation
+   must not be reduced to slogans merely to satisfy a character target. */
 export interface DensityLimits {
   minPoints: number;
   maxPoints: number;
@@ -639,10 +639,10 @@ export function densityLimits(d: OutlineDensity): DensityLimits {
     case "minimal":
       return { minPoints: 2, maxPoints: 3, maxWordsPerPoint: 6, allowSubtitle: false };
     case "detailed":
-      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 22, allowSubtitle: true };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 28, allowSubtitle: true };
     case "balanced":
     default:
-      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 18, allowSubtitle: false };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 24, allowSubtitle: false };
   }
 }
 
@@ -676,17 +676,17 @@ const DENSITY_RULES_AR: Record<OutlineDensity, string> = {
   minimal:
     "كثافة قليلة: 2-3 نقاط لكل شريحة، كل نقطة ≤ 6 كلمات. عناوين قصيرة كشعارات. أكثر من شريحة لكل فكرة بدلاً من تكديس النصوص.",
   balanced:
-    "كثافة متوسطة عملية: 4-5 نقاط لكل شريحة، كل نقطة جملة شرح مكتملة ≤ 18 كلمة. ضمّن التعريف والسبب والمثال أو التطبيق حيث يلزم، دون فقرات طويلة.",
+    "كثافة متوسطة تعليمية: 4-5 نقاط لكل شريحة، كل نقطة جملة شرح مكتملة ≤ 24 كلمة. اشرح ما المفهوم وكيف يعمل ولماذا، ثم اربطه بمثال أو تطبيق؛ لا تستخدم عبارات برقية.",
   detailed:
-    "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 22 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة جملة شرح مكتملة أو خطوة حل واضحة — لا نصف جملة.",
+    "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 28 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة تفسير كامل أو خطوة حل واضحة مع سببها — لا نصف جملة ولا عنوان بديل.",
 };
 const DENSITY_RULES_EN: Record<OutlineDensity, string> = {
   minimal:
     "Minimal density: 2-3 points per slide, each ≤ 6 words. Headline-style only. Use more slides instead of cramming text.",
   balanced:
-    "Practical balanced density: 4-5 points per slide, each a complete explanatory statement ≤ 18 words. Include definition, reason, example, or application where relevant; no long paragraphs.",
+    "Teaching-focused balanced density: 4-5 points per slide, each a complete explanatory statement ≤ 24 words. Explain what, how, and why, then connect it to an example or application; no telegraphic fragments.",
   detailed:
-    "Detailed density: 4-5 points per slide, each ≤ 22 words. `subtitle` allowed only on the title slide. Every point is a complete explanation or solution step, never a fragment.",
+    "Detailed density: 4-5 points per slide, each ≤ 28 words. `subtitle` allowed only on the title slide. Every point is a complete explanation or justified solution step, never a fragment or substitute heading.",
 };
 
 /* Full-lesson depth contract (Aug 2026). The teacher feedback was that
@@ -702,6 +702,8 @@ const LESSON_DEPTH_AR = `العرض مادة حصة كاملة يقدّمها ا
 - لا تكرر الدور نفسه في أكثرية الشرائح؛ كل شريحة وظيفة تعليمية مختلفة.
 - كل مثال يكتب كاملاً ومحلّلاً ومرتبطاً بالمفهوم الذي قبله، وخطوات الحل أو الإعراب تظهر داخل talkingPoints — لا عناوين مبهمة ولا مناطق يملؤها المعلم لاحقاً.
 - التدريب الموجّه يتضمن السؤال ومعه الإجابة أو خطوات الوصول إليها.
+- شريحة الشرح لا تُقبل بجملة تعريف واحدة: وضّح المفهوم، وآلية عمله أو سببه، وأثره أو علاقته، ثم مثالاً محدداً عندما يناسب.
+- كل نقطة يجب أن تضيف معلومة جديدة يستطيع المعلم شرحها بصوت عالٍ؛ كلمات مثل «تعريف»، «أهمية»، «مثال»، «نتيجة» وحدها ليست محتوى.
 - درس اللغة: أمثلة عربية محلّلة بإعرابها أو مخطط علاقة (fallback: coloredExample أو relationshipMap) — لا صور تجميلية بدل الشرح. درس العلوم: تسلسل عملية أو مخطط توضيحي عند فائدته. درس التاريخ/السيرة: خط زمني أو اقتباس أو صورة حقيقية ذات سياق.`;
 
 const LESSON_DEPTH_EN = `The deck is a full teachable lesson, not a decorated summary:
@@ -712,6 +714,8 @@ const LESSON_DEPTH_EN = `The deck is a full teachable lesson, not a decorated su
 - Never repeat the same role on the majority of slides; each slide serves a different teaching function.
 - Every example is written out fully, analysed, and tied to the concept before it; solution steps appear inside talkingPoints — no vague labels, no fill-in-later areas.
 - Guided practice includes the question AND its answer or the steps to reach it.
+- An explanation slide cannot stop at one definition: cover the concept, how or why it works, its consequence or relationship, and a concrete example when appropriate.
+- Every point must add a new statement a teacher can teach aloud; labels such as "definition", "importance", "example", or "result" alone are not content.
 - Language lessons: analysed example sentences with parsing or a relationship map (fallback: coloredExample or relationshipMap) — never decorative photos instead of explanation. Science: process sequences or diagrams where they teach. History/biography: timeline, quote, or a real contextual image.`;
 
 /* Designer-grade system prompt. Stable so the response stays cacheable
@@ -962,7 +966,7 @@ const DIRECTOR_CONTRACT_AR = `عقدة القرار التصميمي — أرج�
 - لكل شريحة أرجع slideType يصف دورها: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
 - اختر layoutVariant مختلفاً عند اختلاف دور الشريحة: classic, poster, editorial, staggered. لا تكرر المتغير نفسه ثلاث مرات متتالية.
 - imagePlan اختياري، لكن العرض العلمي/الجغرافي/التاريخي من 8 شرائح فأكثر يجب أن يطلب 3-5 صور تعليمية حقيقية موزعة على الشرح والأمثلة، لا على الأنشطة والاختبارات. ضعه عندما تضيف الصورة فهماً لا تستطيع الأشكال والأيقونات تقديمه (ظاهرة، مكان تاريخي، كائن، تجربة). اكتب imageQuery بالإنجليزية من 2-5 كلمات ملموسة فقط مثل "water cycle diagram"؛ لا تضف Arabic labels أو complete أو high resolution. استخدم placement:"background" فقط لعنوان أو عبارة موجزة من نقطتين كحد أقصى؛ أي شريحة شرح من 3 نقاط فأكثر يجب أن تكون placement:"side". الصور ذات المخططات أو التسميات الكثيرة لا توضع خلف النص. الشكل: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
-- لا تطلب صورة زخرفية أو عامة. عندما يكون الرسم التعليمي أو المثال الملون أو العلاقة أو الخط الزمني أفضل، استخدم imagePlan=null، أو خطة بلا imageQuery مع fallback مناسب: diagram, timeline, coloredExample, relationshipMap, icon.
+- لا تطلب صورة زخرفية أو عامة. استخدم fallback دلالياً فقط عندما يكون محتوى الشريحة نفسه صالحاً لبناء خطوات أو مقارنة أو خط زمني أو مثال محلّل. في غير ذلك استخدم imagePlan=null أو fallback:"none"؛ ممنوع ملء الفراغ بمستطيلات أو عقد عامة أو أيقونة بلا معنى.
 - لا تنشئ صوراً بالذكاء الاصطناعي، ولا تضع URL أو base64 في الرد.`;
 
 const DIRECTOR_CONTRACT_EN = `Design-decision contract — return it in the JSON:
@@ -970,7 +974,7 @@ const DIRECTOR_CONTRACT_EN = `Design-decision contract — return it in the JSON
 - Each slide has a semantic slideType: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
 - Choose layoutVariant by slide role: classic, poster, editorial, staggered. Do not repeat one variant three times in a row.
 - imagePlan is optional, but science/geography/history decks with 8+ slides must request 3-5 real educational images distributed across explanations and examples, never activities or quizzes. Use concrete 2-5 word English imageQuery terms such as "water cycle diagram"; do not add "Arabic labels", "complete", or "high resolution". Add an image only when it teaches something shapes/icons cannot. Use placement:"background" only for a title or concise statement with at most two points; any explanatory slide with 3+ points must use placement:"side". Never place a busy labelled diagram behind text: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
-- Never request generic decorative images. When a diagram, colored example, relationship, or timeline teaches better, use imagePlan=null or a plan without imageQuery and a fallback: diagram, timeline, coloredExample, relationshipMap, icon.
+- Never request generic decorative images. Use a semantic fallback only when the slide content itself supplies real steps, comparison sides, timeline events, or a worked example. Otherwise use imagePlan=null or fallback:"none"; never fill space with generic boxes, nodes, or a meaningless icon.
 - Do not generate AI images and never return a URL or base64 string.`;
 
 /* ── Quick Mode: mandatory interactive structure injected when
@@ -1082,7 +1086,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       "slideType": "title|concept|visualHero|process|comparison|timeline|workedExample|quote|misconception|activity|quiz|summary",
       "pedagogicalRole": "hook|objective|explain|example|practice|misconception|activity|assess|summary|extension",
       "layoutVariant": "classic|poster|editorial|staggered",
-      "imagePlan": { "reason": "...", "imageQuery": "...", "mediaType": "photo|illustration", "placement": "background|side", "fallback": "diagram|timeline|coloredExample|relationshipMap|icon" },
+      "imagePlan": { "reason": "...", "imageQuery": "...", "mediaType": "photo|illustration", "placement": "background|side|none", "fallback": "diagram|timeline|coloredExample|relationshipMap|icon|none" },
       "visualDirection": { "icon": "lightbulb|target|chart|...", "shape": "rect|circle|line|arrow|divider", "layoutHint": "..." },
       "source": "..."
     }

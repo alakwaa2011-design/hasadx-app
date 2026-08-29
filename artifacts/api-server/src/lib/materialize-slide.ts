@@ -128,196 +128,17 @@ export function resolveImagePlacement(
   return conciseHero ? "background" : "side";
 }
 
-function defaultFallbackForCard(card: OutlineCard): NonNullable<OutlineCard["imagePlan"]>["fallback"] {
-  if (card.kind === "steps" || card.kind === "timeline" || card.slideType === "process" || card.slideType === "timeline") {
-    return "timeline";
-  }
-  if (
-    card.kind === "comparison" || card.kind === "formula" || card.kind === "interactive" ||
-    card.kind === "callout" || card.slideType === "workedExample" ||
-    card.slideType === "comparison" || card.slideType === "quiz"
-  ) {
-    return "coloredExample";
-  }
-  if (card.kind === "objectives" || card.kind === "closure" || card.slideType === "summary") {
-    return "relationshipMap";
-  }
-  if (card.kind === "title" || card.kind === "quote") return "icon";
-  return "diagram";
-}
-
-function compactVisualLabel(text: string | undefined, maxChars: number, fallback: string): string {
-  const clean = text?.replace(/^[◆✓•\-\s]+/, "").trim() || fallback;
-  if (clean.length <= maxChars) return clean;
-  const words = clean.split(/\s+/);
-  let out = "";
-  for (const word of words) {
-    const candidate = out ? `${out} ${word}` : word;
-    if (candidate.length > maxChars - 1) break;
-    out = candidate;
-  }
-  return `${out || clean.slice(0, maxChars - 1).trimEnd()}…`;
-}
-
 function addVisualFallback(
   slide: MaterializedSlide,
   card: OutlineCard,
-  palette: ReturnType<typeof paletteForTheme>,
-  lang: Lang,
+  _palette: ReturnType<typeof paletteForTheme>,
+  _lang: Lang,
 ): void {
-  const fallback = card.imagePlan?.fallback ?? defaultFallbackForCard(card);
+  const fallback = card.imagePlan?.fallback ?? "none";
   if (fallback === "none") return;
   if (NATIVE_VISUAL_KINDS.has(slide.layout)) {
     slide.visualFallback = fallback;
-    return;
   }
-  const isRtl = lang === "ar";
-  const x = isRtl ? 48 : CANVAS_W - 308;
-  const accent = palette.accent;
-  const surface = palette.surface;
-  const visualElements: Element[] = [
-    {
-      id: `${slide.id}-fallback-panel`,
-      kind: "shape",
-      shape: "rect",
-      x, y: 122, w: 260, h: 420,
-      bgColor: surface,
-      borderColor: accent,
-      borderWidth: 3,
-    },
-  ];
-
-  if (fallback === "timeline") {
-    visualElements.push({
-      id: `${slide.id}-fallback-line`,
-      kind: "shape", shape: "line",
-      x: x + 62, y: 330, w: 136, h: 2,
-      bgColor: accent,
-    });
-    [0, 1, 2].forEach((step) => {
-      visualElements.push({
-        id: `${slide.id}-fallback-step-${step}`,
-        kind: "shape", shape: "circle",
-        x: x + 42 + step * 66, y: 312, w: 38, h: 38,
-        bgColor: step === 1 ? accent : palette.accentSoft,
-        borderColor: accent, borderWidth: 2,
-      });
-      visualElements.push({
-        id: `${slide.id}-fallback-step-label-${step}`,
-        kind: "text",
-        x: x + 42 + step * 66,
-        y: 317,
-        w: 38,
-        h: 28,
-        text: String(step + 1),
-        fontSize: 17,
-        fontWeight: "800",
-        align: "center",
-        color: step === 1 ? surface : accent,
-      });
-    });
-  } else if (fallback === "relationshipMap" || fallback === "diagram") {
-    visualElements.push({
-      id: `${slide.id}-fallback-center`,
-      kind: "shape", shape: "circle",
-      x: x + 96, y: 278, w: 68, h: 68,
-      bgColor: accent,
-    });
-    const nodes = [[24, 184], [138, 184], [24, 384], [138, 384]] as const;
-    nodes.forEach(([dx, dy], node) => {
-      visualElements.push({
-        id: `${slide.id}-fallback-node-${node}`,
-        kind: "shape", shape: "rect",
-        x: x + dx, y: dy, w: 98, h: 62,
-        bgColor: palette.accentSoft,
-        borderColor: accent, borderWidth: 2,
-      });
-      const label = compactVisualLabel(
-        card.talkingPoints[node],
-        14,
-        lang === "ar" ? `فكرة ${node + 1}` : `Idea ${node + 1}`,
-      );
-      visualElements.push({
-        id: `${slide.id}-fallback-node-label-${node}`,
-        kind: "text",
-        x: x + dx + 8,
-        y: dy + 10,
-        w: 82,
-        h: 42,
-        text: label,
-        fontSize: 12,
-        fontWeight: "700",
-        align: "center",
-        color: palette.fg,
-      });
-    });
-    visualElements.push({
-      id: `${slide.id}-fallback-icon`,
-      kind: "icon",
-      iconName: fallback === "relationshipMap" ? "GitBranch" : "Workflow",
-      x: x + 108, y: 290, w: 44, h: 44,
-      color: surface,
-    });
-  } else if (fallback === "coloredExample") {
-    [0, 1, 2].forEach((row) => {
-      visualElements.push({
-        id: `${slide.id}-fallback-example-${row}`,
-        kind: "shape", shape: "rect",
-        x: x + 34, y: 198 + row * 92, w: 192, h: 64,
-        bgColor: row === 1 ? palette.accentSoft : surface,
-        borderColor: accent, borderWidth: row === 1 ? 3 : 1,
-      });
-      const label = compactVisualLabel(
-        card.talkingPoints[row],
-        20,
-        lang === "ar" ? `مثال ${row + 1}` : `Example ${row + 1}`,
-      );
-      visualElements.push({
-        id: `${slide.id}-fallback-example-label-${row}`,
-        kind: "text",
-        x: x + 46,
-        y: 211 + row * 92,
-        w: 118,
-        h: 38,
-        text: label,
-        fontSize: 12,
-        fontWeight: "700",
-        align: "start",
-        color: palette.fg,
-      });
-      visualElements.push({
-        id: `${slide.id}-fallback-check-${row}`,
-        kind: "icon", iconName: row === 1 ? "Check" : "Circle",
-        x: x + 176, y: 214 + row * 92, w: 30, h: 30,
-        color: accent,
-      });
-    });
-  } else {
-    visualElements.push(
-      {
-        id: `${slide.id}-fallback-orb`,
-        kind: "shape", shape: "circle",
-        x: x + 42, y: 204, w: 176, h: 176,
-        bgColor: palette.accentSoft,
-      },
-      {
-        id: `${slide.id}-fallback-icon`,
-        kind: "icon",
-        iconName: card.visualDirection?.icon || "Sparkles",
-        x: x + 85, y: 247, w: 90, h: 90,
-        color: accent,
-      },
-    );
-  }
-  /* Atmosphere shapes are deliberately painted first by the templates.
-     Insert the educational visual after them so an editorial side panel
-     cannot hide it, while keeping it below the actual text/content. */
-  let insertAt = 0;
-  while (insertAt < slide.elements.length && slide.elements[insertAt].id.includes("-atm-")) {
-    insertAt += 1;
-  }
-  slide.elements.splice(insertAt, 0, ...visualElements);
-  slide.visualFallback = fallback;
 }
 
 function hasUnsafeGeometry(elements: Element[]): boolean {
@@ -579,7 +400,6 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
        visual anchor, rather than silently replacing a failed layout with
        a title-only blank. */
     const msg = err instanceof Error ? err.message : "unknown";
-    const fallback = input.card.imagePlan?.fallback ?? "icon";
     return {
       slide: {
         id: `s${input.card.index}`,
@@ -590,31 +410,24 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
         slideType: input.card.slideType,
         layoutVariant: input.card.layoutVariant,
         imagePlan: input.card.imagePlan,
-        visualFallback: fallback,
         elements: [
-          {
-            id: `s${input.card.index}-fallback-panel`,
-            kind: "shape",
-            shape: "rect",
-            x: input.lang === "ar" ? 48 : 932, y: 120, w: 300, h: 480,
-            bgColor: palette.surface,
-            borderColor: palette.accent,
-            borderWidth: 3,
-          },
-          {
-            id: `s${input.card.index}-fallback-icon`,
-            kind: "icon",
-            iconName: fallback === "timeline" ? "Clock" : fallback === "relationshipMap" ? "GitBranch" : "Sparkles",
-            x: input.lang === "ar" ? 150 : 1034, y: 260, w: 96, h: 96,
-            color: palette.accent,
-          },
           {
             id: `s${input.card.index}-fallback-title`,
             kind: "text",
-            x: input.lang === "ar" ? 392 : 80, y: 240, w: 720, h: 120,
+            x: 96, y: 120, w: 1088, h: 120,
             text: input.card.title,
             fontSize: 52,
             fontWeight: "700",
+            align: "start",
+            color: palette.fg,
+          },
+          {
+            id: `s${input.card.index}-fallback-content`,
+            kind: "text",
+            x: 96, y: 270, w: 1088, h: 330,
+            text: input.card.talkingPoints.map((point) => `◆  ${point}`).join("\n"),
+            fontSize: 24,
+            fontWeight: "500",
             align: "start",
             color: palette.fg,
           },

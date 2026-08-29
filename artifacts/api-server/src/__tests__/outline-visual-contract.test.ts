@@ -218,7 +218,7 @@ describe("presentation visual contract fixtures", () => {
     expect(result.report.feedback.join(" ")).toMatch(/practice/);
   });
 
-  it("adds a local visual decision and varied layout when the model omits both", () => {
+  it("keeps missing visual plans text-led while still varying layouts", () => {
     const raw = fixedLesson("دورة الماء", "scientific", [
       "title", "visualHero", "process", "workedExample", "summary",
     ]);
@@ -235,14 +235,13 @@ describe("presentation visual contract fixtures", () => {
 
     expect(result.report.fatal).toBe(false);
     expect(result.outline.slides.every((slide) =>
-      slide.imagePlan?.fallback && slide.imagePlan.fallback !== "none",
+      slide.imagePlan?.fallback === "none",
     )).toBe(true);
     expect(result.outline.slides.every((slide) =>
       slide.imagePlan?.imageQuery === undefined && slide.imagePlan?.placement === "none",
     )).toBe(true);
     expect(new Set(result.outline.slides.map((slide) => slide.layoutVariant)).size).toBeGreaterThanOrEqual(4);
-    expect(result.outline.slides[2].imagePlan?.fallback).toBe("timeline");
-    expect(result.outline.slides[3].imagePlan?.fallback).toBe("coloredExample");
+    expect(result.report.feedback.join(" ")).toMatch(/text-led instead of inventing decoration/);
   });
 });
 
@@ -474,6 +473,18 @@ describe("full-lesson depth contract", () => {
     expect(result.report.fatal).toBe(true);
     expect(result.report.feedback.join(" ")).toMatch(/missing core pedagogical role/);
     expect(needsCorrectiveOutlineRetry(result.report)).toBe(true);
+  });
+
+  it("rejects shallow one-line explanation and practice slides", () => {
+    const raw = mafoulMaahFullLesson();
+    raw.slides[3].talkingPoints = ["المفعول معه اسم منصوب بعد واو المعية"];
+    raw.slides[7].talkingPoints = ["أعرب الجملة ثم تحقق من الإجابة"];
+
+    const result = sanitizeOutline(raw, fullLessonBrief);
+
+    expect(result.report.fatal).toBe(true);
+    expect(result.report.feedback.join(" ")).toMatch(/Shallow teaching content/);
+    expect(result.report.feedback.join(" ")).toMatch(/4, 8/);
   });
 
   it("rejects a deck where one pedagogical role dominates the majority of slides", () => {

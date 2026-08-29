@@ -31,8 +31,8 @@ interface DensityCfg {
 
 const DENSITY: Record<Density, DensityCfg> = {
   minimal:  { maxBullets: 3, bulletFont: 28, titleFont: 56, subtitleFont: 26, maxBulletChars: 56, maxTitleChars: 56 },
-  balanced: { maxBullets: 5, bulletFont: 22, titleFont: 48, subtitleFont: 24, maxBulletChars: 112, maxTitleChars: 64 },
-  detailed: { maxBullets: 5, bulletFont: 21, titleFont: 44, subtitleFont: 22, maxBulletChars: 132, maxTitleChars: 72 },
+  balanced: { maxBullets: 5, bulletFont: 21, titleFont: 48, subtitleFont: 24, maxBulletChars: 150, maxTitleChars: 64 },
+  detailed: { maxBullets: 5, bulletFont: 20, titleFont: 44, subtitleFont: 22, maxBulletChars: 180, maxTitleChars: 72 },
 };
 
 /* ── Tiny string helpers. We never auto-flip with CSS — RTL slides
@@ -140,8 +140,7 @@ function addAtmosphere(seed: string, els: Element[], palette: ThemePalette, vari
   }
   if (variant === "editorial") {
     els.unshift(
-      { id: id(seed, "atm-panel"), kind: "shape", shape: "rect", x: 0, y: 0, w: 260, h: H, bgColor: palette.surface },
-      { id: id(seed, "atm-rule"), kind: "shape", shape: "rect", x: 260, y: 0, w: 6, h: H, bgColor: palette.accentSoft },
+      { id: id(seed, "atm-rule"), kind: "shape", shape: "rect", x: 42, y: 92, w: 6, h: H - 184, bgColor: palette.accentSoft },
     );
     return;
   }
@@ -607,9 +606,9 @@ function tplConceptCard(o: MaterializeOptions, warnings: string[]): Element[] {
 
   /* Big concept callout: tinted rectangle with a thick accent bar on
      the leading edge, bullets stacked inside with check-style markers. */
-  const cardX = variant === "editorial" ? PAD + 210 : PAD;
+  const cardX = PAD;
   const cardY = variant === "poster" ? CONTENT_TOP - 8 : CONTENT_TOP;
-  const cardW = variant === "editorial" ? W - PAD * 2 - 210 : W - PAD * 2;
+  const cardW = W - PAD * 2;
   const cardH = variant === "staggered" ? H - cardY - CONTENT_BOTTOM - 42 : H - cardY - CONTENT_BOTTOM;
   els.push({
     id: id(seed, "card"),
