@@ -107,6 +107,38 @@ describe("presentation visual contract fixtures", () => {
     expect(result.outline.slides[1].talkingPoints).toEqual([]);
   });
 
+  it("accepts a quiz slide whose validated questions are its content", () => {
+    const raw = fixedLesson("المفعول معه", "editorial", [
+      "title", "concept", "comparison", "quiz", "summary",
+    ]);
+    const quiz = raw.slides[3] as Record<string, unknown>;
+    quiz.kind = "interactive";
+    quiz.slideType = "quiz";
+    quiz.interactionHint = "quiz";
+    quiz.talkingPoints = [];
+    quiz.gameQuestions = [
+      {
+        prompt: "أي جملة تحتوي مفعولاً معه؟",
+        options: ["سرت والنهر", "قرأت الكتاب", "كتب الطالب"],
+        correctIndex: 0,
+      },
+      {
+        prompt: "ما علامة نصب المفعول معه المفرد؟",
+        options: ["الفتحة", "الضمة", "الكسرة"],
+        correctIndex: 0,
+      },
+    ];
+
+    const result = sanitizeOutline(raw, {
+      ...baseBrief,
+      toggles: { activities: true, questions: true, poll: false, quiz: true },
+    });
+
+    expect(result.report.fatal).toBe(false);
+    expect(result.outline.slides[3].talkingPoints).toEqual([]);
+    expect(result.outline.slides[3].gameQuestions).toHaveLength(2);
+  });
+
   it("adopts a complete corrective outline even if it has more minor feedback", () => {
     expect(shouldAdoptCorrectiveOutline(
       { fatal: true, feedback: ["Outline has 4/5 required slides."] },

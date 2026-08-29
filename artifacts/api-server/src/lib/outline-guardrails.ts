@@ -533,14 +533,6 @@ export function sanitizeOutline(
         return true;
       });
     if (talkingPoints.length > lim.maxPoints) talkingPoints = talkingPoints.slice(0, lim.maxPoints);
-    /* A useful single point is a valid slide. Treat only an empty
-       non-title slide as incomplete — forcing model output to meet a
-       density quota was causing otherwise complete outlines to be rejected. */
-    if (kind !== "title" && talkingPoints.length === 0) {
-      hasIncompleteSlide = true;
-      feedback.push(`Slide ${i + 1}: incomplete content (no usable talking points); regenerate this slide instead of padding it.`);
-    }
-
     /* interactionHint enforcement vs brief toggles.
        activities=false ⇒ all hints null.
        activities=true  ⇒ remap disallowed hints to closest allowed bucket. */
@@ -632,6 +624,15 @@ export function sanitizeOutline(
       } else if (rawQs.length > 0) {
         feedback.push(`Slide ${i + 1}: gameQuestions empty or malformed — slide will show no questions.`);
       }
+    }
+
+    /* A quiz's validated question set is the slide's actual instructional
+       content. Do not reject an otherwise complete outline merely because
+       that slide omitted a duplicate talkingPoints summary. Open activities
+       and ordinary content slides still require at least one usable point. */
+    if (kind !== "title" && talkingPoints.length === 0 && !gameQuestions?.length) {
+      hasIncompleteSlide = true;
+      feedback.push(`Slide ${i + 1}: incomplete content (no usable talking points or valid game questions); regenerate this slide instead of padding it.`);
     }
 
     /* slideTheme — Phase 4. Drop unknown values silently so the
