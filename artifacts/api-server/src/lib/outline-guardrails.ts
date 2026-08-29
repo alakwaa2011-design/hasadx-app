@@ -211,6 +211,45 @@ function derivePedagogicalRole(
   }
 }
 
+const DEFAULT_FALLBACK_FOR_KIND: Record<string, SanitizedImageFallback> = {
+  title: "icon",
+  objectives: "relationshipMap",
+  "concept-card": "diagram",
+  comparison: "coloredExample",
+  "visual-hero": "diagram",
+  steps: "timeline",
+  interactive: "coloredExample",
+  closure: "relationshipMap",
+  timeline: "timeline",
+  formula: "coloredExample",
+  stat: "diagram",
+  quote: "icon",
+  callout: "coloredExample",
+};
+
+function deriveDefaultImagePlan(
+  kind: string,
+  role: SanitizedPedagogicalRole,
+  title: string,
+  lang: OutlineLanguage,
+): SanitizedImagePlan {
+  const fallback = role === "example" || role === "practice" || role === "assess"
+    ? "coloredExample"
+    : DEFAULT_FALLBACK_FOR_KIND[kind] ?? "diagram";
+  return {
+    reason: lang === "ar"
+      ? `عنصر تعليمي محلي يوضح: ${title}`
+      : `Local educational visual supporting: ${title}`,
+    mediaType: fallback === "icon" ? "icon" : fallback === "timeline" ? "diagram" : "diagram",
+    placement: "none",
+    fallback,
+  };
+}
+
+const DEFAULT_LAYOUT_SEQUENCE: SanitizedLayoutVariant[] = [
+  "poster", "editorial", "staggered", "classic",
+];
+
 const KIND_FOR_SLIDE_TYPE: Partial<Record<SanitizedSlideType, string>> = {
   title: "title",
   concept: "concept-card",
@@ -628,10 +667,15 @@ export function sanitizeOutline(
     const layoutRaw = clipStr(slide.layoutVariant, 20);
     const layoutVariant = ALLOWED_LAYOUT_VARIANTS.has(layoutRaw as SanitizedLayoutVariant)
       ? layoutRaw as SanitizedLayoutVariant
-      : undefined;
+      : DEFAULT_LAYOUT_SEQUENCE[i % DEFAULT_LAYOUT_SEQUENCE.length];
     if (layoutRaw && !layoutVariant) {
       feedback.push(`Slide ${i + 1}: unknown layoutVariant "${layoutRaw}".`);
     }
+
+    const roleRaw = clipStr((slide as RawRecord).pedagogicalRole, 20);
+    const pedagogicalRole = ALLOWED_PEDAGOGICAL_ROLES.has(roleRaw as SanitizedPedagogicalRole)
+      ? roleRaw as SanitizedPedagogicalRole
+      : derivePedagogicalRole(kind, slideType, interactionHint);
 
     const rawImagePlan = asRecord(slide.imagePlan);
     let imagePlan: SanitizedImagePlan | undefined;
@@ -658,12 +702,10 @@ export function sanitizeOutline(
         delete candidate.imageQuery;
       }
       imagePlan = candidate;
+    } else {
+      imagePlan = deriveDefaultImagePlan(kind, pedagogicalRole, title, brief.language);
+      feedback.push(`Slide ${i + 1}: missing visual plan — added a deterministic ${imagePlan.fallback} visual.`);
     }
-
-    const roleRaw = clipStr((slide as RawRecord).pedagogicalRole, 20);
-    const pedagogicalRole = ALLOWED_PEDAGOGICAL_ROLES.has(roleRaw as SanitizedPedagogicalRole)
-      ? roleRaw as SanitizedPedagogicalRole
-      : derivePedagogicalRole(kind, slideType, interactionHint);
 
     const out: SanitizedSlide = {
       index: i + 1,
@@ -680,8 +722,8 @@ export function sanitizeOutline(
     if (sourceField) out.source = sourceField;
     if (slideTheme) out.slideTheme = slideTheme;
     if (slideType) out.slideType = slideType;
-    if (layoutVariant) out.layoutVariant = layoutVariant;
-    if (imagePlan) out.imagePlan = imagePlan;
+    out.layoutVariant = layoutVariant;
+    out.imagePlan = imagePlan;
     if (gameQuestions && gameQuestions.length > 0) out.gameQuestions = gameQuestions;
     const rawActivityType = clipStr((slide as RawRecord).activityType, 40);
     if (rawActivityType && ALLOWED_ACTIVITY_TYPES.has(rawActivityType)) out.activityType = rawActivityType;
@@ -713,6 +755,13 @@ export function sanitizeOutline(
   const objectivesCount = kinds.filter((k) => k === "objectives").length;
   if (objectivesCount > 1) {
     feedback.push("Objectives slide used more than once. Use it only when genuinely necessary.");
+  }
+  for (let i = 2; i < slides.length; i++) {
+    const layouts = slides.slice(i - 2, i + 1).map((slide) => slide.layoutVariant);
+    if (layouts[0] === layouts[1] && layouts[1] === layouts[2]) {
+      slides[i].layoutVariant = DEFAULT_LAYOUT_SEQUENCE[i % DEFAULT_LAYOUT_SEQUENCE.length];
+      feedback.push(`Slide ${i + 1}: repeated layout repaired with ${slides[i].layoutVariant}.`);
+    }
   }
 
   /* Full-lesson depth (Aug 2026): a normal lesson of 8+ slides must behave

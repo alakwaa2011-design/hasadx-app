@@ -60,6 +60,32 @@ const IMG_GUTTER = 32;
    a single dominant statement. For these, a full-bleed background reads
    better than an inline column. */
 const HERO_KINDS = new Set(["visual-hero", "title", "stat", "quote"]);
+/* These templates already materialize their teaching structure as a strong
+   visual (cards, lanes, steps, game surface, timeline, formula, etc.).
+   Adding a second side illustration would either duplicate the meaning or
+   be hidden under an opaque content element. */
+const NATIVE_VISUAL_KINDS = new Set([
+  "objectives", "comparison", "steps", "interactive", "closure",
+  "timeline", "formula", "stat", "quote",
+]);
+
+function defaultFallbackForCard(card: OutlineCard): NonNullable<OutlineCard["imagePlan"]>["fallback"] {
+  if (card.kind === "steps" || card.kind === "timeline" || card.slideType === "process" || card.slideType === "timeline") {
+    return "timeline";
+  }
+  if (
+    card.kind === "comparison" || card.kind === "formula" || card.kind === "interactive" ||
+    card.kind === "callout" || card.slideType === "workedExample" ||
+    card.slideType === "comparison" || card.slideType === "quiz"
+  ) {
+    return "coloredExample";
+  }
+  if (card.kind === "objectives" || card.kind === "closure" || card.slideType === "summary") {
+    return "relationshipMap";
+  }
+  if (card.kind === "title" || card.kind === "quote") return "icon";
+  return "diagram";
+}
 
 function addVisualFallback(
   slide: MaterializedSlide,
@@ -67,13 +93,17 @@ function addVisualFallback(
   palette: ReturnType<typeof paletteForTheme>,
   lang: Lang,
 ): void {
-  const fallback = card.imagePlan?.fallback;
-  if (!fallback || fallback === "none") return;
+  const fallback = card.imagePlan?.fallback ?? defaultFallbackForCard(card);
+  if (fallback === "none") return;
+  if (NATIVE_VISUAL_KINDS.has(slide.layout)) {
+    slide.visualFallback = fallback;
+    return;
+  }
   const isRtl = lang === "ar";
   const x = isRtl ? 48 : CANVAS_W - 308;
   const accent = palette.accent;
   const surface = palette.surface;
-  slide.elements.unshift(
+  const visualElements: Element[] = [
     {
       id: `${slide.id}-fallback-panel`,
       kind: "shape",
@@ -83,22 +113,98 @@ function addVisualFallback(
       borderColor: accent,
       borderWidth: 3,
     },
-    {
-      id: `${slide.id}-fallback-orb`,
-      kind: "shape",
-      shape: fallback === "relationshipMap" ? "circle" : "rect",
-      x: x + 42, y: 174, w: 176, h: fallback === "timeline" ? 14 : 176,
-      bgColor: palette.accentSoft,
-    },
-    {
+  ];
+
+  if (fallback === "timeline") {
+    visualElements.push({
+      id: `${slide.id}-fallback-line`,
+      kind: "shape", shape: "line",
+      x: x + 62, y: 330, w: 136, h: 2,
+      bgColor: accent,
+    });
+    [0, 1, 2].forEach((step) => {
+      visualElements.push({
+        id: `${slide.id}-fallback-step-${step}`,
+        kind: "shape", shape: "circle",
+        x: x + 42 + step * 66, y: 312, w: 38, h: 38,
+        bgColor: step === 1 ? accent : palette.accentSoft,
+        borderColor: accent, borderWidth: 2,
+      });
+    });
+  } else if (fallback === "relationshipMap" || fallback === "diagram") {
+    visualElements.push({
+      id: `${slide.id}-fallback-center`,
+      kind: "shape", shape: "circle",
+      x: x + 96, y: 278, w: 68, h: 68,
+      bgColor: accent,
+    });
+    [[48, 190], [164, 190], [48, 390], [164, 390]].forEach(([dx, dy], node) => {
+      visualElements.push({
+        id: `${slide.id}-fallback-node-${node}`,
+        kind: "shape", shape: "circle",
+        x: x + dx, y: dy, w: 48, h: 48,
+        bgColor: palette.accentSoft,
+        borderColor: accent, borderWidth: 2,
+      });
+    });
+    visualElements.push({
       id: `${slide.id}-fallback-icon`,
       kind: "icon",
-      iconName: fallback === "timeline" ? "Clock" : fallback === "coloredExample" ? "Highlighter" : fallback === "relationshipMap" ? "GitBranch" : "Sparkles",
-      x: x + 85, y: fallback === "timeline" ? 220 : 215, w: 90, h: 90,
-      color: accent,
-    },
-  );
+      iconName: fallback === "relationshipMap" ? "GitBranch" : "Workflow",
+      x: x + 108, y: 290, w: 44, h: 44,
+      color: surface,
+    });
+  } else if (fallback === "coloredExample") {
+    [0, 1, 2].forEach((row) => {
+      visualElements.push({
+        id: `${slide.id}-fallback-example-${row}`,
+        kind: "shape", shape: "rect",
+        x: x + 34, y: 198 + row * 92, w: 192, h: 64,
+        bgColor: row === 1 ? palette.accentSoft : surface,
+        borderColor: accent, borderWidth: row === 1 ? 3 : 1,
+      });
+      visualElements.push({
+        id: `${slide.id}-fallback-check-${row}`,
+        kind: "icon", iconName: row === 1 ? "Check" : "Circle",
+        x: x + 176, y: 214 + row * 92, w: 30, h: 30,
+        color: accent,
+      });
+    });
+  } else {
+    visualElements.push(
+      {
+        id: `${slide.id}-fallback-orb`,
+        kind: "shape", shape: "circle",
+        x: x + 42, y: 204, w: 176, h: 176,
+        bgColor: palette.accentSoft,
+      },
+      {
+        id: `${slide.id}-fallback-icon`,
+        kind: "icon",
+        iconName: card.visualDirection?.icon || "Sparkles",
+        x: x + 85, y: 247, w: 90, h: 90,
+        color: accent,
+      },
+    );
+  }
+  /* Atmosphere shapes are deliberately painted first by the templates.
+     Insert the educational visual after them so an editorial side panel
+     cannot hide it, while keeping it below the actual text/content. */
+  let insertAt = 0;
+  while (insertAt < slide.elements.length && slide.elements[insertAt].id.includes("-atm-")) {
+    insertAt += 1;
+  }
+  slide.elements.splice(insertAt, 0, ...visualElements);
   slide.visualFallback = fallback;
+}
+
+function hasUnsafeGeometry(elements: Element[]): boolean {
+  return elements.some((el) =>
+    !el.id.includes("-atm-") && (
+      el.x < 0 || el.y < 0 || el.w <= 0 || el.h <= 0 ||
+      el.x + el.w > CANVAS_W || el.y + el.h > CANVAS_H
+    )
+  );
 }
 
 function estimatedWrappedLines(text: string, width: number, fontSize: number): number {
@@ -279,6 +385,13 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
     }
 
     fitTextElements(out.slide.elements);
+    if (hasUnsafeGeometry(out.slide.elements)) {
+      out.warnings.push(
+        input.lang === "ar"
+          ? "تم اكتشاف عنصر خارج حدود الشريحة؛ يُنصح بمراجعة التخطيط."
+          : "An element extends beyond the slide bounds; review the layout.",
+      );
+    }
 
     return { slide: out.slide, warnings: out.warnings };
   } catch (err) {

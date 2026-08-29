@@ -162,6 +162,33 @@ describe("presentation visual contract fixtures", () => {
     expect(result.outline.slides[1].talkingPoints[0]).toContain("يتحول الماء");
     expect(result.outline.slides[3].talkingPoints).toHaveLength(1);
   });
+
+  it("adds a local visual decision and varied layout when the model omits both", () => {
+    const raw = fixedLesson("دورة الماء", "scientific", [
+      "title", "visualHero", "process", "workedExample", "summary",
+    ]);
+    for (const slide of raw.slides) {
+      delete (slide as Record<string, unknown>).imagePlan;
+      delete (slide as Record<string, unknown>).layoutVariant;
+    }
+
+    const result = sanitizeOutline(raw, {
+      ...baseBrief,
+      topic: "دورة الماء",
+      subject: "العلوم",
+    });
+
+    expect(result.report.fatal).toBe(false);
+    expect(result.outline.slides.every((slide) =>
+      slide.imagePlan?.fallback && slide.imagePlan.fallback !== "none",
+    )).toBe(true);
+    expect(result.outline.slides.every((slide) =>
+      slide.imagePlan?.imageQuery === undefined && slide.imagePlan?.placement === "none",
+    )).toBe(true);
+    expect(new Set(result.outline.slides.map((slide) => slide.layoutVariant)).size).toBeGreaterThanOrEqual(4);
+    expect(result.outline.slides[2].imagePlan?.fallback).toBe("timeline");
+    expect(result.outline.slides[3].imagePlan?.fallback).toBe("coloredExample");
+  });
 });
 
 /* Full-lesson depth contract — a normal lesson request must come back as a
