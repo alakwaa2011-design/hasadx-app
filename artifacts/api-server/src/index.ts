@@ -39,8 +39,7 @@ import { seedXpDefaultsIfNeeded } from "./lib/xp/seed";
 import { bindXpSocket } from "./lib/xp/socket";
 import { startEmailOutboxWorker } from "./lib/xp/email-worker";
 import { startMissingWelcomeCreditsAlertJob } from "./lib/welcome-credits-alert";
-
-const ADMIN_EMAILS = ["alakwaa2011@gmail.com", "marwanakwaa@yahoo.com"];
+import { CONFIGURED_ADMIN_EMAILS } from "./lib/admin-identity";
 
 async function runSchemaMigrations() {
   try {
@@ -1354,8 +1353,8 @@ async function seedAdmins() {
   try {
     await db.update(teachersTable)
       .set({ isAdmin: true, role: "admin" })
-      .where(inArray(teachersTable.email, ADMIN_EMAILS));
-    logger.info({ emails: ADMIN_EMAILS }, "Admin emails seeded");
+      .where(inArray(teachersTable.email, [...CONFIGURED_ADMIN_EMAILS]));
+    logger.info("Configured admin emails seeded");
   } catch (err) {
     logger.error(err, "Failed to seed admins");
   }

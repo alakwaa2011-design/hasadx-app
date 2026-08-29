@@ -52,3 +52,4 @@
 - [UI locale startup ordering](ui-locale-startup-ordering.md) — root boundaries need the locale provider outside them, and first API requests need locale decoration before descendant effects.
 - [Feedback messaging identity](feedback-messaging-identity.md) — only authenticated sessions may link feedback to teacher chats; email delivery status must be fenced to the current response.
 - [AI cost operation attribution](ai-cost-operation-attribution.md) — rank all calls in an AI operation before date filtering, or one credit spend can be assigned to multiple report periods.
+- [Configured admin promotion](configured-admin-promotion.md) — admin allowlisted emails must be promoted during auth/session refresh, not only server startup.

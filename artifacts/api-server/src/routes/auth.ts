@@ -64,6 +64,7 @@ import {
   buildNewDeviceLoginEmail,
   buildResetEmail,
 } from "../lib/auth-emails";
+import { isConfiguredAdminEmail } from "../lib/admin-identity";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_GENERIC_RESPONSE = {
@@ -73,6 +74,20 @@ const RESET_GENERIC_RESPONSE = {
 const OTP_TTL_EMAIL_MS = 30 * 60 * 1000; // 30 minutes (email)
 const OTP_TTL_MS = OTP_TTL_EMAIL_MS;      // default used for legacy paths
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends
+
+async function ensureConfiguredAdmin(
+  teacher: typeof teachersTable.$inferSelect,
+): Promise<typeof teachersTable.$inferSelect> {
+  if (!isConfiguredAdminEmail(teacher.email) || (teacher.isAdmin && teacher.role === "admin")) {
+    return teacher;
+  }
+  const [promoted] = await db
+    .update(teachersTable)
+    .set({ isAdmin: true, role: "admin" })
+    .where(eq(teachersTable.id, teacher.id))
+    .returning();
+  return promoted ?? teacher;
+}
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -506,6 +521,8 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
+    teacher = await ensureConfiguredAdmin(teacher);
+
     const valid = await bcrypt.compare(body.password, teacher.passwordHash);
     if (!valid) {
       res.status(401).json({ message: "بيانات الدخول غير صحيحة" });
@@ -602,21 +619,23 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
+  const currentTeacher = await ensureConfiguredAdmin(teacher);
+
   res.json({
-    id: teacher.id,
-    name: teacher.name,
-    email: teacher.email,
-    phone: teacher.phone,
-    isAdmin: teacher.isAdmin,
-    role: teacher.role,
-    aiTier: teacher.aiTier,
-    hasProDesign: teacher.hasProDesign,
-    displaySchool: teacher.displaySchool,
-    schoolLogo: teacher.schoolLogo,
-    profileSlug: teacher.profileSlug,
-    publicProfileEnabled: teacher.publicProfileEnabled,
-    showOnLeaderboard: teacher.showOnLeaderboard,
-    emailVerified: teacher.emailVerified,
+    id: currentTeacher.id,
+    name: currentTeacher.name,
+    email: currentTeacher.email,
+    phone: currentTeacher.phone,
+    isAdmin: currentTeacher.isAdmin,
+    role: currentTeacher.role,
+    aiTier: currentTeacher.aiTier,
+    hasProDesign: currentTeacher.hasProDesign,
+    displaySchool: currentTeacher.displaySchool,
+    schoolLogo: currentTeacher.schoolLogo,
+    profileSlug: currentTeacher.profileSlug,
+    publicProfileEnabled: currentTeacher.publicProfileEnabled,
+    showOnLeaderboard: currentTeacher.showOnLeaderboard,
+    emailVerified: currentTeacher.emailVerified,
   });
 });
 
@@ -1443,6 +1462,8 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       res.status(500).json({ message: "تعذّر إنشاء الحساب" });
       return;
     }
+
+    teacher = await ensureConfiguredAdmin(teacher);
 
     if (teacher.isBlocked) {
       res.status(403).json({ message: "تم حظر حسابك. تواصل مع المسؤول" });
