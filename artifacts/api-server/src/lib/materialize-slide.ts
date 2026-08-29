@@ -32,9 +32,13 @@ export interface BuildOneInput {
   /** Where to put `backgroundImageUrl`. Defaults to "side" so most
       slides get a real photo on one column rather than a faded backdrop
       that washes out the text. "background" is reserved for hero/title-
-      style cards and for uploaded source photos that should dominate
-      the slide. "none" disables image rendering entirely. */
+       style cards with very little text. Uploaded source assets use the
+       provenance flag below and are always preserved in a side frame.
+       "none" disables image rendering entirely. */
   imagePlacement?: ImagePlacement;
+  /** Preserve the full source frame (screenshots, diagrams, uploaded pages)
+      instead of cropping it like a decorative stock photo. */
+  preserveImageContent?: boolean;
 }
 
 export interface BuildOneResult {
@@ -51,8 +55,8 @@ const CANVAS_H = 720;
    panel, with breathing room on the outer edges and 32 px gutter
    between the photo and any text element. */
 const IMG_W = 448;
-const IMG_H = 528;
-const IMG_Y = 96;
+const IMG_H = 432;
+const IMG_Y = 208;
 const IMG_MARGIN = 32;
 const IMG_GUTTER = 32;
 
@@ -68,6 +72,61 @@ const NATIVE_VISUAL_KINDS = new Set([
   "objectives", "comparison", "steps", "interactive", "closure",
   "timeline", "formula", "stat", "quote",
 ]);
+
+function effectiveRenderedKind(card: OutlineCard): OutlineCard["kind"] {
+  switch (card.slideType) {
+    case "title": return "title";
+    case "concept": return "concept-card";
+    case "visualHero": return "visual-hero";
+    case "process": return "steps";
+    case "comparison": return "comparison";
+    case "timeline": return "timeline";
+    case "workedExample": return "formula";
+    case "quote": return "quote";
+    case "misconception": return "callout";
+    case "activity":
+    case "quiz": return "interactive";
+    case "summary": return "closure";
+    default: return card.kind;
+  }
+}
+
+function textLoad(card: OutlineCard): { pointCount: number; wordCount: number } {
+  return {
+    pointCount: card.talkingPoints.length,
+    wordCount: card.talkingPoints.reduce(
+      (sum, point) => sum + point.trim().split(/\s+/).filter(Boolean).length,
+      0,
+    ),
+  };
+}
+
+/** A full-bleed image is intentionally rare: it only works when the text is
+ * a short headline or statement. Content-heavy and native-visual slides keep
+ * the image away from the reading surface even if the model requested a
+ * background. */
+export function resolveImagePlacement(
+  card: OutlineCard,
+  requested: ImagePlacement | undefined,
+  hasImage: boolean,
+  preserveImageContent = false,
+): ImagePlacement {
+  if (!hasImage || requested === "none") return "none";
+  const effectiveKind = effectiveRenderedKind(card);
+  if (preserveImageContent) {
+    return effectiveKind === "interactive" ? "none" : "side";
+  }
+  if (NATIVE_VISUAL_KINDS.has(effectiveKind)) return "none";
+
+  const load = textLoad(card);
+  const conciseHero =
+    ["title", "visual-hero", "stat", "quote"].includes(effectiveKind) &&
+    load.pointCount <= 2 &&
+    load.wordCount <= 24;
+  if (requested === "background") return conciseHero ? "background" : "side";
+  if (requested === "side") return "side";
+  return conciseHero ? "background" : "side";
+}
 
 function defaultFallbackForCard(card: OutlineCard): NonNullable<OutlineCard["imagePlan"]>["fallback"] {
   if (card.kind === "steps" || card.kind === "timeline" || card.slideType === "process" || card.slideType === "timeline") {
@@ -235,6 +294,15 @@ function fitTextElements(elements: Element[]): void {
   }
 }
 
+function removeDecorativeImageCompetitors(elements: Element[], slideId: string): Element[] {
+  return elements.filter(
+    (el) =>
+      el.id !== `${slideId}-halo` &&
+      el.id !== `${slideId}-icon` &&
+      !el.id.startsWith(`${slideId}-corner-`),
+  );
+}
+
 /* Reposition existing elements so they don't sit on top of the inline
    image column. Strategy: only clamp elements whose bounding box
    intersects the image column in BOTH X and Y (so a footer below the
@@ -249,14 +317,17 @@ function avoidColumn(
   colX: number,
   colW: number,
   side: "left" | "right",
+  colY = IMG_Y,
+  colH = IMG_H,
 ): boolean {
   const colLeft = colX;
   const colRight = colX + colW;
-  const colTop = IMG_Y;
-  const colBottom = IMG_Y + IMG_H;
+  const colTop = colY;
+  const colBottom = colY + colH;
   for (const el of elements) {
     /* Don't reflow shape overlays we intentionally placed full-bleed
        (z-order 0 background washes etc.). */
+    if (el.id.includes("-atm-")) continue;
     if (el.kind === "shape" && el.x === 0 && el.w >= CANVAS_W - 1) continue;
     const elRight = el.x + el.w;
     const elBottom = el.y + el.h;
@@ -280,6 +351,7 @@ function avoidColumn(
     }
   }
   for (const el of elements) {
+    if (el.id.includes("-atm-")) continue;
     const elRight = el.x + el.w;
     const elBottom = el.y + el.h;
     const yOverlap = elBottom > colTop && el.y < colBottom;
@@ -304,18 +376,29 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
   /* Effective placement. If the AI didn't pick one we default to "side"
      for everyday content and "background" for hero/stat/quote/title
      where a single dominant visual reads better. */
-  const declared = input.imagePlacement;
-  const placement: ImagePlacement = !input.backgroundImageUrl
-    ? "none"
-    : declared
-      ? declared
-      : HERO_KINDS.has(input.card.kind)
-        ? "background"
-        : "side";
+  const placement = resolveImagePlacement(
+    input.card,
+    input.imagePlacement,
+    Boolean(input.backgroundImageUrl),
+    input.preserveImageContent,
+  );
 
   try {
+    const effectiveKind = effectiveRenderedKind(input.card);
+    const useSourceImageLayout =
+      input.preserveImageContent &&
+      placement === "side" &&
+      NATIVE_VISUAL_KINDS.has(effectiveKind);
+    const renderCard: OutlineCard = useSourceImageLayout
+      ? {
+          ...input.card,
+          kind: "concept-card",
+          slideType: "concept",
+          layoutVariant: "classic",
+        }
+      : input.card;
     const out = materializeSlide({
-      card: input.card,
+      card: renderCard,
       theme: palette,
       density: input.density,
       lang: input.lang,
@@ -329,8 +412,8 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
          wash, light themes a light wash so AI text remains readable. */
       out.slide.backgroundImage = input.backgroundImageUrl;
       const overlayColor = palette.textOnLight
-        ? "rgba(255,255,255,0.55)"
-        : "rgba(0,0,0,0.40)";
+        ? "rgba(255,255,255,0.72)"
+        : "rgba(0,0,0,0.58)";
       out.slide.elements.unshift({
         id: `${out.slide.id}-bg-overlay`,
         kind: "shape",
@@ -345,38 +428,72 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
            English (LTR) → image on the RIGHT edge
          Then clamp any text/icon/shape that would overlap it. */
       const side: "left" | "right" = input.lang === "ar" ? "left" : "right";
-      const colX = side === "right" ? CANVAS_W - IMG_W - IMG_MARGIN : IMG_MARGIN;
-      const hasRoomForImage = avoidColumn(out.slide.elements, colX, IMG_W, side);
+      const dense = textLoad(input.card).pointCount >= 4;
+      const imageW = dense ? 392 : IMG_W;
+      const imageH = dense ? 420 : IMG_H;
+      const imageY = dense ? 220 : IMG_Y;
+      const colX = side === "right" ? CANVAS_W - imageW - IMG_MARGIN : IMG_MARGIN;
+      out.slide.elements = removeDecorativeImageCompetitors(out.slide.elements, out.slide.id);
+      const hasRoomForImage = avoidColumn(out.slide.elements, colX, imageW, side, imageY, imageH);
       /* Insert the image BEFORE text/icon/shape elements so the renderer
          (which paints in array order) draws text on top of the photo
          when residual overlap remains. We still place it after any
          leading background-overlay shape (z=0 wash) so that wash sits
          under the photo. */
-      const insertAt =
-        out.slide.elements.length > 0 &&
-        out.slide.elements[0].kind === "shape" &&
-        out.slide.elements[0].x === 0 &&
-        out.slide.elements[0].w >= CANVAS_W - 1
-          ? 1
-          : 0;
+      let insertAt = 0;
+      while (
+        insertAt < out.slide.elements.length &&
+        (
+          out.slide.elements[insertAt].id.includes("-atm-") ||
+          (
+            out.slide.elements[insertAt].kind === "shape" &&
+            out.slide.elements[insertAt].x === 0 &&
+            out.slide.elements[insertAt].w >= CANVAS_W - 1
+          )
+        )
+      ) {
+        insertAt += 1;
+      }
       if (hasRoomForImage) {
-        out.slide.elements.splice(insertAt, 0, {
-          id: `${out.slide.id}-img`,
-          kind: "image",
-          x: colX,
-          y: IMG_Y,
-          w: IMG_W,
-          h: IMG_H,
-          url: input.backgroundImageUrl,
-          objectFit: "cover",
-          imageBorderRadius: 24,
-        });
+        const preserveFrame =
+          input.preserveImageContent ||
+          input.card.imagePlan?.mediaType === "diagram" ||
+          input.card.imagePlan?.mediaType === "chart" ||
+          input.card.imagePlan?.mediaType === "illustration";
+        out.slide.elements.splice(
+          insertAt,
+          0,
+          {
+            id: `${out.slide.id}-img-frame`,
+            kind: "shape",
+            shape: "rect",
+            x: colX,
+            y: imageY,
+            w: imageW,
+            h: imageH,
+            bgColor: palette.surface,
+            borderColor: palette.divider,
+            borderWidth: 2,
+          },
+          {
+            id: `${out.slide.id}-img`,
+            kind: "image",
+            x: colX + (preserveFrame ? 12 : 0),
+            y: imageY + (preserveFrame ? 12 : 0),
+            w: imageW - (preserveFrame ? 24 : 0),
+            h: imageH - (preserveFrame ? 24 : 0),
+            url: input.backgroundImageUrl,
+            objectFit: preserveFrame ? "contain" : "cover",
+            imageBorderRadius: preserveFrame ? 16 : 24,
+          },
+        );
       } else {
         out.warnings.push(
           input.lang === "ar"
             ? "تم حذف الصورة الجانبية لأن مساحة النص لا تسمح بها."
             : "Side image removed because the text layout did not have enough room.",
         );
+        addVisualFallback(out.slide, input.card, palette, input.lang);
       }
     } else {
       /* A requested image must never degrade into a text-only slide. Keep

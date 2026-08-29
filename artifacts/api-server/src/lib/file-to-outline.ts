@@ -725,6 +725,10 @@ export async function multiImagesToOutline(
      1-based index of the uploaded images, or null. Out-of-range or missing
      values become null so the slide renders as plain AI text. */
   const sourceImageIndices: (number | null)[] = sorted.map((s) => {
+    /* Interactive slides already have a large native activity surface.
+       Keep them linked to the source through their generated content, but
+       do not paint the uploaded page behind or beside the activity. */
+    if (s.kind === "interactive") return null;
     const v = s.sourceImageIndex;
     if (typeof v !== "number" || !Number.isFinite(v)) return null;
     const clamped = Math.floor(v);
@@ -740,15 +744,14 @@ export async function multiImagesToOutline(
     return s.imageQuery || "";
   });
 
-  /* Per-card placement hint. For uploaded source photos we force
-     "background" because the teacher's original photo should dominate
-     the slide; for AI-fetched web images we honour whatever the model
-     picked (or leave undefined so the materializer chooses a sensible
-     default per slide kind). */
+  /* Uploaded pages/screenshots always use a framed side treatment so the
+     complete source remains visible. CSS cover is reserved for optional
+     web imagery, never for a teacher-owned source asset. */
   const imagePlacements: Array<"side" | "background" | "none" | undefined> =
-    sorted.map((s, i) =>
-      sourceImageIndices[i] != null ? "background" : s.imagePlacement,
-    );
+    sorted.map((s, i) => {
+      if (sourceImageIndices[i] == null) return s.imagePlacement;
+      return "side";
+    });
 
   return {
     cards,

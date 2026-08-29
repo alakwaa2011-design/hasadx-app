@@ -934,6 +934,7 @@ router.post(
               lang: outline.language,
               backgroundImageUrl: bgUrl,
               imagePlacement: placement,
+              preserveImageContent: outline.sourceImageIndices[i] != null,
             });
             const parsedOne = slideSchema.safeParse(out.slide);
             if (parsedOne.success) validSlides.push(parsedOne.data);

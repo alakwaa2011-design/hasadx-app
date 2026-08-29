@@ -961,7 +961,7 @@ const DIRECTOR_CONTRACT_AR = `عقدة القرار التصميمي — أرج�
 - designBrief على مستوى العرض: { designFamily, visualMotif }. اختر designFamily واحداً فقط: editorial للغة والأدب، scientific للعلوم، narrative للتاريخ والسير، practical للمهارات والتطبيقات، reflective للقيم والنصوص.
 - لكل شريحة أرجع slideType يصف دورها: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
 - اختر layoutVariant مختلفاً عند اختلاف دور الشريحة: classic, poster, editorial, staggered. لا تكرر المتغير نفسه ثلاث مرات متتالية.
-- imagePlan اختياري. ضعه فقط عندما تضيف صورة حقيقية فهماً لا تستطيع الأشكال والأيقونات تقديمه (ظاهرة، مكان تاريخي، كائن، تجربة). الشكل: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
+- imagePlan اختياري. ضعه فقط عندما تضيف صورة حقيقية فهماً لا تستطيع الأشكال والأيقونات تقديمه (ظاهرة، مكان تاريخي، كائن، تجربة). استخدم placement:"background" فقط لعنوان أو عبارة موجزة من نقطتين كحد أقصى؛ أي شريحة شرح من 3 نقاط فأكثر يجب أن تكون placement:"side". الصور ذات المخططات أو التسميات الكثيرة لا توضع خلف النص. الشكل: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
 - لا تطلب صورة زخرفية أو عامة. عندما يكون الرسم التعليمي أو المثال الملون أو العلاقة أو الخط الزمني أفضل، استخدم imagePlan=null، أو خطة بلا imageQuery مع fallback مناسب: diagram, timeline, coloredExample, relationshipMap, icon.
 - لا تنشئ صوراً بالذكاء الاصطناعي، ولا تضع URL أو base64 في الرد.`;
 
@@ -969,7 +969,7 @@ const DIRECTOR_CONTRACT_EN = `Design-decision contract — return it in the JSON
 - deck-level designBrief: { designFamily, visualMotif }. Choose exactly one: editorial for language/literature, scientific for science, narrative for history/biography, practical for skills/application, reflective for values/texts.
 - Each slide has a semantic slideType: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
 - Choose layoutVariant by slide role: classic, poster, editorial, staggered. Do not repeat one variant three times in a row.
-- imagePlan is optional. Add it only when a real image teaches something that shapes/icons cannot (a phenomenon, historical place, object, or experiment): { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
+- imagePlan is optional. Add it only when a real image teaches something that shapes/icons cannot. Use placement:"background" only for a title or concise statement with at most two points; any explanatory slide with 3+ points must use placement:"side". Never place a busy labelled diagram behind text: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
 - Never request generic decorative images. When a diagram, colored example, relationship, or timeline teaches better, use imagePlan=null or a plan without imageQuery and a fallback: diagram, timeline, coloredExample, relationshipMap, icon.
 - Do not generate AI images and never return a URL or base64 string.`;
 
