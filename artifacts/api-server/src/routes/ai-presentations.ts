@@ -529,13 +529,14 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const userPrompt = buildOutlinePrompt(brief);
 
     /* Time budget: the platform proxy hard-aborts requests at 120s.
-       A single claude/gpt-5 outline call takes 50-80s, so a second
-       sequential call only fits if the first one was fast. Any retry
-       (JSON repair or corrective) must check the remaining budget —
-       otherwise the request dies at exactly 120s with no response,
-       which the UI reports as a generation failure. */
+       Keep Claude's first attempt shorter than the full route deadline so
+       a transient Anthropic stall can fall back to the fast standard model
+       within the same request instead of returning a 502 after 95 seconds.
+       JSON/corrective retries still run only when the first result was fast. */
     const startedAt = Date.now();
     const RETRY_BUDGET_MS = 30_000; // retry only if the first call finished this fast
+    const CLAUDE_PRIMARY_TIMEOUT_MS = 60_000;
+    const MIN_FALLBACK_BUDGET_MS = 15_000;
     /* Total in-process deadline, kept well under the proxy's 120s so
        sanitize/DB/serialization work still fits after the last call. */
     const DEADLINE_MS = 100_000;
@@ -545,12 +546,35 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     if (!outlineRaw) {
       try {
         await reserveOutlineSlot(teacherId);
-        const first = await runOutlineCompletion({
-          tier,
-          system,
-          userMessages: [userPrompt],
-          timeoutMs: remainingMs(),
-        });
+        let first: CompletionResult;
+        try {
+          first = await runOutlineCompletion({
+            tier,
+            system,
+            userMessages: [userPrompt],
+            timeoutMs: isClaudeTier(tier)
+              ? Math.min(CLAUDE_PRIMARY_TIMEOUT_MS, remainingMs())
+              : remainingMs(),
+          });
+        } catch (primaryErr) {
+          const fallbackBudgetMs = remainingMs();
+          if (!isClaudeTier(tier) || fallbackBudgetMs < MIN_FALLBACK_BUDGET_MS) {
+            throw primaryErr;
+          }
+
+          req.log.warn({
+            err: primaryErr,
+            fallbackBudgetMs,
+          }, "Claude outline attempt failed; falling back to standard model");
+          await reserveOutlineSlot(teacherId);
+          first = await runOutlineCompletion({
+            tier: "standard",
+            system,
+            userMessages: [userPrompt],
+            timeoutMs: fallbackBudgetMs,
+          });
+          providerRetried = true;
+        }
         tokensIn += first.tokensIn;
         tokensOut += first.tokensOut;
         outlineRaw = parseJsonLoose(first.text);
