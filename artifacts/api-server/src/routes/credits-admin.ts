@@ -17,6 +17,68 @@ import {
 
 const router: IRouter = Router();
 
+export interface AiCostReportRange { from: Date; to: Date; fromDate: string; toDate: string; }
+
+/** Parses the report's half-open UTC calendar range. `to` is always exclusive. */
+export function parseAiCostReportRange(query: Record<string, unknown>): AiCostReportRange {
+  const fromDate = typeof query.from === "string" ? query.from : "";
+  const toDate = typeof query.to === "string" ? query.to : "";
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!datePattern.test(fromDate) || !datePattern.test(toDate)) {
+    throw new Error("from and to must be YYYY-MM-DD");
+  }
+  const from = new Date(`${fromDate}T00:00:00.000Z`);
+  const to = new Date(`${toDate}T00:00:00.000Z`);
+  if (Number.isNaN(from.valueOf()) || Number.isNaN(to.valueOf()) ||
+      from.toISOString().slice(0, 10) !== fromDate || to.toISOString().slice(0, 10) !== toDate ||
+      to <= from || (to.valueOf() - from.valueOf()) / 86_400_000 > 366) {
+    throw new Error("Range must be a positive half-open range of at most 366 days");
+  }
+  return { from, to, fromDate, toDate };
+}
+
+export function normalizeAiCostReportTotals(row: Record<string, unknown> | undefined) {
+  const number = (value: unknown) => Number(value ?? 0);
+  return {
+    attempts: number(row?.attempts),
+    successful: number(row?.successful),
+    failed: number(row?.failed),
+    cached: number(row?.cached),
+    tokensIn: number(row?.tokens_in),
+    tokensOut: number(row?.tokens_out),
+    costMicroUsd: number(row?.cost_micro_usd),
+    costUnavailableCount: number(row?.cost_unavailable_count),
+    distinctTeachers: number(row?.distinct_teachers),
+    refundedOperations: number(row?.refunded_operations),
+    completedCreditPoints: number(row?.completed_credit_points),
+    refundedCreditPoints: number(row?.refunded_credit_points),
+  };
+}
+
+export function normalizeAiCostReportBreakdown(row: Record<string, unknown>) {
+  const number = (value: unknown) => Number(value ?? 0);
+  const base = {
+    attempts: number(row.attempts),
+    successful: number(row.successful),
+    failed: number(row.failed),
+    cached: number(row.cached),
+    tokensIn: number(row.tokens_in),
+    tokensOut: number(row.tokens_out),
+    costMicroUsd: number(row.cost_micro_usd),
+    costUnavailableCount: number(row.cost_unavailable_count),
+    distinctTeachers: number(row.distinct_teachers),
+    refundedOperations: number(row.refunded_operations),
+    completedCreditPoints: number(row.completed_credit_points),
+    refundedCreditPoints: number(row.refunded_credit_points),
+  };
+  const dimensions: Record<string, string> = {};
+  if (row.provider != null) dimensions.provider = String(row.provider);
+  if (row.model != null) dimensions.model = String(row.model);
+  if (row.tool_key != null) dimensions.toolKey = String(row.tool_key);
+  if (row.day != null) dimensions.day = String(row.day);
+  return { ...dimensions, ...base };
+}
+
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 
 async function requireAdmin(req: Request, res: Response, next: () => void): Promise<void> {
@@ -28,6 +90,130 @@ async function requireAdmin(req: Request, res: Response, next: () => void): Prom
 }
 
 router.use(requireAdmin as any);
+
+// `to` is exclusive. Keeping this endpoint ledger-only prevents legacy daily
+// counters (which are not per provider call) from being mistaken for spend.
+router.get("/ai-cost-report", async (req, res) => {
+  let range: AiCostReportRange;
+  try {
+    range = parseAiCostReportRange(req.query as Record<string, unknown>);
+  } catch (err) {
+    res.status(400).json({ message: err instanceof Error ? err.message : "Invalid date range", toExclusive: true });
+    return;
+  }
+  try {
+    const rangedOperations = sql`
+      WITH all_operations AS (
+        SELECT l.*,
+          ct.amount AS credit_amount,
+          ct.status AS credit_status,
+          row_number() OVER (
+            PARTITION BY l.teacher_id, l.request_id
+            ORDER BY l.started_at, l.id
+          ) AS operation_call_rank
+        FROM ai_usage_ledger l
+        LEFT JOIN credit_transactions ct
+          ON ct.teacher_id = l.teacher_id
+          AND ct.request_id = l.request_id
+          AND ct.type = 'spend'
+      ),
+      ranged_operations AS (
+        SELECT *
+        FROM all_operations
+        WHERE completed_at >= ${range.from} AND completed_at < ${range.to}
+      )
+    `;
+    const [totalsResult, providerResult, modelResult, toolResult, dayResult] = await Promise.all([
+      db.execute(sql`
+        ${rangedOperations}
+        SELECT count(*)::int AS attempts,
+          count(*) FILTER (WHERE status = 'succeeded')::int AS successful,
+          count(*) FILTER (WHERE status = 'failed')::int AS failed,
+          count(*) FILTER (WHERE status = 'cached')::int AS cached,
+          coalesce(sum(tokens_in), 0)::bigint AS tokens_in,
+          coalesce(sum(tokens_out), 0)::bigint AS tokens_out,
+          coalesce(sum(cost_micro_usd), 0)::bigint AS cost_micro_usd,
+          count(*) FILTER (WHERE status = 'succeeded' AND cost_source = 'unavailable')::int AS cost_unavailable_count,
+          count(DISTINCT teacher_id)::int AS distinct_teachers,
+          count(*) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded')::int AS refunded_operations,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'completed'), 0)::bigint AS completed_credit_points,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded'), 0)::bigint AS refunded_credit_points
+        FROM ranged_operations
+      `),
+      db.execute(sql`
+        ${rangedOperations}
+        SELECT provider, count(*)::int AS attempts,
+          count(*) FILTER (WHERE status = 'succeeded')::int AS successful, count(*) FILTER (WHERE status = 'failed')::int AS failed,
+          count(*) FILTER (WHERE status = 'cached')::int AS cached, coalesce(sum(tokens_in),0)::bigint AS tokens_in,
+          coalesce(sum(tokens_out),0)::bigint AS tokens_out, coalesce(sum(cost_micro_usd),0)::bigint AS cost_micro_usd,
+          count(*) FILTER (WHERE status = 'succeeded' AND cost_source = 'unavailable')::int AS cost_unavailable_count,
+          count(DISTINCT teacher_id)::int AS distinct_teachers,
+          count(*) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded')::int AS refunded_operations,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'completed'), 0)::bigint AS completed_credit_points,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded'), 0)::bigint AS refunded_credit_points
+        FROM ranged_operations
+        GROUP BY provider ORDER BY provider
+      `),
+      db.execute(sql`
+        ${rangedOperations}
+        SELECT provider, model, count(*)::int AS attempts,
+          count(*) FILTER (WHERE status = 'succeeded')::int AS successful, count(*) FILTER (WHERE status = 'failed')::int AS failed,
+          count(*) FILTER (WHERE status = 'cached')::int AS cached, coalesce(sum(tokens_in),0)::bigint AS tokens_in,
+          coalesce(sum(tokens_out),0)::bigint AS tokens_out, coalesce(sum(cost_micro_usd),0)::bigint AS cost_micro_usd,
+          count(*) FILTER (WHERE status = 'succeeded' AND cost_source = 'unavailable')::int AS cost_unavailable_count,
+          count(DISTINCT teacher_id)::int AS distinct_teachers,
+          count(*) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded')::int AS refunded_operations,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'completed'), 0)::bigint AS completed_credit_points,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded'), 0)::bigint AS refunded_credit_points
+        FROM ranged_operations
+        GROUP BY provider, model ORDER BY provider, model
+      `),
+      db.execute(sql`
+        ${rangedOperations}
+        SELECT tool_key, count(*)::int AS attempts,
+          count(*) FILTER (WHERE status = 'succeeded')::int AS successful, count(*) FILTER (WHERE status = 'failed')::int AS failed,
+          count(*) FILTER (WHERE status = 'cached')::int AS cached, coalesce(sum(tokens_in),0)::bigint AS tokens_in,
+          coalesce(sum(tokens_out),0)::bigint AS tokens_out, coalesce(sum(cost_micro_usd),0)::bigint AS cost_micro_usd,
+          count(*) FILTER (WHERE status = 'succeeded' AND cost_source = 'unavailable')::int AS cost_unavailable_count,
+          count(DISTINCT teacher_id)::int AS distinct_teachers,
+          count(*) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded')::int AS refunded_operations,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'completed'), 0)::bigint AS completed_credit_points,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded'), 0)::bigint AS refunded_credit_points
+        FROM ranged_operations
+        GROUP BY tool_key ORDER BY tool_key
+      `),
+      db.execute(sql`
+        ${rangedOperations}
+        SELECT to_char(completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, count(*)::int AS attempts,
+          count(*) FILTER (WHERE status = 'succeeded')::int AS successful, count(*) FILTER (WHERE status = 'failed')::int AS failed,
+          count(*) FILTER (WHERE status = 'cached')::int AS cached, coalesce(sum(tokens_in),0)::bigint AS tokens_in,
+          coalesce(sum(tokens_out),0)::bigint AS tokens_out, coalesce(sum(cost_micro_usd),0)::bigint AS cost_micro_usd,
+          count(*) FILTER (WHERE status = 'succeeded' AND cost_source = 'unavailable')::int AS cost_unavailable_count,
+          count(DISTINCT teacher_id)::int AS distinct_teachers,
+          count(*) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded')::int AS refunded_operations,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'completed'), 0)::bigint AS completed_credit_points,
+          coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded'), 0)::bigint AS refunded_credit_points
+        FROM ranged_operations
+        GROUP BY 1 ORDER BY 1
+      `),
+    ]) as Array<{ rows?: Array<Record<string, unknown>> }>;
+    res.json({
+      from: range.fromDate,
+      to: range.toDate,
+      toExclusive: true,
+      totals: {
+        ...normalizeAiCostReportTotals(totalsResult.rows?.[0]),
+      },
+      byProvider: (providerResult.rows ?? []).map(normalizeAiCostReportBreakdown),
+      byModel: (modelResult.rows ?? []).map(normalizeAiCostReportBreakdown),
+      byTool: (toolResult.rows ?? []).map(normalizeAiCostReportBreakdown),
+      byDay: (dayResult.rows ?? []).map(normalizeAiCostReportBreakdown),
+    });
+  } catch (err) {
+    req.log.error({ err }, "AI cost report failed");
+    res.status(500).json({ message: "فشل تحميل تقرير تكلفة الذكاء الاصطناعي" });
+  }
+});
 
 // ─── Tool Prices ──────────────────────────────────────────────────────────────
 

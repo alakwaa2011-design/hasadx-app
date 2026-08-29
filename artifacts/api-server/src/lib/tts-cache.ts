@@ -17,6 +17,7 @@
  * row pending for a later re-check.
  */
 import { randomUUID, createHash } from "node:crypto";
+import type { Request } from "express";
 import { db, ttsAudioCacheTable, type TtsAudioCache } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { objectStorageClient, parseObjectPath } from "./objectStorage";
@@ -35,6 +36,20 @@ export const LAST_USED_REFRESH_MS = 6 * 60 * 60 * 1000; // throttled last_used_a
 export const CLEANUP_EVERY_MS   = 24 * 60 * 60 * 1000;
 export const READY_TTL_DAYS     = 90;
 export const FAILED_TTL_DAYS    = 7;
+
+/**
+ * Give ledger work for a cache-generation lease its own request object.  The
+ * lease's credit request id, rather than a mutable Express request property,
+ * is the durable correlation id for every provider chunk in that generation.
+ */
+export function createTtsUsageRequestContext(
+  req: Request,
+  creditRequestId: string,
+): Request {
+  const context = Object.create(req) as Request & { __creditRequestId?: string };
+  context.__creditRequestId = creditRequestId;
+  return context;
+}
 
 // ─── cache key ────────────────────────────────────────────────────────────────
 

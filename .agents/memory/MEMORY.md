@@ -51,3 +51,4 @@
 - [AI content language precedence](ai-content-language-precedence.md) — new AI content uses explicit request, then clear English input, then UI fallback; persist the resolved language with multi-step artifacts.
 - [UI locale startup ordering](ui-locale-startup-ordering.md) — root boundaries need the locale provider outside them, and first API requests need locale decoration before descendant effects.
 - [Feedback messaging identity](feedback-messaging-identity.md) — only authenticated sessions may link feedback to teacher chats; email delivery status must be fenced to the current response.
+- [AI cost operation attribution](ai-cost-operation-attribution.md) — rank all calls in an AI operation before date filtering, or one credit spend can be assigned to multiple report periods.

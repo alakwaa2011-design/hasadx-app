@@ -6,6 +6,8 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
+import type { Request } from "express";
 
 const router: IRouter = Router();
 
@@ -17,25 +19,43 @@ async function runTierCompletion(opts: {
   prompt: string;
   maxTokens: number;
   system?: string;
+  usage?: { req: Request; toolKey: string; callKey: string };
 }): Promise<string> {
   if (isClaudeTier(opts.tier)) {
-    const response = await anthropic.messages.create({
+    const invoke = () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: opts.maxTokens,
       ...(opts.system ? { system: opts.system } : {}),
       messages: [{ role: "user", content: opts.prompt }],
     });
+    const response = opts.usage
+      ? await trackAiUsageCall(opts.usage.req, {
+        toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+        provider: "anthropic", model: SONNET_MODEL, modality: "text",
+      }, invoke, (result) => ({
+        tokensIn: result.usage.input_tokens, tokensOut: result.usage.output_tokens,
+      }))
+      : await invoke();
     const block = response.content.find((c) => c.type === "text");
     return block && "text" in block ? block.text : "";
   }
-  const completion = await openai.chat.completions.create({
-    model: modelForTier(opts.tier),
+  const model = modelForTier(opts.tier);
+  const invoke = () => openai.chat.completions.create({
+    model,
     max_completion_tokens: opts.maxTokens,
     messages: [
       ...(opts.system ? [{ role: "system" as const, content: opts.system }] : []),
       { role: "user" as const, content: opts.prompt },
     ],
   });
+  const completion = opts.usage
+    ? await trackAiUsageCall(opts.usage.req, {
+      toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+      provider: "openai", model, modality: "text",
+    }, invoke, (result) => ({
+      tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens,
+    }))
+    : await invoke();
   return completion.choices[0]?.message?.content || "";
 }
 
@@ -346,7 +366,7 @@ router.post("/wheel-templates/generate", async (req, res) => {
       bonusTypes,
       difficulty,
     });
-    const text = await runTierCompletion({ tier, prompt, maxTokens: 6000 });
+    const text = await runTierCompletion({ tier, prompt, maxTokens: 6000, usage: { req, toolKey: "wheel", callKey: "generate:completion" } });
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) {
       res.status(500).json({ message: language === "ar" ? "تعذّر التوليد" : "Generation failed" });

@@ -572,6 +572,10 @@ describe("POST /api/presentations/import-file — Arabic RTL", () => {
     expect(fileToOutline).toHaveBeenCalledWith(
       expect.objectContaining({ detectedLanguage: "ar" }),
       "arabic",
+      expect.objectContaining({
+        req: expect.any(Object),
+        callKeyPrefix: "file-import:outline",
+      }),
     );
   });
 

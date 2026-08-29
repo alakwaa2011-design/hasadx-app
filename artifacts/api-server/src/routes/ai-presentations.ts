@@ -37,6 +37,7 @@ import {
   shouldAdoptCorrectiveOutline,
 } from "../lib/outline-guardrails";
 import { findExplicitAiContentLanguage, resolveAiContentLanguage } from "../lib/ai-content-language";
+import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
 
 const router: IRouter = Router();
 
@@ -334,6 +335,9 @@ export function canRunCorrectiveOutlineRetry(
 /* Local completion runner. Same routing as lesson_plans.runTierCompletion
    but exposes token counts so we can persist usage on the draft row. */
 async function runOutlineCompletion(opts: {
+  req: Request;
+  callKey: string;
+  toolKey: "presentation-outline" | "presentation-slide";
   tier: AiTier;
   system: string;
   userMessages: string[];
@@ -344,15 +348,21 @@ async function runOutlineCompletion(opts: {
 }): Promise<CompletionResult> {
   const requestOptions = outlineProviderRequestOptions(opts.timeoutMs);
   if (isClaudeTier(opts.tier)) {
-    const response = await anthropic.messages.create({
-      model: SONNET_MODEL,
-      /* A full outline for a 12-20 slide deck is ~5-6k output tokens.
-         4000 truncated the JSON mid-object (stop_reason: max_tokens),
-         so every claude-tier request failed validation with a 422. */
-      max_tokens: 16000,
-      system: opts.system,
-      messages: opts.userMessages.map((content) => ({ role: "user" as const, content })),
-    }, requestOptions);
+    const response = await trackAiUsageCall(
+      opts.req,
+      { toolKey: opts.toolKey, callKey: opts.callKey, provider: "anthropic", model: SONNET_MODEL, modality: "text" },
+      () => anthropic.messages.create({
+        model: SONNET_MODEL,
+        /* A full outline for a 12-20 slide deck is ~5-6k output tokens.
+           4000 truncated the JSON mid-object (stop_reason: max_tokens),
+           so every claude-tier request failed validation with a 422. */
+        max_tokens: 16000,
+        system: opts.system,
+        messages: opts.userMessages.map((content) => ({ role: "user" as const, content })),
+      }, requestOptions),
+      (result) => ({ tokensIn: result.usage?.input_tokens, tokensOut: result.usage?.output_tokens }),
+    );
+    if (!response) throw new Error("Outline AI call was already completed");
     const block = response.content.find((c) => c.type === "text");
     return {
       text: block && "text" in block ? block.text : "",
@@ -362,8 +372,11 @@ async function runOutlineCompletion(opts: {
   }
   const model = modelForTier(opts.tier);
   const isGpt5 = model.startsWith("gpt-5");
-  const completion = await openai.chat.completions.create({
-    model,
+  const completion = await trackAiUsageCall(
+    opts.req,
+    { toolKey: opts.toolKey, callKey: opts.callKey, provider: "openai", model, modality: "text" },
+    () => openai.chat.completions.create({
+      model,
     /* gpt-5 counts hidden reasoning tokens against max_completion_tokens.
        With the full outline prompt it burned the entire 4000 budget on
        reasoning and returned EMPTY content (finish_reason: "length"),
@@ -375,11 +388,14 @@ async function runOutlineCompletion(opts: {
        mid-object on decks past ~8 rich slides. */
     max_completion_tokens: isGpt5 ? 16000 : 8000,
     ...(isGpt5 ? { reasoning_effort: "minimal" as const } : {}),
-    messages: [
-      { role: "system" as const, content: opts.system },
-      ...opts.userMessages.map((content) => ({ role: "user" as const, content })),
-    ],
-  }, requestOptions);
+      messages: [
+        { role: "system" as const, content: opts.system },
+        ...opts.userMessages.map((content) => ({ role: "user" as const, content })),
+      ],
+    }, requestOptions),
+    (result) => ({ tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens }),
+  );
+  if (!completion) throw new Error("Outline AI call was already completed");
   return {
     text: completion.choices[0]?.message?.content || "",
     tokensIn: completion.usage?.prompt_tokens ?? 0,
@@ -540,6 +556,13 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       try {
         outlineRaw = JSON.parse(cached.answer);
         usedCache = true;
+        await recordCachedAiUsage(req, {
+          toolKey: "presentation-outline",
+          callKey: "outline-cache-hit",
+          provider: isClaudeTier(tier) ? "anthropic" : "openai",
+          model: isClaudeTier(tier) ? SONNET_MODEL : model,
+          modality: "text",
+        });
         await db
           .update(aiCache)
           .set({ hitCount: sql`${aiCache.hitCount} + 1`, lastUsedAt: new Date() })
@@ -573,6 +596,9 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
         let first: CompletionResult;
         try {
           first = await runOutlineCompletion({
+            req,
+            callKey: "outline-primary",
+            toolKey: "presentation-outline",
             tier,
             system,
             userMessages: [userPrompt],
@@ -592,6 +618,9 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
           }, "Claude outline attempt failed; falling back to standard model");
           await reserveOutlineSlot(teacherId);
           first = await runOutlineCompletion({
+            req,
+            callKey: "outline-fallback",
+            toolKey: "presentation-outline",
             tier: "standard",
             system,
             userMessages: [userPrompt],
@@ -609,6 +638,9 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             ? "ردّك السابق لم يكن JSON صالحاً. أعد المحاولة بكائن JSON صارم فقط، بدون أي نص خارجه."
             : "Your previous reply was not valid JSON. Reply with a strict JSON object ONLY — no surrounding text.";
           const second = await runOutlineCompletion({
+            req,
+            callKey: "outline-json-retry",
+            toolKey: "presentation-outline",
             tier,
             system,
             userMessages: [userPrompt, retryMsg],
@@ -658,6 +690,9 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
         retryAlreadyAttempted = true;
         await reserveOutlineSlot(teacherId);
         const retry = await runOutlineCompletion({
+          req,
+          callKey: "outline-corrective-retry",
+          toolKey: "presentation-outline",
           tier,
           system,
           userMessages: [userPrompt, buildRetryMessage(report, brief.language)],
@@ -1640,6 +1675,9 @@ router.post("/presentations/ai/single-slide", requireTeacher, checkCredits("pres
 
     const tier = await resolveTier(teacherId);
     const result = await runOutlineCompletion({
+      req,
+      callKey: "slide-primary",
+      toolKey: "presentation-slide",
       tier,
       system: systemMsg,
       userMessages: [userMsg],

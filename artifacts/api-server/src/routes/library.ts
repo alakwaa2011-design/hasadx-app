@@ -14,6 +14,7 @@ import JSZip from "jszip";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { LIBRARY_PENDING_UPLOAD_TTL_MS } from "../lib/library-constants";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
@@ -763,11 +764,21 @@ ${typeRules}
 أعد النتيجة بتنسيق JSON فقط بدون أي نص إضافي:
 ${jsonShape}`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "extract_questions_from_source",
+      callKey: "openai-extract-questions-single-file",
+      provider: "openai",
+      model: "gpt-5.2",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 8000,
       messages: [{ role: "user", content: prompt }],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const responseText = completion.choices[0]?.message?.content || "";
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);
@@ -999,11 +1010,21 @@ ${combined}
   }
 ]`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "extract_questions_from_source",
+      callKey: "openai-extract-questions-bulk-files",
+      provider: "openai",
+      model: "gpt-5.2",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 8000,
       messages: [{ role: "user", content: prompt }],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const responseText = completion.choices[0]?.message?.content || "";
     const jsonMatch = responseText.match(/\[[\s\S]*?\]/);

@@ -18,6 +18,7 @@ import {
 import { imageUploadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 
 const router: IRouter = Router();
 
@@ -444,11 +445,21 @@ ${textQuestions.map((q, i) => `${i + 1}. السؤال: ${q.questionText} (${q.po
 أعد النتائج بالتنسيق التالي فقط (سطر لكل سؤال):
 ${textQuestions.map((q, i) => `${i + 1}: [الدرجة المستحقة من ${q.points}] | [صحيح/خطأ/جزئي]`).join("\n")}`;
 
-        const completion = await openai.chat.completions.create({
+        const completion = await trackAiUsageCall(req, {
+          toolKey: "assignment-ai-grading",
+          callKey: "submit:fill-blank",
+          provider: "openai",
+          model: "gpt-5.2",
+          modality: "text",
+          teacherId: assignment.teacherId,
+        }, () => openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 500,
           messages: [{ role: "user", content: aiPrompt }],
-        });
+        }), (result) => ({
+          tokensIn: result.usage?.prompt_tokens,
+          tokensOut: result.usage?.completion_tokens,
+        }));
         parseAiGradingResponse(completion.choices[0]?.message?.content || "", textQuestions);
       } catch (e: any) {
         req.log.error({ err: e }, "AI grading error for fill_blank");
@@ -478,11 +489,21 @@ ${isBase64Image ? "إجابة الطالب مرفقة كصورة من السبو
               image_url: { url: wq.studentAnswer },
             });
           }
-          const completion = await openai.chat.completions.create({
+          const completion = await trackAiUsageCall(req, {
+            toolKey: "assignment-ai-grading",
+            callKey: `submit:whiteboard:${wq.index}`,
+            provider: "openai",
+            model: "gpt-5.2",
+            modality: isBase64Image ? "image" : "text",
+            teacherId: assignment.teacherId,
+          }, () => openai.chat.completions.create({
             model: "gpt-5.2",
             max_completion_tokens: 200,
             messages: [{ role: "user", content: messageContent }],
-          });
+          }), (result) => ({
+            tokensIn: result.usage?.prompt_tokens,
+            tokensOut: result.usage?.completion_tokens,
+          }));
           parseAiGradingResponse(completion.choices[0]?.message?.content || "", [wq]);
         }
       } catch (e: any) {
@@ -528,11 +549,21 @@ ${answerResults.map((a, i) => `${i + 1}. ${a.questionText} (${a.points} درجة
 ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من المعلم:\n${assignment.aiGradingInstructions}\n` : ""}
 قدم تعليقاً مختصراً وتشجيعياً بالعربية عن أداء الطالب (3-4 جمل).`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await trackAiUsageCall(req, {
+        toolKey: "assignment-ai-grading",
+        callKey: "submit:feedback",
+        provider: "openai",
+        model: "gpt-5.2",
+        modality: "text",
+        teacherId: assignment.teacherId,
+      }, () => openai.chat.completions.create({
         model: "gpt-5.2",
         max_completion_tokens: 500,
         messages: [{ role: "user", content: feedbackPrompt }],
-      });
+      }), (result) => ({
+        tokensIn: result.usage?.prompt_tokens,
+        tokensOut: result.usage?.completion_tokens,
+      }));
       aiFeedback = completion.choices[0]?.message?.content || null;
     } catch (e: any) {
       req.log.error({ err: e }, "AI feedback error");
@@ -967,11 +998,21 @@ ${nameLineFormat}${questions.map((q, i) => `${i + 1}: [إجابة الطالب �
       }
 
       try {
-        const completion = await openai.chat.completions.create({
+        const completion = await trackAiUsageCall(req, {
+          toolKey: "assignment-ai-grading",
+          callKey: "submit-image:paper-grading",
+          provider: "openai",
+          model: "gpt-5.2",
+          modality: "image",
+          teacherId: assignment.teacherId,
+        }, () => openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 1500,
           messages: [{ role: "user", content: messageContent }],
-        });
+        }), (result) => ({
+          tokensIn: result.usage?.prompt_tokens,
+          tokensOut: result.usage?.completion_tokens,
+        }));
 
         const responseText = completion.choices[0]?.message?.content || "";
         const allLines = responseText.split("\n").filter((l) => l.trim());
@@ -1069,11 +1110,21 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
       let extractedAnswers: string[] = [];
       try {
-        const completion = await openai.chat.completions.create({
+        const completion = await trackAiUsageCall(req, {
+          toolKey: "assignment-ai-grading",
+          callKey: "submit-image:answer-extraction",
+          provider: "openai",
+          model: "gpt-5.2",
+          modality: "image",
+          teacherId: assignment.teacherId,
+        }, () => openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 1000,
           messages: [{ role: "user", content: messageContent }],
-        });
+        }), (result) => ({
+          tokensIn: result.usage?.prompt_tokens,
+          tokensOut: result.usage?.completion_tokens,
+        }));
 
         const responseText = completion.choices[0]?.message?.content || "";
         const lines = responseText.split("\n").filter((l) => l.trim());
@@ -1180,11 +1231,21 @@ ${answerResults.map((a, i) => `${i + 1}. ${a.questionText} (${a.points} درجة
 ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من المعلم:\n${assignment.aiGradingInstructions}\n` : ""}
 قدم تعليقاً مختصراً وتشجيعياً بالعربية عن أداء الطالب (3-4 جمل).`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await trackAiUsageCall(req, {
+        toolKey: "assignment-ai-grading",
+        callKey: "submit-image:feedback",
+        provider: "openai",
+        model: "gpt-5.2",
+        modality: "text",
+        teacherId: assignment.teacherId,
+      }, () => openai.chat.completions.create({
         model: "gpt-5.2",
         max_completion_tokens: 500,
         messages: [{ role: "user", content: feedbackPrompt }],
-      });
+      }), (result) => ({
+        tokensIn: result.usage?.prompt_tokens,
+        tokensOut: result.usage?.completion_tokens,
+      }));
       aiFeedback = completion.choices[0]?.message?.content || null;
     } catch (e: any) {
       req.log.error({ err: e }, "AI feedback error (image)");

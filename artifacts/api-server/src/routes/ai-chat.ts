@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { buildSystemPrompt } from "../lib/ai-system-prompt";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { logActivity } from "../lib/activity-logger";
@@ -268,6 +269,13 @@ async function handleSendMessage(req: any, res: any) {
       .limit(1);
     if (cached[0]) {
       const answer = cached[0].answer;
+      await recordCachedAiUsage(req, {
+        toolKey: "ai-chat",
+        callKey: "anthropic-chat:first-turn-cache",
+        provider: "anthropic",
+        model: cached[0].model,
+        modality: "text",
+      });
       // Materialize conversation if needed.
       if (!conversationId) {
         const inserted = await db
@@ -356,12 +364,22 @@ async function handleSendMessage(req: any, res: any) {
   const fullSystemPrompt = buildSystemPrompt(customRows[0]?.content, language);
 
   try {
-    const completion = await anthropic.messages.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "ai-chat",
+      callKey: "anthropic-chat:reply",
+      provider: "anthropic",
+      model: SONNET_MODEL,
+      modality: "text",
+    }, () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: 1024,
       system: fullSystemPrompt,
       messages: apiMessages,
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.input_tokens,
+      tokensOut: result.usage?.output_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
     for (const block of completion.content) {
       if (block.type === "text") assistantText += block.text;
     }

@@ -9,6 +9,11 @@ import { holdCreditsForToolRequest, InsufficientCreditsError } from "../lib/chec
 import { CreditService } from "../lib/credit-service";
 import * as ttsCache from "../lib/tts-cache";
 import {
+  recordCachedAiUsage,
+  trackAiUsageCall,
+  type ExtractedAiUsage,
+} from "../lib/ai-usage-ledger";
+import {
   getGame,
   getPlayerByToken,
   getDictationListenCount,
@@ -68,28 +73,84 @@ interface AudioChatResponse {
       audio?: { data?: string };
     };
   }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
+  };
 }
 
-async function generateChunk(text: string, voice: string): Promise<Buffer> {
+interface TtsUsageContext {
+  teacherId: number;
+  callKeyPrefix: string;
+}
+
+function extractAudioUsage(response: AudioChatResponse, input: string): ExtractedAiUsage {
+  const usage = response.usage;
+  const tokensIn = usage?.prompt_tokens ?? usage?.input_tokens;
+  const tokensOut = usage?.completion_tokens ?? usage?.output_tokens;
+  const total = usage?.total_tokens ?? (
+    typeof tokensIn === "number" || typeof tokensOut === "number"
+      ? (tokensIn ?? 0) + (tokensOut ?? 0)
+      : undefined
+  );
+  if (typeof total === "number" || typeof tokensIn === "number" || typeof tokensOut === "number") {
+    return {
+      tokensIn,
+      tokensOut,
+      usageQuantity: total,
+      usageUnit: "tokens",
+      costSource: "unavailable",
+    };
+  }
+  return {
+    usageQuantity: input.trim().length,
+    usageUnit: "characters",
+    costSource: "unavailable",
+  };
+}
+
+async function generateChunk(
+  req: Request,
+  text: string,
+  voice: string,
+  usageContext: TtsUsageContext,
+  chunkIndex: number,
+): Promise<Buffer> {
   // gpt-audio uses non-standard modalities/audio fields not present in the
   // base ChatCompletion types; cast the request once at the call site.
-  const response = (await openai.chat.completions.create({
-    model: "gpt-audio",
-    modalities: ["text", "audio"],
-    audio: { voice, format: "mp3" },
-    messages: [
-      {
-        role: "system",
-        content: "أنت نظام تحويل نص إلى كلام. مهمتك الوحيدة: اقرأ النص الذي يُرسَل إليك بصوت واضح وطبيعي، بالضبط كما هو، دون إضافة أي كلمة أو عبارة من عندك.",
-      },
-      {
-        role: "user",
-        content: text.trim(),
-      },
-    ],
-  } as Parameters<typeof openai.chat.completions.create>[0])) as unknown as AudioChatResponse;
+  const response = await trackAiUsageCall(
+    req,
+    {
+      toolKey: "tts",
+      callKey: `${usageContext.callKeyPrefix}:chunk:${chunkIndex}`,
+      provider: "openai",
+      model: "gpt-audio",
+      modality: "audio",
+      teacherId: usageContext.teacherId,
+      metadata: { chunkIndex, inputCharacters: text.trim().length },
+    },
+    () => openai.chat.completions.create({
+      model: "gpt-audio",
+      modalities: ["text", "audio"],
+      audio: { voice, format: "mp3" },
+      messages: [
+        {
+          role: "system",
+          content: ttsCache.TTS_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: text.trim(),
+        },
+      ],
+    } as Parameters<typeof openai.chat.completions.create>[0]) as unknown as Promise<AudioChatResponse>,
+    (result) => extractAudioUsage(result, text),
+  );
 
-  const audioData = response.choices[0]?.message?.audio?.data ?? "";
+  const audioData = response?.choices[0]?.message?.audio?.data ?? "";
   if (!audioData) throw new Error("empty audio");
   return Buffer.from(audioData, "base64");
 }
@@ -109,9 +170,15 @@ const TEMP_ERROR = { error: "تعذر تجهيز الصوت حالياً، حا�
 
 /** Plain uncached synthesis — used by the assignment listening-audio route,
     which is deliberately uncharged (no credit hold exists on it). */
-async function synthesizeAndSend(req: Request, res: Response, text: string, voice: string) {
+async function synthesizeAndSend(
+  req: Request,
+  res: Response,
+  text: string,
+  voice: string,
+  usageContext: TtsUsageContext,
+) {
   try {
-    const combined = await synthesizeFull(text, voice);
+    const combined = await synthesizeFull(req, text, voice, usageContext);
     sendAudio(res, combined);
   } catch (err) {
     req.log.error({ err: err instanceof Error ? err.message : "unknown" }, "TTS error");
@@ -119,13 +186,31 @@ async function synthesizeAndSend(req: Request, res: Response, text: string, voic
   }
 }
 
-async function synthesizeFull(text: string, voice: string): Promise<Buffer> {
+async function synthesizeFull(
+  req: Request,
+  text: string,
+  voice: string,
+  usageContext: TtsUsageContext,
+): Promise<Buffer> {
   const chunks = chunkText(text);
   const buffers: Buffer[] = [];
-  for (const c of chunks) {
-    buffers.push(await generateChunk(c, voice));
+  for (const [chunkIndex, chunk] of chunks.entries()) {
+    buffers.push(await generateChunk(req, chunk, voice, usageContext, chunkIndex));
   }
   return Buffer.concat(buffers);
+}
+
+function recordTtsCacheHit(req: Request, teacherId: number | undefined, cacheKey: string): void {
+  if (!teacherId) return;
+  void recordCachedAiUsage(req, {
+    toolKey: "tts",
+    callKey: "cache-hit",
+    provider: "openai",
+    model: "gpt-audio",
+    modality: "audio",
+    teacherId,
+    metadata: { cacheKey },
+  });
 }
 
 /** Serve a ready row from Object Storage. Missing file on a ready row is an
@@ -168,6 +253,8 @@ async function runGenerationCycle(
   text: string,
   voice: string,
 ): Promise<void> {
+  const usageReq = ttsCache.createTtsUsageRequestContext(req, creditRequestId);
+  const usageContext: TtsUsageContext = { teacherId, callKeyPrefix: "generation" };
   // ── hold (after ownership, before any provider call) ──────────────────────
   let holdMode: "none" | "held";
   try {
@@ -199,7 +286,7 @@ async function runGenerationCycle(
   let combined: Buffer;
   let storageKey: string;
   try {
-    combined = await synthesizeFull(text, voice);
+    combined = await synthesizeFull(usageReq, text, voice, usageContext);
     storageKey = ttsCache.newTtsStorageKey();
     await ttsCache.uploadTtsAudio(storageKey, combined);
     // Record the storage key BEFORE capture so recovery can find the file.
@@ -318,7 +405,10 @@ router.post("/tts", ttsLimiter, async (req, res) => {
 
     if (row.status === "ready") {
       const outcome = await serveReadyRow(req, res, row);
-      if (outcome === "served") return;
+      if (outcome === "served") {
+        recordTtsCacheHit(req, teacherId, cacheKey);
+        return;
+      }
       // file_lost: hold compensated, row is failed — cooldown governs the next
       // attempt (no automatic regeneration). transient_error: retry later.
       res.status(503).json(TEMP_ERROR);
@@ -350,7 +440,10 @@ router.post("/tts", ttsLimiter, async (req, res) => {
         if (!fresh) break; // deleted → fresh cycle
         if (fresh.status === "ready") {
           const outcome = await serveReadyRow(req, res, fresh);
-          if (outcome === "served") return;
+          if (outcome === "served") {
+            recordTtsCacheHit(req, teacherId, cacheKey);
+            return;
+          }
           res.status(503).json(TEMP_ERROR);
           return;
         }
@@ -366,7 +459,10 @@ router.post("/tts", ttsLimiter, async (req, res) => {
     if (resolution.outcome === "ready") {
       const promoted = await ttsCache.getCacheRowById(row.id);
       const outcome = promoted ? await serveReadyRow(req, res, promoted) : "transient_error";
-      if (outcome === "served") return;
+      if (outcome === "served") {
+        recordTtsCacheHit(req, teacherId, cacheKey);
+        return;
+      }
       res.status(503).json(TEMP_ERROR);
       return;
     }
@@ -412,6 +508,7 @@ router.get("/tts/audio/:id", async (req, res) => {
     const buf = await ttsCache.downloadTtsAudio(row.storageKey);
     void ttsCache.touchLastUsed(row.id);
     sendAudio(res, buf);
+    recordTtsCacheHit(req, teacherId, row.cacheKey);
   } catch {
     res.status(503).json(TEMP_ERROR);
   }
@@ -526,6 +623,7 @@ router.post("/tts/game", ttsLimiter, async (req, res) => {
     res.set("Content-Length", String(cached.length));
     res.set("Cache-Control", "no-store");
     res.send(cached);
+    recordTtsCacheHit(req, game.teacherId, `game:${game.assignmentId}:${authorizedIndex}`);
     return;
   }
 
@@ -536,7 +634,13 @@ router.post("/tts/game", ttsLimiter, async (req, res) => {
     audioPromise = (async () => {
       const chunks = chunkText(text);
       const buffers: Buffer[] = [];
-      for (const c of chunks) buffers.push(await generateChunk(c, voice));
+      const usageContext: TtsUsageContext = {
+        teacherId: game.teacherId,
+        callKeyPrefix: `game:${game.assignmentId}:${authorizedIndex}`,
+      };
+      for (const [chunkIndex, chunk] of chunks.entries()) {
+        buffers.push(await generateChunk(req, chunk, voice, usageContext, chunkIndex));
+      }
       return Buffer.concat(buffers);
     })();
     setInFlightDictationSynthesis(game, authorizedIndex, audioPromise); // sync
@@ -625,7 +729,10 @@ router.get("/assignments/:id/listening-audio", ttsLimiter, async (req, res) => {
 
   const text = assignment.listeningAudioText.slice(0, MAX_TEXT_LENGTH);
   const voice = assignment.listeningVoice || "nova";
-  await synthesizeAndSend(req, res, text, voice);
+  await synthesizeAndSend(req, res, text, voice, {
+    teacherId: assignment.teacherId,
+    callKeyPrefix: `assignment:${id}`,
+  });
 });
 
 export default router;

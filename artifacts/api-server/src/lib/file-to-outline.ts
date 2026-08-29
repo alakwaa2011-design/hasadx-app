@@ -8,7 +8,9 @@
 */
 
 import { z } from "zod";
+import type { Request } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { trackAiUsageCall } from "./ai-usage-ledger";
 import type { ExtractedFile } from "./file-extractor";
 import {
   systemPromptFor,
@@ -20,6 +22,37 @@ import type {
   InteractionHint,
   Density,
 } from "@workspace/slide-templates";
+
+/** Optional request context lets import routes associate every provider call
+ * with the credit request without changing non-HTTP callers. */
+export interface FileOutlineUsageContext {
+  req: Request;
+  callKeyPrefix?: string;
+}
+
+async function trackFileOutlineCall<T>(
+  usage: FileOutlineUsageContext | undefined,
+  callKey: string,
+  modality: "text" | "image",
+  invoke: () => Promise<T>,
+  extractUsage: (result: T) => { tokensIn?: number | null; tokensOut?: number | null },
+): Promise<T> {
+  if (!usage) return invoke();
+  const result = await trackAiUsageCall(
+    usage.req,
+    {
+      toolKey: "presentation-build",
+      callKey,
+      provider: "openai",
+      model: FILE_OUTLINE_MODEL,
+      modality,
+    },
+    invoke,
+    extractUsage,
+  );
+  if (!result) throw new Error("File outline AI call was already completed");
+  return result;
+}
 
 /* ── Shared layout / games / design rule strings ────────────────── */
 const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind):
@@ -338,9 +371,11 @@ async function runFileOutlineCompletion(
   ef: ExtractedFile,
   systemPrompt: string,
   userPrompt: string,
+  usage?: FileOutlineUsageContext,
+  callKey = "file-outline-primary",
 ): Promise<string> {
   if (ef.fileType === "image" && ef.imageBase64 && ef.imageMime) {
-    const resp = await openai.chat.completions.create({
+    const resp = await trackFileOutlineCall(usage, callKey, "image", () => openai.chat.completions.create({
       model: FILE_OUTLINE_MODEL,
       max_completion_tokens: 16000,
       reasoning_effort: "minimal",
@@ -355,11 +390,11 @@ async function runFileOutlineCompletion(
           ],
         },
       ],
-    });
+    }), (result) => ({ tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens }));
     return resp.choices[0]?.message?.content ?? "";
   }
 
-  const resp = await openai.chat.completions.create({
+  const resp = await trackFileOutlineCall(usage, callKey, "text", () => openai.chat.completions.create({
     model: FILE_OUTLINE_MODEL,
     max_completion_tokens: 16000,
     reasoning_effort: "minimal",
@@ -368,7 +403,7 @@ async function runFileOutlineCompletion(
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-  });
+  }), (result) => ({ tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens }));
   return resp.choices[0]?.message?.content ?? "";
 }
 
@@ -378,6 +413,7 @@ const FILE_OUTLINE_MODEL = "gpt-5";
 export async function fileToOutline(
   ef: ExtractedFile,
   filename: string,
+  usage?: FileOutlineUsageContext,
 ): Promise<FileOutline> {
   const lang: OutlineLanguage = ef.detectedLanguage;
   const systemPrompt = systemPromptFor(lang);
@@ -389,7 +425,8 @@ export async function fileToOutline(
       : `The attached image contains educational material. Extract all visible content and turn it into an 8-slide presentation.\n\n${buildDocPrompt(ef, filename)}`)
     : buildDocPrompt(ef, filename);
 
-  const rawJson = await runFileOutlineCompletion(ef, systemPrompt, userPrompt);
+  const callKeyPrefix = usage?.callKeyPrefix ?? "file-outline";
+  const rawJson = await runFileOutlineCompletion(ef, systemPrompt, userPrompt, usage, `${callKeyPrefix}-primary`);
   const parsed = fileOutlineSchema.safeParse(parseJsonLoose(rawJson));
   if (!parsed.success) {
     throw new Error(
@@ -403,7 +440,7 @@ export async function fileToOutline(
   const correction = lang === "ar"
     ? `\n\nالمحاولة السابقة غير مكتملة:\n- ${initialIssues.join("\n- ")}\nأعد JSON كاملاً من الصفر. أنتج بالضبط ${expectedSlides} شريحة، مع ${minimumInteractiveSlides(expectedSlides)} شريحة تفاعلية على الأقل، واختبار يحوي 2-3 أسئلة حقيقية. لا ترسل تصحيحاً جزئياً.`
     : `\n\nThe previous attempt was incomplete:\n- ${initialIssues.join("\n- ")}\nRegenerate the complete JSON from scratch. Return exactly ${expectedSlides} slides, at least ${minimumInteractiveSlides(expectedSlides)} interactive slides, and a quiz with 2-3 real questions. Do not return a partial patch.`;
-  const retryJson = await runFileOutlineCompletion(ef, systemPrompt, userPrompt + correction);
+  const retryJson = await runFileOutlineCompletion(ef, systemPrompt, userPrompt + correction, usage, `${callKeyPrefix}-corrective-retry`);
   const retried = fileOutlineSchema.safeParse(parseJsonLoose(retryJson));
   if (!retried.success) {
     throw new Error(
@@ -556,6 +593,7 @@ export interface MultiImageOutlineResult {
 
 export async function multiImagesToOutline(
   images: Array<{ buffer: Buffer; filename: string; mime: string }>,
+  usage?: FileOutlineUsageContext,
 ): Promise<MultiImageOutlineResult> {
   if (images.length === 0) throw new Error("multiImagesToOutline: empty images array");
   const n = images.length;
@@ -650,7 +688,11 @@ export async function multiImagesToOutline(
 
   const systemPrompt = systemPromptFor("ar");
   /* Larger token budget — content-driven decks need room to breathe. */
-  const resp = await openai.chat.completions.create({
+  const resp = await trackFileOutlineCall(
+    usage,
+    `${usage?.callKeyPrefix ?? "multi-image-outline"}-primary`,
+    "image",
+    () => openai.chat.completions.create({
     model: FILE_OUTLINE_MODEL,
     max_completion_tokens: 16000,
     reasoning_effort: "minimal",
@@ -659,7 +701,9 @@ export async function multiImagesToOutline(
       { role: "system", content: systemPrompt },
       { role: "user", content: contentParts },
     ],
-  });
+    }),
+    (result) => ({ tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens }),
+  );
 
   const rawJson = resp.choices[0]?.message?.content ?? "";
   const raw = parseJsonLoose(rawJson);

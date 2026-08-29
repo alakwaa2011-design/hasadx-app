@@ -4,12 +4,13 @@
    uploaded sources are handed to the model. */
 import multer from "multer";
 import mammoth from "mammoth";
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import { db, teachersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { isClaudeTier, type AiTier } from "./ai-tier";
 import { anthropic, SONNET_MODEL } from "./anthropic-client";
+import { trackAiUsageCall } from "./ai-usage-ledger";
 
 /* Tier limits.
    - Teachers (default): up to 5 files, 50 MB each.
@@ -364,12 +365,13 @@ export async function runVisionCompletionMulti(opts: {
   prompt: string;
   images: Array<{ base64: string; mimeType: string }>;
   maxTokens: number;
+  usage?: { req: Request; toolKey: string; callKey: string };
 }): Promise<string> {
   if (opts.images.length === 0) {
     throw new Error("runVisionCompletionMulti called with no images");
   }
   if (isClaudeTier(opts.tier)) {
-    const response = await anthropic.messages.create({
+    const invoke = () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: opts.maxTokens,
       messages: [{
@@ -389,11 +391,20 @@ export async function runVisionCompletionMulti(opts: {
         ],
       }],
     });
+    const response = opts.usage
+      ? await trackAiUsageCall(opts.usage.req, {
+        toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+        provider: "anthropic", model: SONNET_MODEL, modality: "image",
+      }, invoke, (result) => ({
+        tokensIn: result.usage.input_tokens, tokensOut: result.usage.output_tokens,
+      }))
+      : await invoke();
     const block = response.content.find((c) => c.type === "text");
     return block && "text" in block ? block.text : "";
   }
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+  const model = "gpt-4o-mini";
+  const invoke = () => openai.chat.completions.create({
+    model,
     max_completion_tokens: opts.maxTokens,
     messages: [{
       role: "user",
@@ -406,5 +417,13 @@ export async function runVisionCompletionMulti(opts: {
       ],
     }],
   });
+  const completion = opts.usage
+    ? await trackAiUsageCall(opts.usage.req, {
+      toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+      provider: "openai", model, modality: "image",
+    }, invoke, (result) => ({
+      tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens,
+    }))
+    : await invoke();
   return completion.choices[0]?.message?.content || "";
 }

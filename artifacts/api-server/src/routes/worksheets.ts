@@ -16,6 +16,8 @@ import {
   runVisionCompletionMulti,
 } from "../lib/file-upload";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
+import type { Request } from "express";
 
 const router: IRouter = Router();
 
@@ -32,25 +34,43 @@ async function runTierCompletion(opts: {
   prompt: string;
   maxTokens: number;
   system?: string;
+  usage?: { req: Request; toolKey: string; callKey: string };
 }): Promise<string> {
   if (isClaudeTier(opts.tier)) {
-    const response = await anthropic.messages.create({
+    const invoke = () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: opts.maxTokens,
       ...(opts.system ? { system: opts.system } : {}),
       messages: [{ role: "user", content: opts.prompt }],
     });
+    const response = opts.usage
+      ? await trackAiUsageCall(opts.usage.req, {
+        toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+        provider: "anthropic", model: SONNET_MODEL, modality: "text",
+      }, invoke, (result) => ({
+        tokensIn: result.usage.input_tokens, tokensOut: result.usage.output_tokens,
+      }))
+      : await invoke();
     const block = response.content.find((c) => c.type === "text");
     return block && "text" in block ? block.text : "";
   }
-  const completion = await openai.chat.completions.create({
-    model: modelForTier(opts.tier),
+  const model = modelForTier(opts.tier);
+  const invoke = () => openai.chat.completions.create({
+    model,
     max_completion_tokens: opts.maxTokens,
     messages: [
       ...(opts.system ? [{ role: "system" as const, content: opts.system }] : []),
       { role: "user" as const, content: opts.prompt },
     ],
   });
+  const completion = opts.usage
+    ? await trackAiUsageCall(opts.usage.req, {
+      toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+      provider: "openai", model, modality: "text",
+    }, invoke, (result) => ({
+      tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens,
+    }))
+    : await invoke();
   return completion.choices[0]?.message?.content || "";
 }
 
@@ -901,7 +921,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     const system = body.language === "ar"
       ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
       : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
-    const text = await runTierCompletion({ tier, prompt, system, maxTokens: 4000 + body.pages * 4000 });
+    const text = await runTierCompletion({ tier, prompt, system, maxTokens: 4000 + body.pages * 4000, usage: { req, toolKey: "worksheet", callKey: "generate:completion" } });
     const json = parseJsonLoose(text);
     const raw = Array.isArray(json?.questions) ? json.questions : [];
     const cleaned = sanitizeGeneratedQuestions(raw, body.counts);
@@ -1019,8 +1039,8 @@ router.post(
         ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
         : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
       const text = prepared.images.length > 0
-        ? await runVisionCompletionMulti({ tier, prompt, images: prepared.images, maxTokens })
-        : await runTierCompletion({ tier, prompt, system, maxTokens });
+        ? await runVisionCompletionMulti({ tier, prompt, images: prepared.images, maxTokens, usage: { req, toolKey: "extract_questions_from_source", callKey: "extract:vision" } })
+        : await runTierCompletion({ tier, prompt, system, maxTokens, usage: { req, toolKey: "extract_questions_from_source", callKey: "extract:completion" } });
 
       const json = parseJsonLoose(text);
       const raw = Array.isArray(json?.questions) ? json.questions : [];

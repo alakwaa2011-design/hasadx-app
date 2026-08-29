@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
@@ -13,6 +13,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 import { resolveTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 
 const router: IRouter = Router();
 
@@ -29,21 +30,39 @@ async function runCompletion(opts: {
   tier: AiTier;
   prompt: string;
   maxTokens?: number;
+  usage?: { req: Request; toolKey: string; callKey: string };
 }): Promise<string> {
   const max = opts.maxTokens ?? 5000;
   if (isClaudeTier(opts.tier)) {
-    const r = await anthropic.messages.create({
+    const invoke = () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: max,
       messages: [{ role: "user", content: opts.prompt }],
     });
+    const r = opts.usage
+      ? await trackAiUsageCall(opts.usage.req, {
+        toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+        provider: "anthropic", model: SONNET_MODEL, modality: "text",
+      }, invoke, (result) => ({
+        tokensIn: result.usage.input_tokens, tokensOut: result.usage.output_tokens,
+      }))
+      : await invoke();
     return (r.content[0] as any)?.text ?? "";
   }
-  const r = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+  const model = "gpt-4o-mini";
+  const invoke = () => openai.chat.completions.create({
+    model,
     max_completion_tokens: max,
     messages: [{ role: "user", content: opts.prompt }],
   });
+  const r = opts.usage
+    ? await trackAiUsageCall(opts.usage.req, {
+      toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
+      provider: "openai", model, modality: "text",
+    }, invoke, (result) => ({
+      tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens,
+    }))
+    : await invoke();
   return r.choices[0]?.message?.content ?? "";
 }
 
@@ -250,7 +269,7 @@ router.post("/whiteboard/generate", requireTeacher, checkCredits("whiteboard"), 
       depth: body.depth,
       language: body.language,
     });
-    const rawText = await runCompletion({ tier, prompt, maxTokens: 6000 });
+    const rawText = await runCompletion({ tier, prompt, maxTokens: 6000, usage: { req, toolKey: "whiteboard", callKey: "generate:completion" } });
     const json = parseJsonLoose(rawText);
     if (!json) {
       await refundCredits(req, "تنسيق غير صالح من النموذج");
@@ -629,7 +648,7 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
     let rawJson: string;
 
     if (imageBase64) {
-      const r = await openai.chat.completions.create({
+      const invoke = () => openai.chat.completions.create({
         model: "gpt-4o",
         max_tokens: 5000,
         temperature: 0.4,
@@ -645,9 +664,14 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
           },
         ],
       });
+      const r = await trackAiUsageCall(req, {
+        toolKey: "whiteboard", callKey: "ask:image", provider: "openai", model: "gpt-4o", modality: "image",
+      }, invoke, (result) => ({
+        tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens,
+      }));
       rawJson = r.choices[0]?.message?.content ?? "{}";
     } else {
-      const r = await openai.chat.completions.create({
+      const invoke = () => openai.chat.completions.create({
         model: "gpt-4o",
         max_tokens: 5000,
         temperature: 0.4,
@@ -657,6 +681,11 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
           { role: "user", content: question.trim() },
         ],
       });
+      const r = await trackAiUsageCall(req, {
+        toolKey: "whiteboard", callKey: "ask:text", provider: "openai", model: "gpt-4o", modality: "text",
+      }, invoke, (result) => ({
+        tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens,
+      }));
       rawJson = r.choices[0]?.message?.content ?? "{}";
     }
 

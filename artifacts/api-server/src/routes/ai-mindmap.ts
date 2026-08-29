@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 
 const router: IRouter = Router();
 
@@ -93,7 +94,13 @@ Return ONLY this exact JSON:
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "mindmap",
+      callKey: "openai-mindmap",
+      provider: "openai",
+      model: "gpt-5",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5",
       messages: [
         { role: "system", content: systemPrompt },
@@ -104,7 +111,11 @@ Return ONLY this exact JSON:
          minimal and the budget high or replies come back empty. */
       max_completion_tokens: 12000,
       reasoning_effort: "minimal",
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: Record<string, unknown>;

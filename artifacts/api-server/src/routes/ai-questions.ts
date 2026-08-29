@@ -4,6 +4,7 @@ import { db, teachersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { imageUploadLimiter } from "../lib/rate-limiter";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { resolveAiContentLanguage, type AiContentLanguage } from "../lib/ai-content-language";
 
@@ -294,7 +295,13 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
 ]`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "ai-questions",
+      callKey: "openai-generate-questions",
+      provider: "openai",
+      model: "gpt-5.2",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5.2",
       /* Verified live (evidence run): gpt-5.2 with this exact prompt returns
          10 complete MCQs at 4000 tokens with zero hidden reasoning tokens,
@@ -302,7 +309,11 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
          do not add reasoning params or raise the budget here. */
       max_completion_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const responseText = completion.choices[0]?.message?.content || "";
 
@@ -470,12 +481,22 @@ ${qTypesImg ? typePlanPrompt(qTypesImg, questionLanguage) : `القواعد:
 
   let parsed: any[];
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "ai-questions-images",
+      callKey: "openai-generate-questions",
+      provider: "openai",
+      model: "gpt-5.2",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5.2",
       /* Same rule as /ai/generate-questions: no reasoning params on gpt-5.2. */
       max_completion_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
     const responseText = completion.choices[0]?.message?.content || "";
     const jsonArray = extractJsonArray(responseText);
     if (!jsonArray) {
@@ -512,14 +533,26 @@ ${qTypesImg ? typePlanPrompt(qTypesImg, questionLanguage) : `القواعد:
   try {
   const storage = new ObjectStorageService();
 
-  const generateImage = async (imagePrompt: string): Promise<string | null> => {
+  const generateImage = async (imagePrompt: string, index: number): Promise<string | null> => {
     try {
-      const imgRes = await openai.images.generate({
+      const imgRes = await trackAiUsageCall(req, {
+        toolKey: "ai-questions-images",
+        callKey: `openai-question-image:${index}`,
+        provider: "openai",
+        model: "gpt-image-1",
+        modality: "image",
+      }, () => openai.images.generate({
         model: "gpt-image-1",
         prompt: imagePrompt,
         n: 1,
         size: "1024x1024",
-      });
+      }), (result: any) => ({
+        tokensIn: result.usage?.input_tokens ?? result.usage?.prompt_tokens,
+        tokensOut: result.usage?.output_tokens ?? result.usage?.completion_tokens,
+        usageQuantity: result.usage ? null : 1,
+        usageUnit: result.usage ? null : "image",
+      }));
+      if (!imgRes) throw new Error("AI usage call was already completed");
       const b64 = imgRes.data?.[0]?.b64_json;
       if (!b64) {
         req.log.error({ imagePrompt }, "image generation returned no b64_json");
@@ -539,7 +572,10 @@ ${qTypesImg ? typePlanPrompt(qTypesImg, questionLanguage) : `القواعد:
   const imageUrls: (string | null)[] = [];
   for (let i = 0; i < validParsed.length; i += BATCH) {
     const batch = validParsed.slice(i, i + BATCH);
-    const results = await Promise.all(batch.map((e) => generateImage(e.raw.imagePrompt || `Educational illustration of: ${e.mapped.text}`)));
+    const results = await Promise.all(batch.map((e, batchIndex) => generateImage(
+      e.raw.imagePrompt || `Educational illustration of: ${e.mapped.text}`,
+      i + batchIndex,
+    )));
     imageUrls.push(...results);
   }
 
@@ -660,7 +696,13 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, checkCredits
   }));
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "extract_questions_from_source",
+      callKey: "openai-extract-questions-from-image",
+      provider: "openai",
+      model: "gpt-5.2",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 8192,
       messages: [
@@ -672,7 +714,11 @@ router.post("/ai/extract-questions-from-image", imageUploadLimiter, checkCredits
           ],
         },
       ],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const responseText = completion.choices[0]?.message?.content || "";
 

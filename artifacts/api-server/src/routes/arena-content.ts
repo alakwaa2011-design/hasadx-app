@@ -4,6 +4,7 @@ import { eq, or, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { awardXpAndNotify } from "../lib/xp/socket";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
@@ -486,12 +487,22 @@ router.post("/arena-content/ai-generate-questions", checkCredits("arena-generate
       `Return a JSON array with exactly ${totalCount} items, ordered by ascending difficulty.`,
     ].filter(Boolean).join("\n");
 
-    const completion = await anthropic.messages.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "arena-generate",
+      callKey: "anthropic-arena-questions",
+      provider: "anthropic",
+      model: SONNET_MODEL,
+      modality: "text",
+    }, () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: 3500,
       system: sysPrompt,
       messages: [{ role: "user", content: userPrompt }],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.input_tokens,
+      tokensOut: result.usage?.output_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const block = completion.content.find((c) => c.type === "text");
     const raw = block && "text" in block ? block.text : "";

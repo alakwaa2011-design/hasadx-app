@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { db, assignmentsTable, questionsTable, platformSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createGame, getGame, type GameQuestion } from "../game/manager";
@@ -117,28 +118,57 @@ router.post("/quick-challenge/create", checkCredits("quick-challenge"), async (r
 
     if (type === "mixed") {
       const [mcqRaw, tfRaw] = await Promise.all([
-        openai.chat.completions.create({
+        trackAiUsageCall(req, {
+          toolKey: "quick-challenge",
+          callKey: "openai-mixed-mcq",
+          provider: "openai",
+          model: "gpt-5.2",
+          modality: "text",
+        }, () => openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 2000,
           messages: [{ role: "user", content: buildPrompt("mcq", topic, language) }],
-        }),
-        openai.chat.completions.create({
+        }), (result) => ({
+          tokensIn: result.usage?.prompt_tokens,
+          tokensOut: result.usage?.completion_tokens,
+        })),
+        trackAiUsageCall(req, {
+          toolKey: "quick-challenge",
+          callKey: "openai-mixed-true-false",
+          provider: "openai",
+          model: "gpt-5.2",
+          modality: "text",
+        }, () => openai.chat.completions.create({
           model: "gpt-5.2",
           max_completion_tokens: 1000,
           messages: [{ role: "user", content: buildPrompt("true_false", topic, language) }],
-        }),
+        }), (result) => ({
+          tokensIn: result.usage?.prompt_tokens,
+          tokensOut: result.usage?.completion_tokens,
+        })),
       ]);
+      if (!mcqRaw || !tfRaw) throw new Error("AI usage call was already completed");
 
       const parseMcq = parseAiResponse(mcqRaw.choices[0]?.message?.content || "");
       const parseTf = parseAiResponse(tfRaw.choices[0]?.message?.content || "");
       questions = [...parseMcq.slice(0, 5), ...parseTf.slice(0, 3)];
       questions = shuffleArray(questions);
     } else {
-      const completion = await openai.chat.completions.create({
+      const completion = await trackAiUsageCall(req, {
+        toolKey: "quick-challenge",
+        callKey: "openai-create",
+        provider: "openai",
+        model: "gpt-5.2",
+        modality: "text",
+      }, () => openai.chat.completions.create({
         model: "gpt-5.2",
         max_completion_tokens: 2500,
-          messages: [{ role: "user", content: buildPrompt(type, topic, language) }],
-      });
+        messages: [{ role: "user", content: buildPrompt(type, topic, language) }],
+      }), (result) => ({
+        tokensIn: result.usage?.prompt_tokens,
+        tokensOut: result.usage?.completion_tokens,
+      }));
+      if (!completion) throw new Error("AI usage call was already completed");
       questions = parseAiResponse(completion.choices[0]?.message?.content || "");
     }
 
@@ -394,11 +424,21 @@ router.post("/quick-challenge/guest-ai-generate", async (req, res) => {
   const prompt = buildPrompt(type, cleanTopic, language, parsedCount, difficulty);
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await trackAiUsageCall(req, {
+      toolKey: "quick-challenge-guest",
+      callKey: "openai-guest-generate",
+      provider: "openai",
+      model: "gpt-5.2",
+      modality: "text",
+    }, () => openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
-    });
+    }), (result) => ({
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
+    }));
+    if (!completion) throw new Error("AI usage call was already completed");
 
     const parsed = parseAiResponse(completion.choices[0]?.message?.content || "");
     if (parsed.length === 0) {

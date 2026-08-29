@@ -715,7 +715,10 @@ async function materializeImportedDeck(
   const expectedSlideCount = estimateSlideCount(extracted);
   let outline: Awaited<ReturnType<typeof fileToOutline>>;
   try {
-    outline = await fileToOutline(extracted, title);
+    outline = await fileToOutline(extracted, title, {
+      req,
+      callKeyPrefix: "file-import:outline",
+    });
   } catch (error) {
     throw new ImportQualityError(
       `The AI could not produce a complete structured lesson: ${
@@ -772,7 +775,10 @@ async function materializeImportedDeck(
   const requiredInteractiveSlides = minimumInteractiveSlides(expectedSlideCount);
   if (interactiveSlideCount < requiredInteractiveSlides && extracted.text.trim()) {
     try {
-      const questions = await generateMcqQuestions(extracted.text, outline.language);
+      const questions = await generateMcqQuestions(extracted.text, outline.language, {
+        req,
+        callKey: "file-import:mcq-fallback",
+      });
       const activitySlides = materializeMcqSlides(
         questions,
         outline.language,
@@ -884,6 +890,10 @@ router.post(
               filename: decodeMulterFilename(f.originalname || "image"),
               mime: f.mimetype || "image/jpeg",
             })),
+            {
+              req,
+              callKeyPrefix: "file-import:multi-image",
+            },
           );
           deckLanguage = outline.language;
           const themeKey = pickServerDefaultTheme();

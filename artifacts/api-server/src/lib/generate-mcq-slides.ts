@@ -5,12 +5,20 @@
 */
 
 import { z } from "zod";
+import type { Request } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { trackAiUsageCall } from "./ai-usage-ledger";
 import { buildOneSlide } from "./materialize-slide";
 import { slideSchema } from "../routes/presentations";
 import type { OutlineCard } from "@workspace/slide-templates";
 
 const MCQ_MODEL = "gpt-4o-mini";
+
+/** Request context is optional to preserve utility callers outside an HTTP request. */
+export interface McqUsageContext {
+  req: Request;
+  callKey?: string;
+}
 
 /* ── Zod schema for the AI response ─────────────────────────────── */
 const mcqQuestionSchema = z.object({
@@ -120,25 +128,42 @@ function questionToCard(q: McqQuestion, index: number, lang: "ar" | "en"): Outli
 export async function generateMcqQuestions(
   text: string,
   lang: "ar" | "en",
+  usage?: McqUsageContext,
 ): Promise<McqQuestion[]> {
   if (!text.trim()) return [];
 
   const prompt = buildMcqPrompt(text, lang);
 
-  const resp = await openai.chat.completions.create({
-    model: MCQ_MODEL,
-    max_tokens: 1024,
-    response_format: { type: "json_object" },
-    messages: [
+  const invoke = () => openai.chat.completions.create({
+      model: MCQ_MODEL,
+      max_tokens: 1024,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: lang === "ar"
+            ? "أنت مساعد تعليمي. أنتج أسئلة اختيار متعدد بناءً على المحتوى المقدم. أجب بـ JSON فقط."
+            : "You are an educational assistant. Produce multiple-choice questions from the provided content. Reply with JSON only.",
+        },
+        { role: "user", content: prompt },
+      ],
+    });
+  const tracked = usage
+    ? await trackAiUsageCall(
+      usage.req,
       {
-        role: "system",
-        content: lang === "ar"
-          ? "أنت مساعد تعليمي. أنتج أسئلة اختيار متعدد بناءً على المحتوى المقدم. أجب بـ JSON فقط."
-          : "You are an educational assistant. Produce multiple-choice questions from the provided content. Reply with JSON only.",
+        toolKey: "presentation-slide",
+        callKey: usage.callKey ?? "mcq-primary",
+        provider: "openai",
+        model: MCQ_MODEL,
+        modality: "text",
       },
-      { role: "user", content: prompt },
-    ],
-  });
+      invoke,
+      (result) => ({ tokensIn: result.usage?.prompt_tokens, tokensOut: result.usage?.completion_tokens }),
+    )
+    : await invoke();
+  if (!tracked) throw new Error("MCQ AI call was already completed");
+  const resp = tracked;
 
   const raw = parseJsonLoose(resp.choices[0]?.message?.content ?? "");
   const parsed = mcqResponseSchema.safeParse(raw);
@@ -200,7 +225,8 @@ export async function generateMcqSlides(
   lang: "ar" | "en",
   themeKey: string,
   startIdx: number,
+  usage?: McqUsageContext,
 ): Promise<unknown[]> {
-  const questions = await generateMcqQuestions(text, lang);
+  const questions = await generateMcqQuestions(text, lang, usage);
   return materializeMcqSlides(questions, lang, themeKey, startIdx);
 }
