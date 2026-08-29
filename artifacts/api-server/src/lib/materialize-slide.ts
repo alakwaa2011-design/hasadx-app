@@ -146,6 +146,19 @@ function defaultFallbackForCard(card: OutlineCard): NonNullable<OutlineCard["ima
   return "diagram";
 }
 
+function compactVisualLabel(text: string | undefined, maxChars: number, fallback: string): string {
+  const clean = text?.replace(/^[◆✓•\-\s]+/, "").trim() || fallback;
+  if (clean.length <= maxChars) return clean;
+  const words = clean.split(/\s+/);
+  let out = "";
+  for (const word of words) {
+    const candidate = out ? `${out} ${word}` : word;
+    if (candidate.length > maxChars - 1) break;
+    out = candidate;
+  }
+  return `${out || clean.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
 function addVisualFallback(
   slide: MaterializedSlide,
   card: OutlineCard,
@@ -189,6 +202,19 @@ function addVisualFallback(
         bgColor: step === 1 ? accent : palette.accentSoft,
         borderColor: accent, borderWidth: 2,
       });
+      visualElements.push({
+        id: `${slide.id}-fallback-step-label-${step}`,
+        kind: "text",
+        x: x + 42 + step * 66,
+        y: 317,
+        w: 38,
+        h: 28,
+        text: String(step + 1),
+        fontSize: 17,
+        fontWeight: "800",
+        align: "center",
+        color: step === 1 ? surface : accent,
+      });
     });
   } else if (fallback === "relationshipMap" || fallback === "diagram") {
     visualElements.push({
@@ -197,13 +223,32 @@ function addVisualFallback(
       x: x + 96, y: 278, w: 68, h: 68,
       bgColor: accent,
     });
-    [[48, 190], [164, 190], [48, 390], [164, 390]].forEach(([dx, dy], node) => {
+    const nodes = [[24, 184], [138, 184], [24, 384], [138, 384]] as const;
+    nodes.forEach(([dx, dy], node) => {
       visualElements.push({
         id: `${slide.id}-fallback-node-${node}`,
-        kind: "shape", shape: "circle",
-        x: x + dx, y: dy, w: 48, h: 48,
+        kind: "shape", shape: "rect",
+        x: x + dx, y: dy, w: 98, h: 62,
         bgColor: palette.accentSoft,
         borderColor: accent, borderWidth: 2,
+      });
+      const label = compactVisualLabel(
+        card.talkingPoints[node],
+        14,
+        lang === "ar" ? `فكرة ${node + 1}` : `Idea ${node + 1}`,
+      );
+      visualElements.push({
+        id: `${slide.id}-fallback-node-label-${node}`,
+        kind: "text",
+        x: x + dx + 8,
+        y: dy + 10,
+        w: 82,
+        h: 42,
+        text: label,
+        fontSize: 12,
+        fontWeight: "700",
+        align: "center",
+        color: palette.fg,
       });
     });
     visualElements.push({
@@ -221,6 +266,24 @@ function addVisualFallback(
         x: x + 34, y: 198 + row * 92, w: 192, h: 64,
         bgColor: row === 1 ? palette.accentSoft : surface,
         borderColor: accent, borderWidth: row === 1 ? 3 : 1,
+      });
+      const label = compactVisualLabel(
+        card.talkingPoints[row],
+        20,
+        lang === "ar" ? `مثال ${row + 1}` : `Example ${row + 1}`,
+      );
+      visualElements.push({
+        id: `${slide.id}-fallback-example-label-${row}`,
+        kind: "text",
+        x: x + 46,
+        y: 211 + row * 92,
+        w: 118,
+        h: 38,
+        text: label,
+        fontSize: 12,
+        fontWeight: "700",
+        align: "start",
+        color: palette.fg,
       });
       visualElements.push({
         id: `${slide.id}-fallback-check-${row}`,

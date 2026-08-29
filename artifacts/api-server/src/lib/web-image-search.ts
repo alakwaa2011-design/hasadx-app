@@ -17,6 +17,55 @@ export interface WebImageResult {
    doesn't hammer the upstream provider. Process-local, no persistence. */
 const cache = new Map<string, WebImageResult | null>();
 const CACHE_MAX = 200;
+const WIKIMEDIA_HEADERS = {
+  Accept: "application/json",
+  /* Wikimedia rate-limits anonymous generic fetch clients aggressively.
+     A descriptive User-Agent is required by their API etiquette and avoids
+     the 429 HTML response that previously turned image search into null. */
+  "User-Agent": "HasadX-Education/1.0 (educational presentation image search)",
+} as const;
+
+const SEARCH_NOISE = /\b(arabic|english|with|without|labels?|labelled|labeled|complete|full|high[- ]?resolution|illustration)\b/gi;
+const REJECTED_IMAGE_SOURCE =
+  /(?:\.pdf(?:\/|$)|\/page\d+-|_\(ia_|internet[_ -]?archive|scanned|scan[_ -]?of|book|volume|journal|proceedings|encyclop|illustrated[_ -]?history|atlas[_ -]?of)/i;
+const UNHELPFUL_TEMPLATE = /\b(blank|template|outline only)\b/i;
+
+/** Keep search terms concrete and reject the scanned-book pages Commons often
+ * ranks above actual educational diagrams. Exported for regression tests. */
+export function normalizePresentationImageQuery(query: string): string {
+  return query
+    .replace(SEARCH_NOISE, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+}
+
+export function isUsefulPresentationImage(url: string, title = ""): boolean {
+  if (!/^https?:\/\//i.test(url)) return false;
+  const source = `${url} ${title}`;
+  return (
+    !REJECTED_IMAGE_SOURCE.test(source) &&
+    !UNHELPFUL_TEMPLATE.test(source)
+  );
+}
+
+function relevanceScore(query: string, title: string): number {
+  const q = query.toLowerCase();
+  const t = title.toLowerCase().replace(/^file:/, "");
+  const tokens = q.split(/\s+/).filter((token) => token.length >= 3);
+  let score = tokens.reduce((sum, token) => sum + (t.includes(token) ? 3 : 0), 0);
+  if (t.includes(q)) score += 10;
+  if (q.includes("diagram") && t.includes("diagram")) score += 6;
+  if (/\b(en|english)\b/.test(t)) score += 2;
+  if (/\b(blank|template|outline only)\b/.test(t)) score -= 30;
+  return score;
+}
+
+function rankImageResults<T extends { title: string }>(query: string, hits: T[]): T[] {
+  return [...hits].sort((a, b) =>
+    relevanceScore(query, b.title) - relevanceScore(query, a.title)
+  );
+}
 
 function cacheGet(key: string): WebImageResult | null | undefined {
   if (!cache.has(key)) return undefined;
@@ -58,17 +107,18 @@ async function searchBrave(
       source?: string;
     }>;
   };
+  const candidates: WebImageResult[] = [];
   for (const item of data.results ?? []) {
     const u = item.properties?.url || item.thumbnail?.src || item.url;
-    if (u) {
-      return {
+    if (u && isUsefulPresentationImage(u, item.title)) {
+      candidates.push({
         url: u,
         title: item.title ?? query,
         source: item.source ?? "Brave Search",
-      };
+      });
     }
   }
-  return null;
+  return rankImageResults(query, candidates)[0] ?? null;
 }
 
 async function searchWikimedia(
@@ -78,9 +128,9 @@ async function searchWikimedia(
   const url =
     `https://commons.wikimedia.org/w/api.php?action=query` +
     `&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}` +
-    `&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=1280` +
-    `&gsrlimit=3&format=json&origin=*`;
-  const r = await fetch(url, { signal });
+    `&prop=imageinfo&iiprop=url&iiurlwidth=1280` +
+    `&gsrlimit=20&format=json&origin=*`;
+  const r = await fetch(url, { signal, headers: WIKIMEDIA_HEADERS });
   if (!r.ok) return null;
   const data = (await r.json()) as {
     query?: {
@@ -90,25 +140,26 @@ async function searchWikimedia(
       }>;
     };
   };
+  const candidates: WebImageResult[] = [];
   for (const page of Object.values(data.query?.pages ?? {})) {
     const info = page.imageinfo?.[0];
     const u = info?.thumburl || info?.url;
-    if (u) {
-      return {
+    if (u && isUsefulPresentationImage(u, page.title)) {
+      candidates.push({
         url: u,
         title: (page.title ?? query).replace(/^File:/, "").replace(/\.[^.]+$/, ""),
         source: "Wikimedia Commons",
-      };
+      });
     }
   }
-  return null;
+  return rankImageResults(query, candidates)[0] ?? null;
 }
 
 export async function findWebImage(
   query: string,
   opts: { timeoutMs?: number } = {},
 ): Promise<WebImageResult | null> {
-  const trimmed = query.trim().slice(0, 200);
+  const trimmed = normalizePresentationImageQuery(query);
   if (!trimmed) return null;
 
   const cached = cacheGet(trimmed);
@@ -159,7 +210,7 @@ export interface PresentationImageHit {
   source: string;
 }
 
-function mapBraveResponseToHits(data: unknown, limit: number): PresentationImageHit[] {
+function mapBraveResponseToHits(data: unknown, query: string, limit: number): PresentationImageHit[] {
   const d = data as {
     results?: Array<{
       title?: string;
@@ -172,7 +223,11 @@ function mapBraveResponseToHits(data: unknown, limit: number): PresentationImage
   const out: PresentationImageHit[] = [];
   for (const item of d.results ?? []) {
     const imageUrl = item.properties?.url || item.thumbnail?.src || item.url;
-    if (!imageUrl || typeof imageUrl !== "string") continue;
+    if (
+      !imageUrl ||
+      typeof imageUrl !== "string" ||
+      !isUsefulPresentationImage(imageUrl, item.title)
+    ) continue;
     const thumbUrl = item.thumbnail?.src || item.properties?.placeholder || imageUrl;
     out.push({
       url: imageUrl,
@@ -180,9 +235,8 @@ function mapBraveResponseToHits(data: unknown, limit: number): PresentationImage
       title: (item.title ?? "").trim() || "Image",
       source: (item.source ?? "Brave Search").trim() || "Brave Search",
     });
-    if (out.length >= limit) break;
   }
-  return out;
+  return rankImageResults(query, out).slice(0, limit);
 }
 
 async function fetchBravePresentationHits(
@@ -206,7 +260,7 @@ async function fetchBravePresentationHits(
       return { hits: [], error: `Brave HTTP ${r.status}: ${text.slice(0, 400)}` };
     }
     const data: unknown = await r.json();
-    return { hits: mapBraveResponseToHits(data, limit) };
+    return { hits: mapBraveResponseToHits(data, query, limit) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { hits: [], error: msg };
@@ -223,10 +277,10 @@ async function fetchWikimediaPresentationHits(
   const wikiUrl =
     `https://commons.wikimedia.org/w/api.php?action=query` +
     `&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}` +
-    `&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=600` +
-    `&gsrlimit=${safeLimit}&format=json&origin=*`;
+      `&prop=imageinfo&iiprop=url&iiurlwidth=600` +
+      `&gsrlimit=${Math.min(50, Math.max(safeLimit * 3, 12))}&format=json&origin=*`;
   try {
-    const r = await fetch(wikiUrl);
+    const r = await fetch(wikiUrl, { headers: WIKIMEDIA_HEADERS });
     if (!r.ok) {
       return { hits: [], error: `Wikimedia HTTP ${r.status}` };
     }
@@ -247,7 +301,7 @@ async function fetchWikimediaPresentationHits(
     for (const p of pages) {
       const info = p.imageinfo?.[0];
       const url = info?.url;
-      if (!url) continue;
+      if (!url || !isUsefulPresentationImage(url, p.title)) continue;
       hits.push({
         url,
         thumbUrl: info.thumburl ?? url,
@@ -256,7 +310,7 @@ async function fetchWikimediaPresentationHits(
       });
       if (hits.length >= limit) break;
     }
-    return { hits };
+    return { hits: rankImageResults(query, hits).slice(0, limit) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { hits: [], error: msg };
@@ -279,7 +333,7 @@ export async function searchPresentationWebImages(
     wikimediaError?: string;
   };
 }> {
-  const trimmed = query.trim().slice(0, 200);
+  const trimmed = normalizePresentationImageQuery(query);
   const n = Math.min(Math.max(1, count), 20);
 
   const brave = await fetchBravePresentationHits(trimmed, n);

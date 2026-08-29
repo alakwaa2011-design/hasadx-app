@@ -30,6 +30,61 @@ describe("materialized presentation visual quality", () => {
     const fallbackIndex = out.slide.elements.findIndex((el) => el.id.includes("-fallback-panel"));
     expect(atmosphereIndex).toBeGreaterThanOrEqual(0);
     expect(fallbackIndex).toBeGreaterThan(atmosphereIndex);
+    expect(out.slide.elements.some((el) =>
+      el.kind === "text" && el.id.includes("-fallback-node-label-"),
+    )).toBe(true);
+  });
+
+  it("labels colored fallback cards from the lesson instead of drawing empty rectangles", () => {
+    const out = buildOneSlide({
+      card: card({
+        kind: "concept-card",
+        imagePlan: { fallback: "coloredExample", placement: "none" },
+        talkingPoints: ["التبخر بحرارة الشمس", "التكاثف يصنع السحب", "الهطول يعيد الماء"],
+      }),
+      themeKey: "harvest",
+      density: "balanced",
+      lang: "ar",
+    });
+    const labels = out.slide.elements.filter((el) =>
+      el.kind === "text" && el.id.includes("-fallback-example-label-"),
+    );
+    expect(labels).toHaveLength(3);
+    expect(labels.every((el) =>
+      el.kind === "text" &&
+      el.text.length <= 20 &&
+      (el.fontSize ?? 99) <= 12 &&
+      el.y + el.h <= 720
+    )).toBe(true);
+    expect(labels.map((el) => el.kind === "text" ? el.text : "")).toContain("التبخر بحرارة الشمس");
+  });
+
+  it("keeps long Arabic diagram labels inside their compact nodes", () => {
+    const out = buildOneSlide({
+      card: card({
+        imagePlan: { fallback: "diagram", placement: "none" },
+        talkingPoints: [
+          "تسخن الشمس مياه المحيطات والبحار الواسعة فتبدأ عملية التبخر",
+          "يرتفع بخار الماء تدريجياً إلى طبقات الجو العليا الباردة",
+          "يتكاثف بخار الماء حول دقائق الغبار مكوّناً السحب",
+          "تهطل القطرات وتعود إلى الأرض لتبدأ الدورة من جديد",
+        ],
+      }),
+      themeKey: "harvest",
+      density: "balanced",
+      lang: "ar",
+    });
+    const labels = out.slide.elements.filter((el) =>
+      el.kind === "text" && el.id.includes("-fallback-node-label-"),
+    );
+    expect(labels).toHaveLength(4);
+    expect(labels.every((el) =>
+      el.kind === "text" &&
+      el.text.length <= 14 &&
+      (el.fontSize ?? 99) <= 12 &&
+      el.x >= 0 && el.x + el.w <= 1280 &&
+      el.y >= 0 && el.y + el.h <= 720
+    )).toBe(true);
   });
 
   it("does not flag intentionally clipped staggered atmosphere shapes", () => {
