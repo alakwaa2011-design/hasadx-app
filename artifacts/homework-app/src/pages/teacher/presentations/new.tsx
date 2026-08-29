@@ -535,25 +535,11 @@ export default function NewPresentationPage() {
         );
       }
 
-      setGeneratedPresentationId(presId);
-
-      /* Fetch the actual AI-generated title; fall back to the raw topic. */
-      let aiTitle = topic.trim();
-      try {
-        const presRes = await fetch(`${API_BASE}/api/presentations/${presId}`, {
-          credentials: "include",
-        });
-        if (presRes.ok) {
-          const presData = await presRes.json();
-          if (presData?.title) aiTitle = presData.title;
-        }
-      } catch {
-        /* ignore – fall back to topic */
-      }
-
-      setQuickRenameValue(aiTitle);
-      setQuickRenameConfirmed(false);
-      setQuickPhase("preview");
+      /* Quick creation is an authoring flow: once the deck is built, open
+         the editor directly instead of stopping at the launch/interactive
+         presentation screen. Keep the originating draft in the URL so the
+         editor can offer its AI activity suggestions for this deck. */
+      setLocation(`/teacher/presentations/${presId}?draftId=${draftId}`);
     } catch (err) {
       clearInterval(t);
       const msg =
@@ -566,7 +552,7 @@ export default function NewPresentationPage() {
          shared balance whether the flow succeeded or failed (refund). */
       refreshCreditsBalance();
     }
-  }, [topic, grade, subject, educationalStrategy, isAr, canGenerate, refreshCreditsBalance]);
+  }, [topic, grade, subject, educationalStrategy, isAr, canGenerate, refreshCreditsBalance, setLocation]);
 
   const resetQuick = () => {
     setQuickPhase("form");
