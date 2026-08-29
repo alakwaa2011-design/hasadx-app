@@ -1626,7 +1626,36 @@ export default function AdminPage() {
           {/* Content padding wrapper */}
           <div className="flex-1 py-4 px-4 sm:py-6 sm:px-8">
 
-        {activeTab === "hasad-credits" && <HasadCreditsSystem />}
+        {activeTab === "hasad-credits" && (
+          <div className="space-y-4">
+            <Card className="flex flex-col gap-3 border-primary/20 bg-primary/[0.03] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-primary/10 p-2 text-primary">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-extrabold text-foreground">
+                    {lang === "ar" ? "تحتاج إلى معرفة تكلفة الاستخدام؟" : "Need to see AI usage costs?"}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {lang === "ar"
+                      ? "افتح تقرير التكلفة التفصيلي حسب الفترة والمزوّد والنموذج."
+                      : "Open the detailed cost report by date range, provider, and model."}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="shrink-0 gap-2"
+                onClick={() => { setActiveTab("ai-cost"); setSearch(""); }}
+              >
+                <Bot className="h-4 w-4" />
+                {lang === "ar" ? "فتح تقرير التكلفة" : "Open cost report"}
+              </Button>
+            </Card>
+            <HasadCreditsSystem />
+          </div>
+        )}
 
         {activeTab === "ai-cost" && <AiCostReportTab />}
 
