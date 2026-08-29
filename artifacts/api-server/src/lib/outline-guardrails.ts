@@ -15,6 +15,7 @@ import {
 export interface GuardrailReport {
   feedback: string[];
   fatal: boolean;
+  fatalKind?: "content" | "quality";
 }
 
 /** A complete corrective outline is always preferable to an incomplete
@@ -35,6 +36,13 @@ export function shouldAdoptCorrectiveOutline(
  *  request to the teacher's wait time. */
 export function needsCorrectiveOutlineRetry(report: GuardrailReport): boolean {
   return report.fatal;
+}
+
+export function canUseQualityDegradedQuickOutline(
+  brief: OutlineBrief,
+  report: GuardrailReport,
+): boolean {
+  return brief.presentationKind === "quick" && report.fatalKind === "quality";
 }
 
 export type SanitizedInteractionHint =
@@ -861,10 +869,26 @@ export function sanitizeOutline(
     slides,
   };
 
-  const fatal = slides.length === 0 || severeSlideShortfall || objectives.length < 2 || hasIncompleteSlide || structuralFatal;
+  const contentFatal =
+    slides.length === 0 ||
+    severeSlideShortfall ||
+    objectives.length < 2 ||
+    hasIncompleteSlide;
+  const fatal = contentFatal || structuralFatal;
   if (fatal) feedback.push("Outline is too sparse after sanitization.");
 
-  return { outline, report: { feedback, fatal } };
+  return {
+    outline,
+    report: {
+      feedback,
+      fatal,
+      ...(contentFatal
+        ? { fatalKind: "content" as const }
+        : structuralFatal
+          ? { fatalKind: "quality" as const }
+          : {}),
+    },
+  };
 }
 
 /* Default teaching flow: 1 opener, ~60% concept, ~30% practice, 1 closure. */

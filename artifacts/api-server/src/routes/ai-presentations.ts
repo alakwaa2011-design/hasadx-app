@@ -32,6 +32,7 @@ import {
   sanitizeOutline,
   buildRetryMessage,
   sanitizeText,
+  canUseQualityDegradedQuickOutline,
   needsCorrectiveOutlineRetry,
   shouldAdoptCorrectiveOutline,
 } from "../lib/outline-guardrails";
@@ -312,6 +313,24 @@ export function outlineProviderRequestOptions(timeoutMs = 95_000): {
   };
 }
 
+export function primaryOutlineTimeoutMs(
+  presentationKind: OutlineBrief["presentationKind"],
+  remainingMs: number,
+): number {
+  /* Quick creation must retain enough of the route's 100s budget for both
+     the standard-provider fallback and one quality correction. Claude can
+     still use the longer window for professional/manual outline flows. */
+  const maxPrimaryMs = presentationKind === "quick" ? 45_000 : 60_000;
+  return Math.min(maxPrimaryMs, remainingMs);
+}
+
+export function canRunCorrectiveOutlineRetry(
+  remainingMs: number,
+  retryAlreadyAttempted: boolean,
+): boolean {
+  return !retryAlreadyAttempted && remainingMs >= 15_000;
+}
+
 /* Local completion runner. Same routing as lesson_plans.runTierCompletion
    but exposes token counts so we can persist usage on the draft row. */
 async function runOutlineCompletion(opts: {
@@ -538,14 +557,16 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
        JSON/corrective retries still run only when the first result was fast. */
     const startedAt = Date.now();
     const RETRY_BUDGET_MS = 30_000; // retry only if the first call finished this fast
-    const CLAUDE_PRIMARY_TIMEOUT_MS = 60_000;
     const MIN_FALLBACK_BUDGET_MS = 15_000;
     /* Total in-process deadline, kept well under the proxy's 120s so
        sanitize/DB/serialization work still fits after the last call. */
     const DEADLINE_MS = 100_000;
     const remainingMs = () => Math.max(1_000, DEADLINE_MS - (Date.now() - startedAt));
 
-    let providerRetried = false;
+    /* A provider fallback is not a quality retry. Keep those states
+       separate so a fast fallback outline can still receive one corrective
+       pass when it is structurally incomplete. */
+    let retryAlreadyAttempted = false;
     if (!outlineRaw) {
       try {
         await reserveOutlineSlot(teacherId);
@@ -556,7 +577,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             system,
             userMessages: [userPrompt],
             timeoutMs: isClaudeTier(tier)
-              ? Math.min(CLAUDE_PRIMARY_TIMEOUT_MS, remainingMs())
+              ? primaryOutlineTimeoutMs(brief.presentationKind, remainingMs())
               : remainingMs(),
           });
         } catch (primaryErr) {
@@ -576,7 +597,6 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             userMessages: [userPrompt],
             timeoutMs: fallbackBudgetMs,
           });
-          providerRetried = true;
         }
         tokensIn += first.tokensIn;
         tokensOut += first.tokensOut;
@@ -597,7 +617,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
           tokensIn += second.tokensIn;
           tokensOut += second.tokensOut;
           outlineRaw = parseJsonLoose(second.text);
-          providerRetried = true;
+          retryAlreadyAttempted = true;
         }
       } catch (err) {
         req.log.error({ err }, "Outline completion failed");
@@ -628,17 +648,14 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
        teachers wait for a second long model call and can cause mobile
        clients to abandon an otherwise usable request. */
     if (
-       !usedCache && needsCorrectiveOutlineRetry(report) && !providerRetried &&
-      /* Skip the quality retry when a second provider call would push
-         the request past the 120s proxy abort. Sanitize already
-         repaired the outline, so serving the first attempt is far
-         better than timing out with nothing. */
-      Date.now() - startedAt < RETRY_BUDGET_MS
+      !usedCache &&
+      needsCorrectiveOutlineRetry(report) &&
+      canRunCorrectiveOutlineRetry(remainingMs(), retryAlreadyAttempted)
     ) {
       try {
         // The request already owns one credit hold. This is the single
         // permitted corrective replan; it never invokes checkCredits again.
-        providerRetried = true;
+        retryAlreadyAttempted = true;
         await reserveOutlineSlot(teacherId);
         const retry = await runOutlineCompletion({
           tier,
@@ -662,6 +679,18 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       } catch (err) {
         req.log.warn({ err }, "Outline corrective retry failed; keeping first sanitized result");
       }
+    }
+
+    /* Quick creation must remain usable when the provider returns every
+       requested slide and objective but misses a quality target after the
+       available corrective pass. Keep those warnings in the editable draft;
+       only true content loss (missing/empty slides or objectives) blocks it. */
+    if (report.fatal && canUseQualityDegradedQuickOutline(brief, report)) {
+      req.log.warn({
+        teacherId,
+        feedback: report.feedback.slice(0, 12),
+      }, "Using structurally complete quick outline with editable quality warnings");
+      report = { ...report, fatal: false };
     }
 
     /* Validate against the strict Zod schema. Sanitization deliberately

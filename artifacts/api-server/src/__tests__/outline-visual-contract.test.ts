@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canUseQualityDegradedQuickOutline,
   sanitizeOutline,
   needsCorrectiveOutlineRetry,
   shouldAdoptCorrectiveOutline,
@@ -229,6 +230,25 @@ describe("presentation visual contract fixtures", () => {
 
     expect(result.report.fatal).toBe(true);
     expect(result.report.feedback.join(" ")).toMatch(/missing core pedagogical role/);
+  });
+
+  it("distinguishes editable quick-deck quality warnings from missing content", () => {
+    const raw = mafoulMaahFullLesson();
+    for (const slide of raw.slides) {
+      if (slide.pedagogicalRole === "example" || slide.pedagogicalRole === "practice") {
+        slide.pedagogicalRole = "explain";
+      }
+    }
+
+    const brief = {
+      ...fullLessonBrief,
+      presentationKind: "quick" as const,
+    };
+    const result = sanitizeOutline(raw, brief);
+
+    expect(result.report.fatal).toBe(true);
+    expect(result.report.fatalKind).toBe("quality");
+    expect(canUseQualityDegradedQuickOutline(brief, result.report)).toBe(true);
   });
 
   it("requires both a worked example and guided practice in quick strategy decks", () => {
