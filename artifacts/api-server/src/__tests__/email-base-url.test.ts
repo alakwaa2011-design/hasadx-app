@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getAppBaseUrl } from "../lib/email";
+import { EMAIL_FROM, getAppBaseUrl } from "../lib/email";
 
 const originalEnv = {
   appBaseUrl: process.env.APP_BASE_URL,
@@ -41,5 +41,11 @@ describe("getAppBaseUrl", () => {
     delete process.env.REPLIT_DEV_DOMAIN;
 
     expect(getAppBaseUrl()).toBe("https://hasaadx.com");
+  });
+});
+
+describe("EMAIL_FROM", () => {
+  it("uses the unified HasaadX sender name and unchanged address", () => {
+    expect(EMAIL_FROM).toBe("حصاد | HasaadX <noreply@hasaadx.com>");
   });
 });

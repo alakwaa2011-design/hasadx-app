@@ -1,10 +1,11 @@
 import { Resend } from "resend";
 
 const RESEND_CONNECTOR = "resend";
+export const EMAIL_FROM = "حصاد | HasaadX <noreply@hasaadx.com>";
 
 let cachedClient: { client: Resend; expiresAt: number } | null = null;
 
-async function fetchConnectorCredentials(): Promise<{ apiKey: string; fromEmail?: string } | null> {
+async function fetchConnectorCredentials(): Promise<{ apiKey: string } | null> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken =
     process.env.REPL_IDENTITY
@@ -34,13 +35,11 @@ async function fetchConnectorCredentials(): Promise<{ apiKey: string; fromEmail?
         i.id?.startsWith("conn_resend_"),
     );
     const apiKey = item?.settings?.api_key;
-    return apiKey ? { apiKey, fromEmail: item?.settings?.from_email } : null;
+    return apiKey ? { apiKey } : null;
   } catch {
     return null;
   }
 }
-
-let cachedFromEmail: string | undefined;
 
 async function getResendClient(): Promise<Resend | null> {
   const envKey = process.env.RESEND_API_KEY;
@@ -55,7 +54,6 @@ async function getResendClient(): Promise<Resend | null> {
 
   const client = new Resend(creds.apiKey);
   cachedClient = { client, expiresAt: Date.now() + 5 * 60 * 1000 };
-  cachedFromEmail = creds.fromEmail;
   return client;
 }
 
@@ -79,15 +77,9 @@ export async function sendEmail(
     return { delivered: false, reason: "resend_not_configured" };
   }
 
-  const fromAddress =
-    process.env.RESEND_FROM_EMAIL || cachedFromEmail || "noreply@hasaadx.com";
-  const from = fromAddress.includes("<")
-    ? fromAddress
-    : `Hassad <${fromAddress}>`;
-
   try {
     const { error } = await client.emails.send({
-      from,
+      from: EMAIL_FROM,
       to: params.to,
       subject: params.subject,
       html: params.html,
