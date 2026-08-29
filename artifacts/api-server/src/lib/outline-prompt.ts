@@ -120,7 +120,7 @@ const STRATEGY_INSTRUCTIONS_AR: Partial<Record<EducationalStrategy, string>> = {
 [3] الفرضيات: kind: interactive, interactionHint: "discussion" — الطلاب يقترحون حلولاً. لا gameQuestions.
 [4] المحتوى: شرائح تعليمية تبني المعرفة اللازمة للحل.
 [5] الحل: kind: steps أو concept-card — تقديم الحل المنطقي.
-  [6] التقييم: kind: interactive, interactionHint: "quiz" مع 1-3 gameQuestions فقط عند الحاجة.`,
+  [6] التقييم: kind: interactive, interactionHint: "quiz" مع 6-7 gameQuestions عند الحاجة.`,
 
   project_based: `التعلم القائم على المشاريع:
 [1] تعريف المشروع: kind: visual-hero أو concept-card — وصف المشروع وهدفه.
@@ -186,14 +186,14 @@ const STRATEGY_INSTRUCTIONS_AR: Partial<Record<EducationalStrategy, string>> = {
 [K — ماذا أعرف؟] شريحة أولى بعد title: kind: interactive, interactionHint: "activity". talkingPoints[0] = "اكتب كل ما تعرفه عن [الموضوع]". لا gameQuestions.
 [W — ماذا أريد أن أعرف؟] شريحة ثانية: kind: interactive, interactionHint: "discussion". talkingPoints[0] = "ما الأسئلة التي تريد إجابتها؟". لا gameQuestions.
 [المحتوى] شرائح تعليمية متنوعة تجيب على أسئلة [W] بشكل مباشر.
-[L — ماذا تعلمت؟] شريحة ختامية: kind: interactive, interactionHint: "quiz" مع 1-3 gameQuestions تعكس ما تعلموه فعليًا.
+[L — ماذا تعلمت؟] شريحة ختامية: kind: interactive, interactionHint: "quiz" مع 6-7 gameQuestions تعكس ما تعلموه فعليًا.
 احرص على ترتيب K → W → محتوى → L بشكل واضح لا يُخلّ.`,
 
   "5e_model": `نموذج 5E — دورة التعلم الاستكشافي (الترتيب إلزامي):
 [E1 الإثارة Engage] أول شريحة بعد title: kind: interactive, interactionHint: "activity" أو "poll". سؤال أو موقف يثير فضول الطلاب. لا gameQuestions.
 [E2 الاستكشاف Explore] شريحة نشاط استكشافي: kind: interactive, interactionHint: "discussion". لا gameQuestions.
 [E3 الشرح Explain] 2-4 شرائح محتوى تعليمي (concept-card, steps, formula, visual-hero, stat…).
-[E4 التعمق Elaborate] شريحة تطبيق وتوسيع: kind: interactive, interactionHint: "quiz" مع 1-3 gameQuestions.
+[E4 التعمق Elaborate] شريحة تطبيق وتوسيع: kind: interactive, interactionHint: "quiz" مع 6-7 gameQuestions.
 [E5 التقييم Evaluate] شريحة تقييم ختامية: kind: interactive, interactionHint: "poll" مع gameQuestions.
 الترتيب الإلزامي: E1 → E2 → E3 → E4 → E5.`,
 };
@@ -890,7 +890,7 @@ Kind selection by topic category (MANDATORY — analyze the topic first, then ch
    for backward compatibility but instruct the model to leave it
    null — the slide's identity is the questions themselves. */
 const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuestions) — خفيفة ومحددة:
-⚠️ مخطط العرض ليس بنك أسئلة. استخدم gameQuestions على شريحة تقييم أو اختبار واحدة فقط عند الحاجة، وبحد أقصى 3 أسئلة. بقية الأنشطة تكون activity أو discussion من دون gameQuestions.
+⚠️ مخطط العرض ليس بنك أسئلة. استخدم gameQuestions على شريحة تقييم أو اختبار واحدة فقط عند الحاجة، وبعدد 6-7 أسئلة. بقية الأنشطة تكون activity أو discussion من دون gameQuestions.
 - أنتج أسئلة فقط على الشريحة التي تستفيد فعلاً من اختبار قصير أو تطبيق مفهوم. استخدم activity أو discussion للأسئلة المفتوحة.
 - لا تنتج أسئلة على شرائح العنوان أو الخاتمة أو الشرح النظري البحت.
 - في عرض من 8 شرائح: 1-3 شرائح نشاط كحد أقصى. لا تكدّسها، ولا تجعل أكثر من شريحة واحدة تحوي gameQuestions.
@@ -898,7 +898,7 @@ const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuest
 - اترك gameSuggestion = null دائماً.
 
 شكل gameQuestions — اختياري على شريحة الاختبار الوحيدة:
-- مصفوفة من سؤال واحد إلى 3 أسئلة قصيرة فقط.
+- مصفوفة من 6 إلى 7 أسئلة قصيرة فقط.
 - كل سؤال: { "prompt": "سؤال واضح مرتبط بموضوع الشريحة", "options": ["خيار حقيقي كامل","خيار حقيقي كامل","خيار حقيقي كامل","خيار حقيقي كامل"], "correctIndex": 0 }
 - إذا كان السؤال اختياراً متعدداً: يجب أن يحتوي على 4 خيارات حقيقية مكتوبة بالكامل وإجابة صحيحة محددة. لا تستخدم أبداً: "خيار 1"، "خيار 2"، "خ1"، "أ"، "ب"، أو أي placeholder.
 - لا تكتب "شارك إجابتك بكلمة واحدة" أو صياغة مفتوحة داخل سؤال اختيار متعدد. إذا كان المطلوب إجابة مفتوحة، لا تنتج gameQuestions واجعل interactionHint = "discussion" أو "activity" بدون خيارات.
@@ -908,7 +908,7 @@ const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuest
 - لا تنتج gameQuestions على الشرائح غير التفاعلية.`;
 
 const GAMES_RULES_EN = `Activity questions (gameQuestions) — lightweight and targeted:
-⚠️ The outline is not a question bank. Use gameQuestions on only one assessment/quiz slide when helpful, with at most 3 questions. Other interactive slides use activity or discussion without gameQuestions.
+⚠️ The outline is not a question bank. Use gameQuestions on only one assessment/quiz slide when helpful, with 6–7 questions. Other interactive slides use activity or discussion without gameQuestions.
 - Only produce questions on the one slide that genuinely benefits from a quick check or concept application. Use activity or discussion for open responses.
 - Do NOT produce questions on title, closure, or pure-explanation slides.
 - In an 8-slide deck: at most 1–3 activity slides. Don't stuff them, and only one may contain gameQuestions.
@@ -916,7 +916,7 @@ const GAMES_RULES_EN = `Activity questions (gameQuestions) — lightweight and t
 - Always leave gameSuggestion = null.
 
 gameQuestions shape — optional on the one quiz slide:
-- Array of 1–3 short, ready-to-display questions only.
+- Array of 6–7 short, ready-to-display questions only.
 - Each: { "prompt": "clear question tied to the slide topic", "options": ["full real option","full real option","full real option","full real option"], "correctIndex": 0 }
 - For multiple choice: always provide 4 real, fully written options and one correct answer. Never use placeholders such as "Option 1", "Option 2", "A", "B", or generic labels.
 - Do not write "Share your answer in one word" or any open-answer wording inside a multiple-choice question. If it is open-ended, do not emit gameQuestions; use interactionHint = "discussion" or "activity" without options.
@@ -1018,7 +1018,7 @@ Mandatory rules:
 - Every content slide uses 4-5 complete points covering what, why, how, and an example/application. Generic labels are forbidden.
 - The deck must contain explain, example, practice, and assess pedagogical roles; a definition-plus-summary deck is invalid.
 - Use only 1-3 interactive slides in a short deck, placed where they make sense.
-- Only one quiz or poll slide may include gameQuestions (1–3 questions); keep other activities open-ended.
+- Only one quiz or poll slide may include gameQuestions (6–7 questions); keep other activities open-ended.
 - Open activity/discussion slides do NOT include gameQuestions.
 - Never place more than 2 interactive slides in a row.
 - Do not use objectives unless truly useful.`;

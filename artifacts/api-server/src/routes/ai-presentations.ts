@@ -254,7 +254,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
   // v3: reverted per-slide color variety — ONE deck theme, null per slide.
   //     Added structural layout personality per deck instead (May 2026).
   //     Bump this constant whenever DESIGN_RULES or system prompt changes.
-  const PROMPT_VERSION = "v6-teachable-visual-depth";
+  const PROMPT_VERSION = "v7-teachable-visual-depth-6-7-questions";
   const obj = {
     _pv: PROMPT_VERSION,
     m: model,
@@ -296,6 +296,19 @@ interface CompletionResult {
   tokensOut: number;
 }
 
+export function outlineProviderRequestOptions(timeoutMs = 95_000): {
+  timeout: number;
+  maxRetries: 0;
+} {
+  return {
+    timeout: Math.max(1_000, Math.min(timeoutMs, 95_000)),
+    /* Both provider SDKs retry transient failures by default. Their timeout
+       applies per attempt, so an internal retry can outlive Replit's 120s
+       request budget and leave the professional builder with no response. */
+    maxRetries: 0,
+  };
+}
+
 /* Local completion runner. Same routing as lesson_plans.runTierCompletion
    but exposes token counts so we can persist usage on the draft row. */
 async function runOutlineCompletion(opts: {
@@ -307,7 +320,7 @@ async function runOutlineCompletion(opts: {
      bounded or a slow provider can still blow the total budget. */
   timeoutMs?: number;
 }): Promise<CompletionResult> {
-  const requestOptions = { timeout: opts.timeoutMs ?? 100_000 };
+  const requestOptions = outlineProviderRequestOptions(opts.timeoutMs);
   if (isClaudeTier(opts.tier)) {
     const response = await anthropic.messages.create({
       model: SONNET_MODEL,
@@ -525,7 +538,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const RETRY_BUDGET_MS = 30_000; // retry only if the first call finished this fast
     /* Total in-process deadline, kept well under the proxy's 120s so
        sanitize/DB/serialization work still fits after the last call. */
-    const DEADLINE_MS = 110_000;
+    const DEADLINE_MS = 100_000;
     const remainingMs = () => Math.max(1_000, DEADLINE_MS - (Date.now() - startedAt));
 
     let providerRetried = false;
