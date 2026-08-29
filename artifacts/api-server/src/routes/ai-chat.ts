@@ -22,6 +22,7 @@ const router: Router = Router();
 
 // Per-plan daily AI caps are the source of truth via @workspace/billing.
 const HISTORY_TURNS = 4; // last 4 user+assistant pairs
+const MAX_CHAT_MESSAGE_CHARS = 24_000;
 
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
@@ -180,7 +181,7 @@ router.delete("/conversations/:id", async (req, res) => {
 
 const sendBody = z.object({
   conversationId: z.number().int().positive().nullable().optional(),
-  message: z.string().min(1).max(4000),
+  message: z.string().trim().min(1).max(MAX_CHAT_MESSAGE_CHARS),
   language: z.enum(["ar", "en"]).optional(),
 });
 
@@ -205,7 +206,11 @@ async function handleSendMessage(req: any, res: any) {
   const parsed = sendBody.safeParse(req.body);
   if (!parsed.success) {
     await refundCredits(req, "invalid input");
-    return res.status(400).json({ error: "bad_request", details: parsed.error.message });
+    const messageIssue = parsed.error.issues.find((issue) => issue.path.includes("message"));
+    const message = messageIssue?.code === "too_big"
+      ? `النص طويل جداً. الحد الأقصى ${MAX_CHAT_MESSAGE_CHARS.toLocaleString("ar-KW")} حرف.`
+      : "أدخل نصاً صالحاً ثم حاول مرة أخرى.";
+    return res.status(400).json({ error: "bad_request", message, details: parsed.error.message });
   }
   const { message } = parsed.data;
   const language = resolveAiContentLanguage({

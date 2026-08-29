@@ -20,6 +20,7 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const STORAGE_MINIMIZED = "hasad-guide-launcher-minimized";
+const MAX_CHAT_MESSAGE_CHARS = 24_000;
 
 /** Assistant chrome: quiet green + white accents (no gold). */
 const GUIDE_GREEN =
@@ -66,26 +67,6 @@ function copy(lang: string) {
     usageLine: (rem: number, lim: number) =>
       isAr ? `${rem} / ${lim} متبقية اليوم` : `${rem} / ${lim} left today`,
     welcomeTitle: isAr ? "كيف أقدر أساعدك؟" : "How can I help?",
-    welcomeBody: isAr
-      ? "اسأل عن ميزات المنصة، أو اطلب صياغة أسئلة لموضوع درسك."
-      : "Ask about platform features, or request quiz questions for your topic.",
-    suggestions: isAr
-      ? [
-          "كيف أبدأ أول مسابقة؟",
-          "ما الفرق بين الألعاب الجماعية والفردية؟",
-          "كيف تعمل النقاط؟",
-          "كيف أشارك المسابقة؟",
-          "اشرح لي تحدّي حصاد",
-          "كيف أستخدم بنك الأسئلة؟",
-        ]
-      : [
-          "How do I start my first contest?",
-          "Live vs solo games — what's the difference?",
-          "How do points work?",
-          "How do I share a contest?",
-          "Explain Hasaad Arena",
-          "How do I use the question bank?",
-        ],
     noHistory: isAr ? "لا توجد محادثات سابقة" : "No past conversations",
     placeholder: isAr ? "اكتب سؤالك…" : "Type your question…",
     cached: isAr ? "⚡ من الذاكرة" : "⚡ From cache",
@@ -420,29 +401,14 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
             ) : (
               <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 && (
-                  <div className="text-center py-8 space-y-3">
+                  <div className="text-center py-8">
                     <div
                       className="inline-flex w-11 h-11 rounded-xl items-center justify-center border border-white/10"
                       style={{ background: GUIDE_GREEN_SOFT }}
                     >
                       <Sparkles className="w-5 h-5 text-white/90" />
                     </div>
-                    <div className="text-base font-bold">{t.welcomeTitle}</div>
-                    <div className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                      {t.welcomeBody}
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-center pt-2">
-                      {t.suggestions.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setInput(s)}
-                          className="text-xs px-3 py-1.5 rounded-full border border-border hover:bg-muted hover:border-[#1f5a3e]/25 transition-colors"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
+                    <div className="mt-3 text-base font-bold">{t.welcomeTitle}</div>
                   </div>
                 )}
                 {messages.map((m, i) => (
@@ -494,10 +460,16 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                       }
                     }}
                     rows={1}
+                    maxLength={MAX_CHAT_MESSAGE_CHARS}
                     placeholder={t.placeholder}
                     disabled={sending || (hasDailyCap(usage) && usage.remaining <= 0)}
                     className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1f5a3e]/35 max-h-32"
                   />
+                  {input.length > MAX_CHAT_MESSAGE_CHARS - 500 && (
+                    <div className="text-[10px] text-muted-foreground self-end pb-2">
+                      {input.length.toLocaleString(isAr ? "ar-KW" : "en-US")} / {MAX_CHAT_MESSAGE_CHARS.toLocaleString(isAr ? "ar-KW" : "en-US")}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={send}
