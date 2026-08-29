@@ -118,12 +118,16 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
      teacher can fall back to the outline if the build fails. */
   const approve = async (outline: PresentationOutline) => {
     if (!draft) return;
-    const updated = await update.mutateAsync({
-      id: draft.id,
-      data: { outline, status: "outline_ready" },
-    });
-    setDraft(updated);
-    setShowBuild(true);
+    try {
+      const updated = await update.mutateAsync({
+        id: draft.id,
+        data: { outline, status: "outline_ready" },
+      });
+      setDraft(updated);
+      setShowBuild(true);
+    } catch {
+      toast.error(isAr ? "تعذّر اعتماد المخطط. راجع الشرائح وحاول مرة أخرى." : "Could not approve the outline. Review the slides and try again.");
+    }
   };
 
   /* When the build succeeds, close the orchestrator dialog so the

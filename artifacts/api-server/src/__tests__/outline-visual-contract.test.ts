@@ -163,6 +163,61 @@ describe("presentation visual contract fixtures", () => {
     expect(result.outline.slides[3].talkingPoints).toHaveLength(1);
   });
 
+  it("accepts a professional outline that is one usable slide short instead of failing everything", () => {
+    const raw = mafoulMaahFullLesson();
+    raw.slides.pop();
+
+    const result = sanitizeOutline(raw, fullLessonBrief);
+
+    expect(result.outline.slides).toHaveLength(10);
+    expect(result.report.fatal).toBe(false);
+    expect(result.report.feedback.join(" ")).toMatch(/10\/11 required slides/);
+  });
+
+  it("rejects a shallow quick deck that has no worked example, practice, or assessment", () => {
+    const raw = fixedLesson("المفعول معه", "editorial", [
+      "title", "concept", "visualHero", "concept", "concept",
+    ]);
+    raw.slides = [
+      ...raw.slides,
+      ...fixedLesson("المفعول معه", "editorial", ["concept", "concept", "summary"]).slides.map(
+        (slide, index) => ({ ...slide, index: index + 6, title: `${slide.title} — إضافي ${index}` }),
+      ),
+    ];
+    for (const slide of raw.slides) {
+      (slide as typeof slide & { pedagogicalRole: string }).pedagogicalRole =
+        slide.slideType === "title" ? "hook" : slide.slideType === "summary" ? "summary" : "explain";
+    }
+
+    const result = sanitizeOutline(raw, {
+      ...baseBrief,
+      presentationKind: "quick",
+      slideCount: 8,
+    });
+
+    expect(result.report.fatal).toBe(true);
+    expect(result.report.feedback.join(" ")).toMatch(/missing core pedagogical role/);
+  });
+
+  it("requires both a worked example and guided practice in quick strategy decks", () => {
+    const raw = mafoulMaahFullLesson();
+    for (const slide of raw.slides) {
+      if (slide.pedagogicalRole === "example" || slide.pedagogicalRole === "practice") {
+        slide.pedagogicalRole = "activity";
+      }
+    }
+
+    const result = sanitizeOutline(raw, {
+      ...fullLessonBrief,
+      presentationKind: "quick",
+      educationalStrategy: "active_learning",
+    });
+
+    expect(result.report.fatal).toBe(true);
+    expect(result.report.feedback.join(" ")).toMatch(/example/);
+    expect(result.report.feedback.join(" ")).toMatch(/practice/);
+  });
+
   it("adds a local visual decision and varied layout when the model omits both", () => {
     const raw = fixedLesson("دورة الماء", "scientific", [
       "title", "visualHero", "process", "workedExample", "summary",

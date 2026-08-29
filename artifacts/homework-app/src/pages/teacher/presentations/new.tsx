@@ -479,7 +479,10 @@ export default function NewPresentationPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ coverEmoji: "📚" }),
+        body: JSON.stringify({
+          coverEmoji: "📚",
+          pattern: educationalStrategy === "none" ? "geometric" : "waves",
+        }),
       });
       if (!r3.ok) {
         if (isInsufficientCreditsResponse(r3)) {

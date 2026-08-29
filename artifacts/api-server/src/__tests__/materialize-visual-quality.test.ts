@@ -112,4 +112,29 @@ describe("materialized presentation visual quality", () => {
     expect(out.slide.visualFallback).toBe("timeline");
     expect(out.slide.elements.some((el) => el.id.includes("-fallback-"))).toBe(false);
   });
+
+  it("keeps five Arabic visual-hero poster points inside the 16:9 canvas", () => {
+    const out = buildOneSlide({
+      card: card({
+        kind: "visual-hero",
+        slideType: "visualHero",
+        layoutVariant: "poster",
+        talkingPoints: [
+          "تسخن الشمس مياه البحار فتتحول تدريجياً إلى بخار ماء",
+          "يرتفع البخار إلى طبقات الجو الأعلى بسبب انخفاض كثافته",
+          "يبرد بخار الماء ويتكاثف حول دقائق صغيرة مكوّناً السحب",
+          "تكبر قطرات الماء داخل السحب حتى تصبح أثقل من الهواء",
+          "تهطل المياه وتعود إلى الأنهار والبحار لتبدأ دورة جديدة",
+        ],
+        imagePlan: { fallback: "diagram", placement: "none" },
+      }),
+      themeKey: "harvest",
+      density: "balanced",
+      lang: "ar",
+    });
+
+    const text = out.slide.elements.filter((el) => el.kind === "text");
+    expect(text.filter((el) => el.id.includes("-b"))).toHaveLength(5);
+    expect(text.every((el) => el.y >= 0 && el.y + el.h <= 720)).toBe(true);
+  });
 });

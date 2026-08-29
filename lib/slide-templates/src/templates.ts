@@ -31,8 +31,8 @@ interface DensityCfg {
 
 const DENSITY: Record<Density, DensityCfg> = {
   minimal:  { maxBullets: 3, bulletFont: 28, titleFont: 56, subtitleFont: 26, maxBulletChars: 56, maxTitleChars: 56 },
-  balanced: { maxBullets: 4, bulletFont: 24, titleFont: 48, subtitleFont: 24, maxBulletChars: 70, maxTitleChars: 64 },
-  detailed: { maxBullets: 5, bulletFont: 22, titleFont: 44, subtitleFont: 22, maxBulletChars: 84, maxTitleChars: 72 },
+  balanced: { maxBullets: 5, bulletFont: 22, titleFont: 48, subtitleFont: 24, maxBulletChars: 112, maxTitleChars: 64 },
+  detailed: { maxBullets: 5, bulletFont: 21, titleFont: 44, subtitleFont: 22, maxBulletChars: 132, maxTitleChars: 72 },
 };
 
 /* ── Tiny string helpers. We never auto-flip with CSS — RTL slides
@@ -760,9 +760,9 @@ function tplVisualHero(o: MaterializeOptions, warnings: string[]): Element[] {
     ? resolveIcon(card.visualDirection.icon)
     : defaultIconForKind("visual-hero");
   const top = CONTENT_TOP + 8;
-  const iconSize = variant === "poster" ? 260 : 200;
-  const heroBoxSize = variant === "editorial" ? 300 : 360;
-  const heroCx = variant === "poster" ? W / 2 : (isAr ? PAD + heroBoxSize / 2 : W - PAD - heroBoxSize / 2);
+  const iconSize = variant === "poster" ? 180 : 200;
+  const heroBoxSize = variant === "editorial" || variant === "poster" ? 300 : 360;
+  const heroCx = isAr ? PAD + heroBoxSize / 2 : W - PAD - heroBoxSize / 2;
   const heroCy = top + heroBoxSize / 2;
   buildHaloIcon(seed, {
     cx: heroCx, cy: heroCy, size: iconSize, iconName, palette: theme,
@@ -770,11 +770,11 @@ function tplVisualHero(o: MaterializeOptions, warnings: string[]): Element[] {
   }).forEach((e) => els.push(e));
 
   /* Bullet column on the opposite side. */
-  const bulletX = variant === "poster" ? PAD : (isAr ? PAD + heroBoxSize + 48 : PAD);
-  const bulletW = variant === "poster" ? W - PAD * 2 : W - PAD * 2 - heroBoxSize - 48;
+  const bulletX = isAr ? PAD + heroBoxSize + 48 : PAD;
+  const bulletW = W - PAD * 2 - heroBoxSize - 48;
   buildBullets({
     seed, items: card.talkingPoints,
-    x: bulletX, y: variant === "poster" ? top + heroBoxSize + 10 : top + 24, w: bulletW,
+    x: bulletX, y: top + 24, w: bulletW,
     cfg, lang, palette: theme, warnings,
     marker: "◆",
   }).forEach((el) => els.push(el));

@@ -254,7 +254,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
   // v3: reverted per-slide color variety — ONE deck theme, null per slide.
   //     Added structural layout personality per deck instead (May 2026).
   //     Bump this constant whenever DESIGN_RULES or system prompt changes.
-  const PROMPT_VERSION = "v5-full-lesson-depth";
+  const PROMPT_VERSION = "v6-teachable-visual-depth";
   const obj = {
     _pv: PROMPT_VERSION,
     m: model,

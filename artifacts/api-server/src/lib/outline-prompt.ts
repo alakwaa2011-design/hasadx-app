@@ -639,10 +639,10 @@ export function densityLimits(d: OutlineDensity): DensityLimits {
     case "minimal":
       return { minPoints: 2, maxPoints: 3, maxWordsPerPoint: 6, allowSubtitle: false };
     case "detailed":
-      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 16, allowSubtitle: true };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 22, allowSubtitle: true };
     case "balanced":
     default:
-      return { minPoints: 3, maxPoints: 4, maxWordsPerPoint: 14, allowSubtitle: false };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 18, allowSubtitle: false };
   }
 }
 
@@ -676,17 +676,17 @@ const DENSITY_RULES_AR: Record<OutlineDensity, string> = {
   minimal:
     "كثافة قليلة: 2-3 نقاط لكل شريحة، كل نقطة ≤ 6 كلمات. عناوين قصيرة كشعارات. أكثر من شريحة لكل فكرة بدلاً من تكديس النصوص.",
   balanced:
-    "كثافة متوسطة: 3-4 نقاط لكل شريحة، كل نقطة جملة معلوماتية مكتملة المعنى ≤ 14 كلمة. ممنوع الفقرات الطويلة. كل شريحة فكرة واحدة فقط.",
+    "كثافة متوسطة عملية: 4-5 نقاط لكل شريحة، كل نقطة جملة شرح مكتملة ≤ 18 كلمة. ضمّن التعريف والسبب والمثال أو التطبيق حيث يلزم، دون فقرات طويلة.",
   detailed:
-    "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 16 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة جملة مكثّفة تحمل معلومة كاملة — لا نصف جملة ولا فقرة.",
+    "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 22 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة جملة شرح مكتملة أو خطوة حل واضحة — لا نصف جملة.",
 };
 const DENSITY_RULES_EN: Record<OutlineDensity, string> = {
   minimal:
     "Minimal density: 2-3 points per slide, each ≤ 6 words. Headline-style only. Use more slides instead of cramming text.",
   balanced:
-    "Balanced density: 3-4 points per slide, each a complete informative statement ≤ 14 words. NO paragraphs. Each slide = one idea.",
+    "Practical balanced density: 4-5 points per slide, each a complete explanatory statement ≤ 18 words. Include definition, reason, example, or application where relevant; no long paragraphs.",
   detailed:
-    "Detailed density: 3-5 points per slide, each ≤ 16 words. `subtitle` allowed only on the title slide. Every point is one short line, never a paragraph.",
+    "Detailed density: 4-5 points per slide, each ≤ 22 words. `subtitle` allowed only on the title slide. Every point is a complete explanation or solution step, never a fragment.",
 };
 
 /* Full-lesson depth contract (Aug 2026). The teacher feedback was that
@@ -980,7 +980,7 @@ const DIRECTOR_CONTRACT_EN = `Design-decision contract — return it in the JSON
    together. Arabic and English variants kept in sync with the
    rest of the prompt style. ────────────────────────────────── */
 const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — حصة سريعة متنوعة وليست قالباً ثابتاً:
-هذا العرض يجب أن يكون جاهزاً بسرعة، لكن لا يعني ذلك تكرار نفس البنية في كل مرة.
+هذا العرض يجب أن يكون درساً مختصراً جاهزاً للشرح، وليس ملخص عناوين أو بطاقات تعريفية.
 
 اختر بنية مختصرة تناسب الموضوع من البداية:
 - إن كان الموضوع مفهوماً جديداً: ابدأ بسؤال/ظاهرة ثم اشرح ثم طبّق.
@@ -992,6 +992,9 @@ const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — حصة �
 
 قواعد إلزامية:
 - ابدأ بـ title وأنهِ بـ closure فقط؛ ما بينهما اختَر بحرية حسب الموضوع.
+- خصص 3 شرائح على الأقل للشرح الفعلي: مفهوم أو قاعدة، مثال محلل، ثم تدريب موجّه مع الإجابة.
+- كل شريحة محتوى تستخدم 4-5 نقاط مكتملة: ماذا؟ لماذا؟ كيف؟ ومثال أو تطبيق. ممنوع النقاط التي لا تتجاوز تسمية عامة.
+- يجب أن يحتوي العرض على pedagogicalRole بقيم explain وexample وpractice وassess؛ لا يُقبل العرض إذا اكتفى بالتعريف والخلاصة.
 - استخدم 1-3 شرائح تفاعلية فقط في العرض القصير، موزعة في أماكن منطقية.
 - شريحة quiz أو poll واحدة فقط يمكن أن تحتوي على gameQuestions (1-3 أسئلة)؛ بقية الأنشطة تكون مفتوحة.
 - شرائح interactionHint="activity" و"discussion" المفتوحة لا تحتوي على gameQuestions.
@@ -999,7 +1002,7 @@ const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — حصة �
 - لا تستخدم objectives إلا إذا كانت ضرورية فعلاً.`;
 
 const QUICK_MODE_RULES_EN = `⚡ Quick Mode — fast varied lesson, NOT a fixed template:
-This deck should be ready quickly, but that must not mean repeating the same structure every time.
+This deck must be a short teachable lesson, not a recap made of headings or definition cards.
 
 Choose a short structure that fits the topic:
 - New concept: open with a question/phenomenon, explain, then apply.
@@ -1011,6 +1014,9 @@ Choose a short structure that fits the topic:
 
 Mandatory rules:
 - Start with title and end with closure only; choose the middle freely based on the topic.
+- Reserve at least 3 slides for actual teaching: concept/rule, worked example, then guided practice including the answer.
+- Every content slide uses 4-5 complete points covering what, why, how, and an example/application. Generic labels are forbidden.
+- The deck must contain explain, example, practice, and assess pedagogical roles; a definition-plus-summary deck is invalid.
 - Use only 1-3 interactive slides in a short deck, placed where they make sense.
 - Only one quiz or poll slide may include gameQuestions (1–3 questions); keep other activities open-ended.
 - Open activity/discussion slides do NOT include gameQuestions.

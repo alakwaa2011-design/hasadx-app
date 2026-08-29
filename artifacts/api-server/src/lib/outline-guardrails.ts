@@ -474,8 +474,9 @@ export function sanitizeOutline(
      titles, drop talking-points violating length / banned / numbers. */
   const titleSeen = new Set<string>();
   const slidesIn = asArray(r.slides).slice(0, brief.slideCount);
-  let hasIncompleteSlide = slidesIn.length < brief.slideCount;
-  if (hasIncompleteSlide) {
+  const severeSlideShortfall = slidesIn.length < Math.max(5, Math.ceil(brief.slideCount * 0.75));
+  let hasIncompleteSlide = false;
+  if (slidesIn.length < brief.slideCount) {
     feedback.push(`Outline has ${slidesIn.length}/${brief.slideCount} required slides.`);
   }
   const slides: SanitizedSlide[] = slidesIn.map((s, i): SanitizedSlide => {
@@ -774,14 +775,19 @@ export function sanitizeOutline(
      hats, …) legitimately concentrate one role or skip parts of the arc,
      so for those the same findings stay advisory feedback only. */
   let structuralFatal = false;
+  const quickLessonContract = brief.presentationKind === "quick";
   const fullLessonContract =
-    brief.presentationKind === "explain" &&
-    (!brief.educationalStrategy || brief.educationalStrategy === "none");
+    quickLessonContract ||
+    (brief.presentationKind === "explain" &&
+      (!brief.educationalStrategy || brief.educationalStrategy === "none"));
   if (slides.length >= 8) {
     const roles = slides.map((s) => s.pedagogicalRole);
     const missingRoles: string[] = [];
     if (!roles.includes("explain")) missingRoles.push("explain");
-    if (!roles.some((role) => role === "example" || role === "practice" || role === "activity")) {
+    if (quickLessonContract) {
+      if (!roles.includes("example")) missingRoles.push("example");
+      if (!roles.includes("practice")) missingRoles.push("practice");
+    } else if (!roles.some((role) => role === "example" || role === "practice" || role === "activity")) {
       missingRoles.push("example/practice/activity");
     }
     if (!roles.includes("assess")) missingRoles.push("assess");
@@ -859,7 +865,7 @@ export function sanitizeOutline(
     slides,
   };
 
-  const fatal = slides.length === 0 || objectives.length < 2 || hasIncompleteSlide || structuralFatal;
+  const fatal = slides.length === 0 || severeSlideShortfall || objectives.length < 2 || hasIncompleteSlide || structuralFatal;
   if (fatal) feedback.push("Outline is too sparse after sanitization.");
 
   return { outline, report: { feedback, fatal } };
