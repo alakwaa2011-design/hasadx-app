@@ -368,14 +368,14 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
 
             {/* Right: CTAs */}
             <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:flex-col shrink-0">
-              {/* Primary — عرض جديد */}
+              {/* Primary — إنشاء عرض يدويًا */}
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
                 className="w-full sm:w-auto inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-2xl font-bold text-[11px] sm:text-sm transition-all duration-200 sm:hover:scale-[1.03] active:scale-[0.98] select-none bg-[#225739] text-white shadow-sm sm:text-[#0a4d26] sm:[background:linear-gradient(135deg,#ffffff_0%,#e8f5ec_100%)] sm:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.6)] px-2 py-2.5 sm:px-[26px] sm:py-[13px] sm:min-w-[148px]"
               >
                 <Plus className="w-4 h-4 sm:w-4 sm:h-4 shrink-0" />
-                {isAr ? "عرض جديد" : "New deck"}
+                {isAr ? "إنشاء عرض يدويًا" : "Create manually"}
               </button>
               {/* Secondary — توليد بالذكاء */}
               <button
@@ -982,7 +982,7 @@ function EmptyState({
         style={{ background: BRAND_GREEN, color: "white" }}
       >
         <Plus className="w-4 h-4" />
-        {isAr ? "عرض جديد" : "New presentation"}
+        {isAr ? "إنشاء عرض يدويًا" : "Create manually"}
       </Button>
     </div>
   );
