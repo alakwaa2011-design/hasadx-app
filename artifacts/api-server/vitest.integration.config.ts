@@ -32,6 +32,7 @@ export default defineConfig({
       "src/__tests__/manual-plan-grant.integration.test.ts",
       "src/__tests__/tts-cache-compensation.integration.test.ts",
       "src/__tests__/personal-assistant.integration.test.ts",
+      "src/__tests__/feedback-messaging.integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل

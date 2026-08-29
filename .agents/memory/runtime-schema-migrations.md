@@ -6,4 +6,4 @@ Rule: whenever a Drizzle schema file gains a table or column, add a matching ide
 
 **Why:** existing/production databases only get schema updates through these runtime migrations; Drizzle schema alone leaves prod failing with "column/table does not exist". A completion review rejected a feature for exactly this gap.
 
-**How to apply:** kicks in on any additive schema change; verify after restart that migration INFO lines appear in the api-server log and the affected endpoints return non-500.
+**How to apply:** kicks in on any additive schema change; verify after restart that migration INFO lines appear in the api-server log and the affected endpoints return non-500. Dedicated integration databases may come from older snapshots and do not boot the API entrypoint, so DB-backed route tests must apply the specific additive runtime migrations they exercise before inserting fixtures.
