@@ -19,6 +19,23 @@ export declare const feedbackTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        teacherId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_id";
+            tableName: "feedback";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         type: import("drizzle-orm/pg-core").PgColumn<{
             name: "type";
             tableName: "feedback";
@@ -194,6 +211,25 @@ export declare const feedbackTable: import("drizzle-orm/pg-core").PgTableWithCol
             generated: undefined;
         }, {}, {
             length: 20;
+        }>;
+        responseEmailRefKey: import("drizzle-orm/pg-core").PgColumn<{
+            name: "response_email_ref_key";
+            tableName: "feedback";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 100;
         }>;
     };
     dialect: "pg";

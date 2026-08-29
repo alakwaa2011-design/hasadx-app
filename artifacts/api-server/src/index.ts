@@ -74,7 +74,28 @@ async function runSchemaMigrations() {
     `);
     // ── Direct messages: image attachments ──
     await db.execute(sql`
-      ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS image_url TEXT
+      ALTER TABLE direct_messages
+        ADD COLUMN IF NOT EXISTS image_url TEXT,
+        ADD COLUMN IF NOT EXISTS feedback_id INTEGER REFERENCES feedback(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'general'
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS direct_messages_feedback_idx ON direct_messages(feedback_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS direct_messages_recipient_unread_idx
+        ON direct_messages(recipient_id, read_at)
+    `);
+    await db.execute(sql`
+      ALTER TABLE feedback
+        ADD COLUMN IF NOT EXISTS teacher_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS response_email_ref_key VARCHAR(100)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS feedback_teacher_idx ON feedback(teacher_id)
+    `);
+    await db.execute(sql`
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url TEXT
     `);
     // ── Unified analytics & presence (task: realtime analytics) ──
     await db.execute(sql`

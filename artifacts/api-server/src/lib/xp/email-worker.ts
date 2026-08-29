@@ -1,5 +1,5 @@
-import { db, emailOutboxTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, emailOutboxTable, feedbackTable } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
 import { logger } from "../logger";
 import { sendEmail } from "../email";
 
@@ -84,6 +84,22 @@ interface CycleStats {
   failedPermanent: number;
 }
 
+async function updateRelatedDeliveryStatus(
+  row: ClaimedRow,
+  status: "sent" | "failed",
+  reason?: string,
+): Promise<void> {
+  if (row.kind !== "feedback_reply") return;
+  const feedbackId = Number(row.ref_key.split(":")[0]);
+  if (!Number.isInteger(feedbackId) || feedbackId <= 0) return;
+  await db.update(feedbackTable)
+    .set({ responseEmailStatus: status })
+    .where(and(
+      eq(feedbackTable.id, feedbackId),
+      eq(feedbackTable.responseEmailRefKey, row.ref_key),
+    ));
+}
+
 async function processOnce(): Promise<CycleStats> {
   const rows = await claimDueRows(BATCH_SIZE);
   let sent = 0;
@@ -109,6 +125,7 @@ async function processOnce(): Promise<CycleStats> {
           nextAttemptAt: null,
         })
         .where(eq(emailOutboxTable.id, row.id));
+      await updateRelatedDeliveryStatus(row, "sent");
       sent++;
       logger.info(
         { id: row.id, kind: row.kind, refKey: row.ref_key },
@@ -130,6 +147,7 @@ async function processOnce(): Promise<CycleStats> {
           nextAttemptAt: null,
         })
         .where(eq(emailOutboxTable.id, row.id));
+      await updateRelatedDeliveryStatus(row, "failed", res.reason);
       failedPermanent++;
       logger.warn(
         {

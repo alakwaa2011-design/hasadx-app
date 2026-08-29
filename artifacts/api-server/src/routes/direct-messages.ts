@@ -1,8 +1,15 @@
 import { Router, type IRouter } from "express";
-import { db, directMessagesTable, notificationsTable, teachersTable } from "@workspace/db";
+import {
+  db,
+  directMessagesTable,
+  emailOutboxTable,
+  notificationsTable,
+  teachersTable,
+} from "@workspace/db";
 import { eq, and, or, desc, isNull, sql } from "drizzle-orm";
 import { z } from "zod/v4";
-import { sendEmail, getAppBaseUrl } from "../lib/email";
+import { getAppBaseUrl } from "../lib/email";
+import { notifyEmailQueued } from "../lib/xp/email-worker";
 
 const router: IRouter = Router();
 
@@ -22,6 +29,35 @@ async function getAdminId(): Promise<number | null> {
     .where(eq(teachersTable.isAdmin, true))
     .limit(1);
   return admin[0]?.id ?? null;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"]/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+  })[c] ?? c);
+}
+
+function platformMessageEmail(input: {
+  recipientName: string;
+  preview: string;
+  actionUrl: string;
+}): { subject: string; html: string; text: string } {
+  const safeName = escapeHtml(input.recipientName);
+  const safePreview = escapeHtml(input.preview);
+  return {
+    subject: "منصة حصاد | لديك رسالة جديدة",
+    html: `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f8faf9;border-radius:12px">
+      <h2 style="color:#1E4D35;margin:0 0 4px">منصة حصاد</h2>
+      <p style="color:#334155;font-size:14px">مرحباً ${safeName}،</p>
+      <p style="color:#334155;font-size:14px">وصلتك رسالة جديدة داخل المنصة:</p>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;color:#0f172a;font-size:14px;white-space:pre-wrap">${safePreview}</div>
+      <p style="margin-top:16px"><a href="${input.actionUrl}" style="background:#1E4D35;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;display:inline-block">افتح الرسائل للرد</a></p>
+    </div>`,
+    text: `وصلتك رسالة جديدة في منصة حصاد:\n\n${input.preview}\n\nللرد: ${input.actionUrl}`,
+  };
 }
 
 router.get("/direct-messages", async (req, res) => {
@@ -90,6 +126,8 @@ router.get("/direct-messages", async (req, res) => {
       senderId: m.senderId,
       content: m.content,
       imageUrl: m.imageUrl ?? null,
+      source: m.source,
+      feedbackId: m.feedbackId ?? null,
       // خصوصية مقصودة: المعلم لا يرى هل قرأ المسؤول رسالته أم لا —
       // نعيد readAt لرسائل المسؤول فقط (يلزم منطق العدّاد)، ولا نعيده لرسائل المعلم
       readAt: m.senderId === teacherId ? null : (m.readAt?.toISOString() ?? null),
@@ -127,6 +165,8 @@ router.get("/direct-messages/:teacherId", async (req, res) => {
     senderId: m.senderId,
     content: m.content,
     imageUrl: m.imageUrl ?? null,
+    source: m.source,
+    feedbackId: m.feedbackId ?? null,
     readAt: m.readAt?.toISOString() ?? null,
     createdAt: m.createdAt.toISOString(),
     mine: m.senderId === myId,
@@ -155,50 +195,71 @@ router.post("/direct-messages", async (req, res) => {
     recipientId = adminId;
   }
 
-  const [msg] = await db.insert(directMessagesTable).values({
-    senderId: teacherId,
-    recipientId,
-    content: parsed.data.content.trim(),
-    imageUrl: parsed.data.imageUrl ?? null,
-  }).returning();
-
   const recipient = await db.select({ name: teachersTable.name, email: teachersTable.email }).from(teachersTable).where(eq(teachersTable.id, recipientId)).limit(1);
+  if (!recipient[0]) { res.status(404).json({ message: "المستلم غير موجود" }); return; }
 
-  await db.insert(notificationsTable).values({
-    teacherId: recipientId,
-    type: "direct_message",
-    title: isAdmin ? "رسالة من منصة حصاد" : `رسالة من ${me[0].name}`,
-    body: msg.content
-      ? (msg.content.length > 80 ? msg.content.slice(0, 80) + "…" : msg.content)
-      : "📷 صورة مرفقة",
+  const rawContent = parsed.data.content.trim();
+  const preview = rawContent
+    ? (rawContent.length > 400 ? rawContent.slice(0, 400) + "…" : rawContent)
+    : "📷 صورة مرفقة — افتح المنصة لعرضها";
+  const baseUrl = getAppBaseUrl();
+  let emailQueued = false;
+
+  const msg = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(directMessagesTable).values({
+      senderId: teacherId,
+      recipientId,
+      content: rawContent,
+      imageUrl: parsed.data.imageUrl ?? null,
+      source: "general",
+    }).returning();
+
+    const actionUrl = isAdmin
+      ? "/teacher/messages?tab=platform"
+      : `/teacher/admin?tab=messages&teacher=${teacherId}`;
+
+    await tx.insert(notificationsTable).values({
+      teacherId: recipientId,
+      type: "direct_message",
+      title: isAdmin ? "رسالة من منصة حصاد" : `رسالة من ${me[0].name}`,
+      body: preview.length > 80 ? preview.slice(0, 80) + "…" : preview,
+      messageId: created.id,
+      actionUrl,
+    });
+
+    if (isAdmin && recipient[0].email) {
+      const absoluteActionUrl = `${baseUrl}${actionUrl}`;
+      const email = platformMessageEmail({
+        recipientName: recipient[0].name,
+        preview,
+        actionUrl: absoluteActionUrl,
+      });
+      await tx.insert(emailOutboxTable).values({
+        toEmail: recipient[0].email,
+        subject: email.subject,
+        htmlBody: email.html,
+        textBody: email.text,
+        kind: "platform_message",
+        refKey: String(created.id),
+        nextAttemptAt: new Date(),
+      }).onConflictDoNothing({
+        target: [emailOutboxTable.kind, emailOutboxTable.refKey],
+      });
+      emailQueued = true;
+    }
+
+    return created;
   });
 
-  // بريد تنبيهي للمعلم عندما يراسله المسؤول — باسم «منصة حصاد» دون ذكر المرسل.
-  // fire-and-forget: فشل البريد لا يمنع حفظ الرسالة داخل المنصة.
-  if (isAdmin && recipient[0]?.email) {
-    const platformUrl = getAppBaseUrl();
-    const rawPreview = msg.content || "📷 صورة مرفقة — افتح المنصة لعرضها";
-    const preview = rawPreview.length > 400 ? rawPreview.slice(0, 400) + "…" : rawPreview;
-    sendEmail({
-      to: recipient[0].email,
-      subject: "منصة حصاد | لديك رسالة جديدة",
-      html: `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f8faf9;border-radius:12px">
-        <h2 style="color:#1E4D35;margin:0 0 4px">منصة حصاد</h2>
-        <p style="color:#334155;font-size:14px">مرحباً ${recipient[0].name}،</p>
-        <p style="color:#334155;font-size:14px">وصلتك رسالة جديدة داخل المنصة:</p>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;color:#0f172a;font-size:14px;white-space:pre-wrap">${preview.replace(/</g, "&lt;")}</div>
-        <p style="margin-top:16px"><a href="${platformUrl}" style="background:#1E4D35;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;display:inline-block">افتح المنصة للرد</a></p>
-        <p style="color:#94a3b8;font-size:11px;margin-top:18px">هذه رسالة تلقائية من منصة حصاد — يمكنك الرد من داخل المنصة عبر أيقونة الرسائل.</p>
-      </div>`,
-      text: `وصلتك رسالة جديدة في منصة حصاد:\n\n${preview}\n\nللرد ادخل المنصة: ${platformUrl}`,
-    }).catch(() => { /* لا يؤثر على الرسالة */ });
-  }
+  if (emailQueued) notifyEmailQueued();
 
   res.json({
     id: msg.id,
     senderId: msg.senderId,
     content: msg.content,
     imageUrl: msg.imageUrl ?? null,
+    source: msg.source,
+    feedbackId: msg.feedbackId ?? null,
     readAt: null,
     createdAt: msg.createdAt.toISOString(),
     mine: true,

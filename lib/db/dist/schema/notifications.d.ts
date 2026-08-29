@@ -70,6 +70,23 @@ export declare const notificationsTable: import("drizzle-orm/pg-core").PgTableWi
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        actionUrl: import("drizzle-orm/pg-core").PgColumn<{
+            name: "action_url";
+            tableName: "notifications";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         type: import("drizzle-orm/pg-core").PgColumn<{
             name: "type";
             tableName: "notifications";

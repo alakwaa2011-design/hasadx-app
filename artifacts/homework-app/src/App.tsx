@@ -223,6 +223,7 @@ const SoloChallengesPage = lazy(() => import("@/pages/teacher/solo-challenges"))
 const SoloChallengeCreate = lazy(() => import("@/pages/teacher/solo-challenge-create"));
 const SoloChallengeManage = lazy(() => import("@/pages/teacher/solo-challenge-manage"));
 const ParentMessagesPage = lazy(() => import("@/pages/teacher/parent-messages"));
+const TeacherMessagesPage = lazy(() => import("@/pages/teacher/messages"));
 const ParentPortalPage = lazy(() => import("@/pages/parent-portal"));
 
 // Feature landing pages (SEO / public)
@@ -425,6 +426,7 @@ function Router() {
         <Route path="/teacher/video-lesson/:id/live" component={VideoLive} />
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
         <Route path="/teacher/parent-messages" component={ParentMessagesPage} />
+        <Route path="/teacher/messages" component={TeacherMessagesPage} />
         <Route path="/teacher" component={TeacherDashboard} />
         {/* Parent Portal — public, no auth */}
         <Route path="/parent/:token" component={ParentPortalPage} />

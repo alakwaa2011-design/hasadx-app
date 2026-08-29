@@ -14,6 +14,7 @@ interface Notification {
   body: string;
   assignmentId: number | null;
   messageId: number | null;
+  actionUrl: string | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -74,7 +75,10 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
 
   function handleNotifClick(n: Notification) {
     if (!n.isRead) markRead.mutate(n.id);
-    if (["credit_award", "plan_award", "unlimited_award"].includes(n.type)) {
+    if (n.actionUrl) {
+      setLocation(n.actionUrl);
+      setOpen(false);
+    } else if (["credit_award", "plan_award", "unlimited_award"].includes(n.type)) {
       setOpen(false);
     } else if (n.type === "direct_message") {
       onDirectMessageClick?.();
@@ -86,7 +90,7 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
       (n.type === "parent_message_read" || n.type === "parent_message_reply") &&
       n.messageId
     ) {
-      setLocation(`/teacher/parent-messages?message=${n.messageId}`);
+      setLocation(`/teacher/messages?tab=parents&message=${n.messageId}`);
       setOpen(false);
     } else if (n.assignmentId) {
       setLocation(`/teacher/assignment/${n.assignmentId}`);

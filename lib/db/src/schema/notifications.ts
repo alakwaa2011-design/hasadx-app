@@ -7,6 +7,7 @@ export const notificationsTable = pgTable("notifications", {
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id),
   assignmentId: integer("assignment_id").references(() => assignmentsTable.id),
   messageId: integer("message_id"),
+  actionUrl: text("action_url"),
   type: text("type").notNull(),
   title: text("title").notNull(),
   body: text("body").notNull(),

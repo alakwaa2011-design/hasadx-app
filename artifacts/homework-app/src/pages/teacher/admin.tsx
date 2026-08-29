@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowRight, ArrowLeft, Users, BookText, FileCheck,
@@ -240,7 +240,7 @@ function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete,
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+    <motion.div id={`feedback-${fb.id}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
       <Card className={`p-4 ${fb.status === "new" ? "border-yellow-300 dark:border-yellow-700" : ""}`}>
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
@@ -273,6 +273,11 @@ function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete,
                   {emailStatus === "sent" && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-bold">
                       {lang === "ar" ? "أُرسل بالبريد" : "Emailed"}
+                    </span>
+                  )}
+                  {emailStatus === "queued" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-bold">
+                      {lang === "ar" ? "في طابور البريد" : "Email queued"}
                     </span>
                   )}
                   {emailStatus?.startsWith("failed") && (
@@ -384,12 +389,18 @@ export default function AdminPage() {
   const adminLang = lang === "ar" ? "ar" : "en";
   const updateTheme = useThemeUpdater();
   const [location, setLocation] = useLocation();
+  const urlSearch = useSearch();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
-  const rawUrlTab = new URLSearchParams(location.split("?")[1] ?? "").get("tab");
+  const rawUrlTab = new URLSearchParams(urlSearch).get("tab");
+  const requestedFeedbackId = Number(new URLSearchParams(urlSearch).get("id"));
   // إعادة توجيه التبويبات القديمة (الباقات والإيرادات / إدارة الرصيد / صفحة الرصيد الجديدة) للتبويب الموحد
   const urlTab = (rawUrlTab && LEGACY_CREDIT_TABS.includes(rawUrlTab) ? "hasad-credits" : rawUrlTab) as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(urlTab ?? "stats");
+
+  useEffect(() => {
+    if (urlTab && urlTab !== activeTab) setActiveTab(urlTab);
+  }, [urlTab]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [students, setStudents] = useState<StudentData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -839,6 +850,16 @@ export default function AdminPage() {
       .catch(() => {})
       .finally(() => setFeedbackLoading(false));
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "feedback" || !Number.isInteger(requestedFeedbackId) || feedbackItems.length === 0) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`feedback-${requestedFeedbackId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [activeTab, requestedFeedbackId, feedbackItems.length]);
 
   const loadOnlineData = () => {
     setOnlineLoading(true);

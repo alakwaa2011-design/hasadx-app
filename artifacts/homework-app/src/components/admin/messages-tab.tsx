@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Loader2, MessageSquare, Users, ArrowRight, Plus, Search, X, ImagePlus, CheckCheck, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
+import { useSearch } from "wouter";
 import { uploadDmImage, dmImageSrc } from "@/components/direct-message-drawer";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -48,6 +49,8 @@ export function MessagesTab() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const urlSearch = useSearch();
+  const requestedTeacherId = Number(new URLSearchParams(urlSearch).get("teacher"));
 
   const { data: threads = [], isLoading: threadsLoading } = useQuery<TeacherThread[]>({
     queryKey: ["dm-admin-threads"],
@@ -184,6 +187,13 @@ export function MessagesTab() {
     t.name.toLowerCase().includes(search.toLowerCase()) ||
     (t.email ?? "").toLowerCase().includes(search.toLowerCase())
   );
+
+  useEffect(() => {
+    if (!Number.isInteger(requestedTeacherId) || requestedTeacherId <= 0) return;
+    const thread = threads.find((item) => item.teacher_id === requestedTeacherId);
+    setSelectedTeacherId(requestedTeacherId);
+    if (thread) setSelectedTeacherName(thread.teacher_name);
+  }, [requestedTeacherId, threads]);
 
   return (
     <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]" dir={dir}>

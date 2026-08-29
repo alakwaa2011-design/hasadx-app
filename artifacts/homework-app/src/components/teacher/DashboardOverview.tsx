@@ -3501,7 +3501,7 @@ function QuickLinks({
     {
       icon: <MessageCircle style={{ width: 14, height: 14 }} />,
       label: isAr ? "رسائل الأهالي" : "Parent messages",
-      href: "/teacher/parent-messages",
+      href: "/teacher/messages",
     },
     {
       icon: <Library style={{ width: 14, height: 14 }} />,

@@ -366,9 +366,9 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     <CreditsChip />
                     {!isTeacherAdmin && (
                       <button
-                        onClick={() => setDmOpen(true)}
+                        onClick={() => setLocation("/teacher/messages?tab=platform")}
                         className="relative p-2 rounded-lg text-white/75 hover:text-white hover:bg-white/10 transition-colors"
-                        title={lang === "ar" ? "رسائل المسؤول" : "Admin messages"}
+                        title={lang === "ar" ? "رسائل المنصة" : "Platform messages"}
                       >
                         <MessageSquare className="w-5 h-5" />
                         {dmUnreadCount > 0 && (
@@ -386,7 +386,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       if (isTeacherAdmin) {
                         setLocation("/teacher/admin?tab=messages");
                       } else {
-                        setDmOpen(true);
+                         setLocation("/teacher/messages?tab=platform");
                       }
                     }} />
                     <div className="h-5 w-px bg-white/20 mx-1" />
@@ -597,7 +597,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       if (isTeacherAdmin) {
                         setLocation("/teacher/admin?tab=messages");
                       } else {
-                        setDmOpen(true);
+                         setLocation("/teacher/messages?tab=platform");
                       }
                     }} />
                     <button
@@ -651,7 +651,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       if (isTeacherAdmin) {
                         setLocation("/teacher/admin?tab=messages");
                       } else {
-                        setDmOpen(true);
+                         setLocation("/teacher/messages?tab=platform");
                       }
                     }} />}
                     {!isLoading && !user && !student && (
@@ -739,12 +739,12 @@ export function Layout({ children, noHeader }: LayoutProps) {
                               : "System"}
                       </button>
                       <Link
-                        href="/teacher/parent-messages"
+                         href="/teacher/messages"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted active:bg-muted/80 w-full transition-colors"
                       >
-                        <Mail className="w-5 h-5 text-emerald-600" />
-                        {lang === "ar" ? "رسائل أولياء الأمور" : "Parent Messages"}
+                         <Mail className="w-5 h-5 text-emerald-600" />
+                         {lang === "ar" ? "الرسائل" : "Messages"}
                       </Link>
                       <Link
                         href="/teacher/settings"

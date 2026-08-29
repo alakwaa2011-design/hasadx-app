@@ -439,6 +439,8 @@ router.get("/parent-portal/:token", async (req, res) => {
         type: "parent_message_read",
         title: "📩 قرأ ولي الأمر رسالتك",
         body: `اطّلع ولي أمر ${msg.studentName} على رسالتك بتاريخ ${dateStr} الساعة ${timeStr}`,
+        messageId: msg.id,
+        actionUrl: `/teacher/messages?tab=parents&message=${msg.id}`,
       }).catch(() => {});
     }
 
@@ -579,6 +581,8 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
       type: "parent_message_reply",
       title: "💬 ردّ ولي الأمر على رسالتك",
       body: `أرسل ولي أمر ${msg.studentName} رداً على رسالتك — افتح رسائل أولياء الأمور لعرض الرد`,
+      messageId: msg.id,
+      actionUrl: `/teacher/messages?tab=parents&message=${msg.id}`,
     }).catch(() => {});
 
     res.json({ ok: true });

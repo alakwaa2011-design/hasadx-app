@@ -1,8 +1,17 @@
 import { Router, type IRouter } from "express";
-import { db, feedbackTable, teachersTable, notificationsTable } from "@workspace/db";
+import { createHash } from "node:crypto";
+import {
+  db,
+  directMessagesTable,
+  emailOutboxTable,
+  feedbackTable,
+  notificationsTable,
+  teachersTable,
+} from "@workspace/db";
 import { SubmitFeedbackBody } from "@workspace/api-zod";
-import { desc, eq } from "drizzle-orm";
-import { sendEmail } from "../lib/email.js";
+import { and, desc, eq } from "drizzle-orm";
+import { getAppBaseUrl } from "../lib/email.js";
+import { notifyEmailQueued } from "../lib/xp/email-worker";
 
 const router: IRouter = Router();
 
@@ -30,36 +39,70 @@ const typeLabels: Record<string, string> = {
   other: "أخرى",
 };
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"]/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+  })[c] ?? c);
+}
+
+async function firstAdminId(): Promise<number | null> {
+  const [admin] = await db.select({ id: teachersTable.id })
+    .from(teachersTable)
+    .where(eq(teachersTable.isAdmin, true))
+    .limit(1);
+  return admin?.id ?? null;
+}
+
 router.post("/feedback", async (req, res) => {
   try {
     const body = SubmitFeedbackBody.parse(req.body);
 
-    await db.insert(feedbackTable).values({
-      type: body.type,
-      name: body.name,
-      email: body.email || null,
-      message: body.message,
-    });
+    // A typed email is not proof of account ownership. Only an authenticated
+    // teacher session may attach feedback to a teacher conversation.
+    const teacherId = req.session?.teacherId ?? null;
+    const adminId = await firstAdminId();
+    const typeLabel = typeLabels[body.type] || body.type;
 
-    try {
-      const admins = await db.select({ id: teachersTable.id })
+    await db.transaction(async (tx) => {
+      const [feedback] = await tx.insert(feedbackTable).values({
+        teacherId,
+        type: body.type,
+        name: body.name,
+        email: body.email || null,
+        message: body.message,
+      }).returning();
+
+      let platformMessageId: number | null = null;
+      if (teacherId && adminId && teacherId !== adminId) {
+        const [message] = await tx.insert(directMessagesTable).values({
+          senderId: teacherId,
+          recipientId: adminId,
+          feedbackId: feedback.id,
+          source: "feedback",
+          content: `${typeLabel}: ${body.message}`,
+        }).returning({ id: directMessagesTable.id });
+        platformMessageId = message.id;
+      }
+
+      const admins = await tx.select({ id: teachersTable.id })
         .from(teachersTable)
         .where(eq(teachersTable.isAdmin, true));
-
       if (admins.length > 0) {
-        const typeLabel = typeLabels[body.type] || body.type;
-        await db.insert(notificationsTable).values(
+        await tx.insert(notificationsTable).values(
           admins.map(admin => ({
             teacherId: admin.id,
             type: "feedback",
             title: `ملاحظة جديدة (${typeLabel}) من ${body.name}`,
             body: body.message.length > 120 ? body.message.slice(0, 120) + "…" : body.message,
-          }))
+            messageId: platformMessageId,
+            actionUrl: `/teacher/admin?tab=feedback&id=${feedback.id}`,
+          })),
         );
       }
-    } catch (e: any) {
-      req.log.error({ err: e }, "Failed to notify admins about feedback");
-    }
+    });
 
     res.status(201).json({ message: "تم إرسال ملاحظتك بنجاح" });
   } catch (error: any) {
@@ -120,11 +163,43 @@ router.post("/admin/feedback/:id/respond", async (req: any, res) => {
       .where(eq(teachersTable.id, req.session.teacherId))
       .limit(1);
 
-    let emailStatus: string | null = null;
-    if (sendByEmail && item.email) {
-      const safeMsg = message.replace(/[<>]/g, (c) => (c === "<" ? "&lt;" : "&gt;"));
-      const safeOriginal = item.message.replace(/[<>]/g, (c) => (c === "<" ? "&lt;" : "&gt;"));
-      const html = `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7;color:#1f2937">
+    const teacherId = item.teacherId;
+
+    let emailStatus: string | null = sendByEmail
+      ? (item.email ? "queued" : "no_email")
+      : "skipped";
+    let emailQueued = false;
+    const updated = await db.transaction(async (tx) => {
+      let replyMessageId: number | null = null;
+      if (teacherId && teacherId !== req.session.teacherId) {
+        const [replyMessage] = await tx.insert(directMessagesTable).values({
+          senderId: req.session.teacherId,
+          recipientId: teacherId,
+          feedbackId: item.id,
+          source: "feedback",
+          content: message,
+        }).returning({ id: directMessagesTable.id });
+        replyMessageId = replyMessage.id;
+
+        await tx.insert(notificationsTable).values({
+          teacherId,
+          type: "direct_message",
+          title: "رد من منصة حصاد على اقتراحك",
+          body: message.length > 120 ? message.slice(0, 120) + "…" : message,
+          messageId: replyMessage.id,
+          actionUrl: "/teacher/messages?tab=platform",
+        });
+      }
+
+      const emailRefKey = sendByEmail && item.email
+        ? `${item.id}:${createHash("sha256").update(message).digest("hex").slice(0, 24)}`
+        : null;
+
+      if (sendByEmail && item.email) {
+        const safeMsg = escapeHtml(message);
+        const safeOriginal = escapeHtml(item.message);
+        const actionUrl = `${getAppBaseUrl()}/teacher/messages?tab=platform`;
+        const html = `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7;color:#1f2937">
         <div style="background:#225739;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0">
           <h2 style="margin:0;font-size:18px">رد من فريق حصاد</h2>
         </div>
@@ -135,38 +210,54 @@ router.post("/admin/feedback/:id/respond", async (req: any, res) => {
           <hr style="border:0;border-top:1px solid #e5e7eb;margin:22px 0" />
           <p style="margin:0 0 6px;color:#6b7280;font-size:13px">ملاحظتك الأصلية:</p>
           <div style="color:#6b7280;font-size:13px;white-space:pre-wrap">${safeOriginal}</div>
+          ${teacherId ? `<p style="margin:20px 0 0"><a href="${actionUrl}" style="background:#225739;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">افتح المحادثة للرد</a></p>` : ""}
           <p style="margin:22px 0 0;color:#225739;font-weight:bold">— ${admin?.name || "فريق حصاد"}</p>
         </div>
       </div>`;
-      const text = `مرحباً ${item.name}،\n\n${message}\n\n— ${admin?.name || "فريق حصاد"}`;
-      const result = await sendEmail({
-        to: item.email,
-        subject: "رد على ملاحظتك في منصة حصاد",
-        html,
-        text,
-      });
-      emailStatus = result.delivered ? "sent" : `failed:${result.reason || "unknown"}`;
-      if (!result.delivered) {
-        req.log.warn({ feedbackId: id, reason: result.reason }, "Feedback reply email not delivered");
+        const text = `مرحباً ${item.name}،\n\n${message}\n\n${teacherId ? `للمتابعة: ${actionUrl}\n\n` : ""}— ${admin?.name || "فريق حصاد"}`;
+        const [insertedEmail] = await tx.insert(emailOutboxTable).values({
+          toEmail: item.email,
+          subject: "رد على ملاحظتك في منصة حصاد",
+          htmlBody: html,
+          textBody: text,
+          kind: "feedback_reply",
+          refKey: emailRefKey!,
+          nextAttemptAt: new Date(),
+        }).onConflictDoNothing({
+          target: [emailOutboxTable.kind, emailOutboxTable.refKey],
+        }).returning({ id: emailOutboxTable.id });
+        emailQueued = Boolean(insertedEmail);
+        if (!insertedEmail) {
+          const [existingEmail] = await tx.select({ status: emailOutboxTable.status })
+            .from(emailOutboxTable)
+            .where(and(
+              eq(emailOutboxTable.kind, "feedback_reply"),
+              eq(emailOutboxTable.refKey, emailRefKey!),
+            ))
+            .limit(1);
+          emailStatus = existingEmail?.status === "sent" || existingEmail?.status === "failed"
+            ? existingEmail.status
+            : "queued";
+        }
       }
-    } else if (sendByEmail && !item.email) {
-      emailStatus = "no_email";
-    } else {
-      emailStatus = "skipped";
-    }
 
-    const [updated] = await db
-      .update(feedbackTable)
-      .set({
-        adminResponse: message,
-        respondedAt: new Date(),
-        respondedBy: req.session.teacherId,
-        responseEmailStatus: emailStatus,
-        status: "resolved",
-      })
-      .where(eq(feedbackTable.id, id))
-      .returning();
+      const [saved] = await tx
+        .update(feedbackTable)
+        .set({
+          teacherId,
+          adminResponse: message,
+          respondedAt: new Date(),
+          respondedBy: req.session.teacherId,
+          responseEmailStatus: emailStatus,
+          responseEmailRefKey: emailRefKey,
+          status: "resolved",
+        })
+        .where(eq(feedbackTable.id, id))
+        .returning();
+      return saved;
+    });
 
+    if (emailQueued) notifyEmailQueued();
     res.json(updated);
   } catch (err: any) {
     req.log.error({ err }, "Respond to feedback error");
