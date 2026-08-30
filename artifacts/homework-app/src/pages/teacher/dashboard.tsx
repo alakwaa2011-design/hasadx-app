@@ -2894,7 +2894,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
         },
         {
           icon: <Library className="w-6 h-6" />,
-          title: isAr ? "ملفات المعلم" : "Teacher Files",
+          title: isAr ? "مكتبة المعلم" : "Teacher Library",
           desc: isAr
             ? "ارفع وأدر كتبك وأوراق عملك ومصادرك التعليمية"
             : "Upload and manage your books, worksheets & teaching resources",
