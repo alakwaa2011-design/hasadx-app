@@ -957,7 +957,20 @@ export default function ArenaSetup() {
                       <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>اختر 3 فئات لكل فريق — الفئات العادية بـ <strong style={{ color: "#a07f37" }}>6 بطاقات</strong> (200×2، 400×2، 600×2) · فئات <strong style={{ color: "#7c3aed" }}>اكتشف السر</strong> بطاقتان بدرجات ديناميكية · يمكن إضافة <strong style={{ color: "#c9a14b" }}>800⭐</strong> عبر فئة مخصصة</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    <Link
+                      href="/teacher/arena-content"
+                      className="px-4 py-2.5 rounded-xl font-bold text-sm inline-flex items-center gap-2 transition hover:opacity-90"
+                      style={{
+                        background: "#ffffff",
+                        color: "#1f4d4f",
+                        border: "1px solid rgba(31,77,79,0.25)",
+                      }}
+                      title="إنشاء وتعديل فئات وأسئلة تحدي حصاد"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      إدارة محتوى اللعبة
+                    </Link>
                     <motion.button
                       onClick={pickRandomCategories}
                       whileHover={{ scale: 1.04, y: -1 }}

@@ -2931,15 +2931,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           accent: BRAND.green,
           href: "/teacher/library",
         },
-        {
-          icon: <Globe className="w-6 h-6" />,
-          title: isAr ? "المحتوى المشترك" : "Shared Content",
-          desc: isAr
-            ? "تصفح واجبات وأسئلة ومسابقات المعلمين الآخرين"
-            : "Browse assignments, questions & games from other teachers",
-          accent: BRAND.green,
-          href: "/teacher/library/homework",
-        },
       ],
     },
     {
