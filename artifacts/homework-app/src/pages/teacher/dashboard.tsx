@@ -2882,7 +2882,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
     },
     {
       groupId: "content",
-      groupTitle: isAr ? "مكتبة المحتوى" : "Content Library",
+      groupTitle: isAr ? "المحتوى والموارد" : "Content & Resources",
       groupIcon: <Database className="w-4 h-4" />,
       tools: [
         {
@@ -2893,25 +2893,11 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           href: "/teacher/question-bank",
         },
         {
-          icon: <FolderOpen className="w-6 h-6" />,
-          title: t.dashboard.toolCollections,
-          desc: t.dashboard.toolCollectionsDesc,
-          accent: BRAND.green,
-          href: "/teacher/collections",
-        },
-        {
-          icon: <Tag className="w-6 h-6" />,
-          title: t.dashboard.toolCategories,
-          desc: t.dashboard.toolCategoriesDesc,
-          accent: BRAND.green,
-          href: "/teacher/categories",
-        },
-        {
           icon: <Library className="w-6 h-6" />,
-          title: isAr ? "مكتبة المعلم" : "Teacher Library",
+          title: isAr ? "ملفات المعلم" : "Teacher Files",
           desc: isAr
-            ? "ارفع وأدر كتبك وأوراق عملك وخطط دروسك"
-            : "Upload and manage your books, worksheets & lesson plans",
+            ? "ارفع وأدر كتبك وأوراق عملك ومصادرك التعليمية"
+            : "Upload and manage your books, worksheets & teaching resources",
           accent: BRAND.green,
           href: "/teacher/library",
         },
