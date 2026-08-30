@@ -2787,7 +2787,6 @@ function CompetitiveTab({
 
 function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }: any) {
   const isAr = lang === "ar";
-  const isAdmin = !!user?.isAdmin;
   // Map sidebar sub-tab id → which toolGroups to show
   const groupFilter: Record<string, string[]> = {
     "ai-tools": ["ai-tools"],
@@ -2906,21 +2905,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           desc: t.dashboard.toolCategoriesDesc,
           accent: BRAND.green,
           href: "/teacher/categories",
-        },
-        {
-          icon: <Sparkles className="w-6 h-6" />,
-          title: isAr
-            ? (isAdmin ? "محتوى ساحة حصاد" : "فئاتي في الساحة")
-            : (isAdmin ? "Hasaad Arena Content" : "My Arena Categories"),
-          desc: isAr
-            ? (isAdmin
-                ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"
-                : "أنشئ فئاتك وأسئلتك الخاصة في تحدي حصاد — تبقى في حسابك")
-            : (isAdmin
-                ? "Manage Arena sections, sub-categories & questions with images and AI"
-                : "Create your own private Arena categories and questions"),
-          accent: BRAND.green,
-          href: "/teacher/arena-content",
         },
         {
           icon: <Library className="w-6 h-6" />,
