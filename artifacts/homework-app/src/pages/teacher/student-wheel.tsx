@@ -68,6 +68,53 @@ const getSliceColor = (index: number, total: number) => {
   }
 };
 
+const playWheelTick = (ctx: AudioContext, time: number) => {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1000, time);
+  osc.frequency.exponentialRampToValueAtTime(100, time + 0.015);
+
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(0.08, time + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+
+  osc.start(time);
+  osc.stop(time + 0.03);
+};
+
+const playWinnerChime = (ctx: AudioContext, freq: number, startTime: number, dur: number) => {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.value = freq;
+
+  const oscHarm = ctx.createOscillator();
+  const gainHarm = ctx.createGain();
+  oscHarm.connect(gainHarm);
+  gainHarm.connect(ctx.destination);
+  oscHarm.type = "sine";
+  oscHarm.frequency.value = freq * 2.01;
+
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(0.12, startTime + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+
+  gainHarm.gain.setValueAtTime(0, startTime);
+  gainHarm.gain.linearRampToValueAtTime(0.03, startTime + 0.04);
+  gainHarm.gain.exponentialRampToValueAtTime(0.001, startTime + dur * 0.6);
+
+  osc.start(startTime);
+  osc.stop(startTime + dur);
+  oscHarm.start(startTime);
+  oscHarm.stop(startTime + dur);
+};
+
 export default function StudentWheelPage() {
   const { lang } = useI18n();
   const isAr = lang === "ar";
@@ -118,6 +165,9 @@ export default function StudentWheelPage() {
     try {
       localStorage.setItem("hasad:student-wheel-sound", String(soundEnabled));
     } catch (e) {}
+    if (!soundEnabled) {
+      cleanupAudio();
+    }
   }, [soundEnabled]);
 
   useEffect(() => cleanupAudio, []);
@@ -237,28 +287,35 @@ export default function StudentWheelPage() {
         if (AudioContextClass) {
           const ctx = new AudioContextClass();
           activeAudioCtxRef.current = ctx;
+          if (ctx.state === "suspended") {
+            ctx.resume().catch(() => {});
+          }
 
+          const now = ctx.currentTime;
           const duration = 4;
-          const ticks = 40;
+          const ticks = 45;
+
+          const sweepOsc = ctx.createOscillator();
+          const sweepGain = ctx.createGain();
+          sweepOsc.connect(sweepGain);
+          sweepGain.connect(ctx.destination);
+          sweepOsc.type = "triangle";
+          sweepOsc.frequency.setValueAtTime(220, now);
+          sweepOsc.frequency.exponentialRampToValueAtTime(40, now + duration);
+
+          sweepGain.gain.setValueAtTime(0, now);
+          sweepGain.gain.linearRampToValueAtTime(0.015, now + 0.1);
+          sweepGain.gain.linearRampToValueAtTime(0, now + duration);
+
+          sweepOsc.start(now);
+          sweepOsc.stop(now + duration);
+
           for (let i = 0; i < ticks; i++) {
             const progress = i / (ticks - 1);
-            const time = duration * (1 - Math.pow(1 - progress, 4)); // ease out quart
+            const time = duration * (1 - Math.pow(1 - progress, 3.5)); // cubic/quart easing
 
             if (time < duration) {
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-
-              osc.type = "sine";
-              osc.frequency.setValueAtTime(800 - (progress * 200), ctx.currentTime + time);
-
-              gain.gain.setValueAtTime(0, ctx.currentTime + time);
-              gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + time + 0.01);
-              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + time + 0.05);
-
-              osc.start(ctx.currentTime + time);
-              osc.stop(ctx.currentTime + time + 0.05);
+              playWheelTick(ctx, now + time);
             }
           }
         }
@@ -280,24 +337,13 @@ export default function StudentWheelPage() {
       if (soundEnabled && activeAudioCtxRef.current) {
         try {
           const ctx = activeAudioCtxRef.current;
-          const playNote = (freq: number, startTime: number, dur: number) => {
-             const osc = ctx.createOscillator();
-             const gain = ctx.createGain();
-             osc.connect(gain);
-             gain.connect(ctx.destination);
-             osc.type = "triangle";
-             osc.frequency.value = freq;
-             gain.gain.setValueAtTime(0, startTime);
-             gain.gain.linearRampToValueAtTime(0.1, startTime + 0.02);
-             gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
-             osc.start(startTime);
-             osc.stop(startTime + dur);
-          };
-
+          if (ctx.state === "suspended") {
+            ctx.resume().catch(() => {});
+          }
           const now = ctx.currentTime;
-          playNote(523.25, now, 0.4);       // C5
-          playNote(659.25, now + 0.15, 0.4); // E5
-          playNote(783.99, now + 0.3, 0.8);  // G5
+          playWinnerChime(ctx, 523.25, now, 1.2);
+          playWinnerChime(ctx, 659.25, now + 0.15, 1.2);
+          playWinnerChime(ctx, 783.99, now + 0.3, 1.8);
         } catch (e) {
            console.warn("Winner audio failed:", e);
         }
