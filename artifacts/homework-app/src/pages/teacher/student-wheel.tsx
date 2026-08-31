@@ -44,7 +44,7 @@ interface PickHistoryItem {
   id: string;
   participantId: string;
   name: string;
-  time: Date;
+  time?: Date;
   returnedToWheel?: boolean;
 }
 
@@ -210,6 +210,24 @@ export default function StudentWheelPage() {
     [sourceParticipants, noRepeat, pickedIds],
   );
 
+  const unifiedHistory = useMemo(() => {
+    const activeHistoryParticipantIds = new Set(
+      history
+        .filter((item) => !item.returnedToWheel)
+        .map((item) => item.participantId),
+    );
+    const missingActiveEntries: PickHistoryItem[] = pickedParticipants
+      .filter((participant) => !activeHistoryParticipantIds.has(participant.id))
+      .map((participant) => ({
+        id: `active-${participant.id}`,
+        participantId: participant.id,
+        name: participant.name,
+        time: undefined,
+      }));
+
+    return [...missingActiveEntries, ...history];
+  }, [history, pickedParticipants]);
+
   const addManualNames = (rawNames: string) => {
     const names = rawNames.split(/[\n,،;]+/).map((name) => name.trim().replace(/\s+/g, " ")).filter(Boolean);
     if (names.length === 0) return;
@@ -337,6 +355,18 @@ export default function StudentWheelPage() {
     });
   };
 
+  const handleParticipantCheckboxChange = (
+    participant: Participant,
+    alreadyPicked: boolean,
+    currentlyDisabled: boolean,
+  ) => {
+    if (alreadyPicked && !currentlyDisabled) {
+      returnParticipantToWheel(participant.id);
+      return;
+    }
+    toggleDisabled(participant.id, currentlyDisabled);
+  };
+
   const startNewRound = () => {
     setPickedIds(new Set());
     setShowAvailableList(true);
@@ -367,7 +397,7 @@ export default function StudentWheelPage() {
         <input
           type="checkbox"
           checked={!disabled}
-          onChange={() => toggleDisabled(participant.id, disabled)}
+          onChange={() => handleParticipantCheckboxChange(participant, alreadyPicked, disabled)}
           data-testid={checkboxTestId}
           className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30 cursor-pointer"
         />
@@ -517,29 +547,6 @@ export default function StudentWheelPage() {
                            </div>
                          )}
                        </div>
-                       {pickedParticipants.some((participant) => participant.source === "class") && (
-                         <div className="rounded-xl border border-border/50 overflow-hidden">
-                           <button
-                             type="button"
-                             onClick={() => setShowPickedList((value) => !value)}
-                             aria-expanded={showPickedList}
-                             data-testid="button-toggle-picked-list"
-                             className="flex w-full items-center justify-between gap-3 bg-primary/5 px-3 py-2.5 text-start hover:bg-primary/10 transition-colors"
-                           >
-                             <span className="text-xs font-black text-foreground">
-                               {isAr ? `تم اختيارهم (${pickedParticipants.filter((p) => p.source === "class").length})` : `Picked (${pickedParticipants.filter((p) => p.source === "class").length})`}
-                             </span>
-                             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showPickedList ? "rotate-180" : ""}`} />
-                           </button>
-                           {showPickedList && (
-                             <div className="flex flex-col gap-1.5 p-2">
-                               {pickedParticipants
-                                 .filter((participant) => participant.source === "class")
-                                 .map((participant) => renderParticipantRow(participant))}
-                             </div>
-                           )}
-                         </div>
-                       )}
                     </div>
                   )}
                 </div>
@@ -627,29 +634,6 @@ export default function StudentWheelPage() {
                        </div>
                      )}
                    </div>
-                   {pickedParticipants.some((participant) => participant.source === "manual") && (
-                     <div className="rounded-xl border border-border/50 overflow-hidden">
-                       <button
-                         type="button"
-                         onClick={() => setShowPickedList((value) => !value)}
-                         aria-expanded={showPickedList}
-                         data-testid="button-toggle-picked-list"
-                         className="flex w-full items-center justify-between gap-3 bg-primary/5 px-3 py-2.5 text-start hover:bg-primary/10 transition-colors"
-                       >
-                         <span className="text-xs font-black text-foreground">
-                           {isAr ? `تم اختيارهم (${pickedParticipants.filter((p) => p.source === "manual").length})` : `Picked (${pickedParticipants.filter((p) => p.source === "manual").length})`}
-                         </span>
-                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showPickedList ? "rotate-180" : ""}`} />
-                       </button>
-                       {showPickedList && (
-                         <div className="flex flex-col gap-1.5 p-2">
-                           {pickedParticipants
-                             .filter((participant) => participant.source === "manual")
-                             .map((participant) => renderParticipantRow(participant, true))}
-                         </div>
-                       )}
-                     </div>
-                   )}
                 </div>
                 {manualParticipants.length > 0 && (
                   <Button
@@ -713,47 +697,82 @@ export default function StudentWheelPage() {
               </Card>
             )}
 
-            {history.length > 0 && (
+            {unifiedHistory.length > 0 && (
               <Card className="p-4 flex-1 min-h-[150px] flex flex-col shadow-sm" data-testid="card-history">
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/50">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <History className="w-3.5 h-3.5" />
-                    {isAr ? "السجل" : "History"}
-                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowPickedList((value) => !value)}
+                    aria-expanded={showPickedList}
+                    data-testid="button-toggle-picked-list"
+                    className="flex min-w-0 items-center gap-1.5 text-start text-xs font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                  >
+                    <History className="w-3.5 h-3.5 shrink-0" />
+                    <span>{isAr ? `تم اختيارهم والسجل (${unifiedHistory.length})` : `Picked & history (${unifiedHistory.length})`}</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showPickedList ? "rotate-180" : ""}`} />
+                  </button>
                   <button onClick={() => setHistory([])} data-testid="button-clear-history" className="text-[11px] font-bold text-muted-foreground hover:text-destructive transition-colors">
                     {isAr ? "مسح" : "Clear"}
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-                    {history.map((h, i) => {
-                      const canReturn = noRepeat && pickedIds.has(h.participantId) && !h.returnedToWheel;
+                {showPickedList && (
+                  <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                    {unifiedHistory.map((h, i) => {
+                      const participant = sourceParticipants.find((item) => item.id === h.participantId);
+                      const canReturn = Boolean(participant && noRepeat && pickedIds.has(h.participantId) && !h.returnedToWheel);
                       return (
-                      <button
-                        key={h.id}
-                        type="button"
-                        disabled={!canReturn}
-                        onClick={() => returnParticipantToWheel(h.participantId, h.id)}
-                        data-testid={`row-history-${i}`}
-                        className={`flex w-full justify-between items-center text-sm px-3 py-2 rounded-lg bg-muted/40 border border-border/40 text-start ${
-                          canReturn ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : "cursor-default"
-                        }`}
-                        title={canReturn ? (isAr ? "اضغط لإعادة الاسم إلى العجلة" : "Click to return the name to the wheel") : undefined}
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="truncate font-bold text-foreground">{h.name}</span>
-                          {h.returnedToWheel && (
-                            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                              {isAr ? "أُعيد للعجلة" : "Returned"}
+                        <div
+                          key={h.id}
+                          data-testid={`row-history-${i}`}
+                          className={`flex w-full items-center gap-2 text-sm px-3 py-2 rounded-lg bg-muted/40 border border-border/40 ${
+                            canReturn ? "border-primary/20" : ""
+                          }`}
+                        >
+                          {participant && (
+                            <input
+                              type="checkbox"
+                              checked={canReturn}
+                              disabled={!canReturn}
+                              onChange={() => {
+                                if (canReturn) returnParticipantToWheel(h.participantId, h.id);
+                              }}
+                              data-testid={`checkbox-picked-${h.participantId}`}
+                              aria-label={isAr ? `إعادة ${h.name} إلى العجلة` : `Return ${h.name} to wheel`}
+                              className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30 cursor-pointer disabled:cursor-default"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            disabled={!canReturn}
+                            onClick={() => returnParticipantToWheel(h.participantId, h.id)}
+                            className={`flex min-w-0 flex-1 items-center gap-2 text-start ${
+                              canReturn ? "cursor-pointer hover:text-primary" : "cursor-default"
+                            }`}
+                            title={canReturn ? (isAr ? "اضغط لإعادة الاسم إلى العجلة" : "Click to return the name to the wheel") : undefined}
+                          >
+                            <span className={`min-w-0 flex-1 truncate font-bold ${h.returnedToWheel ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                              {h.name}
+                            </span>
+                            {h.returnedToWheel ? (
+                              <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                {isAr ? "أُعيد للعجلة" : "Returned"}
+                              </span>
+                            ) : canReturn ? (
+                              <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-black text-primary">
+                                {isAr ? "اضغط للإعادة" : "Click to return"}
+                              </span>
+                            ) : null}
+                          </button>
+                          {h.time && (
+                            <span className="shrink-0 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded shadow-sm">
+                              {h.time.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
                         </div>
-                        <span className="shrink-0 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded shadow-sm">
-                          {h.time.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </button>
-                    );
+                      );
                     })}
-                </div>
+                  </div>
+                )}
               </Card>
             )}
           </div>
