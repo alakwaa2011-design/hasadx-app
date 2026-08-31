@@ -90,6 +90,7 @@ import {
   Flame,
   ChevronRight,
   School,
+  Dices,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
@@ -2914,6 +2915,15 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           desc: t.dashboard.toolStudentsDesc,
           accent: BRAND.green,
           href: "/teacher/students",
+        },
+        {
+          icon: <Dices className="w-6 h-6" />,
+          title: isAr ? "عجلة اختيار الطلاب" : "Student Wheel",
+          desc: isAr
+            ? "أداة سريعة لاختيار طالب عشوائيًا من القائمة بإنصاف"
+            : "A quick, fair way to pick a random student from your list",
+          accent: BRAND.gold,
+          href: "/teacher/student-wheel",
         },
         ...(classroomEnabled ? [{
           icon: <GraduationCap className="w-6 h-6" />,

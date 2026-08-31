@@ -48,6 +48,7 @@ const GameJoin = lazy(() => import("@/pages/game/join"));
 const GamePlay = lazy(() => import("@/pages/game/play"));
 const TeacherGame = lazy(() => import("@/pages/game/teacher"));
 const StudentsPage = lazy(() => import("@/pages/teacher/students"));
+const StudentWheelPage = lazy(() => import("@/pages/teacher/student-wheel"));
 const TeacherLibraryPage = lazy(() => import("@/pages/teacher/library"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const FeedbackPage = lazy(() => import("@/pages/feedback"));
@@ -323,6 +324,7 @@ function Router() {
         <Route path="/teacher/classroom" component={ClassroomPage} />
         <Route path="/teacher/teams" component={TeamsPage} />
         <Route path="/teacher/students" component={StudentsPage} />
+        <Route path="/teacher/student-wheel" component={StudentWheelPage} />
         <Route path="/teacher/library" component={TeacherLibraryPage} />
         <Route path="/teacher/profile" component={TeacherProfile} />
         <Route path="/teacher/settings" component={TeacherSettings} />
