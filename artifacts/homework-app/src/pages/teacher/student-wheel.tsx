@@ -378,7 +378,11 @@ export default function StudentWheelPage() {
 
             {mode === 'class' ? (
               <Card className="p-4 flex flex-col gap-4 shadow-sm" data-testid="card-class-mode">
-                <ClassSelector value={className} onChange={setClassName} />
+                <ClassSelector
+                  value={className}
+                  onChange={setClassName}
+                  accent="#225739"
+                />
                 
                 <div className="flex-1 overflow-y-auto max-h-[350px] pr-2 space-y-1">
                   {loadingStudents ? (
