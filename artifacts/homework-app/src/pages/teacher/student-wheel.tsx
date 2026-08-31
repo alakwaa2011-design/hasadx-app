@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   Dices,
   History,
   ListRestart,
@@ -92,6 +93,8 @@ export default function StudentWheelPage() {
   const [manualParticipants, setManualParticipants] = useState<Participant[]>([]);
 
   const [noRepeat, setNoRepeat] = useState(true);
+  const [showAvailableList, setShowAvailableList] = useState(true);
+  const [showPickedList, setShowPickedList] = useState(false);
   const [disabledIds, setDisabledIds] = useState<Set<string>>(new Set());
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const [history, setHistory] = useState<PickHistoryItem[]>([]);
@@ -144,6 +147,8 @@ export default function StudentWheelPage() {
   useEffect(() => {
     setDisabledIds(new Set());
     setPickedIds(new Set());
+    setShowAvailableList(true);
+    setShowPickedList(false);
     setSelectedWinner(null);
     setShowWinner(false);
   }, [className, mode]);
@@ -189,6 +194,20 @@ export default function StudentWheelPage() {
       (participant) => !noRepeat || !pickedNames.has(normalizeName(participant.name)),
     ),
     [enabledParticipants, noRepeat, pickedNames],
+  );
+
+  const availableParticipants = useMemo(
+    () => sourceParticipants.filter(
+      (participant) => !noRepeat || !pickedIds.has(participant.id),
+    ),
+    [sourceParticipants, noRepeat, pickedIds],
+  );
+
+  const pickedParticipants = useMemo(
+    () => sourceParticipants.filter(
+      (participant) => noRepeat && pickedIds.has(participant.id),
+    ),
+    [sourceParticipants, noRepeat, pickedIds],
   );
 
   const addManualNames = (rawNames: string) => {
@@ -264,6 +283,8 @@ export default function StudentWheelPage() {
       audio.stopTicking();
       setSelectedWinner(winner);
       setPickedIds((prev) => noRepeat ? new Set(prev).add(winner.id) : prev);
+      setShowAvailableList(true);
+      setShowPickedList(false);
       setHistory((prev) => [{
         id: crypto.randomUUID(),
         participantId: winner.id,
@@ -318,9 +339,75 @@ export default function StudentWheelPage() {
 
   const startNewRound = () => {
     setPickedIds(new Set());
+    setShowAvailableList(true);
+    setShowPickedList(false);
     setSelectedWinner(null);
     setShowWinner(false);
     toast.success(isAr ? "بدأت دورة جديدة" : "New round started");
+  };
+
+  const renderParticipantRow = (participant: Participant, canRemove = false) => {
+    const disabled = disabledIds.has(participant.id);
+    const alreadyPicked = noRepeat && pickedIds.has(participant.id);
+    const rowTestId = participant.source === "class"
+      ? `row-student-${participant.id}`
+      : `row-manual-participant-${participant.id}`;
+    const checkboxTestId = participant.source === "class"
+      ? `checkbox-student-${participant.id}`
+      : `checkbox-manual-${participant.id}`;
+
+    return (
+      <div
+        key={participant.id}
+        data-testid={rowTestId}
+        className={`flex items-center gap-3 p-2.5 rounded-lg group transition-colors border ${
+          disabled ? 'bg-muted/30 border-transparent opacity-60' : 'bg-background border-border/60 hover:border-primary/30 shadow-sm'
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={!disabled}
+          onChange={() => toggleDisabled(participant.id, disabled)}
+          data-testid={checkboxTestId}
+          className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30 cursor-pointer"
+        />
+        {alreadyPicked ? (
+          <button
+            type="button"
+            onClick={() => returnParticipantToWheel(participant.id)}
+            data-testid={
+              participant.source === "class"
+                ? `button-return-student-${participant.id}`
+                : `button-return-manual-${participant.id}`
+            }
+            className="flex min-w-0 flex-1 items-center gap-2 text-start"
+            title={isAr ? "إعادة الاسم إلى العجلة" : "Return name to wheel"}
+          >
+            <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">
+              {participant.name}
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-1">
+              <Check className="w-3 h-3" />
+              {isAr ? "تم اختياره — اضغط للإعادة" : "Picked — click to return"}
+            </span>
+          </button>
+        ) : (
+          <span className={`min-w-0 flex-1 truncate text-sm font-bold ${disabled ? 'line-through' : 'text-foreground'}`}>
+            {participant.name}
+          </span>
+        )}
+        {canRemove && (
+          <button
+            onClick={() => setManualParticipants((prev) => prev.filter((item) => item.id !== participant.id))}
+            data-testid={`button-remove-manual-${participant.id}`}
+            className="opacity-0 group-hover:opacity-100 text-destructive p-1.5 rounded-md hover:bg-destructive/10 transition-all"
+            title={isAr ? "حذف" : "Remove"}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -393,10 +480,10 @@ export default function StudentWheelPage() {
                         : (isAr ? "اختر فصلاً لعرض الطلاب" : "Select a class to view students")}
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-1.5">
+                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between mb-1 pb-2 border-b border-border/50">
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider" data-testid="text-student-count">
-                          {activeRoster.length} {isAr ? "طالب" : "students"}
+                           {sourceParticipants.filter((participant) => participant.source === "class").length} {isAr ? "طالب" : "students"}
                         </span>
                         {(disabledIds.size > 0) && (
                           <button
@@ -409,47 +496,50 @@ export default function StudentWheelPage() {
                           </button>
                         )}
                       </div>
-                      {activeRoster.map((s) => {
-                        const idStr = String(s.id);
-                        const disabled = disabledIds.has(idStr);
-                        const alreadyPicked = noRepeat && pickedIds.has(idStr);
-                        return (
-                       <div
-                            key={s.id}
-                            data-testid={`row-student-${s.id}`}
-                            className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors border ${
-                              disabled ? 'bg-muted/30 border-transparent opacity-60' : 'bg-background border-border/60 hover:border-primary/30 shadow-sm'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={!disabled}
-                              onChange={() => toggleDisabled(idStr, disabled)}
-                              data-testid={`checkbox-student-${s.id}`}
-                              className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30"
-                            />
-                             {alreadyPicked ? (
-                               <button
-                                 type="button"
-                                 onClick={() => returnParticipantToWheel(idStr)}
-                                 data-testid={`button-return-student-${s.id}`}
-                                 className="flex min-w-0 flex-1 items-center gap-2 text-start"
-                                 title={isAr ? "إعادة الاسم إلى العجلة" : "Return name to wheel"}
-                               >
-                                 <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{s.name}</span>
-                                 <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-1">
-                                   <Check className="w-3 h-3" />
-                                   {isAr ? "تم اختياره — اضغط للإعادة" : "Picked — click to return"}
-                                 </span>
-                               </button>
-                             ) : (
-                               <span className={`min-w-0 flex-1 text-sm font-bold truncate ${disabled ? 'line-through' : 'text-foreground'}`}>
-                                 {s.name}
-                               </span>
-                             )}
+                       <div className="rounded-xl border border-border/50 overflow-hidden">
+                         <button
+                           type="button"
+                           onClick={() => setShowAvailableList((value) => !value)}
+                           aria-expanded={showAvailableList}
+                           data-testid="button-toggle-available-list"
+                           className="flex w-full items-center justify-between gap-3 bg-muted/30 px-3 py-2.5 text-start hover:bg-muted/50 transition-colors"
+                         >
+                           <span className="text-xs font-black text-foreground">
+                             {isAr ? `المتاحون (${availableParticipants.filter((p) => p.source === "class").length})` : `Available (${availableParticipants.filter((p) => p.source === "class").length})`}
+                           </span>
+                           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showAvailableList ? "rotate-180" : ""}`} />
+                         </button>
+                         {showAvailableList && (
+                           <div className="flex flex-col gap-1.5 p-2">
+                             {availableParticipants
+                               .filter((participant) => participant.source === "class")
+                               .map((participant) => renderParticipantRow(participant))}
+                           </div>
+                         )}
                        </div>
-                        );
-                      })}
+                       {pickedParticipants.some((participant) => participant.source === "class") && (
+                         <div className="rounded-xl border border-border/50 overflow-hidden">
+                           <button
+                             type="button"
+                             onClick={() => setShowPickedList((value) => !value)}
+                             aria-expanded={showPickedList}
+                             data-testid="button-toggle-picked-list"
+                             className="flex w-full items-center justify-between gap-3 bg-primary/5 px-3 py-2.5 text-start hover:bg-primary/10 transition-colors"
+                           >
+                             <span className="text-xs font-black text-foreground">
+                               {isAr ? `تم اختيارهم (${pickedParticipants.filter((p) => p.source === "class").length})` : `Picked (${pickedParticipants.filter((p) => p.source === "class").length})`}
+                             </span>
+                             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showPickedList ? "rotate-180" : ""}`} />
+                           </button>
+                           {showPickedList && (
+                             <div className="flex flex-col gap-1.5 p-2">
+                               {pickedParticipants
+                                 .filter((participant) => participant.source === "class")
+                                 .map((participant) => renderParticipantRow(participant))}
+                             </div>
+                           )}
+                         </div>
+                       )}
                     </div>
                   )}
                 </div>
@@ -510,60 +600,56 @@ export default function StudentWheelPage() {
                   </Button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto max-h-[250px] pr-2 space-y-1.5">
+                 <div className="flex-1 overflow-y-auto max-h-[250px] pr-2 space-y-3">
                   {manualParticipants.length === 0 && (
                     <div className="py-6 text-center text-muted-foreground text-xs bg-muted/30 rounded-xl border border-dashed" data-testid="text-empty-manual">
                       {isAr ? "القائمة فارغة" : "List is empty"}
                     </div>
                   )}
-                  {manualParticipants.map((p) => {
-                    const disabled = disabledIds.has(p.id);
-                    const alreadyPicked = noRepeat && pickedIds.has(p.id);
-                    return (
-                      <div
-                        key={p.id}
-                        data-testid={`row-manual-participant-${p.id}`}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg group transition-colors border ${
-                          disabled ? 'bg-muted/30 border-transparent opacity-60' : 'bg-background border-border/60 shadow-sm'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={!disabled}
-                          onChange={() => toggleDisabled(p.id, disabled)}
-                          data-testid={`checkbox-manual-${p.id}`}
-                          className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30 cursor-pointer"
-                        />
-                        {alreadyPicked ? (
-                          <button
-                            type="button"
-                            onClick={() => returnParticipantToWheel(p.id)}
-                            data-testid={`button-return-manual-${p.id}`}
-                            className="flex min-w-0 flex-1 items-center gap-2 text-start"
-                            title={isAr ? "إعادة الاسم إلى العجلة" : "Return name to wheel"}
-                          >
-                            <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{p.name}</span>
-                            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-1">
-                              <Check className="w-3 h-3" />
-                              {isAr ? "تم اختياره — اضغط للإعادة" : "Picked — click to return"}
-                            </span>
-                          </button>
-                        ) : (
-                          <span className={`min-w-0 flex-1 truncate text-sm font-bold ${disabled ? 'line-through' : 'text-foreground'}`}>
-                            {p.name}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => setManualParticipants((prev) => prev.filter((x) => x.id !== p.id))}
-                          data-testid={`button-remove-manual-${p.id}`}
-                          className="opacity-0 group-hover:opacity-100 text-destructive p-1.5 rounded-md hover:bg-destructive/10 transition-all"
-                          title={isAr ? "حذف" : "Remove"}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                   <div className="rounded-xl border border-border/50 overflow-hidden">
+                     <button
+                       type="button"
+                       onClick={() => setShowAvailableList((value) => !value)}
+                       aria-expanded={showAvailableList}
+                       data-testid="button-toggle-available-list"
+                       className="flex w-full items-center justify-between gap-3 bg-muted/30 px-3 py-2.5 text-start hover:bg-muted/50 transition-colors"
+                     >
+                       <span className="text-xs font-black text-foreground">
+                         {isAr ? `المتاحون (${availableParticipants.filter((p) => p.source === "manual").length})` : `Available (${availableParticipants.filter((p) => p.source === "manual").length})`}
+                       </span>
+                       <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showAvailableList ? "rotate-180" : ""}`} />
+                     </button>
+                     {showAvailableList && (
+                       <div className="flex flex-col gap-1.5 p-2">
+                         {availableParticipants
+                           .filter((participant) => participant.source === "manual")
+                           .map((participant) => renderParticipantRow(participant, true))}
+                       </div>
+                     )}
+                   </div>
+                   {pickedParticipants.some((participant) => participant.source === "manual") && (
+                     <div className="rounded-xl border border-border/50 overflow-hidden">
+                       <button
+                         type="button"
+                         onClick={() => setShowPickedList((value) => !value)}
+                         aria-expanded={showPickedList}
+                         data-testid="button-toggle-picked-list"
+                         className="flex w-full items-center justify-between gap-3 bg-primary/5 px-3 py-2.5 text-start hover:bg-primary/10 transition-colors"
+                       >
+                         <span className="text-xs font-black text-foreground">
+                           {isAr ? `تم اختيارهم (${pickedParticipants.filter((p) => p.source === "manual").length})` : `Picked (${pickedParticipants.filter((p) => p.source === "manual").length})`}
+                         </span>
+                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showPickedList ? "rotate-180" : ""}`} />
+                       </button>
+                       {showPickedList && (
+                         <div className="flex flex-col gap-1.5 p-2">
+                           {pickedParticipants
+                             .filter((participant) => participant.source === "manual")
+                             .map((participant) => renderParticipantRow(participant, true))}
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
                 {manualParticipants.length > 0 && (
                   <Button
