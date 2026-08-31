@@ -294,11 +294,12 @@ export function ClassSelector({
         ) : (
           <button
             type="button"
+            data-testid="button-add-class"
             onClick={() => setAdding(true)}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold"
-            style={{ background: `${accent}22`, color: accent }}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+            style={{ background: accent, color: "#111827" }}
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" strokeWidth={3} />
             {ar ? "صف جديد" : "New class"}
           </button>
         )}

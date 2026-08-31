@@ -16,6 +16,8 @@ import {
   Trash2,
   UserPlus,
   Users,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -92,6 +94,33 @@ export default function StudentWheelPage() {
   const [selectedWinner, setSelectedWinner] = useState<Participant | null>(null);
   const [showWinner, setShowWinner] = useState(false);
   const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      return localStorage.getItem("hasad:student-wheel-sound") !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const activeAudioCtxRef = useRef<AudioContext | null>(null);
+
+  const cleanupAudio = () => {
+    if (activeAudioCtxRef.current) {
+      try {
+        activeAudioCtxRef.current.close();
+      } catch (e) {}
+      activeAudioCtxRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("hasad:student-wheel-sound", String(soundEnabled));
+    } catch (e) {}
+  }, [soundEnabled]);
+
+  useEffect(() => cleanupAudio, []);
 
   useEffect(() => {
     setLoadingStudents(true);
@@ -201,6 +230,43 @@ export default function StudentWheelPage() {
 
     setRotation(finalRotation);
 
+    cleanupAudio();
+    if (soundEnabled) {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const ctx = new AudioContextClass();
+          activeAudioCtxRef.current = ctx;
+
+          const duration = 4;
+          const ticks = 40;
+          for (let i = 0; i < ticks; i++) {
+            const progress = i / (ticks - 1);
+            const time = duration * (1 - Math.pow(1 - progress, 4)); // ease out quart
+
+            if (time < duration) {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(800 - (progress * 200), ctx.currentTime + time);
+
+              gain.gain.setValueAtTime(0, ctx.currentTime + time);
+              gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + time + 0.01);
+              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + time + 0.05);
+
+              osc.start(ctx.currentTime + time);
+              osc.stop(ctx.currentTime + time + 0.05);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Audio setup failed:", e);
+      }
+    }
+
     spinTimeoutRef.current = setTimeout(() => {
       setSpinning(false);
       setSelectedWinner(winner);
@@ -210,6 +276,32 @@ export default function StudentWheelPage() {
         name: winner.name,
         time: new Date(),
       }, ...prev]);
+
+      if (soundEnabled && activeAudioCtxRef.current) {
+        try {
+          const ctx = activeAudioCtxRef.current;
+          const playNote = (freq: number, startTime: number, dur: number) => {
+             const osc = ctx.createOscillator();
+             const gain = ctx.createGain();
+             osc.connect(gain);
+             gain.connect(ctx.destination);
+             osc.type = "triangle";
+             osc.frequency.value = freq;
+             gain.gain.setValueAtTime(0, startTime);
+             gain.gain.linearRampToValueAtTime(0.1, startTime + 0.02);
+             gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+             osc.start(startTime);
+             osc.stop(startTime + dur);
+          };
+
+          const now = ctx.currentTime;
+          playNote(523.25, now, 0.4);       // C5
+          playNote(659.25, now + 0.15, 0.4); // E5
+          playNote(783.99, now + 0.3, 0.8);  // G5
+        } catch (e) {
+           console.warn("Winner audio failed:", e);
+        }
+      }
 
       if (noRepeat) {
         setPickedIds((prev) => new Set(prev).add(winner.id));
@@ -543,17 +635,29 @@ export default function StudentWheelPage() {
                 <Users className="w-4 h-4" />
                 {currentParticipants.length} {isAr ? "متاح للدوران" : "ready to spin"}
               </div>
-              {pickedIds.size > 0 && (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={startNewRound}
-                  data-testid="button-reset-round"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setSoundEnabled((v) => !v)}
+                  data-testid="button-toggle-wheel-sound"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={isAr ? (soundEnabled ? "كتم الصوت" : "تشغيل الصوت") : (soundEnabled ? "Mute" : "Unmute")}
+                  aria-label={isAr ? (soundEnabled ? "كتم الصوت" : "تشغيل الصوت") : (soundEnabled ? "Mute" : "Unmute")}
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  {isAr ? "إعادة الدورة" : "Reset round"}
+                  {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
-              )}
+                {pickedIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={startNewRound}
+                    data-testid="button-reset-round"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    {isAr ? "إعادة الدورة" : "Reset round"}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="relative w-full max-w-[550px] aspect-square mx-auto">
               
