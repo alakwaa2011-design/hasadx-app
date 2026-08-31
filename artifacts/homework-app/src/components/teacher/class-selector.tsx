@@ -1,5 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  ALL_CLASSES_VALUE,
+  EXCLUDED_CLASS_PREFIX,
+} from "@/lib/student-wheel-utils";
 import { GraduationCap, ChevronDown, Plus, Loader2, Check, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
@@ -24,9 +28,16 @@ interface TeacherClass {
   groupName?: string | null;
 }
 
+export { ALL_CLASSES_VALUE, EXCLUDED_CLASS_PREFIX } from "@/lib/student-wheel-utils";
+
 export interface ClassSelectorProps {
-  value: string;
+  value: string | string[];
   onChange: (v: string) => void;
+  /** Enable multi-select mode for pages that can use more than one class. */
+  multiple?: boolean;
+  /** Selected class names in multi-select mode. Use ALL_CLASSES_VALUE for all classes. */
+  values?: string[];
+  onValuesChange?: (values: string[]) => void;
   /** Accent hex color (defaults to amber). */
   accent?: string;
   /** Apply mono font (for the Hack matrix theme). */
@@ -49,6 +60,9 @@ export interface ClassSelectorProps {
 export function ClassSelector({
   value,
   onChange,
+  multiple = false,
+  values = [],
+  onValuesChange,
   accent = "#fbbf24",
   mono = false,
   className = "",
@@ -71,6 +85,17 @@ export function ClassSelector({
   const wrapRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const selectedValues = multiple
+    ? values
+    : (typeof value === "string" && value ? [value] : []);
+  const allClassesSelected = selectedValues.includes(ALL_CLASSES_VALUE);
+  const excludedClassNames = selectedValues
+    .filter((value) => value.startsWith(EXCLUDED_CLASS_PREFIX))
+    .map((value) => value.slice(EXCLUDED_CLASS_PREFIX.length));
+  const isClassSelected = (name: string) =>
+    allClassesSelected
+      ? !excludedClassNames.includes(name)
+      : selectedValues.includes(name);
 
   useLayoutEffect(() => {
     if (!open || !portaled || !wrapRef.current) {
@@ -135,6 +160,70 @@ export function ClassSelector({
     setAdding(false);
   }
 
+  function rememberSelection(nextValues: string[]) {
+    if (!remember) return;
+    try {
+      const firstClass = nextValues.find(
+        (name) => name !== ALL_CLASSES_VALUE && !name.startsWith(EXCLUDED_CLASS_PREFIX),
+      );
+      if (firstClass) localStorage.setItem(STORAGE_KEY, firstClass);
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function setMultipleValues(nextValues: string[]) {
+    onValuesChange?.(nextValues);
+    rememberSelection(nextValues);
+  }
+
+  function toggleClass(name: string) {
+    if (!multiple) {
+      pick(name);
+      return;
+    }
+    const exclusionValue = `${EXCLUDED_CLASS_PREFIX}${name}`;
+    const next = allClassesSelected
+      ? selectedValues.includes(exclusionValue)
+        ? selectedValues.filter((item) => item !== exclusionValue)
+        : [...selectedValues, exclusionValue]
+      : selectedValues.includes(name)
+          ? selectedValues.filter((item) => item !== name)
+          : [...selectedValues, name];
+    setMultipleValues(next);
+  }
+
+  function toggleGroup(items: TeacherClass[]) {
+    if (!multiple) {
+      pick(items[0]?.name || "");
+      return;
+    }
+    const groupNames = items.map((item) => item.name);
+    const groupSelected = groupNames.every(isClassSelected);
+    const next = new Set(selectedValues);
+    if (allClassesSelected) {
+      groupNames.forEach((name) => {
+        const exclusionValue = `${EXCLUDED_CLASS_PREFIX}${name}`;
+        if (groupSelected) next.add(exclusionValue);
+        else next.delete(exclusionValue);
+      });
+    } else if (groupSelected) {
+      groupNames.forEach((name) => next.delete(name));
+    } else {
+      groupNames.forEach((name) => next.add(name));
+    }
+    setMultipleValues(Array.from(next));
+  }
+
+  function selectAllClasses() {
+    if (!multiple) {
+      pick("");
+      return;
+    }
+    setMultipleValues(allClassesSelected ? [] : [ALL_CLASSES_VALUE]);
+  }
+
   async function createClass() {
     const name = newName.trim();
     if (!name || creating) return;
@@ -150,7 +239,13 @@ export function ClassSelector({
         setClasses((prev) =>
           prev.some((c) => c.name === name) ? prev : [...prev, { id: Date.now(), name }],
         );
-        pick(name);
+        if (multiple) {
+          setMultipleValues(allClassesSelected ? selectedValues : [...selectedValues, name]);
+          setOpen(false);
+          setAdding(false);
+        } else {
+          pick(name);
+        }
         setNewName("");
       }
     } catch {
@@ -163,7 +258,18 @@ export function ClassSelector({
   const fontClass = mono ? "font-mono" : "";
   const labelText = label ?? (ar ? "اختر الصف" : "Choose class");
   const allLabel = ar ? "كل الصفوف" : "All classes";
-  const display = value || allLabel;
+  const chooseLabel = ar ? "اختر صفوفًا" : "Choose classes";
+  const display = multiple
+    ? allClassesSelected
+      ? excludedClassNames.length > 0
+        ? (ar ? `كل الصفوف باستثناء ${excludedClassNames.length}` : `All except ${excludedClassNames.length}`)
+        : allLabel
+      : selectedValues.length === 0
+        ? chooseLabel
+        : selectedValues.length === 1
+          ? selectedValues[0]
+          : (ar ? `${selectedValues.length} صفوف محددة` : `${selectedValues.length} classes selected`)
+    : (typeof value === "string" ? value : "") || allLabel;
 
   const grouped = (() => {
     const map = new Map<string, TeacherClass[]>();
@@ -201,12 +307,14 @@ export function ClassSelector({
       <div className="overflow-y-auto" style={{ maxHeight: 260 }}>
         <button
           type="button"
-          onClick={() => pick("")}
+          onClick={selectAllClasses}
+          data-testid={multiple ? "button-select-all-classes" : undefined}
+          aria-pressed={multiple ? allClassesSelected : (typeof value === "string" && value === "")}
           className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
             cinematic ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/16 hover:text-white" : "px-3 py-2 text-white/85 hover:bg-white/5"
-          } ${cinematic && value === "" ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
+          } ${cinematic && (multiple ? allClassesSelected : value === "") ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
         >
-          {value === "" && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
+          {((multiple && allClassesSelected) || (!multiple && value === "")) && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
           <span className={value === "" ? "font-extrabold" : ""}>{allLabel}</span>
         </button>
 
@@ -221,26 +329,44 @@ export function ClassSelector({
         ) : (
           grouped.map(([group, items]) => (
             <div key={group}>
-              <p
-                className={`uppercase tracking-wider text-white/40 ${
+              <div
+                className={`flex items-center justify-between gap-2 uppercase tracking-wider text-white/40 ${
                   cinematic ? "px-4 pt-3 pb-1.5 text-[10px] text-[#9fb89f] opacity-70" : "px-3 pt-2 pb-1 text-[10px]"
                 }`}
               >
                 {group}
-              </p>
+                {multiple && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(items)}
+                    data-testid={`button-select-class-group-${items[0]?.id ?? group}`}
+                    className="normal-case tracking-normal text-[10px] font-bold text-white/60 hover:text-white transition-colors"
+                  >
+                    {items.every((item) => isClassSelected(item.name))
+                      ? (ar ? "إلغاء المجموعة" : "Clear group")
+                      : (ar ? "تحديد المجموعة" : "Select group")}
+                  </button>
+                )}
+              </div>
               {items.map((c) => (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => pick(c.name)}
+                  onClick={() => toggleClass(c.name)}
+                  data-testid={multiple ? `button-select-class-${c.id}` : undefined}
+                  aria-pressed={multiple ? isClassSelected(c.name) : value === c.name}
                   className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
                     cinematic
                       ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/16 hover:text-white"
                       : "px-3 py-2 text-white/90 hover:bg-white/5"
-                  } ${cinematic && value === c.name ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
+                  } ${cinematic && (multiple ? isClassSelected(c.name) : value === c.name) ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
                 >
-                  {value === c.name && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
-                  <span className={value === c.name ? "font-extrabold" : ""}>{c.name}</span>
+                  {(multiple ? isClassSelected(c.name) : value === c.name) ? (
+                    <Check className="w-3.5 h-3.5" style={{ color: accent }} />
+                  ) : (
+                    <span className="w-3.5 h-3.5 rounded border border-white/25 shrink-0" />
+                  )}
+                  <span className={(multiple ? isClassSelected(c.name) : value === c.name) ? "font-extrabold" : ""}>{c.name}</span>
                 </button>
               ))}
             </div>
@@ -321,6 +447,7 @@ export function ClassSelector({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
+          data-testid={multiple ? "button-multi-class-selector" : undefined}
           className={`w-full flex items-center justify-between gap-2 rounded-xl text-sm font-bold text-white transition-all ${fontClass} ${
             cinematic ? "py-3 px-4" : "py-2.5 px-3"
           }`}

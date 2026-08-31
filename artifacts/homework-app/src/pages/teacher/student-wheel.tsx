@@ -3,7 +3,16 @@ import { useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { Layout } from "@/components/layout";
 import { Button, Card, Input, Label } from "@/components/ui-elements";
-import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
+import {
+  ClassSelector,
+  getRememberedTargetClass,
+} from "@/components/teacher/class-selector";
+import {
+  ALL_CLASSES_VALUE,
+  EXCLUDED_CLASS_PREFIX,
+  getWheelVisualSliceIndex,
+  isStudentInSelectedClasses,
+} from "@/lib/student-wheel-utils";
 import {
   ArrowLeft,
   ArrowRight,
@@ -19,6 +28,7 @@ import {
   Users,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -53,6 +63,7 @@ const normalizeName = (name: string) =>
 
 const easeOutQuart = (value: number) => 1 - Math.pow(1 - value, 4);
 const SPIN_DURATION_MS = 5000;
+const MAX_WHEEL_VISUAL_SLICES = 48;
 
 const randomIndex = (length: number) => {
   if (length <= 1) return 0;
@@ -83,7 +94,10 @@ export default function StudentWheelPage() {
   const [, setLocation] = useLocation();
 
   const [mode, setMode] = useState<'class' | 'manual'>('class');
-  const [className, setClassName] = useState<string>(() => getRememberedTargetClass());
+  const [selectedClassNames, setSelectedClassNames] = useState<string[]>(() => {
+    const rememberedClass = getRememberedTargetClass();
+    return rememberedClass ? [rememberedClass] : [];
+  });
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [studentsError, setStudentsError] = useState(false);
@@ -151,14 +165,18 @@ export default function StudentWheelPage() {
     setShowPickedList(false);
     setSelectedWinner(null);
     setShowWinner(false);
-  }, [className, mode]);
+  }, [selectedClassNames, mode]);
 
   const activeRoster = useMemo(() => {
-    if (!className) return [];
     return allStudents.filter(
-      (s) => s.studentClass === className || s.gradeLevel === className
+      (student) =>
+        isStudentInSelectedClasses(
+          student.studentClass,
+          student.gradeLevel,
+          selectedClassNames,
+        ),
     );
-  }, [className, allStudents]);
+  }, [selectedClassNames, allStudents]);
 
   const sourceParticipants = useMemo(() => {
     const participants = mode === 'class'
@@ -195,6 +213,8 @@ export default function StudentWheelPage() {
     ),
     [enabledParticipants, noRepeat, pickedNames],
   );
+  const wheelVisualSliceCount = Math.min(currentParticipants.length, MAX_WHEEL_VISUAL_SLICES);
+  const denseWheel = currentParticipants.length > MAX_WHEEL_VISUAL_SLICES;
 
   const availableParticipants = useMemo(
     () => sourceParticipants.filter(
@@ -227,6 +247,15 @@ export default function StudentWheelPage() {
 
     return [...missingActiveEntries, ...history];
   }, [history, pickedParticipants]);
+
+  const pendingBulkNameCount = useMemo(() => {
+    const seen = new Set<string>();
+    bulkNames.split(/[\n,،;]+/).forEach((name) => {
+      const normalized = normalizeName(name);
+      if (normalized) seen.add(normalized);
+    });
+    return seen.size;
+  }, [bulkNames]);
 
   const addManualNames = (rawNames: string) => {
     const names = rawNames.split(/[\n,،;]+/).map((name) => name.trim().replace(/\s+/g, " ")).filter(Boolean);
@@ -269,17 +298,20 @@ export default function StudentWheelPage() {
     setSpinning(true);
     setShowWinner(false);
 
-    const numSlices = currentParticipants.length;
+    const numSlices = wheelVisualSliceCount;
     const sliceAngle = 360 / numSlices;
     
     // Pick winner
-    const winnerIndex = randomIndex(numSlices);
-    const winner = currentParticipants[winnerIndex];
+    const participantWinnerIndex = randomIndex(currentParticipants.length);
+    const winner = currentParticipants[participantWinnerIndex];
+    const visualWinnerIndex = denseWheel
+      ? getWheelVisualSliceIndex(participantWinnerIndex, currentParticipants.length, numSlices)
+      : participantWinnerIndex;
 
     const currentBase = rotation - (rotation % 360);
     const spins = 6 + randomIndex(3);
     // We want the center of the winning slice to align with the top (0 degrees).
-    const targetRotation = currentBase + (spins * 360) - (winnerIndex * sliceAngle + sliceAngle / 2);
+    const targetRotation = currentBase + (spins * 360) - (visualWinnerIndex * sliceAngle + sliceAngle / 2);
     const finalRotation = targetRotation;
 
     const startRotation = rotation;
@@ -390,6 +422,7 @@ export default function StudentWheelPage() {
       <div
         key={participant.id}
         data-testid={rowTestId}
+        style={{ contentVisibility: "auto", containIntrinsicSize: "48px" }}
         className={`flex items-center gap-3 p-2.5 rounded-lg group transition-colors border ${
           disabled ? 'bg-muted/30 border-transparent opacity-60' : 'bg-background border-border/60 hover:border-primary/30 shadow-sm'
         }`}
@@ -493,10 +526,49 @@ export default function StudentWheelPage() {
             {mode === 'class' ? (
               <Card className="p-4 flex flex-col gap-4 shadow-sm" data-testid="card-class-mode">
                 <ClassSelector
-                  value={className}
-                  onChange={setClassName}
+                  value={selectedClassNames}
+                  values={selectedClassNames}
+                  multiple
+                  onChange={() => undefined}
+                  onValuesChange={setSelectedClassNames}
                   accent="#225739"
                 />
+                {selectedClassNames.length > 0 && (
+                  <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-primary/10 bg-primary/[0.035] p-2" data-testid="selected-classes-list">
+                    {selectedClassNames.map((name) => {
+                      const isExclusion = name.startsWith(EXCLUDED_CLASS_PREFIX);
+                      const displayName = isExclusion ? name.slice(EXCLUDED_CLASS_PREFIX.length) : name;
+                      return (
+                      <span
+                        key={name}
+                        className={`inline-flex max-w-full items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-[10px] font-black shadow-sm ${
+                          isExclusion ? "border-amber-300 text-amber-800" : "border-primary/15 text-primary"
+                        }`}
+                      >
+                        <span className="truncate">
+                          {name === ALL_CLASSES_VALUE
+                            ? (isAr ? "كل الصفوف" : "All classes")
+                            : isExclusion
+                              ? (isAr ? `باستثناء ${displayName}` : `Except ${displayName}`)
+                              : displayName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedClassNames((current) =>
+                            name === ALL_CLASSES_VALUE
+                              ? []
+                              : current.filter((item) => item !== name),
+                          )}
+                          className="rounded-full p-0.5 hover:bg-primary/10"
+                          aria-label={isAr ? `إزالة ${displayName}` : `Remove ${displayName}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                      );
+                    })}
+                  </div>
+                )}
                 
                 <div className="flex-1 overflow-y-auto max-h-[350px] pr-2 space-y-1">
                   {loadingStudents ? (
@@ -505,9 +577,9 @@ export default function StudentWheelPage() {
                     </div>
                   ) : activeRoster.length === 0 ? (
                     <div className="py-8 text-center text-muted-foreground text-sm bg-muted/30 rounded-xl border border-dashed" data-testid="text-empty-roster">
-                      {className 
+                      {selectedClassNames.length > 0
                         ? (isAr ? "لا يوجد طلاب في هذا الفصل" : "No students in this class") 
-                        : (isAr ? "اختر فصلاً لعرض الطلاب" : "Select a class to view students")}
+                        : (isAr ? "اختر صفًا أو مجموعة لعرض الطلاب" : "Select a class or group to view students")}
                     </div>
                   ) : (
                      <div className="flex flex-col gap-3">
@@ -585,17 +657,27 @@ export default function StudentWheelPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="bulk-student-names" className="text-xs text-muted-foreground mb-1.5 inline-block">
-                    {isAr ? "إضافة عدة أسماء بالنسخ واللصق" : "Paste multiple names"}
-                  </Label>
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <Label htmlFor="bulk-student-names" className="text-xs text-muted-foreground">
+                      {isAr ? "إضافة عدة أسماء بالنسخ واللصق" : "Paste multiple names"}
+                    </Label>
+                    {pendingBulkNameCount > 0 && (
+                      <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary" data-testid="text-pending-bulk-count">
+                        {isAr ? `${pendingBulkNameCount} اسم جاهز` : `${pendingBulkNameCount} names ready`}
+                      </span>
+                    )}
+                  </div>
                   <textarea
                     id="bulk-student-names"
                     value={bulkNames}
                     onChange={(event) => setBulkNames(event.target.value)}
                     data-testid="input-bulk-names"
-                    className="w-full p-3 rounded-xl border-2 border-border/80 bg-background text-sm min-h-[100px] resize-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/50"
-                    placeholder={isAr ? "الصق الأسماء هنا، اسم في كل سطر" : "Paste names here, one per line"}
+                    className="w-full p-3 rounded-xl border-2 border-border/80 bg-background text-sm min-h-[140px] max-h-[300px] resize-y focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/50"
+                    placeholder={isAr ? "الصق حتى مئات الأسماء هنا، اسم في كل سطر" : "Paste hundreds of names here, one per line"}
                   />
+                  <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
+                    {isAr ? "يمكن لصق 500 اسم أو أكثر، وستُحذف الأسماء المكررة والمسافات الزائدة تلقائيًا." : "Paste 500 names or more. Duplicates and extra spaces are removed automatically."}
+                  </p>
                   <Button
                     onClick={handleAddBulk}
                     disabled={!bulkNames.trim()}
@@ -603,11 +685,15 @@ export default function StudentWheelPage() {
                     className="w-full mt-2"
                   >
                     <Plus className="w-4 h-4" />
-                    <span className="ms-2">{isAr ? "إضافة الأسماء للقائمة" : "Add names to list"}</span>
+                    <span className="ms-2">
+                      {pendingBulkNameCount > 0
+                        ? (isAr ? `إضافة ${pendingBulkNameCount} اسم` : `Add ${pendingBulkNameCount} names`)
+                        : (isAr ? "إضافة الأسماء للقائمة" : "Add names to list")}
+                    </span>
                   </Button>
                 </div>
 
-                 <div className="flex-1 overflow-y-auto max-h-[250px] pr-2 space-y-3">
+                 <div className="flex-1 overflow-y-auto max-h-[320px] pr-2 space-y-3">
                   {manualParticipants.length === 0 && (
                     <div className="py-6 text-center text-muted-foreground text-xs bg-muted/30 rounded-xl border border-dashed" data-testid="text-empty-manual">
                       {isAr ? "القائمة فارغة" : "List is empty"}
@@ -809,16 +895,33 @@ export default function StudentWheelPage() {
               </div>
             </div>
             <div className="relative w-full max-w-[550px] aspect-square mx-auto">
+              <div
+                aria-hidden="true"
+                className={`absolute inset-[5%] rounded-full blur-3xl transition-opacity duration-700 ${
+                  spinning ? "opacity-60" : "opacity-25"
+                }`}
+                style={{ background: "radial-gradient(circle, rgba(217,165,33,0.42) 0%, rgba(34,87,57,0.22) 48%, transparent 72%)" }}
+              />
               
               {/* Pointer */}
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 drop-shadow-xl" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))" }}>
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="#F5C842">
-                  <path d="M12 22L2 2h20L12 22z" stroke="#fff" strokeWidth="2.5" strokeLinejoin="round"/>
+              <div
+                className={`absolute -top-7 left-1/2 -translate-x-1/2 z-30 transition-transform duration-300 ${spinning ? "scale-110" : ""}`}
+                style={{ filter: "drop-shadow(0 8px 12px rgba(28,70,48,0.35))" }}
+              >
+                <svg width="52" height="54" viewBox="0 0 28 30" fill="none">
+                  <circle cx="14" cy="8" r="7" fill="#225739" stroke="#fff" strokeWidth="2.5" />
+                  <path d="M14 29L3.5 7h21L14 29z" fill="#F5C842" stroke="#fff" strokeWidth="2.5" strokeLinejoin="round"/>
                 </svg>
               </div>
               
               {/* The SVG Wheel */}
-              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl relative bg-muted/20 border-8 border-white dark:border-muted">
+              <div
+                className={`w-full h-full rounded-full overflow-hidden relative border-[10px] border-white dark:border-slate-800 transition-shadow duration-500 ${
+                  spinning ? "shadow-[0_0_0_6px_rgba(245,200,66,0.22),0_28px_80px_rgba(28,70,48,0.34)]" : "shadow-[0_20px_60px_rgba(28,70,48,0.24)]"
+                }`}
+                style={{ background: "linear-gradient(145deg, #f8faf7, #dce9df)" }}
+              >
+                <div className="pointer-events-none absolute inset-0 z-10 rounded-full ring-1 ring-inset ring-white/70" />
                 <svg 
                   viewBox="0 0 400 400" 
                   className="w-full h-full" 
@@ -827,16 +930,35 @@ export default function StudentWheelPage() {
                     transition: "none",
                   }}
                 >
-                  <circle cx="200" cy="200" r="198" fill="#e2e8f0" className="dark:fill-emerald-950" />
+                  <defs>
+                    <radialGradient id="student-wheel-base" cx="50%" cy="42%" r="70%">
+                      <stop offset="0%" stopColor="#fbf9ed" />
+                      <stop offset="60%" stopColor="#dce8df" />
+                      <stop offset="100%" stopColor="#b8cfbf" />
+                    </radialGradient>
+                    <radialGradient id="student-wheel-hub" cx="38%" cy="32%" r="75%">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="55%" stopColor="#f6f8f5" />
+                      <stop offset="100%" stopColor="#d9e5dc" />
+                    </radialGradient>
+                    <filter id="student-wheel-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                      <feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#163d29" floodOpacity="0.28" />
+                    </filter>
+                  </defs>
+                  <circle cx="200" cy="200" r="198" fill="url(#student-wheel-base)" />
                   
                   {currentParticipants.length > 0 ? (
-                    currentParticipants.map((p, i) => {
-                      const numSlices = currentParticipants.length;
+                    Array.from({ length: wheelVisualSliceCount }, (_, i) => {
+                      const numSlices = wheelVisualSliceCount;
+                      const participantIndex = denseWheel
+                        ? Math.floor((i / numSlices) * currentParticipants.length)
+                        : i;
+                      const p = currentParticipants[participantIndex];
                       if (numSlices === 1) {
                         return (
                           <g key={i}>
                             <circle cx="200" cy="200" r="198" fill={getSliceColor(0, 1)} />
-                            <text x="200" y="200" fill="#fff" fontSize="28" fontWeight="900" textAnchor="middle" alignmentBaseline="middle">{p.name}</text>
+                            <text x="200" y="126" fill="#fff" fontSize="26" fontWeight="900" textAnchor="middle" alignmentBaseline="middle">{p.name}</text>
                           </g>
                         );
                       }
@@ -855,28 +977,30 @@ export default function StudentWheelPage() {
                       const pathData = `M 200 200 L ${startX} ${startY} A 198 198 0 ${largeArc} 1 ${endX} ${endY} Z`;
                       
                       const midAngle = startAngle + angle / 2;
-                      const textRadius = 125;
+                      const textRadius = 130;
                       const textX = 200 + textRadius * Math.cos((midAngle - 90) * Math.PI / 180);
                       const textY = 200 + textRadius * Math.sin((midAngle - 90) * Math.PI / 180);
                       
-                      const displayName = numSlices > 40 ? p.name.substring(0, 6) + '..' : (numSlices > 20 ? p.name.substring(0, 12) + '..' : p.name);
+                      const displayName = numSlices > 34 ? p.name.substring(0, 7) + "…" : (numSlices > 20 ? p.name.substring(0, 12) + "…" : p.name);
                       
                       return (
                         <g key={i}>
-                          <path d={pathData} fill={color} stroke="#ffffff" strokeWidth={numSlices > 30 ? "0.5" : "1.5"} strokeOpacity="0.8" />
-                          <text 
-                            x={textX} 
-                            y={textY} 
-                            fill="#ffffff" 
-                            fontSize={numSlices > 30 ? "10" : numSlices > 15 ? "14" : "18"} 
-                            fontWeight="800" 
-                            textAnchor="middle" 
-                            alignmentBaseline="middle"
-                            transform={`rotate(${midAngle - 90} ${textX} ${textY})`}
-                            style={{ textShadow: "0px 1px 3px rgba(0,0,0,0.4)" }}
-                          >
-                            {displayName}
-                          </text>
+                          <path d={pathData} fill={color} stroke="#ffffff" strokeWidth={numSlices > 30 ? "0.65" : "1.8"} strokeOpacity="0.78" />
+                          {!denseWheel && (
+                            <text
+                              x={textX}
+                              y={textY}
+                              fill="#ffffff"
+                              fontSize={numSlices > 30 ? "9.5" : numSlices > 15 ? "13" : "17"}
+                              fontWeight="850"
+                              textAnchor="middle"
+                              alignmentBaseline="middle"
+                              transform={`rotate(${midAngle - 90} ${textX} ${textY})`}
+                              style={{ paintOrder: "stroke", stroke: "rgba(18,50,34,0.24)", strokeWidth: 1.2 }}
+                            >
+                              {displayName}
+                            </text>
+                          )}
                         </g>
                       );
                     })
@@ -885,12 +1009,22 @@ export default function StudentWheelPage() {
                       {isAr ? "لا يوجد مشاركين" : "No participants"}
                     </text>
                   )}
-                  
+
+                  <circle cx="200" cy="200" r="171" fill="none" stroke="#ffffff" strokeWidth="1.2" strokeOpacity="0.22" strokeDasharray="2 7" />
+                  <circle cx="200" cy="200" r="193" fill="none" stroke="#F5C842" strokeWidth="3" strokeOpacity="0.82" />
+
                   {/* Center Hub */}
-                  <circle cx="200" cy="200" r="30" fill="#ffffff" className="dark:fill-slate-800" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.25))" />
-                  <circle cx="200" cy="200" r="18" fill="#225739" />
-                  <circle cx="200" cy="200" r="6" fill="#F5C842" />
+                  <circle cx="200" cy="200" r="45" fill="url(#student-wheel-hub)" stroke="#ffffff" strokeWidth="4" filter="url(#student-wheel-shadow)" />
+                  <circle cx="200" cy="200" r="33" fill="#225739" stroke="#d7e8dc" strokeWidth="2" />
+                  <circle cx="200" cy="200" r="23" fill="#1c4630" />
+                  <circle cx="200" cy="200" r="8" fill="#F5C842" stroke="#fff2b1" strokeWidth="2" />
                 </svg>
+
+                {denseWheel && (
+                  <div className="pointer-events-none absolute bottom-[18%] left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/35 bg-black/20 px-3 py-1 text-[10px] font-black text-white backdrop-blur-sm">
+                    {isAr ? `${currentParticipants.length} اسم في السحب` : `${currentParticipants.length} names in draw`}
+                  </div>
+                )}
 
                 {/* Winner Overlay */}
                 <AnimatePresence>
@@ -936,13 +1070,20 @@ export default function StudentWheelPage() {
 
               {/* Spin Button */}
               <button 
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-28 h-28 rounded-full bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 font-black text-2xl sm:text-3xl shadow-2xl border-4 border-emerald-100 dark:border-emerald-900 hover:scale-110 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center tracking-wide"
+                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white/95 dark:bg-slate-900 text-primary font-black text-xl sm:text-2xl shadow-2xl border-[5px] border-primary/15 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed flex flex-col items-center justify-center tracking-wide ${
+                  spinning ? "shadow-[0_0_0_8px_rgba(245,200,66,0.18),0_14px_35px_rgba(28,70,48,0.35)]" : ""
+                }`}
                 onClick={handleSpin}
                 disabled={spinning || currentParticipants.length === 0}
                 data-testid="button-spin-wheel"
-                style={{ filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.15))" }}
+                style={{ filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.12))" }}
               >
-                {spinning ? (isAr ? "يدور" : "SPINNING") : (isAr ? "دوّر" : "SPIN")}
+                <span>{spinning ? (isAr ? "يدور" : "SPINNING") : (isAr ? "دوّر" : "SPIN")}</span>
+                <span className="mt-0.5 text-[9px] font-bold tracking-normal text-muted-foreground">
+                  {spinning
+                    ? (isAr ? "جاري الاختيار" : "Choosing")
+                    : (isAr ? `${currentParticipants.length} اسم` : `${currentParticipants.length} names`)}
+                </span>
               </button>
 
             </div>
