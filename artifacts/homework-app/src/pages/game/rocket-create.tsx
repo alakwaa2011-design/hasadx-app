@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { saveGameActivity } from "@/lib/saved-game-activities";
 import QRCode from "react-qr-code";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -55,6 +56,9 @@ const bankToRocket = (bq: BankQuestion): RocketQuestion => ({
   correct: correctAnswerToIndex(bq.correctAnswer),
   imageUrl: bq.imageUrl || null,
 });
+
+const savedSettings = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
 function StarField() {
   const stars = Array.from({ length: 40 }, (_, i) => ({
@@ -146,7 +150,7 @@ export default function RocketCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (questions.length === 0) {
       toast.error(ar ? "أضف أسئلة أولاً" : "Add questions first");
       return;
@@ -156,6 +160,24 @@ export default function RocketCreate() {
       return;
     }
     setCreating(true);
+    try {
+      await saveGameActivity({
+        gameType: "rocket",
+        title: title.trim() || (ar ? "سباق الصواريخ" : "Rocket Race"),
+        content: { questions },
+        settings: {
+          duration,
+          totalDurationSecs: Math.max(1, Math.min(15, gameDurationMins)) * 60,
+          targetClass: targetClass || null,
+          advanceMode,
+        },
+        source: "game-launch",
+      });
+    } catch {
+      setCreating(false);
+      toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
+      return;
+    }
     const socket = getRocketSocket();
     socket.emit("rocket:create", {
       questions, duration,
@@ -527,9 +549,27 @@ export default function RocketCreate() {
               manualEntryMode="immediate"
               minQuestions={1}
               maxQuestions={30}
-              onComplete={({ questions: prepared, sourceTitle }) => {
+              onComplete={({ questions: prepared, sourceTitle, source, savedActivity }) => {
                 setQuestions(prepared.map(question => ({ ...question, type: question.type ?? "mcq" })));
                 if (sourceTitle) setTitle(sourceTitle);
+                if (source === "saved" && savedActivity?.gameType === "rocket") {
+                  const settings = savedSettings(savedActivity.settings);
+                  if (settings) {
+                    if ([10, 15, 20, 30, 45].includes(settings.duration as number)) {
+                      setDuration(settings.duration as number);
+                    }
+                    if (typeof settings.totalDurationSecs === "number"
+                      && Number.isInteger(settings.totalDurationSecs / 60)
+                      && settings.totalDurationSecs >= 60
+                      && settings.totalDurationSecs <= 15 * 60) {
+                      setGameDurationMins(settings.totalDurationSecs / 60);
+                    }
+                    if (typeof settings.targetClass === "string") setTargetClass(settings.targetClass);
+                    if (settings.advanceMode === "per_player" || settings.advanceMode === "host_sync") {
+                      setAdvanceMode(settings.advanceMode);
+                    }
+                  }
+                }
                 setStep("settings");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}

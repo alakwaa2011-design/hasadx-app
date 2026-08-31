@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -113,12 +114,41 @@ export default function StroopCreate() {
   const [result, setResult] = useState<{ pin: string; title: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const loadedSavedGameRef = useRef(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
       .then(r => { setIsLoggedIn(r.ok); })
       .catch(() => { setIsLoggedIn(false); });
   }, []);
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!isLoggedIn || !savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        const content = activity.content;
+        const settings = activity.settings;
+        if (activity.gameType !== "stroop" || !content || typeof content !== "object" || Array.isArray(content) ||
+            !settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("invalid-saved-game");
+        const savedItems = (content as Record<string, unknown>).items;
+        const grade = (settings as Record<string, unknown>).gradeLevel;
+        if (!Array.isArray(savedItems) || savedItems.length < 4 ||
+            !savedItems.every(item => item && typeof item === "object" &&
+              typeof (item as StroopItem).word === "string" && typeof (item as StroopItem).color === "string" &&
+              Array.isArray((item as StroopItem).options) &&
+              (item as StroopItem).options.every(option => typeof option === "string")) ||
+            typeof grade !== "string") throw new Error("invalid-saved-game");
+        setTitle(activity.title);
+        setGradeLevel(grade);
+        setItems(savedItems as StroopItem[]);
+      } catch {
+        alert(lang === "ar" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
+      }
+    })();
+  }, [isLoggedIn, lang]);
 
   if (isLoggedIn === null) {
     return (
@@ -230,6 +260,19 @@ export default function StroopCreate() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setResult({ pin: data.pin, title: data.title });
+      try {
+        await saveGameActivity({
+          title: title.trim(),
+          gameType: "stroop",
+          content: { items: validItems },
+          settings: { gradeLevel },
+          source: "teacher-authored",
+        });
+      } catch {
+        alert(lang === "ar"
+          ? "تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي. / The game was saved, but could not be added to My games."
+          : "The game was saved, but could not be added to My games. / تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي.");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : (lang === "ar" ? "حدث خطأ" : "An error occurred");
       alert(msg);

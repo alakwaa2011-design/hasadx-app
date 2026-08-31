@@ -12,11 +12,18 @@ const toast = vi.hoisted(() => ({
   success: vi.fn(),
 }));
 
+const savedGames = vi.hoisted(() => ({
+  getSavedGameActivity: vi.fn(),
+  listSavedGameActivities: vi.fn(),
+  normalizeSavedGameQuestions: vi.fn(),
+}));
+
 vi.mock("@workspace/api-client-react", () => apiClient);
 vi.mock("@/components/ui/sonner", () => ({ toast }));
 vi.mock("@/lib/i18n", () => ({
   useI18n: () => ({ lang: "en" }),
 }));
+vi.mock("@/lib/saved-game-activities", () => savedGames);
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
   motion: {
@@ -80,6 +87,10 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
     apiClient.useListAssignments.mockReturnValue({ data: ASSIGNMENTS, isLoading: false });
     toast.error.mockReset();
     toast.success.mockReset();
+    savedGames.getSavedGameActivity.mockReset();
+    savedGames.listSavedGameActivities.mockReset();
+    savedGames.normalizeSavedGameQuestions.mockReset();
+    window.history.replaceState({}, "", "/");
 
     fetchMock = vi.fn((url: string) => {
       if (url.endsWith("/api/assignments/101")) {
@@ -175,5 +186,43 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
     expect(floatingCard?.textContent).toContain("Assignment A");
     expect(floatingCard?.textContent).toContain("Questions are ready");
     expect(buttonContaining("Continue").disabled).toBe(false);
+  });
+
+  it("returns saved-game metadata and settings for a saved deep link", async () => {
+    const activity = {
+      id: 44,
+      title: "Saved Rocket",
+      gameType: "rocket",
+      settings: { duration: 30, totalDurationSecs: 600 },
+      questions: [],
+    };
+    savedGames.getSavedGameActivity.mockResolvedValue(activity);
+    savedGames.normalizeSavedGameQuestions.mockReturnValue([
+      { text: "Question", options: ["A", "B", "C", "D"], correct: 0 },
+    ]);
+    window.history.replaceState({}, "", "/game/rocket/create?savedGameId=44");
+    const onComplete = vi.fn();
+
+    await act(async () => {
+      root.render(
+        <UnifiedQuestionSourceFlow
+          gameTitle="Rocket"
+          gameDescription="Test description"
+          gameIcon={null}
+          minQuestions={1}
+          maxQuestions={20}
+          onComplete={onComplete}
+        />,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onComplete).toHaveBeenCalledWith({
+      questions: [{ text: "Question", options: ["A", "B", "C", "D"], correct: 0 }],
+      sourceTitle: "Saved Rocket",
+      source: "saved",
+      savedActivity: activity,
+    });
   });
 });

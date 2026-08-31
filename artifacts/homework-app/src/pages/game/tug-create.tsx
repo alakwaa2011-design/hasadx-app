@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { saveGameActivity } from "@/lib/saved-game-activities";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -51,6 +52,9 @@ const bankToTug = (bq: BankQuestion): TugQuestion => ({
   correct: correctAnswerToIndex(bq.correctAnswer),
   imageUrl: bq.imageUrl || null,
 });
+
+const savedSettings = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
 export default function TugCreate() {
   const { lang } = useI18n();
@@ -122,12 +126,27 @@ export default function TugCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreate = () => {
+  const persistActivity = () => saveGameActivity({
+    gameType: "tug",
+    title: sourceTitle?.trim() || (ar ? "شد الحبل" : "Tug of War"),
+    questions,
+    settings: { duration, autoAdvance, targetClass: targetClass || null },
+    source: "game-launch",
+  });
+
+  const handleCreate = async () => {
     if (questions.length === 0) {
       toast.error(ar ? "أضف أسئلة أولاً (من بنك الأسئلة أو من واجب)" : "Add questions first");
       return;
     }
     setCreating(true);
+    try {
+      await persistActivity();
+    } catch {
+      setCreating(false);
+      toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
+      return;
+    }
     const socket = getTugSocket();
     socket.emit("tug:create", { questions, duration, autoAdvance, targetClass: targetClass || undefined },
       (res: { pin?: string; creatorToken?: string; error?: string }) => {
@@ -140,14 +159,18 @@ export default function TugCreate() {
       });
   };
 
-  const startClassMode = () => {
+  const startClassMode = async () => {
     if (questions.length < 2) {
       toast.error(ar ? "وضع السبورة يحتاج سؤالين على الأقل" : "Board mode needs at least 2 questions");
       return;
     }
     try {
+      await persistActivity();
       sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration, title: sourceTitle || undefined }));
-    } catch { /* storage full/blocked — navigation will show the setup prompt */ }
+    } catch {
+      toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
+      return;
+    }
     setLocation("/game/tug/class");
   };
 
@@ -282,11 +305,21 @@ export default function TugCreate() {
             }
             minQuestions={2}
             maxQuestions={20}
-            onComplete={({ questions: prepared, sourceTitle: title, source }) => {
+            onComplete={({ questions: prepared, sourceTitle: title, source, savedActivity }) => {
               setQuestions(prepared);
               setQuestionCount(prepared.length);
               setSourceTitle(title);
               setSelectedSource(source === "bank" ? "bank" : "assignment");
+              if (source === "saved" && savedActivity?.gameType === "tug") {
+                const settings = savedSettings(savedActivity.settings);
+                if (settings) {
+                  if ([10, 15, 20, 30].includes(settings.duration as number)) {
+                    setDuration(settings.duration as number);
+                  }
+                  if (typeof settings.autoAdvance === "boolean") setAutoAdvance(settings.autoAdvance);
+                  if (typeof settings.targetClass === "string") setTargetClass(settings.targetClass);
+                }
+              }
               setSetupStep("settings");
             }}
           />

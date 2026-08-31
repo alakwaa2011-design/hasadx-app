@@ -20,6 +20,11 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
+  deleteSavedGameActivity,
+  listSavedGameActivities,
+  type SavedGameActivity,
+} from "@/lib/saved-game-activities";
+import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
@@ -62,6 +67,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Camera,
+  Gamepad2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -1107,7 +1113,7 @@ export default function TeacherLibraryPage() {
         )}
 
         {/* Top-level tabs — switch between uploaded files, generated
-            worksheets, and lesson plans. Each tab is a separate listing
+            worksheets, lesson plans, and saved games. Each tab is a separate listing
             against its own backing API; only the active tab fetches. */}
         <Tabs defaultValue="worksheets" className="w-full">
           {/* Stylized tab bar — DOM order is RTL-friendly: in Arabic the
@@ -1136,6 +1142,14 @@ export default function TeacherLibraryPage() {
             >
               <BookOpen className="w-4 h-4" />
               {isAr ? "تحضير الدروس" : "Lesson plans"}
+            </TabsTrigger>
+            <TabsTrigger
+              value="games"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all"
+              data-testid="tab-saved-games"
+            >
+              <Gamepad2 className="w-4 h-4" />
+              {isAr ? "ألعابي" : "My games"}
             </TabsTrigger>
           </TabsList>
 
@@ -1346,6 +1360,10 @@ export default function TeacherLibraryPage() {
 
           <TabsContent value="lesson-plans" className="pt-4">
             <SavedDocsList kind="lesson-plans" isAr={isAr} />
+          </TabsContent>
+
+          <TabsContent value="games" className="pt-4">
+            <SavedGameActivitiesList isAr={isAr} />
           </TabsContent>
 
         </Tabs>
@@ -2389,6 +2407,251 @@ function SavedDocsList({
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="w-4 h-4 me-1.5 animate-spin" /> : null}
+              {T.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SavedGameActivitiesList
+// ─────────────────────────────────────────────────────────────────────────
+// Saved games are intentionally fetched through their small, game-specific
+// client helper. That endpoint returns only activities owned by the current
+// teacher, unlike the document lists which may include shared admin content.
+const gameCreatorPaths: Record<string, string> = {
+  arena: "/game/arena",
+  solo: "/teacher/solo-challenges/new",
+  wameeth: "/game/wameeth/create",
+  wameeth_class: "/game/wameeth/create",
+  tug: "/game/tug/create",
+  "tug-of-war": "/game/tug/create",
+  tug_of_war: "/game/tug/create",
+  escape: "/game/escape/create",
+  escape_room: "/game/escape/create",
+  "escape-room": "/game/escape/create",
+  rocket: "/game/rocket/create",
+  rocket_race: "/game/rocket/create",
+  "rocket-race": "/game/rocket/create",
+  hotseat: "/game/hotseat/create",
+  wheel: "/game/wheel/create",
+  flags: "/game/flags",
+  capitals: "/game/capitals",
+  color: "/game/color",
+  multiply: "/game/multiply",
+  memory: "/game/memory/create",
+  letrly: "/game/letrly/create",
+  scramble: "/game/scramble/create",
+  stroop: "/game/stroop/create",
+  maraqui: "/game/maraqui/create",
+  million: "/game/million",
+};
+
+function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
+  const [, setLocation] = useLocation();
+  const [games, setGames] = useState<SavedGameActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SavedGameActivity | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const T = {
+    empty: isAr ? "لا توجد ألعاب محفوظة بعد." : "No saved games yet.",
+    loading: isAr ? "جارٍ تحميل ألعابك..." : "Loading your games...",
+    loadFailed: isAr ? "تعذّر تحميل الألعاب المحفوظة." : "Unable to load saved games.",
+    retry: isAr ? "إعادة المحاولة" : "Try again",
+    questions: (count: number) => (isAr ? `${count} سؤال` : `${count} question${count === 1 ? "" : "s"}`),
+    plays: (count: number) => (isAr ? `${count} مرة لعب` : `${count} play${count === 1 ? "" : "s"}`),
+    lastPlayed: (date: string) => (isAr ? `آخر لعب: ${date}` : `Last played: ${date}`),
+    runAgain: isAr ? "تشغيل مجدداً" : "Run again",
+    delete: isAr ? "حذف" : "Delete",
+    confirm: isAr ? "حذف اللعبة المحفوظة؟" : "Delete saved game?",
+    confirmHint: isAr
+      ? "سيتم حذف مجموعة الأسئلة المحفوظة نهائياً."
+      : "This will permanently delete the saved question set.",
+    cancel: isAr ? "إلغاء" : "Cancel",
+    deleted: isAr ? "تم حذف اللعبة المحفوظة" : "Saved game deleted",
+    deleteFailed: isAr ? "تعذّر حذف اللعبة المحفوظة" : "Unable to delete saved game",
+  };
+
+  const refresh = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setGames(await listSavedGameActivities());
+    } catch (cause) {
+      setGames([]);
+      setError(cause instanceof Error && cause.message ? cause.message : T.loadFailed);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const localGameType = (gameType: string) => {
+    const normalized = gameType.toLowerCase().trim();
+    const labels: Record<string, [string, string]> = {
+      wameeth: ["وميض", "Wameeth"],
+      wameeth_class: ["وميض", "Wameeth"],
+      tug: ["شد الحبل", "Tug of War"],
+      "tug-of-war": ["شد الحبل", "Tug of War"],
+      tug_of_war: ["شد الحبل", "Tug of War"],
+      escape: ["غرفة الهروب", "Escape Room"],
+      escape_room: ["غرفة الهروب", "Escape Room"],
+      "escape-room": ["غرفة الهروب", "Escape Room"],
+      rocket: ["سباق الصواريخ", "Rocket Race"],
+      rocket_race: ["سباق الصواريخ", "Rocket Race"],
+      "rocket-race": ["سباق الصواريخ", "Rocket Race"],
+      hotseat: ["المقعد الساخن", "Hot Seat"],
+      wheel: ["عجلة الحظ", "Wheel"],
+      flags: ["أعلام العالم", "Flags"],
+      capitals: ["عواصم العالم", "Capitals"],
+      color: ["لعبة الألوان", "Color Game"],
+      multiply: ["تحدي الضرب", "Multiplication Challenge"],
+      memory: ["تطابق الذاكرة", "Memory Match"],
+      letrly: ["لِتْرَلي", "Letrly"],
+      scramble: ["الكلمات المبعثرة", "Scrambled Words"],
+      stroop: ["تأثير ستروب", "Stroop Effect"],
+      maraqui: ["مراكي", "Maraqui"],
+      million: ["من سيحصد المليون", "Who Wants a Million"],
+    };
+    return labels[normalized]?.[isAr ? 0 : 1] || gameType;
+  };
+
+  const playCount = (game: SavedGameActivity): number | null => {
+    const value = game.playCount ?? game.plays ?? game.timesPlayed ?? game.runCount;
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  };
+
+  const lastPlayed = (value: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString(isAr ? "ar-SA" : "en-US");
+  };
+
+  const runAgain = (game: SavedGameActivity) => {
+    const path = gameCreatorPaths[game.gameType.toLowerCase().trim()];
+    if (!path) {
+      toast.error(isAr ? "لا تتوفر صفحة إعداد لهذه اللعبة." : "A setup page is not available for this game.");
+      return;
+    }
+    setLocation(`${path}?savedGameId=${encodeURIComponent(String(game.id))}`);
+  };
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteSavedGameActivity(deleteTarget.id);
+      setDeleteTarget(null);
+      toast.success(T.deleted);
+      await refresh();
+    } catch (cause) {
+      toast.error(cause instanceof Error && cause.message ? cause.message : T.deleteFailed);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-8 text-center text-muted-foreground" data-testid="saved-games-loading">
+        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+        <div className="text-sm">{T.loading}</div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-8 text-center" data-testid="saved-games-error">
+        <AlertCircle className="w-9 h-9 mx-auto mb-3 text-red-500" />
+        <p className="text-sm font-medium text-muted-foreground">{error}</p>
+        <Button variant="outline" size="sm" onClick={() => void refresh()} className="mt-4" data-testid="btn-retry-saved-games">
+          <RotateCcw className="w-3.5 h-3.5 me-1.5" />
+          {T.retry}
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {games.length === 0 ? (
+        <Card className="p-10 text-center text-muted-foreground" data-testid="saved-games-empty">
+          <Gamepad2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
+          <div>{T.empty}</div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {games.map((game) => {
+            const count = playCount(game);
+            const played = lastPlayed(game.lastUsedAt);
+            return (
+              <Card
+                key={game.id}
+                className="p-4 border-border/70 hover:border-primary/30 hover:shadow-sm transition-all"
+                data-testid={`saved-game-${game.id}`}
+              >
+                <div className="flex gap-3 items-start">
+                  <div className="shrink-0 rounded-xl p-2.5 bg-violet-500/10 text-violet-700 dark:text-violet-300">
+                    <Gamepad2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold leading-tight truncate" data-testid={`saved-game-title-${game.id}`}>
+                      {game.title || (isAr ? "(بدون عنوان)" : "(untitled)")}
+                    </h3>
+                    <p className="text-xs font-semibold text-primary mt-1">{localGameType(game.gameType)}</p>
+                    <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-2 gap-y-1">
+                      <span>{T.questions(game.questionCount)}</span>
+                      {count !== null && <span>· {T.plays(count)}</span>}
+                      {played && <span>· {T.lastPlayed(played)}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-border/60">
+                  <Button size="sm" onClick={() => runAgain(game)} data-testid={`btn-run-saved-game-${game.id}`}>
+                    <Play className="w-3.5 h-3.5 me-1.5" />
+                    {T.runAgain}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDeleteTarget(game)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    data-testid={`btn-delete-saved-game-${game.id}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 me-1.5" />
+                    {T.delete}
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>
+        <DialogContent dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{T.confirm}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">{deleteTarget?.title}</p>
+            <p className="text-sm text-muted-foreground">{T.confirmHint}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              {T.cancel}
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting} data-testid="btn-confirm-delete-saved-game">
+              {deleting && <Loader2 className="w-4 h-4 me-1.5 animate-spin" />}
               {T.delete}
             </Button>
           </DialogFooter>

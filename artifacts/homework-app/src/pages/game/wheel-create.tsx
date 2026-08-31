@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -170,6 +171,7 @@ export default function WheelCreate() {
   const [setupStep, setSetupStep] = useState<SetupStep>("source");
   const [activeSource, setActiveSource] = useState<QuestionSource | null>(null);
   const [segmentsEditorOpen, setSegmentsEditorOpen] = useState(false);
+  const loadedSavedGameRef = useRef(false);
 
   // Import from assignment
   const [importOpen, setImportOpen] = useState(false);
@@ -448,6 +450,30 @@ export default function WheelCreate() {
     if (err) { toast.error(err); return; }
     setLaunching(true);
     try {
+      // Assignment and bank imports remain linked to their original source. Only
+      // teacher-authored or AI-generated wheel content is saved as a reusable activity.
+      if (activeSource === "manual" || activeSource === "ai") {
+        const payload = buildPayload();
+        try {
+          await saveGameActivity({
+            title: payload.title,
+            gameType: "wheel",
+            content: {
+              language: payload.language,
+              gradeLevel: payload.gradeLevel,
+              subject: payload.subject,
+              segments: payload.segments,
+            },
+            settings: payload.config,
+            source: activeSource,
+          });
+        } catch {
+          toast.error(contentLang === "ar"
+            ? "تعذّر حفظ نشاط اللعبة. لم يتم بدء اللعبة."
+            : "Could not save the game activity. The game was not started.");
+          return;
+        }
+      }
       // Always persist before launching so the play page can fetch a stable id.
       const isUpdate = editingTemplateId !== null;
       const url = isUpdate
@@ -491,6 +517,48 @@ export default function WheelCreate() {
   useEffect(() => {
     if (savedOpen) loadTemplates();
   }, [savedOpen]);
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        if (activity.gameType !== "wheel") throw new Error("wrong-game");
+        const content = activity.content;
+        if (!content || typeof content !== "object" || Array.isArray(content)) throw new Error("invalid-content");
+        const saved = content as Record<string, unknown>;
+        const savedSegments = saved.segments;
+        if (!Array.isArray(savedSegments) || !savedSegments.every(segment =>
+          segment && typeof segment === "object" &&
+          typeof (segment as Segment).id === "string" &&
+          typeof (segment as Segment).text === "string" &&
+          ((segment as Segment).kind === "question" || (segment as Segment).kind === "bonus") &&
+          typeof (segment as Segment).points === "number",
+        )) throw new Error("invalid-content");
+        const savedConfig = activity.settings;
+        if (!savedConfig || typeof savedConfig !== "object" || Array.isArray(savedConfig)) throw new Error("invalid-settings");
+        const configRecord = savedConfig as Partial<WheelConfig>;
+        if (typeof configRecord.teamCount !== "number" || !Array.isArray(configRecord.teamNames) ||
+            typeof configRecord.spinSeconds !== "number" || typeof configRecord.soundOn !== "boolean") {
+          throw new Error("invalid-settings");
+        }
+        setTitle(activity.title);
+        if (saved.language === "ar" || saved.language === "en") setContentLang(saved.language);
+        if (typeof saved.subject === "string") setSubject(saved.subject);
+        if (typeof saved.gradeLevel === "string") setGradeLevel(saved.gradeLevel);
+        setSegments(colorize(savedSegments as Segment[]));
+        setConfig(configRecord as WheelConfig);
+        setActiveSource(activity.source === "ai" ? "ai" : "manual");
+        setSegmentsEditorOpen(true);
+        setAiOpen(false);
+        toast.success(contentLang === "ar" ? "تم تحميل نشاط اللعبة المحفوظ" : "Saved game activity loaded");
+      } catch {
+        toast.error(contentLang === "ar" ? "تعذّر تحميل نشاط اللعبة المحفوظ" : "Could not load the saved game activity");
+      }
+    })();
+  }, []);
 
   const applyTemplate = (t: Template) => {
     setTitle(t.title);

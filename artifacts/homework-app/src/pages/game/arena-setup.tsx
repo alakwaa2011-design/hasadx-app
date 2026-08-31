@@ -29,6 +29,7 @@ import {
   type AiGeneratedQuestion,
 } from "@/lib/arena-content";
 import { toast } from "@/components/ui/sonner";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const TEAM_COLORS = [
   { color: "#2563eb", name: "أزرق" },
@@ -139,6 +140,8 @@ export default function ArenaSetup() {
   const [playerDraft, setPlayerDraft] = useState<string[]>(["", ""]);
   const [timerSeconds, setTimerSeconds] = useState(20);
   const [customQuestions, setCustomQuestions] = useState<ArenaCustomQuestion[]>([]);
+  const [launching, setLaunching] = useState(false);
+  const loadedSavedGameRef = useRef(false);
 
   // DB-sourced categories & activities
   const [dbCats, setDbCats] = useState<DbArenaCategory[]>([]);
@@ -160,6 +163,48 @@ export default function ArenaSetup() {
         })));
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        if (activity.gameType !== "arena") throw new Error("wrong-game");
+        const content = activity.content;
+        const settings = activity.settings;
+        if (!content || typeof content !== "object" || Array.isArray(content) ||
+            !settings || typeof settings !== "object" || Array.isArray(settings)) {
+          throw new Error("invalid-saved-game");
+        }
+        const savedQuestions = (content as Record<string, unknown>).customQuestions;
+        const savedTeams = (settings as Record<string, unknown>).teams;
+        const timer = (settings as Record<string, unknown>).timerSeconds;
+        if (!Array.isArray(savedQuestions) || !savedQuestions.every(question =>
+          question && typeof question === "object" &&
+          typeof (question as ArenaCustomQuestion).q === "string" &&
+          typeof (question as ArenaCustomQuestion).a === "string" &&
+          DIFFICULTIES.includes((question as ArenaCustomQuestion).difficulty),
+        ) || !Array.isArray(savedTeams) || !savedTeams.every(team =>
+          team && typeof team === "object" && typeof (team as TeamFormState).name === "string" &&
+          typeof (team as TeamFormState).color === "string" && typeof (team as TeamFormState).emoji === "string" &&
+          Array.isArray((team as TeamFormState).subCategoryIds) &&
+          Array.isArray((team as TeamFormState).helpers) && Array.isArray((team as TeamFormState).players),
+        ) || typeof timer !== "number") {
+          throw new Error("invalid-saved-game");
+        }
+        setTournamentName(activity.title);
+        setCustomQuestions(savedQuestions as ArenaCustomQuestion[]);
+        setTeams(savedTeams as TeamFormState[]);
+        setTimerSeconds(timer);
+        setStep(3);
+        toast.success(lang === "ar" ? "تم تحميل نشاط اللعبة المحفوظ" : "Saved game activity loaded");
+      } catch {
+        toast.error(lang === "ar" ? "تعذّر تحميل نشاط اللعبة المحفوظ" : "Could not load the saved game activity");
+      }
+    })();
   }, []);
 
   // Check for a server-saved game on first login
@@ -409,8 +454,10 @@ export default function ArenaSetup() {
   };
   const goPrev = () => { if (step > 1) setStep((step - 1) as Step); };
 
-  const start = () => {
+  const start = async () => {
     if (!canStart) { toast.error(t.arenaSetup.selectionRequired); return; }
+    if (launching) return;
+    setLaunching(true);
     const teamsRecord: Record<string, { name: string; color: string; emoji: string; score: number; helpers: HelperId[]; usedHelpers: HelperId[]; players: string[] }> = {};
     const teamOrder: string[] = [];
     for (let i = 0; i < teams.length; i++) {
@@ -426,7 +473,7 @@ export default function ArenaSetup() {
         players: teams[i].players,
       };
     }
-    saveArenaLastSettings({
+    const lastSettings = {
       timerSeconds,
       tournamentName: tournamentName.trim(),
       teams: teams.map(t => ({
@@ -436,7 +483,7 @@ export default function ArenaSetup() {
         subCategoryIds: t.subCategoryIds,
         helpers: t.helpers,
       })),
-    });
+    };
     // Include ALL DB sub-categories in the saved state — not just the standalone
     // sections but also the ones merged into static sections (mergedSubsByStaticId).
     // The play screen resolves sub-category IDs by searching allSections; if a
@@ -459,7 +506,7 @@ export default function ArenaSetup() {
         }),
     ];
 
-    saveArenaState({
+    const state: ArenaState = {
       tournamentName: tournamentName.trim(),
       teams: teamsRecord,
       teamOrder,
@@ -473,7 +520,38 @@ export default function ArenaSetup() {
       active: null,
       rulesAck: true,
       startedAt: Date.now(),
-    });
+    };
+    // Static and database categories have their own source of truth. Save only
+    // when this launch contains teacher-authored/generated custom questions.
+    if (customQuestions.length > 0) {
+      try {
+        await saveGameActivity({
+          title: tournamentName.trim() || (lang === "ar" ? "ساحة التحدي" : "Challenge Arena"),
+          gameType: "arena",
+          content: {
+            customQuestions,
+            selectedSubCategoryIds: teams.flatMap(t => t.subCategoryIds),
+            dbSections: dbSectionsForState,
+          },
+          settings: {
+            ...lastSettings,
+            teams: teams.map(t => ({
+              ...t,
+              name: t.name.trim(),
+            })),
+          },
+          source: "manual",
+        });
+      } catch {
+        toast.error(lang === "ar"
+          ? "تعذّر حفظ نشاط اللعبة. لم يتم بدء اللعبة."
+          : "Could not save the game activity. The game was not started.");
+        setLaunching(false);
+        return;
+      }
+    }
+    saveArenaLastSettings(lastSettings);
+    saveArenaState(state);
     setLocation("/game/arena/play");
   };
 
@@ -1375,7 +1453,7 @@ export default function ArenaSetup() {
             ) : (
               <button
                 onClick={start}
-                disabled={!canStart}
+                disabled={!canStart || launching}
                 className="flex-1 py-3 sm:py-4 rounded-xl font-extrabold text-lg sm:text-2xl transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 sm:gap-3 hover:opacity-95"
                 style={{
                   background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)",

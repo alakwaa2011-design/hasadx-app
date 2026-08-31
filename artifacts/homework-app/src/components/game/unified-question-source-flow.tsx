@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  BookOpen, Sparkles, PenLine, Database, ChevronLeft, ChevronRight,
+  BookOpen, Sparkles, PenLine, Database, History, ChevronLeft, ChevronRight,
   Search, Loader2, Check, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,10 @@ import { QuestionCard, emptyQuestion, isValidQ, type Question, type Correct } fr
 import { useGetCurrentTeacher, useListAssignments } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import {
+  getSavedGameActivity, listSavedGameActivities, normalizeSavedGameQuestions,
+  type SavedGameActivity, type SavedGameQuestion,
+} from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -41,11 +45,16 @@ export interface UnifiedQuestionSourceFlowProps {
       imageUrl?: string | null;
     }>;
     sourceTitle: string | null;
-    source: "assignment" | "ai" | "manual" | "bank";
+    source: "assignment" | "ai" | "manual" | "bank" | "saved";
+    /**
+     * Present only when questions came from a saved activity. Consumers can
+     * restore game-specific settings after validating its gameType.
+     */
+    savedActivity?: Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source">;
   }) => void;
 }
 
-type ViewState = "menu" | "assignment" | "bank" | "ai_form" | "editor";
+type ViewState = "menu" | "assignment" | "bank" | "saved" | "ai_form" | "editor";
 
 export function UnifiedQuestionSourceFlow({
   gameTitle,
@@ -95,6 +104,41 @@ export function UnifiedQuestionSourceFlow({
   const [bankSelectedIds, setBankSelectedIds] = useState<Set<number>>(new Set());
   const [bankLoading, setBankLoading] = useState(false);
   const [bankLoaded, setBankLoaded] = useState(false);
+  // Saved games are deliberately fetched only once the teacher opens this source.
+  const [savedGames, setSavedGames] = useState<SavedGameActivity[]>([]);
+  const [savedSearch, setSavedSearch] = useState("");
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [savedLoaded, setSavedLoaded] = useState(false);
+  const [savedError, setSavedError] = useState(false);
+  const [selectedSavedId, setSelectedSavedId] = useState<SavedGameActivity["id"] | null>(null);
+  const [selectedSavedTitle, setSelectedSavedTitle] = useState("");
+  const [selectedSavedQs, setSelectedSavedQs] = useState<SavedGameQuestion[]>([]);
+  const [selectedSavedActivity, setSelectedSavedActivity] = useState<Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source"> | null>(null);
+  const deepLinkLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (deepLinkLoadedRef.current) return;
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId) return;
+    deepLinkLoadedRef.current = true;
+    void getSavedGameActivity(savedGameId)
+      .then((activity) => {
+        const prepared = normalizeSavedGameQuestions(activity.questions).slice(0, maxQuestions);
+        if (prepared.length < minQuestions) {
+          throw new Error(ar ? "اللعبة المحفوظة لا تحتوي أسئلة كافية" : "The saved game does not contain enough supported questions");
+        }
+        onComplete({
+          questions: prepared,
+          sourceTitle: activity.title || null,
+          source: "saved",
+          savedActivity: activity,
+        });
+        toast.success(ar ? "تم تحميل اللعبة المحفوظة" : "Saved game loaded");
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : (ar ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game"));
+      });
+  }, [ar, maxQuestions, minQuestions, onComplete]);
 
   // Editor (Manual & AI)
   const [manualQuestions, setManualQuestions] = useState<Question[]>([]);
@@ -254,6 +298,71 @@ export function UnifiedQuestionSourceFlow({
       imageUrl: q.imageUrl || null
     })).slice(0, maxQuestions);
     onComplete({ questions: qList, sourceTitle: null, source: "bank" });
+  };
+
+  // ─── Saved Games Logic ───
+  useEffect(() => {
+    if (viewState !== "saved" || !user || savedLoaded || savedLoading) return;
+    setSavedLoading(true);
+    setSavedError(false);
+    listSavedGameActivities()
+      .then(setSavedGames)
+      .catch(() => {
+        setSavedError(true);
+        toast.error(ar ? "تعذّر تحميل ألعابك المحفوظة" : "Failed to load your saved games");
+      })
+      .finally(() => {
+        setSavedLoaded(true);
+        setSavedLoading(false);
+      });
+  }, [viewState, user, savedLoaded, savedLoading, ar]);
+
+  const filteredSavedGames = savedSearch.trim()
+    ? savedGames.filter(game => {
+      const search = savedSearch.trim().toLowerCase();
+      return game.title.toLowerCase().includes(search) || game.gameType.toLowerCase().includes(search);
+    })
+    : savedGames;
+
+  const handleSelectSavedGame = async (game: SavedGameActivity) => {
+    if (savedLoading) return;
+    setSelectedSavedId(game.id);
+    setSelectedSavedTitle("");
+    setSelectedSavedQs([]);
+    setSelectedSavedActivity(null);
+    setSavedLoading(true);
+    try {
+      const savedGame = await getSavedGameActivity(game.id);
+      const questions = normalizeSavedGameQuestions(savedGame.questions);
+      if (questions.length < minQuestions) {
+        setSelectedSavedId(null);
+        toast.error(ar ? `تحتوي هذه اللعبة على أقل من ${minQuestions} أسئلة صالحة` : `This game has fewer than ${minQuestions} valid questions`);
+        return;
+      }
+      setSelectedSavedTitle(savedGame.title || game.title);
+      setSelectedSavedQs(questions.slice(0, maxQuestions));
+      setSelectedSavedActivity(savedGame);
+      toast.success(ar ? `تم تحميل ${Math.min(questions.length, maxQuestions)} سؤال` : `Loaded ${Math.min(questions.length, maxQuestions)} questions`);
+    } catch {
+      setSelectedSavedId(null);
+      toast.error(ar ? "تعذّر تحميل أسئلة اللعبة المحفوظة" : "Failed to load saved game questions");
+    } finally {
+      setSavedLoading(false);
+    }
+  };
+
+  const savedReady = selectedSavedId !== null && selectedSavedQs.length >= minQuestions;
+  const handleSavedComplete = () => {
+    if (!savedReady) {
+      toast.error(ar ? `الحد الأدنى هو ${minQuestions} أسئلة` : `Minimum is ${minQuestions} questions`);
+      return;
+    }
+    onComplete({
+      questions: selectedSavedQs.slice(0, maxQuestions),
+      sourceTitle: selectedSavedTitle || null,
+      source: "saved",
+      ...(selectedSavedActivity ? { savedActivity: selectedSavedActivity } : {}),
+    });
   };
 
   // ─── AI Logic ───
@@ -569,6 +678,15 @@ export function UnifiedQuestionSourceFlow({
                     bg: "bg-purple-500/10",
                     border: "border-purple-500/20",
                     hoverBorder: "hover:border-purple-500/50"
+                  },
+                  {
+                    id: "saved" as const,
+                    icon: <History className="w-6 h-6 text-rose-500" />,
+                    title: ar ? "ألعابي المحفوظة" : "My saved games",
+                    desc: ar ? "إعادة استخدام أسئلة الألعاب التي حفظتها" : "Reuse questions from games you saved",
+                    bg: "bg-rose-500/10",
+                    border: "border-rose-500/20",
+                    hoverBorder: "hover:border-rose-500/50"
                   }
                 ].map(opt => (
                   <button
@@ -685,6 +803,87 @@ export function UnifiedQuestionSourceFlow({
                   disabled={bankSelectedIds.size < minQuestions}
                   label={ar ? "متابعة" : "Continue"}
                 />
+              </div>
+            </div>
+          )}
+
+          {viewState === "saved" && (
+            <div className="bg-card border border-border/60 rounded-3xl p-5 lg:p-8 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <BackBtn />
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">{ar ? "ألعابي المحفوظة" : "My saved games"}</h2>
+                    <p className="text-sm text-muted-foreground">{ar ? `اختر لعبة تحتوي من ${minQuestions} إلى ${maxQuestions} سؤال` : `Choose a game with ${minQuestions} to ${maxQuestions} questions`}</p>
+                  </div>
+                </div>
+                <div className="relative w-full sm:max-w-xs">
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    data-testid="input-search-saved-games"
+                    value={savedSearch}
+                    onChange={e => setSavedSearch(e.target.value)}
+                    placeholder={ar ? "ابحث في ألعابك..." : "Search your games..."}
+                    className="w-full bg-muted/50 border border-border/60 rounded-xl ps-9 pe-4 py-2 text-sm focus:outline-none focus:ring-1 focus:border-transparent transition-shadow"
+                    style={accentColor ? { '--tw-ring-color': accentColor } as any : {}}
+                  />
+                </div>
+              </div>
+              <div className="h-[350px] overflow-y-auto pr-2 space-y-3 mb-6 custom-scrollbar">
+                {savedLoading && !savedLoaded ? (
+                  <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                ) : !user ? (
+                  <div data-testid="status-saved-games-sign-in" className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm font-medium">
+                    {ar ? "سجّل الدخول لعرض ألعابك المحفوظة" : "Sign in to view your saved games"}
+                  </div>
+                ) : savedError ? (
+                  <div data-testid="status-saved-games-error" className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm font-medium">
+                    {ar ? "تعذّر تحميل ألعابك المحفوظة. حاول مرة أخرى لاحقاً." : "Could not load your saved games. Please try again later."}
+                  </div>
+                ) : filteredSavedGames.length === 0 ? (
+                  <div data-testid="status-saved-games-empty" className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm font-medium">
+                    {savedSearch.trim()
+                      ? (ar ? "لا توجد ألعاب محفوظة مطابقة" : "No matching saved games")
+                      : (ar ? "ليس لديك ألعاب محفوظة بعد" : "You do not have saved games yet")}
+                  </div>
+                ) : (
+                  filteredSavedGames.map(game => {
+                    const selected = selectedSavedId === game.id;
+                    const lastUsed = game.lastUsedAt && !Number.isNaN(Date.parse(game.lastUsedAt))
+                      ? new Intl.DateTimeFormat(ar ? "ar" : "en", { dateStyle: "medium" }).format(new Date(game.lastUsedAt))
+                      : null;
+                    return (
+                      <button
+                        key={String(game.id)}
+                        data-testid={`button-select-saved-game-${game.id}`}
+                        onClick={() => handleSelectSavedGame(game)}
+                        disabled={savedLoading}
+                        className={cn("w-full text-start p-4 rounded-xl border-2 transition-all flex items-start gap-4", selected ? (!accentColor && "border-primary bg-primary/5") : "border-border/40 bg-muted/20 hover:bg-muted hover:border-border/60")}
+                        style={selected && accentColor ? { borderColor: accentColor, backgroundColor: `${accentColor}10` } : {}}
+                      >
+                        <div className={cn("mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0", selected ? (!accentColor && "bg-primary border-primary text-primary-foreground") : "border-muted-foreground/40 bg-background")} style={selected && accentColor ? { backgroundColor: accentColor, borderColor: accentColor, color: "#fff" } : {}}>
+                          {selected && (savedLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-foreground text-sm truncate">{game.title || (ar ? "لعبة بلا عنوان" : "Untitled game")}</h3>
+                          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span>{game.gameType || (ar ? "لعبة" : "Game")}</span>
+                            <span>{game.questionCount} {ar ? "أسئلة" : "questions"}</span>
+                            <span>{lastUsed
+                              ? `${ar ? "آخر استخدام: " : "Last used: "}${lastUsed}`
+                              : (ar ? "لم تُستخدم بعد" : "Not used yet")}</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <div className="border-t border-border/60 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <span data-testid="status-saved-game-selection" className="text-xs text-muted-foreground">
+                  {savedReady ? (ar ? `${selectedSavedQs.length} أسئلة جاهزة` : `${selectedSavedQs.length} questions ready`) : (ar ? "اختر لعبة محفوظة للمتابعة" : "Choose a saved game to continue")}
+                </span>
+                <SubmitBtn onClick={handleSavedComplete} disabled={!savedReady || savedLoading} label={ar ? "متابعة" : "Continue"} className="w-full sm:w-auto" />
               </div>
             </div>
           )}

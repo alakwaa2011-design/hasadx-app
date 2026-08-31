@@ -500,6 +500,37 @@ async function runSchemaMigrations() {
     logger.error(err, "Schema migration failed");
   }
 
+  // Kept separate from the legacy migration bundle so this new table is still
+  // provisioned if an unrelated historical migration above fails.
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS saved_game_activities (
+        id                  SERIAL PRIMARY KEY,
+        teacher_id          INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        game_type           TEXT NOT NULL,
+        title               TEXT NOT NULL,
+        content             JSONB NOT NULL,
+        settings            JSONB NOT NULL DEFAULT '{}'::jsonb,
+        source              TEXT NOT NULL DEFAULT 'manual',
+        content_fingerprint TEXT NOT NULL,
+        question_count      INTEGER NOT NULL DEFAULT 0,
+        play_count          INTEGER NOT NULL DEFAULT 1,
+        last_played_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT saved_game_activities_teacher_game_content_uq
+          UNIQUE (teacher_id, game_type, content_fingerprint)
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS saved_game_activities_teacher_updated_idx
+        ON saved_game_activities(teacher_id, updated_at DESC)
+    `);
+    logger.info("Saved game activities table ready");
+  } catch (err) {
+    logger.error(err, "Saved game activities migration failed");
+  }
+
   // ── Personal assistant — isolated storage, no foreign keys into Hasaad data ──
   try {
     await db.execute(sql`

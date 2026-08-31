@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
@@ -70,6 +71,7 @@ export default function MaraquiCreate() {
   const [aiTopic, setAiTopic] = useState("");
   const [aiCount, setAiCount] = useState("5");
   const [showAiFor, setShowAiFor] = useState<number | null>(null);
+  const loadedSavedGameRef = useRef(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
@@ -79,6 +81,40 @@ export default function MaraquiCreate() {
       })
       .catch(() => setIsLoggedIn(false));
   }, []);
+
+  useEffect(() => {
+    const savedGameId = params.get("savedGameId");
+    if (!isLoggedIn || !savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        const content = activity.content;
+        const settings = activity.settings;
+        if (activity.gameType !== "maraqui" || !content || typeof content !== "object" || Array.isArray(content) ||
+            !settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("invalid-saved-game");
+        const saved = content as Record<string, unknown>;
+        const savedStages = saved.stages;
+        const savedSettings = settings as Record<string, unknown>;
+        if (typeof saved.description !== "string" || !Array.isArray(savedStages) || savedStages.length === 0 ||
+            !savedStages.every(stage => stage && typeof stage === "object" && typeof (stage as Stage).num === "number" &&
+              typeof (stage as Stage).name === "string" &&
+              ((stage as Stage).difficulty === "easy" || (stage as Stage).difficulty === "medium" || (stage as Stage).difficulty === "hard") &&
+              Array.isArray((stage as Stage).questions) && (stage as Stage).questions.length > 0 &&
+              (stage as Stage).questions.every(question => question && typeof question.text === "string" &&
+                Array.isArray(question.options) && question.options.length === 4 &&
+                question.options.every(option => typeof option === "string") &&
+                typeof question.correct === "number")) ||
+            typeof savedSettings.isPublic !== "boolean") throw new Error("invalid-saved-game");
+        setTitle(activity.title);
+        setDescription(saved.description);
+        setStages(savedStages as Stage[]);
+        setIsPublic(savedSettings.isPublic);
+      } catch {
+        toast.error(isRtl ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
+      }
+    })();
+  }, [isLoggedIn, search, isRtl]);
 
   const loadEditPath = async () => {
     setLoadingEdit(true);
@@ -247,6 +283,19 @@ export default function MaraquiCreate() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setResult({ pin: data.pin, title: data.title, isEdit: isEditMode });
+      try {
+        await saveGameActivity({
+          title: title.trim(),
+          gameType: "maraqui",
+          content: { description: description.trim(), stages },
+          settings: { isPublic },
+          source: "teacher-authored",
+        });
+      } catch {
+        toast.warning(isRtl
+          ? "تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي. / The game was saved, but could not be added to My games."
+          : "The game was saved, but could not be added to My games. / تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي.");
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (isRtl ? "حدث خطأ" : "An error occurred");
       toast.error(msg);

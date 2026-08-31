@@ -19,6 +19,7 @@ import {
 } from "@/components/teacher/class-selector";
 import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import { storeIndependentControlToken } from "@/lib/independent-game-session";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import {
   canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
@@ -102,6 +103,7 @@ export default function WameethCreate() {
     typeof window === "undefined" ? "" : window.location.search,
   );
   const preloadedAssignmentRef = useRef<number | null>(null);
+  const loadedSavedGameRef = useRef(false);
   const importingLibraryAssignmentRef = useRef(false);
   const [showImportPrompt, setShowImportPrompt] = useState(false);
   const [importingLibraryAssignment, setImportingLibraryAssignment] = useState(false);
@@ -304,6 +306,72 @@ export default function WameethCreate() {
   // وميض الصف only supports tap-to-pick options on screen — fill-in-the-blank
   // has no free-text input there, so it is excluded from that mode only.
   const classroomEligible = validQuestions.filter(q => q.type !== "fill_blank");
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        if (activity.gameType !== "wameeth" || !Array.isArray(activity.content)) {
+          throw new Error("invalid-saved-game");
+        }
+        const restored = activity.content.filter((question): question is Question =>
+          !!question && typeof question === "object" && isValidQ(question as Question),
+        );
+        // Never silently drop questions from a saved activity; loading a partial
+        // competition could change its intended gameplay.
+        if (restored.length !== activity.content.length || restored.length < 2) {
+          throw new Error("invalid-saved-game");
+        }
+        const settings = activity.settings;
+        if (settings && (typeof settings !== "object" || Array.isArray(settings))) throw new Error("invalid-settings");
+        const savedSettings = (settings ?? {}) as Record<string, unknown>;
+        const savedTeamCount = savedSettings.teamCount;
+        const restoredTeamCount = typeof savedTeamCount === "number" && savedTeamCount >= 2 && savedTeamCount <= 6
+          ? savedTeamCount
+          : 2;
+        const savedCustomTeamNames = savedSettings.customTeamNames;
+        if (
+          savedCustomTeamNames !== undefined
+          && savedCustomTeamNames !== null
+          && (
+            !Array.isArray(savedCustomTeamNames)
+            || savedCustomTeamNames.length > 6
+            || savedCustomTeamNames.some(name => typeof name !== "string" || name.length > 20)
+            || (savedSettings.mode === "teams" && savedCustomTeamNames.length !== restoredTeamCount)
+          )
+        ) {
+          throw new Error("invalid-settings");
+        }
+        setTitle(activity.title);
+        setQuestions(restored);
+        setSource("manual");
+        setSourceAssignmentId(null);
+        setSelectedAssignment(null);
+        setStep("prepare");
+        if (savedSettings.mode === "solo" || savedSettings.mode === "teams" ||
+            savedSettings.mode === "classroom" || savedSettings.mode === "independent") {
+          setMode(savedSettings.mode);
+        }
+        if (typeof savedTeamCount === "number" && savedTeamCount >= 2 && savedTeamCount <= 6) {
+          setTeamCount(savedTeamCount);
+        }
+        if (Array.isArray(savedCustomTeamNames)) {
+          setCustomTeamNames([
+            ...savedCustomTeamNames,
+            ...Array<string>(6 - savedCustomTeamNames.length).fill(""),
+          ]);
+        }
+        if (typeof savedSettings.targetClass === "string") setTargetClass(savedSettings.targetClass);
+        toast.success(ar ? "تم تحميل نشاط اللعبة المحفوظ" : "Saved game activity loaded");
+      } catch {
+        toast.error(ar ? "تعذّر تحميل نشاط اللعبة المحفوظ" : "Could not load the saved game activity");
+      }
+    })();
+  }, []);
+
   const sourceNeedsImportForLiveGame =
     sourceAssignmentId === selectedAssignment?.id
     && !!selectedAssignment
@@ -412,6 +480,21 @@ export default function WameethCreate() {
 
     try {
       const assignmentId = await ensureAssignment();
+      await saveGameActivity({
+        gameType: "wameeth",
+        title: title.trim() || (ar ? "وميض" : "Wameeth"),
+        content: validQuestions,
+        settings: {
+          mode,
+          assignmentId,
+          teamCount: mode === "teams" ? teamCount : null,
+          customTeamNames: mode === "teams"
+            ? customTeamNames.slice(0, teamCount).map(name => name.trim())
+            : null,
+          targetClass: targetClass || null,
+        },
+        source: sourceAssignmentId != null ? "assignment" : "game-launch",
+      });
 
       if (mode === "classroom") {
         const qs = classroomEligible.map(q => q.type === "tf"

@@ -4,7 +4,7 @@
  *   - من واجب موجود، أو
  *   - أسئلة جديدة بمساعدة الذكاء الاصطناعي + تعديل يدوي
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,6 +22,7 @@ import {
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
 import { QuestionCard, emptyQuestion, isValidQ, type Question, type Correct } from "@/components/game/question-editor";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -82,6 +83,66 @@ export default function SoloChallengeCreatePage() {
     { name: "Level 1", questionCount: 5, timePerQuestion: 25 },
   ]);
   const [diffDistribution, setDiffDistribution] = useState<DiffDistribution | null>(null);
+  const loadedSavedGameRef = useRef(false);
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        if (activity.gameType !== "solo") throw new Error("wrong-game");
+        const content = activity.content;
+        if (!content || typeof content !== "object" || Array.isArray(content)) throw new Error("invalid-content");
+        const savedQuestions = (content as Record<string, unknown>).questions;
+        if (!Array.isArray(savedQuestions)) throw new Error("invalid-content");
+        const restored = savedQuestions.map((item): Question | null => {
+          if (!item || typeof item !== "object") return null;
+          const q = item as Record<string, unknown>;
+          if (typeof q.text !== "string") return null;
+          if (q.questionType === "fill_blank" && typeof q.correctAnswer === "string") {
+            const answers = q.correctAnswer.split("|").map(answer => answer.trim()).filter(Boolean);
+            return answers.length ? { ...emptyQuestion("fill_blank"), text: q.text, fillAnswer: answers[0], closeAnswers: answers.slice(1).join(", ") } : null;
+          }
+          if (q.questionType === "true_false") {
+            return (q.correctAnswer === "true" || q.correctAnswer === "false")
+              ? { ...emptyQuestion("tf"), text: q.text, correctAnswer: q.correctAnswer === "true" ? "A" : "B" }
+              : null;
+          }
+          if (q.questionType === "mcq" && typeof q.optionA === "string" && typeof q.optionB === "string" &&
+              typeof q.optionC === "string" && typeof q.optionD === "string" &&
+              typeof q.correctAnswer === "string" && ["A", "B", "C", "D"].includes(q.correctAnswer)) {
+            return { ...emptyQuestion("mcq"), text: q.text, optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD, correctAnswer: q.correctAnswer as Correct };
+          }
+          return null;
+        });
+        if (restored.some(question => question === null) || restored.length === 0) throw new Error("invalid-content");
+        const settings = activity.settings;
+        if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("invalid-settings");
+        const saved = settings as Record<string, unknown>;
+        if (typeof saved.timePerQuestion !== "number" ||
+            (saved.leaderboardDisplay !== "top3" && saved.leaderboardDisplay !== "top20" && saved.leaderboardDisplay !== "all")) {
+          throw new Error("invalid-settings");
+        }
+        setTitle(activity.title);
+        setQuestions(restored as Question[]);
+        setTimePerQuestion(saved.timePerQuestion);
+        setLeaderboardDisplay(saved.leaderboardDisplay);
+        if (typeof saved.notes === "string") setNotes(saved.notes);
+        if (typeof saved.expiresAt === "string") setExpiresAt(saved.expiresAt);
+        if (typeof saved.questionsPerParticipant === "number") setQuestionsPerParticipant(saved.questionsPerParticipant);
+        if (Array.isArray(saved.allowedClasses) && saved.allowedClasses.every(value => typeof value === "string")) setAllowedClasses(saved.allowedClasses);
+        if (typeof saved.isMultiLevel === "boolean") setIsMultiLevel(saved.isMultiLevel);
+        if (Array.isArray(saved.levels)) setChallengeLevels(saved.levels as ChallengeLevel[]);
+        if (saved.difficultyDistribution && typeof saved.difficultyDistribution === "object") setDiffDistribution(saved.difficultyDistribution as DiffDistribution);
+        setSource((content as Record<string, unknown>).source === "ai" ? "ai" : "manual");
+        toast.success(lang === "ar" ? "تم تحميل نشاط اللعبة المحفوظ" : "Saved game activity loaded");
+      } catch {
+        toast.error(lang === "ar" ? "تعذّر تحميل نشاط اللعبة المحفوظ" : "Could not load the saved game activity");
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/login");
@@ -217,6 +278,31 @@ export default function SoloChallengeCreatePage() {
 
     setSaving(true);
     try {
+      const settings = {
+        notes: notes || null,
+        timePerQuestion,
+        leaderboardDisplay,
+        expiresAt: expiresAt || null,
+        questionsPerParticipant: diffDistribution ? null : (questionsPerParticipant === "" ? null : questionsPerParticipant),
+        difficultyDistribution: diffDistribution,
+        isMultiLevel,
+        levels: isMultiLevel ? challengeLevels : null,
+        allowedClasses,
+      };
+      try {
+        await saveGameActivity({
+          title: title.trim(),
+          gameType: "solo",
+          content: { questions: sendQs, topic: topic.trim(), subject: subject.trim(), source: source ?? "manual" },
+          settings,
+          source: source ?? "manual",
+        });
+      } catch {
+        toast.error(lang === "ar"
+          ? "تعذّر حفظ نشاط اللعبة. لم يتم إنشاء التحدي."
+          : "Could not save the game activity. The challenge was not created.");
+        return;
+      }
       const res = await fetch(`${API}/api/solo-challenges/standalone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -224,15 +310,7 @@ export default function SoloChallengeCreatePage() {
         body: JSON.stringify({
           title: title.trim(),
           questions: sendQs,
-          notes: notes || null,
-          timePerQuestion,
-          leaderboardDisplay,
-          expiresAt: expiresAt || null,
-          questionsPerParticipant: diffDistribution ? null : (questionsPerParticipant === "" ? null : questionsPerParticipant),
-          difficultyDistribution: diffDistribution,
-          isMultiLevel,
-          levels: isMultiLevel ? challengeLevels : null,
-          allowedClasses,
+          ...settings,
         }),
       });
       const data = await res.json();

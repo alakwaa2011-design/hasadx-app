@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
 import { ArrowRight, Send, Copy, Check, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import {
   CATEGORY_LABELS,
   CATEGORY_EMOJI,
@@ -26,11 +27,37 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
   const [submitting, setSubmitting] = useState(false);
   const [createdPin, setCreatedPin] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const loadedSavedGameRef = useRef(false);
 
   const normalized = useMemo(() => normalizeArabic(word), [word]);
   const length = normalized.length;
   const isArabicOnly = useMemo(() => /^[\u0600-\u06FF\s]*$/.test(word), [word]);
   const validLength = length >= 3 && length <= 7;
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        const content = activity.content;
+        const settings = activity.settings;
+        if (activity.gameType !== "letrly" || !content || typeof content !== "object" || Array.isArray(content) ||
+            !settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("invalid-saved-game");
+        const saved = content as Record<string, unknown>;
+        const savedCategory = (settings as Record<string, unknown>).category;
+        if (typeof saved.word !== "string" || typeof saved.hint !== "string" || !CATEGORIES.includes(savedCategory as LetrlyCategory)) {
+          throw new Error("invalid-saved-game");
+        }
+        setWord(saved.word);
+        setHint(saved.hint);
+        setCategory(savedCategory as LetrlyCategory);
+      } catch {
+        toast.error(dir === "rtl" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
+      }
+    })();
+  }, [dir]);
 
   const shareUrl = createdPin
     ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/game/letrly/play?pin=${createdPin}`
@@ -55,6 +82,19 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
       }
       setCreatedPin(data.pin);
       toast.success(copy.created);
+      try {
+        await saveGameActivity({
+          title: word.trim(),
+          gameType: "letrly",
+          content: { word: word.trim(), hint: hint.trim() },
+          settings: { category },
+          source: "teacher-authored",
+        });
+      } catch {
+        toast.warning(dir === "rtl"
+          ? "تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي. / The game was saved, but could not be added to My games."
+          : "The game was saved, but could not be added to My games. / تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي.");
+      }
     } catch {
       toast.error(copy.connectionError);
     } finally {

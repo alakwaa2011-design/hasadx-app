@@ -16,6 +16,7 @@ import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { ESCAPE_CLASS_SETUP_KEY } from "@/lib/escape-engine";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GOLD = "#d9a521";
@@ -52,6 +53,9 @@ const bankToEscape = (bq: BankQuestion): EscapeQuestion => ({
   correct: correctAnswerToIndex(bq.correctAnswer),
   imageUrl: bq.imageUrl || null,
 });
+
+const savedSettings = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
 export default function EscapeCreate() {
   const { lang } = useI18n();
@@ -193,6 +197,18 @@ export default function EscapeCreate() {
     title: sourceTitle || undefined,
   });
 
+  const persistActivity = () => saveGameActivity({
+    gameType: "escape",
+    title: sourceTitle?.trim() || (ar ? "غرفة الهروب" : "Escape Room"),
+    questions,
+    settings: {
+      totalTime: totalMinutes * 60,
+      lockCount: Math.min(lockCount, questions.length),
+      hints,
+    },
+    source: selectedSource || "game-launch",
+  });
+
   const requireQuestions = () => {
     if (questions.length < 3) {
       toast.error(ar ? "غرفة الهروب تحتاج 3 أسئلة على الأقل" : "The escape room needs at least 3 questions");
@@ -201,17 +217,28 @@ export default function EscapeCreate() {
     return true;
   };
 
-  const startClassMode = () => {
+  const startClassMode = async () => {
     if (!requireQuestions()) return;
     try {
+      await persistActivity();
       sessionStorage.setItem(ESCAPE_CLASS_SETUP_KEY, JSON.stringify(buildSetup()));
-    } catch { /* storage blocked — the class page will show the setup prompt */ }
+    } catch {
+      toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
+      return;
+    }
     setLocation("/game/escape/class");
   };
 
-  const startDeviceMode = () => {
+  const startDeviceMode = async () => {
     if (!requireQuestions()) return;
     setCreating(true);
+    try {
+      await persistActivity();
+    } catch {
+      setCreating(false);
+      toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
+      return;
+    }
     const socket = getSocket();
     socket.emit("escape:create", buildSetup(),
       (res: { pin?: string; creatorToken?: string; error?: string }) => {
@@ -251,10 +278,27 @@ export default function EscapeCreate() {
             floatingAssignmentContinue
             minQuestions={3}
             maxQuestions={30}
-            onComplete={({ questions: prepared, sourceTitle: title, source }) => {
+            onComplete={({ questions: prepared, sourceTitle: title, source, savedActivity }) => {
               setQuestions(prepared);
               setSourceTitle(title);
               setSelectedSource(source === "bank" ? "bank" : "assignment");
+              if (source === "saved" && savedActivity?.gameType === "escape") {
+                const settings = savedSettings(savedActivity.settings);
+                if (settings) {
+                  if (typeof settings.totalTime === "number"
+                    && Number.isInteger(settings.totalTime / 60)
+                    && settings.totalTime >= 2 * 60
+                    && settings.totalTime <= 30 * 60) {
+                    setTotalMinutes(settings.totalTime / 60);
+                  }
+                  if ([2, 3, 4, 5, 6].includes(settings.lockCount as number)) {
+                    setLockCount(settings.lockCount as number);
+                  }
+                  if ([0, 1, 2, 3].includes(settings.hints as number)) {
+                    setHints(settings.hints as number);
+                  }
+                }
+              }
               setSetupStep("settings");
             }}
           />

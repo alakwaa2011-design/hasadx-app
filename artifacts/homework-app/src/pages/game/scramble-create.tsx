@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Plus, Trash2, Save, Copy, Check, Shuffle, BookOpen, LogIn, Eye, Send, MessageSquare, Type } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -84,12 +85,43 @@ export default function ScrambleCreate() {
   const [result, setResult] = useState<{ pin: string; id: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const loadedSavedGameRef = useRef(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
       .then(r => { setIsLoggedIn(r.ok); })
       .catch(() => { setIsLoggedIn(false); });
   }, []);
+
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!isLoggedIn || !savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void (async () => {
+      try {
+        const activity = await getSavedGameActivity(savedGameId);
+        const content = activity.content;
+        const settings = activity.settings;
+        if (activity.gameType !== "scramble" || !content || typeof content !== "object" || Array.isArray(content) ||
+            !settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("invalid-saved-game");
+        const savedWords = (content as Record<string, unknown>).words;
+        const savedSettings = settings as Record<string, unknown>;
+        if (!Array.isArray(savedWords) || savedWords.length < 3 ||
+            !savedWords.every(word => word && typeof word === "object" &&
+              typeof (word as WordEntry).word === "string" && typeof (word as WordEntry).hint === "string" &&
+              typeof (word as WordEntry).question === "string") ||
+            typeof savedSettings.gradeLevel !== "string" || typeof savedSettings.wordCount !== "number") {
+          throw new Error("invalid-saved-game");
+        }
+        setTitle(activity.title);
+        setGradeLevel(savedSettings.gradeLevel);
+        setWordCount(savedSettings.wordCount);
+        setWords(savedWords as WordEntry[]);
+      } catch {
+        alert(lang === "ar" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
+      }
+    })();
+  }, [isLoggedIn, lang]);
 
   if (isLoggedIn === null) {
     return (
@@ -174,6 +206,19 @@ export default function ScrambleCreate() {
       if (res.ok) {
         const data = await res.json();
         setResult({ pin: data.pin, id: data.id });
+        try {
+          await saveGameActivity({
+            title: title.trim(),
+            gameType: "scramble",
+            content: { words: validWords.map(w => ({ word: w.word.trim(), hint: w.hint.trim(), question: w.question.trim() })) },
+            settings: { gradeLevel, wordCount },
+            source: "teacher-authored",
+          });
+        } catch {
+          alert(lang === "ar"
+            ? "تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي. / The game was saved, but could not be added to My games."
+            : "The game was saved, but could not be added to My games. / تم حفظ اللعبة، لكن تعذّرت إضافتها إلى ألعابي.");
+        }
       }
     } catch {}
     setSaving(false);
