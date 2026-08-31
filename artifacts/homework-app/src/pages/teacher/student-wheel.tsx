@@ -154,9 +154,19 @@ export default function StudentWheelPage() {
   }, [className, allStudents]);
 
   const sourceParticipants = useMemo(() => {
-    return mode === 'class'
+    const participants = mode === 'class'
       ? activeRoster.map((s) => ({ id: String(s.id), name: s.name, source: 'class' as const }))
       : manualParticipants;
+
+    // The wheel displays names, so duplicate visible names must share one slot
+    // even when the backing student records have different IDs.
+    const seenNames = new Set<string>();
+    return participants.filter((participant) => {
+      const normalized = normalizeName(participant.name);
+      if (!normalized || seenNames.has(normalized)) return false;
+      seenNames.add(normalized);
+      return true;
+    });
   }, [mode, activeRoster, manualParticipants]);
 
   const enabledParticipants = useMemo(
@@ -164,9 +174,19 @@ export default function StudentWheelPage() {
     [sourceParticipants, disabledIds],
   );
 
+  const pickedNames = useMemo(() => {
+    const names = new Set<string>();
+    sourceParticipants.forEach((participant) => {
+      if (pickedIds.has(participant.id)) names.add(normalizeName(participant.name));
+    });
+    return names;
+  }, [sourceParticipants, pickedIds]);
+
   const currentParticipants = useMemo(
-    () => enabledParticipants.filter((participant) => !noRepeat || !pickedIds.has(participant.id)),
-    [enabledParticipants, noRepeat, pickedIds],
+    () => enabledParticipants.filter(
+      (participant) => !noRepeat || !pickedNames.has(normalizeName(participant.name)),
+    ),
+    [enabledParticipants, noRepeat, pickedNames],
   );
 
   const addManualNames = (rawNames: string) => {
