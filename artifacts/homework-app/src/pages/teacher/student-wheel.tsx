@@ -41,6 +41,7 @@ interface Participant {
 
 interface PickHistoryItem {
   id: string;
+  participantId: string;
   name: string;
   time: Date;
   returnedToWheel?: boolean;
@@ -262,6 +263,13 @@ export default function StudentWheelPage() {
       setSpinning(false);
       audio.stopTicking();
       setSelectedWinner(winner);
+      setPickedIds((prev) => noRepeat ? new Set(prev).add(winner.id) : prev);
+      setHistory((prev) => [{
+        id: crypto.randomUUID(),
+        participantId: winner.id,
+        name: winner.name,
+        time: new Date(),
+      }, ...prev]);
 
       // Match the challenge wheel: let the wheel settle before revealing the result.
       spinTimeoutRef.current = setTimeout(() => {
@@ -274,22 +282,29 @@ export default function StudentWheelPage() {
     animationFrameRef.current = requestAnimationFrame(animateSpin);
   };
 
-  const finishWinnerDecision = (returnToWheel: boolean) => {
-    if (!selectedWinner) return;
+  const returnParticipantToWheel = (participantId: string, historyId?: string) => {
+    if (!pickedIds.has(participantId)) return;
 
-    setHistory((prev) => [{
-      id: crypto.randomUUID(),
-      name: selectedWinner.name,
-      time: new Date(),
-      returnedToWheel: returnToWheel,
-    }, ...prev]);
-
-    if (noRepeat && !returnToWheel) {
-      setPickedIds((prev) => new Set(prev).add(selectedWinner.id));
-    }
-
-    setShowWinner(false);
-    setSelectedWinner(null);
+    setPickedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(participantId);
+      return next;
+    });
+    setHistory((prev) => {
+      let marked = false;
+      return prev.map((item) => {
+        if (
+          !marked &&
+          (historyId ? item.id === historyId : item.participantId === participantId) &&
+          !item.returnedToWheel
+        ) {
+          marked = true;
+          return { ...item, returnedToWheel: true };
+        }
+        return item;
+      });
+    });
+    toast.success(isAr ? "تمت إعادة الاسم إلى العجلة" : "Name returned to the wheel");
   };
 
   const toggleDisabled = (id: string, currentlyDisabled: boolean) => {
@@ -399,7 +414,7 @@ export default function StudentWheelPage() {
                         const disabled = disabledIds.has(idStr);
                         const alreadyPicked = noRepeat && pickedIds.has(idStr);
                         return (
-                          <label
+                       <div
                             key={s.id}
                             data-testid={`row-student-${s.id}`}
                             className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors border ${
@@ -413,16 +428,26 @@ export default function StudentWheelPage() {
                               data-testid={`checkbox-student-${s.id}`}
                               className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30"
                             />
-                            <span className={`min-w-0 flex-1 text-sm font-bold truncate ${disabled ? 'line-through' : 'text-foreground'}`}>
-                              {s.name}
-                            </span>
-                            {alreadyPicked && !disabled && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-1">
-                                <Check className="w-3 h-3" />
-                                {isAr ? "تم اختياره" : "Picked"}
-                              </span>
-                            )}
-                          </label>
+                             {alreadyPicked ? (
+                               <button
+                                 type="button"
+                                 onClick={() => returnParticipantToWheel(idStr)}
+                                 data-testid={`button-return-student-${s.id}`}
+                                 className="flex min-w-0 flex-1 items-center gap-2 text-start"
+                                 title={isAr ? "إعادة الاسم إلى العجلة" : "Return name to wheel"}
+                               >
+                                 <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{s.name}</span>
+                                 <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-1">
+                                   <Check className="w-3 h-3" />
+                                   {isAr ? "تم اختياره — اضغط للإعادة" : "Picked — click to return"}
+                                 </span>
+                               </button>
+                             ) : (
+                               <span className={`min-w-0 flex-1 text-sm font-bold truncate ${disabled ? 'line-through' : 'text-foreground'}`}>
+                                 {s.name}
+                               </span>
+                             )}
+                       </div>
                         );
                       })}
                     </div>
@@ -509,11 +534,24 @@ export default function StudentWheelPage() {
                           data-testid={`checkbox-manual-${p.id}`}
                           className="rounded-sm text-primary focus:ring-primary h-4 w-4 border-muted-foreground/30 cursor-pointer"
                         />
-                        <span className={`min-w-0 flex-1 truncate text-sm font-bold ${disabled ? 'line-through' : 'text-foreground'}`}>
-                          {p.name}
-                        </span>
-                        {alreadyPicked && !disabled && (
-                          <Check className="w-4 h-4 text-primary shrink-0" aria-label={isAr ? "تم اختياره" : "Picked"} />
+                        {alreadyPicked ? (
+                          <button
+                            type="button"
+                            onClick={() => returnParticipantToWheel(p.id)}
+                            data-testid={`button-return-manual-${p.id}`}
+                            className="flex min-w-0 flex-1 items-center gap-2 text-start"
+                            title={isAr ? "إعادة الاسم إلى العجلة" : "Return name to wheel"}
+                          >
+                            <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{p.name}</span>
+                            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-1">
+                              <Check className="w-3 h-3" />
+                              {isAr ? "تم اختياره — اضغط للإعادة" : "Picked — click to return"}
+                            </span>
+                          </button>
+                        ) : (
+                          <span className={`min-w-0 flex-1 truncate text-sm font-bold ${disabled ? 'line-through' : 'text-foreground'}`}>
+                            {p.name}
+                          </span>
                         )}
                         <button
                           onClick={() => setManualParticipants((prev) => prev.filter((x) => x.id !== p.id))}
@@ -601,8 +639,20 @@ export default function StudentWheelPage() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-                  {history.map((h, i) => (
-                    <div key={h.id} data-testid={`row-history-${i}`} className="flex justify-between items-center text-sm px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
+                    {history.map((h, i) => {
+                      const canReturn = noRepeat && pickedIds.has(h.participantId) && !h.returnedToWheel;
+                      return (
+                      <button
+                        key={h.id}
+                        type="button"
+                        disabled={!canReturn}
+                        onClick={() => returnParticipantToWheel(h.participantId, h.id)}
+                        data-testid={`row-history-${i}`}
+                        className={`flex w-full justify-between items-center text-sm px-3 py-2 rounded-lg bg-muted/40 border border-border/40 text-start ${
+                          canReturn ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : "cursor-default"
+                        }`}
+                        title={canReturn ? (isAr ? "اضغط لإعادة الاسم إلى العجلة" : "Click to return the name to the wheel") : undefined}
+                      >
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="truncate font-bold text-foreground">{h.name}</span>
                           {h.returnedToWheel && (
@@ -614,8 +664,9 @@ export default function StudentWheelPage() {
                         <span className="shrink-0 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded shadow-sm">
                           {h.time.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                    </div>
-                  ))}
+                      </button>
+                    );
+                    })}
                 </div>
               </Card>
             )}
@@ -762,20 +813,14 @@ export default function StudentWheelPage() {
                         <div className="flex w-full flex-col gap-2">
                           <Button
                             data-testid="button-close-winner"
-                            onClick={() => finishWinnerDecision(false)}
+                            onClick={() => {
+                              setShowWinner(false);
+                              setSelectedWinner(null);
+                            }}
                             className="w-full text-base py-3 shadow-lg shadow-primary/20"
                           >
                             <Check className="me-2 h-4 w-4" />
                             {isAr ? "اعتماد الاختيار" : "Confirm selection"}
-                          </Button>
-                          <Button
-                            data-testid="button-return-winner-to-wheel"
-                            variant="outline"
-                            onClick={() => finishWinnerDecision(true)}
-                            className="w-full text-sm py-3"
-                          >
-                            <RefreshCw className="me-2 h-4 w-4" />
-                            {isAr ? "غير جاهز — إبقاء الاسم في العجلة" : "Not ready — keep in wheel"}
                           </Button>
                         </div>
                       </motion.div>
