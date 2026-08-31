@@ -93,7 +93,7 @@ export default function StudentWheelPage() {
   const [manualParticipants, setManualParticipants] = useState<Participant[]>([]);
 
   const [noRepeat, setNoRepeat] = useState(true);
-  const [showAvailableList, setShowAvailableList] = useState(true);
+  const [showAvailableList, setShowAvailableList] = useState(false);
   const [showPickedList, setShowPickedList] = useState(false);
   const [disabledIds, setDisabledIds] = useState<Set<string>>(new Set());
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
@@ -147,7 +147,7 @@ export default function StudentWheelPage() {
   useEffect(() => {
     setDisabledIds(new Set());
     setPickedIds(new Set());
-    setShowAvailableList(true);
+    setShowAvailableList(false);
     setShowPickedList(false);
     setSelectedWinner(null);
     setShowWinner(false);
@@ -301,7 +301,7 @@ export default function StudentWheelPage() {
       audio.stopTicking();
       setSelectedWinner(winner);
       setPickedIds((prev) => noRepeat ? new Set(prev).add(winner.id) : prev);
-      setShowAvailableList(true);
+      setShowAvailableList(false);
       setShowPickedList(false);
       setHistory((prev) => [{
         id: crypto.randomUUID(),
@@ -369,7 +369,7 @@ export default function StudentWheelPage() {
 
   const startNewRound = () => {
     setPickedIds(new Set());
-    setShowAvailableList(true);
+    setShowAvailableList(false);
     setShowPickedList(false);
     setSelectedWinner(null);
     setShowWinner(false);
