@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { playVictoryFanfare, playCorrectSound, playGiftSound, playNotificationSound } from "@/lib/game-sounds";
 import { resolveImageUrl } from "@/lib/image-url";
+import { useWheelAudio } from "@/lib/wheel-audio";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -82,91 +83,6 @@ const bonusInfo = (b: BonusType, lang: "ar" | "en") => {
   };
   return map[b][lang];
 };
-
-/* ── Audio helper: synthesizes ticks + win chime via Web Audio API. ── */
-function useWheelAudio(enabled: boolean) {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const getCtx = () => {
-    if (!ctxRef.current && typeof window !== "undefined") {
-      const W = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
-      const Ctor = W.AudioContext || W.webkitAudioContext;
-      if (Ctor) ctxRef.current = new Ctor();
-    }
-    if (ctxRef.current?.state === "suspended") void ctxRef.current.resume();
-    return ctxRef.current;
-  };
-
-  const playTick = useCallback(() => {
-    if (!enabled) return;
-    const ctx = getCtx();
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "square";
-    osc.frequency.value = 1200;
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.06);
-  }, [enabled]);
-
-  const startTicking = useCallback((durationMs: number) => {
-    if (!enabled) return;
-    if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
-    let elapsed = 0;
-    let interval = 80;
-    const step = () => {
-      playTick();
-      elapsed += interval;
-      // Slow down the ticks as the wheel slows.
-      const progress = Math.min(1, elapsed / durationMs);
-      interval = 80 + progress * 200;
-      if (elapsed < durationMs) {
-        tickIntervalRef.current = setTimeout(step, interval);
-      }
-    };
-    step();
-  }, [enabled, playTick]);
-
-  const stopTicking = useCallback(() => {
-    if (tickIntervalRef.current) {
-      clearTimeout(tickIntervalRef.current as unknown as number);
-      clearInterval(tickIntervalRef.current);
-      tickIntervalRef.current = null;
-    }
-  }, []);
-
-  const playWin = useCallback(() => {
-    if (!enabled) return;
-    const ctx = getCtx();
-    if (!ctx) return;
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    const start = ctx.currentTime;
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      const t = start + i * 0.12;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.12, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.55);
-    });
-  }, [enabled]);
-
-  useEffect(() => () => {
-    stopTicking();
-    void ctxRef.current?.close();
-  }, [stopTicking]);
-
-  return { startTicking, stopTicking, playWin };
-}
 
 export default function WheelPlay() {
   const { lang: uiLang } = useI18n();

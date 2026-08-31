@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { playNotificationSound } from "@/lib/game-sounds";
+import { useWheelAudio } from "@/lib/wheel-audio";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -46,6 +48,9 @@ interface PickHistoryItem {
 const normalizeName = (name: string) =>
   name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 
+const easeOutQuart = (value: number) => 1 - Math.pow(1 - value, 4);
+const SPIN_DURATION_MS = 5000;
+
 const randomIndex = (length: number) => {
   if (length <= 1) return 0;
   const values = new Uint32Array(1);
@@ -66,53 +71,6 @@ const getSliceColor = (index: number, total: number) => {
     }
     return colors[cIndex];
   }
-};
-
-const playWheelTick = (ctx: AudioContext, time: number) => {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(1000, time);
-  osc.frequency.exponentialRampToValueAtTime(100, time + 0.015);
-
-  gain.gain.setValueAtTime(0, time);
-  gain.gain.linearRampToValueAtTime(0.08, time + 0.002);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
-
-  osc.start(time);
-  osc.stop(time + 0.03);
-};
-
-const playWinnerChime = (ctx: AudioContext, freq: number, startTime: number, dur: number) => {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.type = "sine";
-  osc.frequency.value = freq;
-
-  const oscHarm = ctx.createOscillator();
-  const gainHarm = ctx.createGain();
-  oscHarm.connect(gainHarm);
-  gainHarm.connect(ctx.destination);
-  oscHarm.type = "sine";
-  oscHarm.frequency.value = freq * 2.01;
-
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(0.12, startTime + 0.04);
-  gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
-
-  gainHarm.gain.setValueAtTime(0, startTime);
-  gainHarm.gain.linearRampToValueAtTime(0.03, startTime + 0.04);
-  gainHarm.gain.exponentialRampToValueAtTime(0.001, startTime + dur * 0.6);
-
-  osc.start(startTime);
-  osc.stop(startTime + dur);
-  oscHarm.start(startTime);
-  oscHarm.stop(startTime + dur);
 };
 
 export default function StudentWheelPage() {
@@ -141,6 +99,7 @@ export default function StudentWheelPage() {
   const [selectedWinner, setSelectedWinner] = useState<Participant | null>(null);
   const [showWinner, setShowWinner] = useState(false);
   const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   const [soundEnabled, setSoundEnabled] = useState(() => {
     try {
@@ -150,27 +109,13 @@ export default function StudentWheelPage() {
     }
   });
 
-  const activeAudioCtxRef = useRef<AudioContext | null>(null);
-
-  const cleanupAudio = () => {
-    if (activeAudioCtxRef.current) {
-      try {
-        activeAudioCtxRef.current.close();
-      } catch (e) {}
-      activeAudioCtxRef.current = null;
-    }
-  };
+  const audio = useWheelAudio(soundEnabled);
 
   useEffect(() => {
     try {
       localStorage.setItem("hasad:student-wheel-sound", String(soundEnabled));
     } catch (e) {}
-    if (!soundEnabled) {
-      cleanupAudio();
-    }
   }, [soundEnabled]);
-
-  useEffect(() => cleanupAudio, []);
 
   useEffect(() => {
     setLoadingStudents(true);
@@ -190,6 +135,7 @@ export default function StudentWheelPage() {
 
   useEffect(() => () => {
     if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
   }, []);
 
   // A new source starts a fresh fair round without deleting the visible history.
@@ -272,88 +218,48 @@ export default function StudentWheelPage() {
     const winner = currentParticipants[winnerIndex];
 
     const currentBase = rotation - (rotation % 360);
-    const spins = 5;
+    const spins = 6 + randomIndex(3);
     // We want the center of the winning slice to align with the top (0 degrees).
     const targetRotation = currentBase + (spins * 360) - (winnerIndex * sliceAngle + sliceAngle / 2);
-    const randomOffset = ((randomIndex(10_000) / 10_000) * (sliceAngle * 0.8)) - (sliceAngle * 0.4);
-    const finalRotation = targetRotation + randomOffset;
+    const finalRotation = targetRotation;
 
-    setRotation(finalRotation);
+    const startRotation = rotation;
+    const startedAt = performance.now();
+    audio.startTicking(SPIN_DURATION_MS);
 
-    cleanupAudio();
-    if (soundEnabled) {
-      try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          const ctx = new AudioContextClass();
-          activeAudioCtxRef.current = ctx;
-          if (ctx.state === "suspended") {
-            ctx.resume().catch(() => {});
-          }
+    const animateSpin = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / SPIN_DURATION_MS);
+      const easedProgress = easeOutQuart(progress);
+      setRotation(startRotation + (finalRotation - startRotation) * easedProgress);
 
-          const now = ctx.currentTime;
-          const duration = 4;
-          const ticks = 45;
-
-          const sweepOsc = ctx.createOscillator();
-          const sweepGain = ctx.createGain();
-          sweepOsc.connect(sweepGain);
-          sweepGain.connect(ctx.destination);
-          sweepOsc.type = "triangle";
-          sweepOsc.frequency.setValueAtTime(220, now);
-          sweepOsc.frequency.exponentialRampToValueAtTime(40, now + duration);
-
-          sweepGain.gain.setValueAtTime(0, now);
-          sweepGain.gain.linearRampToValueAtTime(0.015, now + 0.1);
-          sweepGain.gain.linearRampToValueAtTime(0, now + duration);
-
-          sweepOsc.start(now);
-          sweepOsc.stop(now + duration);
-
-          for (let i = 0; i < ticks; i++) {
-            const progress = i / (ticks - 1);
-            const time = duration * (1 - Math.pow(1 - progress, 3.5)); // cubic/quart easing
-
-            if (time < duration) {
-              playWheelTick(ctx, now + time);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Audio setup failed:", e);
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animateSpin);
+        return;
       }
-    }
 
-    spinTimeoutRef.current = setTimeout(() => {
+      animationFrameRef.current = null;
       setSpinning(false);
+      audio.stopTicking();
       setSelectedWinner(winner);
-      setShowWinner(true);
       setHistory((prev) => [{
         id: crypto.randomUUID(),
         name: winner.name,
         time: new Date(),
       }, ...prev]);
 
-      if (soundEnabled && activeAudioCtxRef.current) {
-        try {
-          const ctx = activeAudioCtxRef.current;
-          if (ctx.state === "suspended") {
-            ctx.resume().catch(() => {});
-          }
-          const now = ctx.currentTime;
-          playWinnerChime(ctx, 523.25, now, 1.2);
-          playWinnerChime(ctx, 659.25, now + 0.15, 1.2);
-          playWinnerChime(ctx, 783.99, now + 0.3, 1.8);
-        } catch (e) {
-           console.warn("Winner audio failed:", e);
-        }
-      }
-
       if (noRepeat) {
         setPickedIds((prev) => new Set(prev).add(winner.id));
       }
-      spinTimeoutRef.current = null;
-    }, 4000);
+
+      // Match the challenge wheel: let the wheel settle before revealing the result.
+      spinTimeoutRef.current = setTimeout(() => {
+        setShowWinner(true);
+        if (soundEnabled) playNotificationSound();
+        spinTimeoutRef.current = null;
+      }, 350);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animateSpin);
   };
 
   const toggleDisabled = (id: string, currentlyDisabled: boolean) => {
@@ -725,7 +631,7 @@ export default function StudentWheelPage() {
                   className="w-full h-full" 
                   style={{ 
                     transform: `rotate(${rotation}deg)`, 
-                    transition: spinning ? 'transform 4s cubic-bezier(0.15, 0.85, 0.15, 1)' : 'none' 
+                    transition: "none",
                   }}
                 >
                   <circle cx="200" cy="200" r="198" fill="#e2e8f0" className="dark:fill-emerald-950" />
