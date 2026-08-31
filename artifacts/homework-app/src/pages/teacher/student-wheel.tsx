@@ -43,6 +43,7 @@ interface PickHistoryItem {
   id: string;
   name: string;
   time: Date;
+  returnedToWheel?: boolean;
 }
 
 const normalizeName = (name: string) =>
@@ -261,15 +262,6 @@ export default function StudentWheelPage() {
       setSpinning(false);
       audio.stopTicking();
       setSelectedWinner(winner);
-      setHistory((prev) => [{
-        id: crypto.randomUUID(),
-        name: winner.name,
-        time: new Date(),
-      }, ...prev]);
-
-      if (noRepeat) {
-        setPickedIds((prev) => new Set(prev).add(winner.id));
-      }
 
       // Match the challenge wheel: let the wheel settle before revealing the result.
       spinTimeoutRef.current = setTimeout(() => {
@@ -280,6 +272,24 @@ export default function StudentWheelPage() {
     };
 
     animationFrameRef.current = requestAnimationFrame(animateSpin);
+  };
+
+  const finishWinnerDecision = (returnToWheel: boolean) => {
+    if (!selectedWinner) return;
+
+    setHistory((prev) => [{
+      id: crypto.randomUUID(),
+      name: selectedWinner.name,
+      time: new Date(),
+      returnedToWheel: returnToWheel,
+    }, ...prev]);
+
+    if (noRepeat && !returnToWheel) {
+      setPickedIds((prev) => new Set(prev).add(selectedWinner.id));
+    }
+
+    setShowWinner(false);
+    setSelectedWinner(null);
   };
 
   const toggleDisabled = (id: string, currentlyDisabled: boolean) => {
@@ -593,10 +603,17 @@ export default function StudentWheelPage() {
                 <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
                   {history.map((h, i) => (
                     <div key={h.id} data-testid={`row-history-${i}`} className="flex justify-between items-center text-sm px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
-                      <span className="font-bold text-foreground">{h.name}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded shadow-sm">
-                        {h.time.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-bold text-foreground">{h.name}</span>
+                          {h.returnedToWheel && (
+                            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                              {isAr ? "أُعيد للعجلة" : "Returned"}
+                            </span>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded shadow-sm">
+                          {h.time.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                     </div>
                   ))}
                 </div>
@@ -742,9 +759,25 @@ export default function StudentWheelPage() {
                           {selectedWinner.name}
                         </h2>
                         
-                        <Button data-testid="button-close-winner" onClick={() => setShowWinner(false)} className="w-full text-base py-3 shadow-lg shadow-primary/20">
-                          {isAr ? "متابعة" : "Continue"}
-                        </Button>
+                        <div className="flex w-full flex-col gap-2">
+                          <Button
+                            data-testid="button-close-winner"
+                            onClick={() => finishWinnerDecision(false)}
+                            className="w-full text-base py-3 shadow-lg shadow-primary/20"
+                          >
+                            <Check className="me-2 h-4 w-4" />
+                            {isAr ? "اعتماد الاختيار" : "Confirm selection"}
+                          </Button>
+                          <Button
+                            data-testid="button-return-winner-to-wheel"
+                            variant="outline"
+                            onClick={() => finishWinnerDecision(true)}
+                            className="w-full text-sm py-3"
+                          >
+                            <RefreshCw className="me-2 h-4 w-4" />
+                            {isAr ? "غير جاهز — إبقاء الاسم في العجلة" : "Not ready — keep in wheel"}
+                          </Button>
+                        </div>
                       </motion.div>
                     </motion.div>
                   )}
