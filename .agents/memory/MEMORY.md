@@ -53,3 +53,4 @@
 - [Feedback messaging identity](feedback-messaging-identity.md) — only authenticated sessions may link feedback to teacher chats; email delivery status must be fenced to the current response.
 - [AI cost operation attribution](ai-cost-operation-attribution.md) — rank all calls in an AI operation before date filtering, or one credit spend can be assigned to multiple report periods.
 - [Configured admin promotion](configured-admin-promotion.md) — admin allowlisted emails must be promoted during auth/session refresh, not only server startup.
+- [Tug mystery boxes](tug-mystery-boxes.md) — gifts are team-level; device mode is server-authoritative, while board mode uses the local reducer with equivalent effects.

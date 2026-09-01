@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Clock, Swords, ArrowRight, Link2, Users, ListChecks, Monitor, Smartphone, CircleCheck,
   Check, X, Loader2, FileText, BookOpen,
-  GraduationCap, Trash2, Search,
+  GraduationCap, Trash2, Search, Gift, Snowflake,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
@@ -65,6 +65,9 @@ export default function TugCreate() {
   const [questions, setQuestions] = useState<TugQuestion[]>([]);
   const [duration, setDuration] = useState(20);
   const [autoAdvance, setAutoAdvance] = useState(true);
+  const [giftsEnabled, setGiftsEnabled] = useState(true);
+  const [giftEveryCorrect, setGiftEveryCorrect] = useState<1 | 2 | 3>(3);
+  const [freezeDuration, setFreezeDuration] = useState(5);
   const [creating, setCreating] = useState(false);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
@@ -130,7 +133,7 @@ export default function TugCreate() {
     gameType: "tug",
     title: sourceTitle?.trim() || (ar ? "شد الحبل" : "Tug of War"),
     questions,
-    settings: { duration, autoAdvance, targetClass: targetClass || null },
+    settings: { duration, autoAdvance, targetClass: targetClass || null, giftsEnabled, giftEveryCorrect, freezeDuration },
     source: "game-launch",
   });
 
@@ -148,7 +151,10 @@ export default function TugCreate() {
       return;
     }
     const socket = getTugSocket();
-    socket.emit("tug:create", { questions, duration, autoAdvance, targetClass: targetClass || undefined },
+    socket.emit("tug:create", {
+      questions, duration, autoAdvance, targetClass: targetClass || undefined,
+      giftsEnabled, giftEveryCorrect, freezeDuration,
+    },
       (res: { pin?: string; creatorToken?: string; error?: string }) => {
         setCreating(false);
         if (res.error) { toast.error(res.error); return; }
@@ -169,6 +175,9 @@ export default function TugCreate() {
       sessionStorage.setItem("tug-class-setup", JSON.stringify({
         questions,
         duration,
+        giftsEnabled,
+        giftEveryCorrect,
+        freezeDuration,
         title: sourceTitle || undefined,
         savedActivityId: activity.id,
       }));
@@ -323,6 +332,13 @@ export default function TugCreate() {
                   }
                   if (typeof settings.autoAdvance === "boolean") setAutoAdvance(settings.autoAdvance);
                   if (typeof settings.targetClass === "string") setTargetClass(settings.targetClass);
+                  if (typeof settings.giftsEnabled === "boolean") setGiftsEnabled(settings.giftsEnabled);
+                  if ([1, 2, 3].includes(settings.giftEveryCorrect as number)) {
+                    setGiftEveryCorrect(settings.giftEveryCorrect as 1 | 2 | 3);
+                  }
+                  if ([3, 5, 7, 10].includes(settings.freezeDuration as number)) {
+                    setFreezeDuration(settings.freezeDuration as number);
+                  }
                 }
               }
               setSetupStep("settings");
@@ -422,6 +438,68 @@ export default function TugCreate() {
                     style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
                   />
                 </button>
+              </div>
+
+              {/* Mystery Box settings */}
+              <div className="mb-5 rounded-2xl border border-purple-100 bg-purple-50/60 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Gift className="h-5 w-5 shrink-0 text-purple-600" />
+                    <div>
+                      <p className="text-sm font-black text-gray-800">{ar ? "صندوق المفاجآت" : "Mystery Box"}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{ar ? "هدايا جماعية تدعم الفريق أثناء اللعب" : "Team gifts that can change the match"}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setGiftsEnabled((v) => !v)}
+                    aria-label={ar ? "تفعيل صندوق المفاجآت" : "Enable Mystery Box"}
+                    className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+                    style={{ background: giftsEnabled ? "#7c3aed" : "#d1d5db" }}>
+                    <motion.div
+                      animate={{ x: giftsEnabled ? (dir === "rtl" ? -19 : 19) : 2 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      className="absolute top-1 h-4 w-4 rounded-full bg-white shadow"
+                      style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
+                    />
+                  </button>
+                </div>
+
+                {giftsEnabled && (
+                  <div className="mt-4 grid gap-3 border-t border-purple-100 pt-4 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-xs font-black text-gray-700">{ar ? "يظهر الصندوق بعد" : "Award a box after"}</p>
+                      <div className="flex gap-1 rounded-xl bg-white p-1">
+                        {([1, 2, 3] as const).map((count) => (
+                          <button key={count} onClick={() => setGiftEveryCorrect(count)}
+                            className="flex-1 rounded-lg px-2 py-1.5 text-xs font-black transition-all"
+                            style={{
+                              background: giftEveryCorrect === count ? "#7c3aed" : "transparent",
+                              color: giftEveryCorrect === count ? "#fff" : "#6b7280",
+                            }}>
+                            {count} {ar ? (count === 1 ? "إجابة صحيحة" : "إجابات صحيحة") : "correct"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 flex items-center gap-1 text-xs font-black text-gray-700">
+                        <Snowflake className="h-3.5 w-3.5 text-cyan-600" />
+                        {ar ? "مدة التجميد" : "Freeze duration"}
+                      </p>
+                      <div className="flex gap-1 rounded-xl bg-white p-1">
+                        {[3, 5, 7, 10].map((seconds) => (
+                          <button key={seconds} onClick={() => setFreezeDuration(seconds)}
+                            className="flex-1 rounded-lg px-2 py-1.5 text-xs font-black transition-all"
+                            style={{
+                              background: freezeDuration === seconds ? "#0891b2" : "transparent",
+                              color: freezeDuration === seconds ? "#fff" : "#6b7280",
+                            }}>
+                            {seconds}{ar ? "ث" : "s"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Question count row */}

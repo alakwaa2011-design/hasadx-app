@@ -141,3 +141,84 @@ describe("class mode — independent question routes", () => {
     expect(after).toBe(s); // ignored during feedback
   });
 });
+
+describe("class mode — team mystery boxes", () => {
+  const withBox = (team: "blue" | "red", state = startPlaying(createClassState(makeQuestions(12), 20, seededRng()))) => ({
+    ...state,
+    teams: { ...state.teams, [team]: { ...state.teams[team], boxes: 1 } },
+  });
+
+  const openAndPick = (state: ClassState, team: "blue" | "red", index: number) =>
+    classReducer(classReducer(state, { type: "open-box", team }), { type: "pick-mystery", team, index });
+
+  it("awards a box at the configured correct-answer cadence", () => {
+    let s = startPlaying(createClassState(makeQuestions(12), 20, {
+      rng: seededRng(), giftEveryCorrect: 2,
+    }));
+    for (let i = 0; i < 2; i++) {
+      s = classReducer(s, { type: "answer", team: "blue", index: currentQuestion(s, "blue")!.correct });
+      s = classReducer(s, { type: "tick" });
+      s = classReducer(s, { type: "tick" });
+    }
+    expect(s.teams.blue.boxes).toBe(1);
+    expect(s.teams.blue.correctSinceGift).toBe(0);
+  });
+
+  it("never holds more than two boxes", () => {
+    let s = startPlaying(createClassState(makeQuestions(12), 20, {
+      rng: seededRng(), giftEveryCorrect: 1,
+    }));
+    for (let i = 0; i < 4; i++) {
+      s = classReducer(s, { type: "answer", team: "blue", index: currentQuestion(s, "blue")!.correct });
+      s = classReducer(s, { type: "tick" });
+      s = classReducer(s, { type: "tick" });
+    }
+    expect(s.teams.blue.boxes).toBe(2);
+  });
+
+  it("power-pull doubles exactly the next correct rope movement", () => {
+    let s = openAndPick(withBox("blue"), "blue", 0);
+    expect(s.teams.blue.powerPullReady).toBe(true);
+    const q = currentQuestion(s, "blue")!;
+    s = classReducer(s, { type: "answer", team: "blue", index: q.correct });
+    expect(s.rope).toBe(36); // fast normal pull is 7, doubled to 14
+    expect(s.teams.blue.powerPullReady).toBe(false);
+  });
+
+  it("freeze denies answers and pauses only the frozen team's question timer", () => {
+    let s = openAndPick(withBox("blue"), "blue", 1);
+    expect(s.teams.red.frozenSeconds).toBe(5);
+    const denied = classReducer(s, { type: "answer", team: "red", index: currentQuestion(s, "red")!.correct });
+    expect(denied).toBe(s);
+    for (let i = 0; i < 5; i++) s = classReducer(s, { type: "tick" });
+    expect(s.teams.red.frozenSeconds).toBe(0);
+    expect(s.teams.red.timeLeft).toBe(20);
+    s = classReducer(s, { type: "tick" });
+    expect(s.teams.red.timeLeft).toBe(19);
+  });
+
+  it("time-boost adds five seconds but caps at duration plus five", () => {
+    let s = withBox("blue");
+    s = { ...s, teams: { ...s.teams, blue: { ...s.teams.blue, timeLeft: 23 } } };
+    s = openAndPick(s, "blue", 2);
+    expect(s.teams.blue.timeLeft).toBe(25);
+  });
+
+  it("shield absorbs an incoming freeze and is consumed", () => {
+    let s = openAndPick(withBox("red"), "red", 3);
+    expect(s.teams.red.shield).toBe(true);
+    s = openAndPick(withBox("blue", s), "blue", 1);
+    expect(s.teams.red.shield).toBe(false);
+    expect(s.teams.red.frozenSeconds).toBe(0);
+  });
+
+  it("does not award or open boxes when gifts are disabled", () => {
+    let s = startPlaying(createClassState(makeQuestions(4), 20, {
+      rng: seededRng(), giftsEnabled: false, giftEveryCorrect: 1,
+    }));
+    s = classReducer(s, { type: "answer", team: "blue", index: currentQuestion(s, "blue")!.correct });
+    expect(s.teams.blue.boxes).toBe(0);
+    const attempted = classReducer(s, { type: "open-box", team: "blue" });
+    expect(attempted).toBe(s);
+  });
+});

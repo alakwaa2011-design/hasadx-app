@@ -14,6 +14,8 @@ import {
   TimerRing, TugArena, KAHOOT_SHAPES, WAMID_GRADIENT, WAMID_BORDER,
   type QuestionData, type MusicStyle,
 } from "@/components/game/tug-shared";
+import { TugGiftPicker, TugMysteryBoxBar } from "@/components/game/tug-gifts-ui";
+import type { MysteryGift } from "@/lib/tug-class-engine";
 
 type Phase =
   | "connecting"
@@ -53,6 +55,24 @@ interface GameEndData {
   winner: "blue" | "red" | "draw";
   ropePosition: number;
   players: PlayerInfo[];
+}
+
+interface TugTeamGiftSnapshot {
+  mysteryBoxes: number;
+  correctSinceGift: number;
+  shieldActive: boolean;
+  frozenUntil: number;
+  powerPullReady: boolean;
+  timeBoostReady: boolean;
+  deadline: number;
+}
+
+interface TugGiftsSnapshot {
+  enabled: boolean;
+  giftEveryCorrect: number;
+  freezeDuration: number;
+  blue: TugTeamGiftSnapshot;
+  red: TugTeamGiftSnapshot;
 }
 
 const ENCOURAGE_CORRECT = [
@@ -431,6 +451,10 @@ export default function TugPlay() {
     try { return localStorage.getItem("tug-music-muted") === "1"; } catch (_) { return false; }
   });
   const [showMusicPicker, setShowMusicPicker] = useState(false);
+  const [gifts, setGifts] = useState<TugGiftsSnapshot | null>(null);
+  const [giftPickerOpen, setGiftPickerOpen] = useState(false);
+  const [giftRevealed, setGiftRevealed] = useState<number | null>(null);
+  const [clockNow, setClockNow] = useState(Date.now());
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const beatRef = useRef(0);
@@ -461,6 +485,13 @@ export default function TugPlay() {
     s.setMuted(next);
     setIsMutedState(next);
   }, [getSound]);
+
+  useEffect(() => {
+    const own = myTeam && gifts?.[myTeam];
+    if (!own || own.frozenUntil <= Date.now()) return;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [gifts, myTeam]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -516,6 +547,7 @@ export default function TugPlay() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (res: any) => {
             if (res.error) { setError(res.error); return; }
+            if (res.gifts) setGifts(res.gifts);
             setPlayers(res.players ?? []);
             if (res.ropePosition !== undefined) setRopePos(res.ropePosition);
             setMyTeam("blue");
@@ -547,6 +579,7 @@ export default function TugPlay() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (rj: any) => {
             if (rj.success && rj.rejoined) {
+              if (rj.gifts) setGifts(rj.gifts);
               setMyTeam(rj.team ?? null);
               setPlayers(rj.players ?? []);
               if (rj.ropePosition !== undefined) setRopePos(rj.ropePosition);
@@ -577,6 +610,9 @@ export default function TugPlay() {
             socket.emit("tug:join", { pin, name: playerName, avatar: playerAvatar },
               (res: { success?: boolean; team?: "blue" | "red"; players?: PlayerInfo[]; error?: string; gameState?: string; ropePosition?: number; activeQuestion?: QuestionData & { remainingSecs?: number }; roundSummary?: RoundEndData }) => {
                 if (res.error) { setError(res.error); return; }
+                if ((res as typeof res & { gifts?: TugGiftsSnapshot }).gifts) {
+                  setGifts((res as typeof res & { gifts?: TugGiftsSnapshot }).gifts ?? null);
+                }
                 setMyTeam(res.team ?? null);
                 setPlayers(res.players ?? []);
                 if (res.ropePosition !== undefined) setRopePos(res.ropePosition);
@@ -607,6 +643,13 @@ export default function TugPlay() {
     if (socket.connected) initSession();
     socket.on("connect", initSession);
     socket.on("tug:players-updated", (data: { players: PlayerInfo[] }) => setPlayers(data.players));
+    socket.on("tug:gifts-updated", (data: TugGiftsSnapshot) => {
+      setGifts(data);
+      const team = myTeamRef.current;
+      if (team && data[team].deadline > Date.now()) {
+        setTimeLeft((current) => Math.max(current, Math.ceil((data[team].deadline - Date.now()) / 1000)));
+      }
+    });
 
     socket.on("tug:countdown", (data: { isPower?: boolean; brief?: boolean }) => {
       setSelectedAnswer(null); setAnswerCorrect(null); setAnswerCorrectIndex(null);
@@ -686,6 +729,8 @@ export default function TugPlay() {
       setPhase("finished");
       setIsUrgent(false);
       setIsPaused(false);
+      setGiftPickerOpen(false);
+      setGiftRevealed(null);
       getSound().stopBackground();
       // Winning team (or teacher/draw) hears triumph; losing team hears defeat
       const team = myTeamRef.current;
@@ -741,6 +786,7 @@ export default function TugPlay() {
     return () => {
       socket.off("connect", initSession);
       socket.off("tug:players-updated");
+      socket.off("tug:gifts-updated");
       socket.off("tug:countdown");
       socket.off("tug:question");
       socket.off("tug:rope-update");
@@ -791,7 +837,8 @@ export default function TugPlay() {
   };
 
   const handleAnswer = (idx: number) => {
-    if (selectedAnswer !== null || phase !== "question") return;
+    const ownGift = myTeam ? gifts?.[myTeam] : null;
+    if (selectedAnswer !== null || phase !== "question" || (ownGift?.frozenUntil ?? 0) > Date.now()) return;
     setSelectedAnswer(idx);
     const selectedText = question?.options[idx];
     getTugSocket().emit("tug:answer", { pin, answerIndex: idx, answerText: selectedText },
@@ -841,6 +888,29 @@ export default function TugPlay() {
         }
       }
     );
+  };
+
+  const openGiftBox = () => {
+    if (!myTeam || isCreator || !gifts?.enabled || gifts[myTeam].mysteryBoxes < 1) return;
+    setGiftRevealed(null);
+    setGiftPickerOpen(true);
+    getSound().playBoost();
+  };
+
+  const useGift = (gift: MysteryGift, index: number) => {
+    if (!myTeam || giftRevealed !== null) return;
+    getTugSocket().emit("tug:use-gift", { pin, gift }, (res: { success?: boolean; gifts?: TugGiftsSnapshot; error?: string }) => {
+      if (res.error) {
+        setError(res.error);
+        setGiftPickerOpen(false);
+        return;
+      }
+      if (res.gifts) setGifts(res.gifts);
+      setGiftRevealed(index);
+      if (gift === "freeze") getSound().playPowerReveal();
+      else if (gift === "power-pull") getSound().playPowerPull();
+      else getSound().playBoost();
+    });
   };
 
   const handleNext = () => {
@@ -948,6 +1018,9 @@ export default function TugPlay() {
     );
   }
 
+  const ownGiftState = myTeam ? gifts?.[myTeam] ?? null : null;
+  const isTeamFrozen = !!ownGiftState && ownGiftState.frozenUntil > clockNow;
+
   return (
     <Layout>
         <div className="min-h-screen flex flex-col select-none text-gray-900"
@@ -958,6 +1031,16 @@ export default function TugPlay() {
             : "radial-gradient(ellipse at 50% -10%, rgba(251,191,36,0.15) 0%, transparent 55%), radial-gradient(ellipse at 15% 100%, rgba(59,130,246,0.14) 0%, transparent 55%), radial-gradient(ellipse at 85% 100%, rgba(239,68,68,0.14) 0%, transparent 55%), linear-gradient(160deg, #0d1b3e 0%, #1a1050 50%, #0d1b3e 100%)",
         }}
       >
+        {myTeam && (
+          <TugGiftPicker
+            open={giftPickerOpen}
+            team={myTeam}
+            ar={lang === "ar"}
+            revealed={giftRevealed}
+            onPick={useGift}
+            onClose={() => { setGiftPickerOpen(false); setGiftRevealed(null); }}
+          />
+        )}
         {phase === "finished" && gameEnd && gameEnd.winner !== "draw" && <Confetti color={gameEnd.winner === "blue" ? "#3b82f6" : "#ef4444"} />}
         {/* Danger-zone vignette: pulses in the threatened team's colour */}
         {dangerSide && (
@@ -1348,6 +1431,18 @@ export default function TugPlay() {
                     })}
                   </div>
 
+                  {!isCreator && gifts?.enabled && ownGiftState && (
+                    <TugMysteryBoxBar
+                      boxes={ownGiftState.mysteryBoxes}
+                      shield={ownGiftState.shieldActive}
+                      frozen={isTeamFrozen}
+                      powerPullReady={ownGiftState.powerPullReady}
+                      ar={lang === "ar"}
+                      disabled={phase !== "question" && phase !== "answered"}
+                      onOpen={openGiftBox}
+                    />
+                  )}
+
                   {phase === "answered" && answerCorrect !== null && (
                     <div className="text-center py-1 px-3 rounded-xl mt-1.5 font-bold text-sm text-white"
                       style={{
@@ -1359,6 +1454,19 @@ export default function TugPlay() {
                         : (lang === "ar" ? "❌ إجابة خاطئة" : "❌ Wrong")}
                     </div>
                   )}
+
+                  <AnimatePresence>
+                    {isTeamFrozen && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-30 flex flex-col items-center justify-center rounded-2xl bg-cyan-950/85 text-center backdrop-blur-md">
+                        <motion.div animate={{ rotate: [-6, 6, -6], scale: [1, 1.08, 1] }} transition={{ repeat: Infinity, duration: 1.2 }} className="text-6xl">🥶</motion.div>
+                        <p className="mt-3 text-xl font-black text-cyan-100">{lang === "ar" ? "فريقك مجمّد!" : "Your team is frozen!"}</p>
+                        <p className="mt-1 font-mono text-sm font-black text-cyan-300">
+                          {Math.max(1, Math.ceil((ownGiftState?.frozenUntil ?? 0) - clockNow) / 1000).toFixed(0)}s
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {phase === "round-end" && isCreator && (
                     <motion.button whileTap={{ scale: 0.96 }} onClick={handleNext}

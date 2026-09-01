@@ -27,16 +27,20 @@ import {
 import { resolveImageUrl } from "@/lib/image-url";
 import {
   classReducer, createClassState, currentQuestion,
-  type ClassQuestion, type ClassState, type TeamId, type TeamState,
+  type ClassQuestion, type ClassState, type MysteryGift, type TeamId, type TeamState,
 } from "@/lib/tug-class-engine";
 import { createSavedGamePlayLink, type SavedGameActivity } from "@/lib/saved-game-activities";
 import { toast } from "@/components/ui/sonner";
+import { TugGiftPicker, TugMysteryBoxBar } from "@/components/game/tug-gifts-ui";
 
 export const TUG_CLASS_SETUP_KEY = "tug-class-setup";
 
 interface ClassSetup {
   questions: ClassQuestion[];
   duration: number;
+  giftsEnabled?: boolean;
+  giftEveryCorrect?: number;
+  freezeDuration?: number;
   /** Activity/assignment title shown at the top of the match screen. */
   title?: string;
   savedActivityId?: SavedGameActivity["id"];
@@ -52,6 +56,9 @@ function readSetup(): ClassSetup | null {
     return {
       questions: parsed.questions,
       duration: parsed.duration || 20,
+      giftsEnabled: parsed.giftsEnabled !== false,
+      giftEveryCorrect: [1, 2, 3].includes(parsed.giftEveryCorrect ?? 0) ? parsed.giftEveryCorrect : 3,
+      freezeDuration: Number.isFinite(parsed.freezeDuration) ? parsed.freezeDuration : 5,
       title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : undefined,
       savedActivityId: typeof parsed.savedActivityId === "number" || typeof parsed.savedActivityId === "string"
         ? parsed.savedActivityId
@@ -423,7 +430,7 @@ const OPTION_LETTERS_AR = ["أ", "ب", "ج", "د"];
 const OPTION_LETTERS_EN = ["A", "B", "C", "D"];
 
 function TeamZone({
-  team, name, t, question, qTotal, duration, inDanger, onAnswer, ar, side, pending,
+  team, name, t, question, qTotal, duration, inDanger, onAnswer, onOpenBox, ar, side, pending,
 }: {
   team: TeamId;
   name: string;
@@ -433,6 +440,7 @@ function TeamZone({
   duration: number;
   inDanger: boolean;
   onAnswer: (index: number) => void;
+  onOpenBox: () => void;
   ar: boolean;
   /** Physical side of the SCREEN this zone sits on — drives the inward tilt. */
   side: "left" | "right";
@@ -696,6 +704,18 @@ function TeamZone({
             })}
           </div>
 
+          <div className="relative z-20">
+            <TugMysteryBoxBar
+              boxes={t.boxes}
+              shield={t.shield}
+              frozen={t.frozenSeconds > 0}
+              powerPullReady={t.powerPullReady}
+              ar={ar}
+              disabled={t.phase !== "question"}
+              onOpen={onOpenBox}
+            />
+          </div>
+
           {/* Feedback strip — independent per zone */}
           <div className="relative z-20 h-6 text-center">
             {pending !== null && t.phase === "question" && (
@@ -748,7 +768,11 @@ function ClassGame({
   const [state, dispatch] = useReducer(
     classReducer,
     undefined,
-    () => classReducer(createClassState(setup.questions, setup.duration), { type: "start" }),
+    () => classReducer(createClassState(setup.questions, setup.duration, {
+      giftsEnabled: setup.giftsEnabled,
+      giftEveryCorrect: setup.giftEveryCorrect,
+      freezeDuration: setup.freezeDuration,
+    }), { type: "start" }),
   );
   const [goFlash, setGoFlash] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -912,6 +936,17 @@ function ClassGame({
       if (!pausedRef.current) dispatch({ type: "answer", team, index });
     }, 450);
   }, [getSound]);
+  const handleOpenBox = useCallback((team: TeamId) => {
+    if (pausedRef.current) return;
+    dispatch({ type: "open-box", team });
+    getSound().playBoost();
+  }, [getSound]);
+  const handlePickGift = useCallback((team: TeamId, gift: MysteryGift, index: number) => {
+    dispatch({ type: "pick-mystery", team, index });
+    if (gift === "freeze") getSound().playPowerReveal();
+    else if (gift === "power-pull") getSound().playPowerPull();
+    else getSound().playBoost();
+  }, [getSound]);
   useEffect(() => () => {
     (["blue", "red"] as const).forEach((id) => {
       const h = braceTimers.current[id];
@@ -1032,6 +1067,7 @@ function ClassGame({
       inDanger={dangerSide === "blue"}
       pending={braces.blue}
       onAnswer={(index) => handleAnswer("blue", index)}
+      onOpenBox={() => handleOpenBox("blue")}
     />
   );
   const redZone = (
@@ -1044,6 +1080,7 @@ function ClassGame({
       inDanger={dangerSide === "red"}
       pending={braces.red}
       onAnswer={(index) => handleAnswer("red", index)}
+      onOpenBox={() => handleOpenBox("red")}
     />
   );
 
@@ -1057,6 +1094,20 @@ function ClassGame({
       }}
     >
       {impulse?.kind === "win" && <PowerPullFlash key={impulse.id} team={impulse.team} />}
+      {(["blue", "red"] as const).map((team) => {
+        const picker = state.teams[team].mysteryPicking;
+        return (
+          <TugGiftPicker
+            key={team}
+            open={!!picker}
+            team={team}
+            ar={ar}
+            revealed={picker?.revealed ?? null}
+            onPick={(gift, index) => handlePickGift(team, gift, index)}
+            onClose={() => dispatch({ type: "dismiss-mystery", team })}
+          />
+        );
+      })}
       {/* Cinematic letterbox while a team is one pull from the wall */}
       <AnimatePresence>{dangerSide && <ClutchBars ar={ar} />}</AnimatePresence>
       {comeback && (

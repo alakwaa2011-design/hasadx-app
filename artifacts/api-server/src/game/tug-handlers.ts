@@ -24,6 +24,18 @@ interface TugPlayer {
 interface RoundAnswer {
   correct: boolean;
   timeMs: number;
+  pullMultiplier?: number;
+}
+type TugTeam = "blue" | "red";
+type TugGift = "power-pull" | "freeze" | "time-boost" | "shield";
+interface TugGiftState {
+  mysteryBoxes: number;
+  correctSinceGift: number;
+  shieldActive: boolean;
+  frozenUntil: number;
+  powerPullReady: boolean;
+  timeBoostReady: boolean;
+  deadline?: number;
 }
 
 interface PendingPlayer {
@@ -52,6 +64,11 @@ interface TugGame {
   targetClass?: string;
   teacherId?: number;
   winner?: "blue" | "red" | "draw";
+  giftsEnabled: boolean;
+  giftEveryCorrect: number;
+  freezeDuration: number;
+  teamGifts: Record<TugTeam, TugGiftState>;
+  pausedAt?: number;
 }
 
 const tugGames = new Map<string, TugGame>();
@@ -100,7 +117,7 @@ function calcCurrentRopePosition(
     if (!player) continue;
     const speedBonus = 1 + Math.max(0, 1 - answer.timeMs / (questionDuration * 1000));
     const streakBonus = player.streak >= 3 ? 0.5 : 0;
-    const pts = answer.correct ? (speedBonus + streakBonus) * multiplier : -0.5;
+    const pts = answer.correct ? (speedBonus + streakBonus) * multiplier * (answer.pullMultiplier ?? 1) : -0.5;
     if (player.team === "blue") blueScore += pts;
     else redScore += pts;
   }
@@ -128,6 +145,35 @@ function cleanupGame(pin: string) {
 const COUNTDOWN_MS = 3500;
 const SHORT_COUNTDOWN_MS = 0;
 const AUTO_ADVANCE_MS = 5000;
+
+function giftState(game: TugGame) {
+  const sanitize = (state: TugGiftState) => ({
+    mysteryBoxes: state.mysteryBoxes, correctSinceGift: state.correctSinceGift,
+    shieldActive: state.shieldActive, frozenUntil: state.frozenUntil,
+    powerPullReady: state.powerPullReady, timeBoostReady: state.timeBoostReady,
+    deadline: state.deadline,
+  });
+  return { enabled: game.giftsEnabled, giftEveryCorrect: game.giftEveryCorrect,
+    freezeDuration: game.freezeDuration, blue: sanitize(game.teamGifts.blue), red: sanitize(game.teamGifts.red) };
+}
+function emitGifts(tugNs: ReturnType<Server["of"]>, game: TugGame) {
+  tugNs.to(`tug:${game.pin}`).emit("tug:gifts-updated", giftState(game));
+}
+function awardCorrectGift(tugNs: ReturnType<Server["of"]>, game: TugGame, team: TugTeam) {
+  if (!game.giftsEnabled) return;
+  const state = game.teamGifts[team];
+  state.correctSinceGift++;
+  if (state.correctSinceGift >= game.giftEveryCorrect) {
+    state.correctSinceGift = 0;
+    state.mysteryBoxes = Math.min(2, state.mysteryBoxes + 1);
+  }
+  emitGifts(tugNs, game);
+}
+function scheduleRoundEnd(tugNs: ReturnType<Server["of"]>, game: TugGame) {
+  if (game.questionTimer) clearTimeout(game.questionTimer);
+  const deadline = Math.max(game.teamGifts.blue.deadline ?? 0, game.teamGifts.red.deadline ?? 0);
+  game.questionTimer = setTimeout(() => endRound(tugNs, game), Math.max(0, deadline - Date.now()) + 10);
+}
 
 function advanceToNext(tugNs: ReturnType<Server["of"]>, game: TugGame) {
   if (game.state !== "round-end") return;
@@ -185,6 +231,12 @@ function startQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame, q: TugQue
   game.state = "question";
   game.roundAnswers = {};
   game.questionStartTime = Date.now();
+  for (const team of ["blue", "red"] as TugTeam[]) {
+    const gifts = game.teamGifts[team];
+    const extra = gifts.timeBoostReady ? 5000 : 0;
+    gifts.timeBoostReady = false;
+    gifts.deadline = game.questionStartTime + q.duration * 1000 + extra;
+  }
 
   tugNs.to(`tug:${game.pin}`).emit("tug:question", {
     index: game.currentQuestionIndex,
@@ -198,9 +250,8 @@ function startQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame, q: TugQue
 
   scheduleBotAnswers(tugNs, game);
 
-  game.questionTimer = setTimeout(() => {
-    endRound(tugNs, game);
-  }, q.duration * 1000 + 500);
+  emitGifts(tugNs, game);
+  scheduleRoundEnd(tugNs, game);
 }
 
 function scheduleBotAnswers(tugNs: ReturnType<Server["of"]>, game: TugGame) {
@@ -212,12 +263,16 @@ function scheduleBotAnswers(tugNs: ReturnType<Server["of"]>, game: TugGame) {
     const delay = 1500 + Math.random() * (q.duration * 1000 * 0.6);
     setTimeout(() => {
       if (game.state !== "question" || game.roundAnswers[botId]) return;
+      if (Date.now() < game.teamGifts[bot.team].frozenUntil) return;
 
       const correct = Math.random() < 0.5;
       const answerIndex = correct ? q.correct : ((q.correct + 1 + Math.floor(Math.random() * (q.options.length - 1))) % q.options.length);
       const timeMs = delay;
 
-      game.roundAnswers[botId] = { correct, timeMs };
+      const pullMultiplier = correct && game.teamGifts[bot.team].powerPullReady ? 2 : 1;
+      if (pullMultiplier === 2) game.teamGifts[bot.team].powerPullReady = false;
+      game.roundAnswers[botId] = { correct, timeMs, pullMultiplier };
+      if (correct) awardCorrectGift(tugNs, game, bot.team);
 
       const newStreak = correct ? bot.streak + 1 : 0;
       bot.streak = newStreak;
@@ -231,12 +286,6 @@ function scheduleBotAnswers(tugNs: ReturnType<Server["of"]>, game: TugGame) {
         totalPlayers: Object.keys(game.players).length,
       });
 
-      const playerCount = Object.keys(game.players).length;
-      const answeredCount = Object.keys(game.roundAnswers).length;
-      if (answeredCount >= playerCount) {
-        if (game.questionTimer) clearTimeout(game.questionTimer);
-        endRound(tugNs, game);
-      }
     }, delay);
   }
 }
@@ -342,7 +391,7 @@ export function setupTugSocket(io: Server) {
 
     socket.on(
       "tug:create",
-      (data: { questions: TugQuestion[]; duration?: number; autoAdvance?: boolean; targetClass?: string }, cb: (r: object) => void) => {
+      (data: { questions: TugQuestion[]; duration?: number; autoAdvance?: boolean; targetClass?: string; giftsEnabled?: boolean; giftEveryCorrect?: number; freezeDuration?: number }, cb: (r: object) => void) => {
         try {
           if (!allowTugCreate(socket.id))
             return cb({ error: "محاولات إنشاء كثيرة جداً. الرجاء الانتظار دقيقة." });
@@ -357,6 +406,8 @@ export function setupTugSocket(io: Server) {
           const pin = generatePin();
           const duration = Math.max(5, Math.min(60, data.duration ?? 20));
           const creatorToken = randomBytes(16).toString("hex");
+          const giftEveryCorrect = Number.isInteger(data.giftEveryCorrect) && data.giftEveryCorrect! >= 1 && data.giftEveryCorrect! <= 3 ? data.giftEveryCorrect! : 3;
+          const freezeDuration = Number.isInteger(data.freezeDuration) && data.freezeDuration! >= 3 && data.freezeDuration! <= 10 ? data.freezeDuration! : 5;
 
           const questions: TugQuestion[] = data.questions.map((q) => ({
             text: q.text,
@@ -380,6 +431,13 @@ export function setupTugSocket(io: Server) {
             autoAdvance: data.autoAdvance !== false,
             targetClass: data.targetClass || undefined,
             teacherId: sessionTeacherId || undefined,
+            giftsEnabled: typeof data.giftsEnabled === "boolean" ? data.giftsEnabled : true,
+            giftEveryCorrect,
+            freezeDuration,
+            teamGifts: {
+              blue: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },
+              red: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },
+            },
           };
 
           tugGames.set(pin, game);
@@ -388,7 +446,7 @@ export function setupTugSocket(io: Server) {
           setTimeout(() => cleanupGame(pin), 3 * 60 * 60 * 1000);
 
           logger.info({ pin }, "Tug game created");
-          cb({ pin, creatorToken });
+          cb({ pin, creatorToken, gifts: giftState(game) });
         } catch (err) {
           logger.error(err, "tug:create error");
           cb({ error: "حدث خطأ" });
@@ -439,6 +497,7 @@ export function setupTugSocket(io: Server) {
               isPower: isPowerQuestion(game.currentQuestionIndex),
             };
           })() : null,
+          gifts: giftState(game),
         });
       }
     );
@@ -488,8 +547,8 @@ export function setupTugSocket(io: Server) {
           tugNs.to(`tug:${game.pin}`).emit("tug:players-updated", { players: getPlayerList(game) });
 
           const q = game.questions[game.currentQuestionIndex];
-          const remainingSecs = (game.state === "question" && game.questionStartTime && q)
-            ? Math.max(0, q.duration - Math.floor((Date.now() - game.questionStartTime) / 1000))
+          const remainingSecs = (game.state === "question" && q)
+            ? Math.max(0, Math.ceil(((game.teamGifts[team].deadline ?? Date.now()) - Date.now()) / 1000))
             : (game.state === "paused" ? (game.pausedTimeRemaining ?? q?.duration) : undefined);
 
           cb({
@@ -516,6 +575,7 @@ export function setupTugSocket(io: Server) {
               total: game.questions.length,
               isLast: game.currentQuestionIndex >= game.questions.length - 1,
             } : undefined,
+            gifts: giftState(game),
           });
         } catch (err) {
           logger.error(err, "tug:join error");
@@ -614,6 +674,42 @@ export function setupTugSocket(io: Server) {
       }
     });
 
+    socket.on("tug:use-gift", (data: { pin: string; gift: TugGift }, cb?: (r: object) => void) => {
+      const fail = (error: string) => {
+        socket.emit("tug:error", { error });
+        cb?.({ error });
+      };
+      try {
+        const game = tugGames.get(data.pin);
+        if (!game) return fail("الغرفة غير موجودة.");
+        const player = game.players[socket.id];
+        if (!player) return fail("أنت لست في هذه اللعبة.");
+        if (!game.giftsEnabled) return fail("الهدايا غير مفعلة.");
+        if (!["power-pull", "freeze", "time-boost", "shield"].includes(data.gift)) return fail("هدية غير صالحة.");
+        const own = game.teamGifts[player.team];
+        if (own.mysteryBoxes < 1) return fail("لا توجد صناديق غامضة.");
+        own.mysteryBoxes--;
+        if (data.gift === "power-pull") own.powerPullReady = true;
+        if (data.gift === "shield") own.shieldActive = true;
+        if (data.gift === "time-boost") {
+          if (game.state === "question" && own.deadline) {
+            own.deadline += 5000;
+            scheduleRoundEnd(tugNs, game);
+          } else own.timeBoostReady = true;
+        }
+        if (data.gift === "freeze") {
+          const opponent = game.teamGifts[player.team === "blue" ? "red" : "blue"];
+          if (opponent.shieldActive) opponent.shieldActive = false;
+          else opponent.frozenUntil = Math.max(opponent.frozenUntil, Date.now() + game.freezeDuration * 1000);
+        }
+        emitGifts(tugNs, game);
+        cb?.({ success: true, gifts: giftState(game) });
+      } catch (err) {
+        logger.error(err, "tug:use-gift error");
+        fail("حدث خطأ");
+      }
+    });
+
     socket.on(
       "tug:answer",
       (data: { pin: string; answerIndex: number; answerText?: string }, cb: (r: object) => void) => {
@@ -625,6 +721,9 @@ export function setupTugSocket(io: Server) {
           const player = game.players[socket.id];
           if (!player) return cb({ error: "أنت لست في هذه اللعبة." });
           if (game.roundAnswers[socket.id]) return cb({ error: "أجبت بالفعل." });
+           const gifts = game.teamGifts[player.team];
+           if (Date.now() < gifts.frozenUntil) return cb({ error: "فريقك متجمد حالياً." });
+           if (Date.now() > (gifts.deadline ?? 0)) return cb({ error: "انتهى وقت فريقك." });
 
           const q = game.questions[game.currentQuestionIndex];
           const timeMs = Date.now() - (game.questionStartTime ?? Date.now());
@@ -634,7 +733,10 @@ export function setupTugSocket(io: Server) {
           const isBoost = correct && timeMs < q.duration * 1000 * 0.25;
           const power = isPowerQuestion(game.currentQuestionIndex);
 
-          game.roundAnswers[socket.id] = { correct, timeMs };
+           const pullMultiplier = correct && gifts.powerPullReady ? 2 : 1;
+           if (pullMultiplier === 2) gifts.powerPullReady = false;
+           game.roundAnswers[socket.id] = { correct, timeMs, pullMultiplier };
+           if (correct) awardCorrectGift(tugNs, game, player.team);
 
           const newStreak = correct ? player.streak + 1 : 0;
 
@@ -649,12 +751,6 @@ export function setupTugSocket(io: Server) {
             totalPlayers: Object.keys(game.players).length,
           });
 
-          const playerCount = Object.keys(game.players).length;
-          const answeredCount = Object.keys(game.roundAnswers).length;
-          if (answeredCount >= playerCount) {
-            clearTimeout(game.questionTimer!);
-            endRound(tugNs, game);
-          }
         } catch (err) {
           logger.error(err, "tug:answer error");
           cb({ error: "حدث خطأ" });
@@ -737,6 +833,7 @@ export function setupTugSocket(io: Server) {
         const q = game.questions[game.currentQuestionIndex];
         game.pausedTimeRemaining = Math.max(0, q.duration * 1000 - elapsed);
         game.stateBeforePause = game.state as "countdown" | "question";
+        game.pausedAt = Date.now();
         game.state = "paused";
 
         tugNs.to(`tug:${game.pin}`).emit("tug:paused", {
@@ -759,15 +856,22 @@ export function setupTugSocket(io: Server) {
         if (game.state !== "paused") return cb({ error: "اللعبة ليست متوقفة." });
 
         const remaining = game.pausedTimeRemaining ?? 0;
+        const pausedFor = game.pausedAt ? Date.now() - game.pausedAt : 0;
+        for (const team of ["blue", "red"] as TugTeam[]) {
+          if (game.teamGifts[team].deadline) game.teamGifts[team].deadline! += pausedFor;
+          if (game.teamGifts[team].frozenUntil) game.teamGifts[team].frozenUntil += pausedFor;
+        }
 
         if (game.stateBeforePause === "countdown") {
           game.state = "countdown";
           game.stateBeforePause = undefined;
           game.pausedTimeRemaining = undefined;
+          game.pausedAt = undefined;
           broadcastQuestion(tugNs, game);
         } else {
           game.state = "question";
-          game.questionStartTime = Date.now() - ((game.questions[game.currentQuestionIndex].duration * 1000) - remaining);
+          game.questionStartTime = (game.questionStartTime ?? Date.now()) + pausedFor;
+          game.pausedAt = undefined;
           game.stateBeforePause = undefined;
           game.pausedTimeRemaining = undefined;
 
@@ -775,9 +879,8 @@ export function setupTugSocket(io: Server) {
             timeRemaining: Math.ceil(remaining / 1000),
           });
 
-          game.questionTimer = setTimeout(() => {
-            endRound(tugNs, game);
-          }, remaining + 500);
+          scheduleRoundEnd(tugNs, game);
+          emitGifts(tugNs, game);
         }
 
         cb({ success: true });
@@ -834,6 +937,11 @@ export function setupTugSocket(io: Server) {
         game.questionStartTime = undefined;
         game.stateBeforePause = undefined;
         game.pausedTimeRemaining = undefined;
+        game.pausedAt = undefined;
+        game.teamGifts = {
+          blue: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },
+          red: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },
+        };
 
         for (const p of Object.values(game.players)) {
           p.score = 0;
@@ -872,7 +980,7 @@ export function setupTugSocket(io: Server) {
 
           const q = game.questions[game.currentQuestionIndex] ?? null;
           const elapsedMs = game.questionStartTime ? Date.now() - game.questionStartTime : 0;
-          const remainingSecs = q ? Math.max(0, q.duration - Math.floor(elapsedMs / 1000)) : 0;
+          const remainingSecs = q ? Math.max(0, Math.ceil(((game.teamGifts[existing.team].deadline ?? (Date.now() + q.duration * 1000)) - Date.now()) / 1000)) : 0;
 
           cb({
             success: true,
@@ -904,6 +1012,7 @@ export function setupTugSocket(io: Server) {
                 isPower: isPowerQuestion(game.currentQuestionIndex),
               };
             })() : null,
+            gifts: giftState(game),
           });
           return;
         }

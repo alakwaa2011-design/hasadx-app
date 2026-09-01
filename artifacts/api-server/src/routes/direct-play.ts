@@ -599,7 +599,19 @@ function validTugClassSetup(content: unknown, settings: unknown) {
   const duration = typeof config.duration === "number" && [10, 15, 20, 30].includes(config.duration)
     ? config.duration
     : 20;
-  return { questions: safeQuestions, duration };
+  const giftEveryCorrect = typeof config.giftEveryCorrect === "number" && [1, 2, 3].includes(config.giftEveryCorrect)
+    ? config.giftEveryCorrect
+    : 3;
+  const freezeDuration = typeof config.freezeDuration === "number" && config.freezeDuration >= 3 && config.freezeDuration <= 10
+    ? Math.floor(config.freezeDuration)
+    : 5;
+  return {
+    questions: safeQuestions,
+    duration,
+    giftsEnabled: config.giftsEnabled !== false,
+    giftEveryCorrect,
+    freezeDuration,
+  };
 }
 
 router.get("/play/:token/tug-class", async (req, res) => {
