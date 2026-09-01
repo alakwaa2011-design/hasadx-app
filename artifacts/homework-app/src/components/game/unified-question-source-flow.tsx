@@ -688,7 +688,9 @@ export function UnifiedQuestionSourceFlow({
                     border: "border-rose-500/20",
                     hoverBorder: "hover:border-rose-500/50"
                   }
-                ].map(opt => (
+                ].map(opt => {
+                  const isSaved = opt.id === "saved";
+                  return (
                   <button
                     key={opt.id}
                     onClick={() => {
@@ -701,18 +703,34 @@ export function UnifiedQuestionSourceFlow({
                       setViewState(opt.id);
                     }}
                     className={cn(
-                      "group relative overflow-hidden rounded-2xl border bg-card p-5 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg",
-                      !tugPresentation && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
+                      "group relative overflow-hidden rounded-2xl border bg-card text-start transition-all hover:-translate-y-0.5 hover:shadow-lg",
+                      isSaved
+                        ? "flex min-h-[84px] items-center gap-3.5 rounded-xl p-3.5 sm:col-span-2"
+                        : "p-5",
+                      !tugPresentation && !isSaved && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
                       opt.hoverBorder
                     )}
                   >
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors border shadow-sm", opt.bg, opt.border)}>
+                    <div className={cn(
+                      "flex items-center justify-center border shadow-sm transition-colors",
+                      isSaved ? "h-11 w-11 shrink-0 rounded-xl" : "mb-4 h-12 w-12 rounded-2xl",
+                      opt.bg,
+                      opt.border
+                    )}>
                       {opt.icon}
                     </div>
-                    <h3 className="font-bold text-foreground text-lg mb-1.5">{opt.title}</h3>
-                    <p className="text-sm text-muted-foreground font-medium">{opt.desc}</p>
+                    <div className={cn(isSaved && "min-w-0 flex-1")}>
+                      <h3 className={cn("font-bold text-foreground mb-1.5", isSaved ? "text-base sm:text-lg" : "text-lg")}>{opt.title}</h3>
+                      <p className="text-sm text-muted-foreground font-medium">{opt.desc}</p>
+                    </div>
+                    {isSaved && (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-rose-500 transition-transform group-hover:-translate-x-0.5">
+                        <ChevronLeft className={cn("h-4 w-4", ar && "rotate-180")} />
+                      </span>
+                    )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
               {menuFooter && <div className="mt-4">{menuFooter}</div>}
             </div>
