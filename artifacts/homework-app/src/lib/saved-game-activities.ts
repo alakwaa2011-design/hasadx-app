@@ -170,6 +170,14 @@ export async function saveGameActivity(input: SaveGameActivityInput): Promise<Sa
   return activity;
 }
 
+export async function createSavedGamePlayLink(id: SavedGameActivity["id"]): Promise<string> {
+  const response = await request<unknown>(`/${encodeURIComponent(String(id))}/play-links`, { method: "POST" });
+  if (!response || typeof response !== "object" || typeof (response as { token?: unknown }).token !== "string") {
+    throw new SavedGameActivitiesError("Invalid game link response");
+  }
+  return (response as { token: string }).token;
+}
+
 export async function deleteSavedGameActivity(id: SavedGameActivity["id"]): Promise<void> {
   await request<unknown>(`/${encodeURIComponent(String(id))}`, { method: "DELETE" });
 }

@@ -23,6 +23,7 @@ import {
   questionsTable,
   directPlayLinksTable,
   wheelTemplatesTable,
+  savedGameActivitiesTable,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { createGame, deleteGame, getGame, type GameQuestion } from "../game/manager";
@@ -574,6 +575,59 @@ router.get("/play/:token/wameeth-class", async (req, res) => {
   } catch (err) {
     req.log.error(err, "wameeth-class setup error");
     return res.status(500).json({ message: "خطأ في تحميل وميض الصف" });
+  }
+});
+
+function validTugClassSetup(content: unknown, settings: unknown) {
+  const questions = Array.isArray(content)
+    ? content
+    : content && typeof content === "object" && Array.isArray((content as { questions?: unknown }).questions)
+      ? (content as { questions: unknown[] }).questions
+      : [];
+  const safeQuestions = questions.flatMap((value) => {
+    if (!value || typeof value !== "object") return [];
+    const q = value as Record<string, unknown>;
+    const text = typeof q.text === "string" ? q.text.trim() : "";
+    const options = Array.isArray(q.options)
+      ? q.options.filter((option): option is string => typeof option === "string").map((option) => option.trim())
+      : [];
+    const correct = typeof q.correct === "number" ? q.correct : -1;
+    if (!text || options.length < 2 || options.some((option) => !option) || correct < 0 || correct >= options.length) return [];
+    return [{ text, options, correct, imageUrl: typeof q.imageUrl === "string" ? q.imageUrl : null }];
+  }).slice(0, 20);
+  const config = settings && typeof settings === "object" ? settings as Record<string, unknown> : {};
+  const duration = typeof config.duration === "number" && [10, 15, 20, 30].includes(config.duration)
+    ? config.duration
+    : 20;
+  return { questions: safeQuestions, duration };
+}
+
+router.get("/play/:token/tug-class", async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!isValidDirectToken(token)) {
+      return res.status(404).json({ message: "الرابط غير صالح" });
+    }
+    const [link] = await db.select({
+      gameType: directPlayLinksTable.gameType,
+      title: savedGameActivitiesTable.title,
+      content: savedGameActivitiesTable.content,
+      settings: savedGameActivitiesTable.settings,
+    }).from(directPlayLinksTable)
+      .innerJoin(savedGameActivitiesTable, eq(directPlayLinksTable.savedGameActivityId, savedGameActivitiesTable.id))
+      .where(eq(directPlayLinksTable.token, token))
+      .limit(1);
+    if (!link || link.gameType !== "tug_class") {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    const setup = validTugClassSetup(link.content, link.settings);
+    if (setup.questions.length < 2) {
+      return res.status(404).json({ message: "لا توجد أسئلة كافية لشد الحبل" });
+    }
+    return res.json({ title: link.title, ...setup });
+  } catch (err) {
+    req.log.error(err, "tug-class setup error");
+    return res.status(500).json({ message: "خطأ في تحميل شد الحبل" });
   }
 });
 

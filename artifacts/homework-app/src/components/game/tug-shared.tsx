@@ -854,7 +854,7 @@ function TugPowerMeter({ position }: { position: number }) {
         />
       )}
       <div
-        className="relative h-5 sm:h-10 lg:h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-0.5 sm:p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+        className="relative h-3 sm:h-5 lg:h-6 rounded-[1.2rem] border border-white/25 bg-black/35 p-0.5 sm:p-1 shadow-[0_10px_28px_rgba(0,0,0,0.30)] backdrop-blur-sm"
         style={{
           boxShadow: leader === "blue"
             ? "0 18px 50px rgba(0,0,0,0.38), 0 0 22px rgba(59,130,246,0.35), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)"
@@ -883,11 +883,11 @@ function TugPowerMeter({ position }: { position: number }) {
           <div className="absolute inset-y-0 left-0 w-12 bg-blue-300/35 blur-lg" />
           <div className="absolute inset-y-0 right-0 w-12 bg-red-300/35 blur-lg" />
         </div>
-        <div className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-white/70" />
+        <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/70" />
         <motion.div
           animate={{ left: `${pos}%`, scale: inDanger ? [1, 1.08, 1] : 1 }}
           transition={{ type: "spring", stiffness: 95, damping: 16 }}
-          className="absolute top-1/2 z-20 h-5 w-5 sm:h-8 sm:w-8 lg:h-9 lg:w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_14px_rgba(247,201,72,0.65)]"
+          className="absolute top-1/2 z-20 h-4 w-4 sm:h-6 sm:w-6 lg:h-7 lg:w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_12px_rgba(247,201,72,0.65)]"
           style={{
             background: "radial-gradient(circle at 32% 24%, #fff7cc 0%, #f7c948 28%, #d97706 62%, #7c3f09 100%)",
             boxShadow: "0 0 18px rgba(247,201,72,0.62), inset 0 2px 5px rgba(255,255,255,0.58), inset 0 -5px 10px rgba(95,45,8,0.5)",

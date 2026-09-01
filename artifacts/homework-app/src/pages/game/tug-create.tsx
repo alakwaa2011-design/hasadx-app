@@ -165,8 +165,13 @@ export default function TugCreate() {
       return;
     }
     try {
-      await persistActivity();
-      sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration, title: sourceTitle || undefined }));
+      const activity = await persistActivity();
+      sessionStorage.setItem("tug-class-setup", JSON.stringify({
+        questions,
+        duration,
+        title: sourceTitle || undefined,
+        savedActivityId: activity.id,
+      }));
     } catch {
       toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
       return;

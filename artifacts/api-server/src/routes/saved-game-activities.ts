@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
+import { randomBytes } from "crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, savedGameActivitiesTable } from "@workspace/db";
+import { db, directPlayLinksTable, savedGameActivitiesTable } from "@workspace/db";
 import {
   activityContentFromBody,
   canonicalizeJson,
@@ -108,6 +109,60 @@ router.get("/game-activities/:id", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Get saved game activity failed");
     res.status(500).json({ error: "Unable to get saved game activity" });
+  }
+});
+
+router.post("/game-activities/:id/play-links", async (req, res): Promise<void> => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = activityId(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid activity id" }); return; }
+  try {
+    const [activity] = await db.select({
+      id: savedGameActivitiesTable.id,
+      gameType: savedGameActivitiesTable.gameType,
+      questionCount: savedGameActivitiesTable.questionCount,
+    }).from(savedGameActivitiesTable).where(and(
+      eq(savedGameActivitiesTable.id, id),
+      eq(savedGameActivitiesTable.teacherId, teacherId),
+    )).limit(1);
+    if (!activity || activity.gameType !== "tug") {
+      res.status(404).json({ error: "Saved tug game not found" }); return;
+    }
+    if (activity.questionCount < 2) {
+      res.status(400).json({ error: "At least two questions are required" }); return;
+    }
+
+    const [existing] = await db.select({ token: directPlayLinksTable.token })
+      .from(directPlayLinksTable)
+      .where(and(
+        eq(directPlayLinksTable.savedGameActivityId, id),
+        eq(directPlayLinksTable.gameType, "tug_class"),
+      ))
+      .limit(1);
+    if (existing) { res.json(existing); return; }
+
+    const token = randomBytes(16).toString("hex");
+    const [created] = await db.insert(directPlayLinksTable).values({
+      token,
+      savedGameActivityId: id,
+      gameType: "tug_class",
+      teacherId,
+    }).onConflictDoNothing().returning({ token: directPlayLinksTable.token });
+    if (created) { res.status(201).json(created); return; }
+
+    const [raced] = await db.select({ token: directPlayLinksTable.token })
+      .from(directPlayLinksTable)
+      .where(and(
+        eq(directPlayLinksTable.savedGameActivityId, id),
+        eq(directPlayLinksTable.gameType, "tug_class"),
+      ))
+      .limit(1);
+    if (!raced) throw new Error("Direct-play link conflict could not be recovered");
+    res.json(raced);
+  } catch (err) {
+    req.log.error({ err }, "Create saved-game play link failed");
+    res.status(500).json({ error: "Unable to create game link" });
   }
 });
 

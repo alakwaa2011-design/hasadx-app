@@ -2,9 +2,11 @@ import { pgTable, serial, text, timestamp, integer, index } from "drizzle-orm/pg
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 import { wheelTemplatesTable } from "./wheel-templates";
+import { savedGameActivitiesTable } from "./saved-game-activities";
 
 /**
- * One stable share-link per supported activity (assignment or wheel template).
+ * One stable share-link per supported activity (assignment, wheel template,
+ * or a teacher's saved game).
  * The token is a 32-char random hex string — not guessable from the assignment ID.
  * Anyone with the token can start a solo game; no login required.
  * Supported gameType values: "wameeth" | "wameeth_class" | "rocket_race" | "wheel"
@@ -19,6 +21,8 @@ export const directPlayLinksTable = pgTable(
       .references(() => assignmentsTable.id, { onDelete: "cascade" }),
     wheelTemplateId: integer("wheel_template_id")
       .references(() => wheelTemplatesTable.id, { onDelete: "cascade" }),
+    savedGameActivityId: integer("saved_game_activity_id")
+      .references(() => savedGameActivitiesTable.id, { onDelete: "cascade" }),
     gameType: text("game_type").notNull(), // "wameeth" | "wameeth_class" | "rocket_race" | "wheel"
     teacherId: integer("teacher_id")
       .notNull()

@@ -11,11 +11,14 @@
 // No sockets, no server — everything runs locally on the class screen.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useReducer, useRef, useState, useCallback, type CSSProperties } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
-import { Volume2, VolumeX } from "lucide-react";
+import {
+  AlertCircle, Check, Copy, Link2, Loader2, LogOut,
+  Pause, Play, Volume2, VolumeX, X,
+} from "lucide-react";
 import {
   TugSoundEngine, PowerPullFlash, TimerRing,
   StadiumBackdrop, TugCharacters, TugPowerMeter,
@@ -26,6 +29,8 @@ import {
   classReducer, createClassState, currentQuestion,
   type ClassQuestion, type ClassState, type TeamId, type TeamState,
 } from "@/lib/tug-class-engine";
+import { createSavedGamePlayLink, type SavedGameActivity } from "@/lib/saved-game-activities";
+import { toast } from "@/components/ui/sonner";
 
 export const TUG_CLASS_SETUP_KEY = "tug-class-setup";
 
@@ -34,6 +39,7 @@ interface ClassSetup {
   duration: number;
   /** Activity/assignment title shown at the top of the match screen. */
   title?: string;
+  savedActivityId?: SavedGameActivity["id"];
 }
 
 function readSetup(): ClassSetup | null {
@@ -47,6 +53,9 @@ function readSetup(): ClassSetup | null {
       questions: parsed.questions,
       duration: parsed.duration || 20,
       title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : undefined,
+      savedActivityId: typeof parsed.savedActivityId === "number" || typeof parsed.savedActivityId === "string"
+        ? parsed.savedActivityId
+        : undefined,
     };
   } catch {
     return null;
@@ -720,13 +729,16 @@ function TeamZone({
 // The running game (mounted fresh per round via key — replay = remount)
 // ─────────────────────────────────────────────────────────────────────────────
 function ClassGame({
-  setup, blueName, redName, blueOnRight, onRematch,
+  setup, blueName, redName, blueOnRight, shareToken, onShare, onExit, onRematch,
 }: {
   setup: ClassSetup;
   blueName: string;
   redName: string;
   /** Which PHYSICAL side blue plays on — flips on a swap-sides rematch. */
   blueOnRight: boolean;
+  shareToken: string | null;
+  onShare: () => Promise<void>;
+  onExit: () => void;
   /** Restart; swapSides=true flips the two teams' physical sides (round 2 ritual). */
   onRematch: (swapSides: boolean) => void;
 }) {
@@ -740,6 +752,12 @@ function ClassGame({
   );
   const [goFlash, setGoFlash] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const pausedRef = useRef(false);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   const soundRef = useRef<TugSoundEngine | null>(null);
   const getSound = useCallback((): TugSoundEngine => {
@@ -750,10 +768,10 @@ function ClassGame({
 
   // Single 1s pulse drives BOTH independent team timers via the reducer.
   useEffect(() => {
-    if (state.status !== "countdown" && state.status !== "playing") return;
+    if (paused || (state.status !== "countdown" && state.status !== "playing")) return;
     const h = setInterval(() => dispatch({ type: "tick" }), 1000);
     return () => clearInterval(h);
-  }, [state.status]);
+  }, [state.status, paused]);
 
   // ── Broadcast ticker: auto-commentary on the match ──
   const [tickerEvent, setTickerEvent] = useState<TickerEvent | null>(null);
@@ -785,8 +803,10 @@ function ClassGame({
       if (state.winner === "draw") getSound().playApplause();
       else getSound().playWin();
     }
+    if (paused) getSound().stopBackground();
+    else if (state.status === "playing") getSound().startBackground();
     return undefined;
-  }, [state.status, state.winner, getSound, pushTicker, ar]);
+  }, [state.status, state.winner, paused, getSound, pushTicker, ar]);
 
   // Answer sounds follow the shared impulse stream.
   const lastSoundImpulse = useRef<number | null>(null);
@@ -883,13 +903,13 @@ function ClassGame({
   const [braces, setBraces] = useState<Record<TeamId, number | null>>({ blue: null, red: null });
   const braceTimers = useRef<Record<TeamId, ReturnType<typeof setTimeout> | null>>({ blue: null, red: null });
   const handleAnswer = useCallback((team: TeamId, index: number) => {
-    if (braceTimers.current[team] !== null) return;
+    if (pausedRef.current || braceTimers.current[team] !== null) return;
     setBraces((prev) => ({ ...prev, [team]: index }));
     getSound().playBrace();
     braceTimers.current[team] = setTimeout(() => {
       braceTimers.current[team] = null;
       setBraces((prev) => ({ ...prev, [team]: null }));
-      dispatch({ type: "answer", team, index });
+      if (!pausedRef.current) dispatch({ type: "answer", team, index });
     }, 450);
   }, [getSound]);
   useEffect(() => () => {
@@ -898,6 +918,15 @@ function ClassGame({
       if (h !== null) clearTimeout(h);
     });
   }, []);
+  useEffect(() => {
+    if (!paused) return;
+    (["blue", "red"] as const).forEach((id) => {
+      const h = braceTimers.current[id];
+      if (h !== null) clearTimeout(h);
+      braceTimers.current[id] = null;
+    });
+    setBraces({ blue: null, red: null });
+  }, [paused]);
 
   // Mega Pull: a streak of 5 → full-screen shock rings + slam.
   const [megaPull, setMegaPull] = useState<{ team: TeamId; id: number } | null>(null);
@@ -955,6 +984,18 @@ function ClassGame({
     setMuted(s.muted);
     if (s.muted) { s.stopBackground(); }
     else if (state.status === "playing") { s.startBackground(); }
+  };
+
+  const handleShare = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      await onShare();
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 1800);
+    } finally {
+      setSharing(false);
+    }
   };
 
   // ── Match-star stats (presentational only; engine untouched): best streak
@@ -1028,13 +1069,33 @@ function ClassGame({
       )}
       {megaPull && <MegaPullBlast key={megaPull.id} team={megaPull.team} ar={ar} />}
 
-      {/* Mute toggle */}
-      <button onClick={toggleMute}
-        className="fixed top-3 z-50 rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm"
-        style={{ insetInlineEnd: 12 }}
-        aria-label={muted ? "unmute" : "mute"}>
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-      </button>
+      <div className="fixed top-3 z-50 flex items-center gap-1.5" style={{ insetInlineEnd: 12 }} dir={ar ? "rtl" : "ltr"}>
+        {(setup.savedActivityId || shareToken) && (
+          <button type="button" onClick={handleShare} disabled={sharing}
+            className="flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-black/45 px-3 py-2 text-xs font-black text-amber-200 backdrop-blur-sm disabled:opacity-60"
+            aria-label={ar ? "نسخ رابط شد الحبل" : "Copy Tug of War link"}>
+            {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : shareCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            <span className="hidden sm:inline">{shareCopied ? (ar ? "تم النسخ" : "Copied") : (ar ? "نسخ الرابط" : "Copy link")}</span>
+          </button>
+        )}
+        <button onClick={toggleMute}
+          className="rounded-full border border-white/20 bg-black/45 p-2 text-white/80 backdrop-blur-sm"
+          aria-label={muted ? (ar ? "تشغيل الموسيقى" : "Unmute music") : (ar ? "كتم الموسيقى" : "Mute music")}>
+          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+        {(state.status === "countdown" || state.status === "playing") && (
+          <button onClick={() => setPaused((value) => !value)}
+            className="rounded-full border border-white/20 bg-black/45 p-2 text-white/80 backdrop-blur-sm"
+            aria-label={paused ? (ar ? "استمرار" : "Resume") : (ar ? "إيقاف مؤقت" : "Pause")}>
+            {paused ? <Play className="h-4 w-4 text-amber-300" /> : <Pause className="h-4 w-4" />}
+          </button>
+        )}
+        <button onClick={() => setExitOpen(true)}
+          className="rounded-full border border-white/20 bg-black/45 p-2 text-white/80 backdrop-blur-sm"
+          aria-label={ar ? "الخروج" : "Exit"}>
+          <X className="h-4 w-4" />
+        </button>
+      </div>
 
       {/* Physical layout below is managed by hand. In Arabic the WHOLE match is
           mirrored: the scene flips so blue plays on the RIGHT of the screen
@@ -1084,12 +1145,6 @@ function ClassGame({
             <div className="pb-1" style={mirror}>
               <TugPowerMeter position={state.rope} />
             </div>
-            {/* Broadcast ticker — live auto-commentary under the pitch */}
-            {state.status !== "finished" && (
-              <div className="pb-1.5 pt-1">
-                <BroadcastTicker event={tickerEvent} ar={ar} />
-              </div>
-            )}
           </div>
           {/* In-stadium kickoff: countdown jumbotron + referee whistle stamp,
               shown over the pitch while the teams sprint in behind them. */}
@@ -1229,7 +1284,7 @@ function ClassGame({
                 each side of the board without crowding each other. Zone sides
                 always match the (possibly mirrored) scene above. ── */
           <div
-            className="flex w-full flex-1 items-stretch gap-2 px-2 pb-2 pt-2 sm:gap-3 sm:px-3 sm:pb-3"
+            className="flex w-full flex-1 items-stretch gap-2 px-2 pb-2 pt-2 sm:gap-2 sm:px-3 sm:pb-3"
             style={{
               // Clutch mode: the dugouts fall out of colour — every eye goes to
               // the arena, the only fully-saturated thing left on screen.
@@ -1239,18 +1294,55 @@ function ClassGame({
           >
             {/* Phones: zones flex to fit. sm+: fixed width pinned to the screen
                 edges, with ALL remaining space becoming the centre field. */}
-            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(310px,44vw,580px)]">
+            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(310px,46vw,620px)]">
               {blueOnRight ? redZone : blueZone}
             </div>
-            <div className="w-8 shrink-0 sm:w-auto sm:min-w-[40px] sm:flex-1">
+            <div className="w-7 shrink-0 sm:w-auto sm:min-w-[30px] sm:flex-1">
               <CenterField rope={state.rope} blueOnRight={blueOnRight} />
             </div>
-            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(310px,44vw,580px)]">
+            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(310px,46vw,620px)]">
               {blueOnRight ? blueZone : redZone}
             </div>
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {paused && state.status !== "finished" && !exitOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-6 bg-black/85 p-6 text-center backdrop-blur-xl"
+            dir={ar ? "rtl" : "ltr"}>
+            <Pause className="h-16 w-16 text-amber-300" />
+            <div>
+              <h2 className="text-3xl font-black text-white">{ar ? "اللعبة متوقفة" : "Game paused"}</h2>
+              <p className="mt-2 text-sm font-bold text-white/55">{ar ? "تم تجميد الوقت والإجابات" : "Timers and answers are frozen"}</p>
+            </div>
+            <button onClick={() => setPaused(false)}
+              className="flex items-center gap-2 rounded-2xl bg-amber-400 px-8 py-3.5 text-lg font-black text-slate-950">
+              <Play className="h-5 w-5" />{ar ? "استمرار" : "Resume"}
+            </button>
+          </motion.div>
+        )}
+        {exitOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-5 backdrop-blur-xl"
+            dir={ar ? "rtl" : "ltr"}>
+            <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-slate-950 p-6 text-center text-white shadow-2xl">
+              <LogOut className="mx-auto h-12 w-12 text-red-400" />
+              <h2 className="mt-4 text-2xl font-black">{ar ? "الخروج من اللعبة؟" : "Exit the game?"}</h2>
+              <p className="mt-2 text-sm font-bold text-white/55">{ar ? "ستنتهي الجولة الحالية على هذا الجهاز." : "The current round will end on this device."}</p>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button onClick={() => setExitOpen(false)} className="rounded-2xl border border-white/15 px-4 py-3 font-black">
+                  {ar ? "إلغاء" : "Cancel"}
+                </button>
+                <button onClick={onExit} className="rounded-2xl bg-red-500 px-4 py-3 font-black text-white">
+                  {ar ? "خروج" : "Exit"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
@@ -1260,13 +1352,65 @@ export default function TugClass() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const [, setLocation] = useLocation();
-  const [setup] = useState<ClassSetup | null>(readSetup);
+  const search = useSearch();
+  const initialToken = new URLSearchParams(search).get("token");
+  const [shareToken, setShareToken] = useState<string | null>(initialToken);
+  const [setup, setSetup] = useState<ClassSetup | null>(() => initialToken ? null : readSetup());
+  const [loadingSetup, setLoadingSetup] = useState(!!initialToken);
+  const [setupError, setSetupError] = useState("");
   const [round, setRound] = useState(0);
   // In Arabic blue defaults to the physical RIGHT (RTL reading order); a
   // "Round 2 — swap sides" rematch flips both teams to the other side.
   const [swapped, setSwapped] = useState(false);
   const [blueName] = useState(ar ? "الفريق الأزرق" : "Blue Team");
   const [redName] = useState(ar ? "الفريق الأحمر" : "Red Team");
+
+  useEffect(() => {
+    if (!initialToken) return;
+    let cancelled = false;
+    fetch(`${import.meta.env.VITE_API_URL || ""}/api/play/${encodeURIComponent(initialToken)}/tug-class`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || (ar ? "تعذّر تحميل شد الحبل" : "Failed to load Tug of War"));
+        if (!cancelled) setSetup(data as ClassSetup);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setSetupError(err instanceof Error ? err.message : (ar ? "تعذّر فتح الرابط" : "Could not open link"));
+      })
+      .finally(() => { if (!cancelled) setLoadingSetup(false); });
+    return () => { cancelled = true; };
+  }, [ar, initialToken]);
+
+  const handleShare = async () => {
+    try {
+      let token = shareToken;
+      if (!token) {
+        if (!setup?.savedActivityId) throw new Error(ar ? "أعد فتح اللعبة من صفحة الإنشاء لإنشاء الرابط" : "Reopen the game from its setup page to create a link");
+        token = await createSavedGamePlayLink(setup.savedActivityId);
+        setShareToken(token);
+      }
+      const url = `${window.location.origin}/game/tug/class?token=${encodeURIComponent(token)}`;
+      await navigator.clipboard.writeText(url);
+      toast.success(ar ? "تم نسخ رابط اللعب المباشر" : "Direct-play link copied");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : (ar ? "تعذّر نسخ الرابط" : "Could not copy link"));
+    }
+  };
+
+  if (loadingSetup) {
+    return <Layout><div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
+      <Loader2 className="h-12 w-12 animate-spin text-amber-500" />
+      <p className="text-lg font-black">{ar ? "جارٍ تجهيز شد الحبل..." : "Preparing Tug of War..."}</p>
+    </div></Layout>;
+  }
+
+  if (setupError) {
+    return <Layout><div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
+      <AlertCircle className="h-14 w-14 text-red-500" />
+      <h2 className="text-2xl font-black">{ar ? "تعذّر فتح الرابط" : "Could not open link"}</h2>
+      <p className="max-w-sm text-muted-foreground">{setupError}</p>
+    </div></Layout>;
+  }
 
   if (!setup) {
     return (
@@ -1292,6 +1436,9 @@ export default function TugClass() {
     <Layout>
       {/* key = round → a rematch remounts a fresh engine with the same questions */}
       <ClassGame key={round} setup={setup} blueName={blueName} redName={redName}
+        shareToken={shareToken}
+        onShare={handleShare}
+        onExit={() => setLocation("/game/tug/create")}
         blueOnRight={ar !== swapped}
         onRematch={(swapSides) => {
           if (swapSides) setSwapped((s) => !s);

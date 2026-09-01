@@ -857,6 +857,16 @@ async function runSchemaMigrations() {
         ON direct_play_links(wheel_template_id, game_type, teacher_id)
         WHERE wheel_template_id IS NOT NULL
     `);
+    await db.execute(sql`
+      ALTER TABLE direct_play_links
+        ADD COLUMN IF NOT EXISTS saved_game_activity_id INTEGER
+          REFERENCES saved_game_activities(id) ON DELETE CASCADE
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS direct_play_links_saved_game_type_uq
+        ON direct_play_links(saved_game_activity_id, game_type)
+        WHERE saved_game_activity_id IS NOT NULL
+    `);
     logger.info("Direct play links table ready");
   } catch (err) {
     logger.error(err, "Direct play links migration failed");

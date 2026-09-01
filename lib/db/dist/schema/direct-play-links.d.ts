@@ -1,5 +1,6 @@
 /**
- * One stable share-link per supported activity (assignment or wheel template).
+ * One stable share-link per supported activity (assignment, wheel template,
+ * or a teacher's saved game).
  * The token is a 32-char random hex string — not guessable from the assignment ID.
  * Anyone with the token can start a solo game; no login required.
  * Supported gameType values: "wameeth" | "wameeth_class" | "rocket_race" | "wheel"
@@ -61,6 +62,23 @@ export declare const directPlayLinksTable: import("drizzle-orm/pg-core").PgTable
         }, {}, {}>;
         wheelTemplateId: import("drizzle-orm/pg-core").PgColumn<{
             name: "wheel_template_id";
+            tableName: "direct_play_links";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        savedGameActivityId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "saved_game_activity_id";
             tableName: "direct_play_links";
             dataType: "number";
             columnType: "PgInteger";
