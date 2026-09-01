@@ -1049,7 +1049,7 @@ function ClassGame({
 
   return (
     <div
-      className="flex min-h-screen flex-col select-none text-gray-900"
+      className="relative flex min-h-screen flex-col select-none text-gray-900"
       style={{
         background: state.status === "finished"
           ? "radial-gradient(ellipse at 50% 0%, rgba(251,191,36,0.28) 0%, transparent 45%), linear-gradient(160deg, #0d1b3e 0%, #1e1040 50%, #0d1b3e 100%)"
@@ -1069,32 +1069,44 @@ function ClassGame({
       )}
       {megaPull && <MegaPullBlast key={megaPull.id} team={megaPull.team} ar={ar} />}
 
-      <div className="fixed top-3 z-50 flex items-center gap-1.5" style={{ insetInlineEnd: 12 }} dir={ar ? "rtl" : "ltr"}>
-        {(setup.savedActivityId || shareToken) && (
-          <button type="button" onClick={handleShare} disabled={sharing}
-            className="flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-black/45 px-3 py-2 text-xs font-black text-amber-200 backdrop-blur-sm disabled:opacity-60"
-            aria-label={ar ? "نسخ رابط شد الحبل" : "Copy Tug of War link"}>
-            {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : shareCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            <span className="hidden sm:inline">{shareCopied ? (ar ? "تم النسخ" : "Copied") : (ar ? "نسخ الرابط" : "Copy link")}</span>
-          </button>
-        )}
-        <button onClick={toggleMute}
-          className="rounded-full border border-white/20 bg-black/45 p-2 text-white/80 backdrop-blur-sm"
-          aria-label={muted ? (ar ? "تشغيل الموسيقى" : "Unmute music") : (ar ? "كتم الموسيقى" : "Mute music")}>
-          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </button>
-        {(state.status === "countdown" || state.status === "playing") && (
-          <button onClick={() => setPaused((value) => !value)}
-            className="rounded-full border border-white/20 bg-black/45 p-2 text-white/80 backdrop-blur-sm"
-            aria-label={paused ? (ar ? "استمرار" : "Resume") : (ar ? "إيقاف مؤقت" : "Pause")}>
-            {paused ? <Play className="h-4 w-4 text-amber-300" /> : <Pause className="h-4 w-4" />}
-          </button>
-        )}
-        <button onClick={() => setExitOpen(true)}
-          className="rounded-full border border-white/20 bg-black/45 p-2 text-white/80 backdrop-blur-sm"
-          aria-label={ar ? "الخروج" : "Exit"}>
-          <X className="h-4 w-4" />
-        </button>
+      <div className="relative z-50 w-full px-3 pt-2 sm:px-5" dir={ar ? "rtl" : "ltr"}>
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-2xl border border-white/15 bg-black/35 px-3 py-2 shadow-lg backdrop-blur-md sm:px-4">
+          <div className="flex min-w-0 items-center gap-2 text-xs font-black text-white/60">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 text-amber-200">⚙</span>
+            <span className="truncate">{ar ? "أدوات اللعبة" : "Game controls"}</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {(setup.savedActivityId || shareToken) && (
+              <button type="button" onClick={handleShare} disabled={sharing}
+                className="flex items-center gap-1.5 rounded-xl border border-amber-300/30 bg-amber-300/10 px-2.5 py-1.5 text-xs font-black text-amber-200 transition-colors hover:bg-amber-300/20 disabled:opacity-60"
+                aria-label={ar ? "نسخ رابط شد الحبل" : "Copy Tug of War link"}
+                title={ar ? "نسخ رابط اللعب" : "Copy game link"}>
+                {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : shareCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <span className="hidden sm:inline">{shareCopied ? (ar ? "تم النسخ" : "Copied") : (ar ? "نسخ الرابط" : "Copy link")}</span>
+              </button>
+            )}
+            <button onClick={toggleMute}
+              className="rounded-xl border border-white/20 bg-white/5 p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label={muted ? (ar ? "تشغيل الموسيقى" : "Unmute music") : (ar ? "كتم الموسيقى" : "Mute music")}
+              title={muted ? (ar ? "تشغيل الموسيقى" : "Unmute music") : (ar ? "كتم الموسيقى" : "Mute music")}>
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+            {(state.status === "countdown" || state.status === "playing") && (
+              <button onClick={() => setPaused((value) => !value)}
+                className="rounded-xl border border-white/20 bg-white/5 p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label={paused ? (ar ? "استمرار" : "Resume") : (ar ? "إيقاف مؤقت" : "Pause")}
+                title={paused ? (ar ? "استمرار" : "Resume") : (ar ? "إيقاف مؤقت" : "Pause")}>
+                {paused ? <Play className="h-4 w-4 text-amber-300" /> : <Pause className="h-4 w-4" />}
+              </button>
+            )}
+            <button onClick={() => setExitOpen(true)}
+              className="rounded-xl border border-red-300/25 bg-red-300/5 p-1.5 text-red-100/80 transition-colors hover:bg-red-300/15 hover:text-white"
+              aria-label={ar ? "الخروج" : "Exit"}
+              title={ar ? "الخروج من اللعبة" : "Exit game"}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Physical layout below is managed by hand. In Arabic the WHOLE match is
