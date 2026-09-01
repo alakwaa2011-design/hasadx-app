@@ -496,7 +496,6 @@ function TeamZone({
         boxShadow: t.phase === "feedback" && t.correct
           ? `0 16px 44px rgba(0,0,0,0.35), 0 0 34px rgba(74,222,128,0.35)`
           : `0 16px 44px rgba(0,0,0,0.35), 0 0 24px rgba(${rgb},${inDanger ? 0.08 : 0.18})`,
-        opacity: inDanger ? 0.96 : 1,
         transition: "border-color 0.35s ease, box-shadow 0.35s ease",
       }}
     >
@@ -534,13 +533,17 @@ function TeamZone({
           ))}
         </div>
       )}
-      {/* Danger dimmer: the threatened side darkens and pulses a warning */}
+      {/* Danger warning: keep the question colours fully vivid; only the frame
+          and inset edge glow pulse so the warning never washes out content. */}
       {inDanger && (
         <motion.div
           className="pointer-events-none absolute inset-0 z-10 rounded-3xl"
-          animate={{ opacity: [0.16, 0.4, 0.16] }}
+          animate={{ opacity: [0.45, 0.95, 0.45] }}
           transition={{ repeat: Infinity, duration: 1 }}
-          style={{ background: "rgba(0,0,0,0.4)", boxShadow: "inset 0 0 44px rgba(239,68,68,0.5)" }}
+          style={{
+            border: "2px solid rgba(239,68,68,0.7)",
+            boxShadow: "inset 0 0 30px rgba(239,68,68,0.22), 0 0 20px rgba(239,68,68,0.18)",
+          }}
         />
       )}
       {/* The mystery picker belongs to this dugout. It intentionally covers only
