@@ -14,3 +14,9 @@ On the shared classroom board, render each team's mystery picker inside that tea
 **Why:** A full-screen picker stops both classroom groups and hides the live match; a side-local picker matches the physical layout of the board.
 
 **How to apply:** Keep the picker positioned relative to the owning TeamZone and preserve independent open/pick/dismiss state for blue and red.
+
+After a gift is selected, show the activation result briefly and dismiss the local picker automatically; do not require a separate Continue action.
+
+**Why:** The gift should feel like an uninterrupted game event, not a second confirmation step that pauses the classroom round.
+
+**How to apply:** Apply the effect immediately on selection, then close the owning team's picker automatically after its short reveal animation.

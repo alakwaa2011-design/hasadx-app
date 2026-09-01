@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect } from "react";
 import type { MysteryGift, TeamId } from "@/lib/tug-class-engine";
 
 export const TUG_GIFT_INFO: Record<MysteryGift, {
@@ -76,6 +77,15 @@ export function TugGiftPicker({
   embedded?: boolean;
 }) {
   const accent = team === "blue" ? "#60a5fa" : "#f87171";
+
+  // The gift effect is applied as soon as a choice is made. Show its result
+  // briefly, then return control to the board without requiring a second tap.
+  useEffect(() => {
+    if (!open || revealed === null) return;
+    const timer = window.setTimeout(onClose, 850);
+    return () => window.clearTimeout(timer);
+  }, [open, revealed]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -118,9 +128,6 @@ export function TugGiftPicker({
                 <p className="font-black" style={{ color: TUG_GIFT_INFO[CHOICES[revealed]].color }}>
                   {ar ? TUG_GIFT_INFO[CHOICES[revealed]].resultAr : TUG_GIFT_INFO[CHOICES[revealed]].resultEn}
                 </p>
-                <button onClick={onClose} className={`${embedded ? "mt-2 px-5 py-1.5" : "mt-3 px-6 py-2"} rounded-xl bg-white text-sm font-black text-slate-950`}>
-                  {ar ? "متابعة" : "Continue"}
-                </button>
               </div>
             )}
           </motion.div>
