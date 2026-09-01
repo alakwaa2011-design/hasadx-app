@@ -63,6 +63,35 @@ export type EventCategory =
   | "feedback"
   | "system";
 
+type ProjectAnalyticsData = Record<string, string | number | boolean>;
+
+declare global {
+  interface Window {
+    umami?: {
+      track(name: string, data?: ProjectAnalyticsData): void;
+    };
+  }
+}
+
+/**
+ * Send an event to Replit-hosted project analytics.
+ *
+ * The tracker is injected only in published apps with analytics enabled, so
+ * this intentionally remains a safe no-op during local development.
+ */
+export function trackProjectAnalyticsEvent(
+  name: string,
+  data?: ProjectAnalyticsData,
+): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.umami?.track(name, data);
+  } catch {
+    // Analytics must never interrupt the product flow.
+  }
+}
+
 /** Send a single event to the backend. Fire-and-forget. */
 export function trackEvent(
   eventName: string,
@@ -162,6 +191,11 @@ export const EVENTS = {
   presentationBuildStarted: "presentation_build_started",
   presentationBuildCompleted: "presentation_build_completed",
   presentationBuildFailed: "presentation_build_failed",
+
+  // Saved games
+  savedGameSaved: "saved_game_saved",
+  savedGameReplayed: "saved_game_replayed",
+  savedGameDeleted: "saved_game_deleted",
 } as const;
 
 /* ────────────────────────────────────────────────────────────────────── */

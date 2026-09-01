@@ -4,6 +4,8 @@
  * endpoint is intentionally not part of the public OpenAPI surface.
  */
 
+import { EVENTS, trackProjectAnalyticsEvent } from "@/lib/analytics";
+
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export type SavedGameQuestionType = "mcq" | "true_false";
@@ -43,6 +45,42 @@ export class SavedGameActivitiesError extends Error {
     super(message);
     this.name = "SavedGameActivitiesError";
   }
+}
+
+export type SavedGameAnalyticsLocation = "game_creator" | "saved_games_library";
+
+const ANALYTICS_GAME_TYPE_ALIASES: Record<string, string> = {
+  "tug-of-war": "tug",
+  tug_of_war: "tug",
+  escape_room: "escape",
+  "escape-room": "escape",
+  rocket_race: "rocket",
+  "rocket-race": "rocket",
+  wameeth_class: "wameeth",
+};
+
+function analyticsGameType(gameType: string): string {
+  const normalized = gameType.trim().toLowerCase();
+  const canonical = ANALYTICS_GAME_TYPE_ALIASES[normalized] ?? normalized.slice(0, 50);
+  return canonical || "unknown";
+}
+
+/**
+ * Saved-game analytics deliberately accepts only stable, non-content
+ * dimensions. Titles, questions, and teacher identifiers must never be added.
+ */
+export function trackSavedGameEvent(
+  eventName:
+    | typeof EVENTS.savedGameSaved
+    | typeof EVENTS.savedGameReplayed
+    | typeof EVENTS.savedGameDeleted,
+  gameType: string,
+  location: SavedGameAnalyticsLocation,
+): void {
+  trackProjectAnalyticsEvent(eventName, {
+    game_type: analyticsGameType(gameType),
+    location,
+  });
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -121,11 +159,15 @@ export async function getSavedGameActivity(id: SavedGameActivity["id"]): Promise
   const item = response && typeof response === "object"
     ? (response as Record<string, unknown>).activity ?? (response as Record<string, unknown>).savedGame ?? response
     : response;
-  return asActivity(item);
+  const activity = asActivity(item);
+  trackSavedGameEvent(EVENTS.savedGameReplayed, activity.gameType, "saved_games_library");
+  return activity;
 }
 
 export async function saveGameActivity(input: SaveGameActivityInput): Promise<SavedGameActivity> {
-  return asActivity(await request<unknown>("", { method: "POST", body: JSON.stringify(input) }));
+  const activity = asActivity(await request<unknown>("", { method: "POST", body: JSON.stringify(input) }));
+  trackSavedGameEvent(EVENTS.savedGameSaved, activity.gameType || input.gameType, "game_creator");
+  return activity;
 }
 
 export async function deleteSavedGameActivity(id: SavedGameActivity["id"]): Promise<void> {

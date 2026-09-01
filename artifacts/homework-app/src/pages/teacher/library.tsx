@@ -22,8 +22,10 @@ import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   deleteSavedGameActivity,
   listSavedGameActivities,
+  trackSavedGameEvent,
   type SavedGameActivity,
 } from "@/lib/saved-game-activities";
+import { EVENTS } from "@/lib/analytics";
 import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
@@ -2549,6 +2551,7 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
     setDeleting(true);
     try {
       await deleteSavedGameActivity(deleteTarget.id);
+      trackSavedGameEvent(EVENTS.savedGameDeleted, deleteTarget.gameType, "saved_games_library");
       setDeleteTarget(null);
       toast.success(T.deleted);
       await refresh();
