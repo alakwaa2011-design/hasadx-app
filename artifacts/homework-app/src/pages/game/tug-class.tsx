@@ -430,7 +430,7 @@ const OPTION_LETTERS_AR = ["أ", "ب", "ج", "د"];
 const OPTION_LETTERS_EN = ["A", "B", "C", "D"];
 
 function TeamZone({
-  team, name, t, question, qTotal, duration, inDanger, onAnswer, onOpenBox, ar, side, pending,
+  team, name, t, question, qTotal, duration, inDanger, onAnswer, onOpenBox, onPickGift, onCloseGift, ar, side, pending,
 }: {
   team: TeamId;
   name: string;
@@ -441,6 +441,8 @@ function TeamZone({
   inDanger: boolean;
   onAnswer: (index: number) => void;
   onOpenBox: () => void;
+  onPickGift: (gift: MysteryGift, index: number) => void;
+  onCloseGift: () => void;
   ar: boolean;
   /** Physical side of the SCREEN this zone sits on — drives the inward tilt. */
   side: "left" | "right";
@@ -541,6 +543,17 @@ function TeamZone({
           style={{ background: "rgba(0,0,0,0.4)", boxShadow: "inset 0 0 44px rgba(239,68,68,0.5)" }}
         />
       )}
+      {/* The mystery picker belongs to this dugout. It intentionally covers only
+          this team's panel so the other team can keep playing on the board. */}
+      <TugGiftPicker
+        open={!!t.mysteryPicking}
+        team={team}
+        ar={ar}
+        revealed={t.mysteryPicking?.revealed ?? null}
+        onPick={onPickGift}
+        onClose={onCloseGift}
+        embedded
+      />
       {/* Correct answer → light pulse rushes UP toward the arena from this zone only */}
       <AnimatePresence>
         {t.phase === "feedback" && t.correct && (
@@ -1068,6 +1081,8 @@ function ClassGame({
       pending={braces.blue}
       onAnswer={(index) => handleAnswer("blue", index)}
       onOpenBox={() => handleOpenBox("blue")}
+       onPickGift={(gift, index) => handlePickGift("blue", gift, index)}
+       onCloseGift={() => dispatch({ type: "dismiss-mystery", team: "blue" })}
     />
   );
   const redZone = (
@@ -1081,6 +1096,8 @@ function ClassGame({
       pending={braces.red}
       onAnswer={(index) => handleAnswer("red", index)}
       onOpenBox={() => handleOpenBox("red")}
+       onPickGift={(gift, index) => handlePickGift("red", gift, index)}
+       onCloseGift={() => dispatch({ type: "dismiss-mystery", team: "red" })}
     />
   );
 
@@ -1094,20 +1111,6 @@ function ClassGame({
       }}
     >
       {impulse?.kind === "win" && <PowerPullFlash key={impulse.id} team={impulse.team} />}
-      {(["blue", "red"] as const).map((team) => {
-        const picker = state.teams[team].mysteryPicking;
-        return (
-          <TugGiftPicker
-            key={team}
-            open={!!picker}
-            team={team}
-            ar={ar}
-            revealed={picker?.revealed ?? null}
-            onPick={(gift, index) => handlePickGift(team, gift, index)}
-            onClose={() => dispatch({ type: "dismiss-mystery", team })}
-          />
-        );
-      })}
       {/* Cinematic letterbox while a team is one pull from the wall */}
       <AnimatePresence>{dangerSide && <ClutchBars ar={ar} />}</AnimatePresence>
       {comeback && (

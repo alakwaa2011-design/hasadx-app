@@ -64,7 +64,7 @@ export function TugMysteryBoxBar({
 }
 
 export function TugGiftPicker({
-  open, team, ar, revealed, onPick, onClose,
+  open, team, ar, revealed, onPick, onClose, embedded = false,
 }: {
   open: boolean;
   team: TeamId;
@@ -72,47 +72,53 @@ export function TugGiftPicker({
   revealed: number | null;
   onPick: (gift: MysteryGift, index: number) => void;
   onClose: () => void;
+  /** Render inside the team's dugout instead of blocking the whole board. */
+  embedded?: boolean;
 }) {
   const accent = team === "blue" ? "#60a5fa" : "#f87171";
   return (
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-xl"
+          className={embedded
+            ? "absolute inset-1 z-[60] flex items-center justify-center overflow-y-auto rounded-[1.35rem] bg-slate-950/94 p-2 backdrop-blur-md sm:inset-1.5 sm:p-3"
+            : "fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-xl"}
           dir={ar ? "rtl" : "ltr"}>
           <motion.div initial={{ scale: 0.9, y: 18 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0 }}
-            className="w-full max-w-md rounded-3xl border bg-slate-950 p-5 text-white shadow-2xl"
+            className={`w-full ${embedded ? "max-w-sm rounded-2xl p-3 sm:p-4" : "max-w-md rounded-3xl p-5"} border bg-slate-950 text-white shadow-2xl`}
             style={{ borderColor: `${accent}88` }}>
-            <div className="mb-4 text-center">
-              <div className="text-5xl">🎁</div>
-              <h2 className="mt-2 text-xl font-black">{revealed === null ? (ar ? "اختر هديتك" : "Choose your gift") : (ar ? "تم تفعيل الهدية!" : "Gift activated!")}</h2>
+            <div className={embedded ? "mb-2 text-center sm:mb-3" : "mb-4 text-center"}>
+              <div className={embedded ? "text-3xl sm:text-4xl" : "text-5xl"}>🎁</div>
+              <h2 className={`${embedded ? "mt-1 text-base sm:text-lg" : "mt-2 text-xl"} font-black`}>
+                {revealed === null ? (ar ? "اختروا هديتكم" : "Choose your gift") : (ar ? "تم تفعيل الهدية!" : "Gift activated!")}
+              </h2>
               <p className="mt-1 text-xs font-bold text-white/50">{ar ? "هدية واحدة للفريق كله" : "One gift for the whole team"}</p>
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className={`grid grid-cols-2 ${embedded ? "gap-1.5 sm:gap-2" : "gap-2.5"}`}>
               {CHOICES.map((gift, index) => {
                 const info = TUG_GIFT_INFO[gift];
                 const chosen = revealed === index;
                 return (
                   <motion.button key={gift} whileTap={revealed === null ? { scale: 0.94 } : undefined}
                     onClick={() => revealed === null && onPick(gift, index)} disabled={revealed !== null}
-                    className="relative flex min-h-28 flex-col items-center justify-center gap-1.5 rounded-2xl border p-3 text-center font-black transition-all"
+                    className={`relative flex ${embedded ? "min-h-20 gap-1 rounded-xl p-2 sm:min-h-24 sm:gap-1.5 sm:p-2.5" : "min-h-28 gap-1.5 rounded-2xl p-3"} flex-col items-center justify-center border text-center font-black transition-all`}
                     style={{
                       background: chosen ? info.background : "rgba(255,255,255,.06)",
                       borderColor: chosen ? info.color : "rgba(255,255,255,.14)",
                       opacity: revealed !== null && !chosen ? 0.3 : 1,
                     }}>
-                    <span className="text-3xl">{info.icon}</span>
-                    <span className="text-sm">{ar ? info.ar : info.en}</span>
+                    <span className={embedded ? "text-2xl sm:text-3xl" : "text-3xl"}>{info.icon}</span>
+                    <span className={embedded ? "text-[11px] leading-tight sm:text-xs" : "text-sm"}>{ar ? info.ar : info.en}</span>
                   </motion.button>
                 );
               })}
             </div>
             {revealed !== null && (
-              <div className="mt-4 text-center">
+              <div className={embedded ? "mt-2 text-center sm:mt-3" : "mt-4 text-center"}>
                 <p className="font-black" style={{ color: TUG_GIFT_INFO[CHOICES[revealed]].color }}>
                   {ar ? TUG_GIFT_INFO[CHOICES[revealed]].resultAr : TUG_GIFT_INFO[CHOICES[revealed]].resultEn}
                 </p>
-                <button onClick={onClose} className="mt-3 rounded-xl bg-white px-6 py-2 text-sm font-black text-slate-950">
+                <button onClick={onClose} className={`${embedded ? "mt-2 px-5 py-1.5" : "mt-3 px-6 py-2"} rounded-xl bg-white text-sm font-black text-slate-950`}>
                   {ar ? "متابعة" : "Continue"}
                 </button>
               </div>
