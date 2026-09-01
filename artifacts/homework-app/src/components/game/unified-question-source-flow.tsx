@@ -719,7 +719,7 @@ export function UnifiedQuestionSourceFlow({
                     )}>
                       {opt.icon}
                     </div>
-                    <div className={cn(isSaved && "min-w-0 flex-1")}>
+                    <div className={cn(isSaved && "min-w-0 flex-1 text-center")}>
                       <h3 className={cn("font-bold text-foreground mb-1.5", isSaved ? "text-base sm:text-lg" : "text-lg")}>{opt.title}</h3>
                       <p className="text-sm text-muted-foreground font-medium">{opt.desc}</p>
                     </div>
