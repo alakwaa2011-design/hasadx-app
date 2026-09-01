@@ -7,6 +7,7 @@ import {
 } from "./_shared";
 import AudioPlayer from "@/components/AudioPlayer";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 
 interface Section {
   id: number; name: string; ownerId?: number | null;
@@ -551,6 +552,7 @@ export function IslamicChallengePlay() {
   const { t } = useI18n();
   const [, params] = useRoute("/islamic/challenge/play/:pin");
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/islamic");
   const pin = params?.pin || "";
   const role = (new URLSearchParams(window.location.search).get("role") || "opponent") as "creator" | "opponent";
 
@@ -728,7 +730,7 @@ export function IslamicChallengePlay() {
         <IslamicCard>
           <p style={{ textAlign: "center", color: "#fca5a5", fontSize: 18, marginBottom: 16 }}>❌ {loadError}</p>
           <div style={{ textAlign: "center" }}>
-            <GhostButton onClick={() => window.history.back()}>{t.islamic.back}</GhostButton>
+            <GhostButton onClick={goBack}>{t.islamic.back}</GhostButton>
           </div>
         </IslamicCard>
       </IslamicShell>
@@ -950,6 +952,7 @@ export function IslamicTournamentPlay() {
   const { t } = useI18n();
   const [, params] = useRoute("/islamic/tournament/play/:pin");
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/islamic");
   const pin = params?.pin || "";
   const qs = new URLSearchParams(window.location.search);
   const teamName = qs.get("team") || "";
@@ -1059,7 +1062,7 @@ export function IslamicTournamentPlay() {
         <IslamicCard>
           <p style={{ textAlign: "center", color: "#fca5a5", fontSize: 18, marginBottom: 16 }}>❌ {tourLoadError}</p>
           <div style={{ textAlign: "center" }}>
-            <GhostButton onClick={() => window.history.back()}>{t.islamic.back}</GhostButton>
+            <GhostButton onClick={goBack}>{t.islamic.back}</GhostButton>
           </div>
         </IslamicCard>
       </IslamicShell>

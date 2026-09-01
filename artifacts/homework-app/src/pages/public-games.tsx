@@ -10,6 +10,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { useSeo } from "@/lib/seo";
+import { useSmartBack } from "@/lib/nav-history";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -37,6 +38,7 @@ export default function PublicGamesPage() {
   });
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/");
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
@@ -111,10 +113,7 @@ export default function PublicGamesPage() {
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <button
             type="button"
-            onClick={() => {
-              if (window.history.length > 1) window.history.back();
-              else setLocation("/");
-            }}
+            onClick={goBack}
             className="inline-flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
           >
             <BackArrow className="w-4 h-4" />

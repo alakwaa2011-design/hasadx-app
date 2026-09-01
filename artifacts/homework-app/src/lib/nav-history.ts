@@ -11,12 +11,23 @@
 import { useLocation } from "wouter";
 import { useEffect, useCallback } from "react";
 
-const HIST_KEY = "hasad_nav_hist";
+const HIST_KEY = "hasad_nav_hist_v2";
 const MAX_HISTORY = 40;
+
+function normalizeAppPath(path: string): string | undefined {
+  if (!path.startsWith("/") || path.startsWith("//")) return undefined;
+  const hashIndex = path.indexOf("#");
+  return hashIndex === -1 ? path : path.slice(0, hashIndex);
+}
 
 function loadHistory(): string[] {
   try {
-    return JSON.parse(sessionStorage.getItem(HIST_KEY) ?? "[]");
+    const parsed = JSON.parse(sessionStorage.getItem(HIST_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is string => typeof entry === "string")
+      .map(normalizeAppPath)
+      .filter((entry): entry is string => Boolean(entry));
   } catch {
     return [];
   }
@@ -32,9 +43,11 @@ function saveHistory(h: string[]) {
 
 /** Push a path onto the history stack (no consecutive duplicates). */
 export function pushNav(path: string) {
+  const normalizedPath = normalizeAppPath(path);
+  if (!normalizedPath) return;
   const h = loadHistory();
-  if (h[h.length - 1] === path) return;
-  h.push(path);
+  if (h[h.length - 1] === normalizedPath) return;
+  h.push(normalizedPath);
   if (h.length > MAX_HISTORY) h.shift();
   saveHistory(h);
 }
@@ -43,12 +56,25 @@ export function pushNav(path: string) {
  * Remove the current page from the stack and return the previous one.
  * The previous page stays in the stack so navigating there re-pushes it naturally.
  */
-function popNav(): string | undefined {
+function popNav(currentPath: string): string | undefined {
+  const normalizedCurrent = normalizeAppPath(currentPath);
+  if (!normalizedCurrent) return undefined;
+
   const h = loadHistory();
-  if (h.length < 2) return undefined;
-  h.pop(); // discard current
-  const prev = h[h.length - 1];
-  saveHistory(h);
+  const currentIndex = h.lastIndexOf(normalizedCurrent);
+
+  if (currentIndex === -1) {
+    saveHistory([normalizedCurrent]);
+    return undefined;
+  }
+
+  if (currentIndex < 1) {
+    saveHistory([normalizedCurrent]);
+    return undefined;
+  }
+
+  const prev = h[currentIndex - 1];
+  saveHistory(h.slice(0, currentIndex));
   return prev;
 }
 
@@ -71,9 +97,9 @@ export function NavTracker() {
  * @param fallback  Path to navigate to when no history is available.
  */
 export function useSmartBack(fallback: string): () => void {
-  const [, setLoc] = useLocation();
+  const [location, setLoc] = useLocation();
   return useCallback(() => {
-    const prev = popNav();
-    setLoc(prev ?? fallback);
-  }, [fallback, setLoc]);
+    const prev = popNav(location);
+    setLoc(prev ?? normalizeAppPath(fallback) ?? "/");
+  }, [fallback, location, setLoc]);
 }

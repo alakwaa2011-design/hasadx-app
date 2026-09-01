@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -48,6 +49,7 @@ const GEOMETRIC_PATTERN =
 /* ─── NavBar ──────────────────────────────────────────────────────────────── */
 export function IslamicNavBar() {
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/");
   const { t, dir } = useI18n();
   const [isTeacher, setIsTeacher] = useState(false);
 
@@ -83,7 +85,7 @@ export function IslamicNavBar() {
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20, justifyContent: "flex-start" }} dir={dir}>
-      <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else setLocation("/"); }} style={linkStyle}>
+      <button type="button" onClick={goBack} style={linkStyle}>
         ← {t.islamic.back}
       </button>
       <button type="button" onClick={() => setLocation("/")} style={linkStyle}>

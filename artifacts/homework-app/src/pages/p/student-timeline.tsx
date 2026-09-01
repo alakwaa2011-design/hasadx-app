@@ -17,6 +17,7 @@ import {
   LineChart as LineChartIcon,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_GREEN = "#225739";
@@ -79,6 +80,7 @@ export default function StudentTimelinePage() {
   const { t, lang, dir } = useI18n();
   const params = useParams<{ classStudentId: string }>();
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/teacher/students");
   const sid = Number(params.classStudentId);
 
   const [data, setData] = useState<TimelinePayload | null>(null);
@@ -127,7 +129,7 @@ export default function StudentTimelinePage() {
       <div dir={dir} className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 p-6 text-center">
         <AlertTriangle className="w-10 h-10 text-amber-500" />
         <div className="text-slate-700">{error ?? t.studentTimeline.loadError}</div>
-        <button onClick={() => window.history.back()} className="text-sm text-slate-500 underline">{t.studentTimeline.back}</button>
+        <button onClick={goBack} className="text-sm text-slate-500 underline">{t.studentTimeline.back}</button>
       </div>
     );
   }
@@ -141,7 +143,7 @@ export default function StudentTimelinePage() {
         {/* Header */}
         <header className="space-y-3">
           <button
-            onClick={() => window.history.back()}
+            onClick={goBack}
             className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1"
           >
             {dir === "rtl" ? <ChevronRight className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />} {t.studentTimeline.back}

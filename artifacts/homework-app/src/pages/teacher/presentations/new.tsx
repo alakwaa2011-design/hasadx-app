@@ -8,6 +8,7 @@ import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
+import { useSmartBack } from "@/lib/nav-history";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiPresentationBuilder } from "./builder";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -336,6 +337,7 @@ function McqReviewPanel({ isAr, questions: initial, saving, onConfirm, onSkip }:
 export default function NewPresentationPage() {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/teacher/presentations");
   const isAr = lang === "ar";
 
   // Auth guard — this page is AI-only, visitors must log in
@@ -346,14 +348,6 @@ export default function NewPresentationPage() {
       setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations/new"));
     }
   }, [authLoading, authError, currentUser, setLocation]);
-
-  const goBack = useCallback(() => {
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    setLocation("/teacher/presentations");
-  }, [setLocation]);
 
   const [mode, setMode] = useState<Mode>(null);
   /* Server charges credits for AI outline/build — refresh the shared balance. */
