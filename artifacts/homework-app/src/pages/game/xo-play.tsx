@@ -357,22 +357,10 @@ export default function XoPlay() {
               )}
             </div>
 
-            <div className="relative aspect-square w-full max-w-[320px] mx-auto">
-              {/* Board Grid Lines */}
-              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
-                <div className={cn("border-b-4 border-r-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-b-4 border-r-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-b-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-b-4 border-r-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-b-4 border-r-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-b-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-r-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className={cn("border-r-4", snapshot.winner ? "border-slate-700" : "border-border")} />
-                <div className="" />
-              </div>
-
+            <div className="relative mx-auto aspect-square w-full max-w-[340px] rounded-[2rem] bg-gradient-to-br from-[#367a58] via-[#225739] to-[#153b29] p-3 shadow-[0_24px_55px_rgba(15,60,40,0.28),inset_0_1px_0_rgba(255,255,255,0.28)] ring-4 ring-[#d6b65c]/30 sm:p-4">
+              <div className="pointer-events-none absolute inset-2 rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.18),transparent_55%)]" />
               {/* Interactive Cells */}
-              <div role="grid" aria-label={ar ? "لوحة إكس أو" : "XO board"} className="absolute inset-0 grid grid-cols-3 gap-2 p-2">
+              <div role="grid" aria-label={ar ? "لوحة إكس أو" : "XO board"} className="relative grid h-full grid-cols-3 grid-rows-3 gap-2.5 sm:gap-3">
                 {board.map((mark, i) => {
                   const isX = mark === "x";
                   const isO = mark === "o";
@@ -386,16 +374,16 @@ export default function XoPlay() {
                       aria-label={`${ar ? "المربع" : "Cell"} ${i + 1}${mark ? `: ${mark.toUpperCase()}` : ""}`}
                       onClick={() => emit("place", { cell: i, playerId })}
                       className={cn(
-                        "flex items-center justify-center rounded-2xl transition-all duration-300",
-                        interactive && "cursor-pointer bg-primary/10 hover:bg-primary/20 hover:scale-105 active:scale-95",
-                        !mark && !interactive && "bg-transparent",
-                        isX && "bg-blue-600/10 shadow-[0_0_15px_rgba(37,99,235,0.15)]",
-                        isO && "bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]",
-                        winningCells.includes(i) && "scale-105 animate-pulse ring-4 ring-amber-300/70"
+                        "group relative flex items-center justify-center overflow-hidden rounded-2xl border border-white/80 bg-gradient-to-br from-white via-[#fffdf5] to-emerald-50 shadow-[0_6px_0_rgba(9,45,29,0.28),0_10px_20px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.95)] transition-all duration-300",
+                        interactive && "cursor-pointer ring-2 ring-[#e2c56f]/50 hover:-translate-y-1 hover:scale-[1.03] hover:from-amber-50 hover:via-white hover:to-emerald-100 hover:ring-[#f2d77e] hover:shadow-[0_9px_0_rgba(9,45,29,0.25),0_16px_28px_rgba(0,0,0,0.2),0_0_24px_rgba(242,215,126,0.35)] active:translate-y-0 active:scale-95",
+                        isX && "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-blue-100 shadow-[0_6px_0_rgba(30,64,175,0.25),0_12px_24px_rgba(37,99,235,0.18)]",
+                        isO && "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-amber-100 shadow-[0_6px_0_rgba(180,83,9,0.22),0_12px_24px_rgba(245,158,11,0.18)]",
+                        winningCells.includes(i) && "z-10 scale-[1.04] animate-pulse ring-4 ring-[#f7d66a] shadow-[0_0_32px_rgba(247,214,106,0.8)]"
                       )}
                     >
-                      {isX && <X strokeWidth={3} className="h-14 w-14 text-blue-600 animate-in zoom-in spin-in-12 duration-300" />}
-                      {isO && <Circle strokeWidth={4} className="h-12 w-12 text-amber-500 animate-in zoom-in duration-300" />}
+                      {!mark && interactive && <span className="h-3 w-3 rounded-full bg-[#225739]/18 shadow-inner transition-transform group-hover:scale-125" />}
+                      {isX && <X strokeWidth={3} className="h-14 w-14 text-blue-600 drop-shadow-[0_3px_3px_rgba(37,99,235,0.28)] animate-in zoom-in spin-in-12 duration-300" />}
+                      {isO && <Circle strokeWidth={4} className="h-12 w-12 text-amber-500 drop-shadow-[0_3px_3px_rgba(245,158,11,0.3)] animate-in zoom-in duration-300" />}
                     </button>
                   );
                 })}

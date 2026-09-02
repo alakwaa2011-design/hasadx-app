@@ -316,7 +316,7 @@ export default function XoClass() {
           <div className="flex-1 grid gap-4 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
             <TeamPanel team="x" name={setup.current!.teamX || "Team X"} state={state} ar={ar} dispatch={dispatch} />
 
-            <section className="flex flex-col items-center justify-center rounded-3xl bg-slate-900/50 p-6 shadow-2xl ring-1 ring-white/5 backdrop-blur-sm">
+            <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-b from-white/10 via-emerald-950/35 to-slate-900/70 p-5 shadow-2xl ring-1 ring-white/15 backdrop-blur-sm sm:p-6">
               <div className="mb-8 w-full text-center">
                 {state.status === "playing" ? (
                   <div className="inline-flex flex-col items-center justify-center gap-1">
@@ -332,22 +332,10 @@ export default function XoClass() {
                 )}
               </div>
 
-              <div className="relative aspect-square w-full max-w-sm">
-                {/* Board Grid Lines (Decorative) */}
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
-                  <div className="border-b-4 border-r-4 border-slate-700/50" />
-                  <div className="border-b-4 border-r-4 border-slate-700/50" />
-                  <div className="border-b-4 border-slate-700/50" />
-                  <div className="border-b-4 border-r-4 border-slate-700/50" />
-                  <div className="border-b-4 border-r-4 border-slate-700/50" />
-                  <div className="border-b-4 border-slate-700/50" />
-                  <div className="border-r-4 border-slate-700/50" />
-                  <div className="border-r-4 border-slate-700/50" />
-                  <div className="" />
-                </div>
-
+              <div className="relative aspect-square w-full max-w-sm rounded-[2rem] bg-gradient-to-br from-[#367a58] via-[#225739] to-[#153b29] p-3 shadow-[0_24px_60px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] ring-4 ring-[#d6b65c]/25 sm:p-4">
+                <div className="pointer-events-none absolute inset-2 rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.16),transparent_55%)]" />
                 {/* Interactive Cells */}
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-3 p-3">
+                <div className="relative grid h-full grid-cols-3 grid-rows-3 gap-2.5 sm:gap-3">
                   {state.board.map((cell, index) => {
                     const isX = cell === "x";
                     const isO = cell === "o";
@@ -359,16 +347,16 @@ export default function XoClass() {
                         disabled={!canPlace}
                         onClick={() => dispatch({ type: "place", team: state.activeTeam, cell: index })}
                         className={cn(
-                          "relative flex items-center justify-center rounded-2xl transition-all duration-300",
-                          canPlace ? "cursor-pointer bg-slate-800/60 hover:bg-slate-700 hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] active:scale-95" : "cursor-default",
-                          !cell && !canPlace && "bg-transparent",
-                          isX && "bg-blue-600/20 shadow-[0_0_20px_rgba(37,99,235,0.2)]",
-                          isO && "bg-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.2)]",
-                          winningCells.includes(index) && "scale-105 animate-pulse ring-4 ring-amber-300/70"
+                          "group relative flex items-center justify-center overflow-hidden rounded-2xl border border-white/80 bg-gradient-to-br from-white via-[#fffdf5] to-emerald-50 shadow-[0_6px_0_rgba(9,45,29,0.28),0_10px_20px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.95)] transition-all duration-300",
+                          canPlace ? "cursor-pointer ring-2 ring-[#e2c56f]/50 hover:-translate-y-1 hover:scale-[1.03] hover:from-amber-50 hover:via-white hover:to-emerald-100 hover:ring-[#f2d77e] hover:shadow-[0_9px_0_rgba(9,45,29,0.25),0_16px_28px_rgba(0,0,0,0.22),0_0_24px_rgba(242,215,126,0.32)] active:translate-y-0 active:scale-95" : "cursor-default",
+                          isX && "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-blue-100 shadow-[0_6px_0_rgba(30,64,175,0.25),0_12px_24px_rgba(37,99,235,0.2)]",
+                          isO && "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-amber-100 shadow-[0_6px_0_rgba(180,83,9,0.22),0_12px_24px_rgba(245,158,11,0.2)]",
+                          winningCells.includes(index) && "z-10 scale-[1.04] animate-pulse ring-4 ring-[#f7d66a] shadow-[0_0_32px_rgba(247,214,106,0.8)]"
                         )}
                       >
-                        {isX && <X strokeWidth={2.5} className="h-16 w-16 text-blue-500 animate-in zoom-in-50 spin-in-12 duration-300" />}
-                        {isO && <Circle strokeWidth={3} className="h-14 w-14 text-amber-500 animate-in zoom-in-50 duration-300" />}
+                        {!cell && canPlace && <span className="h-3 w-3 rounded-full bg-[#225739]/18 shadow-inner transition-transform group-hover:scale-125" />}
+                        {isX && <X strokeWidth={3} className="h-16 w-16 text-blue-600 drop-shadow-[0_3px_3px_rgba(37,99,235,0.28)] animate-in zoom-in-50 spin-in-12 duration-300" />}
+                        {isO && <Circle strokeWidth={3.5} className="h-14 w-14 text-amber-500 drop-shadow-[0_3px_3px_rgba(245,158,11,0.3)] animate-in zoom-in-50 duration-300" />}
                       </button>
                     );
                   })}
