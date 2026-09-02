@@ -181,7 +181,7 @@ export default function WameethCreate() {
     return {
       ...emptyQuestion("mcq"),
       text: q.text,
-      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
+      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC || "", optionD: q.optionD || "",
       correctAnswer: (["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A") as Correct,
       imageUrl: q.imageUrl || null,
     };
