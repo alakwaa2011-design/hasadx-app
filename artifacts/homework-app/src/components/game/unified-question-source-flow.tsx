@@ -797,18 +797,18 @@ export function UnifiedQuestionSourceFlow({
   ) : <AssignmentPicker />;
 
   return (
-    <div className={cn("w-full mx-auto space-y-6 lg:space-y-8", tugPresentation ? "max-w-2xl" : "max-w-4xl lg:max-w-6xl")} dir={dir}>
+    <div className={cn("mx-auto w-full space-y-8 px-1 sm:px-3 lg:space-y-10 lg:px-6", tugPresentation ? "max-w-2xl" : "max-w-7xl")} dir={dir}>
       {/* Header & Step Indicator */}
       {header ?? (
-        <div className="mb-10 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
+        <div className="mx-auto mb-12 max-w-3xl text-center lg:mb-14">
+          <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
             {gameIcon}
           </div>
-          <h1 className="mb-2 text-2xl font-black tracking-tight text-foreground lg:text-3xl">{gameTitle}</h1>
-          <p className="mx-auto max-w-xl text-sm font-medium text-muted-foreground">{gameDescription}</p>
+          <h1 className="mb-3 text-3xl font-black tracking-tight text-foreground sm:text-4xl">{gameTitle}</h1>
+          <p className="mx-auto max-w-2xl text-sm font-medium leading-7 text-muted-foreground sm:text-base">{gameDescription}</p>
 
-          <div className="mt-8 flex justify-center">
-            <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-card px-3 py-2 shadow-sm">
+          <div className="mt-9 flex justify-center">
+            <div className="flex max-w-full items-center gap-1.5 rounded-2xl border border-border/60 bg-card px-3 py-2 shadow-sm">
               {[
                 { label: ar ? "الأسئلة" : "Questions", active: true },
                 { label: ar ? "إعدادات اللعبة" : "Game Settings", active: false },
@@ -843,7 +843,10 @@ export function UnifiedQuestionSourceFlow({
         >
           {viewState === "menu" && (
             <div className="mx-auto">
-              <div className={cn("grid gap-4", tugPresentation ? "sm:grid-cols-2" : "max-w-3xl sm:grid-cols-2 lg:gap-6")}>
+              <div className={cn(
+                "mx-auto grid grid-cols-1 gap-5 sm:grid-cols-2 lg:gap-7",
+                tugPresentation ? "max-w-2xl" : "max-w-5xl"
+              )}>
                 {[
                   {
                     id: "assignment" as const,
@@ -918,9 +921,9 @@ export function UnifiedQuestionSourceFlow({
                     className={cn(
                       "group relative overflow-hidden rounded-2xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg",
                       isSaved
-                        ? "flex min-h-[84px] items-center gap-3.5 rounded-xl p-3.5 text-center sm:col-span-2"
-                        : "flex flex-col items-center p-5 text-center",
-                      !tugPresentation && !isSaved && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
+                        ? "flex min-h-[112px] items-center gap-3.5 rounded-2xl p-4 text-center sm:col-span-2"
+                        : "flex min-h-[190px] flex-col items-center justify-center p-6 text-center sm:min-h-[210px]",
+                      !tugPresentation && !isSaved && "border-2 border-border/60 lg:p-9 hover:-translate-y-1",
                       isCenteredSingle && "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.75rem)]",
                       opt.hoverBorder
                     )}
