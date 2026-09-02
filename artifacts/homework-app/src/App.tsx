@@ -117,6 +117,7 @@ const TugClass = lazy(() => import("@/pages/game/tug-class"));
 const XoCreate = lazy(() => import("@/pages/game/xo-create"));
 const XoJoin = lazy(() => import("@/pages/game/xo-join"));
 const XoPlay = lazy(() => import("@/pages/game/xo-play"));
+const XoClass = lazy(() => import("@/pages/game/xo-class"));
 const EscapeCreate = lazy(() => import("@/pages/game/escape-create"));
 const EscapeClass = lazy(() => import("@/pages/game/escape-class"));
 const EscapeHost = lazy(() => import("@/pages/game/escape-host"));
@@ -480,6 +481,7 @@ function Router() {
         <Route path="/game/xo/join" component={XoJoin} />
         <Route path="/game/xo/join/:pin" component={XoJoin} />
         <Route path="/game/xo/play/:pin" component={XoPlay} />
+        <Route path="/game/xo/class" component={XoClass} />
         <Route path="/game/escape/create" component={EscapeCreate} />
         <Route path="/game/escape/class" component={EscapeClass} />
         <Route path="/game/escape/host/:pin" component={EscapeHost} />
