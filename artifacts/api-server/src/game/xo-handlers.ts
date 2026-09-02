@@ -9,7 +9,8 @@ import {
 interface XoPlayer { id: string; socketId: string; name: string; avatar: string; team: XoTeam; rejoinToken: string; }
 interface XoGame {
   pin: string; teacherId: number; hostSocketId: string; questions: XoQuestion[]; state: XoState;
-  players: Record<string, XoPlayer>; started: boolean; timer?: ReturnType<typeof setTimeout>; questionStartedAt?: number;
+  players: Record<string, XoPlayer>; started: boolean; timer?: ReturnType<typeof setTimeout>;
+  questionStartedAt?: number; placementStartedAt?: number;
   teamNames: Record<XoTeam, string>;
 }
 const games = new Map<string, XoGame>();
@@ -20,6 +21,11 @@ const publicState = (game: XoGame) => ({
   ...game.state,
   board: [...game.state.board],
   started: game.started,
+  timerRemainingSecs: game.state.phase === "question"
+    ? Math.max(0, Math.ceil((game.questions[game.state.questionIndex].duration * 1000 - (Date.now() - (game.questionStartedAt ?? Date.now()))) / 1000))
+    : game.state.phase === "placement"
+      ? Math.max(0, Math.ceil((20_000 - (Date.now() - (game.placementStartedAt ?? Date.now()))) / 1000))
+      : 0,
   question: game.started && game.state.phase === "question" ? {
     ...clientQuestion(game.questions[game.state.questionIndex]),
     remainingSecs: Math.max(0, Math.ceil((game.questions[game.state.questionIndex].duration * 1000 - (Date.now() - (game.questionStartedAt ?? Date.now()))) / 1000)),
@@ -48,6 +54,7 @@ function scheduleQuestion(ns: ReturnType<Server["of"]>, game: XoGame) {
 function schedulePlacement(ns: ReturnType<Server["of"]>, game: XoGame) {
   clearTimer(game);
   if (game.state.phase !== "placement") return;
+  game.placementStartedAt = Date.now();
   game.timer = setTimeout(() => {
     if (game.state.phase !== "placement") return;
     game.state = {
@@ -63,8 +70,16 @@ function schedulePlacement(ns: ReturnType<Server["of"]>, game: XoGame) {
 }
 function setState(ns: ReturnType<Server["of"]>, game: XoGame) {
   clearTimer(game);
-  if (game.state.phase === "question") game.questionStartedAt = Date.now();
-  else game.questionStartedAt = undefined;
+  if (game.state.phase === "question") {
+    game.questionStartedAt = Date.now();
+    game.placementStartedAt = undefined;
+  } else if (game.state.phase === "placement") {
+    game.questionStartedAt = undefined;
+    game.placementStartedAt = Date.now();
+  } else {
+    game.questionStartedAt = undefined;
+    game.placementStartedAt = undefined;
+  }
   emitState(ns, game);
   if (game.state.phase === "question") scheduleQuestion(ns, game);
   else if (game.state.phase === "placement") schedulePlacement(ns, game);
@@ -177,7 +192,7 @@ export function setupXoSocket(io: Server) {
     socket.on("xo:replay", (data: { pin: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
       if (!game || !isHost(socket, game)) return cb({ error: "فقط المعلم يمكنه إعادة اللعب." });
-      clearTimer(game); game.state = createXoState(); game.questionStartedAt = undefined; game.started = true; setState(ns, game); cb({ success: true });
+      clearTimer(game); game.state = createXoState(); game.questionStartedAt = undefined; game.placementStartedAt = undefined; game.started = true; setState(ns, game); cb({ success: true });
     });
     socket.on("disconnect", () => logger.debug({ socketId: socket.id }, "XO socket disconnected"));
   });

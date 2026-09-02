@@ -9,14 +9,14 @@ import { toast } from "@/components/ui/sonner";
 type Mark = "x" | "o" | null;
 type Question = { text: string; options: string[]; imageUrl?: string | null; duration?: number; remainingSecs?: number };
 type Player = { id: string; name: string; team: "x" | "o" };
-type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; players?: Player[]; teamNames?: { x: string; o: string }; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
+type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; timerRemainingSecs?: number; players?: Player[]; teamNames?: { x: string; o: string }; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
 const tone = (ok: boolean) => { try { const c = new AudioContext(); const o = c.createOscillator(); const g = c.createGain(); o.frequency.value = ok ? 740 : 180; g.gain.value = .05; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + .12); } catch {} };
 
 export default function XoPlay() {
   const { pin = "" } = useParams<{ pin: string }>(); const search = useSearch(); const [, navigate] = useLocation(); const { lang } = useI18n(); const ar = lang === "ar"; const creator = new URLSearchParams(search).get("creator") === "1"; const name = new URLSearchParams(search).get("name") || "";
   const [snapshot, setSnapshot] = useState<Snapshot>({ board: Array(9).fill(null), phase: "connecting" });
   const [selected, setSelected] = useState<number | null>(null); const [muted, setMuted] = useState(() => localStorage.getItem("xo-muted") === "1"); const [time, setTime] = useState(0); const [playerId, setPlayerId] = useState<string | null>(null); const socketRef = useRef(getXoSocket());
-  const merge = useCallback((data: Snapshot) => { setSnapshot(p => ({ ...p, ...data, board: data.board ?? p.board, question: data.question === null ? undefined : data.question ?? p.question })); }, []);
+  const merge = useCallback((data: Snapshot) => { setSnapshot(p => ({ ...p, ...data, board: data.board ?? p.board, question: data.question === null ? null : data.question ?? p.question })); }, []);
   useEffect(() => {
     const socket = socketRef.current;
     const initialise = () => {
@@ -45,7 +45,7 @@ export default function XoPlay() {
     socket.on("xo:error", (d: { message?: string } | string) => toast.error(typeof d === "string" ? d : d.message || "XO error"));
     return () => { events.forEach(([e, h]) => socket.off(e, h)); socket.off("connect", initialise); socket.off("xo:answer-result"); socket.off("xo:ended"); socket.off("xo:error"); };
   }, [ar, creator, merge, muted, name, navigate, pin]);
-  useEffect(() => { const q = snapshot.question; if (!q || snapshot.phase !== "question") return; setTime(q.remainingSecs ?? q.duration ?? 20); }, [snapshot.question, snapshot.phase]);
+  useEffect(() => { const q = snapshot.question; if (snapshot.phase === "placement") { setTime(snapshot.timerRemainingSecs ?? 20); return; } if (!q || snapshot.phase !== "question") return; setTime(q.remainingSecs ?? q.duration ?? 20); }, [snapshot.question, snapshot.phase, snapshot.timerRemainingSecs]);
   useEffect(() => { if (!time || snapshot.phase !== "question") return; const t = window.setInterval(() => setTime(v => Math.max(0, v - 1)), 1000); return () => clearInterval(t); }, [time, snapshot.phase]);
   const emit = (event: string, data: object = {}) => socketRef.current.emit(`xo:${event}`, { pin, ...data });
   const question = snapshot.question; const board = snapshot.board || Array(9).fill(null); const canPlace = snapshot.phase === "placement" && snapshot.placementPlayerId === playerId;
