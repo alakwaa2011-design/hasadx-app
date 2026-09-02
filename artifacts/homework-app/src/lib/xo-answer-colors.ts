@@ -1,0 +1,29 @@
+export type XoAnswerColor = {
+  background: string;
+  shadow: string;
+  badge: string;
+};
+
+// Keep XO answer cards aligned with the classroom Flash game palette.
+export const XO_ANSWER_COLORS: XoAnswerColor[] = [
+  {
+    background: "linear-gradient(150deg,#7A0A0A,#B01414)",
+    shadow: "0 4px 18px rgba(176,20,20,0.45)",
+    badge: "linear-gradient(135deg,#9B1212,#C71A1A)",
+  },
+  {
+    background: "linear-gradient(150deg,#08386E,#1260A8)",
+    shadow: "0 4px 18px rgba(18,96,168,0.45)",
+    badge: "linear-gradient(135deg,#0A4A8E,#1A72C8)",
+  },
+  {
+    background: "linear-gradient(150deg,#B8860B,#DAA520)",
+    shadow: "0 4px 18px rgba(218,165,32,0.45)",
+    badge: "linear-gradient(135deg,#C89010,#EAB830)",
+  },
+  {
+    background: "linear-gradient(150deg,#5A1A8A,#8B35C8)",
+    shadow: "0 4px 18px rgba(139,53,200,0.45)",
+    badge: "linear-gradient(135deg,#6E20A0,#A040D8)",
+  },
+];

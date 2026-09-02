@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import { QRModalButton } from "@/components/game-qr-code";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
+import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 import {
   getIsMuted,
   playCorrectSound,
@@ -231,6 +232,7 @@ export default function XoPlay() {
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {question.options.slice(0, 4).map((o, i) => {
                       const isSelected = selected === i;
+                      const answerColor = XO_ANSWER_COLORS[i] ?? XO_ANSWER_COLORS[0];
                       let btnState = "default";
                       if (isSelected) {
                         if (answerResult === true) btnState = "correct";
@@ -245,18 +247,20 @@ export default function XoPlay() {
                           onClick={() => { setSelected(i); emit("answer", { answerIndex: i, playerId }); }}
                           className={cn(
                             "group flex min-h-[4rem] items-center rounded-2xl border-2 p-3 text-start font-bold transition-all",
-                            btnState === "default" && "border-muted bg-card hover:border-primary/40 hover:bg-muted",
+                            btnState === "default" && "border-white/20 text-white hover:brightness-110",
                             btnState === "selected" && "border-primary bg-primary/10 shadow-sm",
                             btnState === "correct" && "fb-correct-once border-green-500 bg-green-500 text-white shadow-lg",
                             btnState === "wrong" && "fb-wrong-once border-red-500 bg-red-500 text-white shadow-lg",
                             (selected !== null && !isSelected) && "opacity-50 cursor-not-allowed"
                           )}
+                          style={btnState === "default" ? { background: answerColor.background, boxShadow: answerColor.shadow } : undefined}
                         >
                           <span className={cn(
                             "me-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-black text-sm",
-                            btnState === "default" ? "bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground" :
+                            btnState === "default" ? "text-white" :
                             btnState === "selected" ? "bg-primary text-primary-foreground" : "bg-white/20 text-white"
-                          )}>
+                          )}
+                            style={btnState === "default" ? { background: answerColor.badge } : undefined}>
                             {["A","B","C","D"][i]}
                           </span>
                           <span className="flex-1">{o}</span>

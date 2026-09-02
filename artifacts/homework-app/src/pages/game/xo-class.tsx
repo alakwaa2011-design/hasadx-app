@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/sonner";
 import { decodeXoClassSetup, encodeXoClassSetup, type XoClassSetup } from "@/lib/xo-class-share";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
+import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 
 export const XO_CLASS_SETUP_KEY = "xo-class-setup";
 type Setup = XoClassSetup;
@@ -121,6 +122,7 @@ function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name:
             <div className="mt-2 grid gap-3">
               {question.options.map((option, index) => {
                 const optState = getOptionState(index);
+                const answerColor = XO_ANSWER_COLORS[index] ?? XO_ANSWER_COLORS[0];
                 return (
                   <button
                     key={index}
@@ -128,18 +130,24 @@ function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name:
                     onClick={() => handleAnswer(index)}
                     className={cn(
                       "group relative min-h-[3.5rem] overflow-hidden rounded-xl border-2 px-4 py-3 text-start text-sm font-black transition-all",
-                      optState === "default" && "border-muted bg-card text-foreground hover:border-primary/40 hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-primary",
+                      optState === "default" && "border-white/20 text-white hover:brightness-110 focus-visible:ring-2 focus-visible:ring-white/70",
                       optState === "correct" && "fb-correct-once z-10 border-green-500 bg-green-500 text-white shadow-lg",
                       optState === "wrong" && "fb-wrong-once z-10 border-red-500 bg-red-500 text-white shadow-lg",
                       (alreadyAnswered && optState === "default") && "opacity-50 cursor-not-allowed"
                     )}
+                    style={optState === "default" ? { background: answerColor.background, boxShadow: answerColor.shadow } : undefined}
                   >
                     <span className="relative z-10 flex items-center">
                       <b className={cn(
                         "me-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold transition-colors",
-                        optState === "default" ? "bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground" : "bg-white/20 text-white"
+                        optState === "default" ? "text-white" : "bg-white/20 text-white"
                       )}>
+                        <span
+                          className="flex h-full w-full items-center justify-center rounded-lg"
+                          style={optState === "default" ? { background: answerColor.badge } : undefined}
+                        >
                         {answerLabels[index]}
+                        </span>
                       </b>
                       <span>{option}</span>
                     </span>
