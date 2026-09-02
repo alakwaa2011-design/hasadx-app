@@ -61,9 +61,21 @@ export default function XoCreate() {
       });
     } catch { setCreating(false); toast.error(ar ? "تعذر حفظ اللعبة تلقائياً" : "Could not auto-save the game"); }
   };
-  if (!questions.length) return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><UnifiedQuestionSourceFlow gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"} gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."} gameIcon={<Grid3X3 className="h-8 w-8 text-[#225739]" />} accentColor="#225739" minQuestions={2} maxQuestions={20} onComplete={({ questions: q, sourceTitle }) => { setQuestions(q); setTitle(sourceTitle); }} /></main></Layout>;
+  if (!questions.length) return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><UnifiedQuestionSourceFlow gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"} gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."} gameIcon={<Grid3X3 className="h-8 w-8 text-[#225739]" />} accentColor="#225739" floatingAssignmentContinue minQuestions={2} maxQuestions={20} onComplete={({ questions: q, sourceTitle }) => { setQuestions(q); setTitle(sourceTitle); }} /></main></Layout>;
   return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><div className="mx-auto max-w-2xl space-y-5">
     <header className="rounded-3xl bg-[#225739] p-6 text-white shadow-lg"><div className="flex items-center gap-3"><Grid3X3 /><div><h1 className="text-xl font-black">{ar ? "إعداد إكس أو" : "XO setup"}</h1><p className="text-sm text-white/75">{questions.length} {ar ? "أسئلة جاهزة" : "questions ready"}</p></div></div></header>
+    <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm">
+      <h2 className="mb-3 font-black text-[#225739]">{ar ? "الأسئلة المحمّلة" : "Loaded questions"}</h2>
+      <div className="space-y-2">
+        {questions.slice(0, 4).map((question, index) => (
+          <div key={`${index}-${question.text}`} className="flex items-start gap-3 rounded-xl bg-[#F1F5F2] px-3 py-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#225739] text-xs font-black text-white">{index + 1}</span>
+            <p className="line-clamp-2 text-sm font-bold leading-relaxed text-slate-700">{question.text}</p>
+          </div>
+        ))}
+      </div>
+      {questions.length > 4 && <p className="mt-2 text-xs font-bold text-slate-500">{ar ? `و${questions.length - 4} أسئلة أخرى` : `And ${questions.length - 4} more questions`}</p>}
+    </section>
     <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm"><h2 className="mb-4 flex items-center gap-2 font-black text-[#225739]"><Users className="h-5 w-5" />{ar ? "أسماء الفريقين" : "Team names"}</h2><div className="grid gap-3 sm:grid-cols-2"><label className="font-bold text-slate-700">X<input value={teamX} onChange={e => setTeamX(e.target.value)} className="mt-1 w-full rounded-xl border p-3 outline-[#225739]" /></label><label className="font-bold text-slate-700">O<input value={teamO} onChange={e => setTeamO(e.target.value)} className="mt-1 w-full rounded-xl border p-3 outline-[#225739]" /></label></div></section>
     <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm"><h2 className="mb-3 flex items-center gap-2 font-black text-[#225739]"><Clock className="h-5 w-5" />{ar ? "وقت السؤال" : "Question duration"}</h2><div className="flex flex-wrap gap-2">{durations.map(d => <button key={d} onClick={() => setDuration(d)} className={`rounded-xl px-4 py-2 font-black ${duration === d ? "bg-[#225739] text-white" : "bg-[#F1F5F2] text-[#225739]"}`}>{d}{ar ? " ث" : "s"}</button>)}</div></section>
     <div className="flex gap-3"><button onClick={() => setQuestions([])} className="rounded-2xl border px-4 font-bold">{ar ? "تغيير الأسئلة" : "Change questions"}</button><button onClick={create} disabled={creating} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#225739] py-4 font-black text-white disabled:opacity-60"><Play className="h-5 w-5" />{creating ? (ar ? "جارٍ الإنشاء..." : "Creating...") : (ar ? "إنشاء الغرفة" : "Create room")}</button></div>

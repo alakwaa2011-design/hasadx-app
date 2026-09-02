@@ -110,7 +110,7 @@ export function UnifiedQuestionSourceFlow({
   // ─── API Hooks ───
   const { data: user } = useGetCurrentTeacher({ query: { retry: false } as any });
   const { data: assignments, isLoading: assignmentsLoading } = useListAssignments(
-    user ? { teacherId: user.id, include: "shared" as const } : undefined,
+    user ? { teacherId: user.id } : undefined,
     { query: { enabled: !!user } as any }
   );
 
@@ -242,10 +242,12 @@ export function UnifiedQuestionSourceFlow({
   );
 
   // ─── Assignment Logic ───
-  const wameethSourceAssignments = (assignments || []).filter((a: any) => {
-    if (a.hiddenByAdmin && a.teacherId !== user?.id) return false;
-    return true;
-  });
+  // Game source pickers deliberately show only the signed-in teacher's own
+  // activities. Shared/public activities belong in the library marketplace,
+  // not in this personal assignment list.
+  const wameethSourceAssignments = (assignments || []).filter((a: any) =>
+    !!user?.id && (a.teacherId == null || a.teacherId === user.id)
+  );
 
   const filteredAssignments = wameethSourceAssignments.filter((a: any) => {
     if ((a.questionCount ?? 0) === 0) return false;
