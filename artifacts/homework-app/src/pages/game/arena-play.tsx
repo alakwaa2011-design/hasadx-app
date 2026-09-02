@@ -55,6 +55,7 @@ import {
 } from "@/data/arena-questions";
 import { getStaticCoverImage, toCoverThumb } from "@/data/arena-cover-images";
 import AudioPlayer from "@/components/AudioPlayer";
+import { resolveImageUrl } from "@/lib/image-url";
 import {
   cardKey,
   getNextTeam,
@@ -4080,7 +4081,7 @@ function InteractiveActivity({
       {question.imageUrl && (
         <div className="mb-4 flex justify-center">
           <img
-            src={question.imageUrl}
+            src={resolveImageUrl(question.imageUrl) ?? ""}
             alt="سؤال"
             decoding="async"
             {...({ fetchpriority: "high" } as any)}
@@ -4548,7 +4549,7 @@ function ImagePlay({
             </div>
           )}
           <img
-            src={question.imageUrl}
+            src={resolveImageUrl(question.imageUrl) ?? ""}
             alt="سؤال مصوّر"
             decoding="async"
             {...({ fetchpriority: "high" } as any)}
@@ -4599,7 +4600,7 @@ function LogoPlay({
       <div className="relative inline-block">
         {question.imageUrl ? (
           <img
-            src={question.imageUrl}
+            src={resolveImageUrl(question.imageUrl) ?? ""}
             alt="logo"
             decoding="async"
             {...({ fetchpriority: "high" } as any)}

@@ -27,6 +27,7 @@ import {
   type WameethTeamState, type WameethClassQuestion,
   type WameethClassState,
 } from "@/lib/wameeth-class-engine";
+import { QuestionImage } from "@/components/game/question-image";
 
 // ─── Session-storage key ──────────────────────────────────────────────────────
 export const WAMEETH_CLASS_SETUP_KEY = "wameeth-class-setup";
@@ -929,7 +930,7 @@ function TeamPanel({
               </h2>
               {question.imageUrl && (
                 <div className="flex justify-center mt-2">
-                  <img src={question.imageUrl} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(90px,18vh,180px)", maxWidth: "80%" }} />
+                  <QuestionImage src={question.imageUrl} className="rounded-lg" style={{ maxHeight: "clamp(90px,18vh,180px)", maxWidth: "80%" }} />
                 </div>
               )}
             </motion.div>

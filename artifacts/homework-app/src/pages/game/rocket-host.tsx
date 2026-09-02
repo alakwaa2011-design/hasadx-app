@@ -10,6 +10,7 @@ import QRCode from "react-qr-code";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
+import { QuestionImage } from "@/components/game/question-image";
 
 const GREEN = "#225739";
 const GOLD = "#D9A521";
@@ -604,9 +605,8 @@ export default function RocketHost() {
                     {hostQuestion.text}
                   </p>
                   {hostQuestion.imageUrl && (
-                    <img
+                    <QuestionImage
                       src={hostQuestion.imageUrl}
-                      alt=""
                       style={{ marginTop: 8, maxHeight: 140, maxWidth: "100%", borderRadius: 10, objectFit: "contain", background: "rgba(0,0,0,0.2)" }}
                     />
                   )}

@@ -17,6 +17,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Music2, Settings2, Power, Volume2, VolumeX, MoreVertical, QrCode, RotateCcw, Sparkles } from "lucide-react";
+import { QuestionImage } from "@/components/game/question-image";
 
 
 interface GiftEvent {
@@ -1171,7 +1172,7 @@ export default function TeacherGame() {
             <h2 className="text-2xl sm:text-3xl font-black text-white text-center leading-relaxed mt-4 sm:mt-0 px-12">{question?.text}</h2>
             {question?.imageUrl && (
               <div className="flex justify-center mt-4">
-                <img src={question.imageUrl} alt="" className="max-h-48 rounded-xl border-2 border-white/20 object-contain" />
+                <QuestionImage src={question.imageUrl} className="max-h-48 rounded-xl border-2 border-white/20" />
               </div>
             )}
             <div className="flex items-center justify-center gap-2 mt-4">

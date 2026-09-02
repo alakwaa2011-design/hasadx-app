@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import AudioPicker from "@/components/AudioPicker";
+import { QuestionImage } from "@/components/game/question-image";
 
 export type Correct = "A" | "B" | "C" | "D";
 export type QuestionType = "mcq" | "tf" | "fill_blank";
@@ -32,10 +33,12 @@ export interface Question {
   difficulty?: 1 | 2 | 3 | null;
   /** Optional audio: object-storage path or "yt:VIDEO_ID" for YouTube audio */
   audioUrl?: string | null;
+  /** Optional question image: object-storage path, data URI, or external URL */
+  imageUrl?: string | null;
 }
 
 export function emptyQuestion(type: QuestionType = "mcq"): Question {
-  return { text: "", type, optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", fillAnswer: "", closeAnswers: "", difficulty: null, audioUrl: null };
+  return { text: "", type, optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", fillAnswer: "", closeAnswers: "", difficulty: null, audioUrl: null, imageUrl: null };
 }
 
 /** A question is valid when it has text + enough options for its type */
@@ -100,6 +103,11 @@ export function QuestionCard({
                 </span>
               )}
             </div>
+            {q.imageUrl && (
+              <div className="mb-3 flex justify-center">
+                <QuestionImage src={q.imageUrl} className="max-h-40 max-w-full rounded-xl" />
+              </div>
+            )}
             {q.type === "fill_blank" ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs border bg-emerald-500/10 text-emerald-700 border-emerald-500/30 font-black shadow-sm">
@@ -192,6 +200,11 @@ export function QuestionCard({
         rows={2}
         className="w-full text-sm lg:text-base font-bold rounded-xl px-4 lg:px-5 py-3 lg:py-3.5 bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none mb-4 lg:mb-5 text-foreground placeholder:text-muted-foreground transition-all shadow-sm"
       />
+      {q.imageUrl && (
+        <div className="mb-4 flex justify-center">
+          <QuestionImage src={q.imageUrl} className="max-h-48 max-w-full rounded-xl" />
+        </div>
+      )}
 
       {/* Question type toggle */}
       {canPickType && (

@@ -8,7 +8,7 @@ import { type TugImpulse } from "@/components/game/cartoon-tug-scene";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { QRModalButton } from "@/components/game-qr-code";
 import { Volume2, VolumeX } from "lucide-react";
-import { resolveImageUrl } from "@/lib/image-url";
+import { QuestionImage } from "@/components/game/question-image";
 import {
   TugSoundEngine, MUSIC_STYLES, Confetti, PowerPullFlash, CountdownOverlay,
   TimerRing, TugArena, KAHOOT_SHAPES, WAMID_GRADIENT, WAMID_BORDER,
@@ -1400,7 +1400,7 @@ export default function TugPlay() {
                     <p className="text-lg sm:text-xl lg:text-2xl font-black leading-snug">{question.text}</p>
                     {question.imageUrl && (
                       <div className="flex justify-center mt-2">
-                        <img src={resolveImageUrl(question.imageUrl) ?? ""} alt="" className="rounded-lg object-contain" style={{ maxHeight: "clamp(80px,16vh,160px)", maxWidth: "80%" }} />
+                        <QuestionImage src={question.imageUrl} className="rounded-lg" style={{ maxHeight: "clamp(80px,16vh,160px)", maxWidth: "80%" }} />
                       </div>
                     )}
                     {phase === "round-end" && roundData && (

@@ -396,6 +396,7 @@ export function UnifiedQuestionSourceFlow({
         optionC: q.optionC || "",
         optionD: q.optionD || "",
         correctAnswer: (["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A") as Correct,
+        imageUrl: q.imageUrl || null,
       }));
 
       setAiQuestions(generated);
@@ -430,7 +431,7 @@ export function UnifiedQuestionSourceFlow({
           options: ["صح", "خطأ"],
           correct: q.correctAnswer === "B" ? 1 : 0,
           type: "true_false" as const,
-          imageUrl: null,
+          imageUrl: q.imageUrl || null,
         };
       }
 
@@ -438,7 +439,7 @@ export function UnifiedQuestionSourceFlow({
         text: q.text,
         options: [q.optionA, q.optionB, q.optionC, q.optionD],
         correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer) !== -1 ? ["A", "B", "C", "D"].indexOf(q.correctAnswer) : 0,
-        imageUrl: null,
+        imageUrl: q.imageUrl || null,
       };
     }).slice(0, maxQuestions);
     onComplete({ questions: qList, sourceTitle: activeTitle || null, source: editorSource });
