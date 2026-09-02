@@ -1,14 +1,17 @@
 import { useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 import { useLocation } from "wouter";
-import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, LogOut, Clock, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, LogOut, Clock, ArrowLeft, ArrowRight, Check, Copy } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Layout } from "@/components/layout";
 import { QuestionImage } from "@/components/game/question-image";
 import { getIsMuted, playCorrectSound, playGameStartSound, playTickSound, playVictoryFanfare, playWrongSound, startBackgroundBeat, stopBackgroundBeat, toggleMute } from "@/lib/game-sounds";
 import { createXoClassState, currentXoClassQuestionForTeam, xoClassReducer, type XoClassQuestion, type XoClassState } from "@/lib/xo-class-engine";
+import { QRModalButton } from "@/components/game-qr-code";
+import { toast } from "@/components/ui/sonner";
+import { decodeXoClassSetup, encodeXoClassSetup, type XoClassSetup } from "@/lib/xo-class-share";
 
 export const XO_CLASS_SETUP_KEY = "xo-class-setup";
-type Setup = { questions: XoClassQuestion[]; duration?: number; teamX?: string; teamO?: string; title?: string };
+type Setup = XoClassSetup;
 const labels = ["A", "B", "C", "D"];
 
 function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name: string; state: XoClassState; ar: boolean; dispatch: Dispatch<any> }) {
@@ -35,7 +38,13 @@ function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name:
 export default function XoClass() {
   const { lang, dir } = useI18n(); const ar = lang === "ar"; const [, navigate] = useLocation();
   const setup = useRef<Setup | null>(null);
-  if (!setup.current) { try { setup.current = JSON.parse(sessionStorage.getItem(XO_CLASS_SETUP_KEY) || "null"); } catch { setup.current = null; } }
+  if (!setup.current) {
+    const sharedSetup = new URLSearchParams(window.location.hash.slice(1)).get("setup")
+      || new URLSearchParams(window.location.search).get("setup");
+    setup.current = sharedSetup
+      ? decodeXoClassSetup(sharedSetup)
+      : (() => { try { return JSON.parse(sessionStorage.getItem(XO_CLASS_SETUP_KEY) || "null"); } catch { return null; } })();
+  }
   const valid = setup.current && Array.isArray(setup.current.questions) && setup.current.questions.length > 0;
   const [state, dispatch] = useReducer(xoClassReducer, createXoClassState(valid ? setup.current!.questions : [], setup.current?.duration || 20));
   const [paused, setPaused] = useState(false); const [muted, setMuted] = useState(getIsMuted);
@@ -46,10 +55,19 @@ export default function XoClass() {
   useEffect(() => { if (state.status === "countdown" || (state.status === "playing" && state.timeLeft <= 5 && state.timeLeft > 0)) playTickSound(); }, [state.status, state.countdown, state.timeLeft]);
   const result = useRef(state.lastResult);
   useEffect(() => { if (state.lastResult && state.lastResult !== result.current) { state.lastResult === "correct" ? playCorrectSound() : playWrongSound(); } result.current = state.lastResult; }, [state.lastResult]);
+  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/xo/class#setup=${encodeURIComponent(encodeXoClassSetup(setup.current!))}`;
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success(ar ? "تم نسخ رابط وضع الصف" : "Classroom link copied");
+    } catch {
+      toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
+    }
+  };
   if (!valid) return <Layout><main className="grid min-h-[calc(100dvh-3.5rem)] place-items-center bg-slate-950 p-6" dir={dir}><div className="max-w-md rounded-3xl bg-white p-7 text-center"><Grid3X3 className="mx-auto h-10 w-10 text-indigo-600" /><h1 className="mt-3 text-xl font-black">{ar ? "لا يوجد إعداد للعبة" : "No classroom game setup"}</h1><button onClick={() => navigate("/game/xo/create")} className="mt-5 rounded-xl bg-indigo-600 px-5 py-3 font-black text-white">{ar ? "العودة للإعداد" : "Back to setup"}</button></div></main></Layout>;
   const teamName = state.activeTeam === "x" ? (setup.current!.teamX || "Team X") : (setup.current!.teamO || "Team O");
   return <Layout><main className="min-h-[calc(100dvh-3.5rem)] bg-slate-950 p-3 text-slate-900" dir={dir}><div className="mx-auto max-w-7xl">
-     <header className="sticky top-0 z-50 mb-3 flex items-center justify-between rounded-2xl bg-white/10 px-3 py-2 text-white backdrop-blur sm:px-4 sm:py-3"><button type="button" onClick={() => navigate("/game/xo/create")} className="flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-2 text-sm font-black text-amber-200 transition hover:bg-white/10" aria-label={ar ? "العودة" : "Back"}>{ar ? <ArrowRight className="h-5 w-5" /> : <ArrowLeft className="h-5 w-5" />}<span className="hidden sm:inline">{ar ? "رجوع" : "Back"}</span></button><span className="flex min-w-0 items-center gap-2 truncate font-black"><Grid3X3 />{setup.current!.title || (ar ? "إكس أو الصف" : "XO Class")}</span><div className="flex gap-1"><button aria-label={paused ? "Resume" : "Pause"} onClick={() => setPaused(!paused)} className="rounded-lg p-2 hover:bg-white/15">{paused ? <Play /> : <Pause />}</button><button aria-label="Toggle sound" onClick={() => setMuted(toggleMute())} className="rounded-lg p-2 hover:bg-white/15">{muted ? <VolumeX /> : <Volume2 />}</button><button aria-label="Restart" onClick={() => { setPaused(false); dispatch({ type: "restart" }); }} className="rounded-lg p-2 hover:bg-white/15"><RotateCcw /></button></div></header>
+     <header className="sticky top-0 z-50 mb-3 flex items-center justify-between rounded-2xl bg-white/10 px-3 py-2 text-white backdrop-blur sm:px-4 sm:py-3"><button type="button" onClick={() => navigate("/game/xo/create")} className="flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-2 text-sm font-black text-amber-200 transition hover:bg-white/10" aria-label={ar ? "العودة" : "Back"}>{ar ? <ArrowRight className="h-5 w-5" /> : <ArrowLeft className="h-5 w-5" />}<span className="hidden sm:inline">{ar ? "رجوع" : "Back"}</span></button><span className="flex min-w-0 items-center gap-2 truncate font-black"><Grid3X3 />{setup.current!.title || (ar ? "إكس أو الصف" : "XO Class")}</span><div className="flex items-center gap-1"><QRModalButton url={shareUrl} pin="" label="QR" variant="dark" /><button type="button" aria-label={ar ? "نسخ رابط وضع الصف" : "Copy classroom link"} onClick={copyShareLink} className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-bold hover:bg-white/15"><Copy className="h-5 w-5" /><span className="hidden xl:inline">{ar ? "نسخ الرابط" : "Copy link"}</span></button><button aria-label={paused ? "Resume" : "Pause"} onClick={() => setPaused(!paused)} className="rounded-lg p-2 hover:bg-white/15">{paused ? <Play /> : <Pause />}</button><button aria-label="Toggle sound" onClick={() => setMuted(toggleMute())} className="rounded-lg p-2 hover:bg-white/15">{muted ? <VolumeX /> : <Volume2 />}</button><button aria-label="Restart" onClick={() => { setPaused(false); dispatch({ type: "restart" }); }} className="rounded-lg p-2 hover:bg-white/15"><RotateCcw /></button></div></header>
     <div className="grid gap-3 lg:grid-cols-[1fr_minmax(280px,430px)_1fr]"><TeamPanel team="x" name={setup.current!.teamX || "Team X"} state={state} ar={ar} dispatch={dispatch} />
       <section className="rounded-3xl bg-white p-4 shadow-xl"><p className="mb-3 text-center font-black text-slate-600">{state.status === "playing" ? (state.phase === "placement" ? (ar ? `اختيار ${teamName}` : `${teamName} chooses`) : (ar ? `دور ${teamName}` : `${teamName}'s turn`)) : (ar ? "إكس أو" : "XO")}</p><div className="grid aspect-square grid-cols-3 gap-2">{state.board.map((cell, index) => <button key={index} aria-label={`Cell ${index + 1}`} disabled={state.status !== "playing" || state.phase !== "placement" || !!cell} onClick={() => dispatch({ type: "place", team: state.activeTeam, cell: index })} className="aspect-square rounded-xl border-2 border-slate-200 text-4xl font-black disabled:cursor-default" style={{ color: cell === "x" ? "#4f46e5" : "#d97706", background: cell ? (cell === "x" ? "#eef2ff" : "#fffbeb") : "#f8fafc" }}>{cell?.toUpperCase()}</button>)}</div></section>
       <TeamPanel team="o" name={setup.current!.teamO || "Team O"} state={state} ar={ar} dispatch={dispatch} /></div>
