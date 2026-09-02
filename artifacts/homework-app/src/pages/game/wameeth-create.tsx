@@ -38,6 +38,7 @@ import {
 import {
   QuestionCard, emptyQuestion, isValidQ, type Question, type Correct,
 } from "@/components/game/question-editor";
+import { mapBackendQuestionToWameethQuestion } from "@/lib/wameeth-question-utils";
 import {
   Zap,
   ChevronLeft,
@@ -159,34 +160,6 @@ export default function WameethCreate() {
     return a.title.toLowerCase().includes(assignSearch.toLowerCase());
   });
 
-  // Map one backend question row (mcq / true_false / fill_blank) into the
-  // shared editable `Question` shape used across the review list.
-  const fromBackendQuestion = (q: {
-    text: string; questionType?: string;
-    optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string;
-    imageUrl?: string | null;
-  }): Question | null => {
-    const qt = q.questionType || "mcq";
-    if (qt === "true_false") {
-      if (q.correctAnswer !== "true" && q.correctAnswer !== "false") return null;
-      return { ...emptyQuestion("tf"), text: q.text, correctAnswer: q.correctAnswer === "true" ? "A" : "B", imageUrl: q.imageUrl || null };
-    }
-    if (qt === "fill_blank") {
-      if (!q.correctAnswer) return null;
-      const parts = q.correctAnswer.split("|").map(s => s.trim()).filter(Boolean);
-      if (parts.length === 0) return null;
-      return { ...emptyQuestion("fill_blank"), text: q.text, fillAnswer: parts[0], closeAnswers: parts.slice(1).join(", "), imageUrl: q.imageUrl || null };
-    }
-    if (!(q.optionA && q.optionB && q.correctAnswer)) return null;
-    return {
-      ...emptyQuestion("mcq"),
-      text: q.text,
-      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC || "", optionD: q.optionD || "",
-      correctAnswer: (["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A") as Correct,
-      imageUrl: q.imageUrl || null,
-    };
-  };
-
   // Single-select an assignment (like the solo-challenge creator) and load its
   // full question set — the existing "from an assignment" service — into the
   // shared, editable review list.
@@ -198,7 +171,9 @@ export default function WameethCreate() {
       const res = await fetch(`${API}/api/assignments/${a.id}`, { credentials: "include" });
       if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
       const data = await res.json();
-      const loaded = ((data.questions || []) as any[]).map(fromBackendQuestion).filter((q): q is Question => q !== null);
+      const loaded = ((data.questions || []) as any[])
+        .map(mapBackendQuestionToWameethQuestion)
+        .filter((q): q is Question => q !== null);
       if (loaded.length === 0) {
         toast.error(ar ? "لا توجد أسئلة مدعومة في هذا الواجب" : "No supported questions in this assignment");
         return;
