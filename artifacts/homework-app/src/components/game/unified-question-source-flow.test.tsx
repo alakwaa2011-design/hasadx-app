@@ -12,6 +12,10 @@ const toast = vi.hoisted(() => ({
   success: vi.fn(),
 }));
 
+const credits = vi.hoisted(() => ({
+  refresh: vi.fn(),
+}));
+
 const savedGames = vi.hoisted(() => ({
   getSavedGameActivity: vi.fn(),
   listSavedGameActivities: vi.fn(),
@@ -20,6 +24,9 @@ const savedGames = vi.hoisted(() => ({
 
 vi.mock("@workspace/api-client-react", () => apiClient);
 vi.mock("@/components/ui/sonner", () => ({ toast }));
+vi.mock("@/components/credits-chip", () => ({
+  useRefreshCreditsBalance: () => credits.refresh,
+}));
 vi.mock("@/lib/i18n", () => ({
   useI18n: () => ({ lang: "en" }),
 }));
@@ -64,6 +71,7 @@ const assignmentQuestions = (prefix: string) => ({
 let container: HTMLDivElement;
 let root: Root;
 let fetchMock: ReturnType<typeof vi.fn>;
+let currentTeacher: { id: number } | null;
 
 function buttonContaining(text: string) {
   return Array.from(document.querySelectorAll("button")).find((button) =>
@@ -83,10 +91,12 @@ async function click(button: HTMLButtonElement) {
 describe("UnifiedQuestionSourceFlow assignment selection", () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-    apiClient.useGetCurrentTeacher.mockReturnValue({ data: { id: 1 } });
+    currentTeacher = { id: 1 };
+    apiClient.useGetCurrentTeacher.mockImplementation(() => ({ data: currentTeacher }));
     apiClient.useListAssignments.mockReturnValue({ data: ASSIGNMENTS, isLoading: false });
     toast.error.mockReset();
     toast.success.mockReset();
+    credits.refresh.mockReset();
     savedGames.getSavedGameActivity.mockReset();
     savedGames.listSavedGameActivities.mockReset();
     savedGames.normalizeSavedGameQuestions.mockReset();
@@ -224,5 +234,249 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
       source: "saved",
       savedActivity: activity,
     });
+  });
+
+  it("extracts supported questions from the selected library file without dropping images or short option lists", async () => {
+    const onComplete = vi.fn();
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith("/api/library/files")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { id: 7, name: "Science.pdf", fileType: "application/pdf", source: "upload", objectPath: "/objects/science.pdf" },
+            { id: 8, name: "Website", fileType: "link", source: "link", objectPath: null },
+          ],
+        });
+      }
+      if (url.endsWith("/api/library/files/7/extract-questions")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            questions: [
+              {
+                questionType: "mcq",
+                text: "Which planet is red?",
+                optionA: "Mars",
+                optionB: "Venus",
+                optionC: "",
+                optionD: "",
+                correctAnswer: "A",
+                imageUrl: "/objects/mars.png",
+              },
+              {
+                questionType: "true_false",
+                text: "Earth is a planet.",
+                correctAnswer: "true",
+                imageUrl: null,
+              },
+            ],
+          }),
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await act(async () => {
+      root.render(
+        <UnifiedQuestionSourceFlow
+          gameTitle="XO"
+          gameDescription="Test description"
+          gameIcon={null}
+          minQuestions={2}
+          maxQuestions={20}
+          onComplete={onComplete}
+        />,
+      );
+    });
+
+    await click(buttonContaining("From a file"));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await click(buttonContaining("Science.pdf"));
+    await click(buttonContaining("Extract and continue"));
+
+    expect(onComplete).toHaveBeenCalledWith({
+      questions: [
+        {
+          text: "Which planet is red?",
+          options: ["Mars", "Venus"],
+          correct: 0,
+          imageUrl: "/objects/mars.png",
+        },
+        {
+          text: "Earth is a planet.",
+          options: ["True", "False"],
+          correct: 0,
+          type: "true_false",
+          imageUrl: null,
+        },
+      ],
+      sourceTitle: "Science.pdf",
+      source: "file",
+    });
+    expect(credits.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the selected file and settings available when extraction fails", async () => {
+    const onComplete = vi.fn();
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith("/api/library/files")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { id: 7, name: "Science.pdf", fileType: "application/pdf", source: "upload", objectPath: "/objects/science.pdf" },
+          ],
+        });
+      }
+      if (url.endsWith("/api/library/files/7/extract-questions")) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({ message: "Readable extraction error" }),
+          clone() { return this; },
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await act(async () => {
+      root.render(
+        <UnifiedQuestionSourceFlow
+          gameTitle="XO"
+          gameDescription="Test description"
+          gameIcon={null}
+          minQuestions={2}
+          maxQuestions={20}
+          onComplete={onComplete}
+        />,
+      );
+    });
+
+    await click(buttonContaining("From a file"));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await click(buttonContaining("Science.pdf"));
+    await click(buttonContaining("Extract and continue"));
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith("Readable extraction error");
+    expect(buttonContaining("Science.pdf")).toBeTruthy();
+    expect(buttonContaining("Extract and continue").disabled).toBe(false);
+    expect(credits.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores an extraction response after the teacher leaves the file source", async () => {
+    const onComplete = vi.fn();
+    let resolveExtraction: ((response: unknown) => void) | undefined;
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith("/api/library/files")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { id: 7, name: "Science.pdf", fileType: "application/pdf", source: "upload", objectPath: "/objects/science.pdf" },
+          ],
+        });
+      }
+      if (url.endsWith("/api/library/files/7/extract-questions")) {
+        return new Promise((resolve) => {
+          resolveExtraction = resolve;
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    await act(async () => {
+      root.render(
+        <UnifiedQuestionSourceFlow
+          gameTitle="XO"
+          gameDescription="Test description"
+          gameIcon={null}
+          minQuestions={2}
+          maxQuestions={20}
+          onComplete={onComplete}
+        />,
+      );
+    });
+    await click(buttonContaining("From a file"));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await click(buttonContaining("Science.pdf"));
+    await click(buttonContaining("Extract and continue"));
+    await click(container.querySelector('[data-testid="button-back-question-source"]') as HTMLButtonElement);
+
+    await act(async () => {
+      resolveExtraction?.({
+        ok: true,
+        json: async () => ({
+          questions: [
+            { questionType: "mcq", text: "Q1", optionA: "A", optionB: "B", correctAnswer: "A" },
+            { questionType: "mcq", text: "Q2", optionA: "A", optionB: "B", correctAnswer: "A" },
+          ],
+        }),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(buttonContaining("From a file")).toBeTruthy();
+  });
+
+  it("clears a previous teacher's files when the authenticated teacher changes", async () => {
+    const onComplete = vi.fn();
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith("/api/library/files")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              id: currentTeacher?.id === 1 ? 7 : 9,
+              name: currentTeacher?.id === 1 ? "Teacher A.pdf" : "Teacher B.pdf",
+              fileType: "application/pdf",
+              source: "upload",
+              objectPath: "/objects/file.pdf",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const renderFlow = () => (
+      <UnifiedQuestionSourceFlow
+        gameTitle="XO"
+        gameDescription="Test description"
+        gameIcon={null}
+        minQuestions={2}
+        maxQuestions={20}
+        onComplete={onComplete}
+      />
+    );
+    await act(async () => {
+      root.render(renderFlow());
+    });
+    await click(buttonContaining("From a file"));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Teacher A.pdf");
+
+    currentTeacher = { id: 2 };
+    await act(async () => {
+      root.render(renderFlow());
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).not.toContain("Teacher A.pdf");
+    expect(container.textContent).toContain("Teacher B.pdf");
   });
 });

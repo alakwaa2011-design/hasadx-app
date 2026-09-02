@@ -699,7 +699,7 @@ router.post("/library/files/:id/extract-questions", requireAuth, checkCredits("e
     let typeHeading = "";
     if (questionType === "mcq") {
       typeHeading = "أسئلة الاختيار من متعدد";
-      typeRules = `- كل سؤال له 4 خيارات (A, B, C, D)
+      typeRules = `- كل سؤال له من خيارين إلى 4 خيارات (A, B, ويمكن C و D)
 - إجابة صحيحة واحدة فقط لكل سؤال
 - مهم: وزّع الإجابات الصحيحة بشكل عشوائي بين A و B و C و D
 - الخيارات الخاطئة يجب أن تكون منطقية ومعقولة`;
@@ -711,6 +711,7 @@ router.post("/library/files/:id/extract-questions", requireAuth, checkCredits("e
     "optionC": "الخيار ج",
     "optionD": "الخيار د",
     "correctAnswer": "B",
+    "imageUrl": null,
     "points": 1
   }
 ]`;
@@ -814,10 +815,15 @@ ${jsonShape}`;
           optionC: typeof q.optionC === "string" ? q.optionC.trim() : "",
           optionD: typeof q.optionD === "string" ? q.optionD.trim() : "",
           correctAnswer: ["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A",
+          imageUrl: typeof q.imageUrl === "string" && q.imageUrl.trim() ? q.imageUrl.trim() : null,
           points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
           sourceFileName: file.name,
         }))
-        .filter((q) => q.optionA && q.optionB && q.optionC && q.optionD);
+        .filter((q) => {
+          const optionCount = [q.optionA, q.optionB, q.optionC, q.optionD].filter(Boolean).length;
+          const correctOption = q[`option${q.correctAnswer}` as "optionA" | "optionB" | "optionC" | "optionD"];
+          return optionCount >= 2 && optionCount <= 4 && !!correctOption;
+        });
     } else if (questionType === "true_false") {
       validQuestions = baseValid
         .map((q: any) => {
@@ -837,6 +843,7 @@ ${jsonShape}`;
                 optionC: "",
                 optionD: "",
                 correctAnswer: normalized,
+                imageUrl: typeof q.imageUrl === "string" && q.imageUrl.trim() ? q.imageUrl.trim() : null,
                 points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
                 sourceFileName: file.name,
               }

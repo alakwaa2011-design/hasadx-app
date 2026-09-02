@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Sparkles, PenLine, Database, History, ChevronLeft, ChevronRight,
-  Search, Loader2, Check, Plus
+  Search, Loader2, Check, Plus, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -16,7 +16,8 @@ import {
   getSavedGameActivity, listSavedGameActivities, normalizeSavedGameQuestions,
   type SavedGameActivity, type SavedGameQuestion,
 } from "@/lib/saved-game-activities";
-import { normalizeGameQuestion } from "@/lib/normalize-game-question";
+import { normalizeGameQuestion, type NormalizedGameQuestion } from "@/lib/normalize-game-question";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -49,7 +50,7 @@ export interface UnifiedQuestionSourceFlowProps {
       imageUrl?: string | null;
     }>;
     sourceTitle: string | null;
-    source: "assignment" | "ai" | "manual" | "bank" | "saved";
+    source: "assignment" | "ai" | "manual" | "bank" | "saved" | "file";
     /**
      * Present only when questions came from a saved activity. Consumers can
      * restore game-specific settings after validating its gameType.
@@ -58,7 +59,28 @@ export interface UnifiedQuestionSourceFlowProps {
   }) => void;
 }
 
-type ViewState = "menu" | "assignment" | "bank" | "saved" | "ai_form" | "editor";
+type ViewState = "menu" | "assignment" | "bank" | "saved" | "file" | "ai_form" | "editor";
+
+interface LibraryFile {
+  id: number;
+  name: string;
+  fileType: string;
+  source: "upload" | "link";
+  objectPath: string | null;
+}
+
+type FileQuestionType = "mcq" | "true_false";
+
+function isExtractableLibraryFile(file: LibraryFile): boolean {
+  if (file.source !== "upload" || !file.objectPath) return false;
+  const lowerName = file.name.toLowerCase();
+  return file.fileType.includes("pdf")
+    || file.fileType.includes("wordprocessingml")
+    || file.fileType.includes("presentationml")
+    || lowerName.endsWith(".pdf")
+    || lowerName.endsWith(".docx")
+    || lowerName.endsWith(".pptx");
+}
 
 export function UnifiedQuestionSourceFlow({
   gameTitle,
@@ -80,6 +102,7 @@ export function UnifiedQuestionSourceFlow({
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const BackIcon = ar ? ChevronRight : ChevronLeft;
+  const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const [viewState, setViewState] = useState<ViewState>("menu");
   const [editorSource, setEditorSource] = useState<"manual" | "ai">("manual");
@@ -120,6 +143,36 @@ export function UnifiedQuestionSourceFlow({
   const [selectedSavedQs, setSelectedSavedQs] = useState<SavedGameQuestion[]>([]);
   const [selectedSavedActivity, setSelectedSavedActivity] = useState<Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source"> | null>(null);
   const deepLinkLoadedRef = useRef(false);
+
+  // Library file
+  const [libraryFiles, setLibraryFiles] = useState<LibraryFile[]>([]);
+  const [fileSearch, setFileSearch] = useState("");
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesLoaded, setFilesLoaded] = useState(false);
+  const [filesError, setFilesError] = useState(false);
+  const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
+  const [fileQuestionType, setFileQuestionType] = useState<FileQuestionType>("mcq");
+  const [fileQuestionCount, setFileQuestionCount] = useState(Math.max(minQuestions, Math.min(10, maxQuestions)));
+  const [fileDifficulty, setFileDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [fileExtracting, setFileExtracting] = useState(false);
+  const activeTeacherIdRef = useRef<number | null>(null);
+  const filesRequestIdRef = useRef(0);
+  const fileExtractionRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    const teacherId = user?.id ?? null;
+    if (activeTeacherIdRef.current === teacherId) return;
+    activeTeacherIdRef.current = teacherId;
+    filesRequestIdRef.current += 1;
+    fileExtractionRequestIdRef.current += 1;
+    setLibraryFiles([]);
+    setFileSearch("");
+    setFilesLoading(false);
+    setFilesLoaded(false);
+    setFilesError(false);
+    setSelectedFileId(null);
+    setFileExtracting(false);
+  }, [user?.id]);
 
   useEffect(() => {
     if (deepLinkLoadedRef.current) return;
@@ -169,11 +222,18 @@ export function UnifiedQuestionSourceFlow({
   }, []);
 
   // ─── Helpers ───
-  const goBack = () => setViewState("menu");
+  const goBack = () => {
+    if (viewState === "file") {
+      fileExtractionRequestIdRef.current += 1;
+      setFileExtracting(false);
+    }
+    setViewState("menu");
+  };
 
   const BackBtn = () => (
     <button
       type="button"
+      data-testid="button-back-question-source"
       onClick={goBack}
       className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 border border-transparent hover:border-border"
     >
@@ -374,6 +434,118 @@ export function UnifiedQuestionSourceFlow({
       source: "saved",
       ...(selectedSavedActivity ? { savedActivity: selectedSavedActivity } : {}),
     });
+  };
+
+  // ─── Library File Logic ───
+  useEffect(() => {
+    if (viewState !== "file" || !user || filesLoaded || filesLoading) return;
+    const teacherId = user.id;
+    const requestId = ++filesRequestIdRef.current;
+    setFilesLoading(true);
+    setFilesError(false);
+    fetch(`${API_BASE}/api/library/files`, { credentials: "include", cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.message || "library-files-unavailable");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (filesRequestIdRef.current !== requestId || activeTeacherIdRef.current !== teacherId) return;
+        const files = Array.isArray(data) ? data.filter(isExtractableLibraryFile) : [];
+        setLibraryFiles(files);
+        setFilesLoaded(true);
+      })
+      .catch(() => {
+        if (filesRequestIdRef.current !== requestId || activeTeacherIdRef.current !== teacherId) return;
+        setFilesError(true);
+        setFilesLoaded(true);
+        toast.error(ar ? "تعذّر تحميل ملفات مكتبتك" : "Failed to load your library files");
+      })
+      .finally(() => {
+        if (filesRequestIdRef.current === requestId && activeTeacherIdRef.current === teacherId) {
+          setFilesLoading(false);
+        }
+      });
+  }, [viewState, user, filesLoaded, filesLoading, ar]);
+
+  const filteredLibraryFiles = fileSearch.trim()
+    ? libraryFiles.filter((file) => file.name.toLowerCase().includes(fileSearch.trim().toLowerCase()))
+    : libraryFiles;
+  const selectedLibraryFile = libraryFiles.find((file) => file.id === selectedFileId) || null;
+
+  const handleExtractFileQuestions = async () => {
+    if (!selectedLibraryFile || fileExtracting) return;
+    const extractionFileId = selectedLibraryFile.id;
+    const requestId = ++fileExtractionRequestIdRef.current;
+    setFileExtracting(true);
+    try {
+      const res = await creditAwareFetch(`${API_BASE}/api/library/files/${extractionFileId}/extract-questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          count: Math.min(fileQuestionCount, maxQuestions),
+          difficulty: fileDifficulty,
+          questionType: fileQuestionType,
+          language: lang,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (fileExtractionRequestIdRef.current !== requestId) return;
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || (ar ? "تعذّر استخراج الأسئلة من الملف" : "Failed to extract questions from the file"));
+      }
+
+      const supported: NormalizedGameQuestion[] = (Array.isArray(data.questions) ? data.questions : []).flatMap((question: any) => {
+        const normalized = normalizeGameQuestion(question, {
+          trueLabel: ar ? "صح" : "True",
+          falseLabel: ar ? "خطأ" : "False",
+        });
+        if (!normalized || normalized.type === "fill_blank") return [];
+        if (normalized.options.length < 2 || normalized.options.length > 4) return [];
+        return [normalized];
+      }).slice(0, maxQuestions);
+
+      if (supported.length < minQuestions) {
+        throw new Error(
+          ar
+            ? `لم يُستخرج الحد الأدنى المطلوب (${minQuestions} أسئلة صالحة)`
+            : `Fewer than the required ${minQuestions} valid questions were extracted`,
+        );
+      }
+
+      onComplete({
+        questions: supported.map((question) => ({
+          text: question.text,
+          options: question.options,
+          correct: question.correct,
+          ...(question.type === "true_false" ? { type: "true_false" as const } : {}),
+          imageUrl: question.imageUrl,
+        })),
+        sourceTitle: selectedLibraryFile.name,
+        source: "file",
+      });
+      toast.success(
+        ar
+          ? `تم استخراج ${supported.length} سؤال من الملف`
+          : `Extracted ${supported.length} questions from the file`,
+      );
+    } catch (error) {
+      if (fileExtractionRequestIdRef.current !== requestId) return;
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : (ar ? "تعذّر استخراج الأسئلة من الملف" : "Failed to extract questions from the file"),
+      );
+    } finally {
+      if (fileExtractionRequestIdRef.current === requestId) {
+        setFileExtracting(false);
+      }
+      refreshCreditsBalance();
+    }
   };
 
   // ─── AI Logic ───
@@ -690,6 +862,15 @@ export function UnifiedQuestionSourceFlow({
                     hoverBorder: "hover:border-amber-500/50"
                   },
                   {
+                    id: "file" as const,
+                    icon: <FileText className="w-6 h-6 text-sky-600" />,
+                    title: ar ? "من ملف" : "From a file",
+                    desc: ar ? "استخراج الأسئلة من ملف في مكتبتك" : "Extract questions from a file in your library",
+                    bg: "bg-sky-500/10",
+                    border: "border-sky-500/20",
+                    hoverBorder: "hover:border-sky-500/50"
+                  },
+                  {
                     id: "editor" as const,
                     icon: <PenLine className="w-6 h-6 text-emerald-600" />,
                     title: ar ? "إضافة يدوية" : "Add manually",
@@ -721,6 +902,7 @@ export function UnifiedQuestionSourceFlow({
                   return (
                   <button
                     key={opt.id}
+                    data-testid={`button-question-source-${opt.id}`}
                     onClick={() => {
                       if (opt.id === "editor") {
                         setEditorSource("manual");
@@ -766,6 +948,153 @@ export function UnifiedQuestionSourceFlow({
 
           {viewState === "assignment" && (
             assignmentView
+          )}
+
+          {viewState === "file" && (
+            <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm lg:p-8">
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <BackBtn />
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">{ar ? "اختر ملفاً" : "Choose a file"}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {ar ? "ملفات PDF وDOCX وPPTX المرفوعة إلى مكتبتك" : "PDF, DOCX, and PPTX files uploaded to your library"}
+                    </p>
+                  </div>
+                </div>
+                <div className="relative w-full sm:max-w-xs">
+                  <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    data-testid="input-search-library-files"
+                    value={fileSearch}
+                    onChange={(event) => setFileSearch(event.target.value)}
+                    placeholder={ar ? "ابحث في الملفات..." : "Search files..."}
+                    className="w-full rounded-xl border border-border/60 bg-muted/50 py-2 ps-9 pe-4 text-sm focus:outline-none focus:ring-1"
+                    style={accentColor ? { "--tw-ring-color": accentColor } as any : {}}
+                  />
+                </div>
+              </div>
+
+              <div className="mb-6 h-[300px] space-y-3 overflow-y-auto pe-2 custom-scrollbar">
+                {filesLoading && !filesLoaded ? (
+                  <div className="flex h-full items-center justify-center" data-testid="status-library-files-loading">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filesError ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
+                    <span data-testid="status-library-files-error">{ar ? "تعذّر تحميل الملفات" : "Could not load files"}</span>
+                    <button
+                      type="button"
+                      data-testid="button-retry-library-files"
+                      onClick={() => {
+                        setFilesLoaded(false);
+                        setFilesError(false);
+                      }}
+                      className="rounded-xl border border-border px-4 py-2 font-bold text-foreground"
+                    >
+                      {ar ? "إعادة المحاولة" : "Try again"}
+                    </button>
+                  </div>
+                ) : filteredLibraryFiles.length === 0 ? (
+                  <div className="flex h-full flex-col items-center justify-center text-center text-sm font-medium text-muted-foreground" data-testid="status-library-files-empty">
+                    <FileText className="mb-3 h-8 w-8 opacity-50" />
+                    <span>{ar ? "لا توجد ملفات قابلة لاستخراج الأسئلة" : "No extractable files found"}</span>
+                    <span className="mt-1 text-xs">{ar ? "ارفع ملف PDF أو DOCX أو PPTX من مكتبة المعلم" : "Upload a PDF, DOCX, or PPTX from Teacher Library"}</span>
+                  </div>
+                ) : (
+                  filteredLibraryFiles.map((file) => {
+                    const selected = selectedFileId === file.id;
+                    return (
+                      <button
+                        key={file.id}
+                        type="button"
+                        data-testid={`button-select-library-file-${file.id}`}
+                        onClick={() => setSelectedFileId(file.id)}
+                        disabled={fileExtracting}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-xl border-2 p-4 text-start transition-all",
+                          selected
+                            ? (!accentColor && "border-primary bg-primary/5")
+                            : "border-border/40 bg-muted/20 hover:border-border/60 hover:bg-muted",
+                        )}
+                        style={selected && accentColor ? { borderColor: accentColor, backgroundColor: `${accentColor}10` } : {}}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                            selected ? (!accentColor && "border-primary bg-primary text-primary-foreground") : "border-muted-foreground/40 bg-background",
+                          )}
+                          style={selected && accentColor ? { backgroundColor: accentColor, borderColor: accentColor, color: "#fff" } : {}}
+                        >
+                          {selected && <Check className="h-3.5 w-3.5" />}
+                        </span>
+                        <FileText className="h-5 w-5 shrink-0 text-sky-600" />
+                        <span className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{file.name}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="space-y-4 border-t border-border/60 pt-5">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="space-y-1.5 text-sm font-bold">
+                    <span>{ar ? "نوع الأسئلة" : "Question type"}</span>
+                    <select
+                      data-testid="select-file-question-type"
+                      value={fileQuestionType}
+                      onChange={(event) => setFileQuestionType(event.target.value as FileQuestionType)}
+                      disabled={fileExtracting}
+                      className="w-full rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium"
+                    >
+                      <option value="mcq">{ar ? "اختيار من متعدد" : "Multiple choice"}</option>
+                      <option value="true_false">{ar ? "صح أو خطأ" : "True or false"}</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1.5 text-sm font-bold">
+                    <span>{ar ? "عدد الأسئلة" : "Question count"}</span>
+                    <select
+                      data-testid="select-file-question-count"
+                      value={fileQuestionCount}
+                      onChange={(event) => setFileQuestionCount(Number(event.target.value))}
+                      disabled={fileExtracting}
+                      className="w-full rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium"
+                    >
+                      {Array.from({ length: Math.max(1, Math.min(30, maxQuestions) - minQuestions + 1) }, (_, index) => minQuestions + index).map((count) => (
+                        <option key={count} value={count}>{count}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1.5 text-sm font-bold">
+                    <span>{ar ? "الصعوبة" : "Difficulty"}</span>
+                    <select
+                      data-testid="select-file-difficulty"
+                      value={fileDifficulty}
+                      onChange={(event) => setFileDifficulty(event.target.value as "easy" | "medium" | "hard")}
+                      disabled={fileExtracting}
+                      className="w-full rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium"
+                    >
+                      <option value="easy">{ar ? "سهلة" : "Easy"}</option>
+                      <option value="medium">{ar ? "متوسطة" : "Medium"}</option>
+                      <option value="hard">{ar ? "صعبة" : "Hard"}</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-xs text-muted-foreground" data-testid="status-library-file-selection">
+                    {selectedLibraryFile
+                      ? (ar ? `سيتم استخراج الأسئلة من ${selectedLibraryFile.name}` : `Questions will be extracted from ${selectedLibraryFile.name}`)
+                      : (ar ? "اختر ملفاً للمتابعة" : "Choose a file to continue")}
+                  </span>
+                  <SubmitBtn
+                    onClick={handleExtractFileQuestions}
+                    disabled={!selectedLibraryFile || fileExtracting}
+                    label={fileExtracting ? (ar ? "جارٍ الاستخراج..." : "Extracting...") : (ar ? "استخراج ومتابعة" : "Extract and continue")}
+                    className="w-full sm:w-auto"
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
           {viewState === "bank" && (
