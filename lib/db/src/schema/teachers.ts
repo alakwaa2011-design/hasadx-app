@@ -57,9 +57,6 @@ export const teachersTable = pgTable("teachers", {
   // Short-lived (same TTL as OTP), single-use, server-validated.
   emailVerifyToken: text("email_verify_token"),
   emailVerifyTokenExpiresAt: timestamp("email_verify_token_expires_at"),
-  // Short-lived OTP used only after a correct password on an untrusted device.
-  loginOtp: text("login_otp"),
-  loginOtpExpiresAt: timestamp("login_otp_expires_at"),
 });
 
 export const insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });

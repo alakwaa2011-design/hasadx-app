@@ -717,7 +717,6 @@ function LoginForm({
 function OtpVerifyScreen({
   identifier,
   channel,
-  isDeviceVerification,
   lang,
   dir,
   onVerified,
@@ -725,7 +724,6 @@ function OtpVerifyScreen({
 }: {
   identifier: string;
   channel: "email" | "sms";
-  isDeviceVerification: boolean;
   lang: string;
   dir: "rtl" | "ltr";
   onVerified: (
@@ -831,34 +829,17 @@ function OtpVerifyScreen({
         </div>
 
         <h1 className="text-2xl font-black text-center mb-2" style={{ color: "#1a4731" }}>
-          {isDeviceVerification
-            ? (lang === "ar" ? "تأكيد هذا الجهاز" : "Confirm this device")
-            : (lang === "ar" ? "تحقق من حسابك" : "Verify your account")}
+          {lang === "ar" ? "تحقق من حسابك" : "Verify your account"}
         </h1>
         <p className="text-sm text-center text-muted-foreground mb-1 leading-relaxed">
-          {isDeviceVerification
-            ? (lang === "ar"
-                ? "لأن هذا أول دخول من هذا الجهاز، أرسلنا رمزاً مكوناً من 6 أرقام إلى"
-                : "Because this is the first sign-in on this device, we sent a 6-digit code to")
-            : (lang === "ar"
-                ? "أرسلنا رمزاً مكوناً من 6 أرقام إلى"
-                : "We sent a 6-digit code to")}
+          {lang === "ar"
+            ? "أرسلنا رمزاً مكوناً من 6 أرقام إلى"
+            : "We sent a 6-digit code to"}
         </p>
         <p className="text-sm font-bold text-center mb-6" style={{ color: "#1a4731", direction: "ltr" }}>
           {channel === "sms" && <Phone className="w-3.5 h-3.5 inline me-1" />}
           {maskedIdentifier}
         </p>
-
-        {isDeviceVerification && (
-          <div
-            className="mb-5 rounded-xl px-4 py-3 text-xs font-semibold leading-relaxed"
-            style={{ background: "rgba(26,71,49,0.06)", border: "1px solid rgba(26,71,49,0.14)", color: "#1a4731" }}
-          >
-            {lang === "ar"
-              ? "بعد إدخال الرمز لن نطلبه مرة أخرى على هذا الجهاز لمدة سنة، ما لم تُحذف بيانات المتصفح أو يُلغَ الجهاز من إعدادات الحساب."
-              : "After entering the code, we won't ask again on this device for one year unless browser data is cleared or the device is revoked."}
-          </div>
-        )}
 
         {/* OTP Input */}
         <div className="flex justify-center mb-5" dir="ltr">
@@ -934,8 +915,8 @@ function OtpVerifyScreen({
             )}
             <li>
               {lang === "ar"
-                ? `الرمز صالح لمدة ${isDeviceVerification ? "15" : channel === "email" ? "30" : "10"} دقيقة — انتظر قليلاً ثم تحقق مجدداً`
-                : `The code is valid for ${isDeviceVerification ? "15" : channel === "email" ? "30" : "10"} minutes — wait a moment then check again`}
+                ? `الرمز صالح لمدة ${channel === "email" ? "30" : "10"} دقيقة — انتظر قليلاً ثم تحقق مجدداً`
+                : `The code is valid for ${channel === "email" ? "30" : "10"} minutes — wait a moment then check again`}
             </li>
             <li>
               {lang === "ar" ? (
@@ -1108,7 +1089,6 @@ export default function Auth() {
   const [otpPending, setOtpPending] = useState<{
     identifier: string;
     channel: "email" | "sms";
-    isDeviceVerification: boolean;
   } | null>(null);
 
   const loginMutation = useLoginTeacher({
@@ -1121,14 +1101,6 @@ export default function Auth() {
         // ApiError.message is prefixed ("HTTP 403 Forbidden: NEEDS_VERIFICATION"),
         // so check the structured data payload instead.
         const apiErr = err as any;
-        if (apiErr?.data?.message === "NEEDS_DEVICE_VERIFICATION") {
-          setOtpPending({
-            identifier: apiErr.data.identifier || email,
-            channel: apiErr.data.channel === "sms" ? "sms" : "email",
-            isDeviceVerification: true,
-          });
-          return;
-        }
         if (apiErr?.data?.message === "NEEDS_VERIFICATION") {
           const identifier = usePhone
             ? `${selectedCountry.code}${phone}`
@@ -1136,7 +1108,6 @@ export default function Auth() {
           setOtpPending({
             identifier,
             channel: usePhone ? "sms" : "email",
-            isDeviceVerification: false,
           });
           return;
         }
@@ -1152,7 +1123,6 @@ export default function Auth() {
           setOtpPending({
             identifier: data.identifier,
             channel: data.channel ?? "email",
-            isDeviceVerification: false,
           });
           return;
         }
@@ -1242,16 +1212,11 @@ export default function Auth() {
         <OtpVerifyScreen
           identifier={otpPending.identifier}
           channel={otpPending.channel}
-          isDeviceVerification={otpPending.isDeviceVerification}
           lang={lang}
           dir={dir}
           onVerified={(teacher, isNewTeacher) => {
             if (isNewTeacher) trackMetaCompleteRegistration(teacher.id);
-            toast.success(
-              otpPending.isDeviceVerification
-                ? (lang === "ar" ? "تم تأكيد الجهاز بنجاح" : "Device confirmed successfully")
-                : (lang === "ar" ? "تم تفعيل حسابك بنجاح 🎉" : "Account verified successfully 🎉"),
-            );
+            toast.success(lang === "ar" ? "تم تفعيل حسابك بنجاح 🎉" : "Account verified successfully 🎉");
             postAuthRedirect(teacher.role as TeacherProfileRole, teacher.isAdmin);
           }}
           onBack={() => setOtpPending(null)}

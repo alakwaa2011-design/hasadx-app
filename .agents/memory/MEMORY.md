@@ -57,4 +57,4 @@
 - [Safe in-app back navigation](safe-in-app-back-navigation.md) — route-level back uses the internal app stack with deterministic fallbacks; state-level form back remains local.
 - [Question images across games](question-images-across-games.md) — preserve imageUrl through every question transform and resolve storage paths at render time; failed sources must explain themselves.
 - [Game question compatibility](game-question-compatibility.md) — button-based games accept MCQ with 2–4 nonempty options plus true/false; typed answers require a renderer with text input.
-- [Trusted-device login verification](trusted-device-login-verification.md) — device trust uses a long-lived HttpOnly token; password changes invalidate all trusted devices.
+- [Password login has no device challenge](password-login-no-device-challenge.md) — valid email/password or Google login must never require a new-device OTP.
