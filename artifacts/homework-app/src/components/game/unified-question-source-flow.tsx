@@ -899,8 +899,9 @@ export function UnifiedQuestionSourceFlow({
                     border: "border-rose-500/20",
                     hoverBorder: "hover:border-rose-500/50"
                   }
-                ].map(opt => {
+                ].map((opt, index) => {
                   const isSaved = opt.id === "saved";
+                  const isCenteredSingle = !tugPresentation && index === 4;
                   return (
                   <button
                     key={opt.id}
@@ -915,11 +916,12 @@ export function UnifiedQuestionSourceFlow({
                       setViewState(opt.id);
                     }}
                     className={cn(
-                      "group relative overflow-hidden rounded-2xl border bg-card text-start transition-all hover:-translate-y-0.5 hover:shadow-lg",
+                      "group relative overflow-hidden rounded-2xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg",
                       isSaved
-                        ? "flex min-h-[84px] items-center gap-3.5 rounded-xl p-3.5 sm:col-span-2"
-                        : "p-5",
+                        ? "flex min-h-[84px] items-center gap-3.5 rounded-xl p-3.5 text-center sm:col-span-2"
+                        : "flex flex-col items-center p-5 text-center",
                       !tugPresentation && !isSaved && "border-2 border-border/60 p-6 lg:p-8 hover:-translate-y-1",
+                      isCenteredSingle && "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.75rem)]",
                       opt.hoverBorder
                     )}
                   >
@@ -931,9 +933,9 @@ export function UnifiedQuestionSourceFlow({
                     )}>
                       {opt.icon}
                     </div>
-                    <div className={cn(isSaved && "min-w-0 flex-1 text-center")}>
+                    <div className={cn("w-full", isSaved && "min-w-0 flex-1")}>
                       <h3 className={cn("font-bold text-foreground mb-1.5", isSaved ? "text-base sm:text-lg" : "text-lg")}>{opt.title}</h3>
-                      <p className="text-sm text-muted-foreground font-medium">{opt.desc}</p>
+                      <p className="mx-auto max-w-[22rem] text-sm font-medium text-muted-foreground">{opt.desc}</p>
                     </div>
                     {isSaved && (
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-rose-500 transition-transform group-hover:-translate-x-0.5">
