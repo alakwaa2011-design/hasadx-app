@@ -272,14 +272,31 @@ export default function XoClass() {
 
   return (
     <Layout>
-      <main className="relative min-h-[calc(100dvh-3.5rem)] bg-slate-950 p-3 sm:p-5" dir={dir}>
-        {/* Subtle background glow */}
+      <main
+        className="relative min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-[#06131f] p-3 sm:p-5"
+        dir={dir}
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 50% 10%, rgba(39, 112, 83, 0.26), transparent 38%), linear-gradient(135deg, #06131f 0%, #091b29 48%, #07151f 100%)",
+        }}
+      >
+        {/* Layered ambient light keeps the dark game stage lively without competing with the answers. */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className={cn("absolute left-[20%] top-[-10%] h-[40rem] w-[40rem] rounded-full blur-[100px] transition-colors duration-1000", state.activeTeam === 'x' ? 'bg-blue-600/10' : 'bg-amber-500/10')} />
+          <div className={cn("absolute left-[-10%] top-[10%] h-[34rem] w-[34rem] rounded-full blur-[120px] transition-colors duration-1000", state.activeTeam === 'x' ? 'bg-blue-500/15' : 'bg-amber-500/15')} />
+          <div className="absolute right-[-12%] top-[18%] h-[30rem] w-[30rem] rounded-full bg-emerald-400/10 blur-[120px]" />
+          <div
+            className="absolute inset-0 opacity-[0.13]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(148, 163, 184, 0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+              maskImage: "linear-gradient(to bottom, black, transparent 78%)",
+            }}
+          />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-[90rem] h-full flex flex-col gap-4 sm:gap-6">
-          <header className="flex items-center justify-between rounded-2xl bg-slate-900/80 px-4 py-3 text-white shadow-lg backdrop-blur-md ring-1 ring-white/10">
+        <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-3.5rem-1.5rem)] max-w-[90rem] flex-col gap-4 sm:gap-6">
+          <header className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#0d1e2d]/90 px-4 py-3 text-white shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-md ring-1 ring-emerald-200/10">
             <button
               type="button"
               onClick={() => navigate("/game/xo/create")}
@@ -313,10 +330,10 @@ export default function XoClass() {
             </div>
           </header>
 
-          <div className="flex-1 grid gap-4 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
+          <div className="grid flex-1 items-center gap-4 py-1 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
             <TeamPanel team="x" name={setup.current!.teamX || "Team X"} state={state} ar={ar} dispatch={dispatch} />
 
-            <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-b from-white/10 via-emerald-950/35 to-slate-900/70 p-5 shadow-2xl ring-1 ring-white/15 backdrop-blur-sm sm:p-6">
+            <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-emerald-200/10 bg-gradient-to-b from-[#173b42]/90 via-[#0d2730]/90 to-[#091a25]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
               <div className="mb-8 w-full text-center">
                 {state.status === "playing" ? (
                   <div className="inline-flex flex-col items-center justify-center gap-1">

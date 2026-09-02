@@ -163,8 +163,28 @@ export default function XoPlay() {
   const isFinished = snapshot.phase === "finished" || snapshot.winner;
 
   return (
-    <main dir={ar ? "rtl" : "ltr"} className="min-h-[100dvh] bg-background text-foreground flex flex-col">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-card px-4 py-3 shadow-sm">
+    <main
+      dir={ar ? "rtl" : "ltr"}
+      className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#06131f] text-foreground"
+      style={{
+        backgroundImage:
+          "radial-gradient(circle at 50% 8%, rgba(39, 112, 83, 0.24), transparent 36%), linear-gradient(135deg, #06131f 0%, #091b29 48%, #07151f 100%)",
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-[-12%] top-[15%] h-[30rem] w-[30rem] rounded-full bg-blue-500/10 blur-[120px]" />
+        <div className="absolute right-[-10%] top-[20%] h-[28rem] w-[28rem] rounded-full bg-amber-400/10 blur-[120px]" />
+        <div
+          className="absolute inset-0 opacity-[0.12]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(148, 163, 184, 0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+            maskImage: "linear-gradient(to bottom, black, transparent 78%)",
+          }}
+        />
+      </div>
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-[#0d1e2d]/90 px-4 py-3 text-white shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <Grid3X3 className="h-6 w-6" />
@@ -195,11 +215,11 @@ export default function XoPlay() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+      <div className="relative z-10 flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_1fr] xl:gap-10 h-full">
 
           {/* Question / Status Panel */}
-          <section className="flex flex-col rounded-3xl border bg-card p-6 shadow-sm relative overflow-hidden">
+          <section className="flex flex-col overflow-hidden rounded-3xl border border-white/15 bg-white/[0.96] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] relative">
             <div className="mb-6 flex items-center justify-between z-10">
               <span className={cn(
                 "rounded-full px-4 py-1.5 text-sm font-black shadow-sm flex items-center gap-2",
