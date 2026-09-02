@@ -2,7 +2,16 @@ let audioCtx: AudioContext | null = null;
 let bgOscillators: OscillatorNode[] = [];
 let bgGains: GainNode[] = [];
 let masterGain: GainNode | null = null;
-let isMuted = false;
+const GAME_SOUNDS_MUTED_KEY = "game_sounds_muted";
+let isMuted = (() => {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem(GAME_SOUNDS_MUTED_KEY) === "1"
+      || localStorage.getItem("xo-muted") === "1";
+  } catch {
+    return false;
+  }
+})();
 const HACK_MUSIC_MUTED_KEY = "hack_music_muted";
 let isHackMusicMuted = (() => {
   try {
@@ -744,6 +753,11 @@ export function stopBackgroundBeat() {
 
 export function toggleMute(): boolean {
   isMuted = !isMuted;
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(GAME_SOUNDS_MUTED_KEY, isMuted ? "1" : "0");
+    }
+  } catch {}
   if (masterGain) {
     masterGain.gain.value = isMuted ? 0 : 0.3;
   }

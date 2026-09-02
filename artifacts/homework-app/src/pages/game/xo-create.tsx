@@ -9,20 +9,25 @@ import { getXoSocket } from "@/lib/xo-socket";
 import { toast } from "@/components/ui/sonner";
 import { XO_CLASS_SETUP_KEY } from "@/pages/game/xo-class";
 import type { XoClassSetup } from "@/lib/xo-class-share";
+import { cn } from "@/lib/utils";
 
 type Question = { text: string; options: string[]; correct: number; imageUrl?: string | null };
 const durations = [10, 15, 20, 30, 45];
 
 export default function XoCreate() {
-  const { lang } = useI18n(); const ar = lang === "ar"; const dir = ar ? "rtl" : "ltr";
+  const { lang } = useI18n();
+  const ar = lang === "ar";
+  const dir = ar ? "rtl" : "ltr";
   const [, navigate] = useLocation();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [title, setTitle] = useState<string | null>(null);
   const [teamX, setTeamX] = useState(ar ? "فريق إكس" : "Team X");
   const [teamO, setTeamO] = useState(ar ? "فريق أو" : "Team O");
   const [playMode, setPlayMode] = useState<"online" | "classroom">("classroom");
-  const [duration, setDuration] = useState(20); const [creating, setCreating] = useState(false);
+  const [duration, setDuration] = useState(20);
+  const [creating, setCreating] = useState(false);
   const loadedSavedGameRef = useRef(false);
+
   useEffect(() => {
     const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
     if (!savedGameId || loadedSavedGameRef.current) return;
@@ -46,6 +51,7 @@ export default function XoCreate() {
       }
     }).catch(() => toast.error(ar ? "تعذر فتح اللعبة المحفوظة" : "Could not open the saved game"));
   }, [ar]);
+
   const create = async () => {
     if (questions.length < 2) {
       toast.error(ar ? "أضف سؤالين على الأقل" : "Add at least two questions");
@@ -76,29 +82,188 @@ export default function XoCreate() {
         if (res.creatorToken) sessionStorage.setItem(`xo-creator-${res.pin}`, res.creatorToken);
         navigate(`/game/xo/play/${res.pin}?creator=1`);
       });
-    } catch { setCreating(false); toast.error(ar ? "تعذر حفظ اللعبة تلقائياً" : "Could not auto-save the game"); }
+    } catch {
+      setCreating(false);
+      toast.error(ar ? "تعذر حفظ اللعبة تلقائياً" : "Could not auto-save the game");
+    }
   };
-  if (!questions.length) return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><UnifiedQuestionSourceFlow gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"} gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."} gameIcon={<Grid3X3 className="h-8 w-8 text-[#225739]" />} accentColor="#225739" floatingAssignmentContinue minQuestions={2} maxQuestions={20} onComplete={({ questions: q, sourceTitle }) => { setQuestions(q); setTitle(sourceTitle); }} /></main></Layout>;
-  return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><div className="mx-auto max-w-2xl space-y-5">
-     <header className="rounded-3xl bg-[#225739] p-6 text-white shadow-lg"><div className="flex items-center gap-3"><Grid3X3 /><div><h1 className="text-xl font-black">{ar ? "إعداد إكس أو" : "XO setup"}</h1></div></div></header>
-    <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm">
-      <h2 className="mb-1 font-black text-[#225739]">{ar ? "نمط اللعب" : "Play mode"}</h2>
-      <p className="mb-4 text-sm font-medium text-slate-500">{ar ? "اختر طريقة مشاركة اللعبة مع الطلاب" : "Choose how students will play"}</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <button type="button" onClick={() => setPlayMode("online")} className={`rounded-2xl border-2 p-4 text-start transition ${playMode === "online" ? "border-blue-600 bg-blue-50 shadow-sm" : "border-slate-200 hover:border-blue-300"}`}>
-          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white"><Wifi className="h-5 w-5" /></span>
-          <strong className="block text-slate-900">{ar ? "الدخول عن بُعد" : "Remote join"}</strong>
-          <span className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-500"><QrCode className="h-3.5 w-3.5" />{ar ? "كود ورابط وQR لكل طالب" : "Code, link and QR for students"}</span>
-        </button>
-        <button type="button" onClick={() => setPlayMode("classroom")} className={`rounded-2xl border-2 p-4 text-start transition ${playMode === "classroom" ? "border-amber-500 bg-amber-50 shadow-sm" : "border-slate-200 hover:border-amber-300"}`}>
-          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-white"><School className="h-5 w-5" /></span>
-          <strong className="block text-slate-900">{ar ? "وضع الصف — على السبورة" : "Classroom — on the board"}</strong>
-          <span className="mt-1 block text-xs font-bold text-slate-500">{ar ? "شاشتا إجابة ولوحة إكس أو واحدة" : "Two answer panels and one XO board"}</span>
-        </button>
-      </div>
-    </section>
-    <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm"><h2 className="mb-4 flex items-center gap-2 font-black text-[#225739]"><Users className="h-5 w-5" />{ar ? "أسماء الفريقين" : "Team names"}</h2><div className="grid gap-3 sm:grid-cols-2"><label className="font-bold text-slate-700">X<input value={teamX} onChange={e => setTeamX(e.target.value)} className="mt-1 w-full rounded-xl border p-3 outline-[#225739]" /></label><label className="font-bold text-slate-700">O<input value={teamO} onChange={e => setTeamO(e.target.value)} className="mt-1 w-full rounded-xl border p-3 outline-[#225739]" /></label></div></section>
-     <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm"><label className="flex items-center gap-2 font-black text-[#225739]"><Clock className="h-5 w-5" />{ar ? "وقت السؤال" : "Question duration"}<select value={duration} onChange={e => setDuration(Number(e.target.value))} className="ms-auto rounded-xl border border-[#225739]/20 bg-[#F1F5F2] px-3 py-2 font-black text-[#225739] outline-none focus:ring-2 focus:ring-[#225739]/30">{durations.map(d => <option key={d} value={d}>{d} {ar ? "ثانية" : "seconds"}</option>)}</select></label></section>
-    <div className="flex gap-3"><button onClick={() => setQuestions([])} className="rounded-2xl border px-4 font-bold">{ar ? "تغيير الأسئلة" : "Change questions"}</button><button onClick={create} disabled={creating} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#225739] py-4 font-black text-white disabled:opacity-60"><Play className="h-5 w-5" />{creating ? (ar ? "جارٍ التجهيز..." : "Preparing...") : playMode === "classroom" ? (ar ? "ابدأ وضع الصف" : "Start classroom mode") : (ar ? "إنشاء غرفة الدخول" : "Create join room")}</button></div>
-  </div></main></Layout>;
+
+  if (!questions.length) {
+    return (
+      <Layout>
+        <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
+          <UnifiedQuestionSourceFlow
+            gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"}
+            gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."}
+            gameIcon={<Grid3X3 className="h-8 w-8 text-primary" />}
+            accentClass="bg-primary hover:bg-primary/90 text-primary-foreground"
+            minQuestions={2}
+            maxQuestions={20}
+            onComplete={({ questions: q, sourceTitle }) => { setQuestions(q); setTitle(sourceTitle); }}
+          />
+        </main>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
+        <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="rounded-3xl border bg-card shadow-sm overflow-hidden">
+            <header className="border-b bg-muted/20 px-6 py-5 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                <Grid3X3 className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-foreground">{ar ? "إعداد إكس أو" : "XO setup"}</h1>
+                <p className="text-sm font-medium text-muted-foreground line-clamp-1">{title || (ar ? "إكس أو" : "XO")}</p>
+              </div>
+              <div className="ms-auto flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
+                  {questions.length} {ar ? "أسئلة" : "Questions"}
+                </span>
+              </div>
+            </header>
+
+            <div className="p-6 space-y-8">
+              <section>
+                <h2 className="mb-1 text-sm font-black uppercase tracking-wider text-muted-foreground">{ar ? "نمط اللعب" : "Play mode"}</h2>
+                <p className="mb-4 text-sm text-muted-foreground">{ar ? "اختر طريقة مشاركة اللعبة مع الطلاب" : "Choose how students will play"}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    data-testid="button-mode-classroom"
+                    onClick={() => setPlayMode("classroom")}
+                    className={cn(
+                      "group flex flex-col rounded-2xl border-2 p-5 text-start transition-all",
+                      playMode === "classroom" ? "border-amber-500 bg-amber-500/5 shadow-md" : "border-muted hover:border-amber-500/30 hover:bg-amber-500/5"
+                    )}
+                  >
+                    <span className={cn(
+                      "mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
+                      playMode === "classroom" ? "bg-amber-500 text-white shadow-sm" : "bg-muted text-muted-foreground group-hover:bg-amber-500/20 group-hover:text-amber-600"
+                    )}>
+                      <School className="h-6 w-6" />
+                    </span>
+                    <strong className="block text-base text-foreground">{ar ? "وضع الصف — على السبورة" : "Classroom — on the board"}</strong>
+                    <span className="mt-1 block text-sm font-medium text-muted-foreground">{ar ? "شاشتا إجابة ولوحة إكس أو واحدة" : "Two answer panels and one XO board"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="button-mode-online"
+                    onClick={() => setPlayMode("online")}
+                    className={cn(
+                      "group flex flex-col rounded-2xl border-2 p-5 text-start transition-all",
+                      playMode === "online" ? "border-blue-500 bg-blue-500/5 shadow-md" : "border-muted hover:border-blue-500/30 hover:bg-blue-500/5"
+                    )}
+                  >
+                    <span className={cn(
+                      "mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
+                      playMode === "online" ? "bg-blue-500 text-white shadow-sm" : "bg-muted text-muted-foreground group-hover:bg-blue-500/20 group-hover:text-blue-600"
+                    )}>
+                      <Wifi className="h-6 w-6" />
+                    </span>
+                    <strong className="block text-base text-foreground">{ar ? "الدخول عن بُعد" : "Remote join"}</strong>
+                    <span className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                      <QrCode className="h-4 w-4" />
+                      {ar ? "كود ورابط وQR لكل طالب" : "Code, link and QR for students"}
+                    </span>
+                  </button>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-wider text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  {ar ? "أسماء الفريقين" : "Team names"}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-bold text-foreground">
+                      {ar ? "الفريق الأول (X)" : "Team 1 (X)"}
+                    </span>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 start-0 flex w-12 items-center justify-center text-blue-500 font-black text-xl">X</div>
+                      <input
+                        value={teamX}
+                        onChange={e => setTeamX(e.target.value)}
+                        data-testid="input-team-x"
+                        className="w-full rounded-xl border-2 border-muted bg-transparent py-3 pe-4 ps-12 font-bold text-foreground transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                      />
+                    </div>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-bold text-foreground">
+                      {ar ? "الفريق الثاني (O)" : "Team 2 (O)"}
+                    </span>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 start-0 flex w-12 items-center justify-center text-amber-500 font-black text-xl">O</div>
+                      <input
+                        value={teamO}
+                        onChange={e => setTeamO(e.target.value)}
+                        data-testid="input-team-o"
+                        className="w-full rounded-xl border-2 border-muted bg-transparent py-3 pe-4 ps-12 font-bold text-foreground transition focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
+                      />
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between rounded-2xl border-2 border-muted bg-muted/10 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-foreground shadow-sm ring-1 ring-border">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-foreground">{ar ? "وقت السؤال" : "Question duration"}</h2>
+                      <p className="text-xs text-muted-foreground">{ar ? "الزمن المتاح للإجابة" : "Time available to answer"}</p>
+                    </div>
+                  </div>
+                  <select
+                    value={duration}
+                    onChange={e => setDuration(Number(e.target.value))}
+                    data-testid="select-duration"
+                    className="cursor-pointer appearance-none rounded-xl border-2 border-muted bg-card px-4 py-2 font-black text-foreground shadow-sm transition hover:border-primary/50 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+                  >
+                    {durations.map(d => <option key={d} value={d}>{d} {ar ? "ث" : "sec"}</option>)}
+                  </select>
+                </div>
+              </section>
+            </div>
+
+            <footer className="border-t bg-muted/20 px-6 py-5 flex flex-col-reverse sm:flex-row gap-3">
+              <button
+                onClick={() => setQuestions([])}
+                data-testid="button-change-questions"
+                className="w-full sm:w-auto rounded-xl border-2 border-transparent bg-muted px-6 py-3.5 font-bold text-muted-foreground transition hover:bg-muted/80 hover:text-foreground"
+              >
+                {ar ? "تغيير الأسئلة" : "Change questions"}
+              </button>
+              <button
+                onClick={create}
+                disabled={creating}
+                data-testid="button-start-game"
+                className="group flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3.5 px-6 font-black text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {creating ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+                    {ar ? "جارٍ التجهيز..." : "Preparing..."}
+                  </span>
+                ) : (
+                  <>
+                    <Play className="h-5 w-5 fill-current transition-transform group-hover:scale-110" />
+                    {playMode === "classroom" ? (ar ? "ابدأ وضع الصف" : "Start classroom mode") : (ar ? "إنشاء غرفة الدخول" : "Create join room")}
+                  </>
+                )}
+              </button>
+            </footer>
+          </div>
+        </div>
+      </main>
+    </Layout>
+  );
 }
