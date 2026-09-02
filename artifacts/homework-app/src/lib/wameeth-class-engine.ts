@@ -61,6 +61,8 @@ export interface WameethClassState {
   duration: number;
   /** When false, no gift boxes are ever awarded (engine-level). */
   giftsEnabled: boolean;
+  /** Correct answers required for a team to earn its next gift box. */
+  giftEveryCorrect: 1 | 2 | 3;
   /**
    * How many seconds the opponent's timer is capped to when freeze is applied.
    * Configurable by the teacher before the game starts.
@@ -90,7 +92,6 @@ const SCORE_BASE         = 1000;
 const SCORE_MIN_FACTOR   = 0.30;
 const SCORE_STREAK_BONUS = 100;
 const FEEDBACK_SECS      = 2;
-const GIFT_EVERY_N       = 3;   // earn a box every 3 correct answers
 const GIFT_MAX_HELD      = 2;
 const STEAL_AMOUNT       = 300;
 const DEFAULT_FREEZE_DUR = 10;  // seconds (teacher can override)
@@ -151,6 +152,7 @@ function freshTeam(duration: number, questionOrder: number[]): WameethTeamState 
 
 export interface WameethClassOptions {
   giftsEnabled?: boolean;
+  giftEveryCorrect?: 1 | 2 | 3;
   freezeDuration?: number;
   rng?: () => number;
 }
@@ -164,6 +166,9 @@ export function createWameethClassState(
     typeof optionsOrRng === "function" ? { rng: optionsOrRng } : optionsOrRng;
   const rng          = opts.rng ?? Math.random;
   const giftsEnabled = opts.giftsEnabled ?? true;
+  const giftEveryCorrect = opts.giftEveryCorrect === 1 || opts.giftEveryCorrect === 2
+    ? opts.giftEveryCorrect
+    : 3;
   const freezeDuration = opts.freezeDuration ?? DEFAULT_FREEZE_DUR;
 
   const orders = buildWameethQuestionOrders(questions.length, rng);
@@ -173,6 +178,7 @@ export function createWameethClassState(
     questions,
     duration,
     giftsEnabled,
+    giftEveryCorrect,
     freezeDuration,
     teams: {
       blue: freshTeam(duration, orders.blue),
@@ -284,10 +290,12 @@ export function wameethClassReducer(
       const gain    = correct ? calcPoints(t.timeLeft, state.duration, t.streak) : 0;
       const seq     = state.impulseSeq + 1;
 
-      const newCorrectSinceGift = correct ? t.correctSinceGift + 1 : t.correctSinceGift;
-      const earnBox = state.giftsEnabled && correct
-        && newCorrectSinceGift >= GIFT_EVERY_N
-        && t.gifts.length < GIFT_MAX_HELD;
+      const newCorrectSinceGift = correct && state.giftsEnabled
+        ? t.correctSinceGift + 1
+        : t.correctSinceGift;
+      const hitsGiftCadence = state.giftsEnabled && correct
+        && newCorrectSinceGift >= state.giftEveryCorrect;
+      const earnBox = hitsGiftCadence && t.gifts.length < GIFT_MAX_HELD;
 
       const answered: WameethTeamState = {
         ...t,
@@ -299,7 +307,9 @@ export function wameethClassReducer(
         streak: correct ? t.streak + 1 : 0,
         lastGain: gain,
         correctCount: t.correctCount + (correct ? 1 : 0),
-        correctSinceGift: earnBox ? 0 : newCorrectSinceGift,
+        // Reset on cadence even when both inventory slots are full, so opening
+        // an existing box cannot retroactively award an old correct answer.
+        correctSinceGift: hitsGiftCadence ? 0 : newCorrectSinceGift,
         // Gift box (mystery) is the only type ever awarded
         gifts: earnBox ? [...t.gifts, "mystery" as GiftType] : t.gifts,
       };

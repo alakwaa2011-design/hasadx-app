@@ -42,6 +42,7 @@ interface WameethClassSetup {
 interface ClassSettings {
   duration: number;       // seconds per question
   giftsEnabled: boolean;  // award gift boxes
+  giftEveryCorrect: 1 | 2 | 3;
   showCorrect: boolean;   // highlight correct answer after wrong guess
   freezeDuration: number; // seconds opponent is frozen (timer cap)
 }
@@ -372,10 +373,10 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="w-full max-w-lg mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-5" dir={ar ? "rtl" : "ltr"}>
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 flex flex-col gap-5" dir={ar ? "rtl" : "ltr"}>
 
           {/* ── Hero header ── */}
-          <div className="flex flex-col items-center gap-3 text-center pt-2">
+           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 text-center sm:text-start pt-1">
             {/* Icon badge */}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
@@ -399,7 +400,8 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
           </div>
 
           {/* ── Teams card ── */}
-          <div
+            <div className="grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-5 items-start">
+            <div
             className="rounded-2xl border p-5 sm:p-6"
             style={{ background: "#ffffff", borderColor: "#e5e7eb", boxShadow: "0 1px 6px rgba(34,87,57,0.06)" }}
           >
@@ -407,7 +409,7 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
             <div className="flex items-center gap-2 mb-4">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: GS }}>
                 <Users className="w-4 h-4" style={{ color: G }} />
-              </div>
+           </div>
               <span className="text-xs font-black uppercase tracking-widest" style={{ color: G }}>
                 {ar ? "الفريقان" : "Teams"}
               </span>
@@ -525,7 +527,7 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
                 </button>
               </div>
 
-              {/* Freeze duration (shown only when gifts on) */}
+              {/* Gift cadence and freeze duration (shown only when gifts on) */}
               <AnimatePresence initial={false}>
                 {settings.giftsEnabled && (
                   <motion.div
@@ -535,7 +537,39 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="pt-0.5 flex flex-col gap-2">
+                    <div className="pt-0.5 grid sm:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Gift className="w-3.5 h-3.5 text-purple-500" />
+                          <span className="text-xs font-bold text-gray-500">
+                            {ar ? "يظهر الصندوق بعد" : "Show a box after"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-purple-50 border border-purple-100">
+                          {([1, 2, 3] as const).map((count) => {
+                            const active = count === settings.giftEveryCorrect;
+                            return (
+                              <button
+                                key={count}
+                                type="button"
+                                onClick={() => onSettings({ ...settings, giftEveryCorrect: count })}
+                                className="min-h-9 rounded-lg text-xs font-black transition-all"
+                                style={{
+                                  color: active ? "#ffffff" : "#7e22ce",
+                                  background: active ? "#7e22ce" : "transparent",
+                                  boxShadow: active ? "0 2px 7px rgba(126,34,206,0.25)" : "none",
+                                }}
+                                aria-pressed={active}
+                              >
+                                {count === 1
+                                  ? (ar ? "كل إجابة" : "Every 1")
+                                  : (ar ? `${count} إجابات` : `Every ${count}`)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-1.5">
                         <Snowflake className="w-3.5 h-3.5 text-blue-400" />
                         <span className="text-xs font-bold text-gray-500">{ar ? "مدة التجميد" : "Freeze duration"}</span>
@@ -562,6 +596,7 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
                             </button>
                           );
                         })}
+                      </div>
                       </div>
                     </div>
                   </motion.div>
@@ -618,7 +653,10 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
               { icon: <Zap className="w-3 h-3" style={{ color: "#d97706" }} />, text: `${setup.questions.length} ${ar ? "سؤال" : "questions"}`, bg: "#fffbeb", border: "#fde68a", textColor: "#92400e" },
               { icon: <Clock3 className="w-3 h-3" style={{ color: G }} />, text: `${settings.duration}${ar ? "ث" : "s"}/${ar ? "سؤال" : "q"}`, bg: GS, border: "#99c1ab", textColor: G },
               settings.giftsEnabled
-                ? { icon: <Gift className="w-3 h-3" style={{ color: "#9333ea" }} />, text: `${ar ? "هدايا · تجميد " : "Gifts · freeze "}${settings.freezeDuration}${ar ? "ث" : "s"}`, bg: "#faf5ff", border: "#e9d5ff", textColor: "#6b21a8" }
+                ? { icon: <Gift className="w-3 h-3" style={{ color: "#9333ea" }} />, text: ar
+                    ? `هدية كل ${settings.giftEveryCorrect === 1 ? "إجابة" : `${settings.giftEveryCorrect} إجابات`}`
+                    : `Gift every ${settings.giftEveryCorrect} correct`,
+                    bg: "#faf5ff", border: "#e9d5ff", textColor: "#6b21a8" }
                 : { icon: <Gift className="w-3 h-3" style={{ color: "#9ca3af" }} />, text: ar ? "بلا هدايا" : "No gifts", bg: "#f9fafb", border: "#e5e7eb", textColor: "#6b7280" },
               settings.showCorrect
                 ? { icon: <Eye className="w-3 h-3" style={{ color: "#0369a1" }} />, text: ar ? "الإجابة ظاهرة" : "Answer shown", bg: "#f0f9ff", border: "#bae6fd", textColor: "#0369a1" }
@@ -634,6 +672,7 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
             ))}
           </div>
         </div>
+        </div>
       </div>
 
       {/* ── Sticky start button ── */}
@@ -641,7 +680,7 @@ function IdleOverlay({ setup, blueName, redName, blueOnRight, ar, settings, onSe
         className="shrink-0 px-4 sm:px-6 pb-6 pt-4"
         style={{ background: "linear-gradient(180deg, rgba(247,249,247,0) 0%, #f7f9f7 30%)" }}
       >
-        <div className="w-full max-w-lg mx-auto">
+        <div className="w-full max-w-5xl mx-auto">
           <motion.button
             whileTap={{ scale: 0.97 }}
             whileHover={{ scale: 1.015 }}
@@ -816,11 +855,11 @@ function TimerRing({ pct, urgent, value }: { pct: number; urgent: boolean; value
 // ─── Single team panel ────────────────────────────────────────────────────────
 function TeamPanel({
   team, name, t, question, qTotal, duration, ar,
-  showCorrect, giftsEnabled, onAnswer, onUseGift, onPickMystery,
+  showCorrect, giftsEnabled, giftEveryCorrect, onAnswer, onUseGift, onPickMystery,
 }: {
   team: TeamId; name: string; t: WameethTeamState;
   question: WameethClassQuestion | null; qTotal: number; duration: number; ar: boolean;
-  showCorrect: boolean; giftsEnabled: boolean;
+  showCorrect: boolean; giftsEnabled: boolean; giftEveryCorrect: 1 | 2 | 3;
   onAnswer: (idx: number) => void;
   onUseGift: (g: GiftType) => void;
   onPickMystery: (idx: number) => void;
@@ -889,6 +928,13 @@ function TeamPanel({
               {t.shield && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
                   style={{ background:"rgba(234,179,8,0.20)", color:"#fde047" }}>🛡️</span>
+              )}
+              {giftsEnabled && t.gifts.length < 2 && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ background:"rgba(168,85,247,0.16)", color:"#d8b4fe" }}>
+                  <Gift className="w-2.5 h-2.5"/>
+                  {Math.min(t.correctSinceGift, giftEveryCorrect)}/{giftEveryCorrect}
+                </span>
               )}
             </div>
           </div>
@@ -1109,6 +1155,7 @@ function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch,
     wameethClassReducer, undefined,
     () => createWameethClassState(setup.questions, settings.duration, {
       giftsEnabled:  settings.giftsEnabled,
+      giftEveryCorrect: settings.giftEveryCorrect,
       freezeDuration: settings.freezeDuration,
     }),
   );
@@ -1208,6 +1255,7 @@ function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch,
       question={currentWameethQuestion(state, team)}
       qTotal={state.questions.length} duration={settings.duration} ar={ar}
       showCorrect={settings.showCorrect} giftsEnabled={settings.giftsEnabled}
+      giftEveryCorrect={settings.giftEveryCorrect}
       onAnswer={(i) => handleAnswer(team, i)}
       onUseGift={(g) => handleUseGift(team, g)}
       onPickMystery={(i) => handlePickMystery(team, i)}/>
@@ -1433,7 +1481,7 @@ export default function WameethClass() {
   return (
     <Layout>
       <WameethClassGame
-        key={`${round}-${settings.duration}-${settings.giftsEnabled}-${settings.freezeDuration}`}
+        key={`${round}-${settings.duration}-${settings.giftsEnabled}-${settings.giftEveryCorrect}-${settings.freezeDuration}`}
         setup={{ ...setup, duration: settings.duration }}
         shareToken={shareToken}
         blueOnRight={blueOnRight}
@@ -1453,10 +1501,13 @@ function loadClassSettings(defaultDuration: number): ClassSettings {
       return {
         duration:       typeof parsed.duration === "number"       ? parsed.duration       : defaultDuration,
         giftsEnabled:   typeof parsed.giftsEnabled === "boolean"  ? parsed.giftsEnabled   : true,
+        giftEveryCorrect: parsed.giftEveryCorrect === 1 || parsed.giftEveryCorrect === 2
+          ? parsed.giftEveryCorrect
+          : 3,
         showCorrect:    typeof parsed.showCorrect === "boolean"   ? parsed.showCorrect    : true,
         freezeDuration: typeof parsed.freezeDuration === "number" ? parsed.freezeDuration : 10,
       };
     }
   } catch { /* ignore */ }
-  return { duration: defaultDuration, giftsEnabled: true, showCorrect: true, freezeDuration: 10 };
+  return { duration: defaultDuration, giftsEnabled: true, giftEveryCorrect: 3, showCorrect: true, freezeDuration: 10 };
 }
