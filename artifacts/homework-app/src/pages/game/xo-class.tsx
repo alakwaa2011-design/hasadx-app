@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { Layout } from "@/components/layout";
 import { QuestionImage } from "@/components/game/question-image";
 import { getIsMuted, playCorrectSound, playGameStartSound, playTickSound, playVictoryFanfare, playWrongSound, startBackgroundBeat, stopBackgroundBeat, toggleMute } from "@/lib/game-sounds";
-import { createXoClassState, currentXoClassQuestion, xoClassReducer, type XoClassQuestion, type XoClassState } from "@/lib/xo-class-engine";
+import { createXoClassState, currentXoClassQuestionForTeam, xoClassReducer, type XoClassQuestion, type XoClassState } from "@/lib/xo-class-engine";
 
 export const XO_CLASS_SETUP_KEY = "xo-class-setup";
 type Setup = { questions: XoClassQuestion[]; duration?: number; teamX?: string; teamO?: string; title?: string };
@@ -14,7 +14,7 @@ const labels = ["A", "B", "C", "D"];
 function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name: string; state: XoClassState; ar: boolean; dispatch: Dispatch<any> }) {
   const answering = state.status === "playing" && state.phase === "question";
   const alreadyAnswered = state.answeredTeams.includes(team);
-  const question = answering ? currentXoClassQuestion(state) : null;
+  const question = answering ? currentXoClassQuestionForTeam(state, team) : null;
   const answerLabels = ar ? ["أ", "ب", "ج", "د"] : labels;
   const totalQuestions = state.questions.length;
   const playedQuestions = state.status === "idle"

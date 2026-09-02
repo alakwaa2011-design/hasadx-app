@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createXoClassState, xoClassReducer, xoWinner } from "./xo-class-engine";
+import { createXoClassState, currentXoClassQuestionForTeam, xoClassReducer, xoWinner } from "./xo-class-engine";
 
 const questions = [
-  { text: "Q1", options: ["A", "B"], correct: 0 },
-  { text: "Q2", options: ["A", "B"], correct: 1 },
+  { text: "Q1", options: ["A", "B", "C", "D"], correct: 0 },
+  { text: "Q2", options: ["A", "B", "C", "D"], correct: 1 },
+  { text: "Q3", options: ["A", "B", "C", "D"], correct: 2 },
+  { text: "Q4", options: ["A", "B", "C", "D"], correct: 3 },
 ];
 
 function playing() {
@@ -11,18 +13,37 @@ function playing() {
 }
 
 describe("XO classroom engine", () => {
+  it("gives each team a different question order and answer order", () => {
+    const state = playing();
+    const xQuestion = currentXoClassQuestionForTeam(state, "x")!;
+    const oQuestion = currentXoClassQuestionForTeam(state, "o")!;
+    expect(oQuestion.text).not.toBe(xQuestion.text);
+    expect(oQuestion.options).not.toEqual(xQuestion.options);
+    expect(oQuestion.options[oQuestion.correct]).toBe(
+      state.questions.find((question) => question.text === oQuestion.text)!.options[
+        state.questions.find((question) => question.text === oQuestion.text)!.correct
+      ],
+    );
+  });
+
   it("lets both teams answer and grants placement to the first correct team", () => {
     const state = playing();
-    const correct = xoClassReducer(state, { type: "answer", team: "o", index: 0 });
+    const oQuestion = currentXoClassQuestionForTeam(state, "o")!;
+    const correct = xoClassReducer(state, { type: "answer", team: "o", index: oQuestion.correct });
     expect(correct.phase).toBe("placement");
     expect(correct.activeTeam).toBe("o");
   });
 
   it("keeps the question open for the other team after one wrong answer", () => {
-    const wrong = xoClassReducer(playing(), { type: "answer", team: "x", index: 1 });
+    const state = playing();
+    const xQuestion = currentXoClassQuestionForTeam(state, "x")!;
+    const xWrongIndex = xQuestion.correct === 0 ? 1 : 0;
+    const wrong = xoClassReducer(state, { type: "answer", team: "x", index: xWrongIndex });
     expect(wrong.phase).toBe("question");
     expect(wrong.answeredTeams).toEqual(["x"]);
-    const bothWrong = xoClassReducer(wrong, { type: "answer", team: "o", index: 1 });
+    const oQuestion = currentXoClassQuestionForTeam(wrong, "o")!;
+    const oWrongIndex = oQuestion.correct === 0 ? 1 : 0;
+    const bothWrong = xoClassReducer(wrong, { type: "answer", team: "o", index: oWrongIndex });
     expect(bothWrong.questionIndex).toBe(1);
     expect(bothWrong.answeredTeams).toEqual([]);
   });

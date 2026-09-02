@@ -35,6 +35,26 @@ export type XoClassAction =
 export const PLACEMENT_SECONDS = 20;
 const other = (team: XoTeam): XoTeam => team === "x" ? "o" : "x";
 
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function shuffledIndexes(length: number, seed: string): number[] {
+  return Array.from({ length }, (_, index) => index)
+    .sort((a, b) => stableHash(`${seed}:${a}`) - stableHash(`${seed}:${b}`) || a - b);
+}
+
+function rotate<T>(items: T[], amount: number): T[] {
+  if (items.length < 2) return items;
+  const offset = amount % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
 export function createXoClassState(questions: XoClassQuestion[], duration: number): XoClassState {
   return {
     status: "idle", countdown: 3, questions, duration: Math.max(1, duration || 20),
@@ -45,6 +65,26 @@ export function createXoClassState(questions: XoClassQuestion[], duration: numbe
 
 export function currentXoClassQuestion(state: XoClassState): XoClassQuestion | null {
   return state.questions.length ? state.questions[state.questionIndex % state.questions.length] : null;
+}
+
+export function currentXoClassQuestionForTeam(state: XoClassState, team: XoTeam): XoClassQuestion | null {
+  if (!state.questions.length) return null;
+  const questionOrder = rotate(
+    shuffledIndexes(state.questions.length, "xo-class-question-order"),
+    team === "x" ? 0 : 1,
+  );
+  const sourceIndex = questionOrder[state.questionIndex % questionOrder.length];
+  const sourceQuestion = state.questions[sourceIndex];
+  const optionOrder = rotate(
+    shuffledIndexes(sourceQuestion.options.length, `xo-class-options:${sourceIndex}`),
+    team === "x" ? 0 : 1,
+  );
+  const correct = optionOrder.indexOf(sourceQuestion.correct);
+  return {
+    ...sourceQuestion,
+    options: optionOrder.map((index) => sourceQuestion.options[index]),
+    correct: correct >= 0 ? correct : sourceQuestion.correct,
+  };
 }
 
 export function xoWinner(board: XoCell[]): XoTeam | "draw" | null {
@@ -78,7 +118,7 @@ export function xoClassReducer(state: XoClassState, action: XoClassAction): XoCl
         : nextQuestion({ ...state, timeLeft: 0 }, other(state.activeTeam), "timeout");
     case "answer": {
       if (state.status !== "playing" || state.phase !== "question") return state;
-      const question = currentXoClassQuestion(state);
+      const question = currentXoClassQuestionForTeam(state, action.team);
       if (!question || state.answeredTeams.includes(action.team) || action.index < 0 || action.index >= question.options.length) return state;
       return action.index === question.correct
         ? { ...state, activeTeam: action.team, phase: "placement", timeLeft: PLACEMENT_SECONDS, lastResult: "correct" }
