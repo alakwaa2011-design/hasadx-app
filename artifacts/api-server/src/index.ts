@@ -424,7 +424,9 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS verification_otp   TEXT,
         ADD COLUMN IF NOT EXISTS otp_expires_at     TIMESTAMP,
         ADD COLUMN IF NOT EXISTS verified_at        TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS email_verified     BOOLEAN NOT NULL DEFAULT FALSE
+        ADD COLUMN IF NOT EXISTS email_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS login_otp           TEXT,
+        ADD COLUMN IF NOT EXISTS login_otp_expires_at TIMESTAMP
     `);
     // One-click email verification token (complement to OTP; same TTL, single-use).
     await db.execute(sql`
@@ -435,6 +437,18 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE teachers
         ADD COLUMN IF NOT EXISTS school_logo TEXT
+    `);
+    // Persistent device trust after a successful login OTP. Only a hash is
+    // stored; the raw token is kept in an HttpOnly browser cookie.
+    await db.execute(sql`
+      ALTER TABLE trusted_devices
+        ADD COLUMN IF NOT EXISTS trust_token_hash TEXT,
+        ADD COLUMN IF NOT EXISTS trust_token_expires_at TIMESTAMP
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS trusted_devices_trust_token_idx
+        ON trusted_devices (trust_token_hash)
+        WHERE trust_token_hash IS NOT NULL
     `);
     // ── Credits system — platform_settings columns ────────────────────────────
     await db.execute(sql`

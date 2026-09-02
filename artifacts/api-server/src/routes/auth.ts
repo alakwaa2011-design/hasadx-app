@@ -74,6 +74,9 @@ const RESET_GENERIC_RESPONSE = {
 const OTP_TTL_EMAIL_MS = 30 * 60 * 1000; // 30 minutes (email)
 const OTP_TTL_MS = OTP_TTL_EMAIL_MS;      // default used for legacy paths
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends
+const LOGIN_OTP_TTL_MS = 15 * 60 * 1000;
+const TRUSTED_DEVICE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+const TRUSTED_DEVICE_COOKIE = "hasad_trusted_device";
 
 async function ensureConfiguredAdmin(
   teacher: typeof teachersTable.$inferSelect,
@@ -91,6 +94,56 @@ async function ensureConfiguredAdmin(
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function getCookie(req: any, name: string): string | null {
+  const header = req.headers?.cookie;
+  if (typeof header !== "string") return null;
+  for (const part of header.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
+    try {
+      return decodeURIComponent(part.slice(separator + 1).trim()) || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function setTrustedDeviceCookie(res: any, rawToken: string): void {
+  if (!res || typeof res.append !== "function") return;
+  const attributes = [
+    `${TRUSTED_DEVICE_COOKIE}=${encodeURIComponent(rawToken)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${Math.floor(TRUSTED_DEVICE_TTL_MS / 1000)}`,
+  ];
+  if (process.env.NODE_ENV === "production") attributes.push("Secure");
+  res.append("Set-Cookie", attributes.join("; "));
+}
+
+async function hasTrustedDevice(req: any, teacherId: number): Promise<boolean> {
+  const rawToken = getCookie(req, TRUSTED_DEVICE_COOKIE);
+  if (!rawToken) return false;
+
+  const [device] = await db
+    .select({ id: trustedDevicesTable.id })
+    .from(trustedDevicesTable)
+    .where(
+      and(
+        eq(trustedDevicesTable.teacherId, teacherId),
+        eq(trustedDevicesTable.trustTokenHash, hashToken(rawToken)),
+        gt(trustedDevicesTable.trustTokenExpiresAt, new Date()),
+      ),
+    )
+    .limit(1);
+  return Boolean(device);
 }
 
 async function revokeTeacherSessions(
@@ -113,6 +166,13 @@ async function revokeTeacherSessions(
   } catch (err) {
     log.error({ err, teacherId }, "Failed to revoke teacher sessions");
   }
+}
+
+async function revokeTrustedDeviceTokens(teacherId: number): Promise<void> {
+  await db
+    .update(trustedDevicesTable)
+    .set({ trustTokenHash: null, trustTokenExpiresAt: null })
+    .where(eq(trustedDevicesTable.teacherId, teacherId));
 }
 
 async function sendPasswordChangedNotification(
@@ -187,12 +247,20 @@ async function trackLoginDevice(
   req: any,
   teacher: typeof teachersTable.$inferSelect,
   log: { error: (obj: any, msg?: string) => void; info: (obj: any, msg?: string) => void; warn: (obj: any, msg?: string) => void },
+  options?: { issueTrustCookie?: boolean },
 ) {
   try {
     const userAgent = getUserAgent(req);
     const ipAddress = getClientIp(req);
     const fingerprintHash = computeFingerprint(userAgent, ipAddress);
     const now = new Date();
+    const rawTrustToken = options?.issueTrustCookie
+      ? crypto.randomBytes(32).toString("base64url")
+      : null;
+    const trustTokenHash = rawTrustToken ? hashToken(rawTrustToken) : null;
+    const trustTokenExpiresAt = rawTrustToken
+      ? new Date(Date.now() + TRUSTED_DEVICE_TTL_MS)
+      : null;
 
     const [existing] = await db
       .select()
@@ -208,8 +276,13 @@ async function trackLoginDevice(
     if (existing) {
       await db
         .update(trustedDevicesTable)
-        .set({ lastSeenAt: now, ipAddress })
+        .set({
+          lastSeenAt: now,
+          ipAddress,
+          ...(trustTokenHash ? { trustTokenHash, trustTokenExpiresAt } : {}),
+        })
         .where(eq(trustedDevicesTable.id, existing.id));
+      if (rawTrustToken) setTrustedDeviceCookie(req.res, rawTrustToken);
       return;
     }
 
@@ -227,9 +300,12 @@ async function trackLoginDevice(
       ipAddress,
       revokeTokenHash: null,
       revokeTokenExpiresAt: null,
+      trustTokenHash,
+      trustTokenExpiresAt,
       firstSeenAt: now,
       lastSeenAt: now,
     });
+    if (rawTrustToken) setTrustedDeviceCookie(req.res, rawTrustToken);
 
     const sessionsLink = `${getAppBaseUrl()}/teacher/sessions`;
 
@@ -277,6 +353,8 @@ declare module "express-session" {
   interface SessionData {
     teacherId: number;
     studentAccountId: number;
+    pendingTeacherId?: number;
+    pendingLoginRememberMe?: boolean;
     userAgent?: string;
     ip?: string;
     createdAt?: string;
@@ -348,6 +426,44 @@ async function persistSession(req: any): Promise<void> {
       else resolve();
     });
   });
+}
+
+async function sendLoginOtp(
+  req: any,
+  teacher: typeof teachersTable.$inferSelect,
+  otp: string,
+): Promise<void> {
+  const channel = teacher.email ? "email" : "sms";
+  if (channel === "email" && teacher.email) {
+    const { html, text } = buildOtpEmail(teacher.name, otp);
+    const result = await sendEmail({
+      to: teacher.email,
+      subject: "رمز تأكيد تسجيل الدخول — منصة حصاد",
+      html,
+      text,
+    });
+    if (!result.delivered) {
+      req.log.warn(
+        { teacherId: teacher.id, reason: result.reason },
+        "Login OTP email not delivered",
+      );
+    }
+    return;
+  }
+
+  if (teacher.phone && isSmsConfigured()) {
+    try {
+      await sendSms(
+        teacher.phone,
+        `رمز تأكيد تسجيل الدخول إلى حصاد: ${otp}\nصالح لمدة 15 دقيقة.`,
+      );
+    } catch (err) {
+      req.log.error({ err, teacherId: teacher.id }, "Login OTP SMS send failed");
+    }
+    return;
+  }
+
+  req.log.warn({ teacherId: teacher.id }, "Login OTP could not be delivered");
 }
 
 /** Fire-and-forget: detect country from IP and update the teacher record. Never throws. */
@@ -545,7 +661,41 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
+    const canDeliverLoginOtp =
+      Boolean(teacher.email) || (Boolean(teacher.phone) && isSmsConfigured());
+    if (
+      teacher.emailVerified &&
+      canDeliverLoginOtp &&
+      !(await hasTrustedDevice(req, teacher.id))
+    ) {
+      const loginOtp = generateOtp();
+      await db
+        .update(teachersTable)
+        .set({
+          loginOtp,
+          loginOtpExpiresAt: new Date(Date.now() + LOGIN_OTP_TTL_MS),
+        })
+        .where(eq(teachersTable.id, teacher.id));
+
+      delete req.session.teacherId;
+      delete req.session.studentAccountId;
+      req.session.pendingTeacherId = teacher.id;
+      req.session.pendingLoginRememberMe = Boolean(body.rememberMe);
+      req.session.cookie.maxAge = LOGIN_OTP_TTL_MS;
+      await persistSession(req);
+      await sendLoginOtp(req, teacher, loginOtp);
+
+      res.status(403).json({
+        message: "NEEDS_DEVICE_VERIFICATION",
+        identifier,
+        channel: teacher.email ? "email" : "sms",
+      });
+      return;
+    }
+
     delete req.session.studentAccountId;
+    delete req.session.pendingTeacherId;
+    delete req.session.pendingLoginRememberMe;
     req.session.teacherId = teacher.id;
     stampTeacherSession(req);
 
@@ -567,6 +717,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     if (body.rememberMe) {
       req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
     }
+    await persistSession(req);
 
     const { runAfterCommit } = await db.transaction(async (tx) => {
       await tx
@@ -780,6 +931,7 @@ router.patch("/auth/change-password", async (req, res) => {
       .update(teachersTable)
       .set({ passwordHash: newHash })
       .where(eq(teachersTable.id, teacherId));
+    await revokeTrustedDeviceTokens(teacherId);
     await revokeTeacherSessions(teacherId, req.sessionID ?? null, req.log);
     await sendPasswordChangedNotification(teacherId, "change", req.log);
     res.json({ message: "تم تغيير كلمة السر بنجاح" });
@@ -993,6 +1145,7 @@ router.post("/auth/reset-password", authLimiter, async (req, res) => {
       .set({ passwordHash: newHash })
       .where(eq(teachersTable.id, teacherId));
 
+    await revokeTrustedDeviceTokens(teacherId);
     await revokeTeacherSessions(teacherId, null, req.log);
     await sendPasswordChangedNotification(teacherId, "reset", req.log);
 
@@ -1486,7 +1639,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       metadata: { method: "google" },
     });
 
-    void trackLoginDevice(req, teacher, req.log);
+    await trackLoginDevice(req, teacher, req.log, { issueTrustCookie: true });
     maybeGrantWelcomeCredits(teacher.id, req.log, { name: teacher.name, email: teacher.email });
 
     res.json({
@@ -1533,6 +1686,8 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
       // Already verified — create a session and let them in
       req.session.teacherId = teacher.id;
       stampTeacherSession(req);
+      await persistSession(req);
+      await trackLoginDevice(req, teacher, req.log, { issueTrustCookie: true });
       res.json({ ok: true, alreadyVerified: true, teacher: { id: teacher.id, name: teacher.name, email: teacher.email, role: teacher.role, isAdmin: teacher.isAdmin } });
       return;
     }
@@ -1567,6 +1722,8 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
     delete req.session.studentAccountId;
     req.session.teacherId = verified.id;
     stampTeacherSession(req);
+    await persistSession(req);
+    await trackLoginDevice(req, verified, req.log, { issueTrustCookie: true });
 
     void detectAndSaveCountry(verified.id, req);
     void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "email-verify-link" } });
@@ -1615,6 +1772,77 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
       return;
     }
 
+    const isPendingDeviceLogin =
+      teacher.emailVerified && req.session.pendingTeacherId === teacher.id;
+    if (isPendingDeviceLogin) {
+      if (!teacher.loginOtp || !teacher.loginOtpExpiresAt) {
+        res.status(400).json({ message: "لا يوجد رمز تسجيل دخول نشط. سجّل الدخول من جديد" });
+        return;
+      }
+      if (new Date() > teacher.loginOtpExpiresAt) {
+        res.status(400).json({ message: "انتهت صلاحية الرمز. سجّل الدخول من جديد" });
+        return;
+      }
+      if (teacher.loginOtp !== otp) {
+        res.status(400).json({ message: "الرمز غير صحيح" });
+        return;
+      }
+
+      const rememberMe = req.session.pendingLoginRememberMe === true;
+      const [verified] = await db
+        .update(teachersTable)
+        .set({
+          loginOtp: null,
+          loginOtpExpiresAt: null,
+          lastLoginAt: new Date(),
+        })
+        .where(eq(teachersTable.id, teacher.id))
+        .returning();
+
+      delete req.session.studentAccountId;
+      delete req.session.pendingTeacherId;
+      delete req.session.pendingLoginRememberMe;
+      req.session.teacherId = verified.id;
+      req.session.cookie.maxAge = rememberMe
+        ? 30 * 24 * 60 * 60 * 1000
+        : 24 * 60 * 60 * 1000;
+      stampTeacherSession(req);
+      await persistSession(req);
+      await trackLoginDevice(req, verified, req.log, { issueTrustCookie: true });
+
+      void logIslamicEvent({
+        userId: verified.id,
+        eventType: "login",
+        metadata: { method: "device-otp" },
+      });
+      logActivity({
+        req,
+        userId: verified.id,
+        userName: verified.name,
+        userRole: verified.isAdmin ? "admin" : (verified.role === "organizer" ? "organizer" : "teacher"),
+        action: "login",
+        details: { method: "device-otp" },
+      });
+      maybeGrantWelcomeCredits(verified.id, req.log, {
+        name: verified.name,
+        email: verified.email,
+      });
+
+      res.json({
+        isNewTeacher: false,
+        deviceVerified: true,
+        teacher: {
+          id: verified.id,
+          name: verified.name,
+          email: verified.email,
+          phone: verified.phone,
+          role: verified.role,
+          isAdmin: verified.isAdmin,
+        },
+      });
+      return;
+    }
+
     if (teacher.emailVerified) {
       // Already verified — do NOT auto-login; require a normal password login instead.
       // Creating a session here without checking the OTP would be an authentication bypass.
@@ -1650,6 +1878,8 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
     delete req.session.studentAccountId;
     req.session.teacherId = verified.id;
     stampTeacherSession(req);
+    await persistSession(req);
+    await trackLoginDevice(req, verified, req.log, { issueTrustCookie: true });
 
     void detectAndSaveCountry(verified.id, req);
     void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "register" } });
@@ -1696,7 +1926,29 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     }
 
     if (teacher.emailVerified) {
-      res.json({ ok: true }); // Already fully verified, no need to resend
+      if (req.session.pendingTeacherId !== teacher.id) {
+        res.json({ ok: true }); // Generic response: no active password-confirmed challenge
+        return;
+      }
+
+      if (teacher.loginOtpExpiresAt) {
+        const sendTime = teacher.loginOtpExpiresAt.getTime() - LOGIN_OTP_TTL_MS;
+        if (Date.now() - sendTime < OTP_RESEND_COOLDOWN_MS) {
+          res.status(429).json({ message: "يرجى الانتظار دقيقة قبل إعادة الإرسال" });
+          return;
+        }
+      }
+
+      const loginOtp = generateOtp();
+      await db
+        .update(teachersTable)
+        .set({
+          loginOtp,
+          loginOtpExpiresAt: new Date(Date.now() + LOGIN_OTP_TTL_MS),
+        })
+        .where(eq(teachersTable.id, teacher.id));
+      await sendLoginOtp(req, teacher, loginOtp);
+      res.json({ ok: true, channel: teacher.email ? "email" : "sms" });
       return;
     }
 

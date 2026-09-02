@@ -13,6 +13,9 @@ export const trustedDevicesTable = pgTable(
     ipAddress: text("ip_address"),
     revokeTokenHash: text("revoke_token_hash"),
     revokeTokenExpiresAt: timestamp("revoke_token_expires_at"),
+    // Only the hash is persisted; the raw value lives in the HttpOnly browser cookie.
+    trustTokenHash: text("trust_token_hash"),
+    trustTokenExpiresAt: timestamp("trust_token_expires_at"),
     firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
     lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
   },
