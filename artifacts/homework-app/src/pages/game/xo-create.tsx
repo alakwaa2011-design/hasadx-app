@@ -1,0 +1,71 @@
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { Layout } from "@/components/layout";
+import { Grid3X3, Clock, Play, Users } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { getSavedGameActivity, normalizeSavedGameQuestions, saveGameActivity } from "@/lib/saved-game-activities";
+import { getXoSocket } from "@/lib/xo-socket";
+import { toast } from "@/components/ui/sonner";
+
+type Question = { text: string; options: string[]; correct: number; imageUrl?: string | null };
+const durations = [10, 15, 20, 30, 45];
+
+export default function XoCreate() {
+  const { lang } = useI18n(); const ar = lang === "ar"; const dir = ar ? "rtl" : "ltr";
+  const [, navigate] = useLocation();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [title, setTitle] = useState<string | null>(null);
+  const [teamX, setTeamX] = useState(ar ? "فريق إكس" : "Team X");
+  const [teamO, setTeamO] = useState(ar ? "فريق أو" : "Team O");
+  const [duration, setDuration] = useState(20); const [creating, setCreating] = useState(false);
+  const loadedSavedGameRef = useRef(false);
+  useEffect(() => {
+    const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!savedGameId || loadedSavedGameRef.current) return;
+    loadedSavedGameRef.current = true;
+    void getSavedGameActivity(savedGameId).then((activity) => {
+      if (activity.gameType !== "xo") throw new Error("invalid-saved-game");
+      const restored = normalizeSavedGameQuestions(activity.questions).filter((q) =>
+        q.text.trim() && q.options.length >= 2 && q.options.length <= 4
+        && q.options.every((option) => option.trim())
+        && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length
+      );
+      if (restored.length < 2) throw new Error("invalid-saved-game");
+      setQuestions(restored);
+      setTitle(activity.title || null);
+      if (activity.settings && typeof activity.settings === "object" && !Array.isArray(activity.settings)) {
+        const settings = activity.settings as Record<string, unknown>;
+        if (typeof settings.teamX === "string" && settings.teamX.trim()) setTeamX(settings.teamX.slice(0, 40));
+        if (typeof settings.teamO === "string" && settings.teamO.trim()) setTeamO(settings.teamO.slice(0, 40));
+        if (typeof settings.duration === "number" && durations.includes(settings.duration)) setDuration(settings.duration);
+      }
+    }).catch(() => toast.error(ar ? "تعذر فتح اللعبة المحفوظة" : "Could not open the saved game"));
+  }, [ar]);
+  const create = async () => {
+    if (questions.length < 2) {
+      toast.error(ar ? "أضف سؤالين على الأقل" : "Add at least two questions");
+      return;
+    }
+    setCreating(true);
+    try {
+      await saveGameActivity({ gameType: "xo", title: title || (ar ? "إكس أو" : "XO"), questions, settings: { duration, teamX, teamO }, source: "game-launch" });
+      getXoSocket().emit("xo:create", { questions, duration, teamX: teamX.trim() || "X", teamO: teamO.trim() || "O" }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
+        setCreating(false);
+        if (res.error || !res.pin) {
+          toast.error(res.error || (ar ? "تعذر إنشاء الغرفة" : "Could not create room"));
+          return;
+        }
+        if (res.creatorToken) sessionStorage.setItem(`xo-creator-${res.pin}`, res.creatorToken);
+        navigate(`/game/xo/play/${res.pin}?creator=1`);
+      });
+    } catch { setCreating(false); toast.error(ar ? "تعذر حفظ اللعبة تلقائياً" : "Could not auto-save the game"); }
+  };
+  if (!questions.length) return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><UnifiedQuestionSourceFlow gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"} gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."} gameIcon={<Grid3X3 className="h-8 w-8 text-[#225739]" />} accentColor="#225739" minQuestions={2} maxQuestions={20} onComplete={({ questions: q, sourceTitle }) => { setQuestions(q); setTitle(sourceTitle); }} /></main></Layout>;
+  return <Layout><main className="min-h-screen bg-[#FCFAF8] px-4 py-8" dir={dir}><div className="mx-auto max-w-2xl space-y-5">
+    <header className="rounded-3xl bg-[#225739] p-6 text-white shadow-lg"><div className="flex items-center gap-3"><Grid3X3 /><div><h1 className="text-xl font-black">{ar ? "إعداد إكس أو" : "XO setup"}</h1><p className="text-sm text-white/75">{questions.length} {ar ? "أسئلة جاهزة" : "questions ready"}</p></div></div></header>
+    <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm"><h2 className="mb-4 flex items-center gap-2 font-black text-[#225739]"><Users className="h-5 w-5" />{ar ? "أسماء الفريقين" : "Team names"}</h2><div className="grid gap-3 sm:grid-cols-2"><label className="font-bold text-slate-700">X<input value={teamX} onChange={e => setTeamX(e.target.value)} className="mt-1 w-full rounded-xl border p-3 outline-[#225739]" /></label><label className="font-bold text-slate-700">O<input value={teamO} onChange={e => setTeamO(e.target.value)} className="mt-1 w-full rounded-xl border p-3 outline-[#225739]" /></label></div></section>
+    <section className="rounded-3xl border border-[#225739]/10 bg-white p-5 shadow-sm"><h2 className="mb-3 flex items-center gap-2 font-black text-[#225739]"><Clock className="h-5 w-5" />{ar ? "وقت السؤال" : "Question duration"}</h2><div className="flex flex-wrap gap-2">{durations.map(d => <button key={d} onClick={() => setDuration(d)} className={`rounded-xl px-4 py-2 font-black ${duration === d ? "bg-[#225739] text-white" : "bg-[#F1F5F2] text-[#225739]"}`}>{d}{ar ? " ث" : "s"}</button>)}</div></section>
+    <div className="flex gap-3"><button onClick={() => setQuestions([])} className="rounded-2xl border px-4 font-bold">{ar ? "تغيير الأسئلة" : "Change questions"}</button><button onClick={create} disabled={creating} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#225739] py-4 font-black text-white disabled:opacity-60"><Play className="h-5 w-5" />{creating ? (ar ? "جارٍ الإنشاء..." : "Creating...") : (ar ? "إنشاء الغرفة" : "Create room")}</button></div>
+  </div></main></Layout>;
+}

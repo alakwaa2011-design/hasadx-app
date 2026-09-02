@@ -114,6 +114,9 @@ const TugCreate = lazy(() => import("@/pages/game/tug-create"));
 const TugJoin = lazy(() => import("@/pages/game/tug-join"));
 const TugPlay = lazy(() => import("@/pages/game/tug-play"));
 const TugClass = lazy(() => import("@/pages/game/tug-class"));
+const XoCreate = lazy(() => import("@/pages/game/xo-create"));
+const XoJoin = lazy(() => import("@/pages/game/xo-join"));
+const XoPlay = lazy(() => import("@/pages/game/xo-play"));
 const EscapeCreate = lazy(() => import("@/pages/game/escape-create"));
 const EscapeClass = lazy(() => import("@/pages/game/escape-class"));
 const EscapeHost = lazy(() => import("@/pages/game/escape-host"));
@@ -472,6 +475,11 @@ function Router() {
         <Route path="/game/tug/join/:pin?" component={TugJoin} />
         <Route path="/game/tug/play/:pin" component={TugPlay} />
         <Route path="/game/tug/class" component={TugClass} />
+        {/* XO educational game */}
+        <Route path="/game/xo/create" component={XoCreate} />
+        <Route path="/game/xo/join" component={XoJoin} />
+        <Route path="/game/xo/join/:pin" component={XoJoin} />
+        <Route path="/game/xo/play/:pin" component={XoPlay} />
         <Route path="/game/escape/create" component={EscapeCreate} />
         <Route path="/game/escape/class" component={EscapeClass} />
         <Route path="/game/escape/host/:pin" component={EscapeHost} />

@@ -91,6 +91,7 @@ import {
   ChevronRight,
   School,
   Dices,
+  Grid3X3,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
@@ -2082,6 +2083,7 @@ function CompetitiveTab({
       return;
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
+    else if (type === "xo") setLocation("/game/xo/create");
     else if (type === "escape_room") setLocation("/game/escape/create");
     else if (type === "rocket_race") setLocation("/game/rocket/create");
     else if (type === "wheel_of_fortune") setLocation("/game/wheel/create");
@@ -2147,6 +2149,15 @@ function CompetitiveTab({
       type: "tug_of_war",
       available: true,
       pill: t.dashboard.tugTag,
+    },
+    {
+      icon: <span className="text-4xl font-black">XO</span>,
+      title: lang === "ar" ? "إكس أو" : "XO",
+      desc: lang === "ar" ? "أجب عن السؤال ثم ضع علامتك للفوز بثلاثة مربعات." : "Answer questions and place your mark to make three in a row.",
+      color: "from-[#225739] to-[#4b7b5d]",
+      type: "xo",
+      available: true,
+      pill: lang === "ar" ? "جديد" : "New",
     },
     {
       icon: <EscapeVaultIcon size={56} />,
@@ -2395,7 +2406,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","escape_room","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat","million"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","xo","escape_room","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat","million"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
@@ -4377,6 +4388,13 @@ function AssignmentsTabRender({
       icon: Swords,
     },
     {
+      type: "xo",
+      title: lang === "ar" ? "إكس أو" : "XO",
+      desc: lang === "ar" ? "تحدي الفريقين على لوحة إكس أو" : "A two-team XO board challenge",
+      icon: Grid3X3,
+      tag: "New",
+    },
+    {
       type: "rocket_race",
       title: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
       desc: lang === "ar" ? "سباق فردي للصواريخ" : "Individual rocket race",
@@ -4416,6 +4434,9 @@ function AssignmentsTabRender({
         break;
       case "tug_of_war":
         setLocation("/game/tug/create");
+        break;
+      case "xo":
+        setLocation("/game/xo/create");
         break;
       case "rocket_race":
         setLocation("/game/rocket/create");

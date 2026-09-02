@@ -6,6 +6,7 @@ import { logger } from "./lib/logger";
 import { setupGameSocket } from "./game/socket-handlers";
 import { setupWhiteboardSocket } from "./game/whiteboard-handlers";
 import { setupTugSocket } from "./game/tug-handlers";
+import { setupXoSocket } from "./game/xo-handlers";
 import { setupRocketSocket } from "./game/rocket-handlers";
 import { setupFlagSocket } from "./game/flag-socket-handlers";
 import { setupColorSocket } from "./game/color-socket-handlers";
@@ -1431,7 +1432,7 @@ const io = new Server(httpServer, {
 // socket receives their corresponding event/disconnect handlers. Keep a
 // finite ceiling above that known baseline so unexpected registrations still
 // warn instead of disabling EventEmitter leak detection altogether.
-const SOCKET_LISTENER_BUDGET = 16;
+const SOCKET_LISTENER_BUDGET = 17;
 io.sockets.setMaxListeners(SOCKET_LISTENER_BUDGET);
 io.use((socket, next) => {
   socket.setMaxListeners(SOCKET_LISTENER_BUDGET);
@@ -1443,6 +1444,7 @@ io.engine.use(sessionMiddleware);
 setupGameSocket(io);
 setupWhiteboardSocket(io);
 setupTugSocket(io);
+setupXoSocket(io);
 setupRocketSocket(io);
 setupFlagSocket(io);
 setupColorSocket(io);
