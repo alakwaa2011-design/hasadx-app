@@ -228,21 +228,39 @@ export function normalizeSavedGameQuestions(value: unknown): SavedGameQuestion[]
         imageUrl: typeof question.imageUrl === "string" ? question.imageUrl : null,
       }];
     }
-    const options = Array.isArray(question.options)
-      ? question.options.filter((option): option is string => typeof option === "string").map(option => option.trim())
-      : ["optionA", "optionB", "optionC", "optionD"].map(key => typeof question[key] === "string" ? (question[key] as string).trim() : "");
-    const presentOptions = options.filter(Boolean).slice(0, 4);
+    const optionKeys = ["A", "B", "C", "D"] as const;
+    const keyedOptions = Array.isArray(question.options)
+      ? question.options.slice(0, 4).map((option, index) => ({
+          key: optionKeys[index],
+          value: typeof option === "string" ? option.trim() : "",
+        }))
+      : optionKeys.map(key => ({
+          key,
+          value: typeof question[`option${key}`] === "string"
+            ? (question[`option${key}`] as string).trim()
+            : "",
+        }));
+    const presentOptions = keyedOptions.filter(option => option.value);
     const requiredOptions = 2;
     if (presentOptions.length < requiredOptions) return [];
     const answer = question.correct ?? question.correctAnswer;
-    const correct = typeof answer === "number" && answer >= 0 && answer < presentOptions.length
-      ? answer
-      : typeof answer === "string" && ["A", "B", "C", "D"].includes(answer.toUpperCase())
-        ? ["A", "B", "C", "D"].indexOf(answer.toUpperCase())
-        : 0;
+    const normalizedAnswer = typeof answer === "string" ? answer.trim() : "";
+    const originalKey = typeof answer === "number" && Number.isInteger(answer)
+      ? optionKeys[answer]
+      : undefined;
+    const remappedCorrect = presentOptions.findIndex(option =>
+      option.key === originalKey
+      || option.key === normalizedAnswer.toUpperCase()
+      || option.value === normalizedAnswer
+    );
+    const correct = requestedType === "true_false"
+      ? (normalizedAnswer.toLowerCase() === "false" || normalizedAnswer.toLowerCase() === "b" || normalizedAnswer === "خطأ"
+          ? 1
+          : remappedCorrect >= 0 ? remappedCorrect : 0)
+      : remappedCorrect >= 0 ? remappedCorrect : 0;
     return [{
       text,
-      options: presentOptions,
+      options: presentOptions.map(option => option.value),
       correct,
       ...(requestedType === "true_false" ? { type: "true_false" as const } : {}),
       imageUrl: typeof question.imageUrl === "string" ? question.imageUrl : null,

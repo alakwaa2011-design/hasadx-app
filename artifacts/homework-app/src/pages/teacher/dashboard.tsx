@@ -324,10 +324,14 @@ type GameMode = "solo" | "teams" | "classroom" | "independent";
 type AssignmentLiveGameChoice =
   | "knowledge_race"
   | "tug_of_war"
+  | "xo"
+  | "escape_room"
   | "million"
   | "hack"
   | "rocket_race"
-  | "wheel_of_fortune";
+  | "wheel_of_fortune"
+  | "hotseat"
+  | "solo_challenge";
 
 /* ── URL-parameter parsing (exported for unit tests) ─────────────────────── */
 
@@ -619,6 +623,14 @@ export default function TeacherDashboard() {
       setLocation(`/game/tug/create?assignmentId=${id}`);
       return;
     }
+    if (choice === "xo") {
+      setLocation(`/game/xo/create?assignmentId=${id}`);
+      return;
+    }
+    if (choice === "escape_room") {
+      setLocation(`/game/escape/create?assignmentId=${id}`);
+      return;
+    }
     if (choice === "rocket_race") {
       setLocation(`/game/rocket/create?assignmentId=${id}`);
       return;
@@ -648,6 +660,14 @@ export default function TeacherDashboard() {
           setLocation(`/teacher/game/${res.pin}`);
         },
       );
+      return;
+    }
+    if (choice === "hotseat") {
+      setLocation(`/game/hotseat/create?assignmentId=${id}`);
+      return;
+    }
+    if (choice === "solo_challenge") {
+      setLocation("/teacher/solo-challenges/new");
     }
   };
 
@@ -1460,6 +1480,26 @@ export default function TeacherDashboard() {
                       gradient: "from-blue-500 to-indigo-600",
                     },
                     {
+                      key: "xo" as const,
+                      icon: <span className="text-4xl font-black text-primary">XO</span>,
+                      svgIcon: false,
+                      titleAr: "إكس أو",
+                      titleEn: "XO",
+                      descAr: "أجب ثم ضع علامتك للفوز بثلاثة مربعات.",
+                      descEn: "Answer questions and make three in a row.",
+                      gradient: "from-emerald-600 to-green-800",
+                    },
+                    {
+                      key: "escape_room" as const,
+                      icon: <EscapeVaultIcon size={56} />,
+                      svgIcon: true,
+                      titleAr: "غرفة الهروب",
+                      titleEn: "Escape Room",
+                      descAr: "افتح الأقفال بالإجابات الصحيحة قبل انتهاء الوقت.",
+                      descEn: "Unlock the room with correct answers before time runs out.",
+                      gradient: "from-amber-500 to-yellow-700",
+                    },
+                    {
                       key: "million" as const,
                       icon: <MillionIcon size={56} />,
                       svgIcon: true,
@@ -1506,6 +1546,26 @@ export default function TeacherDashboard() {
                       descEn:
                         "Spin the wheel for a random question — teams compete for points.",
                       gradient: "from-pink-500 to-rose-600",
+                    },
+                    {
+                      key: "hotseat" as const,
+                      icon: <HotSeatIcon size={56} />,
+                      svgIcon: true,
+                      titleAr: "الكرسي الساخن",
+                      titleEn: "Hot Seat",
+                      descAr: "طالب على الكرسي والجميع يشارك في التحدي.",
+                      descEn: "One student takes the hot seat while everyone joins in.",
+                      gradient: "from-orange-500 to-red-600",
+                    },
+                    {
+                      key: "solo_challenge" as const,
+                      icon: <span className="text-4xl">🎯</span>,
+                      svgIcon: false,
+                      titleAr: "مسابقة ذاتية",
+                      titleEn: "Self Challenge",
+                      descAr: "أنشئ رابطًا يجيب فيه كل طالب بمفرده.",
+                      descEn: "Create a shareable link for individual play.",
+                      gradient: "from-yellow-500 to-amber-700",
                     },
                   ] as Array<{
                     key: AssignmentLiveGameChoice;

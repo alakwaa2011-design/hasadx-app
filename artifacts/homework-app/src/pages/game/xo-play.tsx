@@ -9,6 +9,7 @@ import { QRModalButton } from "@/components/game-qr-code";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
+import { localizeXoError } from "@/lib/xo-error-messages";
 import {
   getIsMuted,
   playCorrectSound,
@@ -24,7 +25,14 @@ import {
 } from "@/lib/game-sounds";
 
 type Mark = "x" | "o" | null;
-type Question = { text: string; options: string[]; imageUrl?: string | null; duration?: number; remainingSecs?: number };
+type Question = {
+  text: string;
+  options: string[];
+  type?: "mcq" | "true_false";
+  imageUrl?: string | null;
+  duration?: number;
+  remainingSecs?: number;
+};
 type Player = { id: string; name: string; team: "x" | "o" };
 type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; timerRemainingSecs?: number; players?: Player[]; teamNames?: { x: string; o: string }; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
 
@@ -67,12 +75,19 @@ export default function XoPlay() {
   useEffect(() => {
     const socket = socketRef.current;
     const initialise = () => {
-      if (creator) socket.emit("xo:reclaim-host", { pin }, (r: Snapshot & { error?: string }) => r.error ? toast.error(r.error) : merge(r));
+      if (creator) socket.emit("xo:reclaim-host", { pin }, (r: Snapshot & { error?: string }) =>
+        r.error
+          ? toast.error(localizeXoError(r.error, ar, ar ? "تعذر استعادة غرفة المعلم" : "Could not restore the teacher room"))
+          : merge(r)
+      );
       else {
         let stored: { id?: string; rejoinToken?: string } = {};
         try { stored = JSON.parse(localStorage.getItem(`xo-player-${pin}`) || "{}"); } catch {}
         socket.emit("xo:join", { pin, name, playerId: stored.id, rejoinToken: stored.rejoinToken }, (joined: { error?: string; state?: Snapshot; player?: { id: string; rejoinToken: string } }) => {
-          if (joined.error) { toast.error(joined.error); return; }
+          if (joined.error) {
+            toast.error(localizeXoError(joined.error, ar, ar ? "تعذر الانضمام إلى اللعبة" : "Could not join the game"));
+            return;
+          }
           if (joined.player) {
             setPlayerId(joined.player.id);
             localStorage.setItem(`xo-player-${pin}`, JSON.stringify(joined.player));
@@ -96,7 +111,10 @@ export default function XoPlay() {
       toast.info(ar ? "أنهى المعلم اللعبة" : "The teacher ended the game");
       navigate("/game/xo/join");
     });
-    socket.on("xo:error", (d: { message?: string } | string) => toast.error(typeof d === "string" ? d : d.message || "XO error"));
+    socket.on("xo:error", (d: { message?: string } | string) => {
+      const message = typeof d === "string" ? d : d.message;
+      toast.error(localizeXoError(message, ar, ar ? "خطأ في اللعبة" : "XO error"));
+    });
     return () => { events.forEach(([e, h]) => socket.off(e, h)); socket.off("connect", initialise); socket.off("xo:answer-result"); socket.off("xo:ended"); socket.off("xo:error"); };
   }, [ar, creator, merge, name, navigate, pin]);
 
@@ -192,7 +210,7 @@ export default function XoPlay() {
           <div>
             <h1 className="font-black leading-tight text-foreground">{ar ? "إكس أو" : "XO"}</h1>
             <div className="text-xs font-bold tracking-widest text-muted-foreground flex items-center gap-1.5" dir="ltr">
-              PIN: <span className="font-mono text-primary">{pin}</span>
+              {ar ? "الرمز" : "PIN"}: <span className="font-mono text-primary">{pin}</span>
             </div>
           </div>
         </div>
@@ -200,14 +218,14 @@ export default function XoPlay() {
           {creator && <QRModalButton url={joinUrl} pin={pin} label="QR" variant="light" />}
           <button
             onClick={() => { navigator.clipboard?.writeText(joinUrl); toast.success(ar ? "تم نسخ الرابط" : "Link copied"); }}
-            aria-label="Copy join link"
+            aria-label={ar ? "نسخ رابط الانضمام" : "Copy join link"}
             className="rounded-lg border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Copy className="h-5 w-5" />
           </button>
           <button
             onClick={toggleMute}
-            aria-label={muted ? "Unmute" : "Mute"}
+            aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}
             className="rounded-lg border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -253,6 +271,9 @@ export default function XoPlay() {
                     {question.options.slice(0, 4).map((o, i) => {
                       const isSelected = selected === i;
                       const answerColor = XO_ANSWER_COLORS[i] ?? XO_ANSWER_COLORS[0];
+                      const optionText = question.type === "true_false"
+                        ? (i === 0 ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False"))
+                        : o;
                       let btnState = "default";
                       if (isSelected) {
                         if (answerResult === true) btnState = "correct";
@@ -281,9 +302,9 @@ export default function XoPlay() {
                             btnState === "selected" ? "bg-primary text-primary-foreground" : "bg-white/20 text-white"
                           )}
                             style={btnState === "default" ? { background: answerColor.badge } : undefined}>
-                            {["A","B","C","D"][i]}
+                            {(ar ? ["أ", "ب", "ج", "د"] : ["A", "B", "C", "D"])[i]}
                           </span>
-                          <span className="flex-1">{o}</span>
+                          <span className="flex-1">{optionText}</span>
                           {btnState === "correct" && <CheckCircle className="ms-2 h-5 w-5 text-white" />}
                           {btnState === "wrong" && <XCircle className="ms-2 h-5 w-5 text-white" />}
                         </button>

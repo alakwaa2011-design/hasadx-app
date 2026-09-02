@@ -6,6 +6,7 @@ export interface XoClassQuestion {
   text: string;
   options: string[];
   correct: number;
+  type?: "mcq" | "true_false";
   imageUrl?: string | null;
 }
 

@@ -11,6 +11,24 @@ describe("XO engine", () => {
     expect(clientQuestion(questions[0])).toEqual({ text: "2 + 2", options: ["3", "4"], duration: 20, imageUrl: null });
   });
 
+  it("preserves question images and true/false type for clients", () => {
+    const [question] = validateXoQuestions([{
+      text: "Is this true?",
+      options: ["True", "False"],
+      correct: 0,
+      type: "true_false",
+      imageUrl: "/objects/questions/example.png",
+    }])!;
+
+    expect(clientQuestion(question)).toEqual({
+      text: "Is this true?",
+      options: ["True", "False"],
+      duration: 20,
+      type: "true_false",
+      imageUrl: "/objects/questions/example.png",
+    });
+  });
+
   it("only grants a placement to the correct active-team responder", () => {
     const start = createXoState();
     expect(answerXoQuestion(start, questions, "o-player", "o", 1)).toMatchObject({ ok: false });

@@ -11,6 +11,7 @@ export interface XoQuestion {
   options: string[];
   correct: number;
   duration: number;
+  type?: "mcq" | "true_false";
   imageUrl?: string | null;
 }
 
@@ -18,6 +19,7 @@ export interface ClientXoQuestion {
   text: string;
   options: string[];
   duration: number;
+  type?: "mcq" | "true_false";
   imageUrl: string | null;
 }
 
@@ -53,6 +55,7 @@ export function clientQuestion(question: XoQuestion): ClientXoQuestion {
     text: question.text,
     options: [...question.options],
     duration: question.duration,
+    ...(question.type === "true_false" ? { type: "true_false" as const } : {}),
     imageUrl: question.imageUrl ?? null,
   };
 }
@@ -133,6 +136,7 @@ export function validateXoQuestions(value: unknown, defaultDuration = 20): XoQue
       options: options.map((option) => option.slice(0, 1000)),
       correct: q.correct!,
       duration: Number.isFinite(q.duration) ? Math.max(5, Math.min(120, Math.floor(q.duration!))) : duration,
+      ...(q.type === "true_false" ? { type: "true_false" as const } : {}),
       imageUrl: typeof q.imageUrl === "string" ? q.imageUrl.slice(0, 2000) : null,
     });
   }

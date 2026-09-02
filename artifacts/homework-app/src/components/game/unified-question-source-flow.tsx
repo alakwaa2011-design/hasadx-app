@@ -613,7 +613,7 @@ export function UnifiedQuestionSourceFlow({
       if (q.type === "tf") {
         return {
           text: q.text,
-          options: ["صح", "خطأ"],
+          options: ar ? ["صح", "خطأ"] : ["True", "False"],
           correct: q.correctAnswer === "B" ? 1 : 0,
           type: "true_false" as const,
           imageUrl: q.imageUrl || null,

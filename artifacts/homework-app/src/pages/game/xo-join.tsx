@@ -42,7 +42,7 @@ export default function XoJoin() {
           </div>
           <button
             type="button"
-            aria-label={muted ? "Unmute" : "Mute"}
+            aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}
             onClick={toggle}
             data-testid="button-toggle-mute"
             className="rounded-xl bg-muted/50 p-3 text-muted-foreground transition hover:bg-muted hover:text-foreground"

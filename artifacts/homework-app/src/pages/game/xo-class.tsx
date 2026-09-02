@@ -116,7 +116,11 @@ function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name:
             <p className="text-center text-lg font-black leading-relaxed text-foreground">{question.text}</p>
 
             {question.imageUrl && (
-              <QuestionImage src={question.imageUrl} alt="" className="mx-auto max-h-40 rounded-xl border border-border shadow-sm object-contain bg-muted/20" />
+              <QuestionImage
+                src={question.imageUrl}
+                alt={ar ? "صورة السؤال" : "Question image"}
+                className="mx-auto max-h-40 w-full rounded-xl border border-border bg-muted/20 object-contain shadow-sm"
+              />
             )}
 
             <div className="mt-2 grid gap-3">
@@ -149,7 +153,11 @@ function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name:
                         {answerLabels[index]}
                         </span>
                       </b>
-                      <span>{option}</span>
+                      <span>
+                        {question.type === "true_false"
+                          ? (index === 0 ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False"))
+                          : option}
+                      </span>
                     </span>
                   </button>
                 );
@@ -266,7 +274,9 @@ export default function XoClass() {
     );
   }
 
-  const teamName = state.activeTeam === "x" ? (setup.current!.teamX || "Team X") : (setup.current!.teamO || "Team O");
+  const teamName = state.activeTeam === "x"
+    ? (setup.current!.teamX || (ar ? "فريق إكس" : "Team X"))
+    : (setup.current!.teamO || (ar ? "فريق أو" : "Team O"));
   const isFinished = state.status === "finished";
   const winningCells = getWinningCells(state.board);
 
@@ -318,20 +328,20 @@ export default function XoClass() {
                 <span className="hidden xl:inline">{ar ? "نسخ" : "Copy"}</span>
               </button>
               <div className="h-6 w-px bg-white/10 mx-1" />
-              <button aria-label={paused ? "Resume" : "Pause"} onClick={() => setPaused(!paused)} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white">
+              <button aria-label={paused ? (ar ? "استئناف" : "Resume") : (ar ? "إيقاف مؤقت" : "Pause")} onClick={() => setPaused(!paused)} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white">
                 {paused ? <Play className="h-5 w-5 fill-current" /> : <Pause className="h-5 w-5 fill-current" />}
               </button>
-              <button aria-label="Toggle sound" onClick={handleToggleMute} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white">
+              <button aria-label={ar ? "تبديل الصوت" : "Toggle sound"} onClick={handleToggleMute} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white">
                 {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
               </button>
-              <button aria-label="Restart" onClick={() => { setPaused(false); dispatch({ type: "restart" }); }} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white">
+              <button aria-label={ar ? "إعادة اللعب" : "Restart"} onClick={() => { setPaused(false); dispatch({ type: "restart" }); }} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white">
                 <RotateCcw className="h-5 w-5" />
               </button>
             </div>
           </header>
 
           <div className="grid flex-1 items-center gap-4 py-1 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
-            <TeamPanel team="x" name={setup.current!.teamX || "Team X"} state={state} ar={ar} dispatch={dispatch} />
+            <TeamPanel team="x" name={setup.current!.teamX || (ar ? "فريق إكس" : "Team X")} state={state} ar={ar} dispatch={dispatch} />
 
             <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-emerald-200/10 bg-gradient-to-b from-[#173b42]/90 via-[#0d2730]/90 to-[#091a25]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
               <div className="mb-8 w-full text-center">
@@ -360,7 +370,7 @@ export default function XoClass() {
                     return (
                       <button
                         key={index}
-                        aria-label={`Cell ${index + 1}`}
+                        aria-label={ar ? `الخانة ${index + 1}` : `Cell ${index + 1}`}
                         disabled={!canPlace}
                         onClick={() => dispatch({ type: "place", team: state.activeTeam, cell: index })}
                         className={cn(
@@ -381,7 +391,7 @@ export default function XoClass() {
               </div>
             </section>
 
-            <TeamPanel team="o" name={setup.current!.teamO || "Team O"} state={state} ar={ar} dispatch={dispatch} />
+            <TeamPanel team="o" name={setup.current!.teamO || (ar ? "فريق أو" : "Team O")} state={state} ar={ar} dispatch={dispatch} />
           </div>
         </div>
 

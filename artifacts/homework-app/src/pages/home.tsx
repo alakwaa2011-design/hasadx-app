@@ -224,6 +224,38 @@ function GuestGateModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+type QuickLiveGame =
+  | "knowledge_race"
+  | "tug_of_war"
+  | "xo"
+  | "escape_room"
+  | "rocket_race"
+  | "wheel_of_fortune"
+  | "hotseat"
+  | "million"
+  | "hack"
+  | "solo_challenge";
+
+const QUICK_LIVE_GAMES: Array<{
+  key: QuickLiveGame;
+  icon: string;
+  titleAr: string;
+  titleEn: string;
+  descAr: string;
+  descEn: string;
+}> = [
+  { key: "knowledge_race", icon: "⚡", titleAr: "وميض", titleEn: "Wameedh", descAr: "مسابقة حية سريعة للصف", descEn: "Fast live classroom quiz" },
+  { key: "tug_of_war", icon: "🪢", titleAr: "شد الحبل", titleEn: "Tug of War", descAr: "فريقان يتنافسان بالإجابات", descEn: "Two teams battle with answers" },
+  { key: "xo", icon: "✕◯", titleAr: "إكس أو", titleEn: "XO", descAr: "أجب ثم ضع علامتك على اللوحة", descEn: "Answer, then place your mark" },
+  { key: "escape_room", icon: "🔐", titleAr: "غرفة الهروب", titleEn: "Escape Room", descAr: "افتح الأقفال قبل انتهاء الوقت", descEn: "Unlock the room before time runs out" },
+  { key: "rocket_race", icon: "🚀", titleAr: "سباق الصواريخ", titleEn: "Rocket Race", descAr: "السرعة والدقة ترفعان صاروخك", descEn: "Speed and accuracy launch your rocket" },
+  { key: "wheel_of_fortune", icon: "🎡", titleAr: "عجلة التحدي", titleEn: "Wheel of Challenge", descAr: "أدر العجلة واختر السؤال", descEn: "Spin the wheel and pick a question" },
+  { key: "hotseat", icon: "🔥", titleAr: "الكرسي الساخن", titleEn: "Hot Seat", descAr: "طالب على الكرسي والجميع يشارك", descEn: "One student takes the hot seat" },
+  { key: "million", icon: "🏆", titleAr: "من سيحصد المليون؟", titleEn: "Who Wants a Million?", descAr: "أسئلة متصاعدة مع وسائل مساعدة", descEn: "Escalating questions and lifelines" },
+  { key: "hack", icon: "🧩", titleAr: "لعبة الاختراق", titleEn: "Hack Game", descAr: "ماراثون تنافسي مليء بالمفاجآت", descEn: "A competitive marathon full of surprises" },
+  { key: "solo_challenge", icon: "🎯", titleAr: "مسابقة ذاتية", titleEn: "Self Challenge", descAr: "أنشئ رابطًا يجيب فيه كل طالب بمفرده", descEn: "Share a link for individual play" },
+];
+
 function WameethQuickStartModal({
   assignments,
   onClose,
@@ -234,13 +266,30 @@ function WameethQuickStartModal({
   const [, setLocation] = useLocation();
   const { lang } = useI18n();
   const [selected, setSelected] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<QuickLiveGame>("knowledge_race");
   const [error, setError] = useState<string | null>(null);
 
   const handleStart = () => {
-    if (selected === null || loading) return;
+    if (selectedGame === "solo_challenge") {
+      onClose();
+      setLocation("/teacher/solo-challenges/new");
+      return;
+    }
+    if (selected === null) return;
     onClose();
-    setLocation(getWameethSetupPath(selected));
+    const assignmentId = selected;
+    const paths: Partial<Record<Exclude<QuickLiveGame, "solo_challenge">, string>> = {
+      knowledge_race: getWameethSetupPath(assignmentId),
+      tug_of_war: `/game/tug/create?assignmentId=${assignmentId}`,
+      xo: `/game/xo/create?assignmentId=${assignmentId}`,
+      escape_room: `/game/escape/create?assignmentId=${assignmentId}`,
+      rocket_race: `/game/rocket/create?assignmentId=${assignmentId}`,
+      wheel_of_fortune: `/game/wheel/create?assignmentId=${assignmentId}`,
+      hotseat: `/game/hotseat/create?assignmentId=${assignmentId}`,
+      million: `/game/million?assignmentId=${assignmentId}`,
+      hack: `/game/hack?assignmentId=${assignmentId}`,
+    };
+    setLocation(paths[selectedGame] ?? getWameethSetupPath(assignmentId));
   };
 
   return (
@@ -255,7 +304,7 @@ function WameethQuickStartModal({
         initial={{ scale: 0.92, y: 16 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.92 }}
-        className="bg-gradient-to-br from-amber-950 to-orange-950 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-white/10 relative max-h-[85vh] flex flex-col"
+        className="bg-gradient-to-br from-amber-950 to-orange-950 rounded-3xl p-6 max-w-4xl w-full shadow-2xl border border-white/10 relative max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
         dir={lang === "ar" ? "rtl" : "ltr"}
       >
@@ -282,7 +331,48 @@ function WameethQuickStartModal({
           </div>
         </div>
 
-        {assignments.length === 0 ? (
+        <div className="mb-5">
+          <p className="text-white/70 text-xs font-bold mb-2.5">
+            {lang === "ar" ? "اختر نوع المسابقة" : "Choose a live game"}
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {QUICK_LIVE_GAMES.map((game) => {
+              const active = selectedGame === game.key;
+              return (
+                <button
+                  key={game.key}
+                  type="button"
+                  onClick={() => setSelectedGame(game.key)}
+                  className={`text-start rounded-2xl border p-3 transition-all ${
+                    active
+                      ? "border-amber-300 bg-amber-400/20 shadow-lg shadow-amber-950/20"
+                      : "border-white/10 bg-white/5 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="text-xl leading-none block mb-2">{game.icon}</span>
+                  <span className="block text-white text-xs font-black leading-tight">
+                    {lang === "ar" ? game.titleAr : game.titleEn}
+                  </span>
+                  <span className="block text-white/45 text-[10px] leading-snug mt-1">
+                    {lang === "ar" ? game.descAr : game.descEn}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {selectedGame === "solo_challenge" ? (
+          <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-5 text-center mb-5">
+            <div className="text-4xl mb-2">🎯</div>
+            <p className="text-white font-black">
+              {lang === "ar" ? "مسابقة ذاتية بدون غرفة مباشرة" : "A self-paced challenge without a live room"}
+            </p>
+            <p className="text-white/55 text-sm mt-1">
+              {lang === "ar" ? "ستنتقل إلى صفحة إنشاء المسابقة وإعداد رابط المشاركة." : "You’ll open the challenge creator to prepare a shareable link."}
+            </p>
+          </div>
+        ) : assignments.length === 0 ? (
           <div className="text-center py-8 text-white/50 text-sm flex-1">
             {lang === "ar"
               ? "لا توجد مسابقات بعد — أنشئ أولاً."
@@ -327,20 +417,13 @@ function WameethQuickStartModal({
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={handleStart}
-          disabled={selected === null || loading}
+          disabled={selectedGame !== "solo_challenge" && selected === null}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-base shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {loading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              {lang === "ar" ? "جارٍ الإنشاء..." : "Creating..."}
-            </>
-          ) : (
-            <>
-              <Zap className="w-5 h-5" />
-              {lang === "ar" ? "لعبة مباشرة!" : "Live Game!"}
-            </>
-          )}
+          <Zap className="w-5 h-5" />
+          {selectedGame === "solo_challenge"
+            ? lang === "ar" ? "إنشاء مسابقة ذاتية" : "Create self challenge"
+            : lang === "ar" ? "ابدأ المسابقة" : "Start game"}
         </motion.button>
       </motion.div>
     </motion.div>

@@ -10,9 +10,37 @@ import { toast } from "@/components/ui/sonner";
 import { XO_CLASS_SETUP_KEY } from "@/pages/game/xo-class";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
+import { localizeXoError } from "@/lib/xo-error-messages";
 
-type Question = { text: string; options: string[]; correct: number; imageUrl?: string | null };
+type Question = {
+  text: string;
+  options: string[];
+  correct: number;
+  type?: "mcq" | "true_false";
+  imageUrl?: string | null;
+};
+type QuestionSource = "assignment" | "ai" | "manual" | "bank" | "saved" | "file";
 const durations = [10, 15, 20, 30, 45];
+
+function toXoQuestions(questions: Array<{
+  text: string;
+  options: string[];
+  correct: number;
+  type?: "mcq" | "true_false" | "fill_blank";
+  imageUrl?: string | null;
+}>): Question[] {
+  return questions.flatMap((question) =>
+    question.type === "fill_blank"
+      ? []
+      : [{
+          text: question.text,
+          options: question.options,
+          correct: question.correct,
+          type: question.type,
+          imageUrl: question.imageUrl,
+        }]
+  );
+}
 
 export default function XoCreate() {
   const { lang } = useI18n();
@@ -20,6 +48,7 @@ export default function XoCreate() {
   const dir = ar ? "rtl" : "ltr";
   const [, navigate] = useLocation();
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionSource, setQuestionSource] = useState<QuestionSource>("manual");
   const [title, setTitle] = useState<string | null>(null);
   const [teamX, setTeamX] = useState(ar ? "فريق إكس" : "Team X");
   const [teamO, setTeamO] = useState(ar ? "فريق أو" : "Team O");
@@ -29,12 +58,17 @@ export default function XoCreate() {
   const loadedSavedGameRef = useRef(false);
 
   useEffect(() => {
+    setTeamX(current => current === "فريق إكس" || current === "Team X" ? (ar ? "فريق إكس" : "Team X") : current);
+    setTeamO(current => current === "فريق أو" || current === "Team O" ? (ar ? "فريق أو" : "Team O") : current);
+  }, [ar]);
+
+  useEffect(() => {
     const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
     if (!savedGameId || loadedSavedGameRef.current) return;
     loadedSavedGameRef.current = true;
     void getSavedGameActivity(savedGameId).then((activity) => {
       if (activity.gameType !== "xo") throw new Error("invalid-saved-game");
-      const restored = normalizeSavedGameQuestions(activity.questions).filter((q) =>
+      const restored = toXoQuestions(normalizeSavedGameQuestions(activity.questions)).filter((q) =>
         q.text.trim() && q.options.length >= 2 && q.options.length <= 4
         && q.options.every((option) => option.trim())
         && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length
@@ -59,7 +93,7 @@ export default function XoCreate() {
     }
     setCreating(true);
     try {
-      await saveGameActivity({ gameType: "xo", title: title || (ar ? "إكس أو" : "XO"), questions, settings: { duration, teamX, teamO, playMode }, source: "game-launch" });
+      await saveGameActivity({ gameType: "xo", title: title || (ar ? "إكس أو" : "XO"), questions, settings: { duration, teamX, teamO, playMode }, source: questionSource });
       if (playMode === "classroom") {
         const setup: XoClassSetup = {
           questions,
@@ -76,7 +110,7 @@ export default function XoCreate() {
       getXoSocket().emit("xo:create", { questions, duration, teamX: teamX.trim() || "X", teamO: teamO.trim() || "O" }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
         setCreating(false);
         if (res.error || !res.pin) {
-          toast.error(res.error || (ar ? "تعذر إنشاء الغرفة" : "Could not create room"));
+          toast.error(localizeXoError(res.error, ar, ar ? "تعذر إنشاء الغرفة" : "Could not create room"));
           return;
         }
         if (res.creatorToken) sessionStorage.setItem(`xo-creator-${res.pin}`, res.creatorToken);
@@ -99,7 +133,11 @@ export default function XoCreate() {
             accentClass="bg-primary hover:bg-primary/90 text-primary-foreground"
             minQuestions={2}
             maxQuestions={20}
-            onComplete={({ questions: q, sourceTitle }) => { setQuestions(q); setTitle(sourceTitle); }}
+            onComplete={({ questions: q, sourceTitle, source }) => {
+              setQuestions(toXoQuestions(q));
+              setQuestionSource(source);
+              setTitle(sourceTitle);
+            }}
           />
         </main>
       </Layout>

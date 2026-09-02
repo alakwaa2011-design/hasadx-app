@@ -12,6 +12,20 @@ afterEach(() => {
 });
 
 describe("normalizeSavedGameQuestions", () => {
+  it("remaps a numeric correct answer after sparse options are removed", () => {
+    expect(normalizeSavedGameQuestions([{
+      text: "Choose C",
+      options: ["A", "", "C", "D"],
+      correct: 2,
+      imageUrl: "/objects/question.png",
+    }])).toEqual([{
+      text: "Choose C",
+      options: ["A", "C", "D"],
+      correct: 1,
+      imageUrl: "/objects/question.png",
+    }]);
+  });
+
   it("normalizes both persisted MCQ shapes and ignores unsafe records", () => {
     expect(normalizeSavedGameQuestions([
       { text: " Capitals? ", options: ["Amman", "Cairo", "Riyadh", "Doha"], correct: 2 },
