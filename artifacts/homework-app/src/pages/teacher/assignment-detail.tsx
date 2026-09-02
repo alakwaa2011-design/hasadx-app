@@ -1145,6 +1145,20 @@ export default function TeacherAssignmentDetail() {
                 {t.assignmentDetail.addNewQuestion}
               </Button>
             </div>
+
+            {/* Keep a second save action next to the end of the question editor.
+                The global Hasaad Guide is fixed to the bottom edge, so reserve
+                that area on mobile and keep the action centered on desktop. */}
+            <div className={`flex justify-center pt-2 pb-20 sm:pb-8 ${lang === "ar" ? "ps-14" : "pe-14"} sm:px-0`}>
+              <Button
+                onClick={saveAssignment}
+                disabled={updateAssignmentMutation.isPending}
+                className="w-full sm:w-auto min-w-[220px] gap-2 shadow-md"
+              >
+                <Save className="w-4 h-4" />
+                {updateAssignmentMutation.isPending ? t.assignmentDetail.savingChanges : t.assignmentDetail.saveChanges}
+              </Button>
+            </div>
           </div>
         ) : (
           <>

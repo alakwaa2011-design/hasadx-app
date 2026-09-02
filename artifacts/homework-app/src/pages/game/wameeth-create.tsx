@@ -177,7 +177,7 @@ export default function WameethCreate() {
       if (parts.length === 0) return null;
       return { ...emptyQuestion("fill_blank"), text: q.text, fillAnswer: parts[0], closeAnswers: parts.slice(1).join(", "), imageUrl: q.imageUrl || null };
     }
-    if (!(q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)) return null;
+    if (!(q.optionA && q.optionB && q.correctAnswer)) return null;
     return {
       ...emptyQuestion("mcq"),
       text: q.text,
@@ -502,7 +502,12 @@ export default function WameethCreate() {
       if (mode === "classroom") {
         const qs = classroomEligible.map(q => q.type === "tf"
           ? { text: q.text, options: [ar ? "صح" : "True", ar ? "خطأ" : "False"], correct: q.correctAnswer === "A" ? 0 : 1, imageUrl: q.imageUrl || null }
-          : { text: q.text, options: [q.optionA, q.optionB, q.optionC, q.optionD], correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer), imageUrl: q.imageUrl || null });
+          : (() => {
+              const allOptions = [q.optionA, q.optionB, q.optionC, q.optionD];
+              const correctValue = allOptions[["A", "B", "C", "D"].indexOf(q.correctAnswer)];
+              const options = allOptions.filter(option => option.trim());
+              return { text: q.text, options, correct: Math.max(0, options.indexOf(correctValue)), imageUrl: q.imageUrl || null };
+            })());
         sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({ questions: qs, duration: 20, title: title || undefined }));
         const token = await createPlayLink(assignmentId, "wameeth_class");
         setLocation(`/game/wameeth/class?token=${encodeURIComponent(token)}`);

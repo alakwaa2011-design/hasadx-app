@@ -14,6 +14,7 @@ import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -39,6 +40,7 @@ interface BankQuestion {
   points: number;
   tags: string | null;
   imageUrl?: string | null;
+  questionType?: string | null;
 }
 
 const correctAnswerToIndex = (ca: string | null): number => {
@@ -48,8 +50,12 @@ const correctAnswerToIndex = (ca: string | null): number => {
 
 const bankToTug = (bq: BankQuestion): TugQuestion => ({
   text: bq.text,
-  options: [bq.optionA || "", bq.optionB || "", bq.optionC || "", bq.optionD || ""],
-  correct: correctAnswerToIndex(bq.correctAnswer),
+  options: bq.questionType === "true_false"
+    ? ["صح", "خطأ"]
+    : [bq.optionA, bq.optionB, bq.optionC, bq.optionD].filter((option): option is string => !!option?.trim()),
+  correct: bq.questionType === "true_false"
+    ? (bq.correctAnswer === "false" || bq.correctAnswer === "B" ? 1 : 0)
+    : correctAnswerToIndex(bq.correctAnswer),
   imageUrl: bq.imageUrl || null,
 });
 
@@ -109,14 +115,16 @@ export default function TugCreate() {
         const r = await fetch(`${API_BASE}/api/assignments/${parsedId}`, { credentials: "include" });
         if (!r.ok) return;
         const data = await r.json();
-        type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; imageUrl?: string | null };
-        const qs = ((data.questions || []) as RawQ[])
-          .filter(q => q.questionType === "mcq" && !!q.optionA && !!q.optionB && !!q.optionC && !!q.optionD && !!q.correctAnswer)
-          .map(q => bankToTug({
-            id: 0, subject: data.subject || "", text: q.text || "",
-            optionA: q.optionA || "", optionB: q.optionB || "", optionC: q.optionC || "", optionD: q.optionD || "",
-            correctAnswer: q.correctAnswer || "A", points: 1, tags: null, imageUrl: q.imageUrl || null,
-          } as BankQuestion))
+        const qs = ((data.questions || []) as any[])
+          .flatMap(q => {
+            const normalized = normalizeGameQuestion(q, { trueLabel: ar ? "صح" : "True", falseLabel: ar ? "خطأ" : "False" });
+            return normalized ? [{
+              text: normalized.text,
+              options: normalized.options,
+              correct: normalized.correct,
+              imageUrl: normalized.imageUrl,
+            }] : [];
+          })
           .slice(0, 20);
         if (qs.length > 0) {
           setQuestions(qs);
@@ -196,7 +204,11 @@ export default function TugCreate() {
       if (res.status === 401) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setBankOpen(false); return; }
       if (res.ok) {
         const data = await res.json();
-        setBankQuestions(data.filter((q: BankQuestion) => q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer));
+        setBankQuestions(data.filter((q: BankQuestion) =>
+          !!q.correctAnswer && (
+            q.questionType === "true_false"
+            || [q.optionA, q.optionB, q.optionC, q.optionD].filter(option => !!option?.trim()).length >= 2
+          )));
       }
     } catch { /* ignore */ } finally { setBankLoading(false); }
   }, [ar]);
@@ -243,15 +255,16 @@ export default function TugCreate() {
       const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
       if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
       const data = await res.json();
-      const qs = (data.questions || [])
-        .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
-          q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
-        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number; imageUrl?: string | null }) => bankToTug({
-          id: q.id, subject: data.subject || "", text: q.text,
-          optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-          correctAnswer: q.correctAnswer, points: q.points || 1, tags: null, imageUrl: q.imageUrl || null,
-        } as BankQuestion));
-      if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد في هذا الواجب" : "No MCQ questions found"); return; }
+      const qs = (data.questions || []).flatMap((q: any) => {
+        const normalized = normalizeGameQuestion(q, { trueLabel: ar ? "صح" : "True", falseLabel: ar ? "خطأ" : "False" });
+        return normalized ? [{
+          text: normalized.text,
+          options: normalized.options,
+          correct: normalized.correct,
+          imageUrl: normalized.imageUrl,
+        }] : [];
+      });
+      if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار أو صح وخطأ في هذا الواجب" : "No choice or true/false questions found"); return; }
       const sliced = qs.slice(0, 20);
       setQuestions(sliced);
       setQuestionCount(sliced.length);

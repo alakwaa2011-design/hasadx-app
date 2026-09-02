@@ -32,6 +32,16 @@ describe("normalizeSavedGameQuestions", () => {
     ]);
   });
 
+  it("keeps two and three-option questions in saved games", () => {
+    expect(normalizeSavedGameQuestions([
+      { text: "Two", options: ["A", "B"], correct: 1 },
+      { text: "Three", options: ["A", "B", "C"], correct: 2 },
+    ])).toEqual([
+      { text: "Two", options: ["A", "B"], correct: 1, imageUrl: null },
+      { text: "Three", options: ["A", "B", "C"], correct: 2, imageUrl: null },
+    ]);
+  });
+
   it("does not parse a successful no-content delete response", async () => {
     const json = vi.fn(() => {
       throw new Error("A 204 response has no JSON body");

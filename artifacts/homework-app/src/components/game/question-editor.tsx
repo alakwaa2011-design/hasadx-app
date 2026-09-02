@@ -46,7 +46,9 @@ export function isValidQ(q: Question): boolean {
   if (!q.text.trim()) return false;
   if (q.type === "tf") return true;
   if (q.type === "fill_blank") return q.fillAnswer.trim().length > 0;
-  return !!(q.optionA && q.optionB && q.optionC && q.optionD);
+  const values = [q.optionA, q.optionB, q.optionC, q.optionD].map(value => value.trim());
+  const correctIndex = ["A", "B", "C", "D"].indexOf(q.correctAnswer);
+  return values.filter(Boolean).length >= 2 && correctIndex >= 0 && !!values[correctIndex];
 }
 
 export function QuestionCard({
@@ -141,7 +143,9 @@ export function QuestionCard({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                {opts.map((opt, oi) => (
+                {opts.filter(opt => !!q[`option${opt}` as keyof Question]).map((opt) => {
+                  const oi = opts.indexOf(opt);
+                  return (
                   <div
                     key={opt}
                     className={cn(
@@ -158,7 +162,8 @@ export function QuestionCard({
                     <span className="truncate flex-1">{q[`option${opt}` as keyof Question]}</span>
                     {q.correctAnswer === opt && <Check className="w-3.5 h-3.5 shrink-0" />}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

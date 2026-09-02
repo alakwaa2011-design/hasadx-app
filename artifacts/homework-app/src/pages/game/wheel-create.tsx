@@ -669,8 +669,9 @@ export default function WheelCreate() {
 
   const isSupportedBankQuestion = (question: BankQuestion) => {
     if (question.questionType === "true_false") return !!question.text && !!question.correctAnswer;
-    return !!question.text && !!question.optionA && !!question.optionB
-      && !!question.optionC && !!question.optionD && !!question.correctAnswer;
+    return !!question.text
+      && [question.optionA, question.optionB, question.optionC, question.optionD].filter(option => !!option?.trim()).length >= 2
+      && !!question.correctAnswer;
   };
 
   const answerTextFromQuestion = (question: BankQuestion) => {

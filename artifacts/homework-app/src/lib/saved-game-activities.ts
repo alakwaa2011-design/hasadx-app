@@ -8,13 +8,14 @@ import { EVENTS, trackProjectAnalyticsEvent } from "@/lib/analytics";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-export type SavedGameQuestionType = "mcq" | "true_false";
+export type SavedGameQuestionType = "mcq" | "true_false" | "fill_blank";
 
 export interface SavedGameQuestion {
   text: string;
   options: string[];
   correct: number;
   type?: SavedGameQuestionType;
+  correctText?: string;
   imageUrl?: string | null;
 }
 
@@ -206,21 +207,42 @@ export function normalizeSavedGameQuestions(value: unknown): SavedGameQuestion[]
     const question = item as Record<string, unknown>;
     const text = typeof question.text === "string" ? question.text.trim() : typeof question.question === "string" ? question.question.trim() : "";
     if (!text) return [];
-    const requestedType = question.type === "true_false" || question.type === "tf" ? "true_false" : "mcq";
+    const requestedType = question.type === "true_false" || question.type === "tf"
+      ? "true_false"
+      : question.type === "fill_blank"
+        ? "fill_blank"
+        : "mcq";
+    if (requestedType === "fill_blank") {
+      const correctText = typeof question.correctText === "string"
+        ? question.correctText.trim()
+        : typeof question.correctAnswer === "string"
+          ? question.correctAnswer.trim()
+          : "";
+      if (!correctText) return [];
+      return [{
+        text,
+        options: correctText.split("|").map(answer => answer.trim()).filter(Boolean),
+        correct: -1,
+        type: "fill_blank",
+        correctText,
+        imageUrl: typeof question.imageUrl === "string" ? question.imageUrl : null,
+      }];
+    }
     const options = Array.isArray(question.options)
       ? question.options.filter((option): option is string => typeof option === "string").map(option => option.trim())
       : ["optionA", "optionB", "optionC", "optionD"].map(key => typeof question[key] === "string" ? (question[key] as string).trim() : "");
-    const requiredOptions = requestedType === "true_false" ? 2 : 4;
-    if (options.length < requiredOptions || options.slice(0, requiredOptions).some(option => !option)) return [];
+    const presentOptions = options.filter(Boolean).slice(0, 4);
+    const requiredOptions = 2;
+    if (presentOptions.length < requiredOptions) return [];
     const answer = question.correct ?? question.correctAnswer;
-    const correct = typeof answer === "number" && answer >= 0 && answer < requiredOptions
+    const correct = typeof answer === "number" && answer >= 0 && answer < presentOptions.length
       ? answer
       : typeof answer === "string" && ["A", "B", "C", "D"].includes(answer.toUpperCase())
         ? ["A", "B", "C", "D"].indexOf(answer.toUpperCase())
         : 0;
     return [{
       text,
-      options: options.slice(0, requiredOptions),
+      options: presentOptions,
       correct,
       ...(requestedType === "true_false" ? { type: "true_false" as const } : {}),
       imageUrl: typeof question.imageUrl === "string" ? question.imageUrl : null,

@@ -16,6 +16,7 @@ import {
   getSavedGameActivity, listSavedGameActivities, normalizeSavedGameQuestions,
   type SavedGameActivity, type SavedGameQuestion,
 } from "@/lib/saved-game-activities";
+import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -34,6 +35,8 @@ export interface UnifiedQuestionSourceFlowProps {
   menuFooter?: React.ReactNode;
   /** Starts the manual editor with its first question already open. */
   manualEntryMode?: "button" | "immediate";
+  /** Enables typed-answer questions for games that render a text field. */
+  allowFillBlank?: boolean;
   minQuestions: number;
   maxQuestions: number;
   onComplete: (data: {
@@ -41,7 +44,8 @@ export interface UnifiedQuestionSourceFlowProps {
       text: string;
       options: string[];
       correct: number;
-      type?: "mcq" | "true_false";
+      type?: "mcq" | "true_false" | "fill_blank";
+      correctText?: string;
       imageUrl?: string | null;
     }>;
     sourceTitle: string | null;
@@ -67,6 +71,7 @@ export function UnifiedQuestionSourceFlow({
   header,
   menuFooter,
   manualEntryMode = "button",
+  allowFillBlank = false,
   minQuestions,
   maxQuestions,
   onComplete,
@@ -205,18 +210,19 @@ export function UnifiedQuestionSourceFlow({
         return;
       }
       const data = await res.json();
-      const mcqs = (data.questions || []).filter((q: any) =>
-        q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer
-      );
-      if (mcqs.length === 0) {
-        toast.error(ar ? "لا توجد أسئلة اختيار متعدد مدعومة" : "No supported MCQ questions");
+      const supported = (data.questions || []).flatMap((q: any) => {
+        const normalized = normalizeGameQuestion(q, { trueLabel: ar ? "صح" : "True", falseLabel: ar ? "خطأ" : "False", allowFillBlank });
+        return normalized ? [normalized] : [];
+      });
+      if (supported.length === 0) {
+        toast.error(ar ? "لا توجد أسئلة اختيار أو صح وخطأ مدعومة" : "No supported choice or true/false questions");
         setSelectedAssignId(null);
         return;
       }
-      setSelectedAssignQs(mcqs);
+      setSelectedAssignQs(supported);
       setSelectedAssignTitle(a.title);
       setLoadedAssignId(a.id);
-      toast.success(ar ? `تم تحميل ${mcqs.length} سؤال` : `Loaded ${mcqs.length} questions`);
+      toast.success(ar ? `تم تحميل ${supported.length} سؤال` : `Loaded ${supported.length} questions`);
     } catch {
       toast.error(ar ? "حدث خطأ" : "Error");
       setSelectedAssignId(null);
@@ -230,12 +236,14 @@ export function UnifiedQuestionSourceFlow({
       toast.error(ar ? `الحد الأدنى هو ${minQuestions} أسئلة` : `Minimum is ${minQuestions} questions`);
       return;
     }
-    const qList = selectedAssignQs.map(q => ({
+    const qList = selectedAssignQs.slice(0, maxQuestions).map(q => ({
       text: q.text,
-      options: [q.optionA, q.optionB, q.optionC, q.optionD],
-      correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer) !== -1 ? ["A", "B", "C", "D"].indexOf(q.correctAnswer) : 0,
-      imageUrl: q.imageUrl || null
-    })).slice(0, maxQuestions);
+      options: q.options,
+      correct: q.correct,
+      ...(q.type === "true_false" ? { type: "true_false" as const } : {}),
+      ...(q.type === "fill_blank" ? { type: "fill_blank" as const, correctText: q.correctText } : {}),
+      imageUrl: q.imageUrl || null,
+    }));
     onComplete({ questions: qList, sourceTitle: selectedAssignTitle, source: "assignment" });
   };
   const assignmentReady = selectedAssignId === loadedAssignId && selectedAssignQs.length >= minQuestions;
@@ -250,10 +258,11 @@ export function UnifiedQuestionSourceFlow({
           return res.json();
         })
         .then(data => {
-          const mcqs = (data || []).filter((q: any) =>
-            q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer
-          );
-          setBankQuestions(mcqs);
+          const supported = (data || []).flatMap((q: any) => {
+            const normalized = normalizeGameQuestion(q, { trueLabel: ar ? "صح" : "True", falseLabel: ar ? "خطأ" : "False", allowFillBlank });
+            return normalized ? [{ ...q, ...normalized }] : [];
+          });
+          setBankQuestions(supported);
           setBankLoaded(true);
         })
         .catch(() => {
@@ -293,9 +302,11 @@ export function UnifiedQuestionSourceFlow({
     const selected = bankQuestions.filter(q => bankSelectedIds.has(q.id));
     const qList = selected.map(q => ({
       text: q.text,
-      options: [q.optionA, q.optionB, q.optionC, q.optionD],
-      correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer) !== -1 ? ["A", "B", "C", "D"].indexOf(q.correctAnswer) : 0,
-      imageUrl: q.imageUrl || null
+      options: q.options,
+      correct: q.correct,
+      ...(q.type === "true_false" ? { type: "true_false" as const } : {}),
+      ...(q.type === "fill_blank" ? { type: "fill_blank" as const, correctText: q.correctText } : {}),
+      imageUrl: q.imageUrl || null,
     })).slice(0, maxQuestions);
     onComplete({ questions: qList, sourceTitle: null, source: "bank" });
   };
@@ -434,11 +445,27 @@ export function UnifiedQuestionSourceFlow({
           imageUrl: q.imageUrl || null,
         };
       }
+      if (q.type === "fill_blank") {
+        const acceptedAnswers = [q.fillAnswer, ...q.closeAnswers.split(",")]
+          .map(answer => answer.trim())
+          .filter(Boolean);
+        return {
+          text: q.text,
+          options: acceptedAnswers,
+          correct: -1,
+          type: "fill_blank" as const,
+          correctText: q.fillAnswer.trim(),
+          imageUrl: q.imageUrl || null,
+        };
+      }
 
+      const options = [q.optionA, q.optionB, q.optionC, q.optionD];
+      const correctValue = options[["A", "B", "C", "D"].indexOf(q.correctAnswer)];
+      const presentOptions = options.filter(option => option.trim());
       return {
         text: q.text,
-        options: [q.optionA, q.optionB, q.optionC, q.optionD],
-        correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer) !== -1 ? ["A", "B", "C", "D"].indexOf(q.correctAnswer) : 0,
+        options: presentOptions,
+        correct: Math.max(0, presentOptions.indexOf(correctValue)),
         imageUrl: q.imageUrl || null,
       };
     }).slice(0, maxQuestions);
@@ -1021,7 +1048,9 @@ export function UnifiedQuestionSourceFlow({
                     key={i}
                     q={q}
                     index={i}
-                    allowedTypes={editorSource === "manual" ? ["mcq", "tf"] : ["mcq"]}
+                    allowedTypes={editorSource === "manual"
+                      ? (allowFillBlank ? ["mcq", "tf", "fill_blank"] : ["mcq", "tf"])
+                      : ["mcq"]}
                     showDifficulty={false}
                     showAudio={false}
                     onChange={updated => {

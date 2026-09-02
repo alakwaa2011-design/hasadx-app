@@ -56,3 +56,4 @@
 - [Tug mystery boxes](tug-mystery-boxes.md) — gifts are team-level; device mode is server-authoritative, while board mode uses the local reducer with equivalent effects.
 - [Safe in-app back navigation](safe-in-app-back-navigation.md) — route-level back uses the internal app stack with deterministic fallbacks; state-level form back remains local.
 - [Question images across games](question-images-across-games.md) — preserve imageUrl through every question transform and resolve storage paths at render time; failed sources must explain themselves.
+- [Game question compatibility](game-question-compatibility.md) — button-based games accept MCQ with 2–4 nonempty options plus true/false; typed answers require a renderer with text input.

@@ -149,9 +149,8 @@ function getRecommendedActivityType(slide: any): string | null {
   /* Treat the remaining Wameeth-compatible game suggestions as quick_quiz */
   else if (slide.gameSuggestion === "hack" || slide.gameSuggestion === "wheel") type = "quick_quiz";
 
-  /* Rocket race can only be recommended when the slide's questions can
-     actually power it (its importer drops everything but 4-option MCQs) —
-     otherwise degrade to Wameeth, which handles every question type. */
+  /* Rocket race is recommended only when the slide has at least one question
+     its answer UI can render. */
   if (type === "rocket_race" && !slideSupportsRocketRace(slide as Slide)) type = "quick_quiz";
   return type;
 }
@@ -167,12 +166,12 @@ export function getRecommendedHasadActivityType(
     : null;
 }
 
-/** Rocket race requires at least one 4-option MCQ — the rocket setup
- *  importer drops true/false, fill-blank, and 2–3 option questions. */
+/** Rocket race accepts multiple-choice questions with two to four options. */
 export function slideSupportsRocketRace(slide: Slide | undefined): boolean {
   if (!slide) return false;
   return questionsFromSlide(slide).some(
-    (q) => q.options.length === 4 && q.options.every((o) => typeof o === "string" && o.trim().length > 0),
+    (q) => q.options.length >= 2 && q.options.length <= 4
+      && q.options.every((o) => typeof o === "string" && o.trim().length > 0),
   );
 }
 

@@ -248,7 +248,17 @@ async function loadRocketQuestions(assignmentId: number, duration = 20): Promise
         imageUrl: q.imageUrl ?? null,
       };
     }
-    // mcq / true_false
+    if (q.questionType === "true_false") {
+      return {
+        text: q.text,
+        type: "true_false" as const,
+        options: ["صح", "خطأ"],
+        correct: q.correctAnswer === "false" || q.correctAnswer === "B" ? 1 : 0,
+        duration,
+        imageUrl: q.imageUrl ?? null,
+      };
+    }
+    // mcq
     const opts = [q.optionA, q.optionB, q.optionC, q.optionD]
       .filter((o): o is string => typeof o === "string" && o.trim().length > 0);
     return {

@@ -102,9 +102,9 @@ export default function MaraquiCreate() {
               ((stage as Stage).difficulty === "easy" || (stage as Stage).difficulty === "medium" || (stage as Stage).difficulty === "hard") &&
               Array.isArray((stage as Stage).questions) && (stage as Stage).questions.length > 0 &&
               (stage as Stage).questions.every(question => question && typeof question.text === "string" &&
-                Array.isArray(question.options) && question.options.length === 4 &&
-                question.options.every(option => typeof option === "string") &&
-                typeof question.correct === "number")) ||
+                Array.isArray(question.options) && question.options.length >= 2 && question.options.length <= 4 &&
+                question.options.every(option => typeof option === "string" && option.trim().length > 0) &&
+                typeof question.correct === "number" && question.correct >= 0 && question.correct < question.options.length)) ||
             typeof savedSettings.isPublic !== "boolean") throw new Error("invalid-saved-game");
         setTitle(activity.title);
         setDescription(saved.description);

@@ -329,7 +329,7 @@ export default function SoloChallengeManagePage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 py-6 pb-24 sm:py-8 sm:pb-10 space-y-6">
 
         {/* Link card */}
         <div className="bg-card border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent rounded-3xl p-5 shadow-sm">

@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import QRCode from "react-qr-code";
+import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -130,14 +131,15 @@ export default function RocketCreate() {
         const r = await fetch(`${API_BASE}/api/assignments/${parsedId}`, { credentials: "include" });
         if (!r.ok) return;
         const data = await r.json();
-        type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; imageUrl?: string | null };
-        const qs = ((data.questions || []) as RawQ[])
-          .filter(q => q.questionType === "mcq" && !!q.optionA && !!q.optionB && !!q.optionC && !!q.optionD && !!q.correctAnswer)
-          .map(q => bankToRocket({
-            id: 0, subject: data.subject || "", text: q.text || "",
-            optionA: q.optionA || "", optionB: q.optionB || "", optionC: q.optionC || "", optionD: q.optionD || "",
-            correctAnswer: q.correctAnswer || "A", points: 1, tags: null, imageUrl: q.imageUrl || null,
-          } as BankQuestion))
+        const qs = ((data.questions || []) as any[])
+          .flatMap(q => {
+            const normalized = normalizeGameQuestion(q, {
+              trueLabel: ar ? "صح" : "True",
+              falseLabel: ar ? "خطأ" : "False",
+              allowFillBlank: true,
+            });
+            return normalized ? [normalized] : [];
+          })
           .slice(0, 30);
         if (qs.length > 0) {
           setQuestions(qs);
@@ -549,6 +551,7 @@ export default function RocketCreate() {
               manualEntryMode="immediate"
               minQuestions={1}
               maxQuestions={30}
+            allowFillBlank
               onComplete={({ questions: prepared, sourceTitle, source, savedActivity }) => {
                 setQuestions(prepared.map(question => ({ ...question, type: question.type ?? "mcq" })));
                 if (sourceTitle) setTitle(sourceTitle);
