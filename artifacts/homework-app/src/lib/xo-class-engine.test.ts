@@ -11,20 +11,26 @@ function playing() {
 }
 
 describe("XO classroom engine", () => {
-  it("allows only the active team to answer and grants placement after a correct answer", () => {
+  it("lets both teams answer and grants placement to the first correct team", () => {
     const state = playing();
-    expect(xoClassReducer(state, { type: "answer", team: "o", index: 0 })).toBe(state);
-    const correct = xoClassReducer(state, { type: "answer", team: "x", index: 0 });
+    const correct = xoClassReducer(state, { type: "answer", team: "o", index: 0 });
     expect(correct.phase).toBe("placement");
-    expect(correct.activeTeam).toBe("x");
+    expect(correct.activeTeam).toBe("o");
   });
 
-  it("switches turns after a wrong answer or timeout", () => {
+  it("keeps the question open for the other team after one wrong answer", () => {
     const wrong = xoClassReducer(playing(), { type: "answer", team: "x", index: 1 });
-    expect(wrong.activeTeam).toBe("o");
-    expect(wrong.questionIndex).toBe(1);
+    expect(wrong.phase).toBe("question");
+    expect(wrong.answeredTeams).toEqual(["x"]);
+    const bothWrong = xoClassReducer(wrong, { type: "answer", team: "o", index: 1 });
+    expect(bothWrong.questionIndex).toBe(1);
+    expect(bothWrong.answeredTeams).toEqual([]);
+  });
+
+  it("advances to a new question after timeout", () => {
     const timedOut = xoClassReducer({ ...playing(), timeLeft: 1 }, { type: "tick" });
-    expect(timedOut.activeTeam).toBe("o");
+    expect(timedOut.questionIndex).toBe(1);
+    expect(timedOut.answeredTeams).toEqual([]);
   });
 
   it("rejects occupied cells and detects wins and draws", () => {

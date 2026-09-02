@@ -16,6 +16,7 @@ export interface XoClassState {
   duration: number;
   board: XoCell[];
   activeTeam: XoTeam;
+  answeredTeams: XoTeam[];
   phase: "question" | "placement";
   questionIndex: number;
   timeLeft: number;
@@ -37,7 +38,7 @@ const other = (team: XoTeam): XoTeam => team === "x" ? "o" : "x";
 export function createXoClassState(questions: XoClassQuestion[], duration: number): XoClassState {
   return {
     status: "idle", countdown: 3, questions, duration: Math.max(1, duration || 20),
-    board: Array(9).fill(null), activeTeam: "x", phase: "question", questionIndex: 0,
+    board: Array(9).fill(null), activeTeam: "x", answeredTeams: [], phase: "question", questionIndex: 0,
     timeLeft: Math.max(1, duration || 20), winner: null, lastResult: null,
   };
 }
@@ -55,7 +56,7 @@ export function xoWinner(board: XoCell[]): XoTeam | "draw" | null {
 function nextQuestion(state: XoClassState, team = other(state.activeTeam), result: XoClassState["lastResult"] = null): XoClassState {
   return {
     ...state, activeTeam: team, phase: "question", questionIndex: state.questionIndex + 1,
-    timeLeft: state.duration, lastResult: result,
+    answeredTeams: [], timeLeft: state.duration, lastResult: result,
   };
 }
 
@@ -76,12 +77,14 @@ export function xoClassReducer(state: XoClassState, action: XoClassAction): XoCl
         ? nextQuestion({ ...state, timeLeft: 0 }, other(state.activeTeam), "skipped")
         : nextQuestion({ ...state, timeLeft: 0 }, other(state.activeTeam), "timeout");
     case "answer": {
-      if (state.status !== "playing" || state.phase !== "question" || action.team !== state.activeTeam) return state;
+      if (state.status !== "playing" || state.phase !== "question") return state;
       const question = currentXoClassQuestion(state);
-      if (!question || action.index < 0 || action.index >= question.options.length) return state;
+      if (!question || state.answeredTeams.includes(action.team) || action.index < 0 || action.index >= question.options.length) return state;
       return action.index === question.correct
-        ? { ...state, phase: "placement", timeLeft: PLACEMENT_SECONDS, lastResult: "correct" }
-        : nextQuestion(state, other(state.activeTeam), "wrong");
+        ? { ...state, activeTeam: action.team, phase: "placement", timeLeft: PLACEMENT_SECONDS, lastResult: "correct" }
+        : state.answeredTeams.length === 1
+          ? nextQuestion({ ...state, answeredTeams: [...state.answeredTeams, action.team] }, other(state.activeTeam), "wrong")
+          : { ...state, answeredTeams: [...state.answeredTeams, action.team], lastResult: "wrong" };
     }
     case "place": {
       if (state.status !== "playing" || state.phase !== "placement" || action.team !== state.activeTeam
