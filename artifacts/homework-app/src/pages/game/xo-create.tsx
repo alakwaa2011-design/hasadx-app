@@ -131,6 +131,7 @@ export default function XoCreate() {
             gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."}
             gameIcon={<Grid3X3 className="h-8 w-8 text-primary" />}
             accentClass="bg-primary hover:bg-primary/90 text-primary-foreground"
+            floatingAssignmentContinue
             minQuestions={2}
             maxQuestions={20}
             onComplete={({ questions: q, sourceTitle, source }) => {
