@@ -318,6 +318,7 @@ export default function MindMapCreate() {
   const [, setLocation]   = useLocation();
   const { lang: globalLang } = useI18n();
   const [topic, setTopic] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [lang, setLang]   = useState<"ar" | "en">(globalLang as "ar" | "en");
   const [depth, setDepth] = useState<"standard" | "detailed">("standard");
   const [loading, setLoading]         = useState(false);
@@ -426,8 +427,9 @@ export default function MindMapCreate() {
   /* ── Generate ─────────────────────────────────────────────────────── */
   const generate = useCallback(async (overrideTopic?: string) => {
     const t = (overrideTopic ?? topic).trim();
-    if (!t) {
-      toast.error(isAr ? "أدخل موضوع الخريطة أولاً" : "Please enter a topic first");
+    const source = sourceText.trim();
+    if (!t && !source) {
+      toast.error(isAr ? "أدخل موضوعًا أو الصق نصًا أولاً" : "Enter a topic or paste source text first");
       textareaRef.current?.focus();
       return;
     }
@@ -444,7 +446,7 @@ export default function MindMapCreate() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic: t, language: lang, depth }),
+        body: JSON.stringify({ topic: t || undefined, sourceText: source || undefined, language: lang, depth }),
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -453,8 +455,9 @@ export default function MindMapCreate() {
         return;
       }
       setMap(data as MindMap);
-      lastGenRef.current = { topic: t, lang, depth, map: data as MindMap };
-      await saveMap(t, lang, depth, data as MindMap);
+      const persistedTopic = t || String((data as MindMap).center || (isAr ? "خريطة ذهنية" : "Mind map")).slice(0, 400);
+      lastGenRef.current = { topic: persistedTopic, lang, depth, map: data as MindMap };
+      await saveMap(persistedTopic, lang, depth, data as MindMap);
     } catch {
       toast.error(isAr ? "خطأ في الشبكة، يرجى المحاولة مجدداً" : "Network error, please try again");
     } finally {
@@ -462,7 +465,7 @@ export default function MindMapCreate() {
       setLoading(false);
       refreshCreditsBalance();
     }
-  }, [topic, lang, depth, isAr, refreshCreditsBalance, saveMap]);
+  }, [topic, sourceText, lang, depth, isAr, refreshCreditsBalance, saveMap]);
 
   const handleExample = (ex: string) => { setTopic(ex); generate(ex); };
 
@@ -658,6 +661,16 @@ export default function MindMapCreate() {
                   </div>
                 </div>
               </div>
+              <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/50 bg-[#f4f7f5] dark:bg-[#0B100E] p-4">
+                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">
+                  {isAr ? "الصق نص المصدر (اختياري)" : "Paste source text (optional)"}
+                </label>
+                <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} rows={6} maxLength={30000}
+                  placeholder={isAr ? "الصق فصلًا أو ملخصًا أو محتوى درس لتحويله إلى خريطة…" : "Paste a chapter, summary, or lesson content to turn into a map…"}
+                  className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 outline-none resize-y leading-relaxed"
+                  data-testid="input-source-text" />
+                <div className="text-end text-[11px] font-bold text-slate-400 mt-1">{sourceText.length}/30000</div>
+              </div>
               
               <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-100 dark:via-emerald-900/50 to-transparent" />
 
@@ -679,7 +692,7 @@ export default function MindMapCreate() {
 
                 <button
                   type="submit"
-                  disabled={loading || saveStatus === "error" || !topic.trim()}
+                  disabled={loading || saveStatus === "error" || (!topic.trim() && !sourceText.trim())}
                   data-testid="btn-generate"
                   className="w-full sm:w-auto h-12 px-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shrink-0"
                 >

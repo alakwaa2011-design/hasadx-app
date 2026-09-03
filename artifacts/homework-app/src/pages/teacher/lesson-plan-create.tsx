@@ -348,6 +348,7 @@ export default function LessonPlanCreate() {
   const [aiTopic, setAiTopic] = useState("");
   const [aiPedagogy, setAiPedagogy] = useState<"direct" | "inquiry" | "project" | "flipped" | "mixed">(_lpPrefs.aiPedagogy ?? "mixed");
   const [aiNotes, setAiNotes] = useState(_lpPrefs.aiNotes ?? "");
+  const [sourceText, setSourceText] = useState("");
   const [generating, setGenerating] = useState(false);
 
   const lpDidMountRef = useRef(false);
@@ -680,8 +681,8 @@ export default function LessonPlanCreate() {
       toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
       return;
     }
-    if (!aiTopic.trim()) {
-      toast.error(t.topicRequired);
+    if (!aiTopic.trim() && !sourceText.trim()) {
+      toast.error(ar ? "أدخل موضوعًا أو الصق نصًا للمصدر" : "Enter a topic or paste source text");
       return;
     }
     contentOperationInFlightRef.current = true;
@@ -694,6 +695,7 @@ export default function LessonPlanCreate() {
         body: JSON.stringify({
           language: contentLang,
           topic: aiTopic.trim(),
+          sourceText: sourceText.trim() || undefined,
           subject: subject || undefined,
           gradeLevel: gradeLevel || undefined,
           durationMinutes,
@@ -762,6 +764,7 @@ export default function LessonPlanCreate() {
       fd.append("durationMinutes", String(durationMinutes));
       fd.append("pedagogy", aiPedagogy);
       if (aiNotes.trim()) fd.append("notes", aiNotes.trim());
+      if (sourceText.trim()) fd.append("sourceText", sourceText.trim());
 
       const res = await creditAwareFetch(`${API_BASE}/api/lesson-plans/ai/extract`, {
         method: "POST",
@@ -959,6 +962,15 @@ export default function LessonPlanCreate() {
             <div className="space-y-4">
               <div className="bg-white dark:bg-[#15201B] rounded-2xl p-2.5 border border-slate-200 dark:border-slate-800 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all">
                 <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={t.aiTopicPh} className="w-full bg-transparent px-2 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none" data-testid="input-ai-topic" />
+              </div>
+              <div className="bg-white dark:bg-[#15201B] rounded-2xl p-3 border border-slate-200 dark:border-slate-800 focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all">
+                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">
+                  {ar ? "الصق نص المصدر (اختياري)" : "Paste source text (optional)"}
+                </label>
+                <textarea value={sourceText} onChange={e => setSourceText(e.target.value)} maxLength={30000} rows={5}
+                  placeholder={ar ? "الصق هنا محتوى الدرس أو ورقة العمل أو الملاحظات…" : "Paste lesson content, worksheet text, or notes here…"}
+                  className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 outline-none resize-y leading-relaxed" data-testid="input-source-text" />
+                <div className="text-end text-[10px] font-bold text-slate-400">{sourceText.length}/30000</div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -360,6 +360,7 @@ export default function NewPresentationPage() {
   const [topic, setTopic] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [educationalStrategy, setEducationalStrategy] = useState<EducationalStrategy>("none");
 
   const [generatedPresentationId, setGeneratedPresentationId] = useState<number | null>(null);
@@ -434,6 +435,7 @@ export default function NewPresentationPage() {
           subject: subject.trim() || topic.trim(),
           gradeLevel: grade || "غير محدد",
           topic: topic.trim(),
+          sourceText: sourceText.trim() || undefined,
           presentationKind: "quick",
           slideCount: inferQuickSlideCount(topic.trim(), subject.trim(), grade),
           durationMinutes: 30,
@@ -546,13 +548,14 @@ export default function NewPresentationPage() {
          shared balance whether the flow succeeded or failed (refund). */
       refreshCreditsBalance();
     }
-  }, [topic, grade, subject, educationalStrategy, isAr, canGenerate, refreshCreditsBalance, setLocation]);
+  }, [topic, sourceText, grade, subject, educationalStrategy, isAr, canGenerate, refreshCreditsBalance, setLocation]);
 
   const resetQuick = () => {
     setQuickPhase("form");
     setTopic("");
     setGrade("");
     setSubject("");
+    setSourceText("");
     setEducationalStrategy("none");
     setGeneratedPresentationId(null);
     setGeneratedSlides([]);
@@ -849,6 +852,15 @@ export default function NewPresentationPage() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
                   <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-4 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 transition-all">
+                  <label className="block text-[11px] font-black text-slate-500 dark:text-slate-400 mb-2">
+                    {isAr ? "نص مرجعي للعرض (اختياري)" : "Presentation source text (optional)"}
+                  </label>
+                  <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} maxLength={30000} rows={6}
+                    placeholder={isAr ? "الصق محتوى الدرس أو ورقة العمل أو خطة الدرس…" : "Paste lesson content, worksheet text, or a lesson plan…"}
+                    className="w-full bg-transparent outline-none resize-y text-sm text-slate-800 dark:text-slate-100 leading-relaxed" data-testid="input-source-text" />
+                  <div className="text-end text-[10px] font-bold text-slate-400 mt-1">{sourceText.length}/30000</div>
                 </div>
                 <div>
                   <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">

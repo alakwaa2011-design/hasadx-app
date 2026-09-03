@@ -90,6 +90,7 @@ const briefSchema = z.object({
   subject: z.string().trim().min(1).max(100),
   gradeLevel: z.string().trim().min(1).max(50),
   topic: z.string().trim().min(1).max(120),
+  sourceText: z.string().trim().max(30000).optional(),
   presentationKind: z.enum(["explain", "review", "interactive", "quick", "contest"]),
   slideCount: z.number().int().min(5).max(30),
   durationMinutes: z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60)]),
@@ -275,6 +276,7 @@ function briefHash(brief: OutlineBrief, model: string): string {
     tg: brief.toggles,
     es: brief.educationalStrategy ?? "none",
     nt: normalizeForHash(brief.notes ?? ""),
+    src: brief.sourceText ? crypto.createHash("sha256").update(brief.sourceText).digest("hex") : "",
   };
   return crypto.createHash("sha256").update(JSON.stringify(obj)).digest("hex");
 }
@@ -482,7 +484,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       ...brief,
       language: resolveAiContentLanguage({
         preferredLanguage: brief.language,
-        primaryText: brief.topic,
+        primaryText: brief.sourceText || brief.topic,
         detailTexts: [brief.subject, brief.gradeLevel, brief.notes],
       }),
     };
@@ -534,11 +536,13 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     /* Cache short-circuit: if the same brief was generated within the
        last hour, serve the cached outline as a fresh draft (still
        counts the slot for stats but no provider call). */
-    const [cached] = await db
-      .select()
-      .from(aiCache)
-      .where(eq(aiCache.questionHash, hash))
-      .limit(1);
+    const [cached] = brief.sourceText
+      ? []
+      : await db
+          .select()
+          .from(aiCache)
+          .where(eq(aiCache.questionHash, hash))
+          .limit(1);
 
     let outlineRaw: unknown = null;
     let tokensIn = 0;
@@ -766,7 +770,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     /* Cache the raw outline (post-sanitize) so subsequent hits skip
        the provider entirely. We store the validated shape, not the
        model's raw text, because we already paid the sanitization cost. */
-    if (!usedCache) {
+    if (!usedCache && !brief.sourceText) {
       const cacheValue = JSON.stringify(parsed.data);
       await db
         .insert(aiCache)

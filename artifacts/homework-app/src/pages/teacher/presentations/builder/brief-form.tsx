@@ -186,6 +186,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
   const [subject, setSubject] = useState(initial?.subject ?? "");
   const [gradeLevel, setGradeLevel] = useState(initial?.gradeLevel ?? "");
   const [topic, setTopic] = useState(initial?.topic ?? "");
+  const [sourceText, setSourceText] = useState((initial as (Partial<PresentationBrief> & { sourceText?: string }) | undefined)?.sourceText ?? "");
   const [presentationKind, setPresentationKind] = useState<PresentationBriefPresentationKind>(
     (initial?.presentationKind as PresentationBriefPresentationKind) ??
     (localPrefs.presentationKind as PresentationBriefPresentationKind) ??
@@ -373,6 +374,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       subject: subject.trim(),
       gradeLevel: gradeLevel.trim(),
       topic: topic.trim(),
+      sourceText: sourceText.trim() || undefined,
       presentationKind,
       slideCount: inferredSlideCount,
       durationMinutes,
@@ -385,7 +387,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
   }, [
     subject, gradeLevel, topic, language, presentationKind,
     durationMinutes, languageLevel, density, activities, questions, poll, quiz,
-    notes, educationalStrategy, onSubmit,
+    notes, sourceText, educationalStrategy, onSubmit,
   ]);
 
   useImperativeHandle(ref, () => ({ submit }), [submit]);
@@ -414,6 +416,13 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       <div className="space-y-1.5">
         <Label>{tx.topic ?? (isAr ? "موضوع الدرس" : "Lesson topic")} <span className="text-destructive">*</span></Label>
         <Input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={120} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>{isAr ? "نص مرجعي للعرض (اختياري)" : "Presentation source text (optional)"}</Label>
+        <Textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} maxLength={30000} rows={6}
+          placeholder={isAr ? "الصق محتوى درس أو خطة أو ورقة عمل ليبني العرض منها…" : "Paste lesson content, a plan, or worksheet text to build from…"}
+          data-testid="input-source-text" />
+        <div className="text-end text-xs text-muted-foreground">{sourceText.length}/30000</div>
       </div>
 
       {/* ── Educational strategy ── */}
