@@ -3959,7 +3959,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
 }
 
 /* ── Assignment Row (compact, expandable) ── */
-function AssignmentRow({
+export function AssignmentRow({
   assignment,
   groupName,
   isExpanded,
@@ -4016,10 +4016,11 @@ function AssignmentRow({
 
   return (
     <div
+      data-testid={`assignment-row-${assignment.id}`}
       draggable
       onDragStart={onDragStart}
       className={cn(
-        "rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-[box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.33,1,0.68,1)]",
+        "w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-[box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.33,1,0.68,1)]",
         "shadow-[0_1px_2px_rgba(15,23,42,0.045),0_10px_30px_-18px_rgba(30,77,53,0.085)]",
         isExpanded
           ? "border-primary/24 bg-muted/[0.09] shadow-[0_8px_32px_-18px_rgba(30,77,53,0.13)] ring-1 ring-primary/[0.07]"
