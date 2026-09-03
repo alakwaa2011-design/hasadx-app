@@ -352,26 +352,26 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   }, [videoLessons, libraryStats]);
 
   const trendingNow = useMemo(() => {
-    type Trend = { key: string; title: string; kind: "assignment" | "video"; id: number; type?: string; subject?: string | null; uses: number; typeLabel: string; activeLabel: string };
+    type Trend = { key: string; title: string; kind: "assignment" | "video"; id: number; type?: string; subject?: string | null; questionCount?: number; uses: number; typeLabel: string; activeLabel: string };
     const out: Trend[] = [];
     if (wameethPick) {
       const u = libraryStats?.assignmentUses[String(wameethPick.id)] ?? 0;
-      out.push({ key: `w-${wameethPick.id}`, title: wameethPick.title, kind: "assignment", id: wameethPick.id, type: wameethPick.type, subject: wameethPick.subject, uses: u, typeLabel: isAr ? "مسابقة مباشرة" : "Live quiz", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : "جاهز للتشغيل") : (u > 0 ? `${formatUseCount(u)} uses` : "Ready") });
+      out.push({ key: `w-${wameethPick.id}`, title: wameethPick.title, kind: "assignment", id: wameethPick.id, type: wameethPick.type, subject: wameethPick.subject, questionCount: wameethPick.questionCount, uses: u, typeLabel: isAr ? "مسابقة مباشرة" : "Live quiz", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : "جاهز للتشغيل") : (u > 0 ? `${formatUseCount(u)} uses` : "Ready") });
     }
     const sciencePick = [...assignments].filter(a => resolveSubjectTheme(a.subject) === "science" && a.id !== wameethPick?.id).sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))[0];
     if (sciencePick) {
       const u = libraryStats?.assignmentUses[String(sciencePick.id)] ?? 0;
-      out.push({ key: `a-${sciencePick.id}`, title: sciencePick.title, kind: "assignment", id: sciencePick.id, type: sciencePick.type, subject: sciencePick.subject, uses: u, typeLabel: isAr ? "واجب / اختبار" : "Assignment", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : `${sciencePick.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} uses` : `${sciencePick.questionCount} Q`) });
+      out.push({ key: `a-${sciencePick.id}`, title: sciencePick.title, kind: "assignment", id: sciencePick.id, type: sciencePick.type, subject: sciencePick.subject, questionCount: sciencePick.questionCount, uses: u, typeLabel: isAr ? "واجب / اختبار" : "Assignment", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : `${sciencePick.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} uses` : `${sciencePick.questionCount} Q`) });
     }
     if (topVideoByUses && !out.some(t => t.kind === "video" && t.id === topVideoByUses.id)) {
       const u = libraryStats?.videoUses[String(topVideoByUses.id)] ?? 0;
-      out.push({ key: `v-${topVideoByUses.id}`, title: topVideoByUses.title, kind: "video", id: topVideoByUses.id, subject: topVideoByUses.subject, uses: u, typeLabel: isAr ? "فيديو" : "Video", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} مشاهدة` : `${topVideoByUses.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} views` : `${topVideoByUses.questionCount} Q`) });
+      out.push({ key: `v-${topVideoByUses.id}`, title: topVideoByUses.title, kind: "video", id: topVideoByUses.id, subject: topVideoByUses.subject, questionCount: topVideoByUses.questionCount, uses: u, typeLabel: isAr ? "فيديو" : "Video", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} مشاهدة` : `${topVideoByUses.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} views` : `${topVideoByUses.questionCount} Q`) });
     }
     if (out.length < 3) {
       const extra = [...assignments].filter(a => !out.some(t => t.kind === "assignment" && t.id === a.id)).sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id)).slice(0, 3 - out.length);
       for (const a of extra) {
         const u = libraryStats?.assignmentUses[String(a.id)] ?? 0;
-        out.push({ key: `a-${a.id}`, title: a.title, kind: "assignment", id: a.id, type: a.type, subject: a.subject, uses: u, typeLabel: activityBadge("assignment", a.type, isAr).label, activeLabel: isAr ? `${formatUseCount(u) || "0"} استخدام` : `${formatUseCount(u) || "0"} uses` });
+        out.push({ key: `a-${a.id}`, title: a.title, kind: "assignment", id: a.id, type: a.type, subject: a.subject, questionCount: a.questionCount, uses: u, typeLabel: activityBadge("assignment", a.type, isAr).label, activeLabel: isAr ? `${formatUseCount(u) || "0"} استخدام` : `${formatUseCount(u) || "0"} uses` });
       }
     }
     return out.slice(0, 4);
@@ -437,7 +437,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
       >
         <div className="relative overflow-hidden rounded-t-xl sm:rounded-t-2xl">
-          <ActivityCover kind={coverKind} subject={a.subject} title={a.title} type={a.type} aspect="video">
+          <ActivityCover className="aspect-[1.9/1]" kind={coverKind} subject={a.subject} title={a.title} type={a.type} aspect="video">
             <span className={cn("absolute top-2 z-10 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm sm:top-2.5 sm:rounded-lg sm:px-2 sm:text-[10px]", dir === "rtl" ? "right-2" : "left-2", badge.cls)}>
               {badge.label}
             </span>
@@ -454,13 +454,13 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         </div>
 
         <div className="flex flex-1 flex-col px-2.5 pb-2.5 pt-2 sm:px-3 sm:pb-3 sm:pt-2.5">
-          <h3 className="line-clamp-2 text-[11px] font-black leading-snug tracking-tight sm:text-sm" style={{ color: C.text }}>
+          <h3 className="line-clamp-2 text-[12px] font-black leading-snug tracking-tight sm:text-sm" style={{ color: C.text }}>
             {a.title}
           </h3>
-          <p className="mt-1 truncate text-[9px] font-medium sm:text-[10px]" style={{ color: C.muted }}>
+          <p className="mt-1 truncate text-[10px] font-semibold sm:text-[11px]" style={{ color: C.muted }}>
             {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>
-          <div className="mt-1.5 flex items-center justify-between gap-1 text-[9px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
+          <div className="mt-1.5 flex items-center justify-between gap-1 text-[10px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
             {!statsError && <span>{formatUseCount(uses)} {isAr ? "استخدام" : "uses"}</span>}
             {a.teacherName && !a.isAdminContent
               ? <span className="flex min-w-0 items-center gap-1 truncate"><User className="w-3 h-3 shrink-0" />{a.teacherName}</span>
@@ -581,7 +581,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
         style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
       >
-        <ActivityCover kind="live" subject={game.subject} title={game.title} type={game.gameType} aspect="video" livePulse>
+        <ActivityCover className="aspect-[1.9/1]" kind="live" subject={game.subject} title={game.title} type={game.gameType} aspect="video" livePulse>
           <span className={cn("absolute top-2 z-10 rounded-md bg-[#225739]/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm sm:top-2.5 sm:rounded-lg sm:px-2 sm:text-[10px]", dir === "rtl" ? "right-2" : "left-2")}>
             {isAr ? "لعبة مباشرة" : "Live game"}
           </span>
@@ -590,9 +590,9 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </span>
         </ActivityCover>
         <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-          <p className="line-clamp-2 text-[11px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{game.title}</p>
+          <p className="line-clamp-2 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{game.title}</p>
           <p className="mt-1 truncate text-[9px] font-semibold sm:text-[10px]" style={{ color: C.primary }}>{gameLabel}</p>
-          <p className="mt-1 truncate text-[9px] sm:text-[10px]" style={{ color: C.muted }}>
+          <p className="mt-1 truncate text-[10px] font-semibold sm:text-[10px]" style={{ color: C.muted }}>
             {[game.subject, game.targetClass, `${game.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>
           <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1 text-[9px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
@@ -809,7 +809,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               )}
             </div>
 
-            <div className="-mx-1 px-1 pb-1">
+            <div className="space-y-2 rounded-2xl border border-[#e8e1d8]/70 bg-[#fcfbf8] p-2">
               <div className="flex flex-wrap gap-1.5">
                 {typeFilters.map(filter => {
                   const active = typeChip === filter.id;
@@ -833,9 +833,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   );
                 })}
               </div>
-            </div>
-
-            <div className="-mx-1 px-1 pb-1">
+            <div className="border-t border-[#e8e1d8]/70 px-1 pb-1 pt-2">
               <div className="flex flex-wrap items-center gap-2">
                 <label className="relative">
                   <span className="sr-only">{isAr ? "المادة الدراسية" : "Subject"}</span>
@@ -886,6 +884,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   </label>
                 )}
               </div>
+            </div>
             </div>
           </section>
 
@@ -1146,8 +1145,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                     </div>
                     <div className="p-2.5 sm:p-3">
                       <p className="line-clamp-2 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{item.title}</p>
+                      <p className="mt-1 truncate text-[9px] font-medium sm:text-[10px]" style={{ color: C.muted }}>
+                        {[item.subject, item.typeLabel, item.questionCount != null ? `${item.questionCount} ${isAr ? "سؤال" : "Q"}` : null].filter(Boolean).join(" · ")}
+                      </p>
                       <div className="mt-1.5 flex items-center justify-between gap-2">
-                        <span className="truncate text-[10px] font-medium" style={{ color: C.muted }}>{item.activeLabel}</span>
+                        <span className="truncate text-[10px] font-semibold" style={{ color: C.muted }}>{item.activeLabel}</span>
                         <button
                           type="button"
                           onClick={() => item.kind === "assignment" ? launchAsGame(item.id) : onActiveTabChange("videos")}
@@ -1228,7 +1230,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
                       style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
                     >
-                      <ActivityCover kind="video" subject={v.subject} title={v.title} aspect="video">
+                      <ActivityCover className="aspect-[1.9/1]" kind="video" subject={v.subject} title={v.title} aspect="video">
                         <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-blue-600/90")}>
                           {isAr ? "فيديو" : "Video"}
                         </span>
@@ -1236,7 +1238,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       <div className="flex flex-1 flex-col p-2.5 sm:p-3">
                         <p className="line-clamp-2 text-[11px] font-black sm:text-[13px]" style={{ color: C.text }}>{v.title}</p>
                         {v.description && <p className="mt-1 hidden line-clamp-1 text-xs sm:block" style={{ color: C.muted }}>{v.description}</p>}
-                        <p className="mt-1 truncate text-[9px] sm:text-[11px]" style={{ color: C.muted }}>{[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}</p>
+                        <p className="mt-1 truncate text-[10px] font-semibold sm:text-[11px]" style={{ color: C.muted }}>{[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}</p>
                         <div className="mt-1.5 flex items-center justify-between text-[9px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
                           {!statsError && <span>{formatUseCount(videoUseCount(v.id))} {isAr ? "استخدام" : "uses"}</span>}
                           {v.teacherName && <span className="flex items-center gap-1 truncate"><User className="w-3 h-3" />{v.teacherName}</span>}
@@ -1262,7 +1264,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md sm:rounded-2xl"
                       style={{ borderColor: C.border }}
                     >
-                      <ActivityCover kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} tags={q.tags ?? undefined} imageUrl={q.imageUrl} aspect="video">
+                      <ActivityCover className="aspect-[1.9/1]" kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} tags={q.tags ?? undefined} imageUrl={q.imageUrl} aspect="video">
                         <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-violet-600/90")}>{isAr ? "تفاعلي" : "Interactive"}</span>
                       </ActivityCover>
                       <div className="p-2.5 sm:p-4">
@@ -1292,7 +1294,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
                       style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
                     >
-                      <ActivityCover kind="presentation" title={presentation.title} aspect="video">
+                      <ActivityCover className="aspect-[1.9/1]" kind="presentation" title={presentation.title} aspect="video">
                         <span className={cn("absolute top-2 z-10 rounded-lg bg-violet-700/90 px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2")}>
                           {isAr ? "عرض تفاعلي" : "Interactive presentation"}
                         </span>
