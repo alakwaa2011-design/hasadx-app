@@ -130,16 +130,17 @@ function buttonWithText(root: ParentNode, text: string) {
 }
 
 describe("ActivitiesLibraryMarketplace mobile controls", () => {
-  it("يخفي عمود سطح المكتب ويعرض لوحة الفلاتر المرتبطة بحالات المكتبة نفسها", async () => {
+  it("يزيل العمود الداخلي ويعرض أدوات المكتبة أعلى المحتوى بنفس الحالات", async () => {
     const props = makeProps();
     await act(async () => {
       root.render(<ActivitiesLibraryMarketplace {...props} />);
     });
 
-    expect(container.querySelector("aside")?.className).toContain("hidden");
-    expect(container.querySelector("aside")?.className).toContain("lg:flex");
+    expect(container.querySelector("aside")).toBeNull();
     expect(container.querySelector('input[aria-label="البحث في مكتبة الأنشطة"]')).not.toBeNull();
-    expect(container.querySelector('select[aria-label="الفرز"]')).not.toBeNull();
+    expect(container.querySelector('select[aria-label="الترتيب"]')).not.toBeNull();
+    expect(container.textContent).toContain("واجبات واختبارات");
+    expect(container.textContent).toContain("عروض تفاعلية");
 
     const search = container.querySelector('input[aria-label="البحث في مكتبة الأنشطة"]') as HTMLInputElement;
     await act(async () => {
@@ -149,16 +150,7 @@ describe("ActivitiesLibraryMarketplace mobile controls", () => {
     });
     expect(props.onSearchChange).toHaveBeenCalledWith("علوم");
 
-    await act(async () => buttonWithText(container, "تصفية").click());
-    const sheet = document.querySelector('[role="dialog"]') as HTMLElement;
-    expect(sheet.textContent).toContain("تصفية الأنشطة");
-    expect(sheet.textContent).toContain("نوع النشاط");
-    expect(sheet.textContent).toContain("واجبات واختبارات");
-    expect(sheet.textContent).not.toContain("اختباراتواجبات");
-    expect(sheet.textContent).toContain("المادة الدراسية");
-    expect(sheet.textContent).toContain("المرحلة / الصف");
-
-    const subject = sheet.querySelector('select[aria-label="المادة الدراسية"]') as HTMLSelectElement;
+    const subject = container.querySelector('select[aria-label="المادة الدراسية"]') as HTMLSelectElement;
     await act(async () => {
       subject.value = "علوم";
       subject.dispatchEvent(new Event("change", { bubbles: true }));
@@ -169,27 +161,42 @@ describe("ActivitiesLibraryMarketplace mobile controls", () => {
       element => element.className.includes("grid-cols-2") && element.querySelector("article"),
     );
     expect(assignmentsGrid).not.toBeUndefined();
+    expect(container.textContent).toContain("رائج الآن");
 
-    const sort = container.querySelector('select[aria-label="الفرز"]') as HTMLSelectElement;
+    await act(async () => buttonWithText(container, "ابدأ").click());
+    expect(props.launchAsGame).toHaveBeenCalledWith(assignment.id);
+
+    const importButton = container.querySelector(`button[aria-label="${props.t.sharedContent.importAssignment}"]`) as HTMLButtonElement;
+    await act(async () => importButton.click());
+    expect(props.importAssignment).toHaveBeenCalledWith(assignment.id);
+
+    const copyButton = container.querySelector(`button[aria-label="${props.t.sharedContent.copyLink}"]`) as HTMLButtonElement;
+    await act(async () => copyButton.click());
+    expect(props.copyLink).toHaveBeenCalledWith(assignment.id);
+
+    const saveButton = container.querySelector('button[aria-label="حفظ النشاط"]') as HTMLButtonElement;
+    await act(async () => saveButton.click());
+    expect(container.querySelector('button[aria-label="إزالة من المحفوظات"]')).not.toBeNull();
+
+    const sort = container.querySelector('select[aria-label="الترتيب"]') as HTMLSelectElement;
     await act(async () => {
       sort.value = "questions";
       sort.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(props.onSortByChange).toHaveBeenCalledWith("questions");
 
-    await act(async () => buttonWithText(sheet, "فيديو").click());
+    await act(async () => buttonWithText(container, "فيديو").click());
     expect(props.onActiveTabChange).toHaveBeenCalledWith("videos");
 
-    await act(async () => buttonWithText(sheet, "عروض تفاعلية").click());
+    await act(async () => buttonWithText(container, "عروض تفاعلية").click());
     expect(props.onActiveTabChange).toHaveBeenCalledWith("presentations");
 
-    await act(async () => buttonWithText(sheet, "السادس").click());
+    const grade = container.querySelector('input[aria-label="المرحلة أو الصف"]') as HTMLInputElement;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(grade, "السادس");
+      grade.dispatchEvent(new Event("input", { bubbles: true }));
+    });
     expect(props.onGradeFilterChange).toHaveBeenCalledWith("السادس");
-
-    await act(async () => buttonWithText(sheet, "إعادة ضبط").click());
-    expect(props.onClearFilters).toHaveBeenCalledTimes(1);
-
-    await act(async () => buttonWithText(sheet, "عرض النتائج").click());
-    expect(document.body.textContent).not.toContain("تصفية الأنشطة");
   });
 });

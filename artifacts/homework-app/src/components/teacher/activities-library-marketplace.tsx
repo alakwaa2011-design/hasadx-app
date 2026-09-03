@@ -434,9 +434,9 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         transition={{ delay: Math.min(i * 0.03, 0.2) }}
         className={cn(
           "group relative flex min-w-0 flex-col rounded-xl border bg-white transition-all duration-300 sm:rounded-2xl",
-          a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-300" : "hover:-translate-y-1 hover:shadow-lg",
+          a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-300" : "hover:border-[#225739]/25 hover:shadow-md",
         )}
-        style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+        style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
       >
         <div className="relative overflow-hidden rounded-t-xl sm:rounded-t-2xl">
           <ActivityCover kind={coverKind} subject={a.subject} title={a.title} type={a.type} aspect="video">
@@ -456,7 +456,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         </div>
 
         <div className="flex flex-1 flex-col px-2.5 pb-2.5 pt-2 sm:px-3 sm:pb-3 sm:pt-2.5">
-          <h3 className="line-clamp-2 text-[11px] font-extrabold leading-snug tracking-tight sm:text-[13px]" style={{ color: C.text }}>
+          <h3 className="line-clamp-2 text-[11px] font-black leading-snug tracking-tight sm:text-sm" style={{ color: C.text }}>
             {a.title}
           </h3>
           {a.description && (
@@ -583,8 +583,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: Math.min(i * 0.03, 0.2) }}
-        className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:rounded-2xl"
-        style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+        className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
+        style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
       >
         <ActivityCover kind="live" subject={game.subject} title={game.title} type={game.gameType} aspect="video" livePulse>
           <span className={cn("absolute top-2 z-10 rounded-md bg-[#225739]/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm sm:top-2.5 sm:rounded-lg sm:px-2 sm:text-[10px]", dir === "rtl" ? "right-2" : "left-2")}>
@@ -767,15 +767,135 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
       style={{ background: C.bg, color: C.text }}
       dir={dir}
     >
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-        {/* Sidebar */}
-        {sidebar}
+      <div style={{ minHeight: "100vh" }}>
+        <main className="min-w-0 w-full px-3 py-4 pb-24 sm:px-5 sm:py-5 lg:px-7 lg:py-6 lg:pb-8 xl:px-9">
+          <section className="mb-5 space-y-3.5 sm:mb-6" aria-labelledby="activities-library-title">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm" style={{ borderColor: C.border, color: C.primary }}>
+                  <BookText className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <h1 id="activities-library-title" className="text-lg font-black leading-tight sm:text-xl" style={{ color: C.text }}>
+                    {isAr ? "مكتبة الأنشطة" : "Activities Library"}
+                  </h1>
+                  <p className="mt-0.5 text-[10px] sm:text-xs" style={{ color: C.muted }}>
+                    {isAr ? "اكتشف أنشطة تعليمية جاهزة وابدأ استخدامها مع طلابك" : "Discover ready-made activities and use them with your students"}
+                  </p>
+                </div>
+              </div>
+              <Link href="/teacher/new">
+                <button
+                  type="button"
+                  className="hidden min-h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black text-white shadow-sm transition-all hover:brightness-105 sm:flex"
+                  style={{ background: C.primary, fontFamily: "inherit" }}
+                >
+                  <Plus className="h-4 w-4" />
+                  {isAr ? "شارك نشاطاً" : "Share activity"}
+                </button>
+              </Link>
+            </div>
 
-        {/* Main */}
-        <main className="min-w-0 flex-1 overflow-y-auto px-3 py-4 pb-24 sm:px-5 sm:py-5 lg:px-6 lg:py-6 lg:pb-8 xl:px-8">
+            <div className="relative">
+              <Search className={cn("pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2", isAr ? "right-3.5" : "left-3.5")} style={{ color: C.muted }} />
+              <input
+                aria-label={isAr ? "البحث في مكتبة الأنشطة" : "Search activities library"}
+                value={search}
+                onChange={e => onSearchChange(e.target.value)}
+                placeholder={isAr ? "ابحث في الأنشطة..." : "Search activities..."}
+                className={cn("min-h-11 w-full rounded-xl border bg-white py-2.5 text-xs outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15 sm:text-sm", isAr ? "pr-10 pl-10" : "pl-10 pr-10")}
+                style={{ borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
+              />
+              {search && (
+                <button type="button" aria-label={isAr ? "مسح البحث" : "Clear search"} onClick={() => onSearchChange("")} className={cn("absolute top-1/2 -translate-y-1/2 rounded-lg p-2", isAr ? "left-1.5" : "right-1.5")} style={{ color: C.muted }}>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="-mx-1 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: "thin" }}>
+              <div className="flex min-w-max gap-1.5">
+                {typeFilters.map(filter => {
+                  const active = typeChip === filter.id;
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => applyTypeFilter(filter.id)}
+                      aria-pressed={active}
+                      className="flex min-h-9 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all sm:min-h-10 sm:px-4 sm:text-xs"
+                      style={{
+                        borderColor: active ? C.primary : C.border,
+                        background: active ? C.primary : C.card,
+                        color: active ? "#fff" : C.muted,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {filter.icon}
+                      {isAr ? filter.ar : filter.en}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="-mx-1 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: "thin" }}>
+              <div className="flex min-w-max items-center gap-2">
+                <label className="relative">
+                  <span className="sr-only">{isAr ? "المادة الدراسية" : "Subject"}</span>
+                  <select
+                    aria-label={isAr ? "المادة الدراسية" : "Subject"}
+                    value={subjectFilter}
+                    onChange={e => onSubjectFilterChange(e.target.value)}
+                    className="min-h-10 w-40 appearance-none rounded-xl border bg-white px-3 pe-8 text-[11px] font-bold outline-none focus:ring-2 focus:ring-[#225739]/15 sm:w-44 sm:text-xs"
+                    style={{ borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
+                  >
+                    <option value="">{isAr ? "المادة: الكل" : "Subject: All"}</option>
+                    {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                  </select>
+                  <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "left-3" : "right-3")} style={{ color: C.muted }} />
+                </label>
+
+                <input
+                  aria-label={isAr ? "المرحلة أو الصف" : "Grade"}
+                  value={gradeFilter}
+                  onChange={e => onGradeFilterChange(e.target.value)}
+                  list="lib-grades-toolbar"
+                  placeholder={isAr ? "الصف: الكل" : "Grade: All"}
+                  className="min-h-10 w-36 rounded-xl border bg-white px-3 text-[11px] font-bold outline-none focus:ring-2 focus:ring-[#225739]/15 sm:w-40 sm:text-xs"
+                  style={{ borderColor: gradeFilter ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
+                />
+                <datalist id="lib-grades-toolbar">{allGrades.map(grade => <option key={grade} value={grade} />)}</datalist>
+
+                <label className="relative">
+                  <span className="sr-only">{isAr ? "الترتيب" : "Sort"}</span>
+                  <select
+                    aria-label={isAr ? "الترتيب" : "Sort"}
+                    value={sortBy}
+                    onChange={e => onSortByChange(e.target.value as "newest" | "questions")}
+                    className="min-h-10 w-36 appearance-none rounded-xl border bg-white px-3 pe-8 text-[11px] font-bold outline-none focus:ring-2 focus:ring-[#225739]/15 sm:w-40 sm:text-xs"
+                    style={{ borderColor: C.border, color: C.text, fontFamily: "inherit" }}
+                  >
+                    <option value="newest">{isAr ? "الترتيب: الأحدث" : "Sort: Newest"}</option>
+                    <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
+                  </select>
+                  <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "left-3" : "right-3")} style={{ color: C.muted }} />
+                </label>
+
+                {isAdmin && (
+                  <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border bg-white px-3 text-[11px] font-bold sm:text-xs" style={{ borderColor: showHidden ? C.gold : C.border, color: showHidden ? C.text : C.muted }}>
+                    <input type="checkbox" checked={showHidden} onChange={e => onShowHiddenChange(e.target.checked)} className="accent-[#225739]" />
+                    <EyeOff className="h-3.5 w-3.5" />
+                    {isAr ? "عرض المخفي" : "Show hidden"}
+                  </label>
+                )}
+              </div>
+            </div>
+          </section>
+
           {/* Mobile-only library header and compact controls. The desktop
               sidebar remains the source of the same controls above lg. */}
-          <div className="mb-4 lg:hidden">
+          <div className="hidden">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm" style={{ background: C.primary }}>
                 <BookText className="h-4 w-4 text-white" />
@@ -963,7 +1083,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
           {/* Stats bar */}
           <div
-            className="mb-5 grid grid-cols-2 gap-2.5 rounded-2xl border bg-white p-3 shadow-sm sm:gap-3 sm:p-4 lg:mb-6 lg:grid-cols-4"
+            className="hidden"
             style={{ borderColor: C.border }}
           >
             {statsLoading
@@ -1004,36 +1124,46 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   {isAr ? "عرض الكل" : "See all"} <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
+              <div className="grid grid-cols-[repeat(4,minmax(285px,1fr))] gap-3 overflow-x-auto pb-2 lg:grid-cols-2 xl:grid-cols-4" style={{ scrollbarWidth: "thin" }}>
                 {trendingNow.map((item, idx) => (
-                  <button
+                  <article
                     key={item.key}
-                    type="button"
-                    onClick={() => item.kind === "assignment" ? launchAsGame(item.id) : onActiveTabChange("videos")}
-                    className="group flex shrink-0 flex-col gap-2.5 overflow-hidden rounded-2xl p-3 text-start transition-all hover:-translate-y-1 sm:gap-3 sm:p-4"
-                    style={{ width: 248, background: C.primary, boxShadow: "0 4px 20px rgba(34,87,57,0.28)", border: "none", cursor: "pointer", position: "relative" }}
+                    className="group min-w-[285px] overflow-hidden rounded-2xl border bg-white text-start transition-all duration-200 hover:shadow-md"
+                    style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
                   >
-                    {/* Decorative circle */}
-                    <div style={{ position: "absolute", top: -28, left: -28, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-                    <div className="flex items-start gap-2.5">
-                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl">
-                        <ActivityCover kind={resolveCoverKind(item.kind, item.type)} subject={item.subject} title={item.title} type={item.type} aspect="thumb" />
-                      </div>
-                      <div>
-                        <span className="mb-1 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[9px] font-bold text-white" style={{ background: "rgba(255,255,255,0.18)" }}>
-                          {idx === 0 && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
-                          {idx === 0 ? (isAr ? "نشط الآن" : "Active") : item.typeLabel}
+                    <div className="relative overflow-hidden">
+                      <ActivityCover kind={resolveCoverKind(item.kind, item.type)} subject={item.subject} title={item.title} type={item.type} aspect="video">
+                        <span className={cn("absolute top-2.5 z-10 inline-flex items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-[9px] font-extrabold shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5")} style={{ color: C.primary }}>
+                          {idx === 0 && <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: C.gold }} />}
+                          {idx === 0 ? (isAr ? "نشط الآن" : "Active now") : item.typeLabel}
                         </span>
-                        <p className="line-clamp-2 text-[13px] font-extrabold leading-snug text-white">{item.title}</p>
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(item.id)}
+                          aria-label={bookmarks.has(item.id) ? (isAr ? "إزالة من المحفوظات" : "Remove bookmark") : (isAr ? "حفظ النشاط" : "Save activity")}
+                          className={cn("absolute top-2.5 z-10 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors", dir === "rtl" ? "left-2.5" : "right-2.5")}
+                          style={{ color: bookmarks.has(item.id) ? C.gold : C.muted }}
+                        >
+                          <Bookmark className={cn("h-3.5 w-3.5", bookmarks.has(item.id) && "fill-current")} />
+                        </button>
+                      </ActivityCover>
+                    </div>
+                    <div className="p-3">
+                      <p className="line-clamp-2 min-h-9 text-[13px] font-black leading-snug" style={{ color: C.text }}>{item.title}</p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="truncate text-[10px] font-medium" style={{ color: C.muted }}>{item.activeLabel}</span>
+                        <button
+                          type="button"
+                          onClick={() => item.kind === "assignment" ? launchAsGame(item.id) : onActiveTabChange("videos")}
+                          className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg px-3 text-[10px] font-black text-white transition-all hover:brightness-105"
+                          style={{ background: C.primary }}
+                        >
+                          <Play className="h-3 w-3 fill-current" />
+                          {isAr ? "ابدأ" : "Start"}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-white/70">{item.activeLabel}</span>
-                      <span className="rounded-xl px-3 py-1.5 text-[11px] font-black" style={{ background: C.gold, color: C.primary2 }}>
-                        {isAr ? "ابدأ ▶" : "Start ▶"}
-                      </span>
-                    </div>
-                  </button>
+                  </article>
                 ))}
               </div>
             </section>
@@ -1056,7 +1186,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             </div>
             <div className="flex items-center gap-2">
               {hasFilters && (
-                <button type="button" onClick={onClearFilters} className="text-xs font-bold underline" style={{ background: "none", border: "none", cursor: "pointer", color: C.primary, fontFamily: "inherit" }}>
+                <button type="button" onClick={clearMobileFilters} className="text-xs font-bold underline" style={{ background: "none", border: "none", cursor: "pointer", color: C.primary, fontFamily: "inherit" }}>
                   {isAr ? "× مسح الفلاتر" : "× Clear filters"}
                 </button>
               )}
@@ -1083,7 +1213,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {activeTab === "assignments" && (
             displayAssignments.length + displayGameActivities.length > 0
               ? viewMode === "grid"
-                ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
+                ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {displayAssignments.map((a, i) => renderAssignmentCard(a, i))}
                     {displayGameActivities.map((game, i) => renderGameActivityCard(game, displayAssignments.length + i))}
                   </div>
@@ -1096,11 +1226,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {/* Content — Videos */}
           {activeTab === "videos" && (
             displayVideos.length > 0
-              ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
+              ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {displayVideos.map((v, i) => (
                     <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all hover:-translate-y-1 hover:shadow-md sm:rounded-2xl"
-                      style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+                      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
+                      style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
                     >
                       <ActivityCover kind="video" subject={v.subject} title={v.title} aspect="video">
                         <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-blue-600/90")}>
@@ -1130,7 +1260,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {/* Content — Questions */}
           {activeTab === "questions" && (
             displayQuestions.length > 0
-              ? <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+              ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {displayQuestions.map((q, i) => (
                     <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                       className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md sm:rounded-2xl"
@@ -1156,15 +1286,15 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {/* Content — Presentations */}
           {activeTab === "presentations" && (
             displayPresentations.length > 0
-              ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
+              ? <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {displayPresentations.map((presentation, i) => (
                     <motion.article
                       key={presentation.id}
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.03 }}
-                      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all hover:-translate-y-1 hover:shadow-md sm:rounded-2xl"
-                      style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+                      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
+                      style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
                     >
                       <ActivityCover kind="presentation" title={presentation.title} aspect="video">
                         <span className={cn("absolute top-2 z-10 rounded-lg bg-violet-700/90 px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2")}>
