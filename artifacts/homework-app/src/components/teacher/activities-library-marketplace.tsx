@@ -80,7 +80,7 @@ const C = {
 
 type Tab = "assignments" | "questions" | "videos";
 type CategoryTab = "all" | "popular" | "new" | "featured" | "peers";
-type TypeChip = "all" | "assignment" | "presentation" | "video" | "live" | "interactive";
+type TypeChip = "all" | "assignment" | "presentation" | "video" | "live";
 
 export interface MarketplaceAssignment {
   id: number;
@@ -303,7 +303,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   }, [filteredVideos, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
   const displayQuestions = useMemo(() => {
-    if (typeChip !== "all" && typeChip !== "interactive") return [];
+    if (typeChip !== "all") return [];
     return filterByCategory(filteredQuestions, { popularCheck: q => q.points >= 2 });
   }, [filteredQuestions, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
@@ -374,14 +374,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     { id: "live",        ar: "مسابقة مباشرة",    en: "Live quiz",    icon: <Zap         className="w-3.5 h-3.5" /> },
     { id: "assignment",  ar: "واجبات واختبارات", en: "Assignments & quizzes", icon: <BookText className="w-3.5 h-3.5" /> },
     { id: "video",       ar: "فيديو",            en: "Videos",       icon: <Video       className="w-3.5 h-3.5" /> },
-    { id: "interactive", ar: "أنشطة تفاعلية",    en: "Interactive",  icon: <Sparkles    className="w-3.5 h-3.5" /> },
     { id: "presentation",ar: "عروض تفاعلية",     en: "Presentations",icon: <Presentation className="w-3.5 h-3.5"/> },
   ];
 
   const applyTypeFilter = (id: TypeChip) => {
     setTypeChip(id);
     if (id === "video") onActiveTabChange("videos");
-    else if (id === "interactive") onActiveTabChange("questions");
     else if (id === "presentation") onPresentations();
     else onActiveTabChange("assignments");
   };
