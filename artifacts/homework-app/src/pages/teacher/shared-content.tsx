@@ -14,6 +14,7 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 import { cn } from "@/lib/utils";
 import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import { ActivitiesLibraryMarketplace } from "@/components/teacher/activities-library-marketplace";
+import PresentationsIndex from "@/pages/teacher/presentations/index";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -210,6 +211,7 @@ export default function SharedContentPage({
     return <span className="flex items-center gap-1"><User className="w-3 h-3" /> {teacherName}</span>;
   };
   const [activeTab, setActiveTab] = useState<Tab>("assignments");
+  const [showPresentations, setShowPresentations] = useState(false);
   const [assignments, setAssignments] = useState<SharedAssignment[]>([]);
   const [questions, setQuestions] = useState<SharedQuestion[]>([]);
   const [videoLessons, setVideoLessons] = useState<SharedVideoLesson[]>([]);
@@ -624,6 +626,24 @@ export default function SharedContentPage({
   }
 
   if (isActivitiesLibrary) {
+    if (showPresentations) {
+      const presentations = (
+        <div dir={dir}>
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-4 sm:px-6 lg:px-8">
+            <button
+              type="button"
+              onClick={() => setShowPresentations(false)}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary/5"
+            >
+              {lang === "ar" ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+              {lang === "ar" ? "العودة إلى مكتبة الأنشطة" : "Back to Activities Library"}
+            </button>
+          </div>
+          <PresentationsIndex embedded />
+        </div>
+      );
+      return embedded ? presentations : <Layout>{presentations}</Layout>;
+    }
     const marketplace = (
       <ActivitiesLibraryMarketplace
         embedded={embedded}
@@ -660,7 +680,7 @@ export default function SharedContentPage({
           setSubjectFilter("");
           setGradeFilter("");
         }}
-        onPresentations={() => setLocation("/teacher/presentations")}
+        onPresentations={() => setShowPresentations(true)}
         launchAsGame={launchAsGame}
         openGameActivity={(id, gameType) => {
           const paths: Record<string, string> = {
