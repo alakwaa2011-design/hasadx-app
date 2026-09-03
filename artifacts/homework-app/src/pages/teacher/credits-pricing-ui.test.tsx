@@ -157,10 +157,10 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).toContain(ar.pricing.basicF3);
     expect(text()).toContain(ar.pricing.welcomePointsShort);
     expect(text()).toContain(ar.pricing.welcomeOnce);
-    // حالة المستخدم تظهر بهدوء + إدارة/إلغاء الاشتراك
+    // حالة المستخدم تظهر بهدوء، ولا يظهر الإلغاء مباشرة على البطاقة
     expect(text()).toContain(ar.pricing.currentPlan);
     expect(text()).toContain(ar.pricing.manageSubscription);
-    expect(text()).toContain(ar.pricing.cancelSubscription);
+    expect(text()).not.toContain(ar.pricing.cancelSubscription);
   });
 
   it("ميزة التوفير أول عنصر في قائمة مزايا Pro", async () => {

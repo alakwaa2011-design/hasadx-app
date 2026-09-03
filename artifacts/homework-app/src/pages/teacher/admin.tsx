@@ -1670,8 +1670,8 @@ export default function AdminPage() {
               <Sparkles className="w-4 h-4 shrink-0 text-violet-500" />
               <span>
                 {lang === "ar"
-                  ? "هذه هي صفحة الباقات كما يراها المعلم — تشمل زر «إلغاء الاشتراك» الجديد."
-                  : "This is the teacher-facing pricing page including the new cancel button."}
+                  ? "هذه هي صفحة الباقات كما يراها المعلم — يتم الإلغاء من نافذة «إدارة الاشتراك»."
+                  : "This is the teacher-facing pricing page; cancellation is available inside Manage subscription."}
               </span>
             </div>
             <iframe

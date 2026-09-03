@@ -36,7 +36,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
 import { useCreditsBalance } from "@/components/credits-chip";
@@ -113,6 +112,8 @@ export function PricingContent() {
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const [buyingId, setBuyingId] = useState<number | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [showManageSubscription, setShowManageSubscription] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const compareRef = useRef<HTMLDivElement>(null);
 
@@ -173,6 +174,8 @@ export function PricingContent() {
       toast.success(p.cancelSuccess);
       const subData = await apiFetch("/api/subscriptions/me").then((r) => r.json());
       setCurrentSub(subData.subscription ?? null);
+      setShowManageSubscription(false);
+      setShowCancelConfirmation(false);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -502,7 +505,10 @@ export function PricingContent() {
                         <div className="space-y-3">
                           <button
                             type="button"
-                            onClick={() => setLocation("/teacher/credits")}
+                            onClick={() => {
+                              setShowCancelConfirmation(false);
+                              setShowManageSubscription(true);
+                            }}
                             className={`h-12 w-full rounded-xl font-extrabold transition-transform active:scale-[0.97] ${
                               isPro
                                 ? "border border-white/20 bg-white/10 text-white hover:bg-white/20"
@@ -511,48 +517,6 @@ export function PricingContent() {
                           >
                             {p.manageSubscription}
                           </button>
-                          {!currentSub?.cancelled_at && (
-                            <div className="text-center">
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className={`text-sm underline underline-offset-4 transition-colors font-medium ${
-                                      isPro ? "text-white/50 hover:text-white/90" : "text-muted-foreground hover:text-red-600"
-                                    }`}
-                                  >
-                                    {p.cancelSubscription}
-                                  </button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent dir={dir} className="sm:max-w-md">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-xl text-red-600">{p.confirmCancelTitle}</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-base mt-2 space-y-3 leading-relaxed">
-                                      <span className="block font-medium text-foreground">
-                                        {currentSub?.current_period_end
-                                          ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
-                                              dateLocale,
-                                              { year: "numeric", month: "long", day: "numeric" }
-                                            )}.`
-                                          : p.cancelledFallback}
-                                      </span>
-                                      <span className="block text-sm">{p.cancelNote}</span>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter className="mt-6 gap-3">
-                                    <AlertDialogCancel className="mt-0">{p.back}</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={(e) => { e.preventDefault(); handleCancel(); }}
-                                      disabled={cancelling}
-                                      className="bg-red-600 hover:bg-red-700 text-white min-w-[140px]"
-                                    >
-                                      {cancelling ? <Loader2 size={16} className="animate-spin" /> : p.confirmCancel}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          )}
                         </div>
                       ) : isFree ? (
                         <button
@@ -617,6 +581,79 @@ export function PricingContent() {
                         {lang === "ar" ? pl.nameAr : pl.nameEn}
                       </th>
                     ))}
+
+      <AlertDialog
+        open={showManageSubscription}
+        onOpenChange={(open) => {
+          if (!cancelling) {
+            setShowManageSubscription(open);
+            if (!open) setShowCancelConfirmation(false);
+          }
+        }}
+      >
+        <AlertDialogContent dir={dir} className="sm:max-w-md">
+          {showCancelConfirmation ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-xl text-red-600">{p.confirmCancelTitle}</AlertDialogTitle>
+                <AlertDialogDescription className="text-base mt-2 space-y-3 leading-relaxed">
+                  <span className="block font-medium text-foreground">
+                    {currentSub?.current_period_end
+                      ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
+                          dateLocale,
+                          { year: "numeric", month: "long", day: "numeric" }
+                        )}.`
+                      : p.cancelledFallback}
+                  </span>
+                  <span className="block text-sm">{p.cancelNote}</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="mt-6 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirmation(false)}
+                  className="h-10 rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent"
+                >
+                  {p.back}
+                </button>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); handleCancel(); }}
+                  disabled={cancelling}
+                  className="bg-red-600 hover:bg-red-700 text-white min-w-[140px]"
+                >
+                  {cancelling ? <Loader2 size={16} className="animate-spin" /> : p.confirmCancel}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-xl">{p.manageSubscription}</AlertDialogTitle>
+                <AlertDialogDescription className="text-base mt-2 leading-relaxed">
+                  {currentSub?.current_period_end
+                    ? `${p.cancelledUntil} ${new Date(currentSub.current_period_end).toLocaleDateString(
+                        dateLocale,
+                        { year: "numeric", month: "long", day: "numeric" }
+                      )}.`
+                    : p.cancelledFallback}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="mt-6 gap-3">
+                <AlertDialogCancel className="mt-0">{p.back}</AlertDialogCancel>
+                {!currentSub?.cancelled_at && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelConfirmation(true)}
+                    className="h-10 rounded-md px-4 text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-700"
+                  >
+                    {p.cancelSubscription}
+                  </button>
+                )}
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edf1ed] text-sm font-semibold text-[#425f50]">
