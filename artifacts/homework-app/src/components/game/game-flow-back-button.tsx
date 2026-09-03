@@ -29,7 +29,7 @@ export function GameFlowBackButton({
       onClick={onBack}
       aria-label={label || (ar ? "الرجوع خطوة" : "Go back one step")}
       className={cn(
-        "inline-flex min-h-10 items-center gap-2 rounded-xl border border-border/70 bg-card px-3.5 py-2 text-sm font-bold text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-primary/[0.04] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20",
+        "inline-flex max-w-full min-h-10 items-center gap-2 whitespace-nowrap rounded-xl border border-border/70 bg-card px-3.5 py-2 text-sm font-bold text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-primary/[0.04] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 touch-manipulation",
         className,
       )}
     >
