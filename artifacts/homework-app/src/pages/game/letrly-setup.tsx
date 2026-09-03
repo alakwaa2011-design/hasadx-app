@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Play, Sparkles, Send } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import {
-  CATEGORY_LABELS,
   CATEGORY_EMOJI,
   type LetrlyCategory,
   type LetrlyLength,
@@ -24,18 +23,6 @@ const ALL_CATEGORIES: LetrlyCategory[] = [
 ];
 
 const ALL_LENGTHS: LetrlyLength[] = [4, 5, 6];
-
-const LENGTH_LABEL: Record<LetrlyLength, string> = {
-  4: "٤ حروف",
-  5: "٥ حروف",
-  6: "٦ حروف",
-};
-
-const LENGTH_HINT: Record<LetrlyLength, string> = {
-  4: "سهل",
-  5: "متوسط",
-  6: "صعب",
-};
 
 type DemoState = "correct" | "present" | "absent";
 
@@ -183,7 +170,7 @@ function PlayPanel() {
                 >
                   <div className="text-xl mb-0.5">{CATEGORY_EMOJI[cat]}</div>
                   <div className={`text-xs font-bold ${active ? "text-[hsl(145,55%,32%)]" : "text-foreground"}`}>
-                    {CATEGORY_LABELS[cat]}
+                    {t.letrly.categories[cat]}
                   </div>
                 </button>
               );
@@ -216,9 +203,9 @@ function PlayPanel() {
                   }`}
                 >
                   <div className={`text-base font-extrabold mb-0.5 ${active ? "text-[hsl(145,55%,32%)]" : "text-foreground"}`}>
-                    {LENGTH_LABEL[len]}
+                    {t.letrly.lengths[len]}
                   </div>
-                  <div className="text-[10px] text-muted-foreground font-medium">{LENGTH_HINT[len]}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium">{t.letrly.difficulties[len]}</div>
                 </button>
               );
             })}

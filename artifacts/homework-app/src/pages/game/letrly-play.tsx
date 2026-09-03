@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import {
+  ArrowLeft,
   ArrowRight,
   Volume2,
   VolumeX,
@@ -17,7 +18,6 @@ import {
 import { toast } from "sonner";
 import {
   ARABIC_KEYBOARD_ROWS,
-  CATEGORY_LABELS,
   CATEGORY_EMOJI,
   evaluateGuess,
   getRandomWord,
@@ -71,7 +71,7 @@ type Phase = "playing" | "won" | "lost";
 type Source = "random" | "pin" | "daily";
 
 export default function LetrlyPlay() {
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const settings = useMemo(() => parseSettings(search), [search]);
@@ -375,7 +375,7 @@ export default function LetrlyPlay() {
             onClick={() => setLocation("/game/letrly")}
             className="bg-[hsl(145,55%,32%)] hover:bg-[hsl(145,55%,28%)] text-white font-bold px-5 py-2.5 rounded-xl"
           >
-            العودة للإعدادات
+            {t.letrly.backToSettings}
           </button>
         </div>
       </Layout>
@@ -389,13 +389,13 @@ export default function LetrlyPlay() {
           <div className="text-5xl">🤔</div>
           <h2 className="text-xl font-extrabold">{t.letrly.noWordsForSettings}</h2>
           <p className="text-sm text-muted-foreground max-w-md">
-            جرّب تغيير التصنيف أو طول الكلمة. سنضيف المزيد من الكلمات قريباً.
+            {t.letrly.noWordsDescription}
           </p>
           <button
             onClick={() => setLocation("/game/letrly")}
             className="bg-[hsl(145,55%,32%)] hover:bg-[hsl(145,55%,28%)] text-white font-bold px-5 py-2.5 rounded-xl"
           >
-            تغيير الإعدادات
+            {t.letrly.changeSettings}
           </button>
         </div>
       </Layout>
@@ -428,13 +428,13 @@ export default function LetrlyPlay() {
               onClick={() => setLocation("/game/letrly")}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowRight className="w-4 h-4" />
-              رجوع
+              {lang === "ar" ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+              {t.letrly.back}
             </button>
 
             <div className="flex items-center gap-1.5 text-xs font-bold text-[hsl(145,55%,32%)] bg-[hsl(145,55%,32%)]/10 px-3 py-1.5 rounded-full">
               <span>{CATEGORY_EMOJI[target.category]}</span>
-              <span>{CATEGORY_LABELS[target.category]}</span>
+              <span>{t.letrly.categories[target.category]}</span>
             </div>
 
             <div className="flex items-center gap-1">
@@ -529,7 +529,7 @@ export default function LetrlyPlay() {
                   {phase === "won" ? t.letrly.won : t.letrly.attemptsOver}
                 </div>
                 <div className="text-sm text-muted-foreground mb-3">
-                  الكلمة كانت:{" "}
+                  {t.letrly.wordWas}{" "}
                   <span className="font-extrabold text-foreground text-lg">
                     {target.word}
                   </span>
@@ -543,14 +543,14 @@ export default function LetrlyPlay() {
                     className="inline-flex items-center gap-1.5 bg-[hsl(145,55%,32%)] hover:bg-[hsl(145,55%,28%)] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
-                    كلمة جديدة
+                    {t.letrly.newWord}
                   </button>
                   <button
                     onClick={handleShare}
                     className="inline-flex items-center gap-1.5 bg-white border-2 border-[hsl(145,55%,32%)] text-[hsl(145,55%,32%)] hover:bg-[hsl(145,55%,32%)]/5 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
                   >
                     <Share2 className="w-4 h-4" />
-                    شارك النتيجة
+                    {t.letrly.shareResult}
                   </button>
                   <button
                     onClick={copyResult}
@@ -561,7 +561,7 @@ export default function LetrlyPlay() {
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
-                    نسخ
+                    {t.letrly.copyResult}
                   </button>
                 </div>
                 {shareText && (

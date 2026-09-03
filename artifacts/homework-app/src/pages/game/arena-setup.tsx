@@ -33,14 +33,14 @@ import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activit
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const TEAM_COLORS = [
-  { color: "#2563eb", name: "أزرق" },
-  { color: "#dc2626", name: "أحمر" },
-  { color: "#16a34a", name: "أخضر" },
-  { color: "#d97706", name: "ذهبي" },
-  { color: "#7c3aed", name: "بنفسجي" },
-  { color: "#0891b2", name: "تركواز" },
-  { color: "#ea580c", name: "برتقالي" },
-  { color: "#db2777", name: "وردي" },
+  { color: "#2563eb", name: "أزرق", nameEn: "Blue" },
+  { color: "#dc2626", name: "أحمر", nameEn: "Red" },
+  { color: "#16a34a", name: "أخضر", nameEn: "Green" },
+  { color: "#d97706", name: "ذهبي", nameEn: "Gold" },
+  { color: "#7c3aed", name: "بنفسجي", nameEn: "Purple" },
+  { color: "#0891b2", name: "تركواز", nameEn: "Turquoise" },
+  { color: "#ea580c", name: "برتقالي", nameEn: "Orange" },
+  { color: "#db2777", name: "وردي", nameEn: "Pink" },
 ];
 
 const TEAM_EMOJIS = [
@@ -96,8 +96,8 @@ interface TeamFormState {
 
 type Step = 1 | 2 | 3;
 
-const defaultTeam = (idx: number): TeamFormState => ({
-  name: `الفريق ${idx + 1}`,
+const defaultTeam = (idx: number, lang: "ar" | "en" = "ar"): TeamFormState => ({
+  name: lang === "ar" ? `الفريق ${idx + 1}` : `Team ${idx + 1}`,
   color: TEAM_COLORS[idx % TEAM_COLORS.length].color,
   emoji: TEAM_EMOJIS[idx % TEAM_EMOJIS.length],
   subCategoryIds: [],
@@ -107,6 +107,7 @@ const defaultTeam = (idx: number): TeamFormState => ({
 
 export default function ArenaSetup() {
   const {lang, t} = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const [, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
 
@@ -132,8 +133,8 @@ export default function ArenaSetup() {
     () => loadArenaLastSettings()?.tournamentName ?? "",
   );
   const [teams, setTeams] = useState<TeamFormState[]>([
-    { name: "الفريق الأول", color: TEAM_COLORS[0].color, emoji: "🦅", subCategoryIds: [], helpers: [], players: [] },
-    { name: "الفريق الثاني", color: TEAM_COLORS[1].color, emoji: "🦁", subCategoryIds: [], helpers: [], players: [] },
+    { name: lang === "ar" ? "الفريق الأول" : "Team One", color: TEAM_COLORS[0].color, emoji: "🦅", subCategoryIds: [], helpers: [], players: [] },
+    { name: lang === "ar" ? "الفريق الثاني" : "Team Two", color: TEAM_COLORS[1].color, emoji: "🦁", subCategoryIds: [], helpers: [], players: [] },
   ]);
   const [showEmoji, setShowEmoji] = useState<boolean[]>([false, false]);
   const [showColors, setShowColors] = useState<boolean[]>([false, false]);
@@ -325,7 +326,7 @@ export default function ArenaSetup() {
   const addTeam = () => {
     if (teams.length >= 8) { toast.error(t.arenaSetup.maxTeams); return; }
     const idx = teams.length;
-    setTeams(prev => [...prev, defaultTeam(idx)]);
+    setTeams(prev => [...prev, defaultTeam(idx, lang)]);
     setShowEmoji(prev => [...prev, false]);
     setShowColors(prev => [...prev, false]);
     setPlayerDraft(prev => [...prev, ""]);
@@ -416,7 +417,9 @@ export default function ArenaSetup() {
     const pool: ArenaSubCategory[] = sectionsForPicker.flatMap(s => s.subCategories);
     const needed = teams.length * 3;
     if (pool.length < needed) {
-      toast.error(`تحتاج ${needed} فئة على الأقل — المتاح ${pool.length}`);
+      toast.error(lang === "ar"
+        ? `تحتاج ${needed} فئة على الأقل — المتاح ${pool.length}`
+        : `You need at least ${needed} categories — ${pool.length} available.`);
       return;
     }
     /* Fisher–Yates shuffle for unbiased distribution */
@@ -583,7 +586,7 @@ export default function ArenaSetup() {
               {t.arenaSetup.loginRequired}
             </h1>
             <p className="text-emerald-100/85 text-base sm:text-lg leading-relaxed mb-6">
-              تحدّي حصاد لعبة منظّمة للمعلّمين والمدرّبين — يحتاج حسابك حتى نحفظ تقدّم اللعبة وأسئلتك المخصّصة.
+              {chrome("تحدّي حصاد لعبة منظّمة للمعلّمين والمدرّبين — يحتاج حسابك حتى نحفظ تقدّم اللعبة وأسئلتك المخصّصة.", "Hisad Challenge is an organized game for teachers and trainers. Sign in to save game progress and custom questions.")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/login">
@@ -663,7 +666,7 @@ export default function ArenaSetup() {
               </div>
 
               <p className="text-emerald-100/60 text-sm mb-5">
-                يمكنك الاستمرار من حيث توقفت أو بدء لعبة جديدة.
+                {chrome("يمكنك الاستمرار من حيث توقفت أو بدء لعبة جديدة.", "Continue where you left off or start a new game.")}
               </p>
 
               <div className="flex flex-col gap-2.5">
@@ -684,7 +687,7 @@ export default function ArenaSetup() {
                   }}
                   className="w-full py-3 rounded-xl font-bold text-white/70 hover:text-white border border-white/15 hover:border-white/30 transition-all"
                 >
-                  بدء لعبة جديدة
+                  {chrome("بدء لعبة جديدة", "Start a new game")}
                 </button>
               </div>
             </motion.div>
@@ -723,7 +726,7 @@ export default function ArenaSetup() {
                   }}
                 >
                   <Trophy className="w-3.5 h-3.5" style={{ color: "#c9a14b" }} />
-                  ميدان المعرفة · مسابقة الفرق
+                  {chrome("ميدان المعرفة · مسابقة الفرق", "Knowledge Arena · Team competition")}
                 </div>
                 <h1
                   className="text-3xl sm:text-4xl md:text-5xl font-black"
@@ -734,12 +737,12 @@ export default function ArenaSetup() {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  تحدّي حصاد
+                  {chrome("تحدّي حصاد", "Hisad Challenge")}
                 </h1>
                 <div className="text-sm font-bold mt-1.5" style={{ color: "#5b6b87" }}>
-                  {step === 1 && `الخطوة 1 من 3 — ${teams.length > 2 ? `${teams.length} فرق` : "الفريقان"} والأعضاء`}
-                  {step === 2 && "الخطوة 2 من 3 — اختيار الفئات والأسئلة المخصصة"}
-                  {step === 3 && "الخطوة 3 من 3 — الوسائل المساعدة والمؤقت"}
+                  {step === 1 && (lang === "ar" ? `الخطوة 1 من 3 — ${teams.length > 2 ? `${teams.length} فرق` : "الفريقان"} والأعضاء` : `Step 1 of 3 — ${teams.length > 2 ? `${teams.length} teams` : "two teams"} & players`)}
+                  {step === 2 && chrome("الخطوة 2 من 3 — اختيار الفئات والأسئلة المخصصة", "Step 2 of 3 — choose categories and custom questions")}
+                  {step === 3 && chrome("الخطوة 3 من 3 — الوسائل المساعدة والمؤقت", "Step 3 of 3 — helpers and timer")}
                 </div>
               </div>
 
@@ -750,13 +753,13 @@ export default function ArenaSetup() {
                   style={{ color: "#a07f37" }}
                 >
                   <Crown className="w-3.5 h-3.5" />
-                  وضع البطولة (اختياري)
+                  {chrome("وضع البطولة (اختياري)", "Tournament name (optional)")}
                 </label>
                 <input
                   type="text"
                   value={tournamentName}
                   onChange={e => setTournamentName(e.target.value)}
-                  placeholder="مثال: بطولة العلوم 2025"
+                  placeholder={chrome("مثال: بطولة العلوم 2025", "Example: Science Tournament 2025")}
                   maxLength={60}
                   className="w-full text-sm font-bold rounded-xl px-3.5 py-2.5 outline-none transition placeholder:font-normal"
                   style={{
@@ -769,7 +772,7 @@ export default function ArenaSetup() {
                 />
                 {tournamentName.trim() && (
                   <div className="mt-1.5 text-[11px] text-center" style={{ color: "#5b6b87" }}>
-                    سيظهر <span className="font-black" style={{ color: "#a07f37" }}>«{tournamentName.trim()}»</span> في رأس الشاشة
+                    {chrome("سيظهر", "Will appear")} <span className="font-black" style={{ color: "#a07f37" }}>«{tournamentName.trim()}»</span> {chrome("في رأس الشاشة", "in the screen header")}
                   </div>
                 )}
               </div>
@@ -798,13 +801,13 @@ export default function ArenaSetup() {
                         style={{ background: team.color }}
                       />
                       {teams.length > 2 && (
-                        <button onClick={() => removeTeam(idx)} className="absolute top-3 start-3 p-1 rounded-full transition" style={{ background: "#faf6ec", color: "#b91c1c" }} title="حذف الفريق">
+                        <button onClick={() => removeTeam(idx)} className="absolute top-3 start-3 p-1 rounded-full transition" style={{ background: "#faf6ec", color: "#b91c1c" }} title={chrome("حذف الفريق", "Delete team")}>
                           <X className="w-4 h-4" />
                         </button>
                       )}
                       <div className="flex items-center gap-2 mb-3 mt-1">
                         <Users className="w-4 h-4" style={{ color: "#c9a14b" }} />
-                        <span className="text-[11px] font-extrabold tracking-wider" style={{ color: "#a07f37" }}>الفريق {idx + 1}</span>
+                        <span className="text-[11px] font-extrabold tracking-wider" style={{ color: "#a07f37" }}>{chrome(`الفريق ${idx + 1}`, `Team ${idx + 1}`)}</span>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-3 mb-4">
                         <span className="text-3xl sm:text-4xl shrink-0">{team.emoji}</span>
@@ -841,7 +844,7 @@ export default function ArenaSetup() {
                           >
                             <span className="flex items-center gap-2 min-w-0">
                               <span className="w-6 h-6 rounded-md flex items-center justify-center text-base shrink-0" style={{ background: `${team.color}18`, border: `1px solid ${team.color}55` }}>{team.emoji}</span>
-                              <span className="text-[12px] font-extrabold truncate">الشعار</span>
+                              <span className="text-[12px] font-extrabold truncate">{chrome("الشعار", "Emblem")}</span>
                             </span>
                             <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showEmoji[idx] ? "rotate-180" : ""}`} style={{ color: "#a07f37" }} />
                           </button>
@@ -869,7 +872,7 @@ export default function ArenaSetup() {
                                 >
                                   <div className="text-[10px] font-black mb-1.5 px-1 inline-flex items-center gap-1" style={{ color: "#a07f37" }}>
                                     <Smile className="w-3 h-3" />
-                                    اختر شعار الفريق
+                                    {chrome("اختر شعار الفريق", "Choose a team emblem")}
                                   </div>
                                   <div className="grid grid-cols-6 sm:grid-cols-8 gap-1">
                                     {TEAM_EMOJIS.map(em => {
@@ -910,7 +913,7 @@ export default function ArenaSetup() {
                           >
                             <span className="flex items-center gap-2 min-w-0">
                               <span className="w-6 h-6 rounded-md shrink-0" style={{ background: team.color, boxShadow: "inset 0 0 0 2px white, 0 0 0 1px #ebe2cd" }} />
-                              <span className="text-[12px] font-extrabold truncate">اللون</span>
+                              <span className="text-[12px] font-extrabold truncate">{chrome("اللون", "Color")}</span>
                             </span>
                             <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showColors[idx] ? "rotate-180" : ""}`} style={{ color: "#a07f37" }} />
                           </button>
@@ -938,7 +941,7 @@ export default function ArenaSetup() {
                                 >
                                   <div className="text-[10px] font-black mb-2 px-1 inline-flex items-center gap-1" style={{ color: "#a07f37" }}>
                                     <Palette className="w-3 h-3" />
-                                    اختر لون الفريق
+                                    {chrome("اختر لون الفريق", "Choose a team color")}
                                   </div>
                                   <div className="grid grid-cols-7 gap-1.5">
                                     {TEAM_COLORS.map(c => {
@@ -955,7 +958,7 @@ export default function ArenaSetup() {
                                               ? `inset 0 0 0 2px white, 0 0 0 2px ${c.color}, 0 4px 8px -2px ${c.color}88`
                                               : `inset 0 0 0 2px white, 0 0 0 1px #ebe2cd`,
                                           }}
-                                          title={c.name}
+                                          title={lang === "ar" ? c.name : c.nameEn}
                                         >
                                           {sel && <Check className="w-3.5 h-3.5 text-white drop-shadow" strokeWidth={3} />}
                                         </motion.button>
@@ -973,7 +976,7 @@ export default function ArenaSetup() {
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: "#5b6b87" }}>
                             <UserPlus className="w-3.5 h-3.5" />
-                            لاعبو الفريق <span className="opacity-70">(اختياري)</span>
+                            {chrome("لاعبو الفريق", "Team players")} <span className="opacity-70">{chrome("(اختياري)", "(optional)")}</span>
                           </div>
                           <span className="text-[10px] font-bold" style={{ color: "#a07f37" }}>{team.players.length}/12</span>
                         </div>
@@ -983,7 +986,7 @@ export default function ArenaSetup() {
                             value={playerDraft[idx] ?? ""}
                             onChange={e => setPlayerDraft(prev => prev.map((v, i) => i === idx ? e.target.value : v))}
                             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPlayer(idx); } }}
-                            placeholder="اسم اللاعب"
+                            placeholder={chrome("اسم اللاعب", "Player name")}
                             maxLength={20}
                             className="flex-1 rounded-lg px-3 py-2 text-sm outline-none transition"
                             style={{ background: "#faf6ec", color: "#1f4d4f", border: "1px solid #ebe2cd" }}
@@ -1006,7 +1009,7 @@ export default function ArenaSetup() {
                             ))}
                           </div>
                         ) : (
-                          <div className="text-[11px]" style={{ color: "#9ca3af" }}>بدون لاعبين فرديين — سيُحتسب الإجابة للفريق فقط</div>
+                          <div className="text-[11px]" style={{ color: "#9ca3af" }}>{chrome("بدون لاعبين فرديين — سيُحتسب الإجابة للفريق فقط", "No individual players — answers count for the team only")}</div>
                         )}
                       </div>
                     </div>
@@ -1016,7 +1019,7 @@ export default function ArenaSetup() {
                 {teams.length < 8 && (
                   <button onClick={addTeam} className="w-full py-3 rounded-2xl border-2 border-dashed font-bold transition inline-flex items-center justify-center gap-2 mb-4" style={{ borderColor: "#c9a14b66", color: "#a07f37", background: "#ffffff" }}>
                     <Plus className="w-5 h-5" />
-                    إضافة فريق ({teams.length}/8)
+                    {chrome(`إضافة فريق (${teams.length}/8)`, `Add team (${teams.length}/8)`)}
                   </button>
                 )}
               </motion.div>
@@ -1031,8 +1034,8 @@ export default function ArenaSetup() {
                       <Swords className="w-4 h-4" style={{ color: "#1f4d4f" }} />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-base sm:text-lg font-extrabold truncate" style={{ color: "#1f4d4f" }}>مكتبة الفئات البصرية</h2>
-                      <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>اختر 3 فئات لكل فريق — الفئات العادية بـ <strong style={{ color: "#a07f37" }}>6 بطاقات</strong> (200×2، 400×2، 600×2) · فئات <strong style={{ color: "#7c3aed" }}>اكتشف السر</strong> بطاقتان بدرجات ديناميكية · يمكن إضافة <strong style={{ color: "#c9a14b" }}>800⭐</strong> عبر فئة مخصصة</p>
+                      <h2 className="text-base sm:text-lg font-extrabold truncate" style={{ color: "#1f4d4f" }}>{chrome("مكتبة الفئات البصرية", "Visual category library")}</h2>
+                      <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>{chrome("اختر 3 فئات لكل فريق — الفئات العادية بـ", "Choose 3 categories per team — regular categories have")} <strong style={{ color: "#a07f37" }}>6 {chrome("بطاقات", "cards")}</strong> (200×2, 400×2, 600×2) · {chrome("فئات", "the")} <strong style={{ color: "#7c3aed" }}>{chrome("اكتشف السر", "Discover the Secret")}</strong> {chrome("بطاقتان بدرجات ديناميكية · يمكن إضافة", "categories have two dynamically scored cards · you can add")} <strong style={{ color: "#c9a14b" }}>800⭐</strong> {chrome("عبر فئة مخصصة", "through a custom category")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
@@ -1044,10 +1047,10 @@ export default function ArenaSetup() {
                         color: "#1f4d4f",
                         border: "1px solid rgba(31,77,79,0.25)",
                       }}
-                      title="إنشاء وتعديل فئات وأسئلة تحدي حصاد"
+                      title={chrome("إنشاء وتعديل فئات وأسئلة تحدي حصاد", "Create and edit Hisad Challenge categories and questions")}
                     >
                       <FolderPlus className="w-4 h-4" />
-                      إدارة محتوى اللعبة
+                      {chrome("إدارة محتوى اللعبة", "Manage game content")}
                     </Link>
                     <motion.button
                       onClick={pickRandomCategories}
@@ -1059,7 +1062,7 @@ export default function ArenaSetup() {
                         color: "#ffffff",
                         boxShadow: "0 8px 22px -6px rgba(31,77,79,0.55), inset 0 0 0 1px rgba(201,161,75,0.45)",
                       }}
-                      title="قرعة عشوائية — يختار 3 فئات لكل فريق دون تحيّز"
+                      title={chrome("قرعة عشوائية — يختار 3 فئات لكل فريق دون تحيّز", "Random draw — chooses 3 unbiased categories per team")}
                     >
                       {/* Shimmer */}
                       <motion.span
@@ -1079,7 +1082,7 @@ export default function ArenaSetup() {
                       >
                         <Dices className="w-4 h-4" style={{ color: "#f5d272" }} />
                       </motion.span>
-                      <span className="relative">قرعة عشوائية</span>
+                      <span className="relative">{chrome("قرعة عشوائية", "Random draw")}</span>
                     </motion.button>
                     <button
                       onClick={() => { setEditingCat(null); setEditorOpen(true); }}
@@ -1087,7 +1090,7 @@ export default function ArenaSetup() {
                       style={{ background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)", color: "white" }}
                     >
                       <FolderPlus className="w-4 h-4" />
-                      اصنع فئتك
+                      {chrome("اصنع فئتك", "Create your category")}
                     </button>
                   </div>
                 </div>
@@ -1117,8 +1120,8 @@ export default function ArenaSetup() {
                         <Inbox className="w-4.5 h-4.5 text-white" />
                       </motion.div>
                       <div className="min-w-0">
-                        <div className="font-black text-sm" style={{ color: "#1f4d4f" }}>صندوق بلاغات الأسئلة</div>
-                        <div className="text-[11px] font-bold" style={{ color: "#5b6b87" }}>راجع الشكاوى التي يرسلها المعلّمون عن أسئلة تحدّي حصاد</div>
+                        <div className="font-black text-sm" style={{ color: "#1f4d4f" }}>{chrome("صندوق بلاغات الأسئلة", "Question reports inbox")}</div>
+                        <div className="text-[11px] font-bold" style={{ color: "#5b6b87" }}>{chrome("راجع الشكاوى التي يرسلها المعلّمون عن أسئلة تحدّي حصاد", "Review teachers' reports about Hisad Challenge questions")}</div>
                       </div>
                     </div>
                     <Link
@@ -1130,7 +1133,7 @@ export default function ArenaSetup() {
                         boxShadow: "0 6px 14px -4px rgba(31,77,79,0.45)",
                       }}
                     >
-                      فتح الصندوق
+                      {chrome("فتح الصندوق", "Open inbox")}
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </Link>
                   </motion.div>
@@ -1166,10 +1169,10 @@ export default function ArenaSetup() {
                       type="search"
                       value={catSearch}
                       onChange={(e) => setCatSearch(e.target.value)}
-                      placeholder="ابحث عن فئة أو قسم… (مثل: جغرافيا، لغة، فلك)"
+                      placeholder={chrome("ابحث عن فئة أو قسم… (مثل: جغرافيا، لغة، فلك)", "Search for a category or section… (e.g. geography, language, astronomy)")}
                       className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm sm:text-base font-bold placeholder:font-medium"
                       style={{ color: "#1f4d4f" }}
-                      aria-label="بحث في الفئات"
+                      aria-label={chrome("بحث في الفئات", "Search categories")}
                     />
                     {catSearch && (
                       <motion.button
@@ -1178,7 +1181,7 @@ export default function ArenaSetup() {
                         onClick={() => setCatSearch("")}
                         className="w-8 h-8 rounded-full inline-flex items-center justify-center shrink-0 transition hover:bg-rose-50"
                         style={{ color: "#5b6b87" }}
-                        title="مسح البحث"
+                        title={chrome("مسح البحث", "Clear search")}
                       >
                         <X className="w-4 h-4" />
                       </motion.button>
@@ -1191,7 +1194,7 @@ export default function ArenaSetup() {
                         border: `1px solid ${catSearch ? "rgba(201,161,75,0.4)" : "rgba(31,77,79,0.2)"}`,
                       }}
                     >
-                      {totalVisibleSubs} فئة
+                      {totalVisibleSubs} {chrome("فئة", "categories")}
                     </span>
                   </div>
                 </div>
@@ -1205,9 +1208,9 @@ export default function ArenaSetup() {
                     >
                       <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <div className="font-extrabold text-base mb-1" style={{ color: "#1f4d4f" }}>
-                        لا توجد نتائج لـ «{catSearch}»
+                        {chrome(`لا توجد نتائج لـ «${catSearch}»`, `No results for “${catSearch}”`)}
                       </div>
-                      <div className="text-xs">جرّب كلمة أخرى أو امسح البحث لعرض كل الفئات.</div>
+                      <div className="text-xs">{chrome("جرّب كلمة أخرى أو امسح البحث لعرض كل الفئات.", "Try another term or clear the search to show all categories.")}</div>
                     </div>
                   ) : (
                     filteredSectionsForPicker.map((sec, secIdx) => (
@@ -1228,7 +1231,7 @@ export default function ArenaSetup() {
                 </div>
 
                 <div className="mt-3 text-xs text-center font-bold" style={{ color: "#5b6b87" }}>
-                  {teams.map((t) => `${t.subCategoryIds.length}/3 لـ ${t.name}`).join(" | ")} — المجموع {allSelected.size}/{teams.length * 3}
+                  {teams.map((t) => chrome(`${t.subCategoryIds.length}/3 لـ ${t.name}`, `${t.name}: ${t.subCategoryIds.length}/3`)).join(" | ")} — {chrome("المجموع", "Total")} {allSelected.size}/{teams.length * 3}
                 </div>
               </motion.div>
             )}
@@ -1250,10 +1253,10 @@ export default function ArenaSetup() {
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-xl sm:text-2xl font-black" style={{ color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
-                        وسائل المساعدة
+                        {chrome("وسائل المساعدة", "Helpers")}
                       </h2>
                       <p className="text-sm mt-0.5" style={{ color: "#5b6b87" }}>
-                        اختر <strong style={{ color: "#1f4d4f" }}>3 وسائل لكل فريق</strong> — كل وسيلة تُستخدم مرة واحدة فقط في المسابقة
+                        {chrome("اختر", "Choose")} <strong style={{ color: "#1f4d4f" }}>3 {chrome("وسائل لكل فريق", "helpers per team")}</strong> — {chrome("كل وسيلة تُستخدم مرة واحدة فقط في المسابقة", "each helper can be used only once in the competition")}
                       </p>
                     </div>
                   </div>
@@ -1322,8 +1325,8 @@ export default function ArenaSetup() {
                                       color: infoOpen ? "#fff" : "#5b6b87",
                                       border: `1px solid ${infoOpen ? "#1f4d4f" : "#ebe2cd"}`,
                                     }}
-                                    aria-label={infoOpen ? "إخفاء الشرح" : "عرض الشرح"}
-                                    title={infoOpen ? "إخفاء الشرح" : "عرض الشرح"}
+                                    aria-label={infoOpen ? chrome("إخفاء الشرح", "Hide explanation") : chrome("عرض الشرح", "Show explanation")}
+                                    title={infoOpen ? chrome("إخفاء الشرح", "Hide explanation") : chrome("عرض الشرح", "Show explanation")}
                                   >
                                     <Info className="w-3 h-3" />
                                   </button>
@@ -1404,9 +1407,9 @@ export default function ArenaSetup() {
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-xl sm:text-2xl font-black" style={{ color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
-                        مدة المؤقت لكل سؤال
+                        {chrome("مدة المؤقت لكل سؤال", "Timer duration per question")}
                       </h2>
-                      <p className="text-sm mt-0.5" style={{ color: "#5b6b87" }}>المؤقت يبدأ تلقائياً عند فتح كل سؤال</p>
+                      <p className="text-sm mt-0.5" style={{ color: "#5b6b87" }}>{chrome("المؤقت يبدأ تلقائياً عند فتح كل سؤال", "The timer starts automatically when each question opens")}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1421,7 +1424,7 @@ export default function ArenaSetup() {
                             ? { background: "#1f4d4f", color: "#ffffff", boxShadow: "0 4px 12px -4px rgba(31,77,79,0.5)" }
                             : { background: "#faf6ec", color: "#1f4d4f", border: "1.5px solid #e9dfc7" }}
                         >
-                          {s} ثانية
+                          {s} {chrome("ثانية", "seconds")}
                         </button>
                       );
                     })}
@@ -1439,7 +1442,7 @@ export default function ArenaSetup() {
               style={{ background: "#ffffff", color: "#1f4d4f", border: "1.5px solid #e9dfc7" }}
             >
               <ChevronRight className="w-4 h-4" />
-              <span className="hidden sm:inline">السابق</span>
+              <span className="hidden sm:inline">{chrome("السابق", "Previous")}</span>
             </button>
             {step < 3 ? (
               <button
@@ -1447,7 +1450,7 @@ export default function ArenaSetup() {
                 className="flex-1 py-3 rounded-xl font-extrabold text-base sm:text-lg transition shadow-md inline-flex items-center justify-center gap-2 sm:gap-3 hover:opacity-95"
                 style={{ background: "linear-gradient(135deg, #1f4d4f 0%, #2d5e3f 100%)", color: "white", boxShadow: "0 8px 24px -10px rgba(31,77,79,0.5)" }}
               >
-                التالي
+                {chrome("التالي", "Next")}
                 <ChevronLeft className="w-5 h-5" />
               </button>
             ) : (
@@ -1462,7 +1465,7 @@ export default function ArenaSetup() {
                 }}
               >
                 <Play className="w-5 h-5 sm:w-7 sm:h-7" />
-                ابدأ تحدّي حصاد
+                {chrome("ابدأ تحدّي حصاد", "Start Hisad Challenge")}
               </button>
             )}
           </div>
@@ -1476,7 +1479,7 @@ export default function ArenaSetup() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            dir="rtl"
+            dir={dir}
             className="fixed bottom-5 inset-x-0 z-40 flex justify-center pointer-events-none px-4"
           >
             <div
@@ -1488,16 +1491,16 @@ export default function ArenaSetup() {
               }}
             >
               <div className="text-sm font-bold text-emerald-100/80 hidden sm:block">
-                ✅ اكتمل الاختيار — {teams.map(t => `${t.emoji} ${t.name}`).join(" vs ")}
+                {chrome("✅ اكتمل الاختيار —", "✅ Selection complete —")} {teams.map(t => `${t.emoji} ${t.name}`).join(" vs ")}
               </div>
               <div className="text-sm font-bold text-emerald-100/80 sm:hidden">
-                ✅ اكتمل الاختيار!
+                {chrome("✅ اكتمل الاختيار!", "✅ Selection complete!")}
               </div>
               <button
                 onClick={goNext}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-base bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 shadow-lg transition-all active:scale-95"
               >
-                التالي
+                {chrome("التالي", "Next")}
                 <ChevronLeft className="w-5 h-5" />
               </button>
             </div>
@@ -1557,6 +1560,8 @@ interface SectionGroupProps {
 }
 
 function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditDbCat, isAdmin, currentTeacherId, allFull }: SectionGroupProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const cover = getSectionCover(section, sectionIdx);
   const isCustom = section.id === "custom";
   const isDbSec = section.id.startsWith("db-section-");
@@ -1576,18 +1581,18 @@ function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditD
         <div className="min-w-0 flex-1">
           <h3 className="font-extrabold text-base sm:text-lg truncate" style={{ color: "#1f4d4f" }}>{section.name}</h3>
           <div className="text-[10px] sm:text-[11px] font-bold" style={{ color: "#5b6b87" }}>
-            {section.subCategories.length} فئات
+            {section.subCategories.length} {chrome("فئات", "categories")}
           </div>
         </div>
         {isCustom && (
           <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: "rgba(201,161,75,0.15)", color: "#a07f37", border: "1px solid rgba(201,161,75,0.4)" }}>
-            خاص بك
+            {chrome("خاص بك", "Yours")}
           </span>
         )}
         {isDbSec && (
           <span className="text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1" style={{ background: "rgba(31,77,79,0.10)", color: "#1f4d4f", border: "1px solid rgba(31,77,79,0.25)" }}>
             <Globe className="w-3 h-3" />
-            مكتبة
+            {chrome("مكتبة", "Library")}
           </span>
         )}
       </div>
@@ -1630,6 +1635,8 @@ interface CategoryCardProps {
 }
 
 function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdit, dimmed }: CategoryCardProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const taken = takenByIdx !== -1;
   const winningTeam = taken ? teams[takenByIdx] : null;
   /* Only count 200/400/600 in the badge — 800 is optional/bonus */
@@ -1680,7 +1687,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
 
         {/* Question count badge */}
         <div className="absolute top-1.5 end-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[9px] font-bold">
-          {counts}{has800 ? "+⭐" : ""} سؤال
+          {counts}{has800 ? "+⭐" : ""} {chrome("سؤال", "questions")}
         </div>
 
         {/* Edit button */}
@@ -1688,7 +1695,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
           <button
             onClick={onEdit}
             className="absolute top-1.5 start-1.5 p-1.5 rounded-full bg-black/50 backdrop-blur-sm text-amber-200 hover:bg-amber-400 hover:text-emerald-950"
-            title="تعديل الفئة"
+            title={chrome("تعديل الفئة", "Edit category")}
           >
             <Edit3 className="w-3 h-3" />
           </button>
@@ -1709,7 +1716,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
             className={`absolute px-1.5 py-0.5 rounded-full text-[9px] font-black ${editable ? "top-8 start-1.5" : "top-1.5 start-1.5"}`}
             style={{ background: "#7c3aed", color: "white", boxShadow: "0 2px 8px rgba(124,58,237,0.5)" }}
           >
-            🔍 اكتشف السر
+            {chrome("🔍 اكتشف السر", "🔍 Discover the Secret")}
           </div>
         )}
       </div>
@@ -1776,18 +1783,20 @@ interface CategoryEditorProps {
   setCustomQuestions: React.Dispatch<React.SetStateAction<ArenaCustomQuestion[]>>;
 }
 
-const COVER_PRESETS: { color: string; gradient: string; label: string }[] = [
-  { color: "#1E4D35", gradient: "linear-gradient(135deg, #2D7048 0%, #1E4D35 60%, #0E2A1D 100%)", label: "أخضر حصاد" },
-  { color: "#7C3F12", gradient: "linear-gradient(135deg, #E8A80E 0%, #B8730A 60%, #7C3F12 100%)", label: "ذهبي" },
-  { color: "#1F3A6E", gradient: "linear-gradient(135deg, #4A8AD4 0%, #2D5BAA 60%, #1F3A6E 100%)", label: "أزرق" },
-  { color: "#4A2A7A", gradient: "linear-gradient(135deg, #8B5FBF 0%, #6E3DAA 60%, #4A2A7A 100%)", label: "بنفسجي" },
-  { color: "#8A1F3D", gradient: "linear-gradient(135deg, #E04373 0%, #B8284F 60%, #8A1F3D 100%)", label: "وردي" },
-  { color: "#0F4F47", gradient: "linear-gradient(135deg, #3FA398 0%, #1F7569 60%, #0F4F47 100%)", label: "تركواز" },
+const COVER_PRESETS: { color: string; gradient: string; label: string; labelEn: string }[] = [
+  { color: "#1E4D35", gradient: "linear-gradient(135deg, #2D7048 0%, #1E4D35 60%, #0E2A1D 100%)", label: "أخضر حصاد", labelEn: "Hisad green" },
+  { color: "#7C3F12", gradient: "linear-gradient(135deg, #E8A80E 0%, #B8730A 60%, #7C3F12 100%)", label: "ذهبي", labelEn: "Gold" },
+  { color: "#1F3A6E", gradient: "linear-gradient(135deg, #4A8AD4 0%, #2D5BAA 60%, #1F3A6E 100%)", label: "أزرق", labelEn: "Blue" },
+  { color: "#4A2A7A", gradient: "linear-gradient(135deg, #8B5FBF 0%, #6E3DAA 60%, #4A2A7A 100%)", label: "بنفسجي", labelEn: "Purple" },
+  { color: "#8A1F3D", gradient: "linear-gradient(135deg, #E04373 0%, #B8284F 60%, #8A1F3D 100%)", label: "وردي", labelEn: "Pink" },
+  { color: "#0F4F47", gradient: "linear-gradient(135deg, #3FA398 0%, #1F7569 60%, #0F4F47 100%)", label: "تركواز", labelEn: "Turquoise" },
 ];
 
 const EDITOR_EMOJIS = ["🎯", "📚", "🌍", "🔬", "⚗️", "🏛️", "🎨", "🎭", "🎮", "🏆", "📖", "🕌", "💡", "🚀", "⚽", "🎵", "🍎", "🌟", "💎", "🦁"];
 
 function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, setCustomQuestions }: CategoryEditorProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const refreshCreditsBalance = useRefreshCreditsBalance();
   const [mode, setMode] = useState<"saved" | "ephemeral">(initial ? "saved" : "saved");
   const [name, setName] = useState(initial?.name ?? "");
@@ -1833,13 +1842,13 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       topic: aiTopic.trim(),
       count: aiCount,
       includeBonus800: aiBonus,
-      language: "ar",
+      language: lang,
       notes: aiNotes.trim() || undefined,
     });
     setAiLoading(false);
     refreshCreditsBalance();
     if (r.error || r.questions.length === 0) {
-      toast.error(r.error || "تعذّر توليد الأسئلة");
+      toast.error(r.error || chrome("تعذّر توليد الأسئلة", "Could not generate questions"));
       return;
     }
     setAiResults(r.questions);
@@ -1847,7 +1856,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
   const handleFileImport = async (file: File) => {
     if (!savedCatId) {
-      toast.error("احفظ الفئة أولاً قبل الاستيراد");
+      toast.error(chrome("احفظ الفئة أولاً قبل الاستيراد", "Save the category before importing"));
       return;
     }
     if (fileImporting) return;
@@ -1857,7 +1866,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      if (!sheet) throw new Error("الملف فارغ");
+      if (!sheet) throw new Error(chrome("الملف فارغ", "The file is empty"));
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
       // Accept Arabic or English headers: السؤال/question, الإجابة/answer,
       // الصعوبة/difficulty (200|400|600|800), التلميح/hint (optional).
@@ -1883,7 +1892,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         }))
         .filter(r => r.q && r.a);
       if (candidates.length === 0) {
-        toast.error("لم نجد أعمدة 'السؤال' و'الإجابة' — تأكّد من رؤوس الجدول");
+        toast.error(chrome("لم نجد أعمدة 'السؤال' و'الإجابة' — تأكّد من رؤوس الجدول", "We couldn't find the 'question' and 'answer' columns — check the table headers"));
         return;
       }
       let created = 0;
@@ -1899,14 +1908,14 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         if (row) created++;
       }
       if (created > 0) {
-        toast.success(`تم استيراد ${created} سؤال`);
+        toast.success(chrome(`تم استيراد ${created} سؤال`, `${created} questions imported`));
         const acts = await fetchArenaActivities([savedCatId]);
         setActivities(acts);
       } else {
-        toast.error("لم يُحفظ أي سؤال — قد تكون مصادر الاستيراد معطّلة");
+        toast.error(chrome("لم يُحفظ أي سؤال — قد تكون مصادر الاستيراد معطّلة", "No questions were saved — import sources may be disabled"));
       }
     } catch (err) {
-      toast.error("تعذّر قراءة الملف — جرّب CSV أو XLSX");
+      toast.error(chrome("تعذّر قراءة الملف — جرّب CSV أو XLSX", "Could not read the file — try CSV or XLSX"));
     } finally {
       setFileImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1931,7 +1940,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
     }
     setAiSavingAll(false);
     if (created > 0) {
-      toast.success(`تمت إضافة ${created} سؤال`);
+      toast.success(chrome(`تمت إضافة ${created} سؤال`, `${created} questions added`));
       const acts = await fetchArenaActivities([savedCatId]);
       setActivities(acts);
       setAiDialogOpen(false);
@@ -1939,7 +1948,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       setAiTopic("");
       setAiNotes("");
     } else {
-      toast.error("لم تُحفظ أي أسئلة");
+      toast.error(chrome("لم تُحفظ أي أسئلة", "No questions were saved"));
     }
   };
 
@@ -2031,7 +2040,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
   const uploadInline = async (file: File): Promise<string | null> => {
     const url = await uploadImageFile(file);
-    if (!url) toast.error("فشل رفع الصورة");
+    if (!url) toast.error(chrome("فشل رفع الصورة", "Image upload failed"));
     return url;
   };
 
@@ -2043,9 +2052,9 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
     setUploading(false);
     if (url) {
       setCoverImageUrl(url);
-      toast.success("تم رفع الصورة");
+      toast.success(chrome("تم رفع الصورة", "Image uploaded"));
     } else {
-      toast.error("فشل رفع الصورة");
+      toast.error(chrome("فشل رفع الصورة", "Image upload failed"));
     }
   };
 
@@ -2057,14 +2066,14 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
     setDraftImageUploading(false);
     if (url) {
       setDraftImageUrl(url);
-      toast.success("تم رفع صورة السؤال");
+      toast.success(chrome("تم رفع صورة السؤال", "Question image uploaded"));
     } else {
-      toast.error("فشل رفع الصورة");
+      toast.error(chrome("فشل رفع الصورة", "Image upload failed"));
     }
   };
 
   const saveCategory = async () => {
-    if (!name.trim()) { toast.error("اكتب اسم الفئة"); return; }
+    if (!name.trim()) { toast.error(chrome("اكتب اسم الفئة", "Enter a category name")); return; }
     setSavingCat(true);
     if (savedCatId) {
       const updated = await updateArenaCategory(savedCatId, {
@@ -2076,8 +2085,8 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         ...(isAdmin ? { isPublic: makePublic } : {}),
       });
       setSavingCat(false);
-      if (!updated) { toast.error("فشل حفظ التغييرات"); return; }
-      toast.success("تم حفظ التغييرات");
+      if (!updated) { toast.error(chrome("فشل حفظ التغييرات", "Could not save changes")); return; }
+      toast.success(chrome("تم حفظ التغييرات", "Changes saved"));
       await onSaved();
       return;
     }
@@ -2091,35 +2100,35 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       sortOrder: 0,
     });
     setSavingCat(false);
-    if (!created) { toast.error("فشل حفظ الفئة"); return; }
+    if (!created) { toast.error(chrome("فشل حفظ الفئة", "Could not save category")); return; }
     setSavedCatId(created.id);
     setActivities([]);
     setActivitiesLoaded(true);
-    toast.success("تم إنشاء الفئة — أضف أسئلتك الآن");
+    toast.success(chrome("تم إنشاء الفئة — أضف أسئلتك الآن", "Category created — add your questions now"));
     await onSaved();
   };
 
   const buildActivityFromDraft = (): { ok: true; data: Partial<DbArenaActivity> } | { ok: false; error: string } => {
     switch (draftType) {
       case "text": {
-        if (!draftQ.trim() || !draftA.trim()) return { ok: false, error: "اكتب نص السؤال والإجابة" };
+        if (!draftQ.trim() || !draftA.trim()) return { ok: false, error: chrome("اكتب نص السؤال والإجابة", "Enter the question and answer text") };
         return { ok: true, data: { type: "text", question: draftQ.trim(), answer: draftA.trim() } };
       }
       case "image": {
-        if (!draftQ.trim() || !draftA.trim()) return { ok: false, error: "اكتب نص السؤال والإجابة" };
-        if (!draftImageUrl) return { ok: false, error: "ارفع صورة للسؤال" };
+        if (!draftQ.trim() || !draftA.trim()) return { ok: false, error: chrome("اكتب نص السؤال والإجابة", "Enter the question and answer text") };
+        if (!draftImageUrl) return { ok: false, error: chrome("ارفع صورة للسؤال", "Upload a question image") };
         return { ok: true, data: { type: "image", question: draftQ.trim(), answer: draftA.trim(), imageUrl: draftImageUrl } };
       }
       case "video": {
-        if (!draftQ.trim() || !draftA.trim()) return { ok: false, error: "اكتب نص السؤال والإجابة" };
+        if (!draftQ.trim() || !draftA.trim()) return { ok: false, error: chrome("اكتب نص السؤال والإجابة", "Enter the question and answer text") };
         return { ok: true, data: { type: "video", question: draftQ.trim(), answer: draftA.trim() } };
       }
       case "sin-jeem": {
-        if (!draftSinLetter.trim()) return { ok: false, error: "اختر الحرف" };
+        if (!draftSinLetter.trim()) return { ok: false, error: chrome("اختر الحرف", "Choose a letter") };
         const prompts = draftSinPrompts
           .map(p => ({ prompt: p.prompt.trim(), answer: p.answer.trim() }))
           .filter(p => p.prompt && p.answer);
-        if (prompts.length === 0) return { ok: false, error: "أضف على الأقل سؤالاً واحداً مع إجابته" };
+        if (prompts.length === 0) return { ok: false, error: chrome("أضف على الأقل سؤالاً واحداً مع إجابته", "Add at least one question with its answer") };
         const q = `سين جيم — حرف الـ ${draftSinLetter.trim()}`;
         const a = prompts.map(p => `${p.prompt}: ${p.answer}`).join("، ");
         return {
@@ -2132,7 +2141,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       }
       case "memory": {
         const pairs = draftMemoryPairs.filter(p => p.a.value.trim() && p.b.value.trim());
-        if (pairs.length < 2) return { ok: false, error: "أضف على الأقل زوجين كاملين" };
+        if (pairs.length < 2) return { ok: false, error: chrome("أضف على الأقل زوجين كاملين", "Add at least two complete pairs") };
         const a = pairs.map(p => `${p.a.value} ↔ ${p.b.value}`).join("، ");
         return {
           ok: true,
@@ -2146,7 +2155,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         const groups = draftCatGroups
           .map(g => ({ name: g.name.trim(), items: g.items.map(i => i.trim()).filter(Boolean) }))
           .filter(g => g.name && g.items.length > 0);
-        if (groups.length < 2) return { ok: false, error: "أضف مجموعتين على الأقل بعناصر" };
+        if (groups.length < 2) return { ok: false, error: chrome("أضف مجموعتين على الأقل بعناصر", "Add at least two groups with items") };
         const a = groups.map(g => `${g.name}: ${g.items.join("، ")}`).join(" | ");
         return {
           ok: true,
@@ -2157,8 +2166,8 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         };
       }
       case "logo": {
-        if (!draftImageUrl) return { ok: false, error: "ارفع صورة الشعار" };
-        if (!draftA.trim()) return { ok: false, error: "اكتب اسم الشعار" };
+        if (!draftImageUrl) return { ok: false, error: chrome("ارفع صورة الشعار", "Upload a logo image") };
+        if (!draftA.trim()) return { ok: false, error: chrome("اكتب اسم الشعار", "Enter the logo name") };
         return {
           ok: true,
           data: {
@@ -2169,7 +2178,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         };
       }
       case "secret": {
-        if (!draftSecretCategoryId) return { ok: false, error: "اختر فئة اكشف السر" };
+        if (!draftSecretCategoryId) return { ok: false, error: chrome("اختر فئة اكشف السر", "Choose a Discover the Secret category") };
         const catName = secretGameCats.find(c => c.id === draftSecretCategoryId)?.name ?? "اكشف السر";
         return {
           ok: true,
@@ -2182,12 +2191,12 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         };
       }
       default:
-        return { ok: false, error: "نوع غير مدعوم" };
+        return { ok: false, error: chrome("نوع غير مدعوم", "Unsupported type") };
     }
   };
 
   const addSavedActivity = async () => {
-    if (!savedCatId) { toast.error("احفظ الفئة أولاً"); return; }
+    if (!savedCatId) { toast.error(chrome("احفظ الفئة أولاً", "Save the category first")); return; }
     const built = buildActivityFromDraft();
     if (!built.ok) { toast.error(built.error); return; }
     const created = await createArenaActivity({
@@ -2196,10 +2205,10 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       sortOrder: activities.length,
       ...built.data,
     });
-    if (!created) { toast.error("فشل حفظ السؤال"); return; }
+    if (!created) { toast.error(chrome("فشل حفظ السؤال", "Could not save question")); return; }
     setActivities(prev => [...prev, created]);
     resetDraft();
-    toast.success("تمت إضافة السؤال");
+    toast.success(chrome("تمت إضافة السؤال", "Question added"));
     await onSaved();
   };
 
@@ -2209,7 +2218,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       setActivities(prev => prev.filter(a => a.id !== id));
       await onSaved();
     } else {
-      toast.error("فشل الحذف");
+      toast.error(chrome("فشل الحذف", "Could not delete"));
     }
   };
 
@@ -2229,7 +2238,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   };
 
   const saveEditActivity = async () => {
-    if (!editingActivityId || !editQ.trim() || !editA.trim()) { toast.error("اكتب نص السؤال والإجابة"); return; }
+    if (!editingActivityId || !editQ.trim() || !editA.trim()) { toast.error(chrome("اكتب نص السؤال والإجابة", "Enter the question and answer text")); return; }
     setSavingEdit(true);
     const updated = await updateArenaActivity(editingActivityId, {
       question: editQ.trim(),
@@ -2238,30 +2247,30 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       hint: editHint.trim() || null,
     });
     setSavingEdit(false);
-    if (!updated) { toast.error("فشل تعديل السؤال"); return; }
+    if (!updated) { toast.error(chrome("فشل تعديل السؤال", "Could not edit question")); return; }
     setActivities(prev => prev.map(a => a.id === editingActivityId ? updated : a));
     setEditingActivityId(null);
-    toast.success("تم تعديل السؤال");
+    toast.success(chrome("تم تعديل السؤال", "Question updated"));
     await onSaved();
   };
 
   const removeCategory = async () => {
     if (!savedCatId) return;
-    if (!confirm("حذف هذه الفئة وكل أسئلتها نهائياً؟")) return;
+    if (!confirm(chrome("حذف هذه الفئة وكل أسئلتها نهائياً؟", "Delete this category and all its questions permanently?"))) return;
     const ok = await deleteArenaCategory(savedCatId);
     if (ok) {
-      toast.success("تم الحذف");
+      toast.success(chrome("تم الحذف", "Deleted"));
       await onSaved();
       onClose();
-    } else { toast.error("فشل الحذف"); }
+    } else { toast.error(chrome("فشل الحذف", "Could not delete")); }
   };
 
   // Ephemeral one-shot custom questions (game-only)
   const addEphemeral = () => {
-    if (!draftQ.trim() || !draftA.trim()) { toast.error("اكتب نص السؤال والإجابة"); return; }
+    if (!draftQ.trim() || !draftA.trim()) { toast.error(chrome("اكتب نص السؤال والإجابة", "Enter the question and answer text")); return; }
     setCustomQuestions(prev => [...prev, { q: draftQ.trim(), a: draftA.trim(), difficulty: draftDiff }]);
     setDraftQ(""); setDraftA("");
-    toast.success("تمت إضافة السؤال للمسابقة الحالية");
+    toast.success(chrome("تمت إضافة السؤال للمسابقة الحالية", "Question added to this competition"));
   };
 
   return (
@@ -2287,9 +2296,9 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
           <div className="flex items-center gap-2.5">
             <FolderPlus className="w-5 h-5 text-amber-600" />
             <div>
-              <h3 className="text-lg font-extrabold text-[#1a2e1a]">{savedCatId ? "تعديل فئة" : "إنشاء فئة جديدة"}</h3>
+              <h3 className="text-lg font-extrabold text-[#1a2e1a]">{savedCatId ? chrome("تعديل فئة", "Edit category") : chrome("إنشاء فئة جديدة", "Create new category")}</h3>
               <p className="text-[11px] text-[#5b6b87]">
-                {isAdmin ? "بصفتك مسؤولاً يمكنك جعل الفئة عامة لكل المعلمين" : "ستكون الفئة خاصة بحسابك فقط"}
+                {isAdmin ? chrome("بصفتك مسؤولاً يمكنك جعل الفئة عامة لكل المعلمين", "As an admin, you can make this category public for all teachers") : chrome("ستكون الفئة خاصة بحسابك فقط", "This category will be private to your account")}
               </p>
             </div>
           </div>
@@ -2307,24 +2316,24 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition ${mode === "saved" ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-[#5b6b87] hover:text-[#1a2e1a]"}`}
               >
                 <Save className="w-4 h-4 inline -mt-0.5 me-1" />
-                فئة محفوظة (تظهر في كل مسابقاتك)
+                {chrome("فئة محفوظة (تظهر في كل مسابقاتك)", "Saved category (appears in all your competitions)")}
               </button>
               <button
                 onClick={() => setMode("ephemeral")}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition ${mode === "ephemeral" ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-[#5b6b87] hover:text-[#1a2e1a]"}`}
               >
                 <Sparkles className="w-4 h-4 inline -mt-0.5 me-1" />
-                أسئلة سريعة (للمسابقة الحالية فقط)
+                {chrome("أسئلة سريعة (للمسابقة الحالية فقط)", "Quick questions (this competition only)")}
               </button>
             </div>
           )}
 
           {mode === "ephemeral" ? (
             <div className="space-y-3">
-              <p className="text-[#5b6b87] text-xs">أسئلة خاصة بهذه المسابقة فقط، لن تُحفظ بعد انتهاء اللعبة.</p>
+              <p className="text-[#5b6b87] text-xs">{chrome("أسئلة خاصة بهذه المسابقة فقط، لن تُحفظ بعد انتهاء اللعبة.", "Questions for this competition only; they won't be saved after the game ends.")}</p>
               <div className="grid sm:grid-cols-12 gap-2">
-                <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
-                <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={chrome("نص السؤال", "Question text")} className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder={chrome("الإجابة", "Answer")} className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                 <div className="sm:col-span-2 flex items-center">
                   <DiffChips value={draftDiff} onChange={setDraftDiff} />
                 </div>
@@ -2333,7 +2342,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 </button>
               </div>
               {customQuestions.length === 0 ? (
-                <div className="text-center text-[#5b6b87]/60 text-sm py-3">لم تضف أسئلة بعد</div>
+                <div className="text-center text-[#5b6b87]/60 text-sm py-3">{chrome("لم تضف أسئلة بعد", "No questions added yet")}</div>
               ) : (
                 <div className="space-y-1.5 max-h-60 overflow-y-auto">
                   {customQuestions.map((cq, i) => (
@@ -2343,7 +2352,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         <div className="text-sm font-bold text-[#1a2e1a] truncate">{cq.q}</div>
                         <div className="text-xs text-[#5b6b87] truncate">→ {cq.a}</div>
                       </div>
-                      <button onClick={() => setCustomQuestions(prev => prev.filter((_, j) => j !== i))} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50" title="حذف">
+                      <button onClick={() => setCustomQuestions(prev => prev.filter((_, j) => j !== i))} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50" title={chrome("حذف", "Delete")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -2360,21 +2369,21 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   style={{ background: coverImageUrl ? "#0E2A1D" : (coverGradient ?? coverColor) }}
                 >
                   {coverImageUrl ? (
-                    <img src={coverImageUrl} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
+                    <img src={coverImageUrl} alt={chrome("غلاف الفئة", "Category cover")} className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-5xl">{emoji}</div>
                   )}
                   <div className="absolute inset-x-0 bottom-0 px-2 py-1.5 text-center font-extrabold text-white text-sm" style={{ background: coverColor, textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}>
-                    {name || "اسم الفئة"}
+                    {name || chrome("اسم الفئة", "Category name")}
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-bold text-[#5b6b87] mb-1 block">اسم الفئة</label>
-                    <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder="مثال: علماء العرب" className="w-full bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                    <label className="text-xs font-bold text-[#5b6b87] mb-1 block">{chrome("اسم الفئة", "Category name")}</label>
+                    <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder={chrome("مثال: علماء العرب", "Example: Great scientists")} className="w-full bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-[#5b6b87] mb-1 block">رمز تعبيري</label>
+                    <label className="text-xs font-bold text-[#5b6b87] mb-1 block">{chrome("رمز تعبيري", "Emoji")}</label>
                     <button
                       type="button"
                       onClick={() => setEmojiOpen(p => !p)}
@@ -2398,14 +2407,14 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
               {/* Color + image upload */}
               <div>
-                <label className="text-xs font-bold text-[#5b6b87] mb-1 block">لون الغلاف</label>
+                <label className="text-xs font-bold text-[#5b6b87] mb-1 block">{chrome("لون الغلاف", "Cover color")}</label>
                 <button
                   type="button"
                   onClick={() => setColorOpen(p => !p)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#ebe2cd] bg-[#f3ede0] hover:bg-[#ebe2cd] transition"
                 >
                   <span className="w-5 h-5 rounded-full shrink-0 border border-white/30 shadow-sm" style={{ background: coverGradient }} />
-                  <span className="text-sm font-bold text-[#5b6b87]">{COVER_PRESETS.find(p => p.color === coverColor)?.label ?? "اختر لوناً"}</span>
+                  <span className="text-sm font-bold text-[#5b6b87]">{(() => { const preset = COVER_PRESETS.find(p => p.color === coverColor); return preset ? (lang === "ar" ? preset.label : preset.labelEn) : chrome("اختر لوناً", "Choose a color"); })()}</span>
                   <ChevronDown className={`w-3.5 h-3.5 text-[#a07f37] transition-transform ${colorOpen ? "rotate-180" : ""}`} />
                 </button>
                 {colorOpen && (
@@ -2416,7 +2425,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         onClick={() => { setCoverColor(p.color); setCoverGradient(p.gradient); setColorOpen(false); }}
                         className="relative rounded-xl transition border border-white/10 overflow-hidden"
                         style={{ background: p.gradient, width: "3.25rem", height: "3.25rem", boxShadow: coverColor === p.color ? "0 0 0 2px #fbbf24, 0 0 8px rgba(251,191,36,0.4)" : undefined }}
-                        title={p.label}
+                        title={lang === "ar" ? p.label : p.labelEn}
                       >
                         {coverColor === p.color && (
                           <span className="absolute inset-0 flex items-center justify-center">
@@ -2429,17 +2438,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 )}
               </div>
               <div>
-                <label className="text-xs font-bold text-[#5b6b87] mb-1 block">صورة الغلاف (اختياري — يستبدل الرمز)</label>
+                <label className="text-xs font-bold text-[#5b6b87] mb-1 block">{chrome("صورة الغلاف (اختياري — يستبدل الرمز)", "Cover image (optional — replaces emoji)")}</label>
                 <div className="flex items-center gap-2">
                   <label className="px-4 py-2 rounded-xl bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] cursor-pointer inline-flex items-center gap-2 text-sm font-bold transition">
                     <Camera className="w-4 h-4" />
-                    {uploading ? "جارٍ الرفع..." : "رفع صورة"}
+                    {uploading ? chrome("جارٍ الرفع...", "Uploading...") : chrome("رفع صورة", "Upload image")}
                     <input type="file" accept="image/*" onChange={handleCoverUpload} disabled={uploading} className="hidden" />
                   </label>
                   {coverImageUrl && (
                     <button onClick={() => setCoverImageUrl(null)} className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-sm font-bold inline-flex items-center gap-1">
                       <X className="w-4 h-4" />
-                      إزالة
+                      {chrome("إزالة", "Remove")}
                     </button>
                   )}
                 </div>
@@ -2452,10 +2461,10 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   <div className="flex-1">
                     <div className="font-bold text-sm text-amber-800 inline-flex items-center gap-1.5">
                       <Globe className="w-4 h-4" />
-                      فئة عامة (مرئية لجميع المعلمين)
+                      {chrome("فئة عامة (مرئية لجميع المعلمين)", "Public category (visible to all teachers)")}
                     </div>
                     <div className="text-[11px] text-amber-700/70">
-                      {savedCatId ? "تحديث حالة الظهور للمعلمين الآخرين" : "ستظهر في مكتبة جميع المعلمين، ولن تكون مرتبطة بحسابك"}
+                      {savedCatId ? chrome("تحديث حالة الظهور للمعلمين الآخرين", "Update visibility for other teachers") : chrome("ستظهر في مكتبة جميع المعلمين، ولن تكون مرتبطة بحسابك", "It will appear in every teacher's library and won't be tied to your account")}
                     </div>
                   </div>
                 </label>
@@ -2465,7 +2474,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 {savedCatId && (
                   <button onClick={removeCategory} className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-sm font-bold inline-flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
-                    حذف الفئة
+                    {chrome("حذف الفئة", "Delete category")}
                   </button>
                 )}
                 <button
@@ -2474,7 +2483,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   className="ms-auto px-5 py-2.5 rounded-xl font-bold bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center gap-2 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  {savedCatId ? "حفظ التغييرات" : "حفظ الفئة"}
+                  {savedCatId ? chrome("حفظ التغييرات", "Save changes") : chrome("حفظ الفئة", "Save category")}
                 </button>
               </div>
 
@@ -2484,7 +2493,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                     <h4 className="font-extrabold text-base text-[#1a2e1a] flex items-center gap-2">
                       <Plus className="w-4 h-4 text-amber-600" />
-                      أسئلة الفئة
+                      {chrome("أسئلة الفئة", "Category questions")}
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {importSources.ai && (
@@ -2493,16 +2502,16 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                           className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] transition"
                         >
                           <Wand2 className="w-3.5 h-3.5" />
-                          توليد بالذكاء
+                          {chrome("توليد بالذكاء", "Generate with AI")}
                         </button>
                       )}
                       {importSources.homework && (
                         <button
-                          onClick={() => toast.info("استيراد من واجباتك — قريباً")}
+                          onClick={() => toast.info(chrome("استيراد من واجباتك — قريباً", "Import from your homework — coming soon"))}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] transition"
                         >
                           <Inbox className="w-3.5 h-3.5" />
-                          من الواجبات
+                          {chrome("من الواجبات", "From homework")}
                         </button>
                       )}
                       {importSources.file && (
@@ -2520,7 +2529,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                             className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] disabled:opacity-60 transition"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            {fileImporting ? "جارٍ الاستيراد..." : "من ملف Excel/CSV"}
+                            {fileImporting ? chrome("جارٍ الاستيراد...", "Importing...") : chrome("من ملف Excel/CSV", "From Excel/CSV file")}
                           </button>
                         </>
                       )}
@@ -2529,17 +2538,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
                   {!importSources.manual && (
                     <div className="rounded-xl bg-[#f3ede0] border border-dashed border-[#ebe2cd] p-3 mb-3 text-center text-[#5b6b87] text-xs">
-                      الإدخال اليدوي معطّل من قِبَل المسؤول — استخدم زر «توليد بالذكاء» أعلاه.
+                       {chrome("الإدخال اليدوي معطّل من قِبَل المسؤول — استخدم زر «توليد بالذكاء» أعلاه.", "Manual entry is disabled by the administrator — use the “Generate with AI” button above.")}
                     </div>
                   )}
                   {importSources.manual && (
                   <div className="rounded-xl bg-white border border-[#ebe2cd] p-3 mb-3 space-y-3">
                     <div className="flex flex-wrap gap-1.5">
                       {([
-                        { id: "text", label: "نصي", emoji: "📝" },
-                        { id: "image", label: "بصورة", emoji: "🖼️" },
-                        { id: "memory", label: "ذاكرة", emoji: "🧠" },
-                        { id: "categorize", label: "تصنيف", emoji: "🗂️" },
+                         { id: "text", label: chrome("نصي", "Text"), emoji: "📝" },
+                         { id: "image", label: chrome("بصورة", "Image"), emoji: "🖼️" },
+                         { id: "memory", label: chrome("ذاكرة", "Memory"), emoji: "🧠" },
+                         { id: "categorize", label: chrome("تصنيف", "Categorize"), emoji: "🗂️" },
                       ] as const).map(t => (
                         <button
                           key={t.id}
@@ -2555,7 +2564,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       <div>
                         {draftImageUrl ? (
                           <div className="relative inline-block">
-                            <img src={draftImageUrl} alt="preview" className="max-h-32 rounded-lg border border-white/15" />
+                            <img src={draftImageUrl} alt={chrome("معاينة", "Preview")} className="max-h-32 rounded-lg border border-white/15" />
                             <button onClick={() => setDraftImageUrl(null)} className="absolute -top-2 -end-2 p-1 rounded-full bg-rose-500 text-white">
                               <X className="w-3 h-3" />
                             </button>
@@ -2563,7 +2572,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         ) : (
                           <label className="px-3 py-2 rounded-lg bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] cursor-pointer inline-flex items-center gap-2 text-xs font-bold transition">
                             <Upload className="w-3.5 h-3.5" />
-                            {draftImageUploading ? "جارٍ الرفع..." : "رفع صورة السؤال"}
+                            {draftImageUploading ? chrome("جارٍ الرفع...", "Uploading...") : chrome("رفع صورة السؤال", "Upload question image")}
                             <input type="file" accept="image/*" onChange={handleQuestionImageUpload} disabled={draftImageUploading} className="hidden" />
                           </label>
                         )}
@@ -2587,8 +2596,8 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
                     {(draftType === "text" || draftType === "image") && (
                       <div className="grid sm:grid-cols-12 gap-2">
-                        <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={draftType === "image" ? "وصف السؤال (مثال: ما هو هذا الحيوان؟)" : "نص السؤال"} className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-lg px-3 py-2 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
-                        <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-lg px-3 py-2 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                         <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={draftType === "image" ? chrome("وصف السؤال (مثال: ما هو هذا الحيوان؟)", "Question description (e.g. What animal is this?)") : chrome("نص السؤال", "Question text")} className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-lg px-3 py-2 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                         <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder={chrome("الإجابة", "Answer")} className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-lg px-3 py-2 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                         <div className="sm:col-span-2 flex items-center">
                           <DiffChips value={draftDiff} onChange={setDraftDiff} />
                         </div>
@@ -2603,7 +2612,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         <DiffChips value={draftDiff} onChange={setDraftDiff} />
                         <button onClick={addSavedActivity} className="bg-amber-400 text-emerald-950 rounded-lg px-4 py-2 font-bold hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm">
                           <Plus className="w-4 h-4" />
-                          إضافة السؤال
+                          {chrome("إضافة السؤال", "Add question")}
                         </button>
                       </div>
                     )}
@@ -2612,7 +2621,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
                   {activities.length === 0 ? (
                     <div className="text-center text-[#5b6b87]/60 text-sm py-4 border border-dashed border-[#ebe2cd] rounded-xl">
-                      لم تضف أسئلة بعد — يفضّل ≥6 أسئلة لكل فئة (2 لكل صعوبة)
+                      {chrome("لم تضف أسئلة بعد — يفضّل ≥6 أسئلة لكل فئة (2 لكل صعوبة)", "No questions added yet — ≥6 questions per category are recommended (2 per difficulty)")}
                     </div>
                   ) : (
                     <div className="space-y-1.5 max-h-72 overflow-y-auto">
@@ -2621,22 +2630,22 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                           {editingActivityId === a.id ? (
                             /* ── Inline edit form ── */
                             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 space-y-2">
-                              <div className="text-[11px] font-extrabold text-amber-700 mb-1">تعديل السؤال</div>
+                               <div className="text-[11px] font-extrabold text-amber-700 mb-1">{chrome("تعديل السؤال", "Edit question")}</div>
                               <div className="grid sm:grid-cols-12 gap-2">
-                                <input value={editQ} onChange={e => setEditQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
-                                <input value={editA} onChange={e => setEditA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                                 <input value={editQ} onChange={e => setEditQ(e.target.value)} placeholder={chrome("نص السؤال", "Question text")} className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                                 <input value={editA} onChange={e => setEditA(e.target.value)} placeholder={chrome("الإجابة", "Answer")} className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                                 <div className="sm:col-span-3 flex items-center">
                                   <DiffChips value={editDiff} onChange={setEditDiff} />
                                 </div>
                               </div>
-                              <input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder="تلميح (اختياري)" className="w-full bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                               <input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder={chrome("تلميح (اختياري)", "Hint (optional)")} className="w-full bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                               <div className="flex gap-2 pt-1">
                                 <button onClick={saveEditActivity} disabled={savingEdit} className="px-4 py-1.5 rounded-lg font-bold text-sm bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 disabled:opacity-50">
                                   <Save className="w-3.5 h-3.5" />
-                                  {savingEdit ? "جارٍ الحفظ..." : "حفظ التعديل"}
+                                   {savingEdit ? chrome("جارٍ الحفظ...", "Saving...") : chrome("حفظ التعديل", "Save changes")}
                                 </button>
                                 <button onClick={() => setEditingActivityId(null)} className="px-3 py-1.5 rounded-lg font-bold text-sm text-[#5b6b87] hover:text-[#1a2e1a] border border-[#ebe2cd] hover:border-[#a07f37]">
-                                  إلغاء
+                                   {chrome("إلغاء", "Cancel")}
                                 </button>
                               </div>
                             </div>
@@ -2645,7 +2654,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                             <div className="flex items-center gap-2 rounded-lg bg-white border border-[#ebe2cd] px-3 py-2">
                               <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: a.difficulty === 800 ? "#a07f37" : a.difficulty === 600 ? "#9f1239" : a.difficulty === 400 ? "#6d28d9" : "#1d4ed8", background: a.difficulty === 800 ? "rgba(251,191,36,0.15)" : a.difficulty === 600 ? "rgba(159,18,57,0.10)" : a.difficulty === 400 ? "rgba(109,40,217,0.10)" : "rgba(29,78,216,0.10)" }}>{a.difficulty}</span>
                               {a.type === "secret" && (
-                                <span className="text-base shrink-0" title="اكشف السر">🔍</span>
+                                 <span className="text-base shrink-0" title={chrome("اكشف السر", "Discover the Secret")}>🔍</span>
                               )}
                               {a.imageUrl && a.type !== "secret" && (
                                 <img src={a.imageUrl} alt="" className="w-10 h-10 object-cover rounded shrink-0" />
@@ -2654,10 +2663,10 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                                 <div className="text-sm font-bold text-[#1a2e1a] truncate">{a.question}</div>
                                 <div className="text-xs text-[#5b6b87] truncate">→ {a.answer}</div>
                               </div>
-                              <button onClick={() => startEditActivity(a)} className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50" title="تعديل">
+                               <button onClick={() => startEditActivity(a)} className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50" title={chrome("تعديل", "Edit")}>
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => removeSavedActivity(a.id)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50" title="حذف">
+                               <button onClick={() => removeSavedActivity(a.id)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50" title={chrome("حذف", "Delete")}>
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -2690,8 +2699,8 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 <div className="flex items-center gap-2.5">
                   <Wand2 className="w-5 h-5 text-fuchsia-300" />
                   <div>
-                    <h3 className="text-base font-extrabold text-white">توليد أسئلة بالذكاء الاصطناعي</h3>
-                    <p className="text-[11px] text-emerald-100/60">يُعيّن النموذج الصعوبة تلقائياً (200/400/600) — يمكنك التعديل قبل الحفظ.</p>
+                    <h3 className="text-base font-extrabold text-white">{chrome("توليد أسئلة بالذكاء الاصطناعي", "Generate questions with AI")}</h3>
+                    <p className="text-[11px] text-emerald-100/60">{chrome("يُعيّن النموذج الصعوبة تلقائياً (200/400/600) — يمكنك التعديل قبل الحفظ.", "The model assigns difficulty automatically (200/400/600) — you can edit before saving.")}</p>
                   </div>
                 </div>
                 <button onClick={() => !aiLoading && !aiSavingAll && setAiDialogOpen(false)} className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white">
@@ -2701,18 +2710,18 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
               <div className="p-4 sm:p-5 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-emerald-100/80">الموضوع</label>
+                  <label className="text-xs font-bold text-emerald-100/80">{chrome("الموضوع", "Topic")}</label>
                   <input
                     value={aiTopic} onChange={e => setAiTopic(e.target.value)}
-                    placeholder="مثال: الأنبياء في القرآن، عواصم الدول العربية، فيزياء الحركة"
+                    placeholder={chrome("مثال: الأنبياء في القرآن، عواصم الدول العربية، فيزياء الحركة", "Example: planets, world capitals, motion physics")}
                     className="w-full bg-black/40 text-white rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-fuchsia-300"
-                    dir="rtl"
+                    dir={lang === "ar" ? "rtl" : "ltr"}
                   />
                 </div>
 
                 <div className="grid sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-5 space-y-1.5">
-                    <label className="text-xs font-bold text-emerald-100/80">عدد الأسئلة</label>
+                    <label className="text-xs font-bold text-emerald-100/80">{chrome("عدد الأسئلة", "Number of questions")}</label>
                     <input
                       type="number" min={1} max={12} value={aiCount}
                       onChange={e => setAiCount(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
@@ -2721,17 +2730,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   </div>
                   <label className="sm:col-span-7 flex items-center gap-2 cursor-pointer rounded-lg bg-amber-400/10 border border-amber-300/30 px-3 py-2">
                     <input type="checkbox" checked={aiBonus} onChange={e => setAiBonus(e.target.checked)} className="w-4 h-4 accent-amber-400" />
-                    <span className="text-xs font-bold text-amber-200">+ سؤال بونص (800 نقطة) — صعب جداً</span>
+                    <span className="text-xs font-bold text-amber-200">{chrome("+ سؤال بونص (800 نقطة) — صعب جداً", "+ bonus question (800 points) — very difficult")}</span>
                   </label>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-emerald-100/80">ملاحظات للنموذج (اختياري)</label>
+                  <label className="text-xs font-bold text-emerald-100/80">{chrome("ملاحظات للنموذج (اختياري)", "Notes for the model (optional)")}</label>
                   <input
                     value={aiNotes} onChange={e => setAiNotes(e.target.value)}
-                    placeholder="مثال: للمرحلة الابتدائية، تجنّب المعلومات المتقدمة"
+                    placeholder={chrome("مثال: للمرحلة الابتدائية، تجنّب المعلومات المتقدمة", "Example: for elementary level, avoid advanced information")}
                     className="w-full bg-black/40 text-white rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-fuchsia-300 text-sm"
-                    dir="rtl"
+                    dir={lang === "ar" ? "rtl" : "ltr"}
                   />
                 </div>
 
@@ -2741,16 +2750,16 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                     className="px-4 py-2 rounded-xl font-bold bg-gradient-to-l from-fuchsia-500 to-violet-500 text-white hover:from-fuchsia-400 hover:to-violet-400 inline-flex items-center gap-2 disabled:opacity-50"
                   >
                     <Sparkles className="w-4 h-4" />
-                    {aiLoading ? "جارٍ التوليد..." : (aiResults.length > 0 ? "إعادة التوليد" : "توليد")}
+                    {aiLoading ? chrome("جارٍ التوليد...", "Generating...") : (aiResults.length > 0 ? chrome("إعادة التوليد", "Regenerate") : chrome("توليد", "Generate"))}
                   </button>
                   {aiResults.length > 0 && (
-                    <span className="text-xs text-emerald-100/70">عاين الأسئلة وعدّلها قبل الحفظ.</span>
+                    <span className="text-xs text-emerald-100/70">{chrome("عاين الأسئلة وعدّلها قبل الحفظ.", "Review and edit questions before saving.")}</span>
                   )}
                 </div>
 
                 {aiResults.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-white/10">
-                    <div className="text-xs font-bold text-emerald-100/80">الأسئلة المُولّدة ({aiResults.length})</div>
+                    <div className="text-xs font-bold text-emerald-100/80">{chrome(`الأسئلة المُولّدة (${aiResults.length})`, `Generated questions (${aiResults.length})`)}</div>
                     {aiResults.map((q, i) => (
                       <div key={i} className="rounded-lg bg-black/40 border border-white/10 p-2.5 space-y-1.5">
                         <div className="grid sm:grid-cols-12 gap-2">
@@ -2758,13 +2767,13 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                             value={q.q}
                             onChange={e => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, q: e.target.value } : x))}
                             className="sm:col-span-5 bg-black/40 text-white rounded-md px-2 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-fuchsia-300"
-                            placeholder="السؤال"
+                            placeholder={chrome("السؤال", "Question")}
                           />
                           <input
                             value={q.a}
                             onChange={e => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, a: e.target.value } : x))}
                             className="sm:col-span-4 bg-black/40 text-white rounded-md px-2 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-fuchsia-300"
-                            placeholder="الإجابة"
+                            placeholder={chrome("الإجابة", "Answer")}
                           />
                           <div className="sm:col-span-2 flex items-center">
                             <DiffChips
@@ -2775,7 +2784,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                           <button
                             onClick={() => setAiResults(prev => prev.filter((_, j) => j !== i))}
                             className="sm:col-span-1 p-1.5 rounded-md text-rose-300 hover:bg-rose-500/20 inline-flex items-center justify-center"
-                            title="حذف"
+                            title={chrome("حذف", "Delete")}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -2783,7 +2792,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         <input
                           value={q.hint ?? ""}
                           onChange={e => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, hint: e.target.value } : x))}
-                          placeholder="تلميح (اختياري)"
+                          placeholder={chrome("تلميح (اختياري)", "Hint (optional)")}
                           className="w-full bg-black/40 text-white rounded-md px-2 py-1 text-xs border border-white/10 focus:outline-none focus:border-fuchsia-300"
                         />
                       </div>
@@ -2798,7 +2807,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   disabled={aiSavingAll}
                   className="px-4 py-2 rounded-xl font-bold text-white/70 hover:text-white border border-white/15 hover:border-white/30"
                 >
-                  إغلاق
+                  {chrome("إغلاق", "Close")}
                 </button>
                 {aiResults.length > 0 && (
                   <button
@@ -2806,7 +2815,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                     className="px-5 py-2 rounded-xl font-bold bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center gap-2 disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    {aiSavingAll ? "جارٍ الحفظ..." : `حفظ كل الأسئلة (${aiResults.length})`}
+                    {aiSavingAll ? chrome("جارٍ الحفظ...", "Saving...") : chrome(`حفظ كل الأسئلة (${aiResults.length})`, `Save all questions (${aiResults.length})`)}
                   </button>
                 )}
               </div>
@@ -2834,13 +2843,15 @@ interface LogoEditorProps {
 }
 
 function LogoEditor({ imageUrl, onUpload, onClear, uploading, brandName, onBrandName, hint, onHint }: LogoEditorProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">صورة الشعار</label>
+        <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">{chrome("صورة الشعار", "Logo image")}</label>
         {imageUrl ? (
           <div className="relative inline-block">
-            <img src={imageUrl} alt="logo" className="max-h-32 rounded-lg border border-white/15 bg-white/5" />
+            <img src={imageUrl} alt={chrome("الشعار", "Logo")} className="max-h-32 rounded-lg border border-white/15 bg-white/5" />
             <button onClick={onClear} className="absolute -top-2 -end-2 p-1 rounded-full bg-rose-500 text-white">
               <X className="w-3 h-3" />
             </button>
@@ -2848,19 +2859,19 @@ function LogoEditor({ imageUrl, onUpload, onClear, uploading, brandName, onBrand
         ) : (
           <label className="px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 cursor-pointer inline-flex items-center gap-2 text-xs font-bold">
             <Upload className="w-3.5 h-3.5" />
-            {uploading ? "جارٍ الرفع..." : "رفع صورة الشعار"}
+            {uploading ? chrome("جارٍ الرفع...", "Uploading...") : chrome("رفع صورة الشعار", "Upload logo image")}
             <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} disabled={uploading} className="hidden" />
           </label>
         )}
       </div>
       <div className="grid sm:grid-cols-2 gap-2">
         <div>
-          <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">اسم الشعار (الإجابة)</label>
-          <input value={brandName} onChange={e => onBrandName(e.target.value)} placeholder="مثال: نايكي" className="w-full bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+          <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">{chrome("اسم الشعار (الإجابة)", "Logo name (answer)")}</label>
+          <input value={brandName} onChange={e => onBrandName(e.target.value)} placeholder={chrome("مثال: نايكي", "Example: Nike")} className="w-full bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
         </div>
         <div>
-          <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">تلميح (اختياري)</label>
-          <input value={hint} onChange={e => onHint(e.target.value)} placeholder="مثال: ماركة رياضية" className="w-full bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+          <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">{chrome("تلميح (اختياري)", "Hint (optional)")}</label>
+          <input value={hint} onChange={e => onHint(e.target.value)} placeholder={chrome("مثال: ماركة رياضية", "Example: sports brand")} className="w-full bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
         </div>
       </div>
     </div>
@@ -2875,13 +2886,15 @@ interface SinJeemEditorProps {
 }
 
 function SinJeemEditor({ letter, onLetter, prompts, onPrompts }: SinJeemEditorProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const updatePrompt = (i: number, field: "prompt" | "answer", v: string) => {
     onPrompts(prompts.map((p, j) => j === i ? { ...p, [field]: v } : p));
   };
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">اختر الحرف</label>
+        <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">{chrome("اختر الحرف", "Choose a letter")}</label>
         <div className="flex flex-wrap gap-1">
           {ARABIC_LETTERS.map(l => (
             <button
@@ -2895,12 +2908,12 @@ function SinJeemEditor({ letter, onLetter, prompts, onPrompts }: SinJeemEditorPr
         </div>
       </div>
       <div>
-        <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">الأسئلة (مثال: «اسم بلد» → «السودان»)</label>
+        <label className="text-[11px] font-bold text-emerald-100/60 mb-1 block">{chrome("الأسئلة (مثال: «اسم بلد» → «السودان»)", "Questions (example: “Country name” → “Sudan”)")}</label>
         <div className="space-y-1.5">
           {prompts.map((p, i) => (
             <div key={i} className="grid sm:grid-cols-12 gap-1.5 items-center">
-              <input value={p.prompt} onChange={e => updatePrompt(i, "prompt", e.target.value)} placeholder={`سؤال ${i + 1} (مثال: اسم حيوان)`} className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
-              <input value={p.answer} onChange={e => updatePrompt(i, "answer", e.target.value)} placeholder="الإجابة المتوقعة" className="sm:col-span-6 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+              <input value={p.prompt} onChange={e => updatePrompt(i, "prompt", e.target.value)} placeholder={chrome(`سؤال ${i + 1} (مثال: اسم حيوان)`, `Question ${i + 1} (example: animal name)`)} className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+              <input value={p.answer} onChange={e => updatePrompt(i, "answer", e.target.value)} placeholder={chrome("الإجابة المتوقعة", "Expected answer")} className="sm:col-span-6 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
               <button
                 onClick={() => onPrompts(prompts.filter((_, j) => j !== i))}
                 disabled={prompts.length <= 1}
@@ -2916,7 +2929,7 @@ function SinJeemEditor({ letter, onLetter, prompts, onPrompts }: SinJeemEditorPr
           className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 inline-flex items-center gap-1"
         >
           <Plus className="w-3.5 h-3.5" />
-          إضافة سؤال آخر
+          {chrome("إضافة سؤال آخر", "Add another question")}
         </button>
       </div>
     </div>
@@ -2930,6 +2943,8 @@ interface MemoryEditorProps {
 }
 
 function MemoryEditor({ pairs, onPairs, onUpload }: MemoryEditorProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const updateSide = (i: number, side: "a" | "b", patch: Partial<{ kind: "text" | "image"; value: string }>) => {
     onPairs(pairs.map((p, j) => j === i ? { ...p, [side]: { ...p[side], ...patch } } : p));
   };
@@ -2939,12 +2954,12 @@ function MemoryEditor({ pairs, onPairs, onUpload }: MemoryEditorProps) {
   };
   return (
     <div className="space-y-2.5">
-      <div className="text-[11px] font-bold text-emerald-100/60">أزواج المطابقة (يفضّل 3 أو 4 أزواج)</div>
+      <div className="text-[11px] font-bold text-emerald-100/60">{chrome("أزواج المطابقة (يفضّل 3 أو 4 أزواج)", "Matching pairs (3 or 4 pairs recommended)")}</div>
       <div className="space-y-2">
         {pairs.map((pair, i) => (
           <div key={i} className="rounded-lg bg-black/40 border border-white/10 p-2 space-y-1.5">
             <div className="flex items-center justify-between">
-              <div className="text-[11px] font-bold text-amber-200">زوج {i + 1}</div>
+              <div className="text-[11px] font-bold text-amber-200">{chrome(`زوج ${i + 1}`, `Pair ${i + 1}`)}</div>
               <button onClick={() => onPairs(pairs.filter((_, j) => j !== i))} disabled={pairs.length <= 2} className="p-1 rounded text-rose-300 hover:bg-rose-500/20 disabled:opacity-30">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -2953,20 +2968,20 @@ function MemoryEditor({ pairs, onPairs, onUpload }: MemoryEditorProps) {
               <div key={side} className="flex gap-1.5 items-center">
                 <span className="text-[10px] font-bold text-emerald-200/70 w-6 text-center">{side === "a" ? "A" : "B"}</span>
                 <select value={pair[side].kind} onChange={e => updateSide(i, side, { kind: e.target.value as "text" | "image", value: "" })} className="bg-black/50 text-white rounded px-2 py-1.5 text-xs border border-white/10">
-                  <option value="text">نص</option>
-                  <option value="image">صورة</option>
+                  <option value="text">{chrome("نص", "Text")}</option>
+                  <option value="image">{chrome("صورة", "Image")}</option>
                 </select>
                 {pair[side].kind === "text" ? (
-                  <input value={pair[side].value} onChange={e => updateSide(i, side, { value: e.target.value })} placeholder="نص" className="flex-1 bg-black/40 text-white rounded px-2 py-1.5 text-xs border border-white/10 focus:outline-none focus:border-amber-300" />
+                  <input value={pair[side].value} onChange={e => updateSide(i, side, { value: e.target.value })} placeholder={chrome("نص", "Text")} className="flex-1 bg-black/40 text-white rounded px-2 py-1.5 text-xs border border-white/10 focus:outline-none focus:border-amber-300" />
                 ) : pair[side].value ? (
                   <div className="flex-1 flex items-center gap-2">
                     <img src={pair[side].value} alt="" className="h-10 w-10 object-cover rounded" />
-                    <button onClick={() => updateSide(i, side, { value: "" })} className="px-2 py-1 rounded text-rose-300 hover:bg-rose-500/20 text-[11px] font-bold">إزالة</button>
+                    <button onClick={() => updateSide(i, side, { value: "" })} className="px-2 py-1 rounded text-rose-300 hover:bg-rose-500/20 text-[11px] font-bold">{chrome("إزالة", "Remove")}</button>
                   </div>
                 ) : (
                   <label className="flex-1 px-2 py-1.5 rounded bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold">
                     <Upload className="w-3 h-3" />
-                    رفع صورة
+                    {chrome("رفع صورة", "Upload image")}
                     <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(i, side, f); }} className="hidden" />
                   </label>
                 )}
@@ -2981,7 +2996,7 @@ function MemoryEditor({ pairs, onPairs, onUpload }: MemoryEditorProps) {
         className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-40 inline-flex items-center gap-1"
       >
         <Plus className="w-3.5 h-3.5" />
-        إضافة زوج
+        {chrome("إضافة زوج", "Add pair")}
       </button>
     </div>
   );
@@ -2993,6 +3008,8 @@ interface CategorizeEditorProps {
 }
 
 function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const updateGroup = (i: number, patch: Partial<CategorizeGroup>) => {
     onGroups(groups.map((g, j) => j === i ? { ...g, ...patch } : g));
   };
@@ -3001,12 +3018,12 @@ function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
   };
   return (
     <div className="space-y-2.5">
-      <div className="text-[11px] font-bold text-emerald-100/60">المجموعات (مثال: «خضار»، «فواكه») وعناصر كل مجموعة</div>
+      <div className="text-[11px] font-bold text-emerald-100/60">{chrome("المجموعات (مثال: «خضار»، «فواكه») وعناصر كل مجموعة", "Groups (example: “Vegetables”, “Fruits”) and their items")}</div>
       <div className="grid sm:grid-cols-2 gap-2">
         {groups.map((g, gi) => (
           <div key={gi} className="rounded-lg bg-black/40 border border-white/10 p-2 space-y-1.5">
             <div className="flex items-center gap-1.5">
-              <input value={g.name} onChange={e => updateGroup(gi, { name: e.target.value })} placeholder="اسم المجموعة" className="flex-1 bg-black/50 text-white rounded px-2 py-1.5 text-sm font-bold border border-white/10 focus:outline-none focus:border-amber-300" />
+              <input value={g.name} onChange={e => updateGroup(gi, { name: e.target.value })} placeholder={chrome("اسم المجموعة", "Group name")} className="flex-1 bg-black/50 text-white rounded px-2 py-1.5 text-sm font-bold border border-white/10 focus:outline-none focus:border-amber-300" />
               <button onClick={() => onGroups(groups.filter((_, j) => j !== gi))} disabled={groups.length <= 2} className="p-1.5 rounded text-rose-300 hover:bg-rose-500/20 disabled:opacity-30">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -3014,7 +3031,7 @@ function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
             <div className="space-y-1">
               {g.items.map((it, ii) => (
                 <div key={ii} className="flex gap-1.5 items-center">
-                  <input value={it} onChange={e => updateItem(gi, ii, e.target.value)} placeholder={`عنصر ${ii + 1}`} className="flex-1 bg-black/40 text-white rounded px-2 py-1 text-xs border border-white/10 focus:outline-none focus:border-amber-300" />
+                  <input value={it} onChange={e => updateItem(gi, ii, e.target.value)} placeholder={chrome(`عنصر ${ii + 1}`, `Item ${ii + 1}`)} className="flex-1 bg-black/40 text-white rounded px-2 py-1 text-xs border border-white/10 focus:outline-none focus:border-amber-300" />
                   <button onClick={() => updateGroup(gi, { items: g.items.filter((_, k) => k !== ii) })} disabled={g.items.length <= 1} className="p-1 rounded text-rose-300 hover:bg-rose-500/20 disabled:opacity-30">
                     <X className="w-3 h-3" />
                   </button>
@@ -3022,7 +3039,7 @@ function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
               ))}
               <button onClick={() => updateGroup(gi, { items: [...g.items, ""] })} className="text-[11px] text-emerald-200/80 hover:text-emerald-100 font-bold inline-flex items-center gap-1">
                 <Plus className="w-3 h-3" />
-                إضافة عنصر
+                {chrome("إضافة عنصر", "Add item")}
               </button>
             </div>
           </div>
@@ -3034,7 +3051,7 @@ function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
         className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-40 inline-flex items-center gap-1"
       >
         <Plus className="w-3.5 h-3.5" />
-        إضافة مجموعة
+        {chrome("إضافة مجموعة", "Add group")}
       </button>
     </div>
   );
@@ -3051,6 +3068,8 @@ interface RandomPickRevealProps {
 }
 
 function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickRevealProps) {
+  const { lang } = useI18n();
+  const chrome = (ar: string, en: string) => lang === "ar" ? ar : en;
   const subById = useMemo(() => {
     const m = new Map<string, ArenaSubCategory>();
     pool.forEach((s, i) => m.set(s.id, s));
@@ -3088,7 +3107,7 @@ function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickR
       className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(31,77,79,0.78)", backdropFilter: "blur(10px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      dir="rtl"
+      dir={lang === "ar" ? "rtl" : "ltr"}
     >
       <motion.div
         initial={{ scale: 0.9, y: 24, opacity: 0 }}
@@ -3130,10 +3149,10 @@ function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickR
             <div>
               <h2 className="text-lg sm:text-xl font-black inline-flex items-center gap-2" style={{ color: "#1f4d4f" }}>
                 <Wand2 className="w-4 h-4" style={{ color: "#a07f37" }} />
-                قرعة الفئات الذكية
+                {chrome("قرعة الفئات الذكية", "Smart category draw")}
               </h2>
               <p className="text-[11px] sm:text-xs font-bold" style={{ color: "#5b6b87" }}>
-                نختار {teams.length * 3} فئات بشكل عشوائي تماماً — 3 فئات لكل فريق
+                {chrome(`نختار ${teams.length * 3} فئات بشكل عشوائي تماماً — 3 فئات لكل فريق`, `We're randomly choosing ${teams.length * 3} categories — 3 for each team`)}
               </p>
             </div>
           </div>
@@ -3141,7 +3160,7 @@ function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickR
             onClick={onClose}
             className="p-2 rounded-xl transition"
             style={{ color: "#5b6b87", background: "#ffffff", border: "1px solid #ebe2cd" }}
-            aria-label="إغلاق"
+            aria-label={chrome("إغلاق", "Close")}
           >
             <X className="w-4 h-4" />
           </button>
@@ -3212,10 +3231,10 @@ function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickR
                   style={{ color: "#2d5e3f" }}
                 >
                   <Sparkles className="w-3.5 h-3.5" style={{ color: "#c9a14b" }} />
-                  اكتملت القرعة — جارٍ التطبيق...
+                  {chrome("اكتملت القرعة — جارٍ التطبيق...", "Draw complete — applying...")}
                 </motion.span>
               ) : (
-                <span>{doneCount} من {totalReels} فئات تم اختيارها</span>
+                <span>{chrome(`${doneCount} من ${totalReels} فئات تم اختيارها`, `${doneCount} of ${totalReels} categories selected`)}</span>
               )}
             </div>
             <div className="flex items-center gap-2 ms-auto">
@@ -3224,7 +3243,7 @@ function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickR
                 className="px-3.5 py-2 rounded-xl text-xs font-bold"
                 style={{ background: "#faf6ec", color: "#1f4d4f", border: "1px solid #ebe2cd" }}
               >
-                إلغاء
+                {chrome("إلغاء", "Cancel")}
               </button>
               {allDone && (
                 <motion.button
@@ -3240,7 +3259,7 @@ function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickR
                   }}
                 >
                   <Check className="w-3.5 h-3.5" />
-                  تطبيق الآن
+                  {chrome("تطبيق الآن", "Apply now")}
                 </motion.button>
               )}
             </div>
@@ -3406,7 +3425,10 @@ function SlotReel({
 }
 
 function Stepper({ step }: { step: Step }) {
-  const labels: Record<Step, string> = { 1: "الفرق", 2: "الفئات", 3: "الوسائل والمؤقت" };
+  const { lang } = useI18n();
+  const labels: Record<Step, string> = lang === "ar"
+    ? { 1: "الفرق", 2: "الفئات", 3: "الوسائل والمؤقت" }
+    : { 1: "Teams", 2: "Categories", 3: "Helpers & timer" };
   return (
     <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
       {([1, 2, 3] as Step[]).map((s, idx) => {

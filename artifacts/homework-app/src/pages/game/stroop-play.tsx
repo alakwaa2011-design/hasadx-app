@@ -11,7 +11,7 @@ import { LevelUpSplash } from "@/components/level-up-splash";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-const DEFAULT_COLORS = [
+const ARABIC_DEFAULT_COLORS = [
   { word: "أحمر", color: "#ef4444", options: ["#ef4444", "#3b82f6", "#22c55e", "#eab308"] },
   { word: "أزرق", color: "#3b82f6", options: ["#3b82f6", "#ef4444", "#22c55e", "#eab308"] },
   { word: "أخضر", color: "#22c55e", options: ["#22c55e", "#ef4444", "#3b82f6", "#eab308"] },
@@ -22,7 +22,18 @@ const DEFAULT_COLORS = [
   { word: "أسود", color: "#1f2937", options: ["#1f2937", "#ef4444", "#3b82f6", "#22c55e"] },
 ];
 
-const COLOR_NAMES: Record<string, string> = {
+const ENGLISH_DEFAULT_COLORS = [
+  { word: "Red", color: "#ef4444", options: ["#ef4444", "#3b82f6", "#22c55e", "#eab308"] },
+  { word: "Blue", color: "#3b82f6", options: ["#3b82f6", "#ef4444", "#22c55e", "#eab308"] },
+  { word: "Green", color: "#22c55e", options: ["#22c55e", "#ef4444", "#3b82f6", "#eab308"] },
+  { word: "Yellow", color: "#eab308", options: ["#eab308", "#ef4444", "#3b82f6", "#22c55e"] },
+  { word: "Orange", color: "#f97316", options: ["#f97316", "#ef4444", "#3b82f6", "#22c55e"] },
+  { word: "Purple", color: "#a855f7", options: ["#a855f7", "#ef4444", "#3b82f6", "#22c55e"] },
+  { word: "Gray", color: "#6b7280", options: ["#6b7280", "#ef4444", "#3b82f6", "#eab308"] },
+  { word: "Black", color: "#1f2937", options: ["#1f2937", "#ef4444", "#3b82f6", "#22c55e"] },
+];
+
+const ARABIC_COLOR_NAMES: Record<string, string> = {
   "#ef4444": "أحمر",
   "#3b82f6": "أزرق",
   "#22c55e": "أخضر",
@@ -33,6 +44,19 @@ const COLOR_NAMES: Record<string, string> = {
   "#1f2937": "أسود",
   "#ec4899": "زهري",
   "#6366f1": "نيلي",
+};
+
+const ENGLISH_COLOR_NAMES: Record<string, string> = {
+  "#ef4444": "Red",
+  "#3b82f6": "Blue",
+  "#22c55e": "Green",
+  "#eab308": "Yellow",
+  "#f97316": "Orange",
+  "#a855f7": "Purple",
+  "#6b7280": "Gray",
+  "#1f2937": "Black",
+  "#ec4899": "Pink",
+  "#6366f1": "Indigo",
 };
 
 interface ColorItem {
@@ -55,11 +79,19 @@ const BASE_TIMER_MS = 5000;
 const TIMER_DECREMENT_MS = 200;
 const MIN_TIMER_MS = 1000;
 
-function getColorLabel(color: string, wordMap: Record<string, string>): string {
-  return wordMap[color] || COLOR_NAMES[color] || color;
+function getDefaultColors(lang: string): ColorItem[] {
+  return lang === "ar" ? ARABIC_DEFAULT_COLORS : ENGLISH_DEFAULT_COLORS;
 }
 
-function generateQuestion(colors: ColorItem[], wordMap: Record<string, string>): Question {
+function makeWordMap(colors: ColorItem[]): Record<string, string> {
+  return Object.fromEntries(colors.map(({ color, word }) => [color, word]));
+}
+
+function getColorLabel(color: string, wordMap: Record<string, string>, lang: string): string {
+  return wordMap[color] || (lang === "ar" ? ARABIC_COLOR_NAMES : ENGLISH_COLOR_NAMES)[color] || color;
+}
+
+function generateQuestion(colors: ColorItem[], wordMap: Record<string, string>, lang: string): Question {
   const inkIdx = Math.floor(Math.random() * colors.length);
   let wordIdx = Math.floor(Math.random() * colors.length);
   if (colors.length > 1) {
@@ -82,13 +114,13 @@ function generateQuestion(colors: ColorItem[], wordMap: Record<string, string>):
   const shuffled = [...optionColors].sort(() => Math.random() - 0.5);
   const choices = shuffled.map(c => ({
     color: c,
-    label: getColorLabel(c, wordMap),
+    label: getColorLabel(c, wordMap, lang),
   }));
 
   return {
     displayWord,
     inkColor: inkItem.color,
-    inkColorName: getColorLabel(inkItem.color, wordMap),
+    inkColorName: getColorLabel(inkItem.color, wordMap, lang),
     choices,
   };
 }
@@ -181,9 +213,11 @@ export default function StroopPlay() {
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
   const { isArenaMode, myName, opponents, results, updateScore, finishArena } = useArena("stroop");
 
-  const [colors, setColors] = useState<ColorItem[]>(DEFAULT_COLORS);
-  const [wordMap, setWordMap] = useState<Record<string, string>>({});
+  const hasPin = Boolean(new URLSearchParams(window.location.search).get("pin"));
+  const [colors, setColors] = useState<ColorItem[]>(() => getDefaultColors(lang));
+  const [wordMap, setWordMap] = useState<Record<string, string>>(() => makeWordMap(getDefaultColors(lang)));
   const [customTitle, setCustomTitle] = useState<string | null>(null);
+  const [isCustomSet, setIsCustomSet] = useState(hasPin);
 
   const [phase, setPhase] = useState<GamePhase>("playing");
   const [score, setScore] = useState(0);
@@ -247,17 +281,16 @@ export default function StroopPlay() {
                 : [item.color],
             }));
             setColors(loaded);
-            const map: Record<string, string> = {};
-            for (const c of loaded) map[c.color] = c.word;
+            const map = makeWordMap(loaded);
+            colorsRef.current = loaded;
+            wordMapRef.current = map;
             setWordMap(map);
             setCustomTitle(data.title);
+            setIsCustomSet(true);
+            setQuestion(generateQuestion(loaded, map, lang));
           }
         })
         .catch(() => {});
-    } else {
-      const map: Record<string, string> = {};
-      for (const c of DEFAULT_COLORS) map[c.color] = c.word;
-      setWordMap(map);
     }
 
     fetch(`${API_BASE}/api/student-auth/me`, { credentials: "include" })
@@ -275,7 +308,7 @@ export default function StroopPlay() {
     answeringRef.current = false;
     setFeedback(null);
     setWrongChoice(null);
-    const q = generateQuestion(colorsRef.current, wordMapRef.current);
+    const q = generateQuestion(colorsRef.current, wordMapRef.current, lang);
     setQuestion(q);
     const duration = getTimerDuration(currentLevel);
     setTotalTime(duration);
@@ -308,12 +341,23 @@ export default function StroopPlay() {
         return prev - 60;
       });
     }, 60);
-  }, []);
+  }, [lang]);
+
+  useEffect(() => {
+    if (isCustomSet) return;
+    const defaults = getDefaultColors(lang);
+    const map = makeWordMap(defaults);
+    colorsRef.current = defaults;
+    wordMapRef.current = map;
+    setColors(defaults);
+    setWordMap(map);
+    nextQuestion(levelRef.current);
+  }, [lang, isCustomSet, nextQuestion]);
 
   useEffect(() => {
     nextQuestion(0);
     return () => clearTimers();
-  }, []);
+  }, [nextQuestion, clearTimers]);
 
   const handleSaveScore = useCallback(async () => {
     if (saveStatus === "saving" || saveStatus === "saved") return;

@@ -24,6 +24,17 @@ const ARABIC_COLORS = [
   { word: "أسود", color: "#1f2937" },
 ];
 
+const ENGLISH_COLORS = [
+  { word: "Red", color: "#ef4444" },
+  { word: "Blue", color: "#3b82f6" },
+  { word: "Green", color: "#22c55e" },
+  { word: "Yellow", color: "#eab308" },
+  { word: "Orange", color: "#f97316" },
+  { word: "Purple", color: "#a855f7" },
+  { word: "Gray", color: "#6b7280" },
+  { word: "Black", color: "#1f2937" },
+];
+
 interface LeaderboardEntry {
   id: number;
   name: string;
@@ -102,7 +113,7 @@ export default function StroopSetup() {
         transition={{ delay: 0.05 }}
         className="grid grid-cols-4 gap-2 mb-8"
       >
-        {ARABIC_COLORS.map((c, i) => (
+        {(lang === "ar" ? ARABIC_COLORS : ENGLISH_COLORS).map((c, i, colors) => (
           <motion.div
             key={c.word}
             initial={{ opacity: 0, scale: 0.8 }}
@@ -110,7 +121,7 @@ export default function StroopSetup() {
             transition={{ delay: 0.05 + i * 0.04 }}
             className="h-12 rounded-xl flex items-center justify-center font-black text-sm shadow-sm border border-white/40"
             style={{
-              backgroundColor: ARABIC_COLORS[(i + 3) % ARABIC_COLORS.length].color + "20",
+               backgroundColor: colors[(i + 3) % colors.length].color + "20",
               color: c.color,
             }}
           >

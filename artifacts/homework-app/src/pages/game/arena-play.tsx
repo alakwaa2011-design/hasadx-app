@@ -90,6 +90,151 @@ import { useI18n } from "@/lib/i18n";
 const BASE_POINT_VALUES: ArenaDifficulty[] = [200, 400, 600];
 const SLOTS: ArenaCardSlot[] = [1, 2];
 
+// Local chrome translations keep teacher-authored questions, answers, and
+// category names untouched while covering the standalone game widgets below.
+const arenaPlayEnglish: Record<string, string> = {
+  "إخفاء التعليمات": "Hide instructions",
+  "طريقة اللعب والقواعد": "How to play & rules",
+  "🎮 طريقة اللعب": "🎮 How to play",
+  "📋 القواعد": "📋 Rules",
+  "من أجاب من": "Who answered?",
+  "تخطي — إجابة جماعية": "Skip — team answer",
+  "تعذّر تحميل هذا السؤال": "Could not load this question",
+  "قد يكون السؤال محذوفاً أو الفئة معدّلة. أغلق هذا الكرت وجرّب كرتاً آخر.": "The question may have been deleted or its category changed. Close this card and try another.",
+  "إغلاق الكرت": "Close card",
+  "إغلاق": "Close",
+  "يجيب الآن": "is answering now",
+  "🪤 فخ": "🪤 Trap",
+  "↔️ محوّل": "↔️ Transfer",
+  "2️⃣ جوابين": "2️⃣ Two answers",
+  "الإجابة الصحيحة": "Correct answer",
+  "تصويت الجمهور": "Audience vote",
+  "خيار أ": "Option A",
+  "خيار ب": "Option B",
+  "استبدال السؤال": "Replace question",
+  "إبلاغ": "Report",
+  "بدء المؤقت": "Start timer",
+  "متابعة": "Resume",
+  "إيقاف المؤقت": "Pause timer",
+  "كشف الإجابة": "Reveal answer",
+  "لا أحد": "No one",
+  "اتصال بصديق": "Phone a friend",
+  "لديك ٦٠ ثانية للاتصال بصديق وأخذ رأيه — لن يتم خصم وقت السؤال أثناء المكالمة": "You have 60 seconds to call a friend for advice — the question timer is paused.",
+  "إنهاء المكالمة الآن": "End call now",
+  "تعذّر النسخ": "Could not copy",
+  "مشاركة مع الجمهور": "Share with audience",
+  "امسح الرمز أو افتح الرابط على الشاشة الكبيرة ليصوّت الجمهور أو يتابع اللعبة": "Scan the code or open the link on the big screen so the audience can vote or follow the game.",
+  "نُسخ": "Copied",
+  "نسخ": "Copy",
+  "تم": "Done",
+  "إبلاغ عن خطأ في السؤال": "Report a question issue",
+  "السؤال": "Question",
+  "الإجابة الحالية": "Current answer",
+  "ما المشكلة؟": "What is the issue?",
+  "مثلاً: السؤال غير واضح، أو الإجابة غير دقيقة، أو الصورة لا تطابق...": "For example: the question is unclear, the answer is inaccurate, or the image does not match...",
+  "الإجابة الصحيحة المقترحة": "Suggested correct answer",
+  "ساعدنا — اكتب الإجابة التي تراها صحيحة": "Help us — enter the answer you believe is correct",
+  "إلغاء": "Cancel",
+  "اكتب وصف المشكلة": "Enter a description of the issue",
+  "إرسال البلاغ": "Send report",
+  "استعدّوا للتحدّي": "Get ready for the challenge",
+  "طريقة اللعب": "How to play",
+  "الوسائل المساعدة": "Helpers",
+  "فهمنا — ابدأ اللعبة": "Got it — start the game",
+  "ملاحظات مهمّة": "Important notes",
+  "كل فئة فيها 6 بطاقات: 200 مرتين، 400 مرتين، 600 مرتين": "Each category has 6 cards: two 200s, two 400s, and two 600s.",
+  "في كل دور يفتح الفريق صاحب الدور بطاقة من فئاته": "On each turn, the active team opens a card from its categories.",
+  "للمؤقت مدة محددة لكل سؤال — يديرها المنظّم": "Each question has a set timer, controlled by the organizer.",
+  "ينتهي التحدّي حين تُفتح كل البطاقات، ويفوز صاحب أعلى نقاط": "The challenge ends when all cards are opened; the highest score wins.",
+  "لا يمكن لفريقين اختيار نفس الفئة الفرعية": "Two teams cannot choose the same subcategory.",
+  "كل وسيلة مساعدة تُستخدم مرة واحدة فقط في المسابقة": "Each helper may be used once per competition.",
+  "بعض الوسائل لها قيود على مَن يستخدمها ومتى": "Some helpers restrict who can use them and when.",
+  "يستطيع المنظّم تحويل السؤال يدوياً بعد كشف الإجابة": "The organizer can manually transfer a question after revealing the answer.",
+  "إذا أضفت لاعبين، يمكنك تمييز من أجاب فعلاً من الفريق": "If you add players, you can identify who answered for the team.",
+  "الفائز": "Winner",
+  "نقطة": "points",
+  "تعادل!": "Tie!",
+  "إعادة فورية بنفس الإعدادات": "Quick replay with the same settings",
+  "يبدأ التحدّي فوراً بنفس الفرق والفئات — بدون خطوات الإعداد": "Start immediately with the same teams and categories — no setup steps.",
+  "إعادة مع تغيير الإعدادات": "Replay with changed settings",
+  "إعادة اللعب": "Play again",
+  "خروج": "Exit",
+  "شارك النتيجة": "Share result",
+  "امسح الرمز ليرى المتأخرون النتيجة النهائية على شاشتهم": "Scan the code so latecomers can see the final result on their screen.",
+  "سؤال": "Question",
+  "توضيح الشعار": "Reveal logo",
+  "تلميح:": "Hint:",
+  "أجب بكلمة تبدأ بحرف": "Answer with a word beginning with",
+  "لا توجد بطاقات للمطابقة.": "No matching cards.",
+  "طابق الأزواج المتشابهة": "Match the pairs",
+  "لا توجد عناصر للتصنيف.": "No items to categorize.",
+  "التصنيف الصحيح": "Correct classification",
+  "اضغط عنصراً ثم اضغط مجموعته": "Select an item, then select its group",
+  "العناصر": "Items",
+  "— تم تصنيف الكل —": "— Everything is categorized —",
+  "اضغط لإزالته": "Click to remove",
+  "تعذّر تحميل الصورة": "Could not load image",
+  "سؤال مصوّر": "Image question",
+  "🖼️ سؤال مصوّر": "🖼️ Image question",
+  "لا توجد صورة": "No image",
+  "ما اسم هذا الشعار؟": "What is this logo called?",
+  "جارٍ إنشاء جلسة اكتشف السر…": "Creating Secret Discovery session…",
+  "تعذّر الاتصال بالسيرفر": "Could not connect to the server",
+  "الفائز!": "Winner!",
+  "سيتم إسناد النقاط تلقائياً…": "Points will be awarded automatically…",
+  "جارٍ تحميل حالة اللعبة…": "Loading game state…",
+  "اكتشف السر": "Discover the Secret",
+  "عرض الباركود للمسح": "Show QR code to scan",
+  "إخفاء الباركود": "Hide QR code",
+  "امسح الباركود لرؤية سرّك": "Scan the QR code to see your secret",
+  "عرض السر هنا (بدون باركود)": "Show secret here (without QR code)",
+  "بدء اللعبة فوراً": "Start game now",
+  "تراجع عن آخر سؤال": "Undo last question",
+  "🔢 عدد الأسئلة المطروحة": "🔢 Questions asked",
+  "0 نقطة": "0 points",
+  "❌ لم يتمكن": "❌ Did not succeed",
+  "تخمين الفريق": "Team guess",
+  "تخمين": "Guess",
+  "⏳ هذا الفريق في فترة عقوبة (30 ثانية)": "⏳ This team is in a 30-second penalty period",
+  "ث": "s",
+  "يرى الطلاب السر على هواتفهم بعد مسح QR": "Students see their secret on their phones after scanning the QR code",
+  "كل فريق يسأل سؤالاً، اضغط المربع لتسجيله": "Each team asks a question; click a box to record it",
+  "عند التخمين الصحيح اضغط \"أجاب صحيح\"": "When the guess is correct, click “Answered correctly”",
+  "لا تعيد سؤالاً طرحه الفريق الآخر": "Do not repeat a question asked by the other team",
+  "الإجابة: نعم أو لا فقط": "Answers must be yes or no only",
+  "ذكر الاسم خطأً يمنح الخصم سؤالَين": "Naming it incorrectly gives the opponent two questions",
+  "فشلوا؟ →": "Did they fail? →",
+  "صوت": "votes",
+  "تم استخدامه": "used",
+  "نقطة لـ": "Point for",
+  "اختياري": "optional",
+  "كل فريق يختار 3 فئات — مجموع 6 فئات على اللوحة": "Each team chooses 3 categories — 6 categories total on the board",
+  "مستهلك": "used",
+  "صحيح": "correct",
+  "كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله": "Teams take turns asking questions — click a box to record it",
+  "عند التخمين الصحيح اضغط \"أجاب صحيح\" للفريق الفائز": "When the guess is correct, click “Answered correctly” for the winning team",
+  "النقاط: 1-10 أسئلة = 600 | سؤال 11 = 400 | سؤال 12 = 200 | بدون إجابة = 0": "Points: questions 1–10 = 600 | question 11 = 400 | question 12 = 200 | no answer = 0",
+  "لا تعيد سؤالاً سبق للفريق الآخر طرحه": "Do not repeat a question the other team has already asked",
+  "ذكر الاسم صراحةً وكان خطأً → الخصم يحق له سؤالان": "Naming it explicitly and incorrectly → the opponent gets two questions",
+  "مسح الباركود بنجاح": "scanned the QR code successfully",
+  "600 نقطة": "600 points",
+  "400 نقطة": "400 points",
+  "200 نقطة": "200 points",
+  "✅ أجاب صحيح — +": "✅ Answered correctly — +",
+  "✅ تم تسجيل +": "✅ Recorded +",
+  "❌ لم يتمكن — 0 نقطة": "❌ Did not succeed — 0 points",
+  "الفريق الأول": "First team",
+  "الفريق الثاني": "Second team",
+  "الفريق أ": "Team A",
+  "الفريق ب": "Team B",
+};
+
+function useArenaChrome() {
+  const { lang } = useI18n();
+  return (ar: keyof typeof arenaPlayEnglish) =>
+    lang === "ar" ? ar : arenaPlayEnglish[ar];
+}
+
 /** Returns the difficulty tiers available for a given sub-category.
  *  Static categories: always [200,400,600].
  *  DB-backed categories: add 800 only when the organizer explicitly enables it
@@ -137,6 +282,8 @@ function findSection(
 
 export default function ArenaPlay() {
   const { t: tr, lang } = useI18n();
+  const chrome = (ar: keyof typeof arenaPlayEnglish) =>
+    lang === "ar" ? ar : arenaPlayEnglish[ar];
   const [, setLocation] = useLocation();
   const [state, setState] = useState<ArenaState | null>(null);
   const [phase, setPhase] = useState<"board" | "end">("board");
@@ -210,10 +357,10 @@ export default function ArenaPlay() {
         s.subCategories.map((sc) => sc.id),
       ).slice(0, 6);
       const demoState: ArenaState = {
-        tournamentName: "بطولة المعلمين 2025",
+        tournamentName: lang === "ar" ? "بطولة المعلمين 2025" : "Teachers Tournament 2025",
         teams: {
           "team-a": {
-            name: "الصقور",
+            name: lang === "ar" ? "الصقور" : "Falcons",
             color: "#f59e0b",
             emoji: "🦅",
             score: 400,
@@ -222,7 +369,7 @@ export default function ArenaPlay() {
             players: [],
           },
           "team-b": {
-            name: "الأسود",
+            name: lang === "ar" ? "الأسود" : "Lions",
             color: "#6366f1",
             emoji: "🦁",
             score: 200,
@@ -255,7 +402,7 @@ export default function ArenaPlay() {
       return;
     }
     setState(loaded);
-  }, [setLocation]);
+  }, [setLocation, lang]);
 
   useEffect(() => {
     // Never persist the demo/preview state to localStorage
@@ -1026,7 +1173,7 @@ export default function ArenaPlay() {
 
                 {/* Info toggle button for اكتشف السر categories */}
                 {isSecret && (
-                  <div dir="rtl" style={{ margin: "0 10px 6px" }}>
+                  <div dir={lang === "ar" ? "rtl" : "ltr"} style={{ margin: "0 10px 6px" }}>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1047,7 +1194,7 @@ export default function ArenaPlay() {
                       }}
                     >
                       <span style={{ fontSize: "11px" }}>ℹ️</span>
-                      <span>{openInfoSub === sub.id ? "إخفاء التعليمات" : "طريقة اللعب والقواعد"}</span>
+                      <span>{openInfoSub === sub.id ? chrome("إخفاء التعليمات") : chrome("طريقة اللعب والقواعد")}</span>
                     </button>
                     {openInfoSub === sub.id && (
                       <div
@@ -1062,11 +1209,11 @@ export default function ArenaPlay() {
                           gap: "3px",
                         }}
                       >
-                        <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>🎮 طريقة اللعب</p>
+                        <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>{chrome("🎮 طريقة اللعب")}</p>
                         {[
-                          { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
-                          { icon: "🔢", text: "كل فريق يسأل سؤالاً، اضغط المربع لتسجيله" },
-                          { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح"' },
+                          { icon: "📱", text: chrome("يرى الطلاب السر على هواتفهم بعد مسح QR") },
+                          { icon: "🔢", text: chrome("كل فريق يسأل سؤالاً، اضغط المربع لتسجيله") },
+                          { icon: "🏆", text: chrome('عند التخمين الصحيح اضغط "أجاب صحيح"') },
                         ].map(({ icon, text }) => (
                           <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
                             <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
@@ -1074,11 +1221,11 @@ export default function ArenaPlay() {
                           </div>
                         ))}
                         <div style={{ borderTop: "1px solid #ddd6fe", margin: "4px 0 2px" }} />
-                        <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>📋 القواعد</p>
+                        <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>{chrome("📋 القواعد")}</p>
                         {[
-                          { icon: "🔄", text: "لا تعيد سؤالاً طرحه الفريق الآخر" },
-                          { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
-                          { icon: "✌️", text: "ذكر الاسم خطأً يمنح الخصم سؤالَين" },
+                          { icon: "🔄", text: chrome("لا تعيد سؤالاً طرحه الفريق الآخر") },
+                          { icon: "✅", text: chrome("الإجابة: نعم أو لا فقط") },
+                          { icon: "✌️", text: chrome("ذكر الاسم خطأً يمنح الخصم سؤالَين") },
                         ].map(({ icon, text }) => (
                           <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
                             <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
@@ -1627,13 +1774,15 @@ export default function ArenaPlay() {
 
   if (!state.rulesAck) {
     return (
-      <RulesOverlay
-        teamA={teamA}
-        teamB={teamB}
-        onAck={() =>
-          setState((prev) => (prev ? { ...prev, rulesAck: true } : prev))
-        }
-      />
+      <>
+        <RulesOverlay
+          teamA={teamA}
+          teamB={teamB}
+          onAck={() =>
+            setState((prev) => (prev ? { ...prev, rulesAck: true } : prev))
+          }
+        />
+      </>
     );
   }
 
@@ -1693,7 +1842,7 @@ export default function ArenaPlay() {
 
   return (
     <div
-      dir="rtl"
+      dir={lang === "ar" ? "rtl" : "ltr"}
       className="min-h-screen flex flex-col"
       style={{
         background: "#faf6ec",
@@ -2362,6 +2511,8 @@ function PlayerPickerOverlay({
   onPick: (player: string) => void;
   onSkip: () => void;
 }) {
+  const chrome = useArenaChrome();
+  const { lang } = useI18n();
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -2384,13 +2535,13 @@ function PlayerPickerOverlay({
       >
         <div className="text-5xl mb-2">{team.emoji}</div>
         <div className="text-amber-200/80 text-sm font-bold mb-1">
-          من أجاب من
+          {chrome("من أجاب من")}
         </div>
         <div
           className="text-3xl sm:text-4xl font-black mb-5"
           style={{ color: team.color }}
         >
-          {team.name}؟
+          {team.name}{lang === "ar" ? "؟" : "?"}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
           {team.players.map((p) => (
@@ -2411,7 +2562,7 @@ function PlayerPickerOverlay({
           onClick={onSkip}
           className="px-6 py-2.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20"
         >
-          تخطي — إجابة جماعية
+          {chrome("تخطي — إجابة جماعية")}
         </button>
       </motion.div>
     </motion.div>
@@ -2453,6 +2604,7 @@ function QuestionModal({
   onReplaceQuestion: () => void;
   onReport: () => void;
 }) {
+  const chrome = useArenaChrome();
   const teamA =
     state.teams[state.teamOrder[0]] ?? Object.values(state.teams)[0];
   const teamB =
@@ -2479,17 +2631,16 @@ function QuestionModal({
         <div className="w-full max-w-md rounded-3xl p-8 border-2 border-amber-400/40 bg-emerald-950 text-white text-center">
           <div className="text-4xl mb-3">🛟</div>
           <div className="text-xl font-extrabold mb-2 text-amber-200">
-            تعذّر تحميل هذا السؤال
+            {chrome("تعذّر تحميل هذا السؤال")}
           </div>
           <div className="text-sm text-white/70 mb-5">
-            قد يكون السؤال محذوفاً أو الفئة معدّلة. أغلق هذا الكرت وجرّب كرتاً
-            آخر.
+            {chrome("قد يكون السؤال محذوفاً أو الفئة معدّلة. أغلق هذا الكرت وجرّب كرتاً آخر.")}
           </div>
           <button
             onClick={onClose}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold"
           >
-            إغلاق الكرت
+            {chrome("إغلاق الكرت")}
           </button>
         </div>
       </motion.div>
@@ -2592,7 +2743,7 @@ function QuestionModal({
               >
                 {active.timeLeft}
               </span>
-              <span className="text-[10px] font-bold" style={{ color: lowTimer ? "#dc2626" : "#5b6b87" }}>ث</span>
+              <span className="text-[10px] font-bold" style={{ color: lowTimer ? "#dc2626" : "#5b6b87" }}>{chrome("ث")}</span>
             </motion.div>
             <motion.button
               whileHover={{ scale: 1.1, rotate: 90 }}
@@ -2600,7 +2751,7 @@ function QuestionModal({
               onClick={onClose}
               className="ms-1 p-1.5 rounded-lg"
               style={{ background: "#faf6ec", color: "#5b6b87", border: "1px solid #ebe2cd" }}
-              title="إغلاق"
+              title={chrome("إغلاق")}
             >
               <X className="w-4 h-4" />
             </motion.button>
@@ -2636,7 +2787,7 @@ function QuestionModal({
             >{answeringTeam.emoji}</motion.span>
             <div className="min-w-0 relative z-10">
               <div className="text-[10px] font-extrabold tracking-wide" style={{ color: "#a07f37" }}>
-                يجيب الآن
+                {chrome("يجيب الآن")}
               </div>
               <div className="font-black text-base truncate leading-tight" style={{ color: answeringTeam.color, fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
                 {answeringTeam.name}
@@ -2652,7 +2803,7 @@ function QuestionModal({
                   className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
                   style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fca5a5" }}
                 >
-                  🪤 فخ
+                  {chrome("🪤 فخ")}
                 </span>
                 {active.trapOwner && state.teams[active.trapOwner] && (
                   <span
@@ -2663,7 +2814,7 @@ function QuestionModal({
                       border: `1px solid ${state.teams[active.trapOwner].color}44`,
                     }}
                   >
-                    فشلوا؟ → {state.teams[active.trapOwner].emoji} {state.teams[active.trapOwner].name}
+                    {chrome("فشلوا؟ →")} {state.teams[active.trapOwner].emoji} {state.teams[active.trapOwner].name}
                   </span>
                 )}
               </motion.div>
@@ -2675,7 +2826,7 @@ function QuestionModal({
                 className="ms-auto relative z-10 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
                 style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #93c5fd" }}
               >
-                ↔️ محوّل
+                {chrome("↔️ محوّل")}
               </motion.span>
             )}
             {active.twoAnswersActive && (
@@ -2685,7 +2836,7 @@ function QuestionModal({
                 className="ms-auto relative z-10 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
                 style={{ background: "#fffbeb", color: "#a07f37", border: "1px solid #fcd34d" }}
               >
-                2️⃣ جوابين
+                {chrome("2️⃣ جوابين")}
               </motion.span>
             )}
           </motion.div>
@@ -2752,7 +2903,7 @@ function QuestionModal({
                   />
                   <div className="text-[10px] font-extrabold tracking-[0.25em] mb-1.5 inline-flex items-center justify-center gap-1.5" style={{ color: "#a07f37" }}>
                     <Sparkles className="w-3 h-3" />
-                    الإجابة الصحيحة
+                    {chrome("الإجابة الصحيحة")}
                     <Sparkles className="w-3 h-3" />
                   </div>
                   <div className="text-xl sm:text-2xl font-extrabold relative" style={{ color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
@@ -2777,21 +2928,21 @@ function QuestionModal({
               >
                 <span>🗣️</span>
                 <span className="text-blue-200 font-bold text-xs">
-                  تصويت الجمهور
+                  {chrome("تصويت الجمهور")}
                 </span>
                 <span className="text-blue-100/40 text-[10px] ms-auto">
-                  {shuraVotes.a + shuraVotes.b} صوت
+                  {shuraVotes.a + shuraVotes.b} {chrome("صوت")}
                 </span>
               </div>
               <div className="px-3 py-2.5 space-y-1.5">
                 {[
                   {
-                    label: "خيار أ",
+                    label: chrome("خيار أ"),
                     votes: shuraVotes.a,
                     color: "bg-blue-400",
                   },
                   {
-                    label: "خيار ب",
+                    label: chrome("خيار ب"),
                     votes: shuraVotes.b,
                     color: "bg-violet-400",
                   },
@@ -2804,7 +2955,7 @@ function QuestionModal({
                       <div className="flex justify-between text-[10px] font-bold text-blue-100/70 mb-0.5">
                         <span>{label}</span>
                         <span>
-                          {votes} ({pct}٪)
+                          {votes} ({pct}%)
                         </span>
                       </div>
                       <div
@@ -2885,7 +3036,7 @@ function QuestionModal({
                             whileTap={usable ? { scale: 0.94 } : undefined}
                             onClick={() => onUseHelper(side, hid)}
                             disabled={!usable}
-                            title={consumed ? `${h.name} — تم استخدامه` : h.desc}
+                            title={consumed ? `${h.name} — ${chrome("تم استخدامه")}` : h.desc}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold transition relative overflow-hidden"
                             style={{
                               opacity: consumed ? 0.4 : usable ? 1 : 0.55,
@@ -2931,7 +3082,7 @@ function QuestionModal({
               className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold inline-flex items-center gap-1.5 transition"
               style={{ background: "#ffffff", color: "#a07f37", border: "1px solid #e9dfc7" }}
             >
-              <RefreshCw className="w-3 h-3" /> استبدال السؤال
+              <RefreshCw className="w-3 h-3" /> {chrome("استبدال السؤال")}
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.04, y: -1 }}
@@ -2940,7 +3091,7 @@ function QuestionModal({
               className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold inline-flex items-center gap-1.5 transition"
               style={{ background: "#ffffff", color: "#b91c1c", border: "1px solid #fecaca" }}
             >
-              <AlertTriangle className="w-3 h-3" /> إبلاغ
+              <AlertTriangle className="w-3 h-3" /> {chrome("إبلاغ")}
             </motion.button>
           </div>
           )}
@@ -2969,8 +3120,8 @@ function QuestionModal({
                 />
                 <Clock className="w-4 h-4 relative" />
                 <span className="relative">{active.timeLeft === 0 || active.timeLeft === state.timerSeconds
-                  ? "بدء المؤقت"
-                  : "متابعة"}</span>
+                  ? chrome("بدء المؤقت")
+                  : chrome("متابعة")}</span>
               </motion.button>
             )}
             {timerRunning && (
@@ -2985,7 +3136,7 @@ function QuestionModal({
                   border: "1.5px solid #e9dfc7",
                 }}
               >
-                إيقاف المؤقت
+                {chrome("إيقاف المؤقت")}
               </motion.button>
             )}
             {!active.revealed && (
@@ -3007,7 +3158,7 @@ function QuestionModal({
                   transition={{ duration: 2, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
                   style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)" }}
                 />
-                <Eye className="w-4 h-4 relative" /> <span className="relative">كشف الإجابة</span>
+                <Eye className="w-4 h-4 relative" /> <span className="relative">{chrome("كشف الإجابة")}</span>
               </motion.button>
             )}
             {active.revealed && (
@@ -3078,8 +3229,8 @@ function QuestionModal({
                   }}
                 >
                   {active.trapUsed && active.trapOwner
-                    ? <>🪤 نقطة لـ {state.teams[active.trapOwner]?.name}</>
-                    : "لا أحد"}
+                    ? <>🪤 {chrome("نقطة لـ")} {state.teams[active.trapOwner]?.name}</>
+                    : chrome("لا أحد")}
                 </motion.button>
               </motion.div>
             )}
@@ -3102,6 +3253,7 @@ function FriendCallOverlay({
   team: { name: string; emoji: string; color: string };
   onClose: () => void;
 }) {
+  const chrome = useArenaChrome();
   const pct = Math.max(0, Math.min(100, (seconds / 60) * 100));
   return (
     <motion.div
@@ -3135,14 +3287,13 @@ function FriendCallOverlay({
           <Phone className="w-12 h-12" style={{ color: team.color }} />
         </motion.div>
         <div className="text-amber-200/80 text-sm font-bold tracking-widest mb-1">
-          اتصال بصديق
+          {chrome("اتصال بصديق")}
         </div>
         <div className="text-2xl sm:text-3xl font-black text-white mb-1">
           {team.emoji} {team.name}
         </div>
         <div className="text-emerald-100/70 text-sm mb-6">
-          لديك ٦٠ ثانية للاتصال بصديق وأخذ رأيه — لن يتم خصم وقت السؤال أثناء
-          المكالمة
+          {chrome("لديك ٦٠ ثانية للاتصال بصديق وأخذ رأيه — لن يتم خصم وقت السؤال أثناء المكالمة")}
         </div>
 
         <div
@@ -3164,7 +3315,7 @@ function FriendCallOverlay({
           className="px-7 py-3 rounded-xl font-extrabold bg-white/10 hover:bg-white/20 text-white border border-white/20 inline-flex items-center gap-2"
         >
           <X className="w-5 h-5" />
-          إنهاء المكالمة الآن
+          {chrome("إنهاء المكالمة الآن")}
         </button>
       </motion.div>
     </motion.div>
@@ -3185,7 +3336,7 @@ function buildAudienceQrUrl(audienceUrl: string, size: number): string {
 /* ─────────────────────────────  Share dialog (QR for audience)  ───────────────────────────── */
 
 function ShareDialog({ onClose }: { onClose: () => void }) {
-  const { t: tr } = useI18n();
+  const chrome = useArenaChrome();
   const code = useMemo(() => getOrCreateShareCode(), []);
   const url = useMemo(() => buildAudienceUrl(code), [code]);
   const qrUrl = buildAudienceQrUrl(url, 260);
@@ -3196,7 +3347,7 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("تعذّر النسخ");
+      toast.error(chrome("تعذّر النسخ"));
     }
   };
   return (
@@ -3220,7 +3371,7 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-2xl font-black text-amber-200 flex items-center gap-2">
             <Share2 className="w-6 h-6" />
-            مشاركة مع الجمهور
+            {chrome("مشاركة مع الجمهور")}
           </h2>
           <button
             onClick={onClose}
@@ -3230,8 +3381,7 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-emerald-100/80 text-sm mb-4">
-          امسح الرمز أو افتح الرابط على الشاشة الكبيرة ليصوّت الجمهور أو يتابع
-          اللعبة
+          {chrome("امسح الرمز أو افتح الرابط على الشاشة الكبيرة ليصوّت الجمهور أو يتابع اللعبة")}
         </p>
         <div className="bg-white p-3 rounded-2xl inline-block mb-4 shadow-2xl">
           <img src={qrUrl} alt="QR" className="w-56 h-56 block" />
@@ -3255,14 +3405,14 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
             ) : (
               <Copy className="w-4 h-4" />
             )}
-            {copied ? "نُسخ" : "نسخ"}
+            {copied ? chrome("نُسخ") : chrome("نسخ")}
           </button>
         </div>
         <button
           onClick={onClose}
           className="w-full py-2.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20"
         >
-          تم
+          {chrome("تم")}
         </button>
       </motion.div>
     </motion.div>
@@ -3282,6 +3432,8 @@ function ReportDialog({
   onClose: () => void;
   onSubmit: (note: string, correctAnswer: string) => void;
 }) {
+  const chrome = useArenaChrome();
+  const { lang } = useI18n();
   const [note, setNote] = useState("");
   const [correct, setCorrect] = useState("");
   return (
@@ -3305,7 +3457,7 @@ function ReportDialog({
           border: "1px solid #ebe2cd",
           boxShadow: "0 24px 60px -16px rgba(31,77,79,0.35), 0 0 0 4px rgba(201,161,75,0.18)",
         }}
-        dir="rtl"
+        dir={lang === "ar" ? "rtl" : "ltr"}
       >
         {/* Animated accent strip */}
         <motion.div
@@ -3329,7 +3481,7 @@ function ReportDialog({
               >
                 <AlertTriangle className="w-5 h-5 text-white" />
               </motion.div>
-              إبلاغ عن خطأ في السؤال
+              {chrome("إبلاغ عن خطأ في السؤال")}
             </h2>
             <button
               onClick={onClose}
@@ -3345,25 +3497,25 @@ function ReportDialog({
           <div className="rounded-2xl p-4 mb-4 relative overflow-hidden" style={{ background: "#faf6ec", border: "1px solid #ebe2cd" }}>
             <div className="text-[10px] font-black mb-1 inline-flex items-center gap-1.5" style={{ color: "#a07f37" }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#c9a14b" }} />
-              السؤال
+              {chrome("السؤال")}
             </div>
             <div className="text-sm font-bold mb-3 leading-relaxed" style={{ color: "#1f2937" }}>{question}</div>
             <div className="text-[10px] font-black mb-1 inline-flex items-center gap-1.5" style={{ color: "#1f4d4f" }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2d5e3f" }} />
-              الإجابة الحالية
+              {chrome("الإجابة الحالية")}
             </div>
             <div className="text-sm font-bold leading-relaxed" style={{ color: "#1f4d4f" }}>{answer}</div>
           </div>
 
           <label className="block mb-3">
             <span className="text-sm font-extrabold mb-1.5 block" style={{ color: "#1f4d4f" }}>
-              ما المشكلة؟ <span style={{ color: "#a07f37" }}>*</span>
+              {chrome("ما المشكلة؟")} <span style={{ color: "#a07f37" }}>*</span>
             </span>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              placeholder="مثلاً: السؤال غير واضح، أو الإجابة غير دقيقة، أو الصورة لا تطابق..."
+              placeholder={chrome("مثلاً: السؤال غير واضح، أو الإجابة غير دقيقة، أو الصورة لا تطابق...")}
               className="w-full rounded-xl px-3.5 py-2.5 text-sm transition-all focus:outline-none"
               style={{
                 background: "#ffffff",
@@ -3377,14 +3529,14 @@ function ReportDialog({
 
           <label className="block mb-5">
             <span className="text-sm font-extrabold mb-1.5 block" style={{ color: "#1f4d4f" }}>
-              الإجابة الصحيحة المقترحة{" "}
-              <span className="text-xs font-bold" style={{ color: "#5b6b87" }}>(اختياري)</span>
+              {chrome("الإجابة الصحيحة المقترحة")}{" "}
+              <span className="text-xs font-bold" style={{ color: "#5b6b87" }}>({chrome("اختياري")})</span>
             </span>
             <input
               type="text"
               value={correct}
               onChange={(e) => setCorrect(e.target.value)}
-              placeholder="ساعدنا — اكتب الإجابة التي تراها صحيحة"
+              placeholder={chrome("ساعدنا — اكتب الإجابة التي تراها صحيحة")}
               className="w-full rounded-xl px-3.5 py-2.5 text-sm transition-all focus:outline-none"
               style={{
                 background: "#ffffff",
@@ -3408,14 +3560,14 @@ function ReportDialog({
                 border: "1px solid #ebe2cd",
               }}
             >
-              إلغاء
+              {chrome("إلغاء")}
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 if (!note.trim()) {
-                  toast.error("اكتب وصف المشكلة");
+                  toast.error(chrome("اكتب وصف المشكلة"));
                   return;
                 }
                 onSubmit(note.trim(), correct.trim());
@@ -3438,7 +3590,7 @@ function ReportDialog({
               />
               <span className="relative inline-flex items-center justify-center gap-1.5">
                 <AlertTriangle className="w-4 h-4" />
-                إرسال البلاغ
+                {chrome("إرسال البلاغ")}
               </span>
             </motion.button>
           </div>
@@ -3465,6 +3617,8 @@ function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const chrome = useArenaChrome();
+  const { lang } = useI18n();
   const tone =
     confirmTone === "rose"
       ? "bg-rose-500 hover:bg-rose-400 text-white"
@@ -3476,7 +3630,7 @@ function ConfirmDialog({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[68] flex items-center justify-center p-4 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.85)" }}
-      dir="rtl"
+      dir={lang === "ar" ? "rtl" : "ltr"}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
@@ -3497,7 +3651,7 @@ function ConfirmDialog({
             onClick={onCancel}
             className="flex-1 py-3 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20"
           >
-            إلغاء
+            {chrome("إلغاء")}
           </button>
           <button
             onClick={onConfirm}
@@ -3522,10 +3676,11 @@ function RulesOverlay({
   teamB: { name: string; emoji: string; color: string };
   onAck: () => void;
 }) {
-  const { t: tr } = useI18n();
+  const { t: tr, lang } = useI18n();
+  const chrome = useArenaChrome();
   return (
     <div
-      dir="rtl"
+      dir={lang === "ar" ? "rtl" : "ltr"}
       className="min-h-screen overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6"
       style={{ background: "#faf6ec", fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif" }}
     >
@@ -3552,7 +3707,7 @@ function RulesOverlay({
             className="text-3xl sm:text-4xl font-black mb-2"
             style={{ lineHeight: 1.2, color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}
           >
-            استعدّوا للتحدّي
+            {chrome("استعدّوا للتحدّي")}
           </h1>
           <div className="flex items-center justify-center gap-2 text-lg">
             <span className="font-black" style={{ color: teamA.color }}>
@@ -3568,23 +3723,23 @@ function RulesOverlay({
         {/* Rules panels */}
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
           <RulesPanel
-            title="طريقة اللعب"
+            title={chrome("طريقة اللعب")}
             items={[
-              "كل فريق يختار 3 فئات — مجموع 6 فئات على اللوحة",
-              "كل فئة فيها 6 بطاقات: 200 مرتين، 400 مرتين، 600 مرتين",
-              "في كل دور يفتح الفريق صاحب الدور بطاقة من فئاته",
-              "للمؤقت مدة محددة لكل سؤال — يديرها المنظّم",
-              "ينتهي التحدّي حين تُفتح كل البطاقات، ويفوز صاحب أعلى نقاط",
+              chrome("كل فريق يختار 3 فئات — مجموع 6 فئات على اللوحة"),
+              chrome("كل فئة فيها 6 بطاقات: 200 مرتين، 400 مرتين، 600 مرتين"),
+              chrome("في كل دور يفتح الفريق صاحب الدور بطاقة من فئاته"),
+              chrome("للمؤقت مدة محددة لكل سؤال — يديرها المنظّم"),
+              chrome("ينتهي التحدّي حين تُفتح كل البطاقات، ويفوز صاحب أعلى نقاط"),
             ]}
           />
           <RulesPanel
-            title="ملاحظات مهمّة"
+            title={chrome("ملاحظات مهمّة")}
             items={[
-              "لا يمكن لفريقين اختيار نفس الفئة الفرعية",
-              "كل وسيلة مساعدة تُستخدم مرة واحدة فقط في المسابقة",
-              "بعض الوسائل لها قيود على مَن يستخدمها ومتى",
-              "يستطيع المنظّم تحويل السؤال يدوياً بعد كشف الإجابة",
-              "إذا أضفت لاعبين، يمكنك تمييز من أجاب فعلاً من الفريق",
+              chrome("لا يمكن لفريقين اختيار نفس الفئة الفرعية"),
+              chrome("كل وسيلة مساعدة تُستخدم مرة واحدة فقط في المسابقة"),
+              chrome("بعض الوسائل لها قيود على مَن يستخدمها ومتى"),
+              chrome("يستطيع المنظّم تحويل السؤال يدوياً بعد كشف الإجابة"),
+              chrome("إذا أضفت لاعبين، يمكنك تمييز من أجاب فعلاً من الفريق"),
             ]}
           />
         </div>
@@ -3601,7 +3756,7 @@ function RulesOverlay({
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4" style={{ color: "#c9a14b" }} />
             <h2 className="text-base font-extrabold" style={{ color: "#1f4d4f" }}>
-              الوسائل المساعدة
+              {chrome("الوسائل المساعدة")}
             </h2>
           </div>
           <div className="grid sm:grid-cols-2 gap-2">
@@ -3640,7 +3795,7 @@ function RulesOverlay({
           }}
         >
           <Sparkles className="w-5 h-5" />
-          فهمنا — ابدأ اللعبة
+          {chrome("فهمنا — ابدأ اللعبة")}
         </button>
       </motion.div>
     </div>
@@ -3702,6 +3857,8 @@ function EndScreen({
   hasLastSettings?: boolean;
   onQuickReplay?: () => void;
 }) {
+  const chrome = useArenaChrome();
+  const { lang } = useI18n();
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -3715,7 +3872,7 @@ function EndScreen({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("تعذّر النسخ");
+      toast.error(chrome("تعذّر النسخ"));
     }
   };
 
@@ -3729,7 +3886,7 @@ function EndScreen({
 
   return (
     <div
-      dir="rtl"
+      dir={lang === "ar" ? "rtl" : "ltr"}
       className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
       style={{ background: "#faf6ec", fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif" }}
     >
@@ -3754,7 +3911,7 @@ function EndScreen({
         {winnerTeam ? (
           <>
             <div className="text-xs font-extrabold tracking-[0.3em] uppercase mb-2" style={{ color: "#a07f37" }}>
-              الفائز
+              {chrome("الفائز")}
             </div>
             <div
               className="text-4xl sm:text-6xl font-black mb-2 leading-tight"
@@ -3766,12 +3923,12 @@ function EndScreen({
               className="text-2xl font-extrabold mb-8"
               style={{ color: "#1f4d4f" }}
             >
-              {winnerTeam.score} <span className="text-lg" style={{ color: "#5b6b87" }}>نقطة</span>
+              {winnerTeam.score} <span className="text-lg" style={{ color: "#5b6b87" }}>{chrome("نقطة")}</span>
             </div>
           </>
         ) : (
           <div className="text-4xl font-black mb-6" style={{ color: "#c9a14b" }}>
-            تعادل!
+            {chrome("تعادل!")}
           </div>
         )}
 
@@ -3827,10 +3984,10 @@ function EndScreen({
               }}
             >
               <Zap className="w-5 h-5" />
-              إعادة فورية بنفس الإعدادات
+              {chrome("إعادة فورية بنفس الإعدادات")}
             </button>
             <div className="text-xs mt-2 font-bold" style={{ color: "#5b6b87" }}>
-              يبدأ التحدّي فوراً بنفس الفرق والفئات — بدون خطوات الإعداد
+              {chrome("يبدأ التحدّي فوراً بنفس الفرق والفئات — بدون خطوات الإعداد")}
             </div>
           </motion.div>
         )}
@@ -3847,7 +4004,7 @@ function EndScreen({
             }}
           >
             <RotateCcw className="w-5 h-5" />
-            {showQuickReplay ? "إعادة مع تغيير الإعدادات" : "إعادة اللعب"}
+            {showQuickReplay ? chrome("إعادة مع تغيير الإعدادات") : chrome("إعادة اللعب")}
           </button>
           <button
             onClick={onExit}
@@ -3859,7 +4016,7 @@ function EndScreen({
             }}
           >
             <Home className="w-5 h-5" />
-            خروج
+            {chrome("خروج")}
           </button>
         </div>
 
@@ -3871,7 +4028,7 @@ function EndScreen({
             style={{ background: "#faf6ec", color: "#a07f37", border: "1.5px solid rgba(201,161,75,0.4)" }}
           >
             <Share2 className="w-4 h-4" />
-            شارك النتيجة
+            {chrome("شارك النتيجة")}
             <ChevronDown
               className={`w-4 h-4 transition-transform duration-200 ${showQr ? "rotate-180" : ""}`}
             />
@@ -3894,7 +4051,7 @@ function EndScreen({
                   }}
                 >
                   <p className="text-xs mb-4" style={{ color: "#5b6b87" }}>
-                    امسح الرمز ليرى المتأخرون النتيجة النهائية على شاشتهم
+                    {chrome("امسح الرمز ليرى المتأخرون النتيجة النهائية على شاشتهم")}
                   </p>
                   <div className="bg-white p-2.5 rounded-xl inline-block mb-3 shadow-lg" style={{ border: "1px solid #ebe2cd" }}>
                     <img src={qrUrl} alt="QR" className="w-44 h-44 block" />
@@ -3920,7 +4077,7 @@ function EndScreen({
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}
-                      {copied ? "نُسخ" : "نسخ"}
+                      {copied ? chrome("نُسخ") : chrome("نسخ")}
                     </button>
                   </div>
                 </div>
@@ -3958,6 +4115,7 @@ function TeamBadge({
     player?: string;
   } | null;
 }) {
+  const chrome = useArenaChrome();
   return (
     <div
       className={`flex-1 rounded-xl p-2 border-2 transition relative overflow-hidden ${
@@ -4021,7 +4179,7 @@ function TeamBadge({
                 <span
                   key={hid}
                   className={`text-sm ${used ? "opacity-25 grayscale" : ""}`}
-                  title={used ? `${h.name} — مستهلك` : h.name}
+                  title={used ? `${h.name} — ${chrome("مستهلك")}` : h.name}
                 >
                   {h.emoji}
                 </span>
@@ -4049,6 +4207,7 @@ function InteractiveActivity({
   teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
   awardedPts?: number;
 }) {
+  const chrome = useArenaChrome();
   const t = question.type;
   if (t === "sin-jeem")
     return <SinJeemPlay question={question} revealed={revealed} />;
@@ -4082,7 +4241,7 @@ function InteractiveActivity({
         <div className="mb-4 flex justify-center">
           <img
             src={resolveImageUrl(question.imageUrl) ?? ""}
-            alt="سؤال"
+            alt={chrome("سؤال")}
             decoding="async"
             {...({ fetchpriority: "high" } as any)}
             onError={(e) => {
@@ -4162,13 +4321,14 @@ function SinJeemPlay({
   question: ArenaQuestion;
   revealed: boolean;
 }) {
+  const chrome = useArenaChrome();
   const payload = (question.payload ?? {}) as Partial<SinJeemPayload>;
-  const letter = payload.letter ?? "؟";
+  const letter = payload.letter ?? "?";
   const prompts = payload.prompts ?? [];
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-5">
       <div className="text-sm sm:text-base font-extrabold" style={{ color: "#a07f37" }}>
-        أجب بكلمة تبدأ بحرف
+        {chrome("أجب بكلمة تبدأ بحرف")}
       </div>
       <motion.div
         initial={{ scale: 0.7, opacity: 0 }}
@@ -4192,7 +4352,7 @@ function SinJeemPlay({
             style={{ background: "#faf6ec", border: "1.5px solid #ebe2cd" }}
           >
             <div className="text-[11px] font-extrabold mb-1" style={{ color: "#a07f37" }}>
-              سؤال {i + 1}
+              {chrome("سؤال")} {i + 1}
             </div>
             <div className="text-base sm:text-xl font-bold" style={{ color: "#1f2937" }}>
               {p.prompt}
@@ -4228,6 +4388,7 @@ function MemoryPlay({
   question: ArenaQuestion;
   revealed: boolean;
 }) {
+  const chrome = useArenaChrome();
   const payload = (question.payload ?? {}) as Partial<MemoryPayload>;
   const pairs = payload.pairs ?? [];
 
@@ -4266,7 +4427,7 @@ function MemoryPlay({
   };
 
   if (cards.length === 0) {
-    return <div style={{ color: "#a07f37" }}>لا توجد بطاقات للمطابقة.</div>;
+    return <div style={{ color: "#a07f37" }}>{chrome("لا توجد بطاقات للمطابقة.")}</div>;
   }
 
   const cols = cards.length <= 4 ? 2 : cards.length <= 6 ? 3 : 4;
@@ -4275,7 +4436,7 @@ function MemoryPlay({
   return (
     <div className="flex flex-col items-center gap-3 w-full">
       <div className="text-sm font-extrabold" style={{ color: "#a07f37" }}>
-        طابق الأزواج المتشابهة
+        {chrome("طابق الأزواج المتشابهة")}
         {!revealed && (
           <span className="ms-2" style={{ color: "#1f4d4f" }}>
             ({matched.length}/{pairs.length}){allMatched && " 🎉"}
@@ -4330,7 +4491,7 @@ function MemoryPlay({
                 )
               ) : (
                 <div className="text-4xl sm:text-6xl font-black" style={{ color: "#ffffff", textShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
-                  ؟
+                  ?
                 </div>
               )}
               {isMatched && !revealed && (
@@ -4353,6 +4514,7 @@ function CategorizePlay({
   question: ArenaQuestion;
   revealed: boolean;
 }) {
+  const chrome = useArenaChrome();
   const payload = (question.payload ?? {}) as Partial<CategorizePayload>;
   const groups = payload.groups ?? [];
 
@@ -4381,14 +4543,14 @@ function CategorizePlay({
   };
 
   if (groups.length === 0) {
-    return <div style={{ color: "#a07f37" }}>لا توجد عناصر للتصنيف.</div>;
+    return <div style={{ color: "#a07f37" }}>{chrome("لا توجد عناصر للتصنيف.")}</div>;
   }
 
   if (revealed) {
     return (
       <div className="flex flex-col items-center gap-3 w-full">
         <div className="text-sm font-extrabold mb-1" style={{ color: "#a07f37" }}>
-          التصنيف الصحيح
+          {chrome("التصنيف الصحيح")}
         </div>
         <div
           className="grid gap-2.5 w-full max-w-4xl"
@@ -4432,20 +4594,20 @@ function CategorizePlay({
   return (
     <div className="flex flex-col gap-3 w-full max-w-4xl mx-auto">
       <div className="text-sm font-extrabold text-center" style={{ color: "#a07f37" }}>
-        اضغط عنصراً ثم اضغط مجموعته
+        {chrome("اضغط عنصراً ثم اضغط مجموعته")}
         {Object.keys(assignments).length > 0 && (
           <span className="ms-2" style={{ color: "#1f4d4f" }}>
-            ({correctCount}/{Object.keys(assignments).length} صحيح)
+            ({correctCount}/{Object.keys(assignments).length} {chrome("صحيح")})
           </span>
         )}
       </div>
       <div className="rounded-xl p-3" style={{ background: "#faf6ec", border: "1px solid #ebe2cd" }}>
         <div className="text-[11px] font-extrabold mb-2" style={{ color: "#5b6b87" }}>
-          العناصر
+          {chrome("العناصر")}
         </div>
         <div className="flex flex-wrap gap-2 justify-center min-h-[3rem]">
           {unassigned.length === 0 ? (
-            <div className="text-sm" style={{ color: "#5b6b87" }}>— تم تصنيف الكل —</div>
+            <div className="text-sm" style={{ color: "#5b6b87" }}>{chrome("— تم تصنيف الكل —")}</div>
           ) : (
             unassigned.map((it) => (
               <button
@@ -4510,7 +4672,7 @@ function CategorizePlay({
                       style={correct
                         ? { background: "#2d5e3f", borderColor: "#1f4d4f" }
                         : { background: "#dc2626", borderColor: "#b91c1c" }}
-                      title="اضغط لإزالته"
+                      title={chrome("اضغط لإزالته")}
                     >
                       {it.item} {correct ? "✓" : "✗"}
                     </span>
@@ -4532,6 +4694,7 @@ function ImagePlay({
   question: ArenaQuestion;
   revealed: boolean;
 }) {
+  const chrome = useArenaChrome();
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading",
   );
@@ -4545,12 +4708,12 @@ function ImagePlay({
           {status === "error" && (
             <div className="w-64 h-44 rounded-2xl flex flex-col items-center justify-center gap-2" style={{ background: "#faf6ec", border: "2px solid #ebe2cd", color: "#a07f37" }}>
               <span className="text-4xl">🖼️</span>
-              <span className="text-xs">تعذّر تحميل الصورة</span>
+              <span className="text-xs">{chrome("تعذّر تحميل الصورة")}</span>
             </div>
           )}
           <img
             src={resolveImageUrl(question.imageUrl) ?? ""}
-            alt="سؤال مصوّر"
+            alt={chrome("سؤال مصوّر")}
             decoding="async"
             {...({ fetchpriority: "high" } as any)}
             onLoad={() => setStatus("loaded")}
@@ -4568,7 +4731,7 @@ function ImagePlay({
           />
           {status === "loaded" && (
             <span className="absolute top-2 end-2 text-[10px] font-black px-2 py-0.5 rounded-full select-none text-white" style={{ background: "linear-gradient(135deg, #c9a14b, #a07f37)" }}>
-              🖼️ سؤال مصوّر
+              {chrome("🖼️ سؤال مصوّر")}
             </span>
           )}
         </div>
@@ -4591,6 +4754,7 @@ function LogoPlay({
   question: ArenaQuestion;
   revealed: boolean;
 }) {
+  const chrome = useArenaChrome();
   const payload = (question.payload ?? {}) as Partial<LogoPayload>;
   const [revealLevel, setRevealLevel] = useState(0); // 0..3
   const blur = revealed ? 0 : Math.max(0, 18 - revealLevel * 6);
@@ -4614,7 +4778,7 @@ function LogoPlay({
           />
         ) : (
           <div className="w-64 h-40 rounded-2xl flex items-center justify-center" style={{ background: "#faf6ec", border: "2px solid #ebe2cd", color: "#a07f37" }}>
-            لا توجد صورة
+            {chrome("لا توجد صورة")}
           </div>
         )}
       </div>
@@ -4628,15 +4792,15 @@ function LogoPlay({
           style={{ background: "linear-gradient(135deg, #c9a14b, #a07f37)", boxShadow: "0 4px 10px -3px rgba(201,161,75,0.55)" }}
         >
           <Eye className="w-3.5 h-3.5" />
-          توضيح الشعار ({revealLevel}/3)
+          {chrome("توضيح الشعار")} ({revealLevel}/3)
         </motion.button>
       )}
       <div className="text-2xl sm:text-3xl font-extrabold leading-[1.4]" style={{ color: "#1f2937", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
-        ما اسم هذا الشعار؟
+        {chrome("ما اسم هذا الشعار؟")}
       </div>
       {hint && !revealed && (
         <div className="text-sm rounded-lg px-3 py-1.5" style={{ color: "#1f4d4f", background: "rgba(31,77,79,0.08)", border: "1px solid #2d5e3f55" }}>
-          💡 تلميح: {hint}
+          💡 {chrome("تلميح:")} {hint}
         </div>
       )}
     </div>
@@ -4679,6 +4843,8 @@ function SecretArenaActivity({
   teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
   awardedPts?: number;
 }) {
+  const chrome = useArenaChrome();
+  const { lang } = useI18n();
   const payload = (question.payload ?? {}) as Partial<SecretPayload>;
   const categoryId = payload.categoryId ?? 1;
 
@@ -4718,9 +4884,9 @@ function SecretArenaActivity({
     socketRef.current = sock;
 
     sock.on("connect", () => {
-      const teamAName = teamInfo?.A.name ?? "الفريق الأول";
+      const teamAName = teamInfo?.A.name ?? chrome("الفريق الأول");
       const teamAColor = teamInfo?.A.color ?? "#dc2626";
-      const teamBName = teamInfo?.B.name ?? "الفريق الثاني";
+      const teamBName = teamInfo?.B.name ?? chrome("الفريق الثاني");
       const teamBColor = teamInfo?.B.color ?? "#2563eb";
       sock.emit(
         "secret:create",
@@ -4847,7 +5013,7 @@ function SecretArenaActivity({
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-gray-500">
         <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm">جارٍ إنشاء جلسة اكتشف السر…</p>
+        <p className="text-sm">{chrome("جارٍ إنشاء جلسة اكتشف السر…")}</p>
       </div>
     );
   }
@@ -4856,7 +5022,7 @@ function SecretArenaActivity({
     return (
       <div className="flex flex-col items-center gap-3 py-8 text-red-500">
         <AlertTriangle className="w-8 h-8" />
-        <p className="text-sm font-bold">تعذّر الاتصال بالسيرفر</p>
+        <p className="text-sm font-bold">{chrome("تعذّر الاتصال بالسيرفر")}</p>
       </div>
     );
   }
@@ -4869,7 +5035,7 @@ function SecretArenaActivity({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         className="flex flex-col items-center gap-4 py-4 text-center"
-        dir="rtl"
+        dir={lang === "ar" ? "rtl" : "ltr"}
       >
         <motion.div
           initial={{ scale: 0, rotate: -15 }}
@@ -4881,7 +5047,7 @@ function SecretArenaActivity({
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <p className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-1">
-            {finalResult.winner ? "الفائز!" : "تعادل!"}
+            {finalResult.winner ? chrome("الفائز!") : chrome("تعادل!")}
           </p>
           {winnerInfo && (
             <p className="text-xl font-black text-gray-800">{winnerInfo.name}</p>
@@ -4906,17 +5072,17 @@ function SecretArenaActivity({
                 }}
               >
                 <p className="text-xs font-bold mb-0.5" style={{ color: isWinner ? "rgba(255,255,255,0.8)" : "#6b7280" }}>
-                  {info?.name ?? (t === "A" ? "الفريق أ" : "الفريق ب")}
+                  {info?.name ?? (t === "A" ? chrome("الفريق أ") : chrome("الفريق ب"))}
                 </p>
                 <p className="text-xl font-black" style={{ color: isWinner ? "#fff" : "#374151" }}>
-                  {score > 0 ? `+${score}` : "0"} نقطة
+                  {score > 0 ? `+${score}` : "0"} {chrome("نقطة")}
                 </p>
               </motion.div>
             );
           })}
         </div>
         <div className="w-full space-y-1.5">
-          <p className="text-[11px] text-gray-400">سيتم إسناد النقاط تلقائياً…</p>
+          <p className="text-[11px] text-gray-400">{chrome("سيتم إسناد النقاط تلقائياً…")}</p>
           <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <motion.div
               className="h-full rounded-full"
@@ -4935,7 +5101,7 @@ function SecretArenaActivity({
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-gray-500">
         <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm">جارٍ تحميل حالة اللعبة…</p>
+        <p className="text-sm">{chrome("جارٍ تحميل حالة اللعبة…")}</p>
       </div>
     );
   }
@@ -4945,12 +5111,12 @@ function SecretArenaActivity({
   const revealUrlB = `${BASE}/game/secret/reveal?token=${encodeURIComponent(tokenB)}`;
 
   return (
-    <div className="w-full" dir="rtl">
+    <div className="w-full" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Eye className="w-5 h-5 text-purple-500" />
-          <span className="font-black text-gray-800 text-lg">{question.q || "اكتشف السر"}</span>
+          <span className="font-black text-gray-800 text-lg">{question.q || chrome("اكتشف السر")}</span>
         </div>
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
       </div>
@@ -4967,20 +5133,20 @@ function SecretArenaActivity({
           }}
         >
           <span>ℹ️</span>
-          <span>{showInfo ? "إخفاء التعليمات" : "طريقة اللعب والقواعد"}</span>
+          <span>{showInfo ? chrome("إخفاء التعليمات") : chrome("طريقة اللعب والقواعد")}</span>
         </button>
         {showInfo && (
           <div
             className="mt-2 rounded-xl border"
             style={{ background: "#f5f3ff", borderColor: "#ddd6fe", padding: "8px 12px" }}
           >
-            <p className="text-[10px] font-black text-purple-700 mb-1.5">🎮 طريقة اللعب</p>
+            <p className="text-[10px] font-black text-purple-700 mb-1.5">{chrome("🎮 طريقة اللعب")}</p>
             <div className="flex flex-col gap-1 mb-2">
               {[
-                { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
-                { icon: "🔢", text: "كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله" },
-                { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح" للفريق الفائز' },
-                { icon: "💡", text: "النقاط: 1-10 أسئلة = 600 | سؤال 11 = 400 | سؤال 12 = 200 | بدون إجابة = 0" },
+                { icon: "📱", text: chrome("يرى الطلاب السر على هواتفهم بعد مسح QR") },
+                { icon: "🔢", text: chrome("كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله") },
+                { icon: "🏆", text: chrome('عند التخمين الصحيح اضغط "أجاب صحيح" للفريق الفائز') },
+                { icon: "💡", text: chrome("النقاط: 1-10 أسئلة = 600 | سؤال 11 = 400 | سؤال 12 = 200 | بدون إجابة = 0") },
               ].map(({ icon, text }) => (
                 <div key={text} className="flex gap-2 items-start">
                   <span className="text-[11px] leading-4 shrink-0">{icon}</span>
@@ -4989,12 +5155,12 @@ function SecretArenaActivity({
               ))}
             </div>
             <div className="border-t mb-2" style={{ borderColor: "#ddd6fe" }} />
-            <p className="text-[10px] font-black text-purple-700 mb-1.5">📋 القواعد</p>
+            <p className="text-[10px] font-black text-purple-700 mb-1.5">{chrome("📋 القواعد")}</p>
             <div className="flex flex-col gap-1">
               {[
-                { icon: "🔄", text: "لا تعيد سؤالاً سبق للفريق الآخر طرحه" },
-                { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
-                { icon: "✌️", text: "ذكر الاسم صراحةً وكان خطأً → الخصم يحق له سؤالان" },
+                { icon: "🔄", text: chrome("لا تعيد سؤالاً سبق للفريق الآخر طرحه") },
+                { icon: "✅", text: chrome("الإجابة: نعم أو لا فقط") },
+                { icon: "✌️", text: chrome("ذكر الاسم صراحةً وكان خطأً → الخصم يحق له سؤالان") },
               ].map(({ icon, text }) => (
                 <div key={text} className="flex gap-2 items-start">
                   <span className="text-[11px] leading-4 shrink-0">{icon}</span>
@@ -5027,7 +5193,7 @@ function SecretArenaActivity({
           >
             <span className="text-2xl leading-none">{showQr ? "✕" : "📷"}</span>
             <span className="text-base tracking-wide">
-              {showQr ? "إخفاء الباركود" : "عرض الباركود للمسح"}
+              {showQr ? chrome("إخفاء الباركود") : chrome("عرض الباركود للمسح")}
             </span>
           </button>
 
@@ -5062,7 +5228,7 @@ function SecretArenaActivity({
               <>
                 {scanned ? (
                   <div className="text-center py-3 text-green-600 font-bold text-sm">
-                    ✅ {gameState.teams[qrTeam].name} مسح الباركود بنجاح
+                    ✅ {gameState.teams[qrTeam].name} {chrome("مسح الباركود بنجاح")}
                   </div>
                 ) : (
                   <div
@@ -5078,7 +5244,7 @@ function SecretArenaActivity({
                     <div className="bg-white p-2 rounded-xl">
                       <QRCodeLib value={revealUrl} size={130} />
                     </div>
-                    <p className="text-xs text-gray-400">امسح الباركود لرؤية سرّك</p>
+                    <p className="text-xs text-gray-400">{chrome("امسح الباركود لرؤية سرّك")}</p>
                   </div>
                 )}
                 {/* Inline reveal — no QR needed */}
@@ -5144,7 +5310,7 @@ function SecretArenaActivity({
                     }}
                   >
                     <span>🖥️</span>
-                    <span>عرض السر هنا (بدون باركود)</span>
+                    <span>{chrome("عرض السر هنا (بدون باركود)")}</span>
                   </button>
                 )}
               </>
@@ -5157,7 +5323,7 @@ function SecretArenaActivity({
                 onClick={() => socketRef.current?.emit("secret:force_start", { pin })}
                 className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors"
               >
-                بدء اللعبة فوراً
+                {chrome("بدء اللعبة فوراً")}
               </button>
             </div>
           )}
@@ -5195,19 +5361,19 @@ function SecretArenaActivity({
                         border: `1px solid ${teamResults[t]! > 0 ? `${tColor}40` : "#fca5a5"}`,
                       }}
                     >
-                      {teamResults[t]! > 0 ? `✅ +${teamResults[t]} نقطة` : "❌ 0 نقطة"}
+                      {teamResults[t]! > 0 ? `✅ +${teamResults[t]} ${chrome("نقطة")}` : chrome("❌ لم يتمكن")}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-semibold text-gray-400">
-                    {count}/{MAX_SECRET_QUESTIONS} سؤال
+                    {count}/{MAX_SECRET_QUESTIONS} {chrome("سؤال")}
                   </span>
                   <button
                     type="button"
                     disabled={count === 0 || teamResults[t] !== null || !isPlaying}
                     onClick={() => handleUndo(t)}
-                    title="تراجع عن آخر سؤال"
+                    title={chrome("تراجع عن آخر سؤال")}
                     className={`flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed${btnFlash ? " undo-btn-pulse" : ""}`}
                     style={{
                       background: count > 0 && teamResults[t] === null && isPlaying ? `${tColor}18` : "#f3f4f6",
@@ -5222,15 +5388,15 @@ function SecretArenaActivity({
 
               {/* Section label */}
               <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider uppercase">
-                🔢 عدد الأسئلة المطروحة
+                {chrome("🔢 عدد الأسئلة المطروحة")}
               </p>
 
               {/* 12 numbered boxes — split into scoring zones */}
               {(() => {
                 const zones: { label: string; from: number; to: number; zoneColor: string }[] = [
-                  { label: "600 نقطة", from: 1,  to: 10, zoneColor: "#16a34a" },
-                  { label: "400 نقطة", from: 11, to: 11, zoneColor: "#ca8a04" },
-                  { label: "200 نقطة", from: 12, to: 12, zoneColor: "#dc2626" },
+                  { label: chrome("600 نقطة"), from: 1,  to: 10, zoneColor: "#16a34a" },
+                  { label: chrome("400 نقطة"), from: 11, to: 11, zoneColor: "#ca8a04" },
+                  { label: chrome("200 نقطة"), from: 12, to: 12, zoneColor: "#dc2626" },
                 ];
                 return (
                   <div className="flex gap-1.5 mb-3 items-end">
@@ -5291,7 +5457,7 @@ function SecretArenaActivity({
               <div className="flex gap-1.5 mb-3 items-end">
                 <div className="flex flex-col items-center gap-0.5">
                   <span className="text-[9px] font-black rounded px-1 py-0.5 leading-none whitespace-nowrap" style={{ color: "#6b7280", background: "#6b728018" }}>
-                    0 نقطة
+                    {chrome("0 نقطة")}
                   </span>
                   <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#6b728012", border: "1px dashed #6b728040" }}>
                     <button
@@ -5306,7 +5472,7 @@ function SecretArenaActivity({
                         cursor: teamResults[t] !== null || !isPlaying ? "default" : "pointer",
                       }}
                     >
-                      ❌ لم يتمكن
+                      {chrome("❌ لم يتمكن")}
                     </button>
                   </div>
                 </div>
@@ -5321,7 +5487,7 @@ function SecretArenaActivity({
                   className="w-full py-2 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-40"
                   style={{ background: tColor }}
                 >
-                  ✅ أجاب صحيح — +{dynamicScore} نقطة
+                  {chrome("✅ أجاب صحيح — +")}{dynamicScore} {chrome("نقطة")}
                 </button>
               ) : (
                 <div
@@ -5332,7 +5498,7 @@ function SecretArenaActivity({
                     border: `1.5px solid ${teamResults[t]! > 0 ? `${tColor}40` : "#fca5a580"}`,
                   }}
                 >
-                  {teamResults[t]! > 0 ? `✅ تم تسجيل +${teamResults[t]} نقطة` : "❌ لم يتمكن — 0 نقطة"}
+                  {teamResults[t]! > 0 ? `${chrome("✅ تم تسجيل +")}${teamResults[t]} ${chrome("نقطة")}` : chrome("❌ لم يتمكن — 0 نقطة")}
                 </div>
               )}
             </div>
@@ -5358,6 +5524,8 @@ function GuessEntry({
   answerer: "A" | "B";
   answererTeam: SecretArenaTeamState;
 }) {
+  const chrome = useArenaChrome();
+  const { lang } = useI18n();
   const [guess, setGuess] = React.useState("");
   const [guessingTeam, setGuessingTeam] = React.useState<"A" | "B">(answerer);
   const tInfo = guessingTeam === "A" ? teamInfo?.A : teamInfo?.B;
@@ -5370,7 +5538,7 @@ function GuessEntry({
 
   return (
     <div className="rounded-xl border border-gray-200 p-3 space-y-2">
-      <p className="text-xs font-bold text-gray-500">تخمين الفريق</p>
+      <p className="text-xs font-bold text-gray-500">{chrome("تخمين الفريق")}</p>
       <div className="flex gap-1">
         {(["A", "B"] as const).map((t) => (
           <button key={t} onClick={() => setGuessingTeam(t)}
@@ -5388,17 +5556,17 @@ function GuessEntry({
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitGuess()}
-          placeholder={`تخمين ${tInfo?.name ?? ""}`}
+          placeholder={`${chrome("تخمين")} ${tInfo?.name ?? ""}`}
           className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-right focus:outline-none focus:ring-2 focus:ring-purple-300"
-          dir="rtl"
+          dir={lang === "ar" ? "rtl" : "ltr"}
         />
         <button onClick={submitGuess} disabled={!guess.trim()}
           className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-bold transition-colors">
-          تخمين
+          {chrome("تخمين")}
         </button>
       </div>
       {teams[guessingTeam].penalty && (
-        <p className="text-xs text-red-500 font-bold">⏳ هذا الفريق في فترة عقوبة (30 ثانية)</p>
+        <p className="text-xs text-red-500 font-bold">{chrome("⏳ هذا الفريق في فترة عقوبة (30 ثانية)")}</p>
       )}
     </div>
   );

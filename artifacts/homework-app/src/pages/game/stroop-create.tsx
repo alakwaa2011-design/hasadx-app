@@ -50,6 +50,17 @@ const ARABIC_COLORS = [
   { word: "أسود", color: "#1f2937" },
 ];
 
+const ENGLISH_COLORS = [
+  { word: "Red", color: "#ef4444" },
+  { word: "Blue", color: "#3b82f6" },
+  { word: "Green", color: "#22c55e" },
+  { word: "Yellow", color: "#eab308" },
+  { word: "Orange", color: "#f97316" },
+  { word: "Purple", color: "#a855f7" },
+  { word: "Gray", color: "#6b7280" },
+  { word: "Black", color: "#1f2937" },
+];
+
 const GRADE_LEVELS = [
   { value: "1-3", ar: "الصف ١-٣" },
   { value: "4-6", ar: "الصف ٤-٦" },
@@ -62,6 +73,11 @@ const GRADE_LEVELS = [
 function makeDefaultItem(word: string, color: string): StroopItem {
   const others = PALETTE.filter(c => c !== color).slice(0, 3);
   return { word, color, options: [color, ...others] };
+}
+
+function makeDefaultItems(lang: string): StroopItem[] {
+  const colors = lang === "ar" ? ARABIC_COLORS : ENGLISH_COLORS;
+  return colors.slice(0, 6).map(c => makeDefaultItem(c.word, c.color));
 }
 
 const TEMPLATES = [
@@ -108,13 +124,18 @@ export default function StroopCreate() {
   const [title, setTitle] = useState("");
   const [gradeLevel, setGradeLevel] = useState("general");
   const [items, setItems] = useState<StroopItem[]>(
-    ARABIC_COLORS.slice(0, 6).map(c => makeDefaultItem(c.word, c.color))
+    () => makeDefaultItems(lang)
   );
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ pin: string; title: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const loadedSavedGameRef = useRef(false);
+  const usingDefaultItemsRef = useRef(true);
+
+  useEffect(() => {
+    if (usingDefaultItemsRef.current) setItems(makeDefaultItems(lang));
+  }, [lang]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
@@ -144,6 +165,7 @@ export default function StroopCreate() {
         setTitle(activity.title);
         setGradeLevel(grade);
         setItems(savedItems as StroopItem[]);
+        usingDefaultItemsRef.current = false;
       } catch {
         alert(lang === "ar" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
       }
@@ -194,19 +216,23 @@ export default function StroopCreate() {
 
   const addItem = () => {
     if (items.length >= 30) return;
+    usingDefaultItemsRef.current = false;
     setItems([...items, makeDefaultItem("", "#ef4444")]);
   };
 
   const removeItem = (index: number) => {
     if (items.length <= 4) return;
+    usingDefaultItemsRef.current = false;
     setItems(items.filter((_, i) => i !== index));
   };
 
   const updateWord = (index: number, word: string) => {
+    usingDefaultItemsRef.current = false;
     setItems(items.map((it, i) => i === index ? { ...it, word } : it));
   };
 
   const updateCorrectColor = (index: number, color: string) => {
+    usingDefaultItemsRef.current = false;
     setItems(items.map((it, i) => {
       if (i !== index) return it;
       const newOptions = it.options.includes(color)
@@ -217,6 +243,7 @@ export default function StroopCreate() {
   };
 
   const toggleOption = (index: number, color: string) => {
+    usingDefaultItemsRef.current = false;
     setItems(items.map((it, i) => {
       if (i !== index) return it;
       const isCorrect = it.color === color;
@@ -235,6 +262,7 @@ export default function StroopCreate() {
   };
 
   const loadTemplate = (template: typeof TEMPLATES[0]) => {
+    usingDefaultItemsRef.current = false;
     setTitle(lang === "ar" ? template.titleAr : template.titleEn);
     setItems(template.items.map(it => ({ ...it })));
     setShowTemplates(false);
@@ -331,7 +359,12 @@ export default function StroopCreate() {
                   {lang === "ar" ? "العب الآن!" : "Play Now!"}
                 </button>
                 <button
-                  onClick={() => { setResult(null); setTitle(""); setItems(ARABIC_COLORS.slice(0, 6).map(c => makeDefaultItem(c.word, c.color))); }}
+                  onClick={() => {
+                    usingDefaultItemsRef.current = true;
+                    setResult(null);
+                    setTitle("");
+                    setItems(makeDefaultItems(lang));
+                  }}
                   className="w-full py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {lang === "ar" ? "إنشاء مجموعة أخرى" : "Create Another Set"}
