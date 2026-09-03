@@ -10,6 +10,7 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
@@ -89,6 +90,7 @@ export default function WameethCreate() {
   const [step, setStep] = useState<"prepare" | "mode">("prepare");
   const [source, setSource] = useState<QuestionSource | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [isShared, setIsShared] = useState(false);
   const [title, setTitle] = useState("");
   // When the whole list still matches one untouched assignment, we can reuse
   // that assignment directly instead of persisting a new one at start time.
@@ -290,6 +292,7 @@ export default function WameethCreate() {
     void (async () => {
       try {
         const activity = await getSavedGameActivity(savedGameId);
+        setIsShared(activity.isShared);
         if (activity.gameType !== "wameeth" || !Array.isArray(activity.content)) {
           throw new Error("invalid-saved-game");
         }
@@ -470,6 +473,7 @@ export default function WameethCreate() {
           targetClass: targetClass || null,
         },
         source: sourceAssignmentId != null ? "assignment" : "game-launch",
+        isShared,
       });
 
       if (mode === "classroom") {
@@ -1067,6 +1071,7 @@ export default function WameethCreate() {
               <ClassSelector value={targetClass} onChange={setTargetClass} accent="#a855f7" />
             )}
 
+            <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />
             <button
               type="button"
               onClick={startGame}

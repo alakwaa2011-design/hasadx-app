@@ -29,6 +29,7 @@ export interface SavedGameActivity {
   content?: unknown;
   settings?: unknown;
   source?: string;
+  isShared: boolean;
   [key: string]: unknown;
 }
 
@@ -39,6 +40,7 @@ export interface SaveGameActivityInput {
   content?: unknown;
   settings?: unknown;
   source?: string;
+  isShared?: boolean;
 }
 
 export class SavedGameActivitiesError extends Error {
@@ -140,6 +142,7 @@ function asActivity(value: unknown): SavedGameActivity {
     content: item.content,
     settings: item.settings,
     source: typeof item.source === "string" ? item.source : undefined,
+    isShared: item.isShared === true,
   };
 }
 
@@ -166,7 +169,10 @@ export async function getSavedGameActivity(id: SavedGameActivity["id"]): Promise
 }
 
 export async function saveGameActivity(input: SaveGameActivityInput): Promise<SavedGameActivity> {
-  const activity = asActivity(await request<unknown>("", { method: "POST", body: JSON.stringify(input) }));
+  const activity = asActivity(await request<unknown>("", {
+    method: "POST",
+    body: JSON.stringify({ ...input, isShared: input.isShared ?? false }),
+  }));
   trackSavedGameEvent(EVENTS.savedGameSaved, activity.gameType || input.gameType, "game_creator");
   return activity;
 }

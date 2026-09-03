@@ -6,6 +6,7 @@ import { Send, Copy, Check, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import {
   CATEGORY_LABELS,
@@ -26,6 +27,7 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
   const [hint, setHint] = useState("");
   const [category, setCategory] = useState<LetrlyCategory>("general");
   const [submitting, setSubmitting] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [createdPin, setCreatedPin] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const loadedSavedGameRef = useRef(false);
@@ -54,6 +56,7 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
         setWord(saved.word);
         setHint(saved.hint);
         setCategory(savedCategory as LetrlyCategory);
+        setIsShared(activity.isShared);
       } catch {
         toast.error(dir === "rtl" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
       }
@@ -90,6 +93,7 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
           content: { word: word.trim(), hint: hint.trim() },
           settings: { category },
           source: "teacher-authored",
+          isShared,
         });
       } catch {
         toast.warning(dir === "rtl"
@@ -215,6 +219,7 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
 
+              <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
               <button
                 onClick={submit}
                 disabled={submitting || !word.trim() || !validLength || !isArabicOnly}

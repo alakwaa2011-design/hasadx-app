@@ -68,6 +68,7 @@ export const savedGameActivityUpsertSchema = z.object({
   questions: z.array(jsonContent).min(1).max(500).optional(),
   settings: jsonContent.optional().default({}),
   source: z.string().trim().min(1).max(100).optional().default("manual"),
+  isShared: z.boolean().optional().default(false),
 }).strict().superRefine((body, ctx) => {
   if (body.content === undefined && body.questions === undefined) {
     ctx.addIssue({ code: "custom", path: ["content"], message: "content or questions is required" });

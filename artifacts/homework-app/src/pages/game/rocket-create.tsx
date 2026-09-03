@@ -12,6 +12,7 @@ import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import QRCode from "react-qr-code";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
@@ -101,6 +102,7 @@ export default function RocketCreate() {
   const [gameDurationMins, setGameDurationMins] = useState(5);
   const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
   const [creating, setCreating] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [title, setTitle] = useState("");
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
@@ -175,6 +177,7 @@ export default function RocketCreate() {
           advanceMode,
         },
         source: "game-launch",
+        isShared,
       });
     } catch {
       setCreating(false);
@@ -566,6 +569,7 @@ export default function RocketCreate() {
                 setQuestions(prepared.map(question => ({ ...question, type: question.type ?? "mcq" })));
                 if (sourceTitle) setTitle(sourceTitle);
                 if (source === "saved" && savedActivity?.gameType === "rocket") {
+                  setIsShared(savedActivity.isShared);
                   const settings = savedSettings(savedActivity.settings);
                   if (settings) {
                     if ([10, 15, 20, 30, 45].includes(settings.duration as number)) {
@@ -590,7 +594,10 @@ export default function RocketCreate() {
           )}
 
            {step === "settings" && (
-             <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleCreate} disabled={creating || !hasCompleteQuestions} className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: hasCompleteQuestions ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: hasCompleteQuestions ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: hasCompleteQuestions ? "#fff" : "#9ca3af" }}>{creating ? <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جارٍ الإنشاء…" : "Creating…"}</> : <><Rocket className="w-5 h-5" />{ar ? "ابدأ سباق الصواريخ" : "Start Rocket Race"}</>}</motion.button>
+             <>
+               <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />
+               <motion.button type="button" whileTap={{ scale: 0.98 }} whileHover={{ scale: 1.01 }} onClick={handleCreate} disabled={creating || !hasCompleteQuestions} className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: hasCompleteQuestions ? `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)` : "#e5e7eb", boxShadow: hasCompleteQuestions ? `0 14px 28px -8px ${BRAND_PRIMARY}70` : "none", color: hasCompleteQuestions ? "#fff" : "#9ca3af" }}>{creating ? <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جارٍ الإنشاء…" : "Creating…"}</> : <><Rocket className="w-5 h-5" />{ar ? "ابدأ سباق الصواريخ" : "Start Rocket Race"}</>}</motion.button>
+             </>
            )}
         </div>
       </div>

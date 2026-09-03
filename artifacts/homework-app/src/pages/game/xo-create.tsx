@@ -5,6 +5,7 @@ import { Grid3X3, Clock, Play, Users, Wifi, School, QrCode } from "lucide-react"
 import { useI18n } from "@/lib/i18n";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, normalizeSavedGameQuestions, saveGameActivity } from "@/lib/saved-game-activities";
 import { getXoSocket } from "@/lib/xo-socket";
 import { toast } from "@/components/ui/sonner";
@@ -56,6 +57,7 @@ export default function XoCreate() {
   const [playMode, setPlayMode] = useState<"online" | "classroom">("classroom");
   const [duration, setDuration] = useState(20);
   const [creating, setCreating] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
   const loadedSavedGameRef = useRef(false);
 
@@ -88,6 +90,7 @@ export default function XoCreate() {
       setQuestions(restored);
       setSetupStep("settings");
       setTitle(activity.title || null);
+      setIsShared(activity.isShared);
       if (activity.settings && typeof activity.settings === "object" && !Array.isArray(activity.settings)) {
         const settings = activity.settings as Record<string, unknown>;
         if (typeof settings.teamX === "string" && settings.teamX.trim()) setTeamX(settings.teamX.slice(0, 40));
@@ -105,7 +108,7 @@ export default function XoCreate() {
     }
     setCreating(true);
     try {
-      await saveGameActivity({ gameType: "xo", title: title || (ar ? "إكس أو" : "XO"), questions, settings: { duration, teamX, teamO, playMode }, source: questionSource });
+      await saveGameActivity({ gameType: "xo", title: title || (ar ? "إكس أو" : "XO"), questions, settings: { duration, teamX, teamO, playMode }, source: questionSource, isShared });
       if (playMode === "classroom") {
         const setup: XoClassSetup = {
           questions,
@@ -292,7 +295,9 @@ export default function XoCreate() {
               </section>
             </div>
 
-            <footer className="border-t bg-muted/20 px-6 py-5 flex flex-col-reverse sm:flex-row gap-3">
+            <footer className="border-t bg-muted/20 px-6 py-5">
+              <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />
+              <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 onClick={() => {
                   setQuestions([]);
@@ -321,6 +326,7 @@ export default function XoCreate() {
                   </>
                 )}
               </button>
+              </div>
             </footer>
           </div>
         </div>

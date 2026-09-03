@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/sonner";
 import { ESCAPE_CLASS_SETUP_KEY } from "@/lib/escape-engine";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 
@@ -75,6 +76,7 @@ export default function EscapeCreate() {
   const [lockCount, setLockCount] = useState(4);
   const [hints, setHints] = useState(2);
   const [creating, setCreating] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
@@ -221,6 +223,7 @@ export default function EscapeCreate() {
       hints,
     },
     source: selectedSource || "game-launch",
+    isShared,
   });
 
   const requireQuestions = () => {
@@ -487,6 +490,7 @@ export default function EscapeCreate() {
               </div>
             </motion.section>
 
+            <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
             <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
               <div className="mb-3">
                 <h2 className="text-lg font-black text-gray-900">{ar ? "طريقة اللعب" : "How to play"}</h2>

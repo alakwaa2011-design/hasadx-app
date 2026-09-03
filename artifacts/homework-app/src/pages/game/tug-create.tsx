@@ -13,6 +13,7 @@ import { getTugSocket } from "@/lib/tug-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
@@ -76,6 +77,7 @@ export default function TugCreate() {
   const [giftEveryCorrect, setGiftEveryCorrect] = useState<1 | 2 | 3>(3);
   const [freezeDuration, setFreezeDuration] = useState(5);
   const [creating, setCreating] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
@@ -152,6 +154,7 @@ export default function TugCreate() {
     questions,
     settings: { duration, autoAdvance, targetClass: targetClass || null, giftsEnabled, giftEveryCorrect, freezeDuration },
     source: "game-launch",
+    isShared,
   });
 
   const handleCreate = async () => {
@@ -350,6 +353,7 @@ export default function TugCreate() {
               setSourceTitle(title);
               setSelectedSource(source === "bank" ? "bank" : "assignment");
               if (source === "saved" && savedActivity?.gameType === "tug") {
+                setIsShared(savedActivity.isShared);
                 const settings = savedSettings(savedActivity.settings);
                 if (settings) {
                   if ([10, 15, 20, 30].includes(settings.duration as number)) {
@@ -705,6 +709,7 @@ export default function TugCreate() {
           </div>
 
           {/* ── Ready checkpoint — launch is still deferred to the next action. ── */}
+          <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-5" />
           <div className="flex justify-center mb-5">
             <motion.button
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}

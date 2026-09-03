@@ -59,3 +59,4 @@
 - [Game question compatibility](game-question-compatibility.md) — button-based games accept MCQ with 2–4 nonempty options plus true/false; typed answers require a renderer with text input.
 - [Password login has no device challenge](password-login-no-device-challenge.md) — valid email/password or Google login must never require a new-device OTP.
 - [Game locale coverage](game-locale-coverage.md) — language switching covers game chrome and built-in gameplay data; teacher-authored content stays unchanged.
+- [Published saved-game activities](published-saved-game-activities.md) — saved games are private by default; public discovery requires explicit sharing and admin-visible moderation fencing.

@@ -14,6 +14,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -166,6 +167,7 @@ export default function WheelCreate() {
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [directPlayLink, setDirectPlayLink] = useState<string | null>(null);
   const [directLinkLoading, setDirectLinkLoading] = useState(false);
@@ -467,6 +469,7 @@ export default function WheelCreate() {
             },
             settings: payload.config,
             source: activeSource,
+            isShared,
           });
         } catch {
           toast.error(contentLang === "ar"
@@ -526,6 +529,7 @@ export default function WheelCreate() {
     void (async () => {
       try {
         const activity = await getSavedGameActivity(savedGameId);
+        setIsShared(activity.isShared);
         if (activity.gameType !== "wheel") throw new Error("wrong-game");
         const content = activity.content;
         if (!content || typeof content !== "object" || Array.isArray(content)) throw new Error("invalid-content");
@@ -1079,9 +1083,12 @@ export default function WheelCreate() {
                     </div>
                   </details>
                 </div>
-                <div className="p-4 sm:px-6 sm:py-5 border-t border-border bg-muted/20 flex flex-col sm:flex-row gap-2.5">
+                <div className="p-4 sm:px-6 sm:py-5 border-t border-border bg-muted/20">
+                  <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-3" />
+                  <div className="flex flex-col gap-2.5 sm:flex-row">
                   <button type="button" disabled={launching || segments.length < 2} onClick={launchPlay} className="flex-1 py-3 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>{launching ? <><Loader2 className="w-4 h-4 animate-spin" />{w.launching}</> : <><Play className="w-4 h-4" />{w.startPlaying}</>}</button>
                   <button type="button" disabled={saving} onClick={saveTemplate} className="sm:min-w-44 py-3 px-5 rounded-xl font-bold bg-card border border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm">{saving ? <><Loader2 className="w-4 h-4 animate-spin" />{w.saving}</> : editingTemplateId !== null ? <><Check className="w-4 h-4" />{w.updateTemplate}</> : <><Save className="w-4 h-4" />{w.saveToLibrary}</>}</button>
+                  </div>
                 </div>
               </Card>
             </motion.main>

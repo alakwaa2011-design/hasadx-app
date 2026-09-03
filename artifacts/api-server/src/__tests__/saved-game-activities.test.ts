@@ -39,6 +39,15 @@ describe("saved game activity request validation", () => {
     if (result.success) {
       expect(result.data.source).toBe("manual");
       expect(result.data.settings).toEqual({});
+      expect(result.data.isShared).toBe(false);
     }
+  });
+
+  it("accepts an explicit sharing preference", () => {
+    const result = savedGameActivityUpsertSchema.safeParse({
+      gameType: "rocket", title: "Shared test", content: { questions: [] }, isShared: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.isShared).toBe(true);
   });
 });

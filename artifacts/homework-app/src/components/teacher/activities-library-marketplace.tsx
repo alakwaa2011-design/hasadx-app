@@ -36,6 +36,7 @@ import {
   SlidersHorizontal,
   Check,
   RotateCcw,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -125,6 +126,21 @@ export interface MarketplaceVideo {
   createdAt: string;
 }
 
+export interface MarketplaceGameActivity {
+  id: number;
+  teacherId: number;
+  teacherName: string | null;
+  title: string;
+  gameType: string;
+  questionCount: number;
+  playCount: number;
+  source?: string;
+  subject?: string | null;
+  targetClass?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+}
+
 export interface ActivitiesLibraryMarketplaceProps {
   embedded?: boolean;
   lang: "ar" | "en";
@@ -132,9 +148,11 @@ export interface ActivitiesLibraryMarketplaceProps {
   assignments: MarketplaceAssignment[];
   questions: MarketplaceQuestion[];
   videoLessons: MarketplaceVideo[];
+  gameActivities: MarketplaceGameActivity[];
   filteredAssignments: MarketplaceAssignment[];
   filteredQuestions: MarketplaceQuestion[];
   filteredVideos: MarketplaceVideo[];
+  filteredGameActivities: MarketplaceGameActivity[];
   popularIds: Set<number>;
   newIds: Set<number>;
   currentTeacherId: number | null;
@@ -156,6 +174,7 @@ export interface ActivitiesLibraryMarketplaceProps {
   onClearFilters: () => void;
   onPresentations: () => void;
   launchAsGame: (id: number, mode?: "classic" | "teams") => void;
+  openGameActivity: (id: number, gameType: string) => void;
   importAssignment: (id: number) => void;
   copyLink: (id: number) => void;
   dismissAssignment: (id: number) => void;
@@ -198,6 +217,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     embedded, lang, dir,
     assignments, questions, videoLessons,
     filteredAssignments, filteredQuestions, filteredVideos,
+    filteredGameActivities,
     popularIds, newIds,
     currentTeacherId, isAdmin, showHidden, onShowHiddenChange,
     search, onSearchChange,
@@ -207,7 +227,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     allSubjects, allGrades,
     activeTab, onActiveTabChange,
     onClearFilters, onPresentations,
-    launchAsGame, importAssignment, copyLink, dismissAssignment,
+    launchAsGame, openGameActivity, importAssignment, copyLink, dismissAssignment,
     importQuestion, dismissQuestion, importVideo,
     launchingIds, importingIds, importedIds,
     importingQIds, importedQIds,
@@ -289,6 +309,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     if (typeChip !== "all" && typeChip !== "interactive") return [];
     return filterByCategory(filteredQuestions, { popularCheck: q => q.points >= 2 });
   }, [filteredQuestions, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
+
+  const displayGameActivities = useMemo(() => {
+    if (typeChip !== "all" && typeChip !== "live") return [];
+    return filterByCategory(filteredGameActivities, { popularCheck: game => game.playCount >= 5 });
+  }, [filteredGameActivities, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
   const wameethPick = useMemo(() => {
     const mcq = assignments.filter(a => a.type === "mcq" && a.questionCount > 0 && !a.hiddenByAdmin);
@@ -513,6 +538,67 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     );
   };
 
+  const renderGameActivityCard = (game: MarketplaceGameActivity, i: number) => {
+    const labels: Record<string, [string, string]> = {
+      wameeth: ["وميض", "Wameeth"],
+      tug: ["شد الحبل", "Tug of War"],
+      xo: ["إكس أو", "XO"],
+      escape: ["غرفة الهروب", "Escape Room"],
+      rocket: ["سباق الصواريخ", "Rocket Race"],
+      wheel: ["عجلة الحظ", "Wheel"],
+      memory: ["تطابق الذاكرة", "Memory Match"],
+      letrly: ["تحدي الكلمة", "Word Challenge"],
+      scramble: ["الكلمات المبعثرة", "Scrambled Words"],
+      stroop: ["ارتباك الألوان", "Color Confusion"],
+      maraqui: ["مراقي", "Maraqui"],
+      arena: ["ساحة التحدي", "Challenge Arena"],
+      solo: ["تحدٍ فردي", "Solo Challenge"],
+    };
+    const normalizedType = game.gameType.toLowerCase().trim();
+    const gameLabel = labels[normalizedType]?.[isAr ? 0 : 1] || game.gameType;
+    const isOwn = game.teacherId === currentTeacherId;
+
+    return (
+      <motion.article
+        key={`game-${game.id}`}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: Math.min(i * 0.03, 0.2) }}
+        className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:rounded-2xl"
+        style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+      >
+        <ActivityCover kind="live" subject={game.subject} title={game.title} type={game.gameType} aspect="video" livePulse>
+          <span className={cn("absolute top-2 z-10 rounded-md bg-[#225739]/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm sm:top-2.5 sm:rounded-lg sm:px-2 sm:text-[10px]", dir === "rtl" ? "right-2" : "left-2")}>
+            {isAr ? "لعبة مباشرة" : "Live game"}
+          </span>
+          <span className={cn("absolute top-2 z-10 rounded-full bg-white/90 p-1.5 shadow-sm", dir === "rtl" ? "left-2" : "right-2")} style={{ color: C.gold }}>
+            <Gamepad2 className="h-3.5 w-3.5" />
+          </span>
+        </ActivityCover>
+        <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+          <p className="line-clamp-2 text-[11px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{game.title}</p>
+          <p className="mt-1 truncate text-[9px] font-semibold sm:text-[10px]" style={{ color: C.primary }}>{gameLabel}</p>
+          <p className="mt-1 truncate text-[9px] sm:text-[10px]" style={{ color: C.muted }}>
+            {[game.subject, game.targetClass, `${game.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
+          </p>
+          <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1 text-[9px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
+            <span>{formatUseCount(game.playCount)} {isAr ? "تشغيل" : "plays"}</span>
+            <span className="truncate">{isOwn ? (isAr ? "نشاطك" : "Yours") : game.teacherName}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => openGameActivity(game.id, game.gameType)}
+            className="mt-2.5 flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-extrabold text-white transition-all hover:brightness-110 sm:mt-3 sm:rounded-xl sm:py-2 sm:text-xs"
+            style={{ background: C.primary }}
+          >
+            <Play className="h-3 w-3 fill-current sm:h-3.5 sm:w-3.5" />
+            {isAr ? "استخدم النشاط" : "Use activity"}
+          </button>
+        </div>
+      </motion.article>
+    );
+  };
+
   /* ──────────────────────────────────── sidebar ──────────────────────────────── */
   const sidebar = (
     <aside
@@ -651,7 +737,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   );
 
   /* ──────────────────────────────────── main content ──────────────────────────── */
-  const totalShown = (activeTab === "assignments" ? displayAssignments.length : 0)
+  const totalShown = (activeTab === "assignments" ? displayAssignments.length + displayGameActivities.length : 0)
     + (activeTab === "videos" ? displayVideos.length : 0)
     + (activeTab === "questions" ? displayQuestions.length : 0);
 
@@ -975,10 +1061,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
           {/* Content — Assignments */}
           {activeTab === "assignments" && (
-            displayAssignments.length > 0
+            displayAssignments.length + displayGameActivities.length > 0
               ? viewMode === "grid"
                 ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
                     {displayAssignments.map((a, i) => renderAssignmentCard(a, i))}
+                    {displayGameActivities.map((game, i) => renderGameActivityCard(game, displayAssignments.length + i))}
                   </div>
                 : <div className="flex flex-col gap-2.5">
                     {displayAssignments.map((a, i) => renderListRow(a, i))}

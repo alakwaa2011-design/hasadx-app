@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -125,6 +126,7 @@ export default function StroopCreate() {
     () => makeDefaultItems(lang)
   );
   const [saving, setSaving] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string; title: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -163,6 +165,7 @@ export default function StroopCreate() {
         setTitle(activity.title);
         setGradeLevel(grade);
         setItems(savedItems as StroopItem[]);
+        setIsShared(activity.isShared);
         usingDefaultItemsRef.current = false;
       } catch {
         alert(lang === "ar" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
@@ -293,6 +296,7 @@ export default function StroopCreate() {
           content: { items: validItems },
           settings: { gradeLevel },
           source: "teacher-authored",
+          isShared,
         });
       } catch {
         alert(lang === "ar"
@@ -393,6 +397,7 @@ export default function StroopCreate() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
             <button
               onClick={() => setShowTemplates(!showTemplates)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 text-sm font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"

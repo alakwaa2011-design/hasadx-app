@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Save, Copy, Check, Shuffle, BookOpen, LogIn, Eye, Send, MessageSquare, Type } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -82,6 +83,7 @@ export default function ScrambleCreate() {
     { word: "", hint: "", question: "" },
   ]);
   const [saving, setSaving] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string; id: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -117,6 +119,7 @@ export default function ScrambleCreate() {
         setGradeLevel(savedSettings.gradeLevel);
         setWordCount(savedSettings.wordCount);
         setWords(savedWords as WordEntry[]);
+        setIsShared(activity.isShared);
       } catch {
         alert(lang === "ar" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
       }
@@ -213,6 +216,7 @@ export default function ScrambleCreate() {
             content: { words: validWords.map(w => ({ word: w.word.trim(), hint: w.hint.trim(), question: w.question.trim() })) },
             settings: { gradeLevel, wordCount },
             source: "teacher-authored",
+            isShared,
           });
         } catch {
           alert(lang === "ar"
@@ -428,6 +432,7 @@ export default function ScrambleCreate() {
             </button>
           )}
 
+          <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
           <button onClick={handleSave} disabled={!canSave || saving}
             className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-black text-base shadow-lg shadow-purple-500/25 disabled:opacity-40 flex items-center justify-center gap-2 transition-all">
             <Save className="w-5 h-5" />

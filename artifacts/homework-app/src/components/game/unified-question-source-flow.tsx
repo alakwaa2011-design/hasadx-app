@@ -55,7 +55,7 @@ export interface UnifiedQuestionSourceFlowProps {
      * Present only when questions came from a saved activity. Consumers can
      * restore game-specific settings after validating its gameType.
      */
-    savedActivity?: Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source">;
+    savedActivity?: Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source" | "isShared">;
   }) => void;
 }
 
@@ -141,7 +141,7 @@ export function UnifiedQuestionSourceFlow({
   const [selectedSavedId, setSelectedSavedId] = useState<SavedGameActivity["id"] | null>(null);
   const [selectedSavedTitle, setSelectedSavedTitle] = useState("");
   const [selectedSavedQs, setSelectedSavedQs] = useState<SavedGameQuestion[]>([]);
-  const [selectedSavedActivity, setSelectedSavedActivity] = useState<Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source"> | null>(null);
+  const [selectedSavedActivity, setSelectedSavedActivity] = useState<Pick<SavedGameActivity, "id" | "title" | "gameType" | "settings" | "source" | "isShared"> | null>(null);
   const deepLinkLoadedRef = useRef(false);
 
   // Library file

@@ -163,6 +163,23 @@ interface SharedVideoLesson {
   hiddenByAdmin?: boolean;
 }
 
+interface SharedGameActivity {
+  id: number;
+  teacherId: number;
+  teacherName: string | null;
+  title: string;
+  gameType: string;
+  questionCount: number;
+  playCount: number;
+  source?: string;
+  content?: Record<string, unknown> | unknown[];
+  settings?: Record<string, unknown>;
+  subject?: string | null;
+  targetClass?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+}
+
 export default function SharedContentPage({
   embedded,
   forceKind,
@@ -196,6 +213,7 @@ export default function SharedContentPage({
   const [assignments, setAssignments] = useState<SharedAssignment[]>([]);
   const [questions, setQuestions] = useState<SharedQuestion[]>([]);
   const [videoLessons, setVideoLessons] = useState<SharedVideoLesson[]>([]);
+  const [gameActivities, setGameActivities] = useState<SharedGameActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [importingIds, setImportingIds] = useState<Set<number>>(new Set());
@@ -276,7 +294,10 @@ export default function SharedContentPage({
           fetches.push(fetch(qbUrl, { credentials: "include" }));
           fetches.push(fetch(vidUrl, { credentials: "include" }));
         }
-        const [aRes, qRes, vRes] = await Promise.all(fetches);
+        if (isActivitiesLibrary) {
+          fetches.push(fetch(`${API_BASE}/api/game-activities/shared`, { credentials: "include" }));
+        }
+        const [aRes, qRes, vRes, gRes] = await Promise.all(fetches);
         if (aRes.ok) setAssignments(await aRes.json());
         if (!isCompetitionLibrary) {
           if (qRes && qRes.ok) setQuestions(await qRes.json());
@@ -284,6 +305,24 @@ export default function SharedContentPage({
         } else {
           setQuestions([]);
           setVideoLessons([]);
+        }
+        if (isActivitiesLibrary && gRes?.ok) {
+          const rows = await gRes.json() as SharedGameActivity[];
+          setGameActivities(rows.map((game) => {
+            const settings = game.settings && !Array.isArray(game.settings) ? game.settings : {};
+            const content = game.content && !Array.isArray(game.content) ? game.content : {};
+            return {
+              ...game,
+              subject: typeof settings.subject === "string"
+                ? settings.subject
+                : typeof content.subject === "string" ? content.subject : null,
+              targetClass: typeof settings.targetClass === "string"
+                ? settings.targetClass
+                : typeof settings.gradeLevel === "string" ? settings.gradeLevel : null,
+            };
+          }));
+        } else if (!isActivitiesLibrary) {
+          setGameActivities([]);
         }
       } catch {} finally { setLoading(false); }
     })();
@@ -506,11 +545,13 @@ export default function SharedContentPage({
     ...assignments.map(a => a.subject).filter(Boolean),
     ...questions.map(q => q.subject).filter(Boolean),
     ...videoLessons.map(v => v.subject).filter(Boolean),
+    ...gameActivities.map(g => g.subject).filter(Boolean),
   ])).sort() as string[];
 
   const allGrades = Array.from(new Set([
     ...assignments.map(a => a.targetClass).filter(Boolean),
     ...videoLessons.map(v => v.targetClass).filter(Boolean),
+    ...gameActivities.map(g => g.targetClass).filter(Boolean),
   ])).sort((a, b) => {
     const na = extractGradeNumber(a as string) ?? 999;
     const nb = extractGradeNumber(b as string) ?? 999;
@@ -561,6 +602,18 @@ export default function SharedContentPage({
         : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
+  const filteredGameActivities = gameActivities
+    .filter(game =>
+      (!search || game.title.includes(search) || game.teacherName?.includes(search)) &&
+      matchesSubject(game.subject) &&
+      (!gradeFilter || gradeMatchesQuery(game.targetClass, gradeFilter))
+    )
+    .sort((a, b) =>
+      sortBy === "questions"
+        ? b.questionCount - a.questionCount
+        : new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime(),
+    );
+
   if (loading) {
     const spinner = (
       <div className="flex h-96 items-center justify-center">
@@ -579,9 +632,11 @@ export default function SharedContentPage({
         assignments={assignments}
         questions={questions}
         videoLessons={videoLessons}
+        gameActivities={gameActivities}
         filteredAssignments={filteredAssignments}
         filteredQuestions={filteredQuestions}
         filteredVideos={filteredVideos}
+        filteredGameActivities={filteredGameActivities}
         popularIds={activitiesPopularIds}
         newIds={activitiesNewIds}
         currentTeacherId={currentTeacherId}
@@ -607,6 +662,21 @@ export default function SharedContentPage({
         }}
         onPresentations={() => setLocation("/teacher/presentations")}
         launchAsGame={launchAsGame}
+        openGameActivity={(id, gameType) => {
+          const paths: Record<string, string> = {
+            wameeth: "/game/wameeth/create", tug: "/game/tug/create", xo: "/game/xo/create",
+            escape: "/game/escape/create", rocket: "/game/rocket/create", wheel: "/game/wheel/create",
+            memory: "/game/memory/create", letrly: "/game/letrly/create", scramble: "/game/scramble/create",
+            stroop: "/game/stroop/create", maraqui: "/game/maraqui/create", arena: "/game/arena",
+            solo: "/teacher/solo-challenge/create",
+          };
+          const destination = paths[gameType.toLowerCase().trim()];
+          if (!destination) {
+            toast.error(lang === "ar" ? "لا تتوفر صفحة إعداد لهذه اللعبة بعد" : "This game setup is not available yet");
+            return;
+          }
+          setLocation(`${destination}?savedGameId=${encodeURIComponent(String(id))}`);
+        }}
         importAssignment={importAssignment}
         copyLink={copyLink}
         dismissAssignment={(id) => dismissItem("assignment", id)}

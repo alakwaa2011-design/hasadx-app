@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
 
@@ -18,6 +18,9 @@ export const savedGameActivitiesTable = pgTable(
     content: jsonb("content").notNull(),
     settings: jsonb("settings").notNull().default({}),
     source: text("source").notNull().default("manual"),
+    isShared: boolean("is_shared").notNull().default(false),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    hiddenByAdmin: boolean("hidden_by_admin").notNull().default(false),
     contentFingerprint: text("content_fingerprint").notNull(),
     questionCount: integer("question_count").notNull().default(0),
     playCount: integer("play_count").notNull().default(1),
@@ -36,6 +39,9 @@ export const savedGameActivitiesTable = pgTable(
 );
 
 export const insertSavedGameActivitySchema = createInsertSchema(savedGameActivitiesTable)
-  .omit({ id: true, teacherId: true, contentFingerprint: true, playCount: true, lastPlayedAt: true, createdAt: true, updatedAt: true });
+  .omit({
+    id: true, teacherId: true, publishedAt: true, hiddenByAdmin: true,
+    contentFingerprint: true, playCount: true, lastPlayedAt: true, createdAt: true, updatedAt: true,
+  });
 export type InsertSavedGameActivity = z.infer<typeof insertSavedGameActivitySchema>;
 export type SavedGameActivity = typeof savedGameActivitiesTable.$inferSelect;

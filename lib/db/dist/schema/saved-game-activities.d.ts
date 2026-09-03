@@ -127,6 +127,57 @@ export declare const savedGameActivitiesTable: import("drizzle-orm/pg-core").PgT
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        isShared: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_shared";
+            tableName: "saved_game_activities";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        publishedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "published_at";
+            tableName: "saved_game_activities";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hiddenByAdmin: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hidden_by_admin";
+            tableName: "saved_game_activities";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         contentFingerprint: import("drizzle-orm/pg-core").PgColumn<{
             name: "content_fingerprint";
             tableName: "saved_game_activities";
@@ -238,6 +289,7 @@ export declare const insertSavedGameActivitySchema: z.ZodObject<{
     content: z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>;
     settings: z.ZodOptional<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>;
     source: z.ZodOptional<z.ZodString>;
+    isShared: z.ZodOptional<z.ZodBoolean>;
     questionCount: z.ZodOptional<z.ZodInt>;
 }, {
     out: {};

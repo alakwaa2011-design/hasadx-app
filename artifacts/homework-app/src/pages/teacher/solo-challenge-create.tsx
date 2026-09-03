@@ -23,6 +23,7 @@ import {
 } from "@/lib/credit-aware-fetch";
 import { QuestionCard, emptyQuestion, isValidQ, type Question, type Correct } from "@/components/game/question-editor";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -52,6 +53,7 @@ export default function SoloChallengeCreatePage() {
 
   const [source, setSource] = useState<Source | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isShared, setIsShared] = useState(false);
 
   // === Assignment mode ===
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -92,6 +94,7 @@ export default function SoloChallengeCreatePage() {
     void (async () => {
       try {
         const activity = await getSavedGameActivity(savedGameId);
+        setIsShared(activity.isShared);
         if (activity.gameType !== "solo") throw new Error("wrong-game");
         const content = activity.content;
         if (!content || typeof content !== "object" || Array.isArray(content)) throw new Error("invalid-content");
@@ -296,6 +299,7 @@ export default function SoloChallengeCreatePage() {
           content: { questions: sendQs, topic: topic.trim(), subject: subject.trim(), source: source ?? "manual" },
           settings,
           source: source ?? "manual",
+          isShared,
         });
       } catch {
         toast.error(lang === "ar"
@@ -622,6 +626,7 @@ export default function SoloChallengeCreatePage() {
                     teacherClasses={teacherClasses}
                   />
 
+                  <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
                   <button
                     onClick={createStandalone}
                     disabled={saving || !title.trim() || questions.filter(isValidQ).length === 0}

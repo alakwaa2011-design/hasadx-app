@@ -11,6 +11,7 @@ import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
@@ -65,6 +66,7 @@ export default function MaraquiCreate() {
   const [stages, setStages] = useState<Stage[]>([makeEmptyStage(1)]);
   const [expandedStage, setExpandedStage] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string; title: string; isEdit?: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   const [aiLoadingStage, setAiLoadingStage] = useState<number | null>(null);
@@ -110,6 +112,7 @@ export default function MaraquiCreate() {
         setDescription(saved.description);
         setStages(savedStages as Stage[]);
         setIsPublic(savedSettings.isPublic);
+        setIsShared(activity.isShared);
       } catch {
         toast.error(isRtl ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
       }
@@ -290,6 +293,7 @@ export default function MaraquiCreate() {
           content: { description: description.trim(), stages },
           settings: { isPublic },
           source: "teacher-authored",
+          isShared,
         });
       } catch {
         toast.warning(isRtl
@@ -615,6 +619,7 @@ export default function MaraquiCreate() {
               ))}
             </div>
 
+            <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
             <motion.button
               onClick={handleSave}
               disabled={!isValid() || saving}

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { randomBytes } from "crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, directPlayLinksTable, savedGameActivitiesTable } from "@workspace/db";
+import { db, directPlayLinksTable, savedGameActivitiesTable, teachersTable } from "@workspace/db";
 import {
   activityContentFromBody,
   canonicalizeJson,
@@ -12,14 +12,25 @@ import {
 
 const router: IRouter = Router();
 
-function activityResponse(activity: typeof savedGameActivitiesTable.$inferSelect) {
+type ActivityResponseInput = Pick<typeof savedGameActivitiesTable.$inferSelect,
+  "id" | "teacherId" | "gameType" | "title" | "content" | "settings" | "source" |
+  "isShared" | "publishedAt" | "hiddenByAdmin" | "questionCount" | "playCount" |
+  "lastPlayedAt" | "createdAt" | "updatedAt"
+> & { teacherName?: string };
+
+function activityResponse(activity: ActivityResponseInput) {
   return {
     id: activity.id,
+    teacherId: activity.teacherId,
     gameType: activity.gameType,
     title: activity.title,
     content: activity.content,
     settings: activity.settings,
     source: activity.source,
+    isShared: activity.isShared,
+    publishedAt: activity.publishedAt,
+    hiddenByAdmin: activity.hiddenByAdmin,
+    ...(activity.teacherName === undefined ? {} : { teacherName: activity.teacherName }),
     questionCount: activity.questionCount,
     playCount: activity.playCount,
     lastPlayedAt: activity.lastPlayedAt,
@@ -68,6 +79,8 @@ router.post("/game-activities", async (req, res): Promise<void> => {
       content,
       settings,
       source: parsed.data.source,
+      isShared: parsed.data.isShared,
+      publishedAt: parsed.data.isShared ? new Date() : null,
       contentFingerprint: fingerprint,
       questionCount: questionCountForContent(content),
       playCount: 1,
@@ -82,6 +95,8 @@ router.post("/game-activities", async (req, res): Promise<void> => {
         title: parsed.data.title,
         settings,
         source: parsed.data.source,
+        isShared: parsed.data.isShared,
+        publishedAt: parsed.data.isShared ? sql`NOW()` : null,
         questionCount: questionCountForContent(content),
         playCount: sql`${savedGameActivitiesTable.playCount} + 1`,
         lastPlayedAt: sql`NOW()`,
@@ -95,6 +110,41 @@ router.post("/game-activities", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/game-activities/shared", async (req, res): Promise<void> => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const activities = await db.select({
+      id: savedGameActivitiesTable.id,
+      teacherId: savedGameActivitiesTable.teacherId,
+      gameType: savedGameActivitiesTable.gameType,
+      title: savedGameActivitiesTable.title,
+      content: savedGameActivitiesTable.content,
+      settings: savedGameActivitiesTable.settings,
+      source: savedGameActivitiesTable.source,
+      isShared: savedGameActivitiesTable.isShared,
+      publishedAt: savedGameActivitiesTable.publishedAt,
+      hiddenByAdmin: savedGameActivitiesTable.hiddenByAdmin,
+      questionCount: savedGameActivitiesTable.questionCount,
+      playCount: savedGameActivitiesTable.playCount,
+      lastPlayedAt: savedGameActivitiesTable.lastPlayedAt,
+      createdAt: savedGameActivitiesTable.createdAt,
+      updatedAt: savedGameActivitiesTable.updatedAt,
+      teacherName: teachersTable.name,
+    }).from(savedGameActivitiesTable)
+      .innerJoin(teachersTable, eq(savedGameActivitiesTable.teacherId, teachersTable.id))
+      .where(and(
+        eq(savedGameActivitiesTable.isShared, true),
+        eq(savedGameActivitiesTable.hiddenByAdmin, false),
+      ))
+      .orderBy(desc(savedGameActivitiesTable.publishedAt), desc(savedGameActivitiesTable.updatedAt));
+    res.json(activities.map(activityResponse));
+  } catch (err) {
+    req.log.error({ err }, "List shared game activities failed");
+    res.status(500).json({ error: "Unable to list shared game activities" });
+  }
+});
+
 router.get("/game-activities/:id", async (req, res): Promise<void> => {
   const teacherId = req.session.teacherId;
   if (!teacherId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -102,7 +152,11 @@ router.get("/game-activities/:id", async (req, res): Promise<void> => {
   if (!id) { res.status(400).json({ error: "Invalid activity id" }); return; }
   try {
     const [activity] = await db.select().from(savedGameActivitiesTable).where(and(
-      eq(savedGameActivitiesTable.id, id), eq(savedGameActivitiesTable.teacherId, teacherId),
+      eq(savedGameActivitiesTable.id, id),
+      sql`(${savedGameActivitiesTable.teacherId} = ${teacherId} OR (
+        ${savedGameActivitiesTable.isShared} = true
+        AND ${savedGameActivitiesTable.hiddenByAdmin} = false
+      ))`,
     )).limit(1);
     if (!activity) { res.status(404).json({ error: "Saved game activity not found" }); return; }
     res.json(activityResponse(activity));

@@ -31,6 +31,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 
 const TEAM_COLORS = [
   { color: "#2563eb", name: "أزرق", nameEn: "Blue" },
@@ -142,6 +143,7 @@ export default function ArenaSetup() {
   const [timerSeconds, setTimerSeconds] = useState(20);
   const [customQuestions, setCustomQuestions] = useState<ArenaCustomQuestion[]>([]);
   const [launching, setLaunching] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const loadedSavedGameRef = useRef(false);
 
   // DB-sourced categories & activities
@@ -173,6 +175,7 @@ export default function ArenaSetup() {
     void (async () => {
       try {
         const activity = await getSavedGameActivity(savedGameId);
+        setIsShared(activity.isShared);
         if (activity.gameType !== "arena") throw new Error("wrong-game");
         const content = activity.content;
         const settings = activity.settings;
@@ -548,6 +551,7 @@ export default function ArenaSetup() {
             })),
           },
           source: "manual",
+          isShared,
         });
       } catch {
         toast.error(lang === "ar"
@@ -1434,6 +1438,7 @@ export default function ArenaSetup() {
             )}
           </AnimatePresence>
 
+          {step === 3 && <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mt-6" />}
           <div className="flex gap-2 sm:gap-3 mt-6">
             <button
               onClick={goPrev}

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Save, Copy, Check, Brain, Sparkles, BookOpen, LogIn } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -67,6 +68,7 @@ export default function MemoryCreate() {
   const [gradeLevel, setGradeLevel] = useState("general");
   const [pairs, setPairs] = useState<CardPair[]>([{ q: "", a: "" }, { q: "", a: "" }]);
   const [saving, setSaving] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -98,6 +100,7 @@ export default function MemoryCreate() {
         setTitle(activity.title);
         setGradeLevel(grade);
         setPairs(savedPairs as CardPair[]);
+        setIsShared(activity.isShared);
       } catch {
         alert(lang === "ar" ? "تعذّر تحميل اللعبة المحفوظة" : "Could not load the saved game");
       }
@@ -193,6 +196,7 @@ export default function MemoryCreate() {
           content: { pairs: validPairs },
           settings: { gradeLevel },
           source: "teacher-authored",
+          isShared,
         });
       } catch {
         alert(lang === "ar"
@@ -280,6 +284,7 @@ export default function MemoryCreate() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
             <button
               onClick={() => setShowTemplates(!showTemplates)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 text-sm font-bold hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"

@@ -513,6 +513,9 @@ async function runSchemaMigrations() {
         content             JSONB NOT NULL,
         settings            JSONB NOT NULL DEFAULT '{}'::jsonb,
         source              TEXT NOT NULL DEFAULT 'manual',
+        is_shared           BOOLEAN NOT NULL DEFAULT false,
+        published_at        TIMESTAMPTZ,
+        hidden_by_admin     BOOLEAN NOT NULL DEFAULT false,
         content_fingerprint TEXT NOT NULL,
         question_count      INTEGER NOT NULL DEFAULT 0,
         play_count          INTEGER NOT NULL DEFAULT 1,
@@ -522,6 +525,12 @@ async function runSchemaMigrations() {
         CONSTRAINT saved_game_activities_teacher_game_content_uq
           UNIQUE (teacher_id, game_type, content_fingerprint)
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE saved_game_activities
+        ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS hidden_by_admin BOOLEAN NOT NULL DEFAULT false
     `);
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS saved_game_activities_teacher_updated_idx
