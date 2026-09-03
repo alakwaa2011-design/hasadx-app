@@ -52,6 +52,8 @@ const HASAD_CTA_GRADIENT = `linear-gradient(90deg, ${HASAD_GREEN} 0%, ${HASAD_GR
 
 type SubmissionMode = "electronic" | "paper" | "both";
 type AccessMode = "public" | "private";
+type ExtractSourceMode = "file" | "text";
+type ExtractCounts = { mcq: number; true_false: number; fill_blank: number };
 type QuestionWithTts = CreateQuestionBody & {
   readAloud?: boolean;
   allowMultipleAnswers?: boolean;
@@ -389,6 +391,14 @@ export default function CreateAssignment() {
   const [showImageExtract, setShowImageExtract] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [extractFiles, setExtractFiles] = useState<File[]>([]);
+  const [extractSourceMode, setExtractSourceMode] = useState<ExtractSourceMode>("file");
+  const [extractSourceText, setExtractSourceText] = useState("");
+  const [extractCounts, setExtractCounts] = useState<ExtractCounts>({ mcq: 10, true_false: 0, fill_blank: 0 });
+  const [extractAllQuestions, setExtractAllQuestions] = useState(false);
+  const [extractPages, setExtractPages] = useState<1 | 2 | 3>(1);
+  const [extractPageStart, setExtractPageStart] = useState("");
+  const [extractPageEnd, setExtractPageEnd] = useState("");
+  const [extractInstructions, setExtractInstructions] = useState("");
   /* Credit cost/balance for the extract operation — comes from the server's
      central pricing (Pro discount applied once, server-side). */
   const [extractCredit, setExtractCredit] = useState<{
@@ -590,22 +600,37 @@ export default function CreateAssignment() {
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
   const runExtraction = async (replacePrevious: boolean) => {
-    if (extractFiles.length === 0 || extractLoading || extractBusyRef.current) return;
+    const hasSource = extractSourceMode === "file" ? extractFiles.length > 0 : extractSourceText.trim().length >= 5;
+    if (!hasSource || extractLoading || extractBusyRef.current) return;
     extractBusyRef.current = true;
     setDupChoiceOpen(false);
     setExtractLoading(true); setExtractError("");
     /* One idempotency key per attempt: concurrent clicks / browser retries
        of this attempt share the key, so the server holds credits once. */
     const requestId = crypto.randomUUID();
-    const fingerprint = pendingExtractFpRef.current ?? (await fingerprintFilesContent(extractFiles));
+    const fingerprint = pendingExtractFpRef.current ?? await fingerprintCurrentExtractSource();
     try {
       const form = new FormData();
-      for (const f of extractFiles) form.append("files", f);
+      if (extractSourceMode === "file") {
+        for (const f of extractFiles) form.append("files", f);
+      } else {
+        form.append("sourceText", extractSourceText.trim());
+      }
       form.append("language", lang === "ar" ? "ar" : "en");
       form.append("difficulty", extractDifficulty);
-      form.append("pages", "1");
+      form.append("pages", String(extractPages));
+      form.append("allQuestions", String(extractAllQuestions));
+      if (extractPageStart && extractPageEnd) {
+        form.append("pageStart", extractPageStart);
+        form.append("pageEnd", extractPageEnd);
+      }
+      if (extractInstructions.trim()) form.append("topicHint", extractInstructions.trim());
       /* Activity editor supports mcq / true_false / fill_blank. */
-      form.append("counts", JSON.stringify({ mcq: 10, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0 }));
+      form.append("counts", JSON.stringify({
+        ...extractCounts,
+        short_answer: 0,
+        matching: 0,
+      }));
       const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST", credentials: "include", body: form,
         headers: { "X-Idempotency-Key": requestId },
@@ -630,8 +655,14 @@ export default function CreateAssignment() {
         return hasReal ? [...kept, ...generated] : generated;
       });
       lastExtractFpRef.current = fingerprint;
-      setShowImageExtract(false); setExtractFiles([]);
+      setShowImageExtract(false); setExtractFiles([]); setExtractSourceText("");
       toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من المصدر بنجاح` : `${generated.length} questions extracted from the source`);
+      const requestedTotal = extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank;
+      if (!extractAllQuestions && generated.length < requestedTotal) {
+        toast.warning(lang === "ar"
+          ? `تم العثور على ${generated.length} من أصل ${requestedTotal} سؤالًا مطلوبًا. قد لا يحتوي المصدر على مادة كافية.`
+          : `Found ${generated.length} of ${requestedTotal} requested questions. The source may not contain enough material.`);
+      }
     } catch (err: unknown) {
       setExtractError(err instanceof Error ? err.message : t.common.error);
     } finally {
@@ -644,11 +675,12 @@ export default function CreateAssignment() {
   };
 
   const handleExtractFromSource = async () => {
-    if (extractFiles.length === 0 || extractLoading || extractBusyRef.current) return;
+    const hasSource = extractSourceMode === "file" ? extractFiles.length > 0 : extractSourceText.trim().length >= 5;
+    if (!hasSource || extractLoading || extractBusyRef.current) return;
     setExtractError("");
     /* Same source extracted again while its questions are still in the
        editor → explicit replace / add / cancel choice, no silent charge. */
-    const fingerprint = await fingerprintFilesContent(extractFiles);
+    const fingerprint = await fingerprintCurrentExtractSource();
     if (extractBusyRef.current) return; // another attempt started while hashing
     pendingExtractFpRef.current = fingerprint;
     const priorStillPresent = questions.some(q => q._extractKey === fingerprint);
@@ -657,6 +689,13 @@ export default function CreateAssignment() {
       return;
     }
     void runExtraction(false);
+  };
+
+  const fingerprintCurrentExtractSource = async () => {
+    if (extractSourceMode === "file") return fingerprintFilesContent(extractFiles);
+    const bytes = new TextEncoder().encode(extractSourceText.trim());
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return `text:${Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("")}`;
   };
 
   const handleModeChange = (mode: SubmissionMode) => {
@@ -1512,38 +1551,123 @@ export default function CreateAssignment() {
                       {(
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج أسئلة من صور أو مستند" : "Extract questions from images or a document"}</h3>
+                            <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج أسئلة من ملف أو نص" : "Extract questions from a file or text"}</h3>
                             <button type="button" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractFiles([]); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                           </div>
-                          <input ref={imageInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" multiple onChange={handleSourceFiles} className="hidden" data-testid="input-extract-files" />
-                          <button type="button" onClick={() => imageInputRef.current?.click()} disabled={extractFiles.length >= EXTRACT_MAX_FILES}
-                            className="w-full py-3 border-2 border-dashed border-primary/30 rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center gap-1.5 disabled:opacity-50">
-                            <Upload className="w-5 h-5 text-primary" />
-                            <span className="text-xs text-primary font-bold">{lang === "ar" ? `ارفع صوراً أو ملف PDF أو Word أو PowerPoint أو ملفاً نصياً (حتى ${EXTRACT_MAX_FILES})` : `Upload images, PDF, Word, PowerPoint or a text file (up to ${EXTRACT_MAX_FILES})`}</span>
-                          </button>
-                          <div className="flex flex-wrap gap-1.5">
-                            {["PDF", "Word", "PowerPoint", lang === "ar" ? "صور" : "Images", lang === "ar" ? "نص" : "Text"].map(b => (
-                              <span key={b} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">{b}</span>
+                          <div className="grid grid-cols-2 gap-1 rounded-xl bg-background/70 border border-primary/15 p-1">
+                            {([
+                              ["file", lang === "ar" ? "رفع ملف" : "Upload file", Upload],
+                              ["text", lang === "ar" ? "لصق نص" : "Paste text", FileText],
+                            ] as const).map(([mode, label, Icon]) => (
+                              <button key={mode} type="button" onClick={() => { setExtractSourceMode(mode); setExtractError(""); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }}
+                                className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-black transition-all ${extractSourceMode === mode ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-primary/5"}`}>
+                                <Icon className="w-4 h-4" />{label}
+                              </button>
                             ))}
                           </div>
-                          {extractFiles.length > 0 && (
-                            <div className="space-y-1.5">
-                              {extractFiles.map((f, i) => {
-                                const n = f.name.toLowerCase();
-                                const isImg = /\.(jpe?g|png|webp|gif)$/.test(n);
-                                const Icon = isImg ? ImageIcon : FileText;
-                                return (
-                                  <div key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border border-primary/15" data-testid={`extract-file-${i}`}>
-                                    <Icon className="w-4 h-4 text-primary shrink-0" />
-                                    <span className="flex-1 min-w-0 truncate text-xs font-bold text-foreground" dir="ltr">{f.name}</span>
-                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">{lang === "ar" ? "جاهز للاستخراج" : "Ready to extract"}</span>
-                                    <button type="button" onClick={() => { pendingExtractFpRef.current = null; setDupChoiceOpen(false); setExtractFiles(prev => prev.filter((_, idx) => idx !== i)); }}
-                                      className="p-0.5 rounded text-muted-foreground hover:text-red-500 shrink-0"><X className="w-3.5 h-3.5" /></button>
-                                  </div>
-                                );
-                              })}
+                          {extractSourceMode === "file" ? (
+                            <>
+                              <input ref={imageInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" multiple onChange={handleSourceFiles} className="hidden" data-testid="input-extract-files" />
+                              <button type="button" onClick={() => imageInputRef.current?.click()} disabled={extractFiles.length >= EXTRACT_MAX_FILES}
+                                className="w-full py-3 border-2 border-dashed border-primary/30 rounded-xl hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center gap-1.5 disabled:opacity-50">
+                                <Upload className="w-5 h-5 text-primary" />
+                                <span className="text-xs text-primary font-bold">{lang === "ar" ? `ارفع صوراً أو ملف PDF أو Word أو PowerPoint أو ملفاً نصياً (حتى ${EXTRACT_MAX_FILES})` : `Upload images, PDF, Word, PowerPoint or a text file (up to ${EXTRACT_MAX_FILES})`}</span>
+                              </button>
+                              <div className="flex flex-wrap gap-1.5">
+                                {["PDF", "Word", "PowerPoint", lang === "ar" ? "صور" : "Images", lang === "ar" ? "نص" : "Text"].map(b => (
+                                  <span key={b} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">{b}</span>
+                                ))}
+                              </div>
+                              {extractFiles.length > 0 && (
+                                <div className="space-y-1.5">
+                                  {extractFiles.map((f, i) => {
+                                    const n = f.name.toLowerCase();
+                                    const isImg = /\.(jpe?g|png|webp|gif)$/.test(n);
+                                    const Icon = isImg ? ImageIcon : FileText;
+                                    return (
+                                      <div key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border border-primary/15" data-testid={`extract-file-${i}`}>
+                                        <Icon className="w-4 h-4 text-primary shrink-0" />
+                                        <span className="flex-1 min-w-0 truncate text-xs font-bold text-foreground" dir="ltr">{f.name}</span>
+                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">{lang === "ar" ? "جاهز للاستخراج" : "Ready to extract"}</span>
+                                        <button type="button" onClick={() => { pendingExtractFpRef.current = null; setDupChoiceOpen(false); setExtractFiles(prev => prev.filter((_, idx) => idx !== i)); }}
+                                          className="p-0.5 rounded text-muted-foreground hover:text-red-500 shrink-0"><X className="w-3.5 h-3.5" /></button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="rounded-xl border border-primary/20 bg-background p-3">
+                              <textarea value={extractSourceText} onChange={e => { setExtractSourceText(e.target.value); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }}
+                                rows={7} maxLength={30000} data-testid="input-extract-source-text"
+                                placeholder={lang === "ar" ? "الصق هنا محتوى ورقة العمل أو الدرس أو أي نص تعليمي…" : "Paste worksheet, lesson, or other educational content here…"}
+                                className="w-full resize-y bg-transparent text-sm font-medium leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60" />
+                              <div className="text-end text-[10px] font-bold text-muted-foreground">{extractSourceText.length}/30000</div>
                             </div>
                           )}
+                          <div className="rounded-xl border border-primary/15 bg-background/70 p-3 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-black text-foreground">{lang === "ar" ? "عدد الأسئلة وأنواعها" : "Question count and types"}</p>
+                                <p className="text-[10px] text-muted-foreground">{lang === "ar" ? "حدّد التوزيع أو اطلب أكبر عدد ممكن" : "Choose a distribution or extract as many as possible"}</p>
+                              </div>
+                              <label className="flex items-center gap-2 text-[11px] font-black text-primary cursor-pointer">
+                                <input type="checkbox" checked={extractAllQuestions} onChange={e => setExtractAllQuestions(e.target.checked)}
+                                  className="w-4 h-4 accent-primary" data-testid="input-extract-all" />
+                                {lang === "ar" ? "كل الأسئلة" : "All questions"}
+                              </label>
+                            </div>
+                            {!extractAllQuestions && (
+                              <div className="grid grid-cols-3 gap-2">
+                                {([
+                                  ["mcq", lang === "ar" ? "اختيار متعدد" : "Multiple choice"],
+                                  ["true_false", lang === "ar" ? "صح أو خطأ" : "True / false"],
+                                  ["fill_blank", lang === "ar" ? "أكمل الفراغ" : "Fill blank"],
+                                ] as const).map(([key, label]) => (
+                                  <label key={key} className="space-y-1">
+                                    <span className="block text-[10px] font-bold text-muted-foreground">{label}</span>
+                                    <input type="number" min={0} max={40} value={extractCounts[key]}
+                                      onChange={e => setExtractCounts(prev => ({ ...prev, [key]: Math.max(0, Math.min(40, Number(e.target.value) || 0)) }))}
+                                      className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-sm font-black outline-none focus:border-primary" />
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-[11px] font-bold">
+                              <span className="text-muted-foreground">{lang === "ar" ? "العدد المطلوب" : "Requested total"}</span>
+                              <span className="text-primary">
+                                {extractAllQuestions ? (lang === "ar" ? `حتى ${extractPages * 30}` : `Up to ${extractPages * 30}`) : extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <label className="space-y-1">
+                              <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "سعة الاستخراج" : "Extraction capacity"}</span>
+                              <select value={extractPages} onChange={e => setExtractPages(Number(e.target.value) as 1 | 2 | 3)}
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-bold outline-none focus:border-primary">
+                                {[1, 2, 3].map(p => <option key={p} value={p}>{lang === "ar" ? `حتى ${p * 30} سؤالًا` : `Up to ${p * 30} questions`}</option>)}
+                              </select>
+                            </label>
+                            {extractSourceMode === "file" && extractFiles.some(f => f.name.toLowerCase().endsWith(".pdf")) && (
+                              <div className="space-y-1">
+                                <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "نطاق صفحات PDF (اختياري)" : "PDF page range (optional)"}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <input type="number" min={1} value={extractPageStart} onChange={e => setExtractPageStart(e.target.value)}
+                                    placeholder={lang === "ar" ? "من" : "From"} className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-xs font-bold outline-none focus:border-primary" />
+                                  <span className="text-muted-foreground">—</span>
+                                  <input type="number" min={1} value={extractPageEnd} onChange={e => setExtractPageEnd(e.target.value)}
+                                    placeholder={lang === "ar" ? "إلى" : "To"} className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-xs font-bold outline-none focus:border-primary" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <label className="block space-y-1">
+                            <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "تعليمات إضافية (اختياري)" : "Additional instructions (optional)"}</span>
+                            <textarea value={extractInstructions} onChange={e => setExtractInstructions(e.target.value)} maxLength={300} rows={2}
+                              placeholder={lang === "ar" ? "مثال: ركّز على المفاهيم والتطبيق، وتجنب أسئلة الحفظ…" : "Example: Focus on concepts and application; avoid recall-only questions…"}
+                              className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium leading-relaxed outline-none focus:border-primary" />
+                          </label>
                           <div className="flex gap-1">
                             {difficultyOptions.map(d => (
                               <button key={d.value} type="button" onClick={() => setExtractDifficulty(d.value)}
@@ -1590,7 +1714,9 @@ export default function CreateAssignment() {
                               </div>
                             </div>
                           ) : (
-                          <button type="button" onClick={handleExtractFromSource} disabled={extractLoading || extractFiles.length === 0} data-testid="btn-extract-source"
+                          <button type="button" onClick={handleExtractFromSource}
+                            disabled={extractLoading || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || (!extractAllQuestions && extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank === 0)}
+                            data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري القراءة والتوليد..." : "Reading & generating..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج وأنشئ الأسئلة" : "Extract & create questions"}</>}
                           </button>

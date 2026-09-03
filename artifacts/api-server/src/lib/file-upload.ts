@@ -151,6 +151,7 @@ export async function processUploadedFiles(
   res: import("express").Response,
   files: Express.Multer.File[],
   language: "ar" | "en",
+  options?: { pdfPageStart?: number; pdfPageEnd?: number },
 ): Promise<PreparedSource | null> {
   const ar = language === "ar";
 
@@ -273,7 +274,11 @@ export async function processUploadedFiles(
         const { PDFParse } = await import("pdf-parse");
         const parser = new PDFParse({ data: new Uint8Array(file.buffer) });
         try {
-          const result = await parser.getText();
+          const result = await parser.getText(
+            options?.pdfPageStart && options?.pdfPageEnd
+              ? { first: options.pdfPageStart, last: options.pdfPageEnd }
+              : {},
+          );
           const t = (result.text || "").trim();
           if (t) textParts.push(`--- ${file.originalname} ---\n${t}`);
         } finally {
