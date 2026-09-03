@@ -4134,12 +4134,22 @@ function AssignmentRow({
           </button>
         )}
         <button
+          type="button"
           onClick={onToggle}
-          className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl hover:bg-muted/50 transition-colors duration-150"
-          aria-label="toggle"
+          data-testid={`assignment-manage-${assignment.id}`}
+          className={cn(
+            "shrink-0 inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl border px-3 text-xs font-bold transition-[background-color,border-color,color,box-shadow] duration-150",
+            isExpanded
+              ? "border-primary/25 bg-primary/[0.09] text-primary shadow-sm"
+              : "border-border/70 bg-card text-foreground hover:border-primary/30 hover:bg-primary/[0.055] hover:text-primary",
+          )}
+          aria-label={lang === "ar" ? "إدارة النشاط" : "Manage activity"}
+          aria-expanded={isExpanded}
         >
+          <Pencil className="w-3.5 h-3.5" />
+          <span>{lang === "ar" ? "إدارة" : "Manage"}</span>
           <ChevronDown
-            className={`w-4 h-4 text-muted-foreground/70 transition-transform duration-150 ${isExpanded ? "rotate-180" : ""}`}
+            className={`w-3.5 h-3.5 opacity-65 transition-transform duration-150 ${isExpanded ? "rotate-180" : ""}`}
           />
         </button>
       </div>
@@ -4153,15 +4163,27 @@ function AssignmentRow({
             className="overflow-hidden"
           >
             <div className="border-t border-border/50" />
-            <div className="px-3 py-3 sm:px-4 flex flex-wrap gap-2 bg-muted/[0.04]">
+            <div className="px-3 py-3.5 sm:px-4 flex flex-wrap gap-2 bg-muted/[0.04]">
+              <div className="w-full flex items-start justify-between gap-3 pb-1.5">
+                <div>
+                  <p className="text-xs font-bold text-foreground">
+                    {lang === "ar" ? "إدارة النشاط" : "Manage activity"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {lang === "ar"
+                      ? "عدّل النشاط أو شاركه أو أنشئ نسخة منه"
+                      : "Edit, share, or create a copy of this activity"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() =>
                   setLocation(`/teacher/assignment/${assignment.id}`)
                 }
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="text-xs font-bold px-3.5 py-2 min-h-[44px] bg-primary text-primary-foreground border border-primary rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5 shadow-sm"
               >
                 <Pencil className="w-3.5 h-3.5" />
-                {lang === "ar" ? "تعديل" : "Edit"}
+                {lang === "ar" ? "تعديل النشاط" : "Edit activity"}
               </button>
               <button
                 onClick={() =>
@@ -4189,7 +4211,7 @@ function AssignmentRow({
                 className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5" />
-                {lang === "ar" ? "نسخ رابط الواجب" : "Copy assignment link"}
+                {lang === "ar" ? "نسخ الرابط" : "Copy link"}
               </button>
               {/* ── Self Challenge Button ── */}
               <SoloLinkButton assignmentId={assignment.id} lang={lang} />
@@ -4232,7 +4254,7 @@ function AssignmentRow({
                 className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5" />
-                {lang === "ar" ? "تكرار" : "Duplicate"}
+                {lang === "ar" ? "إنشاء نسخة" : "Create copy"}
               </button>
               <button
                 ref={groupBtnRef}
@@ -4334,7 +4356,7 @@ function AssignmentRow({
                 )}
               <button
                 onClick={() => deleteAssignment(assignment.id)}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-red-500 border border-border rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-red-500 border border-red-200/70 dark:border-red-900/60 rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {lang === "ar" ? "حذف" : "Delete"}
