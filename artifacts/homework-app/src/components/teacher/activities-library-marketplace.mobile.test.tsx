@@ -39,10 +39,12 @@ function makeProps(overrides: Partial<ActivitiesLibraryMarketplaceProps> = {}): 
     questions: [],
     videoLessons: [],
     gameActivities: [],
+    presentations: [],
     filteredAssignments: [assignment],
     filteredQuestions: [],
     filteredVideos: [],
     filteredGameActivities: [],
+    filteredPresentations: [],
     popularIds: new Set(),
     newIds: new Set(),
     currentTeacherId: 1,
@@ -62,7 +64,7 @@ function makeProps(overrides: Partial<ActivitiesLibraryMarketplaceProps> = {}): 
     activeTab: "assignments",
     onActiveTabChange: vi.fn(),
     onClearFilters: vi.fn(),
-    onPresentations: vi.fn(),
+    openPresentation: vi.fn(),
     launchAsGame: vi.fn(),
     openGameActivity: vi.fn(),
     importAssignment: vi.fn(),
@@ -177,6 +179,9 @@ describe("ActivitiesLibraryMarketplace mobile controls", () => {
 
     await act(async () => buttonWithText(sheet, "فيديو").click());
     expect(props.onActiveTabChange).toHaveBeenCalledWith("videos");
+
+    await act(async () => buttonWithText(sheet, "عروض تفاعلية").click());
+    expect(props.onActiveTabChange).toHaveBeenCalledWith("presentations");
 
     await act(async () => buttonWithText(sheet, "السادس").click());
     expect(props.onGradeFilterChange).toHaveBeenCalledWith("السادس");

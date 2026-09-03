@@ -78,7 +78,7 @@ const C = {
   sidebar:  "#ffffff",
 } as const;
 
-type Tab = "assignments" | "questions" | "videos";
+type Tab = "assignments" | "questions" | "videos" | "presentations";
 type CategoryTab = "all" | "popular" | "new" | "featured" | "peers";
 type TypeChip = "all" | "assignment" | "presentation" | "video" | "live";
 
@@ -140,6 +140,19 @@ export interface MarketplaceGameActivity {
   publishedAt?: string | null;
 }
 
+export interface MarketplacePresentation {
+  id: number;
+  teacherId: number;
+  title: string;
+  slideCount: number;
+  status: string;
+  isShared: boolean;
+  ownerName?: string | null;
+  ownerIsAdmin?: boolean | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ActivitiesLibraryMarketplaceProps {
   embedded?: boolean;
   lang: "ar" | "en";
@@ -148,10 +161,12 @@ export interface ActivitiesLibraryMarketplaceProps {
   questions: MarketplaceQuestion[];
   videoLessons: MarketplaceVideo[];
   gameActivities: MarketplaceGameActivity[];
+  presentations: MarketplacePresentation[];
   filteredAssignments: MarketplaceAssignment[];
   filteredQuestions: MarketplaceQuestion[];
   filteredVideos: MarketplaceVideo[];
   filteredGameActivities: MarketplaceGameActivity[];
+  filteredPresentations: MarketplacePresentation[];
   popularIds: Set<number>;
   newIds: Set<number>;
   currentTeacherId: number | null;
@@ -171,7 +186,7 @@ export interface ActivitiesLibraryMarketplaceProps {
   activeTab: Tab;
   onActiveTabChange: (t: Tab) => void;
   onClearFilters: () => void;
-  onPresentations: () => void;
+  openPresentation: (id: number) => void;
   launchAsGame: (id: number, mode?: "classic" | "teams") => void;
   openGameActivity: (id: number, gameType: string) => void;
   importAssignment: (id: number) => void;
@@ -214,9 +229,9 @@ function activityBadge(
 export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplaceProps) {
   const {
     embedded, lang, dir,
-    assignments, questions, videoLessons,
+    assignments, questions, videoLessons, presentations,
     filteredAssignments, filteredQuestions, filteredVideos,
-    filteredGameActivities,
+    filteredGameActivities, filteredPresentations,
     popularIds, newIds,
     currentTeacherId, isAdmin, showHidden, onShowHiddenChange,
     search, onSearchChange,
@@ -225,8 +240,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     sortBy, onSortByChange,
     allSubjects, allGrades,
     activeTab, onActiveTabChange,
-    onClearFilters, onPresentations,
-    launchAsGame, openGameActivity, importAssignment, copyLink, dismissAssignment,
+    onClearFilters,
+    launchAsGame, openGameActivity, openPresentation, importAssignment, copyLink, dismissAssignment,
     importQuestion, dismissQuestion, importVideo,
     launchingIds, importingIds, importedIds,
     importingQIds, importedQIds,
@@ -312,6 +327,16 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     return filterByCategory(filteredGameActivities, { popularCheck: game => game.playCount >= 5 });
   }, [filteredGameActivities, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
+  const displayPresentations = useMemo(() => {
+    if (typeChip !== "presentation") return [];
+    return filterByCategory(filteredPresentations.map(presentation => ({
+      ...presentation,
+      teacherId: presentation.teacherId,
+      teacherName: presentation.ownerName ?? null,
+      isAdminContent: presentation.ownerIsAdmin === true,
+    })));
+  }, [filteredPresentations, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
+
   const wameethPick = useMemo(() => {
     const mcq = assignments.filter(a => a.type === "mcq" && a.questionCount > 0 && !a.hiddenByAdmin);
     return mcq.find(a => a.title.includes("وميض") || a.title.toLowerCase().includes("wameeth"))
@@ -380,7 +405,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   const applyTypeFilter = (id: TypeChip) => {
     setTypeChip(id);
     if (id === "video") onActiveTabChange("videos");
-    else if (id === "presentation") onPresentations();
+    else if (id === "presentation") onActiveTabChange("presentations");
     else onActiveTabChange("assignments");
   };
 
@@ -733,7 +758,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   /* ──────────────────────────────────── main content ──────────────────────────── */
   const totalShown = (activeTab === "assignments" ? displayAssignments.length + displayGameActivities.length : 0)
     + (activeTab === "videos" ? displayVideos.length : 0)
-    + (activeTab === "questions" ? displayQuestions.length : 0);
+    + (activeTab === "questions" ? displayQuestions.length : 0)
+    + (activeTab === "presentations" ? displayPresentations.length : 0);
 
   return (
     <div
@@ -1125,6 +1151,50 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   ))}
                 </div>
               : <EmptyState isAr={isAr} icon={<HelpCircle className="w-8 h-8" />} title={isAr ? "لا توجد أسئلة" : "No questions"} />
+          )}
+
+          {/* Content — Presentations */}
+          {activeTab === "presentations" && (
+            displayPresentations.length > 0
+              ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
+                  {displayPresentations.map((presentation, i) => (
+                    <motion.article
+                      key={presentation.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all hover:-translate-y-1 hover:shadow-md sm:rounded-2xl"
+                      style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+                    >
+                      <ActivityCover kind="presentation" title={presentation.title} aspect="video">
+                        <span className={cn("absolute top-2 z-10 rounded-lg bg-violet-700/90 px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2")}>
+                          {isAr ? "عرض تفاعلي" : "Interactive presentation"}
+                        </span>
+                      </ActivityCover>
+                      <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+                        <p className="line-clamp-2 text-[11px] font-black sm:text-[13px]" style={{ color: C.text }}>{presentation.title}</p>
+                        <p className="mt-1 text-[9px] sm:text-[11px]" style={{ color: C.muted }}>
+                          {presentation.slideCount} {isAr ? "شريحة" : "slides"}
+                        </p>
+                        {presentation.teacherName && (
+                          <p className="mt-1 flex items-center gap-1 truncate text-[9px] sm:text-[10px]" style={{ color: C.muted }}>
+                            <User className="h-3 w-3" />{presentation.teacherName}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openPresentation(presentation.id)}
+                          className="mt-2.5 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold text-white sm:mt-3 sm:rounded-xl sm:py-2 sm:text-xs"
+                          style={{ background: C.primary }}
+                        >
+                          <Presentation className="h-3.5 w-3.5" />
+                          {isAr ? "فتح العرض" : "Open presentation"}
+                        </button>
+                      </div>
+                    </motion.article>
+                  ))}
+                </div>
+              : <EmptyState isAr={isAr} icon={<Presentation className="w-8 h-8" />} title={isAr ? "لا توجد عروض تفاعلية" : "No interactive presentations"} />
           )}
         </main>
       </div>

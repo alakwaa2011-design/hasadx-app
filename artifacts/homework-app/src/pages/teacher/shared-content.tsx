@@ -14,11 +14,10 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 import { cn } from "@/lib/utils";
 import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import { ActivitiesLibraryMarketplace } from "@/components/teacher/activities-library-marketplace";
-import PresentationsIndex from "@/pages/teacher/presentations/index";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-type Tab = "assignments" | "questions" | "videos";
+type Tab = "assignments" | "questions" | "videos" | "presentations";
 
 // ---------------------------------------------------------------------------
 // Fuzzy subject matching — maps Arabic/English query aliases to subject groups
@@ -181,6 +180,19 @@ interface SharedGameActivity {
   publishedAt?: string | null;
 }
 
+interface SharedPresentation {
+  id: number;
+  teacherId: number;
+  title: string;
+  slideCount: number;
+  status: string;
+  isShared: boolean;
+  ownerName?: string | null;
+  ownerIsAdmin?: boolean | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function SharedContentPage({
   embedded,
   forceKind,
@@ -211,11 +223,11 @@ export default function SharedContentPage({
     return <span className="flex items-center gap-1"><User className="w-3 h-3" /> {teacherName}</span>;
   };
   const [activeTab, setActiveTab] = useState<Tab>("assignments");
-  const [showPresentations, setShowPresentations] = useState(false);
   const [assignments, setAssignments] = useState<SharedAssignment[]>([]);
   const [questions, setQuestions] = useState<SharedQuestion[]>([]);
   const [videoLessons, setVideoLessons] = useState<SharedVideoLesson[]>([]);
   const [gameActivities, setGameActivities] = useState<SharedGameActivity[]>([]);
+  const [presentations, setPresentations] = useState<SharedPresentation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [importingIds, setImportingIds] = useState<Set<number>>(new Set());
@@ -298,8 +310,9 @@ export default function SharedContentPage({
         }
         if (isActivitiesLibrary) {
           fetches.push(fetch(`${API_BASE}/api/game-activities/shared`, { credentials: "include" }));
+          fetches.push(fetch(`${API_BASE}/api/presentations`, { credentials: "include" }));
         }
-        const [aRes, qRes, vRes, gRes] = await Promise.all(fetches);
+        const [aRes, qRes, vRes, gRes, pRes] = await Promise.all(fetches);
         if (aRes.ok) setAssignments(await aRes.json());
         if (!isCompetitionLibrary) {
           if (qRes && qRes.ok) setQuestions(await qRes.json());
@@ -325,6 +338,11 @@ export default function SharedContentPage({
           }));
         } else if (!isActivitiesLibrary) {
           setGameActivities([]);
+        }
+        if (isActivitiesLibrary && pRes?.ok) {
+          setPresentations(await pRes.json());
+        } else if (!isActivitiesLibrary) {
+          setPresentations([]);
         }
       } catch {} finally { setLoading(false); }
     })();
@@ -616,6 +634,12 @@ export default function SharedContentPage({
         : new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime(),
     );
 
+  const filteredPresentations = presentations
+    .filter(presentation =>
+      !search || presentation.title.includes(search) || presentation.ownerName?.includes(search)
+    )
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
   if (loading) {
     const spinner = (
       <div className="flex h-96 items-center justify-center">
@@ -626,24 +650,6 @@ export default function SharedContentPage({
   }
 
   if (isActivitiesLibrary) {
-    if (showPresentations) {
-      const presentations = (
-        <div dir={dir}>
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-4 sm:px-6 lg:px-8">
-            <button
-              type="button"
-              onClick={() => setShowPresentations(false)}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary/5"
-            >
-              {lang === "ar" ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
-              {lang === "ar" ? "العودة إلى مكتبة الأنشطة" : "Back to Activities Library"}
-            </button>
-          </div>
-          <PresentationsIndex embedded />
-        </div>
-      );
-      return embedded ? presentations : <Layout>{presentations}</Layout>;
-    }
     const marketplace = (
       <ActivitiesLibraryMarketplace
         embedded={embedded}
@@ -653,10 +659,12 @@ export default function SharedContentPage({
         questions={questions}
         videoLessons={videoLessons}
         gameActivities={gameActivities}
+        presentations={presentations}
         filteredAssignments={filteredAssignments}
         filteredQuestions={filteredQuestions}
         filteredVideos={filteredVideos}
         filteredGameActivities={filteredGameActivities}
+        filteredPresentations={filteredPresentations}
         popularIds={activitiesPopularIds}
         newIds={activitiesNewIds}
         currentTeacherId={currentTeacherId}
@@ -680,7 +688,7 @@ export default function SharedContentPage({
           setSubjectFilter("");
           setGradeFilter("");
         }}
-        onPresentations={() => setShowPresentations(true)}
+        openPresentation={(id) => setLocation(`/teacher/presentations/${id}`)}
         launchAsGame={launchAsGame}
         openGameActivity={(id, gameType) => {
           const paths: Record<string, string> = {
