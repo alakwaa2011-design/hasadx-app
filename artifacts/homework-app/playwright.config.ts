@@ -35,7 +35,11 @@ const apiPort = 5101;
 const appPort = 5102;
 const apiBaseUrl = `http://127.0.0.1:${apiPort}`;
 const appBaseUrl = `http://127.0.0.1:${appPort}`;
-const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ||
+  (!process.env.CI
+    ? process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE
+    : undefined);
 
 /**
  * Playwright configuration for the mobile-shell regression suite.
@@ -62,8 +66,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "off",
     ignoreHTTPSErrors: true,
-    // CI normally uses Playwright's downloaded browser. Local recovery can
-    // explicitly opt into the managed Chromium binary when that cache is gone.
+    // CI normally uses Playwright's downloaded browser. Local recovery falls
+    // back to Replit's managed Chromium binary when that cache is gone.
     ...(chromiumExecutablePath
       ? { launchOptions: { executablePath: chromiumExecutablePath } }
       : {}),
