@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { Grid3X3, Clock, Play, Users, Wifi, School, QrCode } from "lucide-react";
+import { Clock, Play, Users, Wifi, School, QrCode } from "lucide-react";
+import { XoIcon } from "@/components/game-icons";
 import { useI18n } from "@/lib/i18n";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
@@ -147,7 +148,7 @@ export default function XoCreate() {
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"}
             gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."}
-            gameIcon={<Grid3X3 className="h-8 w-8 text-primary" />}
+            gameIcon={<XoIcon size={40} />}
             accentClass="bg-primary hover:bg-primary/90 text-primary-foreground"
             floatingAssignmentContinue
             minQuestions={2}
@@ -173,8 +174,8 @@ export default function XoCreate() {
           </div>
           <div className="rounded-3xl border bg-card shadow-sm overflow-hidden">
             <header className="border-b bg-muted/20 px-6 py-5 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-                <Grid3X3 className="h-6 w-6" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm">
+                <XoIcon size={48} />
               </div>
               <div>
                 <h1 className="text-xl font-black text-foreground">{ar ? "إعداد إكس أو" : "XO setup"}</h1>

@@ -7,6 +7,7 @@ import {
   WheelIcon,
   TugWarIcon,
   HotSeatIcon,
+  SelfChallengeIcon,
 } from "@/components/game-icons";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
@@ -2829,7 +2830,7 @@ function GamesArcade({
   setLocation: (path: string) => void;
 }) {
   const games = [
-    { icon: <WameethIcon height={32} />, name: isAr ? "مسابقة ذاتية" : "Solo Challenge", to: "/teacher/solo-challenges" },
+    { icon: <SelfChallengeIcon size={32} />, name: isAr ? "مسابقة ذاتية" : "Solo Challenge", to: "/teacher/solo-challenges" },
     { icon: <RocketIcon size={32} />,    name: isAr ? "سباق الصواريخ" : "Rocket Race",    to: "/game/rocket/create" },
     { icon: <MillionIcon size={32} />,   name: isAr ? "المليون" : "Million",               to: "/game/million" },
     { icon: <WheelIcon size={32} />,     name: isAr ? "عجلة التحدي" : "Wheel of Challenge", to: "/game/wheel/create" },

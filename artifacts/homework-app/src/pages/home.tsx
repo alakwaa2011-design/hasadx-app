@@ -61,6 +61,7 @@ import { useSeo } from "@/lib/seo";
 import { hasSavedDraft } from "@/lib/guest-draft";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
+import { XoIcon, SelfChallengeIcon } from "@/components/game-icons";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GUEST_COUNT_KEY = "guestUsageCount";
@@ -238,7 +239,7 @@ type QuickLiveGame =
 
 const QUICK_LIVE_GAMES: Array<{
   key: QuickLiveGame;
-  icon: string;
+  icon: React.ReactNode;
   titleAr: string;
   titleEn: string;
   descAr: string;
@@ -246,14 +247,14 @@ const QUICK_LIVE_GAMES: Array<{
 }> = [
   { key: "knowledge_race", icon: "⚡", titleAr: "وميض", titleEn: "Wameedh", descAr: "مسابقة حية سريعة للصف", descEn: "Fast live classroom quiz" },
   { key: "tug_of_war", icon: "🪢", titleAr: "شد الحبل", titleEn: "Tug of War", descAr: "فريقان يتنافسان بالإجابات", descEn: "Two teams battle with answers" },
-  { key: "xo", icon: "✕◯", titleAr: "إكس أو", titleEn: "XO", descAr: "أجب ثم ضع علامتك على اللوحة", descEn: "Answer, then place your mark" },
+  { key: "xo", icon: <XoIcon size={28} />, titleAr: "إكس أو", titleEn: "XO", descAr: "أجب ثم ضع علامتك على اللوحة", descEn: "Answer, then place your mark" },
   { key: "escape_room", icon: "🔐", titleAr: "غرفة الهروب", titleEn: "Escape Room", descAr: "افتح الأقفال قبل انتهاء الوقت", descEn: "Unlock the room before time runs out" },
   { key: "rocket_race", icon: "🚀", titleAr: "سباق الصواريخ", titleEn: "Rocket Race", descAr: "السرعة والدقة ترفعان صاروخك", descEn: "Speed and accuracy launch your rocket" },
   { key: "wheel_of_fortune", icon: "🎡", titleAr: "عجلة التحدي", titleEn: "Wheel of Challenge", descAr: "أدر العجلة واختر السؤال", descEn: "Spin the wheel and pick a question" },
   { key: "hotseat", icon: "🔥", titleAr: "الكرسي الساخن", titleEn: "Hot Seat", descAr: "طالب على الكرسي والجميع يشارك", descEn: "One student takes the hot seat" },
   { key: "million", icon: "🏆", titleAr: "من سيحصد المليون؟", titleEn: "Who Wants a Million?", descAr: "أسئلة متصاعدة مع وسائل مساعدة", descEn: "Escalating questions and lifelines" },
   { key: "hack", icon: "🧩", titleAr: "لعبة الاختراق", titleEn: "Hack Game", descAr: "ماراثون تنافسي مليء بالمفاجآت", descEn: "A competitive marathon full of surprises" },
-  { key: "solo_challenge", icon: "🎯", titleAr: "مسابقة ذاتية", titleEn: "Self Challenge", descAr: "أنشئ رابطًا يجيب فيه كل طالب بمفرده", descEn: "Share a link for individual play" },
+  { key: "solo_challenge", icon: <SelfChallengeIcon size={28} />, titleAr: "مسابقة ذاتية", titleEn: "Self Challenge", descAr: "أنشئ رابطًا يجيب فيه كل طالب بمفرده", descEn: "Share a link for individual play" },
 ];
 
 function WameethQuickStartModal({
@@ -364,7 +365,7 @@ function WameethQuickStartModal({
 
         {selectedGame === "solo_challenge" ? (
           <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-5 text-center mb-5">
-            <div className="text-4xl mb-2">🎯</div>
+            <div className="mb-2 flex justify-center"><SelfChallengeIcon size={56} /></div>
             <p className="text-white font-black">
               {lang === "ar" ? "مسابقة ذاتية بدون غرفة مباشرة" : "A self-paced challenge without a live room"}
             </p>

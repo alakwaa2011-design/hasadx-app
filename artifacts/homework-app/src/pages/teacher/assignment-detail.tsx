@@ -15,6 +15,7 @@ import { fileToBase64 } from "@/lib/utils";
 import { getSuggestions } from "@/lib/suggestions";
 import { resolveImageUrl } from "@/lib/image-url";
 import { getWameethSetupPath } from "@/lib/wameeth-entry";
+import { SelfChallengeIcon } from "@/components/game-icons";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -1270,7 +1271,7 @@ export default function TeacherAssignmentDetail() {
                   /* Already created — show slug + action buttons */
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                      <Zap className="w-3.5 h-3.5 shrink-0" />
+                      <SelfChallengeIcon size={18} className="shrink-0" />
                       <span className="text-xs font-bold truncate">{lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}</span>
                       <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
                       {/* Copy */}

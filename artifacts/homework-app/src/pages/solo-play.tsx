@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   Trophy, Users, Target, Play, Loader2, AlertCircle, FileText, Lock, Clock, Medal
 } from "lucide-react";
+import { SelfChallengeIcon } from "@/components/game-icons";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -231,7 +232,7 @@ export default function SoloPlayPage() {
         <div className="flex justify-center mb-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide"
             style={{ background: "rgba(232,184,75,0.18)", border: "1px solid rgba(232,184,75,0.45)", color: "#E8B84B" }}>
-            <Target className="w-3.5 h-3.5" />
+            <SelfChallengeIcon size={18} />
             {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
           </span>
         </div>

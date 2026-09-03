@@ -19,6 +19,8 @@ import {
   ColorGameIcon,
   TugWarIcon,
   WheelIcon,
+  XoIcon,
+  SelfChallengeIcon,
   EscapeVaultIcon,
 } from "@/components/game-icons";
 
@@ -91,7 +93,6 @@ import {
   ChevronRight,
   School,
   Dices,
-  Grid3X3,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
@@ -1481,8 +1482,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "xo" as const,
-                      icon: <span className="text-4xl font-black text-primary">XO</span>,
-                      svgIcon: false,
+                      icon: <XoIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "إكس أو",
                       titleEn: "XO",
                       descAr: "أجب ثم ضع علامتك للفوز بثلاثة مربعات.",
@@ -1559,8 +1560,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "solo_challenge" as const,
-                      icon: <span className="text-4xl">🎯</span>,
-                      svgIcon: false,
+                      icon: <SelfChallengeIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "مسابقة ذاتية",
                       titleEn: "Self Challenge",
                       descAr: "أنشئ رابطًا يجيب فيه كل طالب بمفرده.",
@@ -2211,7 +2212,7 @@ function CompetitiveTab({
       pill: t.dashboard.tugTag,
     },
     {
-      icon: <span className="text-4xl font-black">XO</span>,
+      icon: <XoIcon size={56} />,
       title: lang === "ar" ? "إكس أو" : "XO",
       desc: lang === "ar" ? "أجب عن السؤال ثم ضع علامتك للفوز بثلاثة مربعات." : "Answer questions and place your mark to make three in a row.",
       color: "from-[#225739] to-[#4b7b5d]",
@@ -3948,7 +3949,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       ) : state === "copied" ? (
         <Check className="w-3.5 h-3.5 text-green-500" />
       ) : (
-        <Zap className="w-3.5 h-3.5" />
+        <SelfChallengeIcon size={18} />
       )}
       {state === "copied"
         ? (lang === "ar" ? "تم النسخ!" : "Copied!")
@@ -4473,7 +4474,7 @@ function AssignmentsTabRender({
       type: "xo",
       title: lang === "ar" ? "إكس أو" : "XO",
       desc: lang === "ar" ? "تحدي الفريقين على لوحة إكس أو" : "A two-team XO board challenge",
-      icon: Grid3X3,
+      icon: XoIcon,
       tag: "New",
     },
     {

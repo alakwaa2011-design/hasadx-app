@@ -5,6 +5,50 @@
  */
 import { useId } from "react";
 
+type SquareGameIconProps = { size?: number; className?: string };
+
+export const XoIcon = ({ size = 56, className }: SquareGameIconProps) => {
+  const uid = useId().replace(/:/g, "");
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${uid}xo-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#2F7655" />
+          <stop offset="100%" stopColor="#163F2C" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="3" width="94" height="94" rx="22" fill={`url(#${uid}xo-bg)`} />
+      <rect x="7" y="7" width="86" height="86" rx="18" fill="none" stroke="#D9A521" strokeOpacity="0.28" strokeWidth="2" />
+      <path d="M22 27 L43 48 M43 27 L22 48" stroke="#D9A521" strokeWidth="8" strokeLinecap="round" />
+      <circle cx="69" cy="37.5" r="12" fill="none" stroke="#F5F1E4" strokeWidth="7" />
+      <circle cx="32.5" cy="69" r="12" fill="none" stroke="#F5F1E4" strokeWidth="7" />
+      <path d="M59 59 L80 80 M80 59 L59 80" stroke="#D9A521" strokeWidth="8" strokeLinecap="round" />
+    </svg>
+  );
+};
+
+export const SelfChallengeIcon = ({ size = 56, className }: SquareGameIconProps) => {
+  const uid = useId().replace(/:/g, "");
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${uid}solo-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F5B51B" />
+          <stop offset="100%" stopColor="#C56B08" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="3" width="94" height="94" rx="22" fill={`url(#${uid}solo-bg)`} />
+      <circle cx="45" cy="57" r="27" fill="#FFF8E6" />
+      <circle cx="45" cy="57" r="20" fill="#C73535" />
+      <circle cx="45" cy="57" r="13" fill="#FFF8E6" />
+      <circle cx="45" cy="57" r="6" fill="#225739" />
+      <path d="M47 54 L74 27" stroke="#225739" strokeWidth="6" strokeLinecap="round" />
+      <path d="M70 23 L84 18 L79 32 Z" fill="#2563A5" />
+      <path d="M70 23 L65 37 L79 32 Z" fill="#50A7D9" />
+    </svg>
+  );
+};
+
 export const WameethIcon = ({ height = 36 }: { height?: number }) => {
   const uid = useId().replace(/:/g, "");
   const w = Math.round(height * 130 / 72);
