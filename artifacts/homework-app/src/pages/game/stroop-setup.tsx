@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Zap, Brain, Hash, Medal } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import {
   GameSetupLayout,
   GameStartButton,
@@ -93,6 +94,7 @@ export default function StroopSetup() {
       title={t.stroop.title}
       subtitle={t.stroop.subtitle}
       maxWidth="xl"
+      backAction={<GameFlowBackButton onBack={() => setLocation("/")} />}
     >
       <motion.div
         initial={{ opacity: 0, y: 10 }}

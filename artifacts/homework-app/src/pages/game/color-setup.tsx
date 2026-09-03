@@ -5,6 +5,7 @@ import { Palette } from "lucide-react";
 import { generateLevel, getBaseColor, getDiffColor } from "@/lib/color-engine";
 import { useI18n } from "@/lib/i18n";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import {
   GameSetupLayout,
   HowToPlayCard,
@@ -48,6 +49,7 @@ export default function ColorSetup() {
       icon={<Palette className="w-10 h-10 text-white" />}
       title={t.colorGame.title}
       subtitle={t.colorGame.subtitle}
+      backAction={<GameFlowBackButton onBack={() => setLocation("/")} />}
     >
       <HowToPlayCard accentColor="text-violet-500">
         <div className="flex items-center gap-4">

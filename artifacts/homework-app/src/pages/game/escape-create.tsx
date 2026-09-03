@@ -16,6 +16,7 @@ import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { ESCAPE_CLASS_SETUP_KEY } from "@/lib/escape-engine";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 
@@ -283,6 +284,9 @@ export default function EscapeCreate() {
     return (
       <Layout>
         <div className="min-h-screen bg-[#faf8f0] px-4 py-8 sm:px-6 sm:py-10" dir={dir}>
+          <div className="mx-auto mb-4 max-w-5xl">
+            <GameFlowBackButton onBack={() => setLocation("/")} />
+          </div>
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "أنشئ غرفة الهروب" : "Create Escape Room"}
             gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط القبو وابدأ التحدي." : "Prepare questions, configure the room, then start."}
@@ -327,6 +331,12 @@ export default function EscapeCreate() {
         {/* ══ HERO — vault door in warm darkness ══ */}
         <div className="relative overflow-hidden"
           style={{ background: "linear-gradient(180deg, #131c33 0%, #1b2742 55%, #faf7ef 100%)" }}>
+          <div className="absolute start-4 top-4 z-10 sm:start-8">
+            <GameFlowBackButton
+              onBack={() => setSetupStep("questions")}
+              className="border-white/20 bg-white/95 text-slate-700 hover:bg-white"
+            />
+          </div>
           <div className="absolute top-0 left-1/2 h-72 w-[560px] -translate-x-1/2 pointer-events-none"
             style={{ background: "radial-gradient(ellipse at top, rgba(247,201,72,0.22) 0%, transparent 65%)" }} />
           {/* Chains on the edges */}

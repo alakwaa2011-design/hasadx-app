@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import QRCode from "react-qr-code";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
@@ -439,6 +440,18 @@ export default function RocketCreate() {
         style={{ background: "linear-gradient(180deg, #FCFAF8 0%, #F4EBD9 100%)" }}
       >
         <div className="max-w-4xl mx-auto">
+          <div className="mb-4">
+            <GameFlowBackButton
+              onBack={() => {
+                if (step === "settings") {
+                  setStep("questions");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  return;
+                }
+                setLocation("/");
+              }}
+            />
+          </div>
           {/* Hero */}
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <div
@@ -524,9 +537,6 @@ export default function RocketCreate() {
                </div>
              </div>
            </Card>
-            <button type="button" onClick={() => { setStep("questions"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mb-4 px-3 py-2 rounded-xl text-xs font-bold border border-primary/25 text-primary hover:bg-primary/5 flex items-center gap-1.5">
-              {ar ? "السابق: تجهيز الأسئلة" : "Back: prepare questions"}
-            </button>
             </>
           )}
 

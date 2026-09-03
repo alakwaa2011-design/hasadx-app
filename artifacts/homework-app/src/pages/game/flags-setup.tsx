@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useSmartBack } from "@/lib/nav-history";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Play, ArrowLeft, ArrowRight, Globe, Trophy, Star, Users, User, Copy, Check, QrCode, Share2, Swords } from "lucide-react";
+import { Clock, Play, Globe, Trophy, Star, Users, User, Copy, Check, QrCode, Share2, Swords } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { LEVELS, DURATIONS, getCountriesByTier, shuffleArray, generateDistractors, type Country, getFlagUrl } from "@/data/countries";
 import { io as ioClient, Socket } from "socket.io-client";
 
@@ -17,9 +17,7 @@ type SetupPhase = "mode" | "config" | "lobby";
 export default function FlagsSetup() {
   const { lang, t, dir } = useI18n();
   const g = t.flagsGame;
-  const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const goBack = useSmartBack("/");
 
   const [mode, setMode] = useState<GameMode>("solo");
   const [phase, setPhase] = useState<SetupPhase>("mode");
@@ -140,13 +138,18 @@ export default function FlagsSetup() {
     }
   };
 
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  const handleSetupBack = () => {
+    if (phase === "lobby") setPhase("config");
+    else if (phase === "config") setPhase("mode");
+    else setLocation("/");
+  };
 
   if (phase === "lobby") {
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 dark:from-sky-950/20 dark:via-blue-950/20 dark:to-indigo-950/20 py-8 px-4" dir={dir}>
           <div className="max-w-xl mx-auto">
+            <GameFlowBackButton onBack={handleSetupBack} className="mb-4" />
             <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-xl mb-4">
                 <Globe className="w-8 h-8 text-white" />
@@ -234,6 +237,7 @@ export default function FlagsSetup() {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 dark:from-sky-950/20 dark:via-blue-950/20 dark:to-indigo-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-xl mx-auto">
+          <GameFlowBackButton onBack={handleSetupBack} className="mb-4" />
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-2xl shadow-sky-500/40 mb-4">
               <Globe className="w-10 h-10 text-white" />
@@ -291,9 +295,6 @@ export default function FlagsSetup() {
           {phase === "config" && (
             <>
               <div className="flex items-center gap-2 mb-4">
-                <button onClick={() => setPhase("mode")} className="p-2 rounded-xl bg-white/80 dark:bg-gray-800 border border-border hover:bg-gray-100 transition-colors">
-                  <BackArrow className="w-4 h-4 text-foreground" />
-                </button>
                 <div className={`px-3 py-1 rounded-xl text-xs font-bold ${mode === "solo" ? "bg-sky-100 text-sky-700" : "bg-purple-100 text-purple-700"}`}>
                   {mode === "solo" ? g.soloBadge : g.multiplayerBadge}
                 </div>
@@ -362,21 +363,9 @@ export default function FlagsSetup() {
                   : g.createRoom}
               </motion.button>
 
-              <button onClick={() => setPhase("mode")} className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-                <BackArrow className="w-4 h-4" />
-                {g.back}
-              </button>
             </>
           )}
 
-          {phase === "mode" && (
-            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-              onClick={goBack}
-              className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-              <BackArrow className="w-4 h-4" />
-              {g.backShort}
-            </motion.button>
-          )}
         </div>
       </div>
     </Layout>

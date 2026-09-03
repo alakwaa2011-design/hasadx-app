@@ -15,6 +15,7 @@ interface GameSetupLayoutProps {
   showSparkle?: boolean;
   maxWidth?: "lg" | "xl";
   headerSize?: "sm" | "md";
+  backAction?: ReactNode;
   children: ReactNode;
 }
 
@@ -28,6 +29,7 @@ export function GameSetupLayout({
   showSparkle = false,
   maxWidth = "lg",
   headerSize = "md",
+  backAction,
   children,
 }: GameSetupLayoutProps) {
   const { lang } = useI18n();
@@ -48,6 +50,7 @@ export function GameSetupLayout({
     <Layout>
       <div className={`min-h-screen ${bgGradient} ${containerPad} px-4`} dir={dir}>
         <div className={`${maxWidth === "xl" ? "max-w-xl" : "max-w-lg"} mx-auto`}>
+          {backAction && <div className="mb-4">{backAction}</div>}
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className={`text-center ${headerMargin}`}>
             <motion.div
               initial={{ scale: 0 }}

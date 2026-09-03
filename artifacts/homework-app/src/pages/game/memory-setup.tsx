@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Brain, PenLine } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import {
   GameSetupLayout,
   HowToPlayCard,
@@ -93,6 +94,7 @@ export default function MemorySetup() {
       title={t.gamePages.memoryTitle}
       subtitle={t.gamePages.memorySubtitle}
       showSparkle
+      backAction={<GameFlowBackButton onBack={() => setLocation("/")} />}
     >
       <HowToPlayCard accentColor="text-purple-500">
         <div className="flex items-start gap-4">

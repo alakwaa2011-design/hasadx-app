@@ -10,7 +10,7 @@ import {
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
-import { useSmartBack } from "@/lib/nav-history";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -63,7 +63,6 @@ export default function MaraquiSetup() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const goBack = useSmartBack("/teacher");
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   // ── Player state ──────────────────────────────────────────────────────────
@@ -98,6 +97,15 @@ export default function MaraquiSetup() {
   const [movingPath, setMovingPath] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTeacherPath, setSelectedTeacherPath] = useState<MaraquiPath | null>(null);
+  const handleSetupBack = () => {
+    if (selectedTeacherPath) setSelectedTeacherPath(null);
+    else if (activePath) {
+      setActivePath(null);
+      setProgress(null);
+      setLeaderboard([]);
+    } else if (activeTab === "teacher") setActiveTab("player");
+    else setLocation("/");
+  };
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("arenaPin")) {
@@ -359,15 +367,8 @@ export default function MaraquiSetup() {
       <div className="min-h-screen bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 dark:from-teal-950/20 dark:via-emerald-950/20 dark:to-cyan-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-2xl mx-auto">
 
-          {/* Back button */}
           <motion.div initial={{ opacity: 0, x: isRtl ? 10 : -10 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
-            <button
-              onClick={goBack}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/60 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
-            >
-              <BackArrow className="w-4 h-4" />
-              {isRtl ? "رجوع" : "Back"}
-            </button>
+            <GameFlowBackButton onBack={handleSetupBack} />
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">

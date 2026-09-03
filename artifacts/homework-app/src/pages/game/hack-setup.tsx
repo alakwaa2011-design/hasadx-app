@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useListAssignments, useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { Terminal, ShieldAlert, Lock, ArrowLeft, ArrowRight, Search, Loader2, BookText, AlertTriangle, Database, FolderOpen, Sparkles } from "lucide-react";
+import { Terminal, ShieldAlert, Lock, Search, Loader2, BookText, AlertTriangle, Database, FolderOpen, Sparkles } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
@@ -11,6 +11,7 @@ import {
   ClassSelector,
   getRememberedTargetClass,
 } from "@/components/teacher/class-selector";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 interface Assignment {
   id: number;
@@ -56,7 +57,6 @@ export default function HackSetup() {
   const [, setLocation] = useLocation();
   const { lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const { data: user } = useGetCurrentTeacher();
   const { data: assignments, isLoading } = useListAssignments(
@@ -148,12 +148,10 @@ export default function HackSetup() {
       <div className="min-h-[calc(100vh-4rem)] bg-black text-green-200" dir={dir}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-6 sm:py-10">
           <div className="mb-6">
-            <Link href="/games">
-              <button className="inline-flex items-center gap-2 text-xs font-mono font-bold text-green-700 hover:text-green-400 transition-colors">
-                <BackIcon className="w-4 h-4" />
-                {lang === "ar" ? "كل الألعاب" : "ALL_GAMES"}
-              </button>
-            </Link>
+            <GameFlowBackButton
+              onBack={() => setLocation("/")}
+              className="border-green-700 bg-black text-green-300 hover:border-green-400 hover:bg-green-950/40"
+            />
           </div>
 
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-10 items-start">

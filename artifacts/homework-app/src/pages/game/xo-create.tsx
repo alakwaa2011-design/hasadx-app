@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout";
 import { Grid3X3, Clock, Play, Users, Wifi, School, QrCode } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { getSavedGameActivity, normalizeSavedGameQuestions, saveGameActivity } from "@/lib/saved-game-activities";
 import { getXoSocket } from "@/lib/xo-socket";
 import { toast } from "@/components/ui/sonner";
@@ -55,7 +56,17 @@ export default function XoCreate() {
   const [playMode, setPlayMode] = useState<"online" | "classroom">("classroom");
   const [duration, setDuration] = useState(20);
   const [creating, setCreating] = useState(false);
+  const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
   const loadedSavedGameRef = useRef(false);
+
+  const handleFlowBack = () => {
+    if (setupStep === "settings") {
+      setQuestions([]);
+      setSetupStep("questions");
+      return;
+    }
+    navigate("/");
+  };
 
   useEffect(() => {
     setTeamX(current => current === "فريق إكس" || current === "Team X" ? (ar ? "فريق إكس" : "Team X") : current);
@@ -75,6 +86,7 @@ export default function XoCreate() {
       );
       if (restored.length < 2) throw new Error("invalid-saved-game");
       setQuestions(restored);
+      setSetupStep("settings");
       setTitle(activity.title || null);
       if (activity.settings && typeof activity.settings === "object" && !Array.isArray(activity.settings)) {
         const settings = activity.settings as Record<string, unknown>;
@@ -122,10 +134,13 @@ export default function XoCreate() {
     }
   };
 
-  if (!questions.length) {
+  if (setupStep === "questions" || !questions.length) {
     return (
       <Layout>
         <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
+          <div className="mx-auto mb-3 max-w-3xl">
+            <GameFlowBackButton onBack={handleFlowBack} />
+          </div>
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"}
             gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."}
@@ -138,6 +153,7 @@ export default function XoCreate() {
               setQuestions(toXoQuestions(q));
               setQuestionSource(source);
               setTitle(sourceTitle);
+              setSetupStep("settings");
             }}
           />
         </main>
@@ -149,6 +165,9 @@ export default function XoCreate() {
     <Layout>
       <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
         <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="mb-3">
+            <GameFlowBackButton onBack={handleFlowBack} />
+          </div>
           <div className="rounded-3xl border bg-card shadow-sm overflow-hidden">
             <header className="border-b bg-muted/20 px-6 py-5 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
@@ -275,7 +294,10 @@ export default function XoCreate() {
 
             <footer className="border-t bg-muted/20 px-6 py-5 flex flex-col-reverse sm:flex-row gap-3">
               <button
-                onClick={() => setQuestions([])}
+                onClick={() => {
+                  setQuestions([]);
+                  setSetupStep("questions");
+                }}
                 data-testid="button-change-questions"
                 className="w-full sm:w-auto rounded-xl border-2 border-transparent bg-muted px-6 py-3.5 font-bold text-muted-foreground transition hover:bg-muted/80 hover:text-foreground"
               >

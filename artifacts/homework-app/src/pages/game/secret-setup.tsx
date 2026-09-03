@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Eye, RefreshCw, Play, Users, Lock, LogIn, Plus, Trash2, X, Globe, BookOpen, ChevronDown, ChevronUp, Pencil, Image } from "lucide-react";
+import { Eye, RefreshCw, Play, Users, Lock, LogIn, Plus, Trash2, X, Globe, BookOpen, ChevronDown, ChevronUp, Pencil, Image } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "@/components/ui/sonner";
 import { io as socketIO } from "socket.io-client";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 interface Category {
   id: number;
@@ -267,6 +268,14 @@ export default function SecretSetup() {
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<(Category & { items?: ItemDraft[] }) | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const handleSetupBack = () => {
+    if (showModal) {
+      setShowModal(false);
+      setEditingCategory(undefined);
+    } else {
+      setLocation("/");
+    }
+  };
 
   const builtInCats = categories.filter((c) => !c.isCustom);
   const myCustomCats = categories.filter((c) => c.isCustom && c.teacherId === teacherId);
@@ -403,8 +412,9 @@ export default function SecretSetup() {
   if (isLoggedIn === false) {
     return (
       <Layout>
-          <div dir={dir} className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6"
+          <div dir={dir} className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center p-6"
           style={{ background: "linear-gradient(180deg,#1E4D35 0%,#0F2A20 45%,#0A1F18 100%)" }}>
+          <GameFlowBackButton onBack={handleSetupBack} className="absolute start-4 top-4 z-10" />
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-md rounded-3xl p-8 border-4 text-center backdrop-blur-sm"
             style={{ background: "linear-gradient(160deg,rgba(6,78,59,.95),rgba(2,44,34,.95))", borderColor: "rgba(245,158,11,.55)" }}>
@@ -432,11 +442,7 @@ export default function SecretSetup() {
         style={{ background: "linear-gradient(180deg,#1a1a2e 0%,#0d0d1a 100%)" }}>
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-8">
-            <Link href="/games">
-              <button className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </Link>
+            <GameFlowBackButton onBack={handleSetupBack} />
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
                 <Eye className="w-7 h-7 text-purple-400" />

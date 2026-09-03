@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
 import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
@@ -83,6 +84,14 @@ export default function TugCreate() {
   const [readyOpen, setReadyOpen] = useState(false);
   // Activity title carried into Class Mode's top banner (assignment title when known).
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
+
+  const handleFlowBack = () => {
+    if (setupStep === "settings") {
+      setSetupStep("questions");
+      return;
+    }
+    setLocation("/");
+  };
 
   // Bank
   const [bankOpen, setBankOpen] = useState(false);
@@ -293,6 +302,9 @@ export default function TugCreate() {
     return (
       <Layout>
         <div className="min-h-screen bg-[#faf8f0] px-4 py-8 sm:px-6 sm:py-10" dir={dir}>
+          <div className="mx-auto mb-3 max-w-3xl">
+            <GameFlowBackButton onBack={handleFlowBack} />
+          </div>
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
             gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط المنافسة وابدأ اللعب." : "Prepare questions, configure the competition, then start."}
@@ -365,6 +377,9 @@ export default function TugCreate() {
   return (
     <Layout>
         <div className="min-h-screen bg-[#FAF8F0]" dir={dir}>
+          <div className="mx-auto max-w-3xl px-4 pt-5 sm:px-6">
+            <GameFlowBackButton onBack={handleFlowBack} />
+          </div>
           <div className="mx-auto max-w-3xl px-4 pb-2 pt-5 sm:px-6">
             <div className="rounded-3xl border border-[#0B4B35]/10 bg-white px-4 py-4 shadow-sm sm:px-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

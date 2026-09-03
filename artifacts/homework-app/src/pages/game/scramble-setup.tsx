@@ -11,6 +11,7 @@ import { MultiplayerLobby } from "@/components/multiplayer-lobby";
 import { CATEGORIES, CATEGORY_LABELS, getDifficultyLabel } from "@/lib/scramble-engine";
 import type { ScrambleDifficulty } from "@/lib/scramble-engine";
 import { GameSetupLayout } from "@/components/game/game-setup-layout";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -137,6 +138,7 @@ export default function ScrambleSetup() {
        title={t.gamePages.scramble.title}
        subtitle={t.gamePages.scramble.subtitle}
       headerSize="sm"
+       backAction={<GameFlowBackButton onBack={() => setLocation("/")} />}
     >
       {isTeacher && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}

@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Trophy, Play, ArrowRight, ArrowLeft, Crown, Medal,
+  Trophy, Play, Crown, Medal,
   Star, User, BookOpen, ChevronDown, Users, UserRound, Lock,
   Plus, X, UserPlus, Swords, Database, Link2, QrCode, Loader2, Upload,
 } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   ClassSelector,
   getRememberedTargetClass,
 } from "@/components/teacher/class-selector";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -77,7 +78,6 @@ export default function MillionSetup() {
   const { lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
-  const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
   const [playerName, setPlayerName] = useState(() => {
@@ -133,6 +133,20 @@ export default function MillionSetup() {
   const [twoTeamsQuestionCount, setTwoTeamsQuestionCount] = useState<number>(15);
   const [twoTeamsScheme, setTwoTeamsScheme] = useState<Scheme>("even");
   const [twoTeamsBasePoints, setTwoTeamsBasePoints] = useState<number>(100);
+
+  const handleSetupBack = () => {
+    if (playMode === "class" && classTwoTeams) {
+      const steps: SetupTab[] = ["teams", "questions", "points", "review"];
+      const currentIndex = steps.indexOf(setupTab);
+      if (currentIndex > 0) {
+        setSetupTab(steps[currentIndex - 1]);
+      } else {
+        setLocation("/");
+      }
+      return;
+    }
+    setLocation("/");
+  };
 
   function addTeamMember(side: "A" | "B") {
     const raw = (side === "A" ? teamAMembersInput : teamBMembersInput).trim();
@@ -458,13 +472,10 @@ export default function MillionSetup() {
       >
         <div className="max-w-5xl mx-auto">
           <div className="mb-6">
-            <button
-              onClick={() => setLocation("/games")}
-              className="inline-flex items-center gap-2 text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors"
-            >
-              <BackIcon className="w-4 h-4" />
-              {lang === "ar" ? "الألعاب" : "Games"}
-            </button>
+            <GameFlowBackButton
+              onBack={handleSetupBack}
+              className="border-blue-300/30 bg-blue-950/60 text-blue-100 hover:bg-blue-900/70"
+            />
           </div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">

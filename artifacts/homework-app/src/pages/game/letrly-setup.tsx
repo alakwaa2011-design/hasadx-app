@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Sparkles, Send } from "lucide-react";
+import { Play, Sparkles, Send } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import {
   CATEGORY_LABELS,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/letrly-engine";
 import LetrlyCreate from "./letrly-create";
 import { useI18n } from "@/lib/i18n";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const ALL_CATEGORIES: LetrlyCategory[] = [
   "general",
@@ -246,6 +247,10 @@ export default function LetrlySetup() {
   const { data: teacher } = useGetCurrentTeacher({ query: { retry: false } as any });
   const isTeacher = !!teacher?.id;
   const [tab, setTab] = useState<"play" | "create">("play");
+  const handleSetupBack = () => {
+    if (isTeacher && tab === "create") setTab("play");
+    else setLocation("/");
+  };
 
   return (
     <Layout>
@@ -255,13 +260,7 @@ export default function LetrlySetup() {
         dir={dir}
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
-          <button
-            onClick={() => setLocation(isTeacher ? "/teacher" : "/games")}
-            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-6"
-          >
-            <ArrowRight className="w-4 h-4" />
-            {isTeacher ? t.letrly.teacherDashboard : t.letrly.allGames}
-          </button>
+          <GameFlowBackButton onBack={handleSetupBack} className="mb-6" />
 
           {isTeacher && (
             <div className="flex items-center gap-1.5 bg-white border border-card-border rounded-2xl p-1.5 mb-6 shadow-sm">

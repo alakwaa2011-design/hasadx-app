@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useSmartBack } from "@/lib/nav-history";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calculator, ArrowLeft, ArrowRight, Play, Trophy, Crown, Medal, Shuffle, BookOpen, Zap, Flame, Target, Swords } from "lucide-react";
+import { Calculator, Play, Trophy, Crown, Medal, Shuffle, BookOpen, Zap, Flame, Target, Swords } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import type { Difficulty } from "@/lib/multiply-engine";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -31,10 +31,7 @@ const DIFFICULTIES: { key: Difficulty; icon: React.ReactNode; color: string; bg:
 export default function MultiplySetup() {
   const { lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const goBack = useSmartBack("/");
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
@@ -103,6 +100,7 @@ export default function MultiplySetup() {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-orange-950/20 dark:via-amber-950/20 dark:to-yellow-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-lg mx-auto">
+          <GameFlowBackButton onBack={() => setLocation("/")} className="mb-4" />
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-2xl shadow-orange-500/40 mb-4">
               <Calculator className="w-10 h-10 text-white" />
@@ -254,10 +252,6 @@ export default function MultiplySetup() {
             )}
           </motion.div>
 
-          <button onClick={goBack} className="w-full mt-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-            <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "رجوع" : "Back"}
-          </button>
         </div>
       </div>
     </Layout>

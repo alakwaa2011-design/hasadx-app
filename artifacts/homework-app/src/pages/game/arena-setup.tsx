@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, ArrowLeft, Play, Users, Swords, Sparkles, Check, Trophy,
+  Play, Users, Swords, Sparkles, Check, Trophy,
   Plus, Trash2, ChevronRight, ChevronLeft, X, UserPlus, LogIn, Lock,
   ChevronDown, Award, Image as ImageIcon, Upload, Edit3, Globe, FolderPlus,
   Save, Camera, Crown, Inbox, Dices, Wand2, Info, Palette, Smile, Search,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/arena-content";
 import { toast } from "@/components/ui/sonner";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const TEAM_COLORS = [
   { color: "#2563eb", name: "أزرق" },
@@ -108,7 +109,6 @@ export default function ArenaSetup() {
   const {lang, t} = useI18n();
   const [, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const { data: teacherData, isLoading: teacherAuthLoading } =
     useGetCurrentTeacher({ query: { retry: false } as any });
@@ -453,6 +453,10 @@ export default function ArenaSetup() {
     if (step < 3) setStep((step + 1) as Step);
   };
   const goPrev = () => { if (step > 1) setStep((step - 1) as Step); };
+  const handleSetupBack = () => {
+    if (step > 1) goPrev();
+    else setLocation("/");
+  };
 
   const start = async () => {
     if (!canStart) { toast.error(t.arenaSetup.selectionRequired); return; }
@@ -558,9 +562,10 @@ export default function ArenaSetup() {
   if (isLoggedIn === false) {
     return (
       <Layout>
-        <div dir={dir} className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6" style={{
+        <div dir={dir} className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center p-6" style={{
           background: "linear-gradient(180deg, #1E4D35 0%, #0F2A20 45%, #0A1F18 100%)",
         }}>
+          <GameFlowBackButton onBack={handleSetupBack} className="absolute start-4 top-4 z-10" />
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -692,12 +697,7 @@ export default function ArenaSetup() {
         fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif",
       }}>
         <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
-          <Link href="/games">
-            <button className="inline-flex items-center gap-2 text-sm font-bold mb-4 transition" style={{ color: "#5b6b87" }}>
-              <BackIcon className="w-4 h-4" />
-              عودة للألعاب
-            </button>
-          </Link>
+          <GameFlowBackButton onBack={handleSetupBack} className="mb-4" />
 
           {/* ── Hero card — white surface, teal/gold accents ────────────── */}
           <motion.div

@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import QRCode from "react-qr-code";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const FIRE = "#FF6B2B";
 const FIRE2 = "#FF9F43";
@@ -397,6 +398,9 @@ export default function HotSeatCreate() {
     <Layout>
       <div dir={dir} className="min-h-screen py-8 px-4" style={{ background: "linear-gradient(180deg, #FCFAF8, #F4EBD9)" }}>
         <div className="max-w-lg mx-auto">
+          <div className="mb-4">
+            <GameFlowBackButton onBack={() => setLocation("/")} />
+          </div>
           {/* Header */}
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-7">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4"

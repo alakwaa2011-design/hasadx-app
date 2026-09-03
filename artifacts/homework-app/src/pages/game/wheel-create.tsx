@@ -13,6 +13,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -808,6 +809,11 @@ export default function WheelCreate() {
   return (
     <Layout>
       <div dir={dir} className="min-h-[calc(100dvh-4rem)] py-5 sm:py-8 px-3 sm:px-5 max-w-6xl mx-auto">
+        <div className="mb-4">
+          <GameFlowBackButton
+            onBack={() => setupStep === "settings" ? returnToQuestions() : setLocation("/")}
+          />
+        </div>
         <header className="flex items-center justify-between gap-3 mb-5 sm:mb-7">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl shadow-lg flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>
@@ -985,10 +991,6 @@ export default function WheelCreate() {
               <section className="rounded-3xl p-4 sm:p-5 border border-primary/15" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}0d, ${BRAND_GOLD}14)` }}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div><p className="text-xs font-black tracking-wide uppercase" style={{ color: BRAND_PRIMARY }}>{w.wheelReady}</p><h2 className="text-lg sm:text-xl font-black text-foreground mt-1">{title || w.addGameTitle}</h2><p className="text-xs text-muted-foreground mt-1">{w.readySummary.replace("{segments}", String(segments.length)).replace("{teams}", String(config.teamCount))}</p></div>
-                  <button type="button" onClick={returnToQuestions} className="px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm bg-card border border-border hover:border-primary/40 flex items-center gap-1.5">
-                    {dir === "rtl" ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-                    {w.backQuestions}
-                  </button>
                 </div>
               </section>
               {editingTemplateId !== null && (

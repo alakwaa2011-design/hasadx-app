@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useSmartBack } from "@/lib/nav-history";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Play, ArrowLeft, ArrowRight, Landmark, Trophy, Star, Users, User, Copy, Check, Share2, Swords } from "lucide-react";
+import { Clock, Play, Landmark, Trophy, Star, Users, User, Copy, Check, Share2, Swords } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import {
   CAPITAL_LEVELS, CAPITAL_DURATIONS, getCapitalsByTier, shuffleArray,
   type CapitalCountry, type CapitalQuestionMode,
@@ -19,9 +19,7 @@ type SetupPhase = "mode" | "config" | "lobby";
 
 export default function CapitalsSetup() {
   const { lang, t, dir } = useI18n();
-  const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const goBack = useSmartBack("/");
 
   const [mode, setMode] = useState<GameMode>("solo");
   const [phase, setPhase] = useState<SetupPhase>("mode");
@@ -177,7 +175,11 @@ export default function CapitalsSetup() {
     }
   };
 
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  const handleSetupBack = () => {
+    if (phase === "lobby") setPhase("config");
+    else if (phase === "config") setPhase("mode");
+    else setLocation("/");
+  };
 
   const QUESTION_MODES: { value: CapitalQuestionMode; labelAr: string; labelEn: string; icon: string }[] = [
     { value: "country-to-capital", labelAr: "دولة → عاصمة", labelEn: "Country → Capital", icon: "🏙️" },
@@ -190,6 +192,7 @@ export default function CapitalsSetup() {
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50 dark:from-teal-950/20 dark:via-cyan-950/20 dark:to-emerald-950/20 py-8 px-4" dir={dir}>
           <div className="max-w-xl mx-auto">
+            <GameFlowBackButton onBack={handleSetupBack} className="mb-4" />
             <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-xl mb-4">
                 <Landmark className="w-8 h-8 text-white" />
@@ -277,6 +280,7 @@ export default function CapitalsSetup() {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50 dark:from-teal-950/20 dark:via-cyan-950/20 dark:to-emerald-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-xl mx-auto">
+          <GameFlowBackButton onBack={handleSetupBack} className="mb-4" />
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-2xl shadow-teal-500/40 mb-4">
               <Landmark className="w-10 h-10 text-white" />
@@ -334,9 +338,6 @@ export default function CapitalsSetup() {
           {phase === "config" && (
             <>
               <div className="flex items-center gap-2 mb-4">
-                <button onClick={() => setPhase("mode")} className="p-2 rounded-xl bg-white/80 dark:bg-gray-800 border border-border hover:bg-gray-100 transition-colors">
-                  <BackArrow className="w-4 h-4 text-foreground" />
-                </button>
                 <div className={`px-3 py-1 rounded-xl text-xs font-bold ${mode === "solo" ? "bg-teal-100 text-teal-700" : "bg-purple-100 text-purple-700"}`}>
                   {mode === "solo" ? `🎮 ${t.capitalsGame.solo}` : `👥 ${t.capitalsGame.multiplayer}`}
                 </div>
@@ -420,21 +421,9 @@ export default function CapitalsSetup() {
                   : t.capitalsGame.createRoom}
               </motion.button>
 
-              <button onClick={() => setPhase("mode")} className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-                <BackArrow className="w-4 h-4" />
-                 {t.capitalsGame.back}
-              </button>
             </>
           )}
 
-          {phase === "mode" && (
-            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-              onClick={goBack}
-              className="w-full mt-3 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-              <BackArrow className="w-4 h-4" />
-               {t.capitalsGame.backShort}
-            </motion.button>
-          )}
         </div>
       </div>
     </Layout>
