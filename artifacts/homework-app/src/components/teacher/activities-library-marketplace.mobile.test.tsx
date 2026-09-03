@@ -151,6 +151,8 @@ describe("ActivitiesLibraryMarketplace mobile controls", () => {
     const sheet = document.querySelector('[role="dialog"]') as HTMLElement;
     expect(sheet.textContent).toContain("تصفية الأنشطة");
     expect(sheet.textContent).toContain("نوع النشاط");
+    expect(sheet.textContent).toContain("واجبات واختبارات");
+    expect(sheet.textContent).not.toContain("اختباراتواجبات");
     expect(sheet.textContent).toContain("المادة الدراسية");
     expect(sheet.textContent).toContain("المرحلة / الصف");
 

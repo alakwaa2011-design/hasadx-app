@@ -23,7 +23,6 @@ import {
   User,
   Bookmark,
   Presentation,
-  ClipboardList,
   Sparkles,
   TrendingUp,
   Radio,
@@ -81,7 +80,7 @@ const C = {
 
 type Tab = "assignments" | "questions" | "videos";
 type CategoryTab = "all" | "popular" | "new" | "featured" | "peers";
-type TypeChip = "all" | "homework" | "quiz" | "presentation" | "video" | "live" | "interactive";
+type TypeChip = "all" | "assignment" | "presentation" | "video" | "live" | "interactive";
 
 export interface MarketplaceAssignment {
   id: number;
@@ -294,9 +293,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
   const displayAssignments = useMemo(() => {
     let list = filterByCategory(filteredAssignments);
-    if (typeChip === "quiz")     list = list.filter(a => a.type === "mcq" || a.type === "mixed");
     if (typeChip === "live")     list = list.filter(a => a.type === "mcq" && a.questionCount > 0);
-    if (typeChip === "homework") list = list.filter(a => a.type !== "mcq" || a.questionCount < 15);
     return list;
   }, [filteredAssignments, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
@@ -375,8 +372,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   const typeFilters: { id: TypeChip; ar: string; en: string; icon: React.ReactNode }[] = [
     { id: "all",         ar: "كل الأنواع",       en: "All types",    icon: <Globe       className="w-3.5 h-3.5" /> },
     { id: "live",        ar: "مسابقة مباشرة",    en: "Live quiz",    icon: <Zap         className="w-3.5 h-3.5" /> },
-    { id: "quiz",        ar: "اختبارات",         en: "Quizzes",      icon: <ClipboardList className="w-3.5 h-3.5"/> },
-    { id: "homework",    ar: "واجبات",           en: "Homework",     icon: <BookText    className="w-3.5 h-3.5" /> },
+    { id: "assignment",  ar: "واجبات واختبارات", en: "Assignments & quizzes", icon: <BookText className="w-3.5 h-3.5" /> },
     { id: "video",       ar: "فيديو",            en: "Videos",       icon: <Video       className="w-3.5 h-3.5" /> },
     { id: "interactive", ar: "أنشطة تفاعلية",    en: "Interactive",  icon: <Sparkles    className="w-3.5 h-3.5" /> },
     { id: "presentation",ar: "عروض تفاعلية",     en: "Presentations",icon: <Presentation className="w-3.5 h-3.5"/> },
