@@ -1370,6 +1370,19 @@ export default function CreateAssignment() {
                   </div>
                 </div>
 
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    disabled={!title.trim()}
+                    data-testid="btn-wizard-next"
+                    className="flex min-w-[190px] items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span>{lang === "ar" ? "التالي: إضافة الأسئلة" : "Next: Add Questions"}</span>
+                    {lang === "ar" ? <ArrowLeft className="w-5 h-5 shrink-0" /> : <ArrowRight className="w-5 h-5 shrink-0" />}
+                  </button>
+                </div>
+
               </div>
 
               {/* Compact template picker */}
@@ -2664,7 +2677,7 @@ export default function CreateAssignment() {
             </AnimatePresence>
 
             {/* ══ Sticky Navigation ══ */}
-            <div className="sticky bottom-4 z-20 mt-6 px-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+            {wizardStep > 1 && <div className="sticky bottom-4 z-20 mt-6 px-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
               {(wizardStep === 2 && !canLeaveStep2) || (wizardStep === 3 && publishBlock) ? (
                 <p className="text-center text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-1.5" data-testid="text-nav-block-reason">
                   {wizardStep === 2 ? blockMessages.no_question : publishBlock ? blockMessages[publishBlock] : ""}
@@ -2706,7 +2719,7 @@ export default function CreateAssignment() {
                   </button>
                 )}
               </div>
-            </div>
+            </div>}
       </main>
       )}
 

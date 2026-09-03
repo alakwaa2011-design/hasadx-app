@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -183,7 +182,6 @@ function estimateReadSeconds(text: string, speed: number): number {
 
 function useTtsPreview() {
   const { t } = useI18n();
-  const refreshCreditsBalance = useRefreshCreditsBalance();
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [currentSec, setCurrentSec] = useState(0);
@@ -237,14 +235,16 @@ function useTtsPreview() {
       stopAudio();
       setSpeakingId(itemId);
       try {
-        const res = await fetch(`${API_BASE}/api/tts`, {
+        const res = await fetch(`${API_BASE}/api/tts/preview`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ text: text.trim(), voice, speed }),
         });
-        if (!res.ok) throw new Error("tts failed");
-        refreshCreditsBalance();
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          throw new Error(payload?.error || t.dictationCreate.audioError);
+        }
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
@@ -270,9 +270,9 @@ function useTtsPreview() {
           URL.revokeObjectURL(url);
         };
         await audio.play();
-      } catch {
+      } catch (error) {
         stopAudio();
-        toast.error(t.dictationCreate.audioError);
+        toast.error(error instanceof Error ? error.message : t.dictationCreate.audioError);
       }
     },
     [speakingId, stopAudio, volume, t.dictationCreate.audioError],

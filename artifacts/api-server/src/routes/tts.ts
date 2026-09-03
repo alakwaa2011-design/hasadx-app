@@ -370,6 +370,29 @@ async function tryDeleteTtsAudioSafely(storageKey: string): Promise<void> {
   try { await ttsCache.tryDeleteTtsAudio(storageKey); } catch { /* best-effort */ }
 }
 
+router.post("/tts/preview", ttsLimiter, async (req, res) => {
+  const teacherId = req.session?.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ error: "يجب تسجيل الدخول لاستخدام هذه الخدمة" });
+    return;
+  }
+
+  const { text, voice = "nova" } = (req.body || {}) as { text?: unknown; voice?: string };
+  if (!text || typeof text !== "string" || !text.trim()) {
+    res.status(400).json({ error: "النص مطلوب" });
+    return;
+  }
+  if (text.length > MAX_TEXT_LENGTH) {
+    res.status(400).json({ error: `النص طويل جداً (الحد ${MAX_TEXT_LENGTH} حرف)` });
+    return;
+  }
+
+  await synthesizeAndSend(req, res, text, voice, {
+    teacherId,
+    callKeyPrefix: "preview",
+  });
+});
+
 router.post("/tts", ttsLimiter, async (req, res) => {
   // Teachers only — unauthenticated callers are blocked here.
   const teacherId = req.session?.teacherId;
