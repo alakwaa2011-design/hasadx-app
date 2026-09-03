@@ -764,17 +764,17 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     >
       <div style={{ minHeight: "100vh" }}>
         <main className="min-w-0 w-full px-3 py-4 pb-24 sm:px-5 sm:py-5 lg:px-7 lg:py-6 lg:pb-8 xl:px-9">
-          <section className="mb-5 space-y-3.5 pt-2 sm:mb-6 sm:pt-3 lg:pt-4" aria-labelledby="activities-library-title">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <section className="mb-3 space-y-2.5 pt-0 sm:mb-6 sm:space-y-3.5 sm:pt-3 lg:pt-4" aria-labelledby="activities-library-title">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm" style={{ borderColor: C.border, color: C.primary }}>
-                  <BookText className="h-4.5 w-4.5" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm sm:h-10 sm:w-10" style={{ borderColor: C.border, color: C.primary }}>
+                  <BookText className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <h1 id="activities-library-title" className="text-lg font-black leading-tight sm:text-xl" style={{ color: C.text }}>
+                  <h1 id="activities-library-title" className="text-base font-black leading-tight sm:text-xl" style={{ color: C.text }}>
                     {isAr ? "مكتبة الأنشطة" : "Activities Library"}
                   </h1>
-                  <p className="mt-0.5 text-[10px] sm:text-xs" style={{ color: C.muted }}>
+                  <p className="mt-0.5 text-[9px] sm:text-xs" style={{ color: C.muted }}>
                     {isAr ? "اكتشف أنشطة تعليمية جاهزة وابدأ استخدامها مع طلابك" : "Discover ready-made activities and use them with your students"}
                   </p>
                 </div>
@@ -799,7 +799,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 value={search}
                 onChange={e => onSearchChange(e.target.value)}
                 placeholder={isAr ? "ابحث في الأنشطة..." : "Search activities..."}
-                className={cn("min-h-11 w-full rounded-xl border bg-white py-2.5 text-xs outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15 sm:text-sm", isAr ? "pr-10 pl-10" : "pl-10 pr-10")}
+                className={cn("min-h-10 w-full rounded-xl border bg-white py-2 text-xs outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15 sm:min-h-11 sm:py-2.5 sm:text-sm", isAr ? "pr-10 pl-10" : "pl-10 pr-10")}
                 style={{ borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
               />
               {search && (
@@ -809,8 +809,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               )}
             </div>
 
-            <div className="space-y-2 rounded-2xl border border-[#e8e1d8]/70 bg-[#fcfbf8] p-2">
-              <div className="flex flex-wrap gap-1.5">
+            <div className="space-y-1.5 rounded-2xl border border-[#e8e1d8]/70 bg-[#fcfbf8] p-1.5 sm:space-y-2 sm:p-2">
+              <div className="library-horizontal-scroll flex max-w-full flex-nowrap gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth touch-pan-x sm:flex-wrap sm:overflow-visible">
                 {typeFilters.map(filter => {
                   const active = typeChip === filter.id;
                   return (
@@ -819,7 +819,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       type="button"
                       onClick={() => applyTypeFilter(filter.id)}
                       aria-pressed={active}
-                      className="flex min-h-9 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all sm:min-h-10 sm:px-4 sm:text-xs"
+                      className="flex min-h-8 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-[10px] font-bold transition-all sm:min-h-10 sm:px-4 sm:text-xs"
                       style={{
                         borderColor: active ? C.primary : C.border,
                         background: active ? C.primary : C.card,
@@ -833,7 +833,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   );
                 })}
               </div>
-            <div className="border-t border-[#e8e1d8]/70 px-1 pb-1 pt-2">
+            <div className="hidden border-t border-[#e8e1d8]/70 px-1 pb-1 pt-2 sm:block">
               <div className="flex flex-wrap items-center gap-2">
                 <label className="relative">
                   <span className="sr-only">{isAr ? "المادة الدراسية" : "Subject"}</span>
@@ -885,68 +885,65 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 )}
               </div>
             </div>
-            </div>
-          </section>
+            <div className="library-horizontal-scroll flex max-w-full min-w-0 flex-nowrap gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth touch-pan-x sm:hidden">
+              <label className="relative min-w-[132px] shrink-0">
+                <span className="sr-only">{isAr ? "المادة الدراسية" : "Subject"}</span>
+                <select
+                  aria-label={isAr ? "المادة الدراسية" : "Subject"}
+                  value={subjectFilter}
+                  onChange={e => onSubjectFilterChange(e.target.value)}
+                  className="h-9 w-full appearance-none rounded-xl border bg-white px-2.5 pe-7 text-[10px] font-bold outline-none focus:ring-2 focus:ring-[#225739]/15"
+                  style={{ borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
+                >
+                  <option value="">{isAr ? "المادة: الكل" : "Subject: All"}</option>
+                  {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                </select>
+                <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2", isAr ? "left-2.5" : "right-2.5")} style={{ color: C.muted }} />
+              </label>
 
-          {/* Mobile-only library header and compact controls. The desktop
-              sidebar remains the source of the same controls above lg. */}
-          <div className="hidden">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm" style={{ background: C.primary }}>
-                <BookText className="h-4 w-4 text-white" />
-              </div>
-              <h1 className="text-lg font-black leading-tight" style={{ color: C.text }}>
-                {isAr ? "مكتبة الأنشطة" : "Activities Library"}
-              </h1>
-            </div>
-
-            <div className="relative mt-3">
-              <Search className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "right-3" : "left-3")} style={{ color: C.muted }} />
               <input
-                aria-label={isAr ? "البحث في مكتبة الأنشطة" : "Search activities library"}
-                value={search}
-                onChange={e => onSearchChange(e.target.value)}
-                placeholder={isAr ? "ابحث عن نشاط..." : "Search activities..."}
-                className={cn("min-h-10 w-full rounded-xl border bg-white py-2 text-xs outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15", isAr ? "pr-9 pl-9" : "pl-9 pr-9")}
-                style={{ borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
+                aria-label={isAr ? "المرحلة أو الصف" : "Grade"}
+                value={gradeFilter}
+                onChange={e => onGradeFilterChange(e.target.value)}
+                list="lib-grades-mobile-toolbar"
+                placeholder={isAr ? "الصف: الكل" : "Grade: All"}
+                className="h-9 w-[112px] shrink-0 rounded-xl border bg-white px-2.5 text-[10px] font-bold outline-none focus:ring-2 focus:ring-[#225739]/15"
+                style={{ borderColor: gradeFilter ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
               />
-              {search && (
-                <button type="button" aria-label={isAr ? "مسح البحث" : "Clear search"} onClick={() => onSearchChange("")} className={cn("absolute top-1/2 -translate-y-1/2 p-2", isAr ? "left-1.5" : "right-1.5")} style={{ color: C.muted }}>
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+              <datalist id="lib-grades-mobile-toolbar">{allGrades.map(grade => <option key={grade} value={grade} />)}</datalist>
 
-            <div className="mt-2.5 flex items-center gap-2">
+              <label className="relative min-w-[118px] shrink-0">
+                <span className="sr-only">{isAr ? "الترتيب" : "Sort"}</span>
+                <select
+                  aria-label={isAr ? "الترتيب" : "Sort"}
+                  value={sortBy}
+                  onChange={e => onSortByChange(e.target.value as "newest" | "questions")}
+                  className="h-9 w-full appearance-none rounded-xl border bg-white px-2.5 pe-7 text-[10px] font-bold outline-none"
+                  style={{ borderColor: C.border, color: C.text, fontFamily: "inherit" }}
+                >
+                  <option value="newest">{isAr ? "الترتيب: الأحدث" : "Sort: Newest"}</option>
+                  <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
+                </select>
+                <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2", isAr ? "left-2.5" : "right-2.5")} style={{ color: C.muted }} />
+              </label>
+
               <button
                 type="button"
                 onClick={() => setFilterSheetOpen(true)}
-                className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border bg-white px-3 text-xs font-extrabold transition-colors active:scale-[0.98]"
-                style={{ borderColor: activeFilterCount > 0 ? C.primary : C.border, color: C.primary }}
+                className="flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border bg-white px-3 text-[10px] font-extrabold transition-colors active:scale-[0.98]"
+                style={{ borderColor: activeFilterCount > 0 ? C.primary : C.border, color: C.primary, fontFamily: "inherit" }}
               >
-                <SlidersHorizontal className="h-4 w-4" />
-                <span>{isAr ? "تصفية" : "Filters"}</span>
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span>{isAr ? "فلاتر" : "Filters"}</span>
                 {activeFilterCount > 0 && (
-                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-black text-white" style={{ background: C.primary }}>
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white" style={{ background: C.primary }}>
                     {activeFilterCount}
                   </span>
                 )}
               </button>
-              <label className="relative flex min-h-11 flex-1 items-center">
-                <span className="sr-only">{isAr ? "الفرز" : "Sort"}</span>
-                <select
-                  aria-label={isAr ? "الفرز" : "Sort"}
-                  value={sortBy}
-                  onChange={e => onSortByChange(e.target.value as "newest" | "questions")}
-                  className="min-h-10 w-full appearance-none rounded-xl border bg-white px-3 text-center text-xs font-bold outline-none"
-                  style={{ borderColor: C.border, color: C.text, fontFamily: "inherit" }}
-                >
-                  <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
-                  <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
-                </select>
-              </label>
             </div>
-          </div>
+            </div>
+          </section>
 
           <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
             <SheetContent
@@ -1052,6 +1049,14 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                     </div>
                   )}
                 </section>
+
+                {isAdmin && (
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border bg-white px-3 text-sm font-bold" style={{ borderColor: showHidden ? C.gold : C.border, color: showHidden ? C.text : C.muted }}>
+                    <input type="checkbox" checked={showHidden} onChange={e => onShowHiddenChange(e.target.checked)} className="accent-[#225739]" />
+                    <EyeOff className="h-4 w-4" />
+                    {isAr ? "عرض المخفي" : "Show hidden"}
+                  </label>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 border-t pt-4">
