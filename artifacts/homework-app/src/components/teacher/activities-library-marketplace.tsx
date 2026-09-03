@@ -457,9 +457,6 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           <h3 className="line-clamp-2 text-[11px] font-black leading-snug tracking-tight sm:text-sm" style={{ color: C.text }}>
             {a.title}
           </h3>
-          {a.description && (
-            <p className="mt-0.5 hidden line-clamp-1 text-[11px] leading-relaxed sm:block" style={{ color: C.muted }}>{a.description}</p>
-          )}
           <p className="mt-1 truncate text-[9px] font-medium sm:text-[10px]" style={{ color: C.muted }}>
             {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>
@@ -767,7 +764,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     >
       <div style={{ minHeight: "100vh" }}>
         <main className="min-w-0 w-full px-3 py-4 pb-24 sm:px-5 sm:py-5 lg:px-7 lg:py-6 lg:pb-8 xl:px-9">
-          <section className="mb-5 space-y-3.5 sm:mb-6" aria-labelledby="activities-library-title">
+          <section className="mb-5 space-y-3.5 pt-2 sm:mb-6 sm:pt-3 lg:pt-4" aria-labelledby="activities-library-title">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm" style={{ borderColor: C.border, color: C.primary }}>
@@ -812,8 +809,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               )}
             </div>
 
-            <div className="-mx-1 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: "thin" }}>
-              <div className="flex min-w-max gap-1.5 lg:w-full lg:justify-between">
+            <div className="-mx-1 px-1 pb-1">
+              <div className="flex flex-wrap gap-1.5">
                 {typeFilters.map(filter => {
                   const active = typeChip === filter.id;
                   return (
@@ -838,8 +835,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               </div>
             </div>
 
-            <div className="-mx-1 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: "thin" }}>
-              <div className="flex min-w-max items-center gap-2 lg:w-full lg:justify-between">
+            <div className="-mx-1 px-1 pb-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <label className="relative">
                   <span className="sr-only">{isAr ? "المادة الدراسية" : "Subject"}</span>
                   <select
@@ -1123,15 +1120,15 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   {isAr ? "عرض الكل" : "See all"} <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="grid grid-cols-1 gap-3 overflow-x-auto pb-1 sm:grid-cols-2 lg:grid-cols-3" style={{ scrollbarWidth: "thin" }}>
+              <div className="grid grid-cols-1 gap-3 overflow-x-auto pb-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]" style={{ scrollbarWidth: "thin" }}>
                 {trendingNow.map((item, idx) => (
                   <article
                     key={item.key}
                     className="group min-w-0 overflow-hidden rounded-xl border bg-white text-start transition-all duration-200 hover:shadow-md sm:rounded-2xl"
                     style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
                   >
-                    <div className="relative overflow-hidden">
-                      <ActivityCover kind={resolveCoverKind(item.kind, item.type)} subject={item.subject} title={item.title} type={item.type} aspect="video">
+                    <div className="relative h-[138px] overflow-hidden sm:h-[145px] lg:h-[150px]">
+                      <ActivityCover className="h-full" kind={resolveCoverKind(item.kind, item.type)} subject={item.subject} title={item.title} type={item.type} aspect="video">
                         <span className={cn("absolute top-2.5 z-10 inline-flex items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-[9px] font-extrabold shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5")} style={{ color: C.primary }}>
                           {idx === 0 && <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: C.gold }} />}
                           {idx === 0 ? (isAr ? "نشط الآن" : "Active now") : item.typeLabel}
@@ -1148,8 +1145,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       </ActivityCover>
                     </div>
                     <div className="p-2.5 sm:p-3">
-                      <p className="line-clamp-2 min-h-8 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{item.title}</p>
-                      <div className="mt-1.5 flex items-center justify-between gap-2 sm:mt-2">
+                      <p className="line-clamp-2 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{item.title}</p>
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
                         <span className="truncate text-[10px] font-medium" style={{ color: C.muted }}>{item.activeLabel}</span>
                         <button
                           type="button"
