@@ -35,7 +35,9 @@ const sharedQuestionFilter = and(
 );
 
 const sharedVideoFilter = and(
+  eq(videoLessonsTable.isPublished, true),
   eq(videoLessonsTable.isShared, true),
+  ne(videoLessonsTable.accessMode, "private"),
   eq(videoLessonsTable.hiddenByAdmin, false),
 );
 
@@ -48,6 +50,7 @@ const sharedPresentationFilter = eq(presentationsTable.isShared, true);
 router.get("/teacher/activity-library/stats", requireAuth, async (req, res) => {
   try {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
     const [
       assignmentCountRow,
@@ -148,6 +151,16 @@ router.get("/teacher/activity-library/stats", requireAuth, async (req, res) => {
             SELECT COUNT(*)::int FROM ${submissionsTable}
             WHERE ${submissionsTable.assignmentId} = ${assignmentsTable.id}
           )`,
+          recentPlays: sql<number>`(
+            SELECT COUNT(*)::int FROM ${gameHistoryTable}
+            WHERE ${gameHistoryTable.assignmentId} = ${assignmentsTable.id}
+              AND ${gameHistoryTable.createdAt} >= ${fourteenDaysAgo}
+          )`,
+          recentSubs: sql<number>`(
+            SELECT COUNT(*)::int FROM ${submissionsTable}
+            WHERE ${submissionsTable.assignmentId} = ${assignmentsTable.id}
+              AND ${submissionsTable.submittedAt} >= ${fourteenDaysAgo}
+          )`,
         })
         .from(assignmentsTable)
         .where(sharedHomeworkAssignmentFilter),
@@ -157,6 +170,11 @@ router.get("/teacher/activity-library/stats", requireAuth, async (req, res) => {
           uses: sql<number>`(
             SELECT COUNT(*)::int FROM ${videoSubmissionsTable}
             WHERE ${videoSubmissionsTable.videoLessonId} = ${videoLessonsTable.id}
+          )`,
+          recentUses: sql<number>`(
+            SELECT COUNT(*)::int FROM ${videoSubmissionsTable}
+            WHERE ${videoSubmissionsTable.videoLessonId} = ${videoLessonsTable.id}
+              AND ${videoSubmissionsTable.submittedAt} >= ${fourteenDaysAgo}
           )`,
         })
         .from(videoLessonsTable)
@@ -192,13 +210,17 @@ router.get("/teacher/activity-library/stats", requireAuth, async (req, res) => {
       (presentationUsesRow[0]?.n ?? 0);
 
     const assignmentUses: Record<string, number> = {};
+    const assignmentUsesLast14Days: Record<string, number> = {};
     for (const row of assignmentUseRows) {
       assignmentUses[String(row.id)] = (row.plays ?? 0) + (row.subs ?? 0);
+      assignmentUsesLast14Days[String(row.id)] = (row.recentPlays ?? 0) + (row.recentSubs ?? 0);
     }
 
     const videoUses: Record<string, number> = {};
+    const videoUsesLast14Days: Record<string, number> = {};
     for (const row of videoUseRows) {
       videoUses[String(row.id)] = row.uses ?? 0;
+      videoUsesLast14Days[String(row.id)] = row.recentUses ?? 0;
     }
 
     res.json({
@@ -207,7 +229,10 @@ router.get("/teacher/activity-library/stats", requireAuth, async (req, res) => {
       totalUses,
       newThisWeek,
       assignmentUses,
+      assignmentUsesLast14Days,
       videoUses,
+      videoUsesLast14Days,
+      usageWindowDays: 14,
       presentationUses: presentationUsesRow[0]?.n ?? 0,
       // Question-bank items have no per-item usage log in DB — card footer shows 0.
       questionUsesTracked: false,

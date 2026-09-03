@@ -47,8 +47,8 @@ import {
   ActivityCover,
   formatUseCount,
   resolveCoverKind,
-  resolveSubjectTheme,
 } from "@/lib/activity-cover";
+import { selectTrendingActivities } from "@/lib/activity-library-trending";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -58,7 +58,10 @@ interface ActivityLibraryStats {
   totalUses: number;
   newThisWeek: number;
   assignmentUses: Record<string, number>;
+  assignmentUsesLast14Days?: Record<string, number>;
   videoUses: Record<string, number>;
+  videoUsesLast14Days?: Record<string, number>;
+  usageWindowDays?: number;
   presentationUses: number;
   questionUsesTracked: boolean;
 }
@@ -88,7 +91,9 @@ export interface MarketplaceAssignment {
   teacherId: number;
   teacherName: string | null;
   isAdminContent?: boolean;
+  isShared?: boolean;
   hiddenByAdmin?: boolean;
+  accessMode?: string;
   subject?: string | null;
   targetClass?: string | null;
   description?: string | null;
@@ -118,7 +123,10 @@ export interface MarketplaceVideo {
   teacherId: number;
   teacherName: string | null;
   isAdminContent?: boolean;
+  isShared?: boolean;
   hiddenByAdmin?: boolean;
+  isPublished?: boolean;
+  accessMode?: string;
   questionCount: number;
   createdAt: string;
 }
@@ -335,47 +343,80 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     })));
   }, [filteredPresentations, categoryTab, typeChip, popularIds, newIds, currentTeacherId]);
 
-  const wameethPick = useMemo(() => {
-    const mcq = assignments.filter(a => a.type === "mcq" && a.questionCount > 0 && !a.hiddenByAdmin);
-    return mcq.find(a => a.title.includes("وميض") || a.title.toLowerCase().includes("wameeth"))
-      || [...mcq].sort((a, b) => b.questionCount - a.questionCount)[0];
-  }, [assignments]);
-
-  const topVideoByUses = useMemo(() => {
-    if (!libraryStats?.videoUses) return videoLessons[0];
-    let best = videoLessons[0]; let max = -1;
-    for (const v of videoLessons) {
-      const u = libraryStats.videoUses[String(v.id)] ?? 0;
-      if (u > max) { max = u; best = v; }
-    }
-    return best;
-  }, [videoLessons, libraryStats]);
-
   const trendingNow = useMemo(() => {
-    type Trend = { key: string; title: string; kind: "assignment" | "video"; id: number; type?: string; subject?: string | null; questionCount?: number; uses: number; typeLabel: string; activeLabel: string };
-    const out: Trend[] = [];
-    if (wameethPick) {
-      const u = libraryStats?.assignmentUses[String(wameethPick.id)] ?? 0;
-      out.push({ key: `w-${wameethPick.id}`, title: wameethPick.title, kind: "assignment", id: wameethPick.id, type: wameethPick.type, subject: wameethPick.subject, questionCount: wameethPick.questionCount, uses: u, typeLabel: isAr ? "مسابقة مباشرة" : "Live quiz", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : "جاهز للتشغيل") : (u > 0 ? `${formatUseCount(u)} uses` : "Ready") });
-    }
-    const sciencePick = [...assignments].filter(a => resolveSubjectTheme(a.subject) === "science" && a.id !== wameethPick?.id).sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))[0];
-    if (sciencePick) {
-      const u = libraryStats?.assignmentUses[String(sciencePick.id)] ?? 0;
-      out.push({ key: `a-${sciencePick.id}`, title: sciencePick.title, kind: "assignment", id: sciencePick.id, type: sciencePick.type, subject: sciencePick.subject, questionCount: sciencePick.questionCount, uses: u, typeLabel: isAr ? "واجب / اختبار" : "Assignment", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} استخدام` : `${sciencePick.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} uses` : `${sciencePick.questionCount} Q`) });
-    }
-    if (topVideoByUses && !out.some(t => t.kind === "video" && t.id === topVideoByUses.id)) {
-      const u = libraryStats?.videoUses[String(topVideoByUses.id)] ?? 0;
-      out.push({ key: `v-${topVideoByUses.id}`, title: topVideoByUses.title, kind: "video", id: topVideoByUses.id, subject: topVideoByUses.subject, questionCount: topVideoByUses.questionCount, uses: u, typeLabel: isAr ? "فيديو" : "Video", activeLabel: isAr ? (u > 0 ? `${formatUseCount(u)} مشاهدة` : `${topVideoByUses.questionCount} سؤال`) : (u > 0 ? `${formatUseCount(u)} views` : `${topVideoByUses.questionCount} Q`) });
-    }
-    if (out.length < 3) {
-      const extra = [...assignments].filter(a => !out.some(t => t.kind === "assignment" && t.id === a.id)).sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id)).slice(0, 3 - out.length);
-      for (const a of extra) {
-        const u = libraryStats?.assignmentUses[String(a.id)] ?? 0;
-        out.push({ key: `a-${a.id}`, title: a.title, kind: "assignment", id: a.id, type: a.type, subject: a.subject, questionCount: a.questionCount, uses: u, typeLabel: activityBadge("assignment", a.type, isAr).label, activeLabel: isAr ? `${formatUseCount(u) || "0"} استخدام` : `${formatUseCount(u) || "0"} uses` });
-      }
-    }
-    return out.slice(0, 4);
-  }, [assignments, wameethPick, topVideoByUses, libraryStats, isAr]);
+    if (!libraryStats) return [];
+
+    type Trend = {
+      key: string;
+      title: string;
+      kind: "assignment" | "video";
+      id: number;
+      type?: string;
+      subject?: string | null;
+      questionCount?: number;
+      totalUses: number;
+      recentUses: number;
+      createdAt: string;
+      isEligible: boolean;
+      typeLabel: string;
+      activeLabel: string;
+    };
+
+    const assignmentTrends: Trend[] = assignments.map(assignment => {
+      const totalUses = libraryStats.assignmentUses[String(assignment.id)] ?? 0;
+      const recentUses = libraryStats.assignmentUsesLast14Days?.[String(assignment.id)] ?? 0;
+      return {
+        key: `a-${assignment.id}`,
+        title: assignment.title,
+        kind: "assignment",
+        id: assignment.id,
+        type: assignment.type,
+        subject: assignment.subject,
+        questionCount: assignment.questionCount,
+        totalUses,
+        recentUses,
+        createdAt: assignment.createdAt,
+        isEligible:
+          assignment.isShared !== false &&
+          assignment.accessMode !== "private" &&
+          !assignment.hiddenByAdmin,
+        typeLabel: activityBadge("assignment", assignment.type, isAr).label,
+        activeLabel: isAr
+          ? `${formatUseCount(totalUses)} استخدام`
+          : `${formatUseCount(totalUses)} uses`,
+      };
+    });
+
+    const videoTrends: Trend[] = videoLessons.map(video => {
+      const totalUses = libraryStats.videoUses[String(video.id)] ?? 0;
+      const recentUses = libraryStats.videoUsesLast14Days?.[String(video.id)] ?? 0;
+      return {
+        key: `v-${video.id}`,
+        title: video.title,
+        kind: "video",
+        id: video.id,
+        subject: video.subject,
+        questionCount: video.questionCount,
+        totalUses,
+        recentUses,
+        createdAt: video.createdAt,
+        isEligible:
+          video.isShared !== false &&
+          video.isPublished !== false &&
+          video.accessMode !== "private" &&
+          !video.hiddenByAdmin,
+        typeLabel: isAr ? "فيديو" : "Video",
+        activeLabel: isAr
+          ? `${formatUseCount(totalUses)} مشاهدة`
+          : `${formatUseCount(totalUses)} views`,
+      };
+    });
+
+    return selectTrendingActivities(
+      [...assignmentTrends, ...videoTrends],
+      { recentUsageAvailable: libraryStats.usageWindowDays === 14 },
+    );
+  }, [assignments, videoLessons, libraryStats, isAr]);
 
   const statsLabels = [
     { icon: <BookText  className="w-4 h-4" />, label: isAr ? "نشاط جاهز"          : "Ready activities",        value: formatUseCount(libraryStats?.totalActivities)     },
@@ -1124,7 +1165,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   {isAr ? "عرض الكل" : "See all"} <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="grid grid-cols-1 gap-3 overflow-x-auto pb-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]" style={{ scrollbarWidth: "thin" }}>
+              <div className="grid grid-cols-1 gap-3 pb-1 sm:grid-cols-2 lg:grid-cols-3">
                 {trendingNow.map((item, idx) => (
                   <article
                     key={item.key}
