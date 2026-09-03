@@ -32,6 +32,7 @@ import {
   LayoutGrid,
   List,
   ChevronLeft,
+  ChevronDown,
   SlidersHorizontal,
   Check,
   RotateCcw,
@@ -388,38 +389,39 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: Math.min(i * 0.03, 0.2) }}
         className={cn(
-          "group relative flex flex-col rounded-2xl border bg-white transition-all duration-300",
+          "group relative flex min-w-0 flex-col rounded-xl border bg-white transition-all duration-300 sm:rounded-2xl",
           a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-300" : "hover:-translate-y-1 hover:shadow-lg",
         )}
         style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
       >
-        <div className="relative overflow-hidden rounded-t-2xl">
+        <div className="relative overflow-hidden rounded-t-xl sm:rounded-t-2xl">
           <ActivityCover kind={coverKind} subject={a.subject} title={a.title} type={a.type} aspect="video">
-            <span className={cn("absolute top-2.5 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5", badge.cls)}>
+            <span className={cn("absolute top-2 z-10 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm sm:top-2.5 sm:rounded-lg sm:px-2 sm:text-[10px]", dir === "rtl" ? "right-2" : "left-2", badge.cls)}>
               {badge.label}
             </span>
             <button
               type="button"
               onClick={e => { e.stopPropagation(); toggleBookmark(a.id); }}
-              className={cn("absolute top-2.5 z-10 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors", dir === "rtl" ? "left-2.5" : "right-2.5")}
+              aria-label={bookmarks.has(a.id) ? (isAr ? "إزالة من المحفوظات" : "Remove bookmark") : (isAr ? "حفظ النشاط" : "Save activity")}
+              className={cn("absolute top-2 z-10 rounded-full bg-white/90 p-1 shadow-sm transition-colors sm:top-2.5 sm:p-1.5", dir === "rtl" ? "left-2" : "right-2")}
               style={{ color: bookmarks.has(a.id) ? C.gold : C.muted }}
             >
-              <Bookmark className={cn("w-3.5 h-3.5", bookmarks.has(a.id) && "fill-current")} />
+              <Bookmark className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", bookmarks.has(a.id) && "fill-current")} />
             </button>
           </ActivityCover>
         </div>
 
-        <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
-          <h3 className="line-clamp-2 text-[13px] font-extrabold leading-snug tracking-tight" style={{ color: C.text }}>
+        <div className="flex flex-1 flex-col px-2.5 pb-2.5 pt-2 sm:px-3 sm:pb-3 sm:pt-2.5">
+          <h3 className="line-clamp-2 text-[11px] font-extrabold leading-snug tracking-tight sm:text-[13px]" style={{ color: C.text }}>
             {a.title}
           </h3>
           {a.description && (
-            <p className="mt-0.5 line-clamp-1 text-[11px] leading-relaxed" style={{ color: C.muted }}>{a.description}</p>
+            <p className="mt-0.5 hidden line-clamp-1 text-[11px] leading-relaxed sm:block" style={{ color: C.muted }}>{a.description}</p>
           )}
-          <p className="mt-1 text-[10px] font-medium" style={{ color: C.muted }}>
+          <p className="mt-1 truncate text-[9px] font-medium sm:text-[10px]" style={{ color: C.muted }}>
             {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>
-          <div className="mt-2 flex items-center justify-between gap-2 text-[10px]" style={{ color: C.muted }}>
+          <div className="mt-1.5 flex items-center justify-between gap-1 text-[9px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
             {!statsError && <span>{formatUseCount(uses)} {isAr ? "استخدام" : "uses"}</span>}
             {a.teacherName && !a.isAdminContent
               ? <span className="flex min-w-0 items-center gap-1 truncate"><User className="w-3 h-3 shrink-0" />{a.teacherName}</span>
@@ -427,10 +429,10 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               : null}
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5 border-t pt-3" style={{ borderColor: C.border }}>
+          <div className="mt-2.5 flex items-center gap-1 border-t pt-2.5 sm:mt-3 sm:gap-1.5 sm:pt-3" style={{ borderColor: C.border }}>
             {isOwn ? (
-              <span className="flex w-full items-center justify-center gap-1 rounded-xl border py-2 text-xs font-bold" style={{ borderColor: C.border, color: C.primary, background: C.soft }}>
-                <CheckCircle2 className="w-3.5 h-3.5" />{isAr ? "محتواك" : "Yours"}
+              <span className="flex w-full items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-bold sm:rounded-xl sm:py-2 sm:text-xs" style={{ borderColor: C.border, color: C.primary, background: C.soft }}>
+                <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{isAr ? "محتواك" : "Yours"}
               </span>
             ) : (
               <>
@@ -438,16 +440,17 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   type="button"
                   onClick={() => launchAsGame(a.id, "classic")}
                   disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-extrabold text-white transition-all hover:brightness-110 disabled:opacity-40"
+                  className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-extrabold text-white transition-all hover:brightness-110 disabled:opacity-40 sm:gap-1.5 sm:rounded-xl sm:py-2 sm:text-xs"
                   style={{ background: C.primary }}
                 >
-                  {launchingIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Play className="w-3.5 h-3.5 fill-current" />{isAr ? "ابدأ" : "Start"}</>}
+                  {launchingIds.has(a.id) ? <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" /> : <><Play className="h-3 w-3 fill-current sm:h-3.5 sm:w-3.5" />{isAr ? "ابدأ" : "Start"}</>}
                 </button>
                 <button
                   type="button"
                   onClick={() => importAssignment(a.id)}
                   disabled={importingIds.has(a.id) || importedIds.has(a.id)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec] disabled:opacity-40"
+                  aria-label={t.sharedContent.importAssignment}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors hover:bg-[#f5f2ec] disabled:opacity-40 sm:h-9 sm:w-9 sm:rounded-xl"
                   style={{ borderColor: C.border }}
                   title={t.sharedContent.importAssignment}
                 >
@@ -456,7 +459,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 <button
                   type="button"
                   onClick={() => copyLink(a.id)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec]"
+                  aria-label={t.sharedContent.copyLink}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors hover:bg-[#f5f2ec] sm:h-9 sm:w-9 sm:rounded-xl"
                   style={{ borderColor: C.border }}
                   title={t.sharedContent.copyLink}
                 >
@@ -514,7 +518,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     <aside
       className="hidden shrink-0 border-s lg:flex lg:flex-col"
       style={{
-        width: 260,
+        width: 216,
         background: C.sidebar,
         borderColor: C.border,
         position: "sticky",
@@ -524,14 +528,14 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
       }}
     >
       {/* Logo */}
-      <div className="border-b px-5 py-5" style={{ borderColor: C.border }}>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: C.primary }}>
-            <BookText className="h-4 w-4 text-white" />
+      <div className="border-b px-3.5 py-4" style={{ borderColor: C.border }}>
+        <div className="mb-3 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: C.primary }}>
+            <BookText className="h-3.5 w-3.5 text-white" />
           </div>
           <div>
-            <p className="text-[15px] font-black" style={{ color: C.text }}>{isAr ? "مكتبة الأنشطة" : "Activities Library"}</p>
-            <p className="text-[10px]" style={{ color: C.muted }}>{isAr ? "اكتشف وابدأ فوراً" : "Discover & launch"}</p>
+            <p className="text-[13px] font-black" style={{ color: C.text }}>{isAr ? "مكتبة الأنشطة" : "Activities Library"}</p>
+            <p className="text-[9px]" style={{ color: C.muted }}>{isAr ? "اكتشف وابدأ فوراً" : "Discover & launch"}</p>
           </div>
         </div>
 
@@ -542,7 +546,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             placeholder={isAr ? "ابحث عن نشاط..." : "Search..."}
-            className={cn("w-full rounded-2xl border py-2.5 text-[13px] outline-none transition-all", isAr ? "pr-9 pl-9" : "pl-9 pr-9")}
+            className={cn("w-full rounded-xl border py-2 text-[11px] outline-none transition-all", isAr ? "pr-8 pl-8" : "pl-8 pr-8")}
             style={{ background: C.bg, borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
           />
           {search && (
@@ -554,15 +558,15 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
       </div>
 
       {/* Type filters */}
-      <div className="px-5 py-4">
-        <p className="mb-2.5 text-[10px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "نوع النشاط" : "Activity type"}</p>
+      <div className="px-3.5 py-3.5">
+        <p className="mb-2 text-[9px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "نوع النشاط" : "Activity type"}</p>
         <div className="flex flex-col gap-1">
           {typeFilters.map(f => (
             <button
               key={f.id}
               type="button"
               onClick={() => applyTypeFilter(f.id)}
-              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] transition-all"
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[11px] transition-all"
               style={{
                 fontFamily: "inherit",
                 fontWeight: typeChip === f.id ? 800 : 600,
@@ -579,41 +583,41 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         </div>
       </div>
 
-      {/* Subject pills */}
-      <div className="border-t px-5 py-4" style={{ borderColor: C.border }}>
-        <p className="mb-2.5 text-[10px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "المادة الدراسية" : "Subject"}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {[isAr ? "الكل" : "All", ...allSubjects].slice(0, 12).map(s => {
-            const active = subjectFilter === s || (!subjectFilter && (s === "الكل" || s === "All"));
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onSubjectFilterChange(active ? "" : s === "الكل" || s === "All" ? "" : s)}
-                className="rounded-lg border px-2 py-1 text-[11px] transition-all"
-                style={{ fontFamily: "inherit", fontWeight: active ? 700 : 500, borderColor: active ? C.primary : C.border, background: active ? C.soft : "transparent", color: active ? C.primary : C.muted, cursor: "pointer" }}
-              >
-                {s}
-              </button>
-            );
-          })}
+      {/* Subject dropdown */}
+      <div className="border-t px-3.5 py-3.5" style={{ borderColor: C.border }}>
+        <label className="mb-2 block text-[9px] font-black uppercase tracking-widest" style={{ color: C.muted }} htmlFor="library-subject-desktop">
+          {isAr ? "المادة الدراسية" : "Subject"}
+        </label>
+        <div className="relative">
+          <select
+            id="library-subject-desktop"
+            aria-label={isAr ? "المادة الدراسية" : "Subject"}
+            value={subjectFilter}
+            onChange={e => onSubjectFilterChange(e.target.value)}
+            className="w-full appearance-none rounded-xl border px-2.5 py-2 text-[11px] outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15"
+            style={{ background: C.bg, borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
+          >
+            <option value="">{isAr ? "كل المواد" : "All subjects"}</option>
+            {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+          </select>
+          <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2", isAr ? "left-2.5" : "right-2.5")} style={{ color: C.muted }} />
         </div>
       </div>
 
       {/* Grade + Sort (compact) */}
-      <div className="border-t px-5 py-4" style={{ borderColor: C.border }}>
-        <p className="mb-2 text-[10px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "الصف والترتيب" : "Grade & sort"}</p>
+      <div className="border-t px-3.5 py-3.5" style={{ borderColor: C.border }}>
+        <p className="mb-2 text-[9px] font-black uppercase tracking-widest" style={{ color: C.muted }}>{isAr ? "الصف والترتيب" : "Grade & sort"}</p>
         <div className="flex flex-col gap-2">
           <input
             value={gradeFilter}
             onChange={e => onGradeFilterChange(e.target.value)}
             list="lib-grades-sb"
             placeholder={isAr ? "الصف..." : "Grade..."}
-            className="w-full rounded-xl border px-3 py-2 text-[12px] outline-none"
+            className="w-full rounded-xl border px-2.5 py-2 text-[11px] outline-none"
             style={{ background: C.bg, borderColor: C.border, color: C.text, fontFamily: "inherit" }}
           />
           <datalist id="lib-grades-sb">{allGrades.map(g => <option key={g} value={g} />)}</datalist>
-          <select value={sortBy} onChange={e => onSortByChange(e.target.value as "newest" | "questions")} className="w-full rounded-xl border px-3 py-2 text-[12px] outline-none" style={{ background: C.bg, borderColor: C.border, color: C.text, fontFamily: "inherit" }}>
+          <select value={sortBy} onChange={e => onSortByChange(e.target.value as "newest" | "questions")} className="w-full rounded-xl border px-2.5 py-2 text-[11px] outline-none" style={{ background: C.bg, borderColor: C.border, color: C.text, fontFamily: "inherit" }}>
             <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
             <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
           </select>
@@ -622,8 +626,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
       {/* Admin toggle */}
       {isAdmin && (
-        <div className="border-t px-5 py-3" style={{ borderColor: C.border }}>
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-bold" style={{ color: C.muted }}>
+        <div className="border-t px-3.5 py-2.5" style={{ borderColor: C.border }}>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] font-bold" style={{ color: C.muted }}>
             <input type="checkbox" checked={showHidden} onChange={e => onShowHiddenChange(e.target.checked)} className="accent-[#225739]" />
             <EyeOff className="w-3.5 h-3.5" />
             {isAr ? "عرض المخفي" : "Show hidden"}
@@ -632,11 +636,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
       )}
 
       {/* Share CTA */}
-      <div className="mt-auto px-5 py-5">
+      <div className="mt-auto px-3.5 py-4">
         <Link href="/teacher/new">
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-black text-white transition-all hover:brightness-110"
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[11px] font-black text-white transition-all hover:brightness-110"
             style={{ background: `linear-gradient(135deg,${C.primary},${C.primary2})`, boxShadow: "0 4px 16px rgba(34,87,57,0.28)", border: "none", cursor: "pointer", fontFamily: "inherit" }}
           >
             <Plus className="h-4 w-4" />{isAr ? "شارك نشاطاً" : "Share activity"}
@@ -662,27 +666,27 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         {sidebar}
 
         {/* Main */}
-        <main className="flex-1 min-w-0 overflow-y-auto px-4 py-5 pb-24 sm:px-6 lg:px-8 lg:py-7 lg:pb-8">
+        <main className="min-w-0 flex-1 overflow-y-auto px-3 py-4 pb-24 sm:px-5 sm:py-5 lg:px-6 lg:py-6 lg:pb-8 xl:px-8">
           {/* Mobile-only library header and compact controls. The desktop
               sidebar remains the source of the same controls above lg. */}
-          <div className="mb-5 lg:hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm" style={{ background: C.primary }}>
-                <BookText className="h-5 w-5 text-white" />
+          <div className="mb-4 lg:hidden">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm" style={{ background: C.primary }}>
+                <BookText className="h-4 w-4 text-white" />
               </div>
-              <h1 className="text-xl font-black leading-tight" style={{ color: C.text }}>
+              <h1 className="text-lg font-black leading-tight" style={{ color: C.text }}>
                 {isAr ? "مكتبة الأنشطة" : "Activities Library"}
               </h1>
             </div>
 
-            <div className="relative mt-4">
-              <Search className={cn("pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2", isAr ? "right-3.5" : "left-3.5")} style={{ color: C.muted }} />
+            <div className="relative mt-3">
+              <Search className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "right-3" : "left-3")} style={{ color: C.muted }} />
               <input
                 aria-label={isAr ? "البحث في مكتبة الأنشطة" : "Search activities library"}
                 value={search}
                 onChange={e => onSearchChange(e.target.value)}
                 placeholder={isAr ? "ابحث عن نشاط..." : "Search activities..."}
-                className={cn("min-h-12 w-full rounded-2xl border bg-white py-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15", isAr ? "pr-10 pl-10" : "pl-10 pr-10")}
+                className={cn("min-h-10 w-full rounded-xl border bg-white py-2 text-xs outline-none transition-colors focus:ring-2 focus:ring-[#225739]/15", isAr ? "pr-9 pl-9" : "pl-9 pr-9")}
                 style={{ borderColor: search ? C.primary : C.border, color: C.text, fontFamily: "inherit" }}
               />
               {search && (
@@ -692,17 +696,17 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               )}
             </div>
 
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-2.5 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setFilterSheetOpen(true)}
-                className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border bg-white px-3 text-sm font-extrabold transition-colors active:scale-[0.98]"
+                className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border bg-white px-3 text-xs font-extrabold transition-colors active:scale-[0.98]"
                 style={{ borderColor: activeFilterCount > 0 ? C.primary : C.border, color: C.primary }}
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 <span>{isAr ? "تصفية" : "Filters"}</span>
                 {activeFilterCount > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-black text-white" style={{ background: C.primary }}>
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-black text-white" style={{ background: C.primary }}>
                     {activeFilterCount}
                   </span>
                 )}
@@ -713,7 +717,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   aria-label={isAr ? "الفرز" : "Sort"}
                   value={sortBy}
                   onChange={e => onSortByChange(e.target.value as "newest" | "questions")}
-                  className="min-h-11 w-full appearance-none rounded-2xl border bg-white px-3 text-center text-sm font-bold outline-none"
+                  className="min-h-10 w-full appearance-none rounded-xl border bg-white px-3 text-center text-xs font-bold outline-none"
                   style={{ borderColor: C.border, color: C.text, fontFamily: "inherit" }}
                 >
                   <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
@@ -772,28 +776,18 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   <h2 id="mobile-subject-filter" className="mb-3 text-xs font-black" style={{ color: C.muted }}>
                     {isAr ? "المادة الدراسية" : "Subject"}
                   </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {(isAr ? ["الكل", ...allSubjects] : ["All", ...allSubjects]).map((subject, index) => {
-                      const isAll = index === 0;
-                      const active = isAll ? !subjectFilter : subjectFilter === subject;
-                      return (
-                        <button
-                          key={`${subject}-${index}`}
-                          type="button"
-                          onClick={() => onSubjectFilterChange(isAll || active ? "" : subject)}
-                          aria-pressed={active}
-                          className="min-h-11 rounded-xl border px-3 text-xs font-bold transition-colors"
-                          style={{
-                            borderColor: active ? C.primary : C.border,
-                            background: active ? C.soft : C.card,
-                            color: active ? C.primary : C.muted,
-                            fontFamily: "inherit",
-                          }}
-                        >
-                          {subject}
-                        </button>
-                      );
-                    })}
+                  <div className="relative">
+                    <select
+                      aria-label={isAr ? "المادة الدراسية" : "Subject"}
+                      value={subjectFilter}
+                      onChange={e => onSubjectFilterChange(e.target.value)}
+                      className="min-h-11 w-full appearance-none rounded-xl border bg-white px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-[#225739]/15"
+                      style={{ borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
+                    >
+                      <option value="">{isAr ? "كل المواد" : "All subjects"}</option>
+                      {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                    </select>
+                    <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "left-3" : "right-3")} style={{ color: C.muted }} />
                   </div>
                 </section>
 
@@ -863,12 +857,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
           {/* Stats bar */}
           <div
-            className="mb-6 grid grid-cols-2 gap-3 rounded-2xl border bg-white p-4 shadow-sm lg:grid-cols-4"
+            className="mb-5 grid grid-cols-2 gap-2.5 rounded-2xl border bg-white p-3 shadow-sm sm:gap-3 sm:p-4 lg:mb-6 lg:grid-cols-4"
             style={{ borderColor: C.border }}
           >
             {statsLoading
               ? Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
+                  <div key={i} className="flex min-w-0 items-center gap-2 sm:gap-3">
                     <div className="h-10 w-10 animate-pulse rounded-xl" style={{ background: C.soft }} />
                     <div>
                       <div className="mb-1.5 h-6 w-16 animate-pulse rounded-md" style={{ background: C.border }} />
@@ -881,9 +875,9 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: C.soft, color: C.primary }}>
                       {s.icon}
                     </div>
-                    <div>
-                      <p className="text-xl font-black leading-none" style={{ color: C.text }}>{s.value || "—"}</p>
-                      <p className="mt-1 text-[10px]" style={{ color: C.muted }}>{s.label}</p>
+                    <div className="min-w-0">
+                      <p className="text-base font-black leading-none sm:text-xl" style={{ color: C.text }}>{s.value || "—"}</p>
+                      <p className="mt-1 truncate text-[9px] sm:text-[10px]" style={{ color: C.muted }}>{s.label}</p>
                     </div>
                     {i < 3 && <div className="ms-auto h-9 w-px" style={{ background: C.border }} />}
                   </div>
@@ -893,12 +887,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
           {/* Trending now */}
           {trendingNow.length > 0 && (
-            <section className="mb-7">
-              <div className="mb-3 flex items-center justify-between">
+            <section className="mb-5 sm:mb-7">
+              <div className="mb-2.5 flex items-center justify-between sm:mb-3">
                 <div className="flex items-center gap-2">
                   <span className="h-5 w-0.5 rounded-full" style={{ background: `linear-gradient(to bottom,${C.gold},${C.primary})` }} />
                   <Radio className="h-4 w-4" style={{ color: C.primary }} />
-                  <h2 className="text-[17px] font-black" style={{ color: C.text }}>{isAr ? "رائج الآن" : "Trending now"}</h2>
+                  <h2 className="text-[15px] font-black sm:text-[17px]" style={{ color: C.text }}>{isAr ? "رائج الآن" : "Trending now"}</h2>
                 </div>
                 <button type="button" className="flex items-center gap-1 text-xs font-bold" style={{ background: "none", border: "none", cursor: "pointer", color: C.primary, fontFamily: "inherit" }}>
                   {isAr ? "عرض الكل" : "See all"} <ChevronLeft className="h-3.5 w-3.5" />
@@ -910,8 +904,8 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                     key={item.key}
                     type="button"
                     onClick={() => item.kind === "assignment" ? launchAsGame(item.id) : onActiveTabChange("videos")}
-                    className="group flex shrink-0 flex-col gap-3 overflow-hidden rounded-2xl p-4 text-start transition-all hover:-translate-y-1"
-                    style={{ width: 280, background: C.primary, boxShadow: "0 4px 20px rgba(34,87,57,0.28)", border: "none", cursor: "pointer", position: "relative" }}
+                    className="group flex shrink-0 flex-col gap-2.5 overflow-hidden rounded-2xl p-3 text-start transition-all hover:-translate-y-1 sm:gap-3 sm:p-4"
+                    style={{ width: 248, background: C.primary, boxShadow: "0 4px 20px rgba(34,87,57,0.28)", border: "none", cursor: "pointer", position: "relative" }}
                   >
                     {/* Decorative circle */}
                     <div style={{ position: "absolute", top: -28, left: -28, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
@@ -940,14 +934,14 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           )}
 
           {/* Category tabs + view toggle */}
-          <div className="mb-4 flex items-center justify-between gap-2 overflow-x-auto">
-            <div className="flex shrink-0 gap-1 rounded-2xl border bg-white p-1" style={{ borderColor: C.border }}>
+          <div className="mb-3.5 flex items-center justify-between gap-2 overflow-x-auto sm:mb-4">
+            <div className="flex shrink-0 gap-1 rounded-xl border bg-white p-1 sm:rounded-2xl" style={{ borderColor: C.border }}>
               {categoryTabs.map(tab => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setCategoryTab(tab.id)}
-                  className="rounded-xl px-3 py-2 text-xs transition-all"
+                  className="rounded-lg px-2.5 py-1.5 text-[10px] transition-all sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs"
                   style={{ fontFamily: "inherit", fontWeight: categoryTab === tab.id ? 800 : 600, background: categoryTab === tab.id ? C.primary : "transparent", color: categoryTab === tab.id ? "#fff" : C.muted, border: "none", cursor: "pointer" }}
                 >
                   {isAr ? tab.ar : tab.en}
@@ -977,13 +971,13 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </div>
 
           {/* Results count */}
-          <p className="mb-4 text-xs font-semibold" style={{ color: C.muted }}>{totalShown} {isAr ? "نشاط" : "activities"}</p>
+          <p className="mb-3 text-[11px] font-semibold sm:mb-4 sm:text-xs" style={{ color: C.muted }}>{totalShown} {isAr ? "نشاط" : "activities"}</p>
 
           {/* Content — Assignments */}
           {activeTab === "assignments" && (
             displayAssignments.length > 0
               ? viewMode === "grid"
-                ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
+                ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
                     {displayAssignments.map((a, i) => renderAssignmentCard(a, i))}
                   </div>
                 : <div className="flex flex-col gap-2.5">
@@ -995,10 +989,10 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {/* Content — Videos */}
           {activeTab === "videos" && (
             displayVideos.length > 0
-              ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
+              ? <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(210px,1fr))]">
                   {displayVideos.map((v, i) => (
                     <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      className="group flex flex-col overflow-hidden rounded-2xl border bg-white hover:-translate-y-1 hover:shadow-md transition-all"
+                      className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all hover:-translate-y-1 hover:shadow-md sm:rounded-2xl"
                       style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
                     >
                       <ActivityCover kind="video" subject={v.subject} title={v.title} aspect="video">
@@ -1006,16 +1000,16 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                           {isAr ? "فيديو" : "Video"}
                         </span>
                       </ActivityCover>
-                      <div className="flex flex-1 flex-col p-3">
-                        <p className="line-clamp-2 text-[13px] font-black" style={{ color: C.text }}>{v.title}</p>
-                        {v.description && <p className="mt-1 line-clamp-1 text-xs" style={{ color: C.muted }}>{v.description}</p>}
-                        <p className="mt-1 text-[11px]" style={{ color: C.muted }}>{[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}</p>
-                        <div className="mt-2 flex items-center justify-between text-[10px]" style={{ color: C.muted }}>
+                      <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+                        <p className="line-clamp-2 text-[11px] font-black sm:text-[13px]" style={{ color: C.text }}>{v.title}</p>
+                        {v.description && <p className="mt-1 hidden line-clamp-1 text-xs sm:block" style={{ color: C.muted }}>{v.description}</p>}
+                        <p className="mt-1 truncate text-[9px] sm:text-[11px]" style={{ color: C.muted }}>{[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}</p>
+                        <div className="mt-1.5 flex items-center justify-between text-[9px] sm:mt-2 sm:text-[10px]" style={{ color: C.muted }}>
                           {!statsError && <span>{formatUseCount(videoUseCount(v.id))} {isAr ? "استخدام" : "uses"}</span>}
                           {v.teacherName && <span className="flex items-center gap-1 truncate"><User className="w-3 h-3" />{v.teacherName}</span>}
                         </div>
-                        <div className="mt-3 flex gap-1.5 border-t pt-3" style={{ borderColor: C.border }}>
-                          <button type="button" onClick={() => importVideo(v.id)} disabled={importingVIds.has(v.id) || v.teacherId === currentTeacherId} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-white disabled:opacity-40" style={{ background: C.primary }}>
+                        <div className="mt-2.5 flex gap-1 border-t pt-2.5 sm:mt-3 sm:gap-1.5 sm:pt-3" style={{ borderColor: C.border }}>
+                          <button type="button" onClick={() => importVideo(v.id)} disabled={importingVIds.has(v.id) || v.teacherId === currentTeacherId} className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold text-white disabled:opacity-40 sm:gap-1.5 sm:rounded-xl sm:py-2 sm:text-xs" style={{ background: C.primary }}>
                             {importingVIds.has(v.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : importedVIds.has(v.id) ? <><CheckCircle2 className="w-3.5 h-3.5" />{isAr ? "تم الاستيراد" : "Imported"}</> : <><Download className="w-3.5 h-3.5" />{isAr ? "استيراد" : "Import"}</>}
                           </button>
                         </div>
@@ -1029,20 +1023,20 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           {/* Content — Questions */}
           {activeTab === "questions" && (
             displayQuestions.length > 0
-              ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              ? <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
                   {displayQuestions.map((q, i) => (
                     <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col overflow-hidden rounded-2xl border bg-white hover:shadow-md transition-shadow"
+                      className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md sm:rounded-2xl"
                       style={{ borderColor: C.border }}
                     >
                       <ActivityCover kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} tags={q.tags ?? undefined} imageUrl={q.imageUrl} aspect="video">
                         <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-violet-600/90")}>{isAr ? "تفاعلي" : "Interactive"}</span>
                       </ActivityCover>
-                      <div className="p-4">
-                        <p className="line-clamp-3 text-sm font-bold" style={{ color: C.text }}>{q.text}</p>
-                        <p className="mt-2 text-xs" style={{ color: C.muted }}>{[q.subject, `${q.points} ${isAr ? "نقطة" : "pts"}`].filter(Boolean).join(" · ")}</p>
-                        {q.teacherName && <p className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: C.muted }}><User className="w-3 h-3" />{q.teacherName}</p>}
-                        <button type="button" onClick={() => importQuestion(q.id)} disabled={importingQIds.has(q.id)} className="mt-3 w-full rounded-xl px-4 py-2 text-xs font-bold text-white" style={{ background: C.primary }}>
+                      <div className="p-2.5 sm:p-4">
+                        <p className="line-clamp-3 text-[11px] font-bold sm:text-sm" style={{ color: C.text }}>{q.text}</p>
+                        <p className="mt-1.5 text-[9px] sm:mt-2 sm:text-xs" style={{ color: C.muted }}>{[q.subject, `${q.points} ${isAr ? "نقطة" : "pts"}`].filter(Boolean).join(" · ")}</p>
+                        {q.teacherName && <p className="mt-1 flex items-center gap-1 truncate text-[9px] sm:text-[11px]" style={{ color: C.muted }}><User className="h-3 w-3" />{q.teacherName}</p>}
+                        <button type="button" onClick={() => importQuestion(q.id)} disabled={importingQIds.has(q.id)} className="mt-2 w-full rounded-lg px-2 py-1.5 text-[10px] font-bold text-white sm:mt-3 sm:rounded-xl sm:px-4 sm:py-2 sm:text-xs" style={{ background: C.primary }}>
                           {importingQIds.has(q.id) ? <Loader2 className="mx-auto w-4 h-4 animate-spin" /> : isAr ? "استيراد" : "Import"}
                         </button>
                       </div>

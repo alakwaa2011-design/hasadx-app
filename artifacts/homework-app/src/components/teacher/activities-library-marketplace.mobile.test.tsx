@@ -151,8 +151,17 @@ describe("ActivitiesLibraryMarketplace mobile controls", () => {
     expect(sheet.textContent).toContain("المادة الدراسية");
     expect(sheet.textContent).toContain("المرحلة / الصف");
 
-    await act(async () => buttonWithText(sheet, "علوم").click());
+    const subject = sheet.querySelector('select[aria-label="المادة الدراسية"]') as HTMLSelectElement;
+    await act(async () => {
+      subject.value = "علوم";
+      subject.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     expect(props.onSubjectFilterChange).toHaveBeenCalledWith("علوم");
+
+    const assignmentsGrid = Array.from(container.querySelectorAll("div")).find(
+      element => element.className.includes("grid-cols-2") && element.querySelector("article"),
+    );
+    expect(assignmentsGrid).not.toBeUndefined();
 
     const sort = container.querySelector('select[aria-label="الفرز"]') as HTMLSelectElement;
     await act(async () => {
