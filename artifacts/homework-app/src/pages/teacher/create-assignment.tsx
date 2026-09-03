@@ -395,10 +395,11 @@ export default function CreateAssignment() {
   const [extractSourceText, setExtractSourceText] = useState("");
   const [extractCounts, setExtractCounts] = useState<ExtractCounts>({ mcq: 10, true_false: 0, fill_blank: 0 });
   const [extractAllQuestions, setExtractAllQuestions] = useState(false);
-  const [extractPages, setExtractPages] = useState<1 | 2 | 3>(1);
+  const [extractCapacity, setExtractCapacity] = useState<10 | 15 | 20 | 30 | 60 | 90>(15);
   const [extractPageStart, setExtractPageStart] = useState("");
   const [extractPageEnd, setExtractPageEnd] = useState("");
   const [extractInstructions, setExtractInstructions] = useState("");
+  const [extractIsSubscriber, setExtractIsSubscriber] = useState<boolean | null>(null);
   /* Credit cost/balance for the extract operation — comes from the server's
      central pricing (Pro discount applied once, server-side). */
   const [extractCredit, setExtractCredit] = useState<{
@@ -597,6 +598,25 @@ export default function CreateAssignment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showImageExtract]);
 
+  useEffect(() => {
+    if (!showImageExtract) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/subscriptions/me`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (cancelled) return;
+        const sub = data?.subscription;
+        setExtractIsSubscriber(Boolean(
+          sub
+          && sub.plan_code !== "free"
+          && sub.status === "active"
+          && (!sub.current_period_end || new Date(sub.current_period_end) > new Date()),
+        ));
+      })
+      .catch(() => { if (!cancelled) setExtractIsSubscriber(false); });
+    return () => { cancelled = true; };
+  }, [showImageExtract]);
+
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
   const runExtraction = async (replacePrevious: boolean) => {
@@ -618,7 +638,9 @@ export default function CreateAssignment() {
       }
       form.append("language", lang === "ar" ? "ar" : "en");
       form.append("difficulty", extractDifficulty);
-      form.append("pages", String(extractPages));
+      form.append("pages", String(Math.ceil(extractCapacity / 30)));
+      form.append("maxQuestions", String(extractCapacity));
+      form.append("sourceContext", "create_assignment");
       form.append("allQuestions", String(extractAllQuestions));
       if (extractPageStart && extractPageEnd) {
         form.append("pageStart", extractPageStart);
@@ -1042,6 +1064,10 @@ export default function CreateAssignment() {
     { value: "medium" as const, label: t.createAssignment.aiMedium, color: "yellow" },
     { value: "hard" as const, label: t.createAssignment.aiHard, color: "red" },
   ];
+  const extractRequestedTotal = extractAllQuestions
+    ? extractCapacity
+    : extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank;
+  const extractNeedsUpgrade = !isAdmin && extractIsSubscriber !== true && extractRequestedTotal > 15;
 
   const canLeaveStep2 = hasAtLeastOneQuestion(questions, isPaper);
   const publishBlock = getPublishBlockReason(title, questions, isPaper);
@@ -1637,16 +1663,16 @@ export default function CreateAssignment() {
                             <div className="flex items-center justify-between text-[11px] font-bold">
                               <span className="text-muted-foreground">{lang === "ar" ? "العدد المطلوب" : "Requested total"}</span>
                               <span className="text-primary">
-                                {extractAllQuestions ? (lang === "ar" ? `حتى ${extractPages * 30}` : `Up to ${extractPages * 30}`) : extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank}
+                                {extractAllQuestions ? (lang === "ar" ? `حتى ${extractCapacity}` : `Up to ${extractCapacity}`) : extractRequestedTotal}
                               </span>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <label className="space-y-1">
                               <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "سعة الاستخراج" : "Extraction capacity"}</span>
-                              <select value={extractPages} onChange={e => setExtractPages(Number(e.target.value) as 1 | 2 | 3)}
+                              <select value={extractCapacity} onChange={e => setExtractCapacity(Number(e.target.value) as 10 | 15 | 20 | 30 | 60 | 90)}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-bold outline-none focus:border-primary">
-                                {[1, 2, 3].map(p => <option key={p} value={p}>{lang === "ar" ? `حتى ${p * 30} سؤالًا` : `Up to ${p * 30} questions`}</option>)}
+                                {[10, 15, 20, 30, 60, 90].map(count => <option key={count} value={count}>{lang === "ar" ? `حتى ${count} سؤالًا` : `Up to ${count} questions`}</option>)}
                               </select>
                             </label>
                             {extractSourceMode === "file" && extractFiles.some(f => f.name.toLowerCase().endsWith(".pdf")) && (
@@ -1668,6 +1694,20 @@ export default function CreateAssignment() {
                               placeholder={lang === "ar" ? "مثال: ركّز على المفاهيم والتطبيق، وتجنب أسئلة الحفظ…" : "Example: Focus on concepts and application; avoid recall-only questions…"}
                               className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium leading-relaxed outline-none focus:border-primary" />
                           </label>
+                          {extractNeedsUpgrade && (
+                            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" data-testid="extract-upgrade-required">
+                              <p className="text-xs font-black">
+                                {lang === "ar" ? "الحساب المجاني يسمح باستخراج حتى 15 سؤالًا" : "Free accounts can extract up to 15 questions"}
+                              </p>
+                              <p className="mt-1 text-[11px] font-medium opacity-80">
+                                {lang === "ar" ? "رقِّ حسابك لتوليد واستخراج أعداد أكبر من الأسئلة في العملية الواحدة." : "Upgrade your plan to generate and extract more questions in one request."}
+                              </p>
+                              <button type="button" onClick={() => setLocation("/teacher/pricing")}
+                                className="mt-2 rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-black text-white hover:bg-amber-700">
+                                {lang === "ar" ? "عرض خطط الترقية" : "View upgrade plans"}
+                              </button>
+                            </div>
+                          )}
                           <div className="flex gap-1">
                             {difficultyOptions.map(d => (
                               <button key={d.value} type="button" onClick={() => setExtractDifficulty(d.value)}
@@ -1715,7 +1755,7 @@ export default function CreateAssignment() {
                             </div>
                           ) : (
                           <button type="button" onClick={handleExtractFromSource}
-                            disabled={extractLoading || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || (!extractAllQuestions && extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank === 0)}
+                            disabled={extractLoading || extractNeedsUpgrade || extractRequestedTotal > extractCapacity || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || (!extractAllQuestions && extractRequestedTotal === 0)}
                             data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري القراءة والتوليد..." : "Reading & generating..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج وأنشئ الأسئلة" : "Extract & create questions"}</>}

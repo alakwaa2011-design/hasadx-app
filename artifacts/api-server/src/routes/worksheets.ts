@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable, studentsTable } from "@workspace/db";
+import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable, studentsTable, subscriptionsTable, plansTable } from "@workspace/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { featureAccess } from "@workspace/billing";
@@ -983,11 +983,13 @@ router.post(
         gradeLevel: req.body.gradeLevel || undefined,
         difficulty: req.body.difficulty,
         pages: req.body.pages ? Number(req.body.pages) : 1,
+        maxQuestions: req.body.maxQuestions ? Number(req.body.maxQuestions) : undefined,
         pageStart: req.body.pageStart ? Number(req.body.pageStart) : undefined,
         pageEnd: req.body.pageEnd ? Number(req.body.pageEnd) : undefined,
         topicHint: req.body.topicHint || undefined,
         sourceText: req.body.sourceText || undefined,
         allQuestions: req.body.allQuestions === "true",
+        sourceContext: req.body.sourceContext || undefined,
         counts: parsedCounts,
       });
       const parsedBody = {
@@ -1007,7 +1009,7 @@ router.post(
         res.status(400).json({ message: language === "ar" ? "أدخل بداية ونهاية صحيحتين لنطاق الصفحات" : "Enter a valid page start and end" });
         return;
       }
-      const maxTotal = parsedBody.pages * 30;
+      const maxTotal = parsedBody.maxQuestions ?? parsedBody.pages * 30;
       const effectiveCounts = parsedBody.allQuestions
         ? {
             mcq: Math.ceil(maxTotal * 0.4),
@@ -1027,6 +1029,32 @@ router.post(
         await refundCredits(req, "عدد الأسئلة يتجاوز الحد");
         res.status(400).json({ message: language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions` });
         return;
+      }
+      const requestedTotal = parsedBody.allQuestions ? maxTotal : total;
+      if (parsedBody.sourceContext === "create_assignment" && requestedTotal > 15) {
+        const [subscription] = await db
+          .select({
+            planCode: plansTable.code,
+            status: subscriptionsTable.status,
+            expiresAt: subscriptionsTable.expiresAt,
+          })
+          .from(subscriptionsTable)
+          .innerJoin(plansTable, eq(plansTable.id, subscriptionsTable.planId))
+          .where(eq(subscriptionsTable.teacherId, teacherId))
+          .limit(1);
+        const isActiveSubscriber = subscription?.planCode !== "free"
+          && subscription?.status === "active"
+          && (!subscription.expiresAt || subscription.expiresAt > new Date());
+        if (!isActiveSubscriber) {
+          await refundCredits(req, "يتطلب العدد الكبير اشتراكًا");
+          res.status(403).json({
+            code: "SUBSCRIPTION_REQUIRED",
+            message: language === "ar"
+              ? "الحساب المجاني يسمح باستخراج حتى 15 سؤالًا. رقِّ حسابك لاستخراج عدد أكبر."
+              : "Free accounts can extract up to 15 questions. Upgrade your plan to extract more.",
+          });
+          return;
+        }
       }
 
       // Validate tier limits and normalise files into images + text.
@@ -1104,11 +1132,13 @@ const aiExtractFields = z.object({
   gradeLevel: z.string().max(50).optional(),
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("medium"),
   pages: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
+  maxQuestions: z.number().int().min(1).max(90).optional(),
   pageStart: z.number().int().min(1).max(1000).optional(),
   pageEnd: z.number().int().min(1).max(1000).optional(),
   topicHint: z.string().max(300).optional(),
   sourceText: z.string().max(30000).optional(),
   allQuestions: z.boolean().default(false),
+  sourceContext: z.enum(["create_assignment"]).optional(),
   counts: countsSchema,
 });
 
