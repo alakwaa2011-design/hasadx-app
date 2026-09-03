@@ -40,7 +40,7 @@ describe("عقد تثبيت معرّفات الحفظ التلقائي", () => {
 
     expect(code).toContain('method: currentId ? "PUT" : "POST"');
     expect(code).toMatch(/savedIdRef\.current\s*=\s*nextId/);
-    expect(code).toContain("await persistPlan(d.plan)");
+    expect(code).toContain("await persistPlan(generatedPlan, false, false, {");
     expect(code).toMatch(/const id = await persistPlan\(plan, true\)/);
     expect(code).toContain("navigate(`/teacher/smart-board/present/${id}`)");
     expect(code).toContain("clientRequestId");

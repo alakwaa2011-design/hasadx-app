@@ -43,6 +43,7 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+const MAX_SOURCE_TEXT_LENGTH = 12000;
 /** Hasaad brand — dark forest green (matches dashboard / layout), not teal/cyan */
 const HASAD_GREEN = "#1E4D35";
 const HASAD_GREEN_MID = "#225739";
@@ -382,6 +383,7 @@ export default function CreateAssignment() {
 
   // ── AI / image extract ──
   const [aiTopic, setAiTopic] = useState("");
+  const [aiSourceText, setAiSourceText] = useState("");
   const [aiCount, setAiCount] = useState(DEFAULT_AI_QUESTION_COUNT);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [aiWithImages, setAiWithImages] = useState(false);
@@ -394,12 +396,7 @@ export default function CreateAssignment() {
   const [extractSourceMode, setExtractSourceMode] = useState<ExtractSourceMode>("file");
   const [extractSourceText, setExtractSourceText] = useState("");
   const [extractCounts, setExtractCounts] = useState<ExtractCounts>({ mcq: 10, true_false: 0, fill_blank: 0 });
-  const [extractAllQuestions, setExtractAllQuestions] = useState(false);
-  const [extractCapacity, setExtractCapacity] = useState<10 | 15 | 20 | 30 | 60 | 90>(15);
-  const [extractPageStart, setExtractPageStart] = useState("");
-  const [extractPageEnd, setExtractPageEnd] = useState("");
   const [extractInstructions, setExtractInstructions] = useState("");
-  const [extractIsSubscriber, setExtractIsSubscriber] = useState<boolean | null>(null);
   /* Credit cost/balance for the extract operation — comes from the server's
      central pricing (Pro discount applied once, server-side). */
   const [extractCredit, setExtractCredit] = useState<{
@@ -510,10 +507,10 @@ export default function CreateAssignment() {
 
   // ── AI generate ──
   const handleAiGenerate = async () => {
-    if (!aiTopic.trim()) return;
+    if (!aiTopic.trim() && !aiSourceText.trim()) return;
     setAiLoading(true); setAiError("");
     try {
-      const endpoint = aiWithImages ? "/api/ai/generate-questions-with-images" : "/api/ai/generate-questions";
+      const endpoint = aiWithImages && !aiSourceText.trim() ? "/api/ai/generate-questions-with-images" : "/api/ai/generate-questions";
       /* Respect the template structure: send the prepared slots' question types
          so AI generates the same mix (e.g. true/false template → true/false questions). */
       const slotTypes = questions.map(q =>
@@ -526,6 +523,7 @@ export default function CreateAssignment() {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({
           topic: aiTopic,
+          sourceText: aiSourceText.trim() || undefined,
           count: aiWithImages ? Math.min(requestCount, 20) : requestCount,
           difficulty: aiDifficulty,
           subject: subject || undefined,
@@ -547,7 +545,7 @@ export default function CreateAssignment() {
       }));
       const hasRealQuestions = questions.length > 0 && questions.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
       setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
-      setShowAiPanel(false); setAiTopic("");
+       setShowAiPanel(false); setAiTopic(""); setAiSourceText("");
       toast.success(lang === "ar" ? `تم توليد ${generated.length} سؤال بنجاح` : `${generated.length} questions generated successfully`);
       const failedImages = Number(data.failedImages) || 0;
       if (failedImages > 0) {
@@ -598,25 +596,6 @@ export default function CreateAssignment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showImageExtract]);
 
-  useEffect(() => {
-    if (!showImageExtract) return;
-    let cancelled = false;
-    fetch(`${API_BASE}/api/subscriptions/me`, { credentials: "include" })
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => {
-        if (cancelled) return;
-        const sub = data?.subscription;
-        setExtractIsSubscriber(Boolean(
-          sub
-          && sub.plan_code !== "free"
-          && sub.status === "active"
-          && (!sub.current_period_end || new Date(sub.current_period_end) > new Date()),
-        ));
-      })
-      .catch(() => { if (!cancelled) setExtractIsSubscriber(false); });
-    return () => { cancelled = true; };
-  }, [showImageExtract]);
-
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
   const runExtraction = async (replacePrevious: boolean) => {
@@ -638,14 +617,7 @@ export default function CreateAssignment() {
       }
       form.append("language", lang === "ar" ? "ar" : "en");
       form.append("difficulty", extractDifficulty);
-      form.append("pages", String(Math.ceil(extractCapacity / 30)));
-      form.append("maxQuestions", String(extractCapacity));
-      form.append("sourceContext", "create_assignment");
-      form.append("allQuestions", String(extractAllQuestions));
-      if (extractPageStart && extractPageEnd) {
-        form.append("pageStart", extractPageStart);
-        form.append("pageEnd", extractPageEnd);
-      }
+      form.append("pages", "1");
       if (extractInstructions.trim()) form.append("topicHint", extractInstructions.trim());
       /* Activity editor supports mcq / true_false / fill_blank. */
       form.append("counts", JSON.stringify({
@@ -680,7 +652,7 @@ export default function CreateAssignment() {
       setShowImageExtract(false); setExtractFiles([]); setExtractSourceText("");
       toast.success(lang === "ar" ? `تم استخراج ${generated.length} سؤال من المصدر بنجاح` : `${generated.length} questions extracted from the source`);
       const requestedTotal = extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank;
-      if (!extractAllQuestions && generated.length < requestedTotal) {
+      if (generated.length < requestedTotal) {
         toast.warning(lang === "ar"
           ? `تم العثور على ${generated.length} من أصل ${requestedTotal} سؤالًا مطلوبًا. قد لا يحتوي المصدر على مادة كافية.`
           : `Found ${generated.length} of ${requestedTotal} requested questions. The source may not contain enough material.`);
@@ -1064,10 +1036,7 @@ export default function CreateAssignment() {
     { value: "medium" as const, label: t.createAssignment.aiMedium, color: "yellow" },
     { value: "hard" as const, label: t.createAssignment.aiHard, color: "red" },
   ];
-  const extractRequestedTotal = extractAllQuestions
-    ? extractCapacity
-    : extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank;
-  const extractNeedsUpgrade = !isAdmin && extractIsSubscriber !== true && extractRequestedTotal > 15;
+  const extractRequestedTotal = extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank;
 
   const canLeaveStep2 = hasAtLeastOneQuestion(questions, isPaper);
   const publishBlock = getPublishBlockReason(title, questions, isPaper);
@@ -1533,6 +1502,23 @@ export default function CreateAssignment() {
                               </button>
                             )}
                           </div>
+                          <div>
+                            <label className="block text-xs font-bold text-muted-foreground mb-1">
+                              {lang === "ar" ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}
+                            </label>
+                            <textarea
+                              value={aiSourceText}
+                              maxLength={MAX_SOURCE_TEXT_LENGTH}
+                              onChange={e => setAiSourceText(e.target.value)}
+                              placeholder={lang === "ar"
+                                ? "الصق محتوى الدرس هنا؛ يبقى منفصلاً عن الموضوع والتعليمات."
+                                : "Paste lesson content here; it remains separate from the topic and instructions."}
+                              className="w-full min-h-24 px-4 py-3 rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-white dark:bg-[#0B100E] text-sm outline-none focus:border-emerald-500"
+                            />
+                            <p className="text-[10px] text-muted-foreground text-end mt-1">
+                              {aiSourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}
+                            </p>
+                          </div>
                           <div className="flex gap-2">
                             <select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value))} className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-primary/20 text-sm focus:outline-none focus:border-primary">
                               {(aiWithImages ? [5, 10, 15, 20] : [5, 10, 15, 20, 25, 30]).map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}
@@ -1573,7 +1559,7 @@ export default function CreateAssignment() {
                           </>
                           )}
                           {aiError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-2 text-xs text-red-700 dark:text-red-300">{aiError}</div>}
-                          <button type="button" onClick={handleAiGenerate} disabled={aiLoading || !aiTopic.trim()}
+                          <button type="button" onClick={handleAiGenerate} disabled={aiLoading || (!aiTopic.trim() && !aiSourceText.trim())}
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {aiLoading
                               ? <><Loader2 className="w-4 h-4 animate-spin" />{aiWithImages ? (lang === "ar" ? "جارٍ توليد الأسئلة والصور…" : "Generating questions & images…") : t.createAssignment.aiGenerating}</>
@@ -1639,67 +1625,35 @@ export default function CreateAssignment() {
                           ) : (
                             <div className="rounded-xl border border-primary/20 bg-background p-3">
                               <textarea value={extractSourceText} onChange={e => { setExtractSourceText(e.target.value); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }}
-                                rows={7} maxLength={30000} data-testid="input-extract-source-text"
+                                rows={7} maxLength={MAX_SOURCE_TEXT_LENGTH} data-testid="input-extract-source-text"
                                 placeholder={lang === "ar" ? "الصق هنا محتوى ورقة العمل أو الدرس أو أي نص تعليمي…" : "Paste worksheet, lesson, or other educational content here…"}
                                 className="w-full resize-y bg-transparent text-sm font-medium leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60" />
-                              <div className="text-end text-[10px] font-bold text-muted-foreground">{extractSourceText.length}/30000</div>
+                              <div className="text-end text-[10px] font-bold text-muted-foreground">{extractSourceText.length}/{MAX_SOURCE_TEXT_LENGTH}</div>
                             </div>
                           )}
                           <div className="rounded-xl border border-primary/15 bg-background/70 p-3 space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-xs font-black text-foreground">{lang === "ar" ? "عدد الأسئلة وأنواعها" : "Question count and types"}</p>
-                                <p className="text-[10px] text-muted-foreground">{lang === "ar" ? "حدّد التوزيع أو اطلب أكبر عدد ممكن" : "Choose a distribution or extract as many as possible"}</p>
-                              </div>
-                              <label className="flex items-center gap-2 text-[11px] font-black text-primary cursor-pointer">
-                                <input type="checkbox" checked={extractAllQuestions} onChange={e => setExtractAllQuestions(e.target.checked)}
-                                  className="w-4 h-4 accent-primary" data-testid="input-extract-all" />
-                                {lang === "ar" ? "كل الأسئلة" : "All questions"}
-                              </label>
+                            <div>
+                              <p className="text-xs font-black text-foreground">{lang === "ar" ? "عدد الأسئلة وأنواعها" : "Question count and types"}</p>
+                              <p className="text-[10px] text-muted-foreground">{lang === "ar" ? "حدّد توزيع الأسئلة المطلوبة" : "Choose the requested question distribution"}</p>
                             </div>
-                            {!extractAllQuestions && (
-                              <div className="grid grid-cols-3 gap-2">
-                                {([
-                                  ["mcq", lang === "ar" ? "اختيار متعدد" : "Multiple choice"],
-                                  ["true_false", lang === "ar" ? "صح أو خطأ" : "True / false"],
-                                  ["fill_blank", lang === "ar" ? "أكمل الفراغ" : "Fill blank"],
-                                ] as const).map(([key, label]) => (
-                                  <label key={key} className="space-y-1">
-                                    <span className="block text-[10px] font-bold text-muted-foreground">{label}</span>
-                                    <input type="number" min={0} max={40} value={extractCounts[key]}
-                                      onChange={e => setExtractCounts(prev => ({ ...prev, [key]: Math.max(0, Math.min(40, Number(e.target.value) || 0)) }))}
-                                      className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-sm font-black outline-none focus:border-primary" />
-                                  </label>
-                                ))}
-                              </div>
-                            )}
+                            <div className="grid grid-cols-3 gap-2">
+                              {([
+                                ["mcq", lang === "ar" ? "اختيار متعدد" : "Multiple choice"],
+                                ["true_false", lang === "ar" ? "صح أو خطأ" : "True / false"],
+                                ["fill_blank", lang === "ar" ? "أكمل الفراغ" : "Fill blank"],
+                              ] as const).map(([key, label]) => (
+                                <label key={key} className="space-y-1">
+                                  <span className="block text-[10px] font-bold text-muted-foreground">{label}</span>
+                                  <input type="number" min={0} max={30} value={extractCounts[key]}
+                                    onChange={e => setExtractCounts(prev => ({ ...prev, [key]: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }))}
+                                    className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-sm font-black outline-none focus:border-primary" />
+                                </label>
+                              ))}
+                            </div>
                             <div className="flex items-center justify-between text-[11px] font-bold">
                               <span className="text-muted-foreground">{lang === "ar" ? "العدد المطلوب" : "Requested total"}</span>
-                              <span className="text-primary">
-                                {extractAllQuestions ? (lang === "ar" ? `حتى ${extractCapacity}` : `Up to ${extractCapacity}`) : extractRequestedTotal}
-                              </span>
+                              <span className="text-primary">{extractRequestedTotal}</span>
                             </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <label className="space-y-1">
-                              <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "سعة الاستخراج" : "Extraction capacity"}</span>
-                              <select value={extractCapacity} onChange={e => setExtractCapacity(Number(e.target.value) as 10 | 15 | 20 | 30 | 60 | 90)}
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-bold outline-none focus:border-primary">
-                                {[10, 15, 20, 30, 60, 90].map(count => <option key={count} value={count}>{lang === "ar" ? `حتى ${count} سؤالًا` : `Up to ${count} questions`}</option>)}
-                              </select>
-                            </label>
-                            {extractSourceMode === "file" && extractFiles.some(f => f.name.toLowerCase().endsWith(".pdf")) && (
-                              <div className="space-y-1">
-                                <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "نطاق صفحات PDF (اختياري)" : "PDF page range (optional)"}</span>
-                                <div className="flex items-center gap-1.5">
-                                  <input type="number" min={1} value={extractPageStart} onChange={e => setExtractPageStart(e.target.value)}
-                                    placeholder={lang === "ar" ? "من" : "From"} className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-xs font-bold outline-none focus:border-primary" />
-                                  <span className="text-muted-foreground">—</span>
-                                  <input type="number" min={1} value={extractPageEnd} onChange={e => setExtractPageEnd(e.target.value)}
-                                    placeholder={lang === "ar" ? "إلى" : "To"} className="w-full rounded-lg border border-border bg-background px-2 py-2 text-center text-xs font-bold outline-none focus:border-primary" />
-                                </div>
-                              </div>
-                            )}
                           </div>
                           <label className="block space-y-1">
                             <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "تعليمات إضافية (اختياري)" : "Additional instructions (optional)"}</span>
@@ -1707,20 +1661,6 @@ export default function CreateAssignment() {
                               placeholder={lang === "ar" ? "مثال: ركّز على المفاهيم والتطبيق، وتجنب أسئلة الحفظ…" : "Example: Focus on concepts and application; avoid recall-only questions…"}
                               className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium leading-relaxed outline-none focus:border-primary" />
                           </label>
-                          {extractNeedsUpgrade && (
-                            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" data-testid="extract-upgrade-required">
-                              <p className="text-xs font-black">
-                                {lang === "ar" ? "الحساب المجاني يسمح باستخراج حتى 15 سؤالًا" : "Free accounts can extract up to 15 questions"}
-                              </p>
-                              <p className="mt-1 text-[11px] font-medium opacity-80">
-                                {lang === "ar" ? "رقِّ حسابك لتوليد واستخراج أعداد أكبر من الأسئلة في العملية الواحدة." : "Upgrade your plan to generate and extract more questions in one request."}
-                              </p>
-                              <button type="button" onClick={() => setLocation("/teacher/pricing")}
-                                className="mt-2 rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-black text-white hover:bg-amber-700">
-                                {lang === "ar" ? "عرض خطط الترقية" : "View upgrade plans"}
-                              </button>
-                            </div>
-                          )}
                           <div className="flex gap-1">
                             {difficultyOptions.map(d => (
                               <button key={d.value} type="button" onClick={() => setExtractDifficulty(d.value)}
@@ -1768,7 +1708,7 @@ export default function CreateAssignment() {
                             </div>
                           ) : (
                           <button type="button" onClick={handleExtractFromSource}
-                            disabled={extractLoading || extractNeedsUpgrade || extractRequestedTotal > extractCapacity || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || (!extractAllQuestions && extractRequestedTotal === 0)}
+                            disabled={extractLoading || extractRequestedTotal > 30 || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || extractRequestedTotal === 0}
                             data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري القراءة والتوليد..." : "Reading & generating..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج وأنشئ الأسئلة" : "Extract & create questions"}</>}

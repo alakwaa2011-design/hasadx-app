@@ -18,6 +18,7 @@ const mockOpenaiCreate = vi.hoisted(() => vi.fn());
 
 /* ── Hoisted file-upload state ────────────────────────────────────────────── */
 const fileUploadState = vi.hoisted(() => ({
+  files: [{ originalname: "test.txt" }] as any[],
   processResult: null as
     | { images: any[]; text: string; filenames: string[] }
     | null
@@ -123,7 +124,7 @@ vi.mock("../game/million-class-handlers", () => ({
 vi.mock("../lib/file-upload", () => ({
   /** Passes through without actually running multer. */
   createUploadFilesMiddleware: () => (req: any, _res: any, next: any) => {
-    req.files = [];
+    req.files = fileUploadState.files;
     next();
   },
   /** Returns the preset result, or writes its own error when null. */
@@ -204,6 +205,7 @@ beforeEach(() => {
   creditState.capture.mockReset();
   creditState.refund.mockReset();
   mockOpenaiCreate.mockReset();
+  fileUploadState.files = [{ originalname: "test.txt" }];
   fileUploadState.processResult = {
     images: [],
     text: "محتوى الكتاب المدرسي",
@@ -291,6 +293,45 @@ describe("POST /api/lesson-plans/ai/extract — credits", () => {
     expect(res.status).toBe(200);
     expect(creditState.capture).toHaveBeenCalledTimes(1);
     expect(creditState.refund).not.toHaveBeenCalled();
+  });
+
+  it("accepts pasted text without files and keeps it separate from teacher notes", async () => {
+    fileUploadState.files = [];
+    mockOpenaiCreate.mockResolvedValue({
+      choices: [{ message: { content: GOOD_LESSON_RESPONSE } }],
+    });
+
+    const res = await request(makeApp(lessonPlansRouter))
+      .post("/api/lesson-plans/ai/extract")
+      .type("form")
+      .send({
+        language: "en",
+        sourceText: "Photosynthesis converts light energy into chemical energy.",
+        notes: "Use a hands-on activity.",
+        durationMinutes: "45",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.language).toBe("en");
+    const prompt = mockOpenaiCreate.mock.calls[0][0].messages.at(-1).content as string;
+    expect(prompt).toContain("<source_material>");
+    expect(prompt).toContain("Photosynthesis converts light energy");
+    expect(prompt).toContain("Extra teacher notes: Use a hands-on activity.");
+    expect(creditState.capture).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a request with neither pasted text nor files before calling AI", async () => {
+    fileUploadState.files = [];
+
+    const res = await request(makeApp(lessonPlansRouter))
+      .post("/api/lesson-plans/ai/extract")
+      .type("form")
+      .send({ language: "en", durationMinutes: "45" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe("Upload a file or paste source text");
+    expect(mockOpenaiCreate).not.toHaveBeenCalled();
+    expect(creditState.refund).toHaveBeenCalledTimes(1);
   });
 
   it("refunds when the AI call throws an error", async () => {

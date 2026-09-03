@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const mockState = vi.hoisted(() => {
   const queue: unknown[] = [];
+  const anthropicCreate = vi.fn();
   function makeChain(result: unknown): unknown {
     const p: Promise<unknown> = Promise.resolve(result);
     const handler: ProxyHandler<Promise<unknown>> = {
@@ -17,7 +18,7 @@ const mockState = vi.hoisted(() => {
     };
     return new Proxy(p, handler);
   }
-  return { queue, makeChain };
+  return { queue, makeChain, anthropicCreate };
 });
 
 vi.mock("@workspace/db", () => {
@@ -37,6 +38,25 @@ vi.mock("@workspace/db", () => {
     DEFAULT_ARENA_IMPORT_SOURCES: { manual: true, ai: true, homework: true, file: true },
   };
 });
+
+vi.mock("../lib/check-credits", () => ({
+  checkCredits: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  captureCredits: vi.fn(),
+  refundCredits: vi.fn(),
+}));
+
+vi.mock("../lib/anthropic-client", () => ({
+  SONNET_MODEL: "claude-test",
+  anthropic: { messages: { create: mockState.anthropicCreate } },
+}));
+
+vi.mock("../lib/ai-usage-ledger", () => ({
+  trackAiUsageCall: async (
+    _req: unknown,
+    _config: unknown,
+    invoke: () => Promise<unknown>,
+  ) => invoke(),
+}));
 
 import express from "express";
 import request from "supertest";
@@ -67,6 +87,59 @@ function pushQueue(...items: unknown[]) {
 
 beforeEach(() => {
   mockState.queue.length = 0;
+  mockState.anthropicCreate.mockReset();
+  mockState.anthropicCreate.mockResolvedValue({
+    content: [{
+      type: "text",
+      text: JSON.stringify([
+        { question: "ما الكوكب الأحمر؟", answer: "المريخ", difficulty: 200, hint: null },
+      ]),
+    }],
+    usage: { input_tokens: 10, output_tokens: 10 },
+  });
+});
+
+describe("arena-content — pasted source AI generation", () => {
+  it("accepts source text without a topic and isolates it from teacher notes", async () => {
+    pushQueue([]);
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/arena-content/ai-generate-questions")
+      .send({
+        sourceText: "الكواكب تدور حول الشمس.",
+        notes: "اجعل الإجابات قصيرة",
+        count: 1,
+        includeBonus800: false,
+        language: "ar",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(1);
+    const anthropicRequest = mockState.anthropicCreate.mock.calls[0]?.[0];
+    const prompt = anthropicRequest?.messages?.[0]?.content as string;
+    expect(prompt).toContain("<source_material>\nالكواكب تدور حول الشمس.\n</source_material>");
+    expect(prompt).toContain("Teacher instructions: اجعل الإجابات قصيرة");
+    expect(prompt.indexOf("</source_material>")).toBeLessThan(prompt.indexOf("Teacher instructions:"));
+  });
+
+  it("rejects an empty topic and source text", async () => {
+    pushQueue([]);
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/arena-content/ai-generate-questions")
+      .send({ topic: " ", sourceText: " ", count: 1, includeBonus800: false, language: "en" });
+
+    expect(res.status).toBe(400);
+    expect(mockState.anthropicCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects source text over the unified 12000-character limit", async () => {
+    pushQueue([]);
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/arena-content/ai-generate-questions")
+      .send({ sourceText: "x".repeat(12_001), count: 1, includeBonus800: false, language: "en" });
+
+    expect(res.status).toBe(400);
+    expect(mockState.anthropicCreate).not.toHaveBeenCalled();
+  });
 });
 
 // POST /arena-content/activities DB call order:

@@ -133,7 +133,8 @@ export interface AiGeneratedQuestion {
 }
 
 export async function aiGenerateArenaQuestions(input: {
-  topic: string;
+  topic?: string;
+  sourceText?: string;
   count: number;
   includeBonus800: boolean;
   language?: "ar" | "en";

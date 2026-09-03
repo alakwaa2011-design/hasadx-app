@@ -16,6 +16,7 @@ import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
+import { getAiSourceTitle } from "@/lib/ai-source-title";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -71,6 +72,7 @@ export default function MaraquiCreate() {
   const [copied, setCopied] = useState(false);
   const [aiLoadingStage, setAiLoadingStage] = useState<number | null>(null);
   const [aiTopic, setAiTopic] = useState("");
+  const [aiSourceText, setAiSourceText] = useState("");
   const [aiCount, setAiCount] = useState("5");
   const [showAiFor, setShowAiFor] = useState<number | null>(null);
   const loadedSavedGameRef = useRef(false);
@@ -217,7 +219,10 @@ export default function MaraquiCreate() {
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const generateAI = async (stageIdx: number) => {
-    if (!aiTopic.trim()) { toast.error(isRtl ? "أدخل موضوع الأسئلة" : "Enter a topic"); return; }
+    if (!aiTopic.trim() && !aiSourceText.trim()) {
+      toast.error(isRtl ? "أدخل موضوعاً أو ألصق نص المصدر" : "Enter a topic or paste source text");
+      return;
+    }
     setAiLoadingStage(stageIdx);
     try {
       const res = await creditAwareFetch(`${API_BASE}/api/ai/generate-questions`, {
@@ -225,7 +230,8 @@ export default function MaraquiCreate() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          topic: aiTopic,
+          topic: aiTopic.trim(),
+          sourceText: aiSourceText.trim(),
           count: Math.min(Math.max(parseInt(aiCount) || 5, 1), 15),
           difficulty: stages[stageIdx].difficulty,
           language: lang,
@@ -244,6 +250,7 @@ export default function MaraquiCreate() {
         correct: (["A", "B", "C", "D"].indexOf(q.correctAnswer) as 0 | 1 | 2 | 3) || 0,
       }));
       updateStage(stageIdx, "questions", [...stages[stageIdx].questions.filter(q => q.text.trim()), ...converted]);
+      if (!title.trim()) setTitle(getAiSourceTitle(aiTopic, aiSourceText));
       setShowAiFor(null);
       toast.success(isRtl ? `تم توليد ${converted.length} سؤال` : `Generated ${converted.length} questions`);
     } catch (e: unknown) {
@@ -550,6 +557,20 @@ export default function MaraquiCreate() {
                                         {aiLoadingStage === stageIdx ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                                         {isRtl ? "ولّد" : "Gen"}
                                       </button>
+                                    </div>
+                                    <div>
+                                      <div className="mb-1 flex items-center justify-between">
+                                        <label className="text-xs font-bold text-purple-700 dark:text-purple-300">{isRtl ? "نص المصدر (اختياري)" : "Source text (optional)"}</label>
+                                        <span className="text-xs text-purple-600 dark:text-purple-400">{aiSourceText.length}/12000</span>
+                                      </div>
+                                      <textarea
+                                        value={aiSourceText}
+                                        onChange={e => setAiSourceText(e.target.value)}
+                                        maxLength={12000}
+                                        rows={4}
+                                        placeholder={isRtl ? "ألصق النص لإنشاء أسئلة منه..." : "Paste text to generate questions from..."}
+                                        className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-purple-400/30 focus:border-purple-400"
+                                      />
                                     </div>
                                     <p className="text-xs text-purple-600 dark:text-purple-400">
                                       {isRtl ? "* ستُضاف الأسئلة للمرحلة الحالية" : "* Questions will be added to this stage"}

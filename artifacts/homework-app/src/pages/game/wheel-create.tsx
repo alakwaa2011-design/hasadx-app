@@ -19,6 +19,12 @@ import { GameLibraryPublishChoice } from "@/components/game/game-library-publish
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
 const BRAND_GOLD = "#D9A521";
+const MAX_SOURCE_TEXT_LENGTH = 12000;
+
+function sourceFallbackTitle(topic: string, sourceText: string, maxLength = 80): string {
+  const preferred = topic.trim() || sourceText.split(/\r?\n/).map(line => line.trim()).find(Boolean) || "";
+  return preferred.slice(0, maxLength);
+}
 
 /** Professional SVG wheel icon — mirrors the actual game wheel colours */
 const WheelIcon = ({ size = 40 }: { size?: number }) => (
@@ -156,6 +162,7 @@ export default function WheelCreate() {
   // AI panel
   const [aiOpen, setAiOpen] = useState(true);
   const [aiTopic, setAiTopic] = useState("");
+  const [aiSourceText, setAiSourceText] = useState("");
   const [aiCount, setAiCount] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">("mixed");
   const [generating, setGenerating] = useState(false);
@@ -270,10 +277,11 @@ export default function WheelCreate() {
   };
 
   const generateAI = async () => {
-    if (!aiTopic.trim()) {
-      toast.error(w.enterTopic);
+    if (!aiTopic.trim() && !aiSourceText.trim()) {
+      toast.error(contentLang === "ar" ? "اكتب موضوعاً أو الصق النص التعليمي أولاً" : "Enter a topic or paste educational source text first");
       return;
     }
+    const fallbackTitle = sourceFallbackTitle(aiTopic, aiSourceText);
     setGenerating(true);
     try {
       const res = await fetch(`${API_BASE}/api/wheel-templates/generate`, {
@@ -282,6 +290,7 @@ export default function WheelCreate() {
         credentials: "include",
         body: JSON.stringify({
           topic: aiTopic.trim(),
+          sourceText: aiSourceText.trim() || undefined,
           subject: subject.trim() || null,
           gradeLevel: gradeLevel.trim() || null,
           segmentCount: aiCount,
@@ -304,7 +313,7 @@ export default function WheelCreate() {
       const generated = (data.segments || []).map((s: Segment) => ({ ...s, id: s.id || newId() }));
       setSegments(applyPointsSettings(applyBonusSettings(generated)));
       setSegmentsEditorOpen(true);
-      if (!title.trim()) setTitle(aiTopic.trim().slice(0, 80));
+      if (!title.trim()) setTitle(fallbackTitle);
       toast.success(w.generatedSegments.replace("{count}", String(generated.length)));
     } catch (err) {
       console.error(err);
@@ -929,6 +938,23 @@ export default function WheelCreate() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder={w.topicPlaceholder} className="sm:col-span-3 w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none" />
+                        <div className="sm:col-span-3">
+                          <label className="mb-1.5 flex items-center justify-between text-xs font-bold text-muted-foreground">
+                            <span>{contentLang === "ar" ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}</span>
+                            <span>{aiSourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}</span>
+                          </label>
+                          <textarea
+                            value={aiSourceText}
+                            maxLength={MAX_SOURCE_TEXT_LENGTH}
+                            onChange={e => setAiSourceText(e.target.value)}
+                            rows={5}
+                            data-testid="input-wheel-source-text"
+                            placeholder={contentLang === "ar"
+                              ? "الصق محتوى الدرس هنا؛ يبقى منفصلاً عن الموضوع والتعليمات."
+                              : "Paste lesson content here; it remains separate from the topic and instructions."}
+                            className="w-full resize-y px-4 py-2.5 rounded-xl border-2 border-border bg-background text-sm leading-relaxed focus:border-primary outline-none"
+                          />
+                        </div>
                         <select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value, 10))} className="px-3 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold text-sm">
                           {[6, 8, 10, 12, 14, 16].map(count => <option key={count} value={count}>{count} {w.segments}</option>)}
                         </select>
@@ -937,7 +963,7 @@ export default function WheelCreate() {
                         </select>
                         <button type="button" onClick={() => setConfig(current => ({ ...current, bonusesEnabled: !current.bonusesEnabled }))} className={`rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all ${config.bonusesEnabled ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}><Gift className="w-4 h-4" />{config.bonusesEnabled ? w.bonuses : w.bonusesDisabled}</button>
                       </div>
-                      <button type="button" disabled={generating} onClick={generateAI} className="mt-3 w-full sm:w-auto sm:min-w-56 px-5 py-2.5 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>
+                      <button type="button" disabled={generating || (!aiTopic.trim() && !aiSourceText.trim())} onClick={generateAI} className="mt-3 w-full sm:w-auto sm:min-w-56 px-5 py-2.5 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}>
                         {generating ? <><Loader2 className="w-4 h-4 animate-spin" />{w.generating}</> : <><Wand2 className="w-4 h-4" />{w.generateSegments}</>}
                       </button>
                     </Card>

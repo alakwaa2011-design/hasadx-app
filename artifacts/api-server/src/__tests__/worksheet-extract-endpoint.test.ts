@@ -97,7 +97,10 @@ const mockProcessUploadedFiles = vi.fn();
 const mockRunVisionCompletionMulti = vi.fn();
 
 vi.mock("../lib/file-upload", () => ({
-  createUploadFilesMiddleware: () => (_req: any, _res: any, next: any) => next(),
+  createUploadFilesMiddleware: () => (req: any, _res: any, next: any) => {
+    req.files = [{ originalname: "lesson.txt", mimetype: "text/plain", size: 100 }];
+    next();
+  },
   processUploadedFiles: (...args: any[]) => mockProcessUploadedFiles(...args),
   runVisionCompletionMulti: (...args: any[]) => mockRunVisionCompletionMulti(...args),
 }));

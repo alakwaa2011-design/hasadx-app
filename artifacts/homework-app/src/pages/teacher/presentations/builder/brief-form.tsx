@@ -8,6 +8,7 @@ import type {
   PresentationBriefDensity,
   BriefPreferences,
 } from "@workspace/api-client-react";
+import { hasPresentationEducationalContent } from "../presentation-source";
 import {
   useGetBriefPreferences,
   useUpdateBriefPreferences,
@@ -71,6 +72,7 @@ const STRATEGY_OPTIONS: StrategyOption[] = [
 const BRAND_GREEN = "#225739";
 const PREFS_KEY = "hasad:brief:prefs";
 const DEBOUNCE_MS = 1500;
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 interface SavedPrefs {
   language?: PresentationBriefLanguage;
@@ -360,10 +362,11 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     syncToServer({ data: {} as BriefPreferences });
   }, [defaultLang, syncToServer]);
 
-  const isFormValid = !!(subject.trim() && gradeLevel.trim() && topic.trim());
+  const hasEducationalContent = hasPresentationEducationalContent(topic, sourceText);
+  const isFormValid = !!(subject.trim() && gradeLevel.trim() && hasEducationalContent);
 
   const submit = useCallback(() => {
-    if (!subject.trim() || !gradeLevel.trim() || !topic.trim()) return;
+    if (!subject.trim() || !gradeLevel.trim() || !hasEducationalContent) return;
     const inferredSlideCount = smartSlideCount(presentationKind, durationMinutes, density);
     /* educationalStrategy is not part of the generated PresentationBrief type,
        but the backend briefSchema accepts it as an optional field.
@@ -385,7 +388,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       ...(educationalStrategy !== "none" && { educationalStrategy }),
     } as PresentationBrief);
   }, [
-    subject, gradeLevel, topic, language, presentationKind,
+    subject, gradeLevel, topic, hasEducationalContent, language, presentationKind,
     durationMinutes, languageLevel, density, activities, questions, poll, quiz,
     notes, sourceText, educationalStrategy, onSubmit,
   ]);
@@ -414,15 +417,15 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       </div>
 
       <div className="space-y-1.5">
-        <Label>{tx.topic ?? (isAr ? "موضوع الدرس" : "Lesson topic")} <span className="text-destructive">*</span></Label>
+        <Label>{tx.topic ?? (isAr ? "موضوع الدرس" : "Lesson topic")}</Label>
         <Input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={120} />
       </div>
       <div className="space-y-1.5">
-        <Label>{isAr ? "نص مرجعي للعرض (اختياري)" : "Presentation source text (optional)"}</Label>
-        <Textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} maxLength={30000} rows={6}
+        <Label>{isAr ? "نص مرجعي للعرض (بديل للموضوع)" : "Presentation source text (topic alternative)"}</Label>
+        <Textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} maxLength={MAX_SOURCE_TEXT_LENGTH} rows={6}
           placeholder={isAr ? "الصق محتوى درس أو خطة أو ورقة عمل ليبني العرض منها…" : "Paste lesson content, a plan, or worksheet text to build from…"}
           data-testid="input-source-text" />
-        <div className="text-end text-xs text-muted-foreground">{sourceText.length}/30000</div>
+        <div className="text-end text-xs text-muted-foreground">{sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}</div>
       </div>
 
       {/* ── Educational strategy ── */}

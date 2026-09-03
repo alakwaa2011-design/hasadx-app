@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canRunCorrectiveOutlineRetry,
   outlineProviderRequestOptions,
+  presentationBriefSchema,
   primaryOutlineTimeoutMs,
 } from "../routes/ai-presentations";
 
@@ -30,5 +31,26 @@ describe("professional presentation outline request budget", () => {
     expect(canRunCorrectiveOutlineRetry(22_000, false)).toBe(true);
     expect(canRunCorrectiveOutlineRetry(14_999, false)).toBe(false);
     expect(canRunCorrectiveOutlineRetry(40_000, true)).toBe(false);
+  });
+
+  it("accepts pasted source text without a topic and rejects an empty educational source", () => {
+    const baseBrief = {
+      language: "en" as const,
+      subject: "Science",
+      gradeLevel: "5",
+      topic: "",
+      presentationKind: "quick" as const,
+      slideCount: 8,
+      durationMinutes: 15 as const,
+      languageLevel: "medium" as const,
+      density: "balanced" as const,
+      toggles: { activities: true, questions: true, poll: true, quiz: true },
+    };
+
+    expect(presentationBriefSchema.safeParse({
+      ...baseBrief,
+      sourceText: "Photosynthesis converts light into stored chemical energy.",
+    }).success).toBe(true);
+    expect(presentationBriefSchema.safeParse(baseBrief).success).toBe(false);
   });
 });

@@ -26,6 +26,7 @@ import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activit
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 
 const API = import.meta.env.VITE_API_URL || "";
+const MAX_SOURCE_TEXT_LENGTH = 12000;
 
 type Source = "assignment" | "ai" | "manual";
 type Difficulty = "easy" | "medium" | "hard";
@@ -64,6 +65,7 @@ export default function SoloChallengeCreatePage() {
   // === AI mode ===
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [subject, setSubject] = useState("");
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
@@ -185,14 +187,17 @@ export default function SoloChallengeCreatePage() {
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const generateWithAI = async () => {
-    if (!topic.trim()) { toast.error(s.enterTopic); return; }
+    if (!topic.trim() && !sourceText.trim()) {
+      toast.error(lang === "ar" ? "أدخل موضوعاً أو الصق نصاً تعليمياً" : "Enter a topic or paste educational source text");
+      return;
+    }
     setGenerating(true);
     try {
       const res = await creditAwareFetch(`${API}/api/ai/generate-questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic: topic.trim(), subject: subject.trim(), count, difficulty, language: lang }),
+        body: JSON.stringify({ topic: topic.trim() || undefined, sourceText: sourceText.trim() || undefined, subject: subject.trim(), count, difficulty, language: lang }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -213,7 +218,7 @@ export default function SoloChallengeCreatePage() {
         audioUrl: null,
       }));
       setQuestions(prev => [...prev, ...generated]);
-      if (!title) setTitle(topic.trim());
+       if (!title) setTitle(topic.trim() || sourceText.trim().split(/\r?\n/)[0].slice(0, 80));
       toast.success(s.generated.replace("{n}", String(generated.length)));
     } catch (err: any) {
       toast.error(err.message || s.generationFailed);
@@ -509,6 +514,24 @@ export default function SoloChallengeCreatePage() {
                     <h3 className="font-black text-base lg:text-lg text-amber-900 dark:text-amber-400">{s.generateQuestions}</h3>
                   </div>
 
+                  <div className="mb-4 lg:mb-5">
+                    <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">
+                      {lang === "ar" ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}
+                    </label>
+                    <textarea
+                      value={sourceText}
+                      maxLength={MAX_SOURCE_TEXT_LENGTH}
+                      onChange={e => setSourceText(e.target.value)}
+                      placeholder={lang === "ar"
+                        ? "الصق محتوى الدرس هنا؛ سيبقى منفصلاً عن الموضوع."
+                        : "Paste lesson content here; it remains separate from the topic."}
+                      className="w-full min-h-28 px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm lg:text-base shadow-sm"
+                    />
+                    <p className="text-[10px] text-muted-foreground text-end mt-1">
+                      {sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}
+                    </p>
+                  </div>
+
                   <div className="grid sm:grid-cols-2 gap-4 lg:gap-5 mb-4 lg:mb-5">
                     <div>
                       <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{s.topic} *</label>
@@ -557,7 +580,7 @@ export default function SoloChallengeCreatePage() {
 
                   <button
                     onClick={generateWithAI}
-                    disabled={generating || !topic.trim()}
+                     disabled={generating || (!topic.trim() && !sourceText.trim())}
                     className="w-full flex items-center justify-center gap-2 py-3.5 lg:py-4 rounded-xl font-black text-sm lg:text-base bg-gradient-to-l from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-amber-500/25 active:scale-95"
                   >
                     {generating ? (

@@ -18,6 +18,12 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const MAX_SOURCE_TEXT_LENGTH = 12000;
+
+function sourceFallbackTitle(topic: string, sourceText: string, maxLength = 120): string {
+  const preferred = topic.trim() || sourceText.split(/\r?\n/).map(line => line.trim()).find(Boolean) || "";
+  return preferred.slice(0, maxLength);
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -403,6 +409,7 @@ export default function SmartBoardNew() {
   const [, navigate] = useLocation();
 
   const [topic, setTopic] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [subject, setSubject] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [depth, setDepth] = useState<"brief" | "standard" | "detailed">("standard");
@@ -511,7 +518,11 @@ export default function SmartBoardNew() {
       setSaveError(isAr ? "أعد محاولة حفظ الدرس الحالي أولاً" : "Retry saving the current lesson first");
       return;
     }
-    if (!topic.trim()) { setError(isAr ? "اكتب موضوع الدرس أولاً" : "Enter a lesson topic first"); return; }
+    if (!topic.trim() && !sourceText.trim()) {
+      setError(isAr ? "اكتب موضوع الدرس أو الصق النص التعليمي أولاً" : "Enter a lesson topic or paste educational source text first");
+      return;
+    }
+    const fallbackTitle = sourceFallbackTitle(topic, sourceText);
     generationInFlightRef.current = true;
     setError("");
     setLoading(true);
@@ -519,7 +530,14 @@ export default function SmartBoardNew() {
       const r = await creditAwareFetch(`${API_BASE}/api/whiteboard/generate`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim(), subject, gradeLevel, depth, language: lang }),
+        body: JSON.stringify({
+          topic: topic.trim(),
+          sourceText: sourceText.trim() || undefined,
+          subject,
+          gradeLevel,
+          depth,
+          language: lang,
+        }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -528,11 +546,16 @@ export default function SmartBoardNew() {
         return;
       }
       const resolvedLanguage = d.language === "en" ? "en" : "ar";
-      setPlan(d.plan);
+      const generatedPlan = {
+        ...d.plan,
+        topic: d.plan.topic?.trim() || fallbackTitle,
+        title: d.plan.title?.trim() || fallbackTitle,
+      };
+      setPlan(generatedPlan);
       setContentLanguage(resolvedLanguage);
-      await persistPlan(d.plan, false, false, {
-        topic: d.plan.topic,
-        plan: d.plan,
+      await persistPlan(generatedPlan, false, false, {
+        topic: generatedPlan.topic,
+        plan: generatedPlan,
         subject,
         gradeLevel,
         depth,
@@ -642,6 +665,24 @@ export default function SmartBoardNew() {
                   disabled={loading || saveStatus === "error"}
                 />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-500 flex items-center justify-between gap-2 ms-1">
+                  <span>{isAr ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}</span>
+                  <span className="text-slate-400 font-sans">{sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}</span>
+                </label>
+                <textarea
+                  value={sourceText}
+                  maxLength={MAX_SOURCE_TEXT_LENGTH}
+                  onChange={e => setSourceText(e.target.value)}
+                  placeholder={isAr
+                    ? "الصق محتوى الدرس هنا. سيبقى منفصلاً عن الموضوع ويُستخدم كمادة مرجعية."
+                    : "Paste lesson content here. It stays separate from the topic and is used as reference material."}
+                  rows={6}
+                  disabled={loading || saveStatus === "error"}
+                  data-testid="input-smart-board-source-text"
+                  className="w-full resize-y rounded-2xl border border-emerald-50 dark:border-emerald-900/30 bg-[#f4f7f5] dark:bg-[#0B100E] p-4 text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all leading-relaxed"
+                />
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
@@ -690,7 +731,7 @@ export default function SmartBoardNew() {
               )}
 
               <button
-                onClick={generate} disabled={loading || saveStatus === "saving" || saveStatus === "error" || !topic.trim()}
+                onClick={generate} disabled={loading || saveStatus === "saving" || saveStatus === "error" || (!topic.trim() && !sourceText.trim())}
                 className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-3.5 font-black shadow-md shadow-emerald-600/10 transition-all hover:-translate-y-0.5 mt-2"
               >
                 {loading ? (

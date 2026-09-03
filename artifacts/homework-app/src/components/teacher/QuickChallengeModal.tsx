@@ -18,6 +18,7 @@ export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
     "mcq" | "true_false" | "fill_blank" | "mixed"
   >("mcq");
   const [topic, setTopic] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
     pin: string;
@@ -53,13 +54,17 @@ export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
   ];
 
   const handleCreate = async () => {
+    if (!topic.trim() && !sourceText.trim()) {
+      alert(lang === "ar" ? "أدخل موضوعًا أو ألصق نص المصدر" : "Enter a topic or paste source text");
+      return;
+    }
     setLoading(true);
     try {
       const res = await creditAwareFetch(`${API_BASE}/api/quick-challenge/create`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionType, topic, language: lang }),
+        body: JSON.stringify({ questionType, topic, sourceText, language: lang }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -282,10 +287,29 @@ export function QuickChallengeModal({ onClose }: { onClose: () => void }) {
               />
             </div>
 
+            <div className="mb-5">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-white/60 text-sm font-bold">
+                  {lang === "ar" ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}
+                </p>
+                <span className="text-[10px] text-white/40">{sourceText.length}/12000</span>
+              </div>
+              <textarea
+                value={sourceText}
+                onChange={(e) => setSourceText(e.target.value)}
+                placeholder={lang === "ar"
+                  ? "الصق المحتوى التعليمي الذي تريد تحويله إلى تحدٍ"
+                  : "Paste educational content to turn into a challenge"}
+                className="w-full resize-y px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white placeholder:text-white/30 font-bold focus:outline-none focus:border-purple-400 text-sm leading-relaxed"
+                maxLength={12000}
+                rows={5}
+              />
+            </div>
+
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={handleCreate}
-              disabled={loading}
+              disabled={loading || (!topic.trim() && !sourceText.trim())}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-black text-lg shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? (

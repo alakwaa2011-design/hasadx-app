@@ -1551,6 +1551,7 @@ function AiGenerateModal({
   const { t, dir, lang } = useI18n();
   const copy = t.arenaContent.ai;
   const [topic, setTopic] = useState(categoryName);
+  const [sourceText, setSourceText] = useState("");
   const [notes, setNotes] = useState("");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1558,10 +1559,14 @@ function AiGenerateModal({
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const generate = async () => {
-    if (!topic.trim()) { toast.error(copy.topicRequired); return; }
+    if (!topic.trim() && !sourceText.trim()) {
+      toast.error(lang === "ar" ? "أدخل موضوعًا أو ألصق نص المصدر" : "Enter a topic or paste source text");
+      return;
+    }
     setGenerating(true);
     const r = await aiGenerateArenaQuestions({
       topic: topic.trim(),
+      sourceText: sourceText.trim(),
       count: 6,
       includeBonus800: false,
       language: lang,
@@ -1635,6 +1640,26 @@ function AiGenerateModal({
               />
             </div>
             <div>
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <label className="text-xs font-bold text-gray-700">
+                  {lang === "ar" ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}
+                </label>
+                <span className="text-[10px] text-gray-500">{sourceText.length}/12000</span>
+              </div>
+              <textarea
+                value={sourceText}
+                onChange={(e) => setSourceText(e.target.value)}
+                maxLength={12000}
+                rows={5}
+                placeholder={lang === "ar"
+                  ? "الصق المحتوى التعليمي هنا؛ يبقى منفصلًا عن ملاحظاتك."
+                  : "Paste educational content here; it stays separate from your notes."}
+                className="w-full resize-y px-3 py-2 rounded-lg border-2 text-sm leading-relaxed focus:outline-none"
+                style={{ borderColor: "rgba(217,165,33,0.5)" }}
+                dir={dir}
+              />
+            </div>
+            <div>
               <label className="text-xs font-bold text-gray-700 block mb-1.5">{copy.notes}</label>
               <textarea
                 value={notes}
@@ -1656,7 +1681,7 @@ function AiGenerateModal({
               </button>
               <button
                 onClick={generate}
-                disabled={generating}
+                disabled={generating || (!topic.trim() && !sourceText.trim())}
                 className="flex-1 px-4 py-2.5 rounded-lg font-extrabold text-white inline-flex items-center justify-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${BRAND.gold}, #B8860B)` }}
               >

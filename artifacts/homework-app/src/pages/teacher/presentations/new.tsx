@@ -11,6 +11,7 @@ import {
 import { useSmartBack } from "@/lib/nav-history";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiPresentationBuilder } from "./builder";
+import { hasPresentationEducationalContent } from "./presentation-source";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import {
   Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 /* ── Educational strategy data ─────────────────────────────────────── */
 type EducationalStrategy =
@@ -358,10 +360,11 @@ export default function NewPresentationPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const [topic, setTopic] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
-  const [sourceText, setSourceText] = useState("");
   const [educationalStrategy, setEducationalStrategy] = useState<EducationalStrategy>("none");
+  const [quickInputError, setQuickInputError] = useState("");
 
   const [generatedPresentationId, setGeneratedPresentationId] = useState<number | null>(null);
   const [generatedSlides, setGeneratedSlides] = useState<
@@ -395,13 +398,29 @@ export default function NewPresentationPage() {
     if (mode === "pro") setProBuilderOpen(true);
   }, [mode]);
 
-  const canGenerate = topic.trim().length >= 2;
+  const hasQuickContent = hasPresentationEducationalContent(topic, sourceText);
+  const sourceTextTooLong = sourceText.length > MAX_SOURCE_TEXT_LENGTH;
+  const canGenerate = hasQuickContent && !sourceTextTooLong;
 
   const handleQuickGenerate = useCallback(async () => {
-    if (!canGenerate) return;
+    if (!hasQuickContent) {
+      setQuickInputError(
+        isAr ? "أدخل موضوع الدرس أو الصق نصًا تعليميًا." : "Enter a lesson topic or paste educational source text.",
+      );
+      return;
+    }
+    if (sourceTextTooLong) {
+      setQuickInputError(
+        isAr
+          ? `النص الملصوق يتجاوز الحد الأقصى (${MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")} حرف).`
+          : `Pasted text exceeds the ${MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")}-character limit.`,
+      );
+      return;
+    }
 
     setQuickPhase("generating");
     setErrorMsg("");
+    setQuickInputError("");
 
     const msgs = isAr
       ? [
@@ -432,7 +451,7 @@ export default function NewPresentationPage() {
         credentials: "include",
         body: JSON.stringify({
           language: isAr ? "ar" : "en",
-          subject: subject.trim() || topic.trim(),
+          subject: subject.trim() || topic.trim() || (isAr ? "عام" : "General"),
           gradeLevel: grade || "غير محدد",
           topic: topic.trim(),
           sourceText: sourceText.trim() || undefined,
@@ -548,15 +567,16 @@ export default function NewPresentationPage() {
          shared balance whether the flow succeeded or failed (refund). */
       refreshCreditsBalance();
     }
-  }, [topic, sourceText, grade, subject, educationalStrategy, isAr, canGenerate, refreshCreditsBalance, setLocation]);
+  }, [topic, sourceText, grade, subject, educationalStrategy, isAr, hasQuickContent, sourceTextTooLong, refreshCreditsBalance, setLocation]);
 
   const resetQuick = () => {
     setQuickPhase("form");
     setTopic("");
+    setSourceText("");
     setGrade("");
     setSubject("");
-    setSourceText("");
     setEducationalStrategy("none");
+    setQuickInputError("");
     setGeneratedPresentationId(null);
     setGeneratedSlides([]);
     setErrorMsg("");
@@ -853,15 +873,6 @@ export default function NewPresentationPage() {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-4 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 transition-all">
-                  <label className="block text-[11px] font-black text-slate-500 dark:text-slate-400 mb-2">
-                    {isAr ? "نص مرجعي للعرض (اختياري)" : "Presentation source text (optional)"}
-                  </label>
-                  <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} maxLength={30000} rows={6}
-                    placeholder={isAr ? "الصق محتوى الدرس أو ورقة العمل أو خطة الدرس…" : "Paste lesson content, worksheet text, or a lesson plan…"}
-                    className="w-full bg-transparent outline-none resize-y text-sm text-slate-800 dark:text-slate-100 leading-relaxed" data-testid="input-source-text" />
-                  <div className="text-end text-[10px] font-bold text-slate-400 mt-1">{sourceText.length}/30000</div>
-                </div>
                 <div>
                   <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">
                     {isAr ? "عرض تفاعلي جديد" : "New Interactive Deck"}
@@ -1041,13 +1052,16 @@ export default function NewPresentationPage() {
                 <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-4 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10 transition-all">
                   <label className="flex items-center gap-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-2">
                     <BookOpen className="w-3.5 h-3.5" />
-                    {isAr ? "موضوع الدرس *" : "Lesson topic *"}
+                    {isAr ? "موضوع الدرس" : "Lesson topic"}
                   </label>
                   <input
                     autoFocus
                     type="text"
                     value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
+                    onChange={(e) => {
+                      setTopic(e.target.value);
+                      if (quickInputError) setQuickInputError("");
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && canGenerate) handleQuickGenerate();
                     }}
@@ -1060,6 +1074,60 @@ export default function NewPresentationPage() {
                     maxLength={120}
                   />
                 </div>
+
+                <div className={`rounded-2xl p-4 border transition-all ${
+                  sourceTextTooLong
+                    ? "bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800"
+                    : "bg-[#f4f7f5] dark:bg-[#0B100E] border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 dark:focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-400/10"
+                }`}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <label htmlFor="quick-presentation-source-text" className="flex items-center gap-1.5 text-[11px] font-black text-emerald-700 dark:text-emerald-400">
+                      <FileText className="w-3.5 h-3.5" />
+                      {isAr ? "نص المصدر التعليمي" : "Educational source text"}
+                    </label>
+                    <span className={`shrink-0 text-[10px] font-bold ${
+                      sourceTextTooLong ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"
+                    }`}>
+                      {sourceText.length.toLocaleString("en-US")} / {MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")}
+                    </span>
+                  </div>
+                  <textarea
+                    id="quick-presentation-source-text"
+                    dir="auto"
+                    value={sourceText}
+                    onChange={(e) => {
+                      setSourceText(e.target.value);
+                      if (quickInputError) setQuickInputError("");
+                    }}
+                    rows={6}
+                    placeholder={isAr
+                      ? "الصق هنا محتوى الدرس الذي تريد أن يعتمد عليه العرض…"
+                      : "Paste the lesson content you want the presentation to use…"}
+                    className="w-full bg-transparent outline-none resize-y text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 leading-relaxed"
+                    aria-describedby={quickInputError
+                      ? "quick-presentation-source-help quick-presentation-input-error"
+                      : "quick-presentation-source-help"}
+                  />
+                  <p id="quick-presentation-source-help" className="mt-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {isAr
+                      ? "اختياري إذا أدخلت موضوعًا، ومطلوب بدلًا منه إذا لم تُدخل موضوعًا. يُستخدم هذا كنص مصدر منفصل عن أي ملاحظات أو تعليمات، وتحافظ الشرائح على لغة النص."
+                      : "Optional when you enter a topic, or use it instead of a topic. This is source material kept separate from any notes or instructions; slides preserve the text's language."}
+                  </p>
+                  {sourceTextTooLong && (
+                    <p className="mt-2 text-[11px] font-black text-red-600 dark:text-red-400" role="alert">
+                      {isAr
+                        ? `قصّر النص إلى ${MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")} حرفًا أو أقل قبل المتابعة.`
+                        : `Shorten the text to ${MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer to continue.`}
+                    </p>
+                  )}
+                </div>
+
+                {quickInputError && (
+                  <div id="quick-presentation-input-error" role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 px-3 py-2.5 text-xs font-bold text-red-700 dark:text-red-300">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {quickInputError}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-[#f4f7f5] dark:bg-[#0B100E] rounded-2xl p-4 border border-emerald-50 dark:border-emerald-900/30 focus-within:border-emerald-400 transition-all relative">
@@ -1159,7 +1227,7 @@ export default function NewPresentationPage() {
               <div className="mt-8">
                 <button
                   onClick={handleQuickGenerate}
-                  disabled={!canGenerate}
+                  disabled={sourceTextTooLong}
                   className="w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-base disabled:opacity-40 transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-emerald-500/20 text-white bg-emerald-600 hover:bg-emerald-700"
                 >
                   {isAr ? "أنشئ الحصة الآن" : "Generate lesson now"}

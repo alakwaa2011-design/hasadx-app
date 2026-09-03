@@ -20,6 +20,7 @@ import { isMindMapValid, PALETTE, paletteForColor, type MindMap } from "./mindma
 
 const BRAND_GREEN = "#225739";
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 /* ── Light background colours ─────────────────────────────────────────── */
 const BG_LIGHT  = "#F8FAFC";
@@ -665,11 +666,11 @@ export default function MindMapCreate() {
                 <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">
                   {isAr ? "الصق نص المصدر (اختياري)" : "Paste source text (optional)"}
                 </label>
-                <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} rows={6} maxLength={30000}
+                <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} rows={6} maxLength={MAX_SOURCE_TEXT_LENGTH}
                   placeholder={isAr ? "الصق فصلًا أو ملخصًا أو محتوى درس لتحويله إلى خريطة…" : "Paste a chapter, summary, or lesson content to turn into a map…"}
                   className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 outline-none resize-y leading-relaxed"
                   data-testid="input-source-text" />
-                <div className="text-end text-[11px] font-bold text-slate-400 mt-1">{sourceText.length}/30000</div>
+                <div className="text-end text-[11px] font-bold text-slate-400 mt-1">{sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}</div>
               </div>
               
               <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-100 dark:via-emerald-900/50 to-transparent" />

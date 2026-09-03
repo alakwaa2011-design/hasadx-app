@@ -40,6 +40,7 @@ import { findExplicitAiContentLanguage, resolveAiContentLanguage } from "../lib/
 import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
 
 const router: IRouter = Router();
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 function requireTeacher(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.teacherId) {
@@ -85,12 +86,12 @@ function outlineConfigForTier(tier: AiTier): OutlineTierConfig {
   };
 }
 
-const briefSchema = z.object({
+export const presentationBriefSchema = z.object({
   language: z.enum(["ar", "en"]).default("ar"),
   subject: z.string().trim().min(1).max(100),
   gradeLevel: z.string().trim().min(1).max(50),
-  topic: z.string().trim().min(1).max(120),
-  sourceText: z.string().trim().max(30000).optional(),
+  topic: z.string().trim().max(120),
+  sourceText: z.string().trim().max(MAX_SOURCE_TEXT_LENGTH).optional(),
   presentationKind: z.enum(["explain", "review", "interactive", "quick", "contest"]),
   slideCount: z.number().int().min(5).max(30),
   durationMinutes: z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60)]),
@@ -111,6 +112,14 @@ const briefSchema = z.object({
     "inquiry", "scamper", "six_thinking_hats", "21st_century_skills",
     "gamification", "differentiated", "concept_maps", "kwl", "5e_model",
   ]).default("none"),
+}).superRefine((brief, ctx) => {
+  if (!brief.topic && !brief.sourceText) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["sourceText"],
+      message: "Topic or source text is required",
+    });
+  }
 });
 
 /* ── Outline schema (matches the OpenAPI types and the prompt's JSON
@@ -479,7 +488,7 @@ router.get("/presentations/ai/limits", requireTeacher, async (req, res) => {
 router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter, checkCredits("presentation"), async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
-    let brief = briefSchema.parse(req.body) as OutlineBrief;
+    let brief = presentationBriefSchema.parse(req.body) as OutlineBrief;
     brief = {
       ...brief,
       language: resolveAiContentLanguage({
@@ -796,7 +805,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
        trimmed/clipped; sanitizeText additionally strips HTML, control,
        and bidi/zero-width chars so downstream PPTX/PDF/email consumers
        can render safely without re-escaping. */
-    const safeBrief = briefSchema.parse({
+    const safeBrief = presentationBriefSchema.parse({
       ...brief,
       subject: sanitizeText(brief.subject, 100),
       gradeLevel: sanitizeText(brief.gradeLevel, 50),

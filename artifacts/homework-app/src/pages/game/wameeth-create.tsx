@@ -41,6 +41,7 @@ import {
   QuestionCard, emptyQuestion, isValidQ, type Question, type Correct,
 } from "@/components/game/question-editor";
 import { mapBackendQuestionToWameethQuestion } from "@/lib/wameeth-question-utils";
+import { getAiSourceTitle } from "@/lib/ai-source-title";
 import {
   Zap,
   Loader2,
@@ -111,6 +112,7 @@ export default function WameethCreate() {
 
   // AI generation
   const [aiTopic, setAiTopic] = useState("");
+  const [aiSourceText, setAiSourceText] = useState("");
   const [aiSubject, setAiSubject] = useState("");
   const [aiCount, setAiCount] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState<Difficulty>("medium");
@@ -140,6 +142,7 @@ export default function WameethCreate() {
     setSelectedAssignment(null);
     setAssignSearch("");
     setAiTopic("");
+    setAiSourceText("");
     setAiSubject("");
   };
 
@@ -224,7 +227,10 @@ export default function WameethCreate() {
 
   // Same AI endpoint used by the solo-challenge creator — always returns MCQ.
   const generateWithAI = async () => {
-    if (!aiTopic.trim()) { toast.error(ar ? "أدخل الموضوع أولاً" : "Enter a topic first"); return; }
+    if (!aiTopic.trim() && !aiSourceText.trim()) {
+      toast.error(ar ? "أدخل موضوعاً أو ألصق نص المصدر أولاً" : "Enter a topic or paste source text first");
+      return;
+    }
     setAiGenerating(true);
     try {
       const res = await creditAwareFetch(`${API}/api/ai/generate-questions`, {
@@ -233,6 +239,7 @@ export default function WameethCreate() {
         credentials: "include",
         body: JSON.stringify({
           topic: aiTopic.trim(),
+          sourceText: aiSourceText.trim(),
           subject: aiSubject.trim(),
           count: aiCount,
           difficulty: aiDifficulty,
@@ -256,7 +263,7 @@ export default function WameethCreate() {
       }));
       setQuestions(prev => [...prev, ...generated]);
       setSourceAssignmentId(null);
-      if (!title) setTitle(aiTopic.trim());
+      if (!title) setTitle(getAiSourceTitle(aiTopic, aiSourceText));
       toast.success(ar ? `تم توليد ${generated.length} سؤال` : `Generated ${generated.length} questions`);
     } catch (err: any) {
       toast.error(err.message || (ar ? "خطأ في التوليد" : "Generation error"));
@@ -761,7 +768,7 @@ export default function WameethCreate() {
                         </div>
                         <div className="grid sm:grid-cols-2 gap-4 lg:gap-5 mb-4 lg:mb-5">
                           <div>
-                            <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{ar ? "الموضوع *" : "Topic *"}</label>
+                            <label className="block text-xs lg:text-sm font-bold text-foreground mb-1.5 lg:mb-2">{ar ? "الموضوع (أو ألصق نصاً أدناه)" : "Topic (or paste text below)"}</label>
                             <input
                               value={aiTopic}
                               onChange={e => setAiTopic(e.target.value)}
@@ -778,6 +785,20 @@ export default function WameethCreate() {
                               className="w-full px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl bg-card border border-border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm lg:text-base font-bold shadow-sm"
                             />
                           </div>
+                        </div>
+                        <div className="mb-4 lg:mb-5">
+                          <div className="mb-1.5 flex items-center justify-between lg:mb-2">
+                            <label className="block text-xs font-bold text-foreground lg:text-sm">{ar ? "نص المصدر (اختياري)" : "Source text (optional)"}</label>
+                            <span className="text-xs text-muted-foreground">{aiSourceText.length}/12000</span>
+                          </div>
+                          <textarea
+                            value={aiSourceText}
+                            onChange={e => setAiSourceText(e.target.value)}
+                            maxLength={12000}
+                            rows={5}
+                            placeholder={ar ? "ألصق النص الذي تريد إنشاء أسئلة منه..." : "Paste the text you want questions generated from..."}
+                            className="w-full resize-y rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium shadow-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 lg:px-5 lg:py-3 lg:text-base"
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-4 lg:gap-5 mb-5 lg:mb-6">
                           <div>
@@ -806,7 +827,7 @@ export default function WameethCreate() {
                         <button
                           type="button"
                           onClick={generateWithAI}
-                          disabled={aiGenerating || !aiTopic.trim()}
+                          disabled={aiGenerating || (!aiTopic.trim() && !aiSourceText.trim())}
                           className="w-full flex items-center justify-center gap-2 py-3.5 lg:py-4 rounded-xl font-black text-sm lg:text-base bg-gradient-to-l from-amber-500 to-orange-400 hover:from-amber-600 hover:to-orange-500 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-amber-500/25 active:scale-95"
                         >
                           {aiGenerating ? (

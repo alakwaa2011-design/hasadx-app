@@ -1826,6 +1826,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [aiTopic, setAiTopic] = useState("");
+  const [aiSourceText, setAiSourceText] = useState("");
   const [aiCount, setAiCount] = useState(6);
   const [aiBonus, setAiBonus] = useState(false);
   const [aiNotes, setAiNotes] = useState("");
@@ -1840,11 +1841,15 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   }, []);
 
   const generateAi = async () => {
-    if (!aiTopic.trim() || aiLoading) return;
+    if ((!aiTopic.trim() && !aiSourceText.trim()) || aiLoading) {
+      if (!aiLoading) toast.error(chrome("أدخل موضوعًا أو ألصق نص المصدر", "Enter a topic or paste source text"));
+      return;
+    }
     setAiLoading(true);
     setAiResults([]);
     const r = await aiGenerateArenaQuestions({
       topic: aiTopic.trim(),
+      sourceText: aiSourceText.trim(),
       count: aiCount,
       includeBonus800: aiBonus,
       language: lang,
@@ -2724,6 +2729,22 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-xs font-bold text-emerald-100/80">{chrome("النص التعليمي المصدر (اختياري)", "Educational source text (optional)")}</label>
+                    <span className="text-[10px] text-emerald-100/60">{aiSourceText.length}/12000</span>
+                  </div>
+                  <textarea
+                    value={aiSourceText}
+                    onChange={e => setAiSourceText(e.target.value)}
+                    maxLength={12000}
+                    rows={5}
+                    placeholder={chrome("الصق المحتوى التعليمي هنا؛ يبقى منفصلًا عن ملاحظاتك.", "Paste educational content here; it stays separate from your notes.")}
+                    className="w-full resize-y bg-black/40 text-white rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-fuchsia-300 text-sm leading-relaxed"
+                    dir={lang === "ar" ? "rtl" : "ltr"}
+                  />
+                </div>
+
                 <div className="grid sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-5 space-y-1.5">
                     <label className="text-xs font-bold text-emerald-100/80">{chrome("عدد الأسئلة", "Number of questions")}</label>
@@ -2751,7 +2772,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={generateAi} disabled={aiLoading || !aiTopic.trim()}
+                    onClick={generateAi} disabled={aiLoading || (!aiTopic.trim() && !aiSourceText.trim())}
                     className="px-4 py-2 rounded-xl font-bold bg-gradient-to-l from-fuchsia-500 to-violet-500 text-white hover:from-fuchsia-400 hover:to-violet-400 inline-flex items-center gap-2 disabled:opacity-50"
                   >
                     <Sparkles className="w-4 h-4" />

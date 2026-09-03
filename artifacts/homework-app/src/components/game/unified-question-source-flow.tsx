@@ -18,6 +18,7 @@ import {
 } from "@/lib/saved-game-activities";
 import { normalizeGameQuestion, type NormalizedGameQuestion } from "@/lib/normalize-game-question";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { getAiSourceTitle } from "@/lib/ai-source-title";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -206,6 +207,7 @@ export function UnifiedQuestionSourceFlow({
 
   // AI Form
   const [aiTopic, setAiTopic] = useState("");
+  const [aiSourceText, setAiSourceText] = useState("");
   const [aiSubject, setAiSubject] = useState("");
   const [aiCount, setAiCount] = useState(10);
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
@@ -552,7 +554,10 @@ export function UnifiedQuestionSourceFlow({
 
   // ─── AI Logic ───
   const generateWithAI = async () => {
-    if (!aiTopic.trim()) { toast.error(ar ? "أدخل الموضوع أولاً" : "Enter a topic first"); return; }
+    if (!aiTopic.trim() && !aiSourceText.trim()) {
+      toast.error(ar ? "أدخل موضوعاً أو ألصق نص المصدر أولاً" : "Enter a topic or paste source text first");
+      return;
+    }
     setAiGenerating(true);
     try {
       const count = Math.min(aiCount, maxQuestions);
@@ -562,6 +567,7 @@ export function UnifiedQuestionSourceFlow({
         credentials: "include",
         body: JSON.stringify({
           topic: aiTopic.trim(),
+          sourceText: aiSourceText.trim(),
           subject: aiSubject.trim(),
           count,
           difficulty: aiDifficulty,
@@ -585,7 +591,7 @@ export function UnifiedQuestionSourceFlow({
       }));
 
       setAiQuestions(generated);
-      setAiTitle(aiTopic.trim());
+      setAiTitle(getAiSourceTitle(aiTopic, aiSourceText));
       setEditorSource("ai");
       setViewState("editor");
       toast.success(ar ? `تم توليد ${generated.length} سؤال` : `Generated ${generated.length} questions`);
@@ -1285,12 +1291,28 @@ export function UnifiedQuestionSourceFlow({
 
               <div className="space-y-5 max-w-xl mx-auto">
                 <div>
-                  <label className="block text-sm font-bold mb-1.5">{ar ? "الموضوع" : "Topic"}</label>
+                  <label className="block text-sm font-bold mb-1.5">{ar ? "الموضوع (أو ألصق نصاً أدناه)" : "Topic (or paste text below)"}</label>
                   <input
                     value={aiTopic}
                     onChange={e => setAiTopic(e.target.value)}
                     placeholder={ar ? "مثال: الفضاء والمجموعة الشمسية" : "e.g. Solar System"}
                     className="w-full bg-muted/30 border border-border/60 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-1 focus:border-transparent transition-shadow"
+                    style={accentColor ? { '--tw-ring-color': accentColor } as any : {}}
+                    dir={ar ? "rtl" : "ltr"}
+                  />
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="block text-sm font-bold">{ar ? "نص المصدر (اختياري)" : "Source text (optional)"}</label>
+                    <span className="text-xs text-muted-foreground">{aiSourceText.length}/12000</span>
+                  </div>
+                  <textarea
+                    value={aiSourceText}
+                    onChange={e => setAiSourceText(e.target.value)}
+                    maxLength={12000}
+                    rows={5}
+                    placeholder={ar ? "ألصق النص الذي تريد إنشاء أسئلة منه..." : "Paste the text you want questions generated from..."}
+                    className="w-full resize-y bg-muted/30 border border-border/60 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-1 focus:border-transparent transition-shadow"
                     style={accentColor ? { '--tw-ring-color': accentColor } as any : {}}
                     dir={ar ? "rtl" : "ltr"}
                   />
@@ -1338,7 +1360,7 @@ export function UnifiedQuestionSourceFlow({
                 <div className="pt-4 flex justify-end">
                   <button
                     onClick={generateWithAI}
-                    disabled={!aiTopic.trim() || aiGenerating}
+                    disabled={(!aiTopic.trim() && !aiSourceText.trim()) || aiGenerating}
                     className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 shadow-md transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {aiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}

@@ -7,7 +7,7 @@ import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 const router: IRouter = Router();
 
 const MAX_TOPIC_LENGTH = 400;
-const MAX_SOURCE_TEXT_LENGTH = 30000;
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 const BRANCH_COLORS = [
   "#4F46E5",
@@ -29,10 +29,15 @@ router.post("/ai/generate-mindmap", checkCredits("mindmap"), async (req, res) =>
   const { topic, sourceText, lang, language, depth = "standard" } = req.body || {};
   const cleanTopic = typeof topic === "string" ? topic.trim() : "";
   const cleanSourceText = typeof sourceText === "string" ? sourceText.trim() : "";
+  const requestedLanguage = language === "en" || lang === "en" ? "en" : "ar";
 
   if (!cleanTopic && !cleanSourceText) {
     await refundCredits(req, "invalid input");
-    res.status(400).json({ message: "يجب إدخال موضوع الخريطة الذهنية" });
+    res.status(400).json({
+      message: requestedLanguage === "en"
+        ? "Enter a topic or paste source text to create the mind map"
+        : "أدخل موضوعًا أو الصق نصًا لإنشاء الخريطة الذهنية",
+    });
     return;
   }
 
@@ -45,7 +50,11 @@ router.post("/ai/generate-mindmap", checkCredits("mindmap"), async (req, res) =>
   }
   if (cleanSourceText.length > MAX_SOURCE_TEXT_LENGTH) {
     await refundCredits(req, "invalid input");
-    res.status(400).json({ message: `النص طويل جداً (الحد الأقصى ${MAX_SOURCE_TEXT_LENGTH} حرف)` });
+    res.status(400).json({
+      message: requestedLanguage === "en"
+        ? `The pasted text exceeds the maximum (${MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")} characters)`
+        : `النص الملصوق يتجاوز الحد الأقصى (${MAX_SOURCE_TEXT_LENGTH.toLocaleString("en-US")} حرف)`,
+    });
     return;
   }
 
@@ -156,6 +165,7 @@ Return ONLY this exact JSON:
     res.json({
       center: String(parsed.center ?? (cleanTopic || (isAr ? "خريطة ذهنية" : "Mind map"))).slice(0, 60),
       branches,
+      language: contentLanguage,
     });
   } catch (err) {
     await refundCredits(req, "فشل توليد الخريطة الذهنية");

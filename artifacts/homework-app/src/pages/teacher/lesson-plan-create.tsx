@@ -22,6 +22,7 @@ import { LessonPlanPrintView, type PlanData } from "@/pages/teacher/lesson-plan-
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 const LP_PREFS_KEY = "hasad:lessonplan:prefs";
 const LP_META_KEY = "hasad:lessonplan:meta";
@@ -967,10 +968,10 @@ export default function LessonPlanCreate() {
                 <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">
                   {ar ? "الصق نص المصدر (اختياري)" : "Paste source text (optional)"}
                 </label>
-                <textarea value={sourceText} onChange={e => setSourceText(e.target.value)} maxLength={30000} rows={5}
+                <textarea value={sourceText} onChange={e => setSourceText(e.target.value)} maxLength={MAX_SOURCE_TEXT_LENGTH} rows={5}
                   placeholder={ar ? "الصق هنا محتوى الدرس أو ورقة العمل أو الملاحظات…" : "Paste lesson content, worksheet text, or notes here…"}
                   className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-100 outline-none resize-y leading-relaxed" data-testid="input-source-text" />
-                <div className="text-end text-[10px] font-bold text-slate-400">{sourceText.length}/30000</div>
+                <div className="text-end text-[10px] font-bold text-slate-400">{sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}</div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -2697,7 +2697,12 @@ components:
           enum: [ar, en]
         subject:     { type: string, minLength: 1, maxLength: 100 }
         gradeLevel:  { type: string, minLength: 1, maxLength: 50 }
-        topic:       { type: string, minLength: 1, maxLength: 120 }
+        topic:       { type: string, maxLength: 120 }
+        sourceText:
+          type: string
+          maxLength: 12000
+          nullable: true
+          description: Pasted educational source content, kept separate from teacher notes
         presentationKind:
           type: string
           enum: [explain, review, interactive, quick, contest]

@@ -17,6 +17,7 @@ import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import type { Request } from "express";
 
 const router: IRouter = Router();
+const MAX_SOURCE_TEXT_LENGTH = 12_000;
 
 /* Multi-file upload middleware (per-tier caps enforced inside the
    route handler via `processUploadedFiles`). */
@@ -377,7 +378,7 @@ router.delete("/lesson-plans/:id", requireTeacher, async (req, res) => {
 const aiGenerateBody = z.object({
   language: z.enum(["ar", "en"]).default("ar"),
   topic: z.string().max(500).optional(),
-  sourceText: z.string().max(30000).optional(),
+  sourceText: z.string().max(MAX_SOURCE_TEXT_LENGTH).optional(),
   subject: z.string().max(100).nullish(),
   gradeLevel: z.string().max(50).nullish(),
   durationMinutes: z.number().int().min(15).max(180).default(45),
@@ -450,7 +451,7 @@ const aiExtractFields = z.object({
     .default(45),
   pedagogy: z.enum(["direct", "inquiry", "project", "flipped", "mixed"]).default("mixed"),
   notes: z.string().max(800).optional(),
-  sourceText: z.string().max(30000).optional(),
+  sourceText: z.string().max(MAX_SOURCE_TEXT_LENGTH).optional(),
 });
 
 router.post(

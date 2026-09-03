@@ -48,6 +48,7 @@ vi.mock("framer-motion", () => ({
 }));
 
 import { UnifiedQuestionSourceFlow } from "./unified-question-source-flow";
+import { getAiSourceTitle } from "@/lib/ai-source-title";
 
 const ASSIGNMENTS = [
   { id: 101, title: "Assignment A", questionCount: 2 },
@@ -478,5 +479,13 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
 
     expect(container.textContent).not.toContain("Teacher A.pdf");
     expect(container.textContent).toContain("Teacher B.pdf");
+  });
+});
+
+describe("getAiSourceTitle", () => {
+  it("prefers a topic and otherwise uses a truncated meaningful source line", () => {
+    expect(getAiSourceTitle("  Planets  ", "First source line")).toBe("Planets");
+    expect(getAiSourceTitle("", "\n \n  First meaningful source line  \nSecond line")).toBe("First meaningful source line");
+    expect(getAiSourceTitle("", "x".repeat(101))).toBe(`${"x".repeat(99)}…`);
   });
 });

@@ -28,6 +28,7 @@ import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const MAX_SOURCE_TEXT_LENGTH = 12000;
 
 const WS_PREFS_KEY = "hasad:worksheet:prefs";
 
@@ -304,6 +305,7 @@ export default function WorksheetCreate() {
   const [designOpen, setDesignOpen] = useState(false);
   
   const [aiTopic, setAiTopic] = useState("");
+  const [sourceText, setSourceText] = useState("");
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
   const [aiPages, setAiPages] = useState<1 | 2 | 3>(_wsPrefs.aiPages ?? 1);
   const [aiCounts, setAiCounts] = useState<{ mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number }>(
@@ -591,8 +593,8 @@ export default function WorksheetCreate() {
       toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
       return;
     }
-    if (!aiTopic.trim()) {
-      toast.error(ar ? "اكتب موضوع الورقة" : "Add a topic first");
+    if (!aiTopic.trim() && !sourceText.trim()) {
+      toast.error(ar ? "اكتب موضوع الورقة أو الصق النص التعليمي" : "Add a topic or paste educational source text");
       return;
     }
     if (aiTotal === 0) {
@@ -613,6 +615,7 @@ export default function WorksheetCreate() {
         body: JSON.stringify({
           language: contentLang,
           topic: aiTopic.trim(),
+          sourceText: sourceText.trim() || undefined,
           subject: subject.trim() || undefined,
           gradeLevel: gradeLevel.trim() || undefined,
           difficulty: aiDifficulty,
@@ -635,7 +638,7 @@ export default function WorksheetCreate() {
       const current = latestWorksheetRef.current;
       const resolvedLanguage = data.language === "en" ? "en" : "ar";
       const nextQuestions = [...generated, ...current.questions];
-      const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 80);
+       const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 80) || sourceText.trim().split(/\r?\n/)[0].slice(0, 80);
       const lastTheme = getLastTheme();
       const chosenTheme = selectTheme(
         current.subject.trim() || null,
@@ -682,8 +685,8 @@ export default function WorksheetCreate() {
       toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
       return;
     }
-    if (pickedFiles.length === 0) {
-      toast.error(ar ? "اختر ملفًا واحدًا على الأقل" : "Pick at least one file");
+    if (pickedFiles.length === 0 && !sourceText.trim()) {
+      toast.error(ar ? "اختر ملفًا أو الصق نصاً تعليمياً" : "Pick a file or paste educational source text");
       return;
     }
     if (aiTotal === 0) {
@@ -699,6 +702,7 @@ export default function WorksheetCreate() {
     try {
       const fd = new FormData();
       for (const f of pickedFiles) fd.append("files", f);
+      if (sourceText.trim()) fd.append("sourceText", sourceText.trim());
       fd.append("language", contentLang);
       if (subject.trim()) fd.append("subject", subject.trim());
       if (gradeLevel.trim()) fd.append("gradeLevel", gradeLevel.trim());
@@ -727,7 +731,8 @@ export default function WorksheetCreate() {
       const current = latestWorksheetRef.current;
       const resolvedLanguage = data.language === "en" ? "en" : "ar";
       const nextQuestions = [...generated, ...current.questions];
-      const fallbackTitle = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
+       const fallbackTitle = pickedFiles[0]?.name.replace(/\.[^.]+$/, "").slice(0, 80)
+         || sourceText.trim().split(/\r?\n/)[0].slice(0, 80);
       const nextTitle = current.title.trim() || fallbackTitle;
       const lastThemeF = getLastTheme();
       const chosenThemeF = selectTheme(
@@ -912,11 +917,26 @@ export default function WorksheetCreate() {
               </div>
               <div>
                 <h2 className="text-xl font-black text-primary">{ar ? "المولد الذكي" : "Smart Generator"}</h2>
-                <p className="text-sm text-muted-foreground">{ar ? "اكتب موضوعاً وسيقوم الذكاء الاصطناعي ببناء الورقة بالكامل" : "Enter a topic and AI will build the entire worksheet"}</p>
+                <p className="text-sm text-muted-foreground">{ar ? "اكتب موضوعاً أو الصق نصاً تعليمياً ليبني الذكاء الاصطناعي الورقة" : "Enter a topic or paste educational source text and AI will build the worksheet"}</p>
               </div>
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1.5">{ar ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}</label>
+                <textarea
+                  value={sourceText}
+                  maxLength={MAX_SOURCE_TEXT_LENGTH}
+                  onChange={e => setSourceText(e.target.value)}
+                  placeholder={ar
+                    ? "الصق محتوى الدرس هنا؛ سيبقى منفصلاً عن موضوع/تعليمات المعلم."
+                    : "Paste lesson content here; it stays separate from the teacher topic/instructions."}
+                  className="w-full min-h-28 px-4 py-3 rounded-xl border-2 border-border bg-background text-sm focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none"
+                />
+                <p className="text-xs text-muted-foreground text-end mt-1">
+                  {sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}
+                </p>
+              </div>
               <div>
                 <input 
                   value={aiTopic}
@@ -1016,8 +1036,8 @@ export default function WorksheetCreate() {
                    </span>
                 </label>
                 
-                {pickedFiles.length > 0 && (
-                   <button onClick={extractFromFile} disabled={extracting || generating || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-md">
+                 {(pickedFiles.length > 0 || sourceText.trim()) && (
+                    <button onClick={extractFromFile} disabled={extracting || generating || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-md">
                      {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {ar ? "استخراج" : "Extract"}</>}
                    </button>
                 )}
