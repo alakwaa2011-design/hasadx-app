@@ -3,8 +3,6 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  ArrowRight,
   Plus,
   Trash2,
   Save,
@@ -16,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -118,7 +117,6 @@ export default function StroopCreate() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [title, setTitle] = useState("");
@@ -381,6 +379,7 @@ export default function StroopCreate() {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 dark:from-red-950/20 dark:via-orange-950/20 dark:to-yellow-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-lg mx-auto">
+          <GameFlowBackButton onBack={() => setLocation("/")} className="mb-4" />
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 shadow-xl shadow-orange-500/30 mb-3">
               <Brain className="w-8 h-8 text-white" />
@@ -617,10 +616,7 @@ export default function StroopCreate() {
             </button>
           </motion.div>
 
-          <button onClick={() => setLocation("/game/stroop")} className="w-full mt-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-            <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "العودة" : "Back"}
-          </button>
+          <GameFlowBackButton onBack={() => setLocation("/")} className="mt-4 w-full justify-center" />
         </div>
       </div>
     </Layout>

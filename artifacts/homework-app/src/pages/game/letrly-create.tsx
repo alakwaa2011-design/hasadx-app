@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { ArrowRight, Send, Copy, Check, Share2, Sparkles } from "lucide-react";
+import { Send, Copy, Check, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import {
   CATEGORY_LABELS,
@@ -130,13 +131,7 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
   const inner = (
     <>
           {!embedded && (
-            <button
-              onClick={() => setLocation("/teacher")}
-              className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-6"
-            >
-              <ArrowRight className="w-4 h-4" />
-              {copy.teacherDashboard}
-            </button>
+            <GameFlowBackButton onBack={() => setLocation("/")} className="mb-6" />
           )}
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">

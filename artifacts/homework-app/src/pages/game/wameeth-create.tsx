@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useListAssignments,
@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
@@ -41,8 +42,6 @@ import {
 import { mapBackendQuestionToWameethQuestion } from "@/lib/wameeth-question-utils";
 import {
   Zap,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   Search,
   Plus,
@@ -79,7 +78,6 @@ export default function WameethCreate() {
   const [, setLocation] = useLocation();
   const { lang, t, dir } = useI18n();
   const ar = lang === "ar";
-  const BackIcon = ar ? ChevronRight : ChevronLeft;
 
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
   const { data: assignments, isLoading: assignmentsLoading } = useListAssignments(
@@ -594,9 +592,9 @@ export default function WameethCreate() {
       {/* Header */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
-          <Link href="/teacher?tab=competitive" className="p-2 lg:p-2.5 rounded-xl hover:bg-muted transition-colors text-muted-foreground">
-            <BackIcon className="w-5 h-5 lg:w-6 lg:h-6" />
-          </Link>
+          <GameFlowBackButton
+            onBack={() => step === "mode" ? setStep("prepare") : setLocation("/")}
+          />
           <div className="flex items-center gap-3 lg:gap-3.5">
             <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
               <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
@@ -908,9 +906,6 @@ export default function WameethCreate() {
           /* ─── Step 2: play mode ─────────────────────────────────────── */
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 lg:space-y-5 max-w-3xl lg:max-w-4xl mx-auto">
             <div className="flex items-center gap-3 lg:gap-4">
-              <button type="button" onClick={() => setStep("prepare")} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                <BackIcon className="w-5 h-5 lg:w-6 lg:h-6" />
-              </button>
               <div>
                 <h2 className="font-black text-xl lg:text-2xl text-foreground">{ar ? "اختر طريقة اللعب" : "Choose play mode"}</h2>
                 <p className="text-xs lg:text-sm text-muted-foreground font-medium">{ar ? `${validQuestions.length} سؤال جاهز — اختر النمط ثم ابدأ` : `${validQuestions.length} questions ready — choose a mode and start`}</p>

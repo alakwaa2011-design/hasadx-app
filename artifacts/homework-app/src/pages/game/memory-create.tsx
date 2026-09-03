@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Plus, Trash2, Save, Copy, Check, Brain, Sparkles, BookOpen, LogIn } from "lucide-react";
+import { Plus, Trash2, Save, Copy, Check, Brain, Sparkles, BookOpen, LogIn } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -60,7 +61,6 @@ export default function MemoryCreate() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [title, setTitle] = useState("");
@@ -270,6 +270,7 @@ export default function MemoryCreate() {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/20 dark:via-purple-950/20 dark:to-pink-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-lg mx-auto">
+          <GameFlowBackButton onBack={() => setLocation("/")} className="mb-4" />
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-xl shadow-purple-500/30 mb-3">
               <BookOpen className="w-8 h-8 text-white" />
@@ -411,10 +412,7 @@ export default function MemoryCreate() {
             </button>
           </motion.div>
 
-          <button onClick={() => setLocation("/game/memory")} className="w-full mt-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5">
-            <BackArrow className="w-4 h-4" />
-            {lang === "ar" ? "العودة" : "Back"}
-          </button>
+          <GameFlowBackButton onBack={() => setLocation("/")} className="mt-4 w-full justify-center" />
         </div>
       </div>
     </Layout>

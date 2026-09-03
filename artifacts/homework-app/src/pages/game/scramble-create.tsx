@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Plus, Trash2, Save, Copy, Check, Shuffle, BookOpen, LogIn, Eye, Send, MessageSquare, Type } from "lucide-react";
+import { Plus, Trash2, Save, Copy, Check, Shuffle, BookOpen, LogIn, Eye, Send, MessageSquare, Type } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -70,7 +71,6 @@ export default function ScrambleCreate() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
   const [, setLocation] = useLocation();
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [title, setTitle] = useState("");
@@ -291,10 +291,7 @@ export default function ScrambleCreate() {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-fuchsia-50 to-violet-50 dark:from-purple-950/20 dark:via-fuchsia-950/20 dark:to-violet-950/20 py-6 px-4" dir={dir}>
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-3 mb-5">
-            <button onClick={() => setLocation("/game/scramble")}
-              className="p-2 rounded-xl bg-card border border-border/60 text-muted-foreground hover:text-foreground transition-colors">
-              <BackArrow className="w-5 h-5" />
-            </button>
+            <GameFlowBackButton onBack={() => setLocation("/")} />
             <div className="flex-1">
               <h1 className="text-xl font-black text-foreground">{lang === "ar" ? "إنشاء كلمات مخصصة" : "Create Custom Words"}</h1>
               <p className="text-xs text-muted-foreground">{lang === "ar" ? "أضف كلمات خاصة بك وشاركها مع طلابك" : "Add your own words and share with students"}</p>

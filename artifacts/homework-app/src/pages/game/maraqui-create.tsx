@@ -3,10 +3,11 @@ import { useLocation, useSearch } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, ArrowRight, Plus, Trash2, Save, Copy, Check,
+  Plus, Trash2, Save, Copy, Check,
   Sparkles, LogIn, ChevronDown, ChevronUp, Loader2, X, Pencil,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
@@ -55,7 +56,6 @@ export default function MaraquiCreate() {
   const params = new URLSearchParams(search);
   const editId = params.get("edit") ? parseInt(params.get("edit")!, 10) : null;
   const isEditMode = editId !== null && !isNaN(editId);
-  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -368,9 +368,7 @@ export default function MaraquiCreate() {
       <div className="min-h-screen bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 dark:from-teal-950/20 dark:via-emerald-950/20 dark:to-cyan-950/20 py-8 px-4" dir={dir}>
         <div className="max-w-2xl mx-auto">
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 mb-6">
-            <button onClick={() => setLocation("/game/maraqui")} className="p-2 rounded-xl hover:bg-white/60 dark:hover:bg-white/10 transition-colors text-muted-foreground">
-              <BackArrow className="w-5 h-5" />
-            </button>
+            <GameFlowBackButton onBack={() => setLocation("/")} />
             <div>
               <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
                 {isEditMode && <Pencil className="w-5 h-5 text-teal-500" />}
