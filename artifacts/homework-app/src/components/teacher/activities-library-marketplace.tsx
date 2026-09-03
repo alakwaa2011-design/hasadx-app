@@ -23,10 +23,8 @@ import {
   User,
   Bookmark,
   Presentation,
-  Sparkles,
   TrendingUp,
   Radio,
-  Layers,
   Globe,
   LayoutGrid,
   List,
@@ -787,11 +785,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               <Link href="/teacher/new">
                 <button
                   type="button"
-                  className="hidden min-h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black text-white shadow-sm transition-all hover:brightness-105 sm:flex"
+                  className="flex min-h-9 items-center justify-center gap-1 rounded-xl px-2.5 text-[10px] font-black text-white shadow-sm transition-all hover:brightness-105 sm:min-h-10 sm:gap-1.5 sm:px-4 sm:text-xs"
                   style={{ background: C.primary, fontFamily: "inherit" }}
                 >
                   <Plus className="h-4 w-4" />
-                  {isAr ? "شارك نشاطاً" : "Share activity"}
+                  <span className="sm:hidden">{isAr ? "شارك" : "Share"}</span>
+                  <span className="hidden sm:inline">{isAr ? "شارك نشاطاً" : "Share activity"}</span>
                 </button>
               </Link>
             </div>
@@ -814,7 +813,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             </div>
 
             <div className="-mx-1 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: "thin" }}>
-              <div className="flex min-w-max gap-1.5">
+              <div className="flex min-w-max gap-1.5 lg:w-full lg:justify-between">
                 {typeFilters.map(filter => {
                   const active = typeChip === filter.id;
                   return (
@@ -840,7 +839,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             </div>
 
             <div className="-mx-1 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: "thin" }}>
-              <div className="flex min-w-max items-center gap-2">
+              <div className="flex min-w-max items-center gap-2 lg:w-full lg:justify-between">
                 <label className="relative">
                   <span className="sr-only">{isAr ? "المادة الدراسية" : "Subject"}</span>
                   <select
@@ -1113,7 +1112,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
           {/* Trending now */}
           {trendingNow.length > 0 && (
-            <section className="mb-5 sm:mb-7">
+            <section className="mb-4 sm:mb-5">
               <div className="mb-2.5 flex items-center justify-between sm:mb-3">
                 <div className="flex items-center gap-2">
                   <span className="h-5 w-0.5 rounded-full" style={{ background: `linear-gradient(to bottom,${C.gold},${C.primary})` }} />
@@ -1124,12 +1123,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   {isAr ? "عرض الكل" : "See all"} <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="grid grid-cols-[repeat(4,minmax(285px,1fr))] gap-3 overflow-x-auto pb-2 lg:grid-cols-2 xl:grid-cols-4" style={{ scrollbarWidth: "thin" }}>
+              <div className="grid grid-cols-1 gap-3 overflow-x-auto pb-1 sm:grid-cols-2 lg:grid-cols-3" style={{ scrollbarWidth: "thin" }}>
                 {trendingNow.map((item, idx) => (
                   <article
                     key={item.key}
-                    className="group min-w-[285px] overflow-hidden rounded-2xl border bg-white text-start transition-all duration-200 hover:shadow-md"
-                    style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
+                    className="group min-w-0 overflow-hidden rounded-xl border bg-white text-start transition-all duration-200 hover:shadow-md sm:rounded-2xl"
+                    style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
                   >
                     <div className="relative overflow-hidden">
                       <ActivityCover kind={resolveCoverKind(item.kind, item.type)} subject={item.subject} title={item.title} type={item.type} aspect="video">
@@ -1148,14 +1147,14 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                         </button>
                       </ActivityCover>
                     </div>
-                    <div className="p-3">
-                      <p className="line-clamp-2 min-h-9 text-[13px] font-black leading-snug" style={{ color: C.text }}>{item.title}</p>
-                      <div className="mt-2 flex items-center justify-between gap-2">
+                    <div className="p-2.5 sm:p-3">
+                      <p className="line-clamp-2 min-h-8 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{item.title}</p>
+                      <div className="mt-1.5 flex items-center justify-between gap-2 sm:mt-2">
                         <span className="truncate text-[10px] font-medium" style={{ color: C.muted }}>{item.activeLabel}</span>
                         <button
                           type="button"
                           onClick={() => item.kind === "assignment" ? launchAsGame(item.id) : onActiveTabChange("videos")}
-                          className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg px-3 text-[10px] font-black text-white transition-all hover:brightness-105"
+                          className="inline-flex min-h-7 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[10px] font-black text-white transition-all hover:brightness-105"
                           style={{ background: C.primary }}
                         >
                           <Play className="h-3 w-3 fill-current" />
