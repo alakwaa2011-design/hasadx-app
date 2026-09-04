@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const meta = vi.hoisted(() => ({ trackMetaInitiateCheckout: vi.fn() }));
+const overlay = vi.hoisted(() => ({ openLemonSqueezyOverlay: vi.fn() }));
 
 vi.mock("@/lib/meta-pixel", () => meta);
+vi.mock("@/lib/lemon-squeezy-overlay", () => overlay);
 
 import {
   beginCreditPackageCheckout,
   beginSubscriptionCheckout,
+  openSubscriptionCheckout,
 } from "./credits-checkout";
 
 function jsonResponse(data: unknown, ok = true) {
@@ -18,6 +21,8 @@ function jsonResponse(data: unknown, ok = true) {
 
 beforeEach(() => {
   meta.trackMetaInitiateCheckout.mockReset();
+  overlay.openLemonSqueezyOverlay.mockReset();
+  overlay.openLemonSqueezyOverlay.mockResolvedValue(undefined);
   sessionStorage.clear();
 });
 
@@ -93,6 +98,33 @@ describe("معالجات Checkout المشتركة", () => {
     expect(fetchMock.mock.calls[0][1]).toMatchObject({
       body: JSON.stringify({ planCode: "basic", billingInterval: "year" }),
     });
+  });
+
+  it.each([
+    ["basic", "month"],
+    ["pro", "month"],
+    ["basic", "year"],
+    ["pro", "year"],
+  ] as const)("يفتح Overlay داخل الصفحة لاشتراك %s %s", async (planCode, billingInterval) => {
+    const checkoutUrl = `https://checkout.example/${planCode}-${billingInterval}`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ checkoutUrl })));
+
+    await beginSubscriptionCheckout(planCode, "تعذر بدء الدفع", billingInterval);
+
+    expect(overlay.openLemonSqueezyOverlay).toHaveBeenCalledOnce();
+    expect(overlay.openLemonSqueezyOverlay).toHaveBeenCalledWith(checkoutUrl);
+  });
+
+  it("يستخدم التحويل الخارجي كـ fallback فقط عند فشل Lemon.js", async () => {
+    const checkoutUrl = "https://checkout.example/pro-year";
+    const externalRedirect = vi.fn();
+    overlay.openLemonSqueezyOverlay.mockRejectedValueOnce(new Error("Lemon.js unavailable"));
+
+    await openSubscriptionCheckout(checkoutUrl, externalRedirect);
+
+    expect(overlay.openLemonSqueezyOverlay).toHaveBeenCalledWith(checkoutUrl);
+    expect(externalRedirect).toHaveBeenCalledOnce();
+    expect(externalRedirect).toHaveBeenCalledWith(checkoutUrl);
   });
 
   it("لا يمنع فشل لقطة الرصيد Checkout الاشتراك", async () => {

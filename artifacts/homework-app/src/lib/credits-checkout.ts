@@ -1,4 +1,5 @@
 import { trackMetaInitiateCheckout } from "@/lib/meta-pixel";
+import { openLemonSqueezyOverlay } from "@/lib/lemon-squeezy-overlay";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -62,6 +63,18 @@ async function responseError(response: Response, fallback: string) {
       ? body.message
       : fallback,
   );
+}
+
+export async function openSubscriptionCheckout(
+  checkoutUrl: string,
+  externalRedirect: (url: string) => void = (url) => { window.location.href = url; },
+): Promise<void> {
+  try {
+    await openLemonSqueezyOverlay(checkoutUrl);
+  } catch {
+    // Keep checkout available if Lemon.js is blocked or fails to initialize.
+    externalRedirect(checkoutUrl);
+  }
 }
 
 export async function fetchCreditPackages(): Promise<CreditPackagesResponse> {
@@ -169,6 +182,6 @@ export async function beginSubscriptionCheckout(
 
   const { checkoutUrl } = await response.json();
   trackMetaInitiateCheckout("subscription", planCode);
-  await (checkoutOptions.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
+  await (checkoutOptions.redirect ?? openSubscriptionCheckout)(checkoutUrl);
   return checkoutUrl as string;
 }

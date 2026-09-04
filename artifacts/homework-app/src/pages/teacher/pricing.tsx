@@ -44,6 +44,7 @@ import {
   beginSubscriptionCheckout,
   creditsApiFetch as apiFetch,
 } from "@/lib/credits-checkout";
+import { subscribeToLemonSqueezyEvents } from "@/lib/lemon-squeezy-overlay";
 
 interface Plan {
   id: number;
@@ -119,9 +120,10 @@ export function PricingContent() {
   // Never persist this choice: every fresh pricing visit starts monthly.
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const compareRef = useRef<HTMLDivElement>(null);
+  const subscriptionOverlayPendingRef = useRef(false);
 
   // Shared react-query cache with the header CreditsChip — no duplicate request.
-  const { data: creditsData } = useCreditsBalance();
+  const { data: creditsData, refetch: refreshCreditsBalance } = useCreditsBalance();
   const balance = creditsData?.balance ?? null;
 
   // Keep Arabic copy/RTL, but always render numeric values with Latin digits.
@@ -146,11 +148,36 @@ export function PricingContent() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => subscribeToLemonSqueezyEvents((event) => {
+    if (!subscriptionOverlayPendingRef.current) return;
+    const eventName = typeof event === "object" ? event?.event : event;
+
+    if (eventName === "Checkout.Success") {
+      // UI refresh only. Webhooks remain the authority for activating the
+      // subscription and granting credits.
+      void Promise.all([
+        apiFetch("/api/subscriptions/me")
+          .then((response) => response.json())
+          .then((data) => setCurrentSub(data.subscription ?? null)),
+        refreshCreditsBalance(),
+      ]);
+      toast.success(lang === "ar" ? "تم الدفع بنجاح، جارٍ تحديث اشتراكك." : "Payment successful. Updating your subscription.");
+      return;
+    }
+
+    if (eventName === "close" || eventName === "Checkout.Closed") {
+      subscriptionOverlayPendingRef.current = false;
+      setCheckingOut(null);
+    }
+  }), [lang, refreshCreditsBalance]);
+
   const handleUpgrade = async (planCode: string) => {
     setCheckingOut(planCode);
+    subscriptionOverlayPendingRef.current = true;
     try {
       await beginSubscriptionCheckout(planCode, p.checkoutError, billingInterval);
     } catch (err: any) {
+      subscriptionOverlayPendingRef.current = false;
       toast(err.message, { className: "text-red-500" });
       setCheckingOut(null);
     }
