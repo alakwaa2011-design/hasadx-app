@@ -202,7 +202,8 @@ export const CreditService = {
         JOIN plans p ON p.id = s.plan_id
         WHERE s.teacher_id = ${teacherId}
           AND p.code = 'pro'
-          AND s.status = 'active'
+          AND (s.status = 'active'
+               OR (s.status IN ('canceled', 'cancelled') AND s.current_period_end > NOW()))
         LIMIT 1
       `);
       if ((proCheck.rows?.length ?? 0) > 0) {
@@ -619,7 +620,8 @@ export const CreditService = {
     invoiceId: string,
     subscriptionId: string,
     periodEnd: Date,
-    nextPeriodEnd: Date
+    nextPeriodEnd: Date,
+    creditCycleKey?: string
   ): Promise<{ granted: number; alreadyGranted: boolean }> {
     return await db.transaction(async (tx) => {
       // ── Step 1: Claim the invoice (primary guard) ────────────────────────
@@ -627,10 +629,10 @@ export const CreditService = {
       // two concurrent webhooks from both proceeding.
       const claimed = await tx.execute(sql`
         INSERT INTO subscription_credit_grants
-          (subscription_invoice_id, subscription_id, teacher_id, plan_code, credits_granted, period_end)
+          (subscription_invoice_id, subscription_id, teacher_id, plan_code, credits_granted, period_end, credit_cycle_key)
         VALUES
-          (${invoiceId}, ${subscriptionId}, ${teacherId}, ${planCode}, 0, ${periodEnd})
-        ON CONFLICT (subscription_invoice_id) DO NOTHING
+          (${invoiceId}, ${subscriptionId}, ${teacherId}, ${planCode}, 0, ${periodEnd}, ${creditCycleKey ?? null})
+        ON CONFLICT DO NOTHING
         RETURNING id
       `);
 

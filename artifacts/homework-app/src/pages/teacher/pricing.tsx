@@ -55,6 +55,7 @@ interface Plan {
   billingPeriodDays: number;
   monthlyCredits: number;
   rolloverCap: number | null;
+  billingOptions?: { billingInterval: "month" | "year"; priceMinor: number; currency: string; isActive?: boolean }[];
 }
 
 interface CurrentSub {
@@ -115,6 +116,8 @@ export function PricingContent() {
   const [showManageSubscription, setShowManageSubscription] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  // Never persist this choice: every fresh pricing visit starts monthly.
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const compareRef = useRef<HTMLDivElement>(null);
 
   // Shared react-query cache with the header CreditsChip — no duplicate request.
@@ -146,7 +149,7 @@ export function PricingContent() {
   const handleUpgrade = async (planCode: string) => {
     setCheckingOut(planCode);
     try {
-      await beginSubscriptionCheckout(planCode, p.checkoutError);
+      await beginSubscriptionCheckout(planCode, p.checkoutError, billingInterval);
     } catch (err: any) {
       toast(err.message, { className: "text-red-500" });
       setCheckingOut(null);
@@ -192,7 +195,11 @@ export function PricingContent() {
   };
 
   const currentPlanCode = currentSub?.plan_code ?? "free";
-  const isActive = currentSub?.status === "active" && currentSub?.payment_status === "active";
+  const isActive = (currentSub?.status === "active"
+    || ((currentSub?.status === "canceled" || currentSub?.status === "cancelled")
+      && !!currentSub.current_period_end
+      && new Date(currentSub.current_period_end) > new Date()))
+    && currentSub?.payment_status === "active";
 
   if (!loading && !pricingPageVisible) {
     return (
@@ -212,6 +219,14 @@ export function PricingContent() {
   const orderedPlans = ["free", "basic", "pro"]
     .map((code) => plans.find((pl) => pl.code === code))
     .filter(Boolean) as Plan[];
+  // Do not present annual billing unless checkout can actually resolve both
+  // paid variants. This also prevents a missing admin configuration from
+  // rendering a misleading $0.00 annual price.
+  const annualAvailable = ["basic", "pro"].every((code) =>
+    plans.find((plan) => plan.code === code)?.billingOptions?.some(
+      (option) => option.billingInterval === "year" && option.isActive !== false && option.priceMinor > 0,
+    ),
+  );
 
   const orderedPacks = [...packages].sort((a, b) => a.credits - b.credits);
 
@@ -330,6 +345,12 @@ export function PricingContent() {
           <div className="mb-5">
             <p className="text-xs font-bold text-[#a17d28]">{p.plansKicker}</p>
             <h2 className="mt-1 text-2xl font-black text-[#173b2c]">{p.plansHeading}</h2>
+            <div className="mt-4 inline-flex rounded-xl border border-[#c9dbcd] bg-white p-1" data-testid="billing-interval-toggle">
+              <button type="button" onClick={() => setBillingInterval("month")} aria-pressed={billingInterval === "month"} className={`rounded-lg px-4 py-2 text-sm font-black ${billingInterval === "month" ? "bg-[#0b4b35] text-white" : "text-[#52705f]"}`}>شهري</button>
+              {annualAvailable && (
+                <button type="button" onClick={() => setBillingInterval("year")} aria-pressed={billingInterval === "year"} className={`rounded-lg px-4 py-2 text-sm font-black ${billingInterval === "year" ? "bg-[#0b4b35] text-white" : "text-[#52705f]"}`}>سنوي · وفّر حتى 25%</button>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -346,7 +367,20 @@ export function PricingContent() {
                 const isCurrent = plan.code === currentPlanCode && (plan.code === "free" ? currentPlanCode === "free" : isActive);
                 const isPro = plan.code === "pro";
                 const isFree = plan.code === "free";
-                const priceUSD = (plan.priceMinor / 100).toFixed(2);
+                const annual = billingInterval === "year" && (plan.code === "basic" || plan.code === "pro");
+                const option = plan.billingOptions?.find((o) => o.billingInterval === billingInterval);
+                const priceUSD = (option?.priceMinor ?? plan.priceMinor) / 100;
+                const monthlyOption = plan.billingOptions?.find((o) => o.billingInterval === "month");
+                const annualOption = plan.billingOptions?.find((o) => o.billingInterval === "year");
+                const annualPrice = (annualOption?.priceMinor ?? 0) / 100;
+                const monthlyPrice = (monthlyOption?.priceMinor ?? plan.priceMinor) / 100;
+                const equivalentMonthly = annualPrice / 12;
+                const originalAnnual = monthlyPrice * 12;
+                const savings = Math.max(0, originalAnnual - annualPrice);
+                const monthsEquivalent = monthlyPrice > 0 ? Math.round(savings / monthlyPrice) : 0;
+                const monthsEquivalentLabel = monthsEquivalent === 2 ? "شهرين"
+                  : monthsEquivalent === 3 ? "3 أشهر"
+                  : `${monthsEquivalent} أشهر`;
                 const planName = lang === "ar" ? plan.nameAr : plan.nameEn;
                 const Icon = meta?.icon ?? Sparkles;
 
@@ -367,11 +401,9 @@ export function PricingContent() {
                         }`}
                       >
                         <Zap className="size-3.5 fill-current" />
-                        {isPro ? (
+                          {isPro ? (
                           <span>
-                            {p.proSavingsBadge.split("20%")[0]}
-                            <span className="font-black">20%</span>
-                            {p.proSavingsBadge.split("20%")[1]}
+                             {annual ? "الأفضل قيمة" : <>{p.proSavingsBadge.split("20%")[0]}<span className="font-black">20%</span>{p.proSavingsBadge.split("20%")[1]}</>}
                           </span>
                         ) : (
                           meta.badge
@@ -412,12 +444,18 @@ export function PricingContent() {
                     <div className={`mt-5 border-y py-5 text-center ${isPro ? "border-white/10" : "border-[#e9efea]"}`}>
                       <div className="flex items-end justify-center gap-2">
                         <span className="text-3xl font-black tracking-tight">
-                          {isFree ? p.freePlanLabel : `$${priceUSD}`}
+                          {isFree ? p.freePlanLabel : annual ? `$${equivalentMonthly.toFixed(2)}` : `$${priceUSD.toFixed(2)}`}
                         </span>
                         {!isFree && (
-                          <span className={`mb-1 text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>{p.perMonth}</span>
+                          <span className={`mb-1 text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>{annual ? "شهرياً (ما يعادله عند الدفع سنوياً)" : p.perMonth}</span>
                         )}
                       </div>
+                       {annual && !isFree && (
+                         <div className={`mt-2 text-xs font-bold leading-5 ${isPro ? "text-[#f4d978]" : "text-[#8e6a17]"}`} data-testid={`annual-copy-${plan.code}`}>
+                            <div><span className="line-through opacity-70">${originalAnnual.toFixed(2)}</span> <span className="text-base">${annualPrice.toFixed(2)}</span> — وفّر ${savings.toFixed(2)} ({`وفّر ما يعادل ${monthsEquivalentLabel}`})</div>
+                            <div>يُدفع مبلغ ${annualPrice.toFixed(2)} الآن ثم سنوياً عند التجديد. تُضاف النقاط شهرياً، وليس دفعة 12 شهراً مقدماً.</div>
+                         </div>
+                       )}
                       <div className={`mt-2 flex items-center justify-center gap-3 text-xs font-bold ${isPro ? "text-[#f4d978]" : "text-[#a17d28]"}`}>
                         {isFree ? (
                           <>

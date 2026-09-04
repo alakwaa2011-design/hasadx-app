@@ -42,6 +42,7 @@ import { seedXpDefaultsIfNeeded } from "./lib/xp/seed";
 import { bindXpSocket } from "./lib/xp/socket";
 import { startEmailOutboxWorker } from "./lib/xp/email-worker";
 import { startMissingWelcomeCreditsAlertJob } from "./lib/welcome-credits-alert";
+import { startAnnualCreditReleaseJob } from "./lib/annual-credit-release";
 import { CONFIGURED_ADMIN_EMAILS } from "./lib/admin-identity";
 
 async function runSchemaMigrations() {
@@ -1216,7 +1217,12 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS current_period_end       TIMESTAMP,
         ADD COLUMN IF NOT EXISTS cancelled_at             TIMESTAMP,
         ADD COLUMN IF NOT EXISTS payment_status           TEXT DEFAULT 'active',
-        ADD COLUMN IF NOT EXISTS last_credited_period_end TIMESTAMP
+        ADD COLUMN IF NOT EXISTS last_credited_period_end TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS billing_interval         TEXT NOT NULL DEFAULT 'month',
+        ADD COLUMN IF NOT EXISTS lemon_variant_id         TEXT,
+        ADD COLUMN IF NOT EXISTS paid_through             TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS release_through          TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS provider_updated_at      TIMESTAMP
     `);
     await db.execute(sql`
       ALTER TABLE credit_accounts
@@ -1239,6 +1245,7 @@ async function runSchemaMigrations() {
         plan_code               TEXT NOT NULL,
         credits_granted         INTEGER NOT NULL DEFAULT 0,
         period_end              TIMESTAMP NOT NULL,
+        credit_cycle_key        TEXT,
         created_at              TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
@@ -1248,9 +1255,41 @@ async function runSchemaMigrations() {
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_teacher_idx       ON subscription_credit_grants(teacher_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_subscription_idx  ON subscription_credit_grants(subscription_id)`);
+    await db.execute(sql`ALTER TABLE subscription_credit_grants ADD COLUMN IF NOT EXISTS credit_cycle_key TEXT`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS scg_credit_cycle_uniq ON subscription_credit_grants(credit_cycle_key)`);
     logger.info("subscription_credit_grants table ready");
   } catch (err) {
     logger.error(err, "subscription_credit_grants migration failed");
+  }
+
+  // ── Lemon Squeezy monthly/annual variants ─────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS plan_billing_options (
+        id SERIAL PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        billing_interval TEXT NOT NULL CHECK (billing_interval IN ('month', 'year')),
+        lemon_variant_id TEXT NOT NULL,
+        price_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'USD',
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(plan_id, billing_interval),
+        UNIQUE(lemon_variant_id)
+      )
+    `);
+    // Preserve existing admin-configured monthly variants while annual variants
+    // are configured in the same table (there is deliberately no guessed ID).
+    await db.execute(sql`
+      INSERT INTO plan_billing_options (plan_id, billing_interval, lemon_variant_id, price_minor, currency)
+      SELECT id, 'month', lemon_variant_id, price_minor, currency
+      FROM plans WHERE lemon_variant_id IS NOT NULL
+      ON CONFLICT (plan_id, billing_interval) DO NOTHING
+    `);
+    logger.info("Annual billing options table ready");
+  } catch (err) {
+    logger.error(err, "Annual billing options migration failed");
   }
 
   // ── Credit Batches — Source of Truth for credits ───────────────────────────
@@ -1520,6 +1559,7 @@ httpServer.listen(port, () => {
       startOnlineSessionsCleanupJob();
       startEmailOutboxWorker();
       startMissingWelcomeCreditsAlertJob();
+      startAnnualCreditReleaseJob();
 
       // ── Credits: auto-refund stale holds every 60s ─────────────────────────
       import("./lib/credit-service").then(({ CreditService }) => {

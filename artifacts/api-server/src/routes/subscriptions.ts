@@ -7,8 +7,8 @@
  * POST /api/subscriptions/cancel    — cancel active subscription (end of period)
  */
 import { Router, type IRouter } from "express";
-import { db, plansTable, subscriptionsTable, platformSettingsTable, teachersTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { db, plansTable, planBillingOptionsTable, subscriptionsTable, platformSettingsTable, teachersTable } from "@workspace/db";
+import { eq, asc, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { createCheckout, frontendOrigin } from "../lib/lemonsqueezy";
@@ -56,7 +56,16 @@ router.get("/subscriptions/plans", async (req, res) => {
       pricingPageVisible = viewer?.isAdmin === true;
     }
 
-    res.json({ plans, pricingPageVisible, paymentsEnabled: process.env.PAYMENTS_ENABLED === "true" });
+    const options = await db
+      .select({
+        planId: planBillingOptionsTable.planId,
+        billingInterval: planBillingOptionsTable.billingInterval,
+        priceMinor: planBillingOptionsTable.priceMinor,
+        currency: planBillingOptionsTable.currency,
+      })
+      .from(planBillingOptionsTable)
+      .where(eq(planBillingOptionsTable.isActive, true));
+    res.json({ plans: plans.map((plan) => ({ ...plan, billingOptions: options.filter((o) => o.planId === plan.id) })), pricingPageVisible, paymentsEnabled: process.env.PAYMENTS_ENABLED === "true" });
   } catch (err) {
     logger.error(err, "GET /subscriptions/plans failed");
     res.status(500).json({ message: "حدث خطأ" });
@@ -115,20 +124,22 @@ router.post("/subscriptions/checkout", async (req, res) => {
     return;
   }
 
-  const { planCode } = req.body ?? {};
+  const { planCode, billingInterval = "month" } = req.body ?? {};
   if (!planCode || !["basic", "pro"].includes(planCode)) {
     res.status(400).json({ message: "كود الباقة غير صحيح" });
+    return;
+  }
+  if (billingInterval !== "month" && billingInterval !== "year") {
+    res.status(400).json({ message: "فترة الفوترة غير صحيحة" });
     return;
   }
 
   try {
     const [plan] = await db
-      .select({
-        lemonVariantId: plansTable.lemonVariantId,
-        nameAr:         plansTable.nameAr,
-      })
+      .select({ lemonVariantId: planBillingOptionsTable.lemonVariantId, nameAr: plansTable.nameAr })
       .from(plansTable)
-      .where(eq(plansTable.code, planCode))
+      .innerJoin(planBillingOptionsTable, eq(planBillingOptionsTable.planId, plansTable.id))
+      .where(and(eq(plansTable.code, planCode), eq(planBillingOptionsTable.billingInterval, billingInterval), eq(planBillingOptionsTable.isActive, true)))
       .limit(1);
 
     if (!plan) {
@@ -157,6 +168,7 @@ router.post("/subscriptions/checkout", async (req, res) => {
       // They are required only for one-time credit-package checkouts (credit-purchases.ts).
       customData: {
         user_id: String(teacherId),
+        billing_interval: billingInterval,
       },
     });
 
@@ -181,7 +193,7 @@ router.post("/subscriptions/cancel", async (req, res) => {
   try {
     // Load current subscription
     const rows = await db.execute(sql`
-      SELECT s.id, s.status, s.external_subscription_id, s.current_period_end,
+       SELECT s.id, s.status, s.cancelled_at, s.external_subscription_id, s.current_period_end,
              p.code AS plan_code
       FROM subscriptions s
       JOIN plans p ON s.plan_id = p.id
@@ -199,7 +211,7 @@ router.post("/subscriptions/cancel", async (req, res) => {
       return;
     }
     // Accept both spellings used across the codebase ('cancelled' / 'canceled')
-    if (sub.status === "cancelled" || sub.status === "canceled") {
+    if (sub.cancelled_at || sub.status === "cancelled" || sub.status === "canceled") {
       res.status(400).json({ message: "الاشتراك ملغى بالفعل" });
       return;
     }
@@ -248,7 +260,9 @@ router.post("/subscriptions/cancel", async (req, res) => {
     // ── Update DB ──────────────────────────────────────────────────────────
     await db.execute(sql`
       UPDATE subscriptions
-      SET status       = 'cancelled',
+       /* This is a scheduled cancellation, not an immediate entitlement
+          revocation. Keep active state through current_period_end. */
+       SET status       = 'active',
           cancelled_at = NOW(),
           updated_at   = NOW()
       WHERE teacher_id = ${teacherId}

@@ -78,11 +78,21 @@ describe("معالجات Checkout المشتركة", () => {
     expect(fetchMock.mock.calls[1][0]).toContain("/api/subscriptions/checkout");
     expect(fetchMock.mock.calls[1][1]).toMatchObject({
       method: "POST",
-      body: JSON.stringify({ planCode: "pro" }),
+      body: JSON.stringify({ planCode: "pro", billingInterval: "month" }),
     });
     expect(sessionStorage.getItem("subCheckoutBalanceSnapshot")).toBe("137");
     expect(meta.trackMetaInitiateCheckout).toHaveBeenCalledWith("subscription", "pro");
     expect(redirect).toHaveBeenCalledWith("https://checkout.example/pro");
+  });
+
+  it("يرسل فترة سنوية صراحةً عند اختيارها", async () => {
+    const redirect = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ checkoutUrl: "https://checkout.example/basic" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await beginSubscriptionCheckout("basic", "تعذر بدء الدفع", "year", { redirect });
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      body: JSON.stringify({ planCode: "basic", billingInterval: "year" }),
+    });
   });
 
   it("لا يمنع فشل لقطة الرصيد Checkout الاشتراك", async () => {

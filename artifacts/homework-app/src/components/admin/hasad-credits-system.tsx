@@ -42,6 +42,7 @@ type Plan = {
   lemonProductId: string | null;
   monthlyCredits: number | null;
   rolloverCap: number | null;
+  billingOptions?: { billingInterval: "month" | "year"; lemonVariantId: string; priceMinor: number; isActive: boolean }[];
 };
 
 type Overview = {
@@ -199,7 +200,7 @@ function PlansSection({ overview, onReload }: { overview: Overview; onReload: ()
                 <li className="flex justify-between" dir="ltr">
                   <span className="font-mono text-[10px]">{c.productVariant}</span>
                   <span className="font-mono text-[10px] text-foreground">
-                    {p.lemonProductId || "—"} / {p.lemonVariantId || "—"}
+                    شهري: {p.billingOptions?.find((o) => o.billingInterval === "month")?.lemonVariantId ?? p.lemonVariantId ?? "—"} · سنوي: {p.billingOptions?.find((o) => o.billingInterval === "year")?.lemonVariantId ?? "—"}
                   </span>
                 </li>
               </ul>
@@ -232,7 +233,11 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
   const [monthlyCredits, setMonthlyCredits] = useState(plan.monthlyCredits == null ? "" : String(plan.monthlyCredits));
   const [rolloverCap, setRolloverCap] = useState(plan.rolloverCap == null ? "" : String(plan.rolloverCap));
   const [lemonProductId, setLemonProductId] = useState(plan.lemonProductId ?? "");
-  const [lemonVariantId, setLemonVariantId] = useState(plan.lemonVariantId ?? "");
+  const monthlyOption = plan.billingOptions?.find((o) => o.billingInterval === "month");
+  const annualOption = plan.billingOptions?.find((o) => o.billingInterval === "year");
+  const [monthlyVariantId, setMonthlyVariantId] = useState(monthlyOption?.lemonVariantId ?? plan.lemonVariantId ?? "");
+  const [annualVariantId, setAnnualVariantId] = useState(annualOption?.lemonVariantId ?? "");
+  const [annualPriceMajor, setAnnualPriceMajor] = useState(annualOption ? (annualOption.priceMinor / 100).toFixed(2) : (plan.code === "basic" ? "49.90" : "89.90"));
   const [saving, setSaving] = useState(false);
 
   const parseIntOrNull = (s: string): number | null => {
@@ -247,9 +252,12 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
     const priceNum = Number(priceMajor);
     if (!Number.isFinite(priceNum) || priceNum < 0) { toast.error(c.invalidPrice); return; }
     const lsP = parseId(lemonProductId);
-    const lsV = parseId(lemonVariantId);
+    const monthlyV = parseId(monthlyVariantId);
+    const annualV = parseId(annualVariantId);
     if (lsP !== null && !/^\d+$/.test(lsP)) { toast.error(c.productIdInvalid); return; }
-    if (lsV !== null && !/^\d+$/.test(lsV)) { toast.error(c.variantIdInvalid); return; }
+    if (!monthlyV || !annualV || !/^\d+$/.test(monthlyV) || !/^\d+$/.test(annualV)) { toast.error(c.variantIdInvalid); return; }
+    const annualPrice = Number(annualPriceMajor);
+    if (!Number.isFinite(annualPrice) || annualPrice < 0) { toast.error(c.invalidPrice); return; }
     setSaving(true);
     try {
       const r = await fetch(`${API_BASE}/api/billing/admin/plans/${plan.id}`, {
@@ -261,7 +269,10 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
           monthlyCredits: parseIntOrNull(monthlyCredits),
           rolloverCap: parseIntOrNull(rolloverCap),
           lemonProductId: lsP,
-          lemonVariantId: lsV,
+          billingOptions: [
+            { billingInterval: "month", lemonVariantId: monthlyV, priceMinor: Math.round(priceNum * 100), isActive: true },
+            { billingInterval: "year", lemonVariantId: annualV, priceMinor: Math.round(annualPrice * 100), isActive: true },
+          ],
         }),
       });
       if (r.ok) { toast.success(c.planSaved); onSaved(); }
@@ -303,15 +314,16 @@ function PlanEditModal({ plan, onClose, onSaved }: { plan: Plan; onClose: () => 
           </div>
           <div className="border-t border-border pt-3">
             <p className="text-xs font-bold text-muted-foreground mb-2">{c.idsHint}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <label className="block">
                 <span className="text-xs font-bold text-muted-foreground block mb-1">{c.productId}</span>
                 <Input value={lemonProductId} onChange={(e) => setLemonProductId(e.target.value)} placeholder={c.numericIdPlaceholder} dir="ltr" inputMode="numeric" />
               </label>
-              <label className="block">
-                <span className="text-xs font-bold text-muted-foreground block mb-1">{c.variantId}</span>
-                <Input value={lemonVariantId} onChange={(e) => setLemonVariantId(e.target.value)} placeholder={c.numericIdPlaceholder} dir="ltr" inputMode="numeric" />
-              </label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <label className="block"><span className="text-xs font-bold text-muted-foreground block mb-1">Lemon Variant ID (شهري)</span><Input value={monthlyVariantId} onChange={(e) => setMonthlyVariantId(e.target.value)} dir="ltr" inputMode="numeric" /></label>
+              <label className="block"><span className="text-xs font-bold text-muted-foreground block mb-1">Lemon Variant ID (سنوي)</span><Input value={annualVariantId} onChange={(e) => setAnnualVariantId(e.target.value)} dir="ltr" inputMode="numeric" /></label>
+              <label className="block"><span className="text-xs font-bold text-muted-foreground block mb-1">السعر السنوي (USD)</span><Input type="number" step="0.01" min="0" value={annualPriceMajor} onChange={(e) => setAnnualPriceMajor(e.target.value)} dir="ltr" /></label>
             </div>
           </div>
           {plan.subscriberCount > 0 && (

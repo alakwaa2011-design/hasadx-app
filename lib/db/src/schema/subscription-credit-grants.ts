@@ -29,12 +29,15 @@ export const subscriptionCreditGrantsTable = pgTable(
     /** Actual credits granted (0 = rollover cap reached) */
     creditsGranted:        integer("credits_granted").notNull().default(0),
     periodEnd:             timestamp("period_end").notNull(),
+    /** Stable annual monthly-release key; NULL for legacy monthly invoice grants. */
+    creditCycleKey:         text("credit_cycle_key"),
     createdAt:             timestamp("created_at").notNull().default(sql`NOW()`),
   },
   (t) => ({
     invoiceUniq:    uniqueIndex("scg_invoice_uniq").on(t.subscriptionInvoiceId),
     teacherIdx:     index("scg_teacher_idx").on(t.teacherId),
     subscriptionIdx: index("scg_subscription_idx").on(t.subscriptionId),
+    cycleUniq:      uniqueIndex("scg_credit_cycle_uniq").on(t.creditCycleKey),
   }),
 );
 

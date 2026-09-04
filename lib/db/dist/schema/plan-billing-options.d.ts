@@ -1,25 +1,11 @@
-/**
- * Subscription Credit Grants — one row per Lemon Squeezy invoice.
- *
- * This is the primary guard against granting credits for the same
- * invoice more than once. credits_granted may be 0 (e.g. when the
- * user is already at the rollover cap) — the row is always inserted
- * so the invoice cannot be reprocessed later.
- *
- * Flow (inside one locked transaction):
- *   1. INSERT this row (ON CONFLICT subscription_invoice_id DO NOTHING → RETURNING)
- *   2. If no row returned → already processed → return alreadyGranted: true
- *   3. Calculate credits to grant
- *   4. INSERT credit_batch (if > 0)
- *   5. UPDATE credits_granted = actual amount
- */
-export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "subscription_credit_grants";
+/** Authoritative checkout variants. A plan may have one monthly and one annual option. */
+export declare const planBillingOptionsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "plan_billing_options";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "subscription_credit_grants";
+            tableName: "plan_billing_options";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -34,43 +20,9 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        subscriptionInvoiceId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "subscription_invoice_id";
-            tableName: "subscription_credit_grants";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        subscriptionId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "subscription_id";
-            tableName: "subscription_credit_grants";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        teacherId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "teacher_id";
-            tableName: "subscription_credit_grants";
+        planId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "plan_id";
+            tableName: "plan_billing_options";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -85,9 +37,9 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        planCode: import("drizzle-orm/pg-core").PgColumn<{
-            name: "plan_code";
-            tableName: "subscription_credit_grants";
+        billingInterval: import("drizzle-orm/pg-core").PgColumn<{
+            name: "billing_interval";
+            tableName: "plan_billing_options";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -102,13 +54,64 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        creditsGranted: import("drizzle-orm/pg-core").PgColumn<{
-            name: "credits_granted";
-            tableName: "subscription_credit_grants";
+        lemonVariantId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lemon_variant_id";
+            tableName: "plan_billing_options";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        priceMinor: import("drizzle-orm/pg-core").PgColumn<{
+            name: "price_minor";
+            tableName: "plan_billing_options";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
             driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        currency: import("drizzle-orm/pg-core").PgColumn<{
+            name: "currency";
+            tableName: "plan_billing_options";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        isActive: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_active";
+            tableName: "plan_billing_options";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
             notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
@@ -119,15 +122,15 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        periodEnd: import("drizzle-orm/pg-core").PgColumn<{
-            name: "period_end";
-            tableName: "subscription_credit_grants";
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "plan_billing_options";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
             driverParam: string;
             notNull: true;
-            hasDefault: false;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -136,26 +139,9 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        creditCycleKey: import("drizzle-orm/pg-core").PgColumn<{
-            name: "credit_cycle_key";
-            tableName: "subscription_credit_grants";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        createdAt: import("drizzle-orm/pg-core").PgColumn<{
-            name: "created_at";
-            tableName: "subscription_credit_grants";
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
+            tableName: "plan_billing_options";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -173,6 +159,5 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
     };
     dialect: "pg";
 }>;
-export type SubscriptionCreditGrant = typeof subscriptionCreditGrantsTable.$inferSelect;
-export type NewSubscriptionCreditGrant = typeof subscriptionCreditGrantsTable.$inferInsert;
-//# sourceMappingURL=subscription-credit-grants.d.ts.map
+export type PlanBillingOption = typeof planBillingOptionsTable.$inferSelect;
+//# sourceMappingURL=plan-billing-options.d.ts.map

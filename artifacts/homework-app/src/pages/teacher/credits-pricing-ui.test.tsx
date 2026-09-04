@@ -33,8 +33,8 @@ const __dirname_ = path.dirname(fileURLToPath(import.meta.url));
 /* ─── بيانات فعلية معتمدة (تطابق قاعدة الإنتاج) ─── */
 const PLANS = [
   { id: 1, code: "free",  nameAr: "المجانية", nameEn: "Free",  priceMinor: 0,   currency: "USD", billingPeriodDays: 0,  monthlyCredits: 50,  rolloverCap: null },
-  { id: 2, code: "basic", nameAr: "الأساسية", nameEn: "Basic", priceMinor: 499, currency: "USD", billingPeriodDays: 30, monthlyCredits: 250, rolloverCap: 500 },
-  { id: 3, code: "pro",   nameAr: "الاحترافية", nameEn: "Pro", priceMinor: 999, currency: "USD", billingPeriodDays: 30, monthlyCredits: 600, rolloverCap: 1200 },
+  { id: 2, code: "basic", nameAr: "الأساسية", nameEn: "Basic", priceMinor: 499, currency: "USD", billingPeriodDays: 30, monthlyCredits: 250, rolloverCap: 500, billingOptions: [{ billingInterval: "month", priceMinor: 499, currency: "USD", isActive: true }, { billingInterval: "year", priceMinor: 4990, currency: "USD", isActive: true }] },
+  { id: 3, code: "pro",   nameAr: "الاحترافية", nameEn: "Pro", priceMinor: 999, currency: "USD", billingPeriodDays: 30, monthlyCredits: 600, rolloverCap: 1200, billingOptions: [{ billingInterval: "month", priceMinor: 999, currency: "USD", isActive: true }, { billingInterval: "year", priceMinor: 8990, currency: "USD", isActive: true }] },
 ];
 const PACKAGES = [
   { id: 1, name: "حزمة 100", description: null, priceUsdCents: 299,  currency: "USD", credits: 100, isFeatured: false },
@@ -182,6 +182,38 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).toContain("4.99");
     expect(text()).toContain("9.99");
     expect(text()).toContain("250");
+  });
+
+  it("يبدأ شهرياً ويعرض إفصاح وأسعار السنوي المعتمدة عند التبديل", async () => {
+    vi.stubGlobal("fetch", mockFetch());
+    const text = await render(<PricingPage />);
+    const toggle = container.querySelector('[data-testid="billing-interval-toggle"]')!;
+    expect(toggle.querySelector('[aria-pressed="true"]')?.textContent).toContain("شهري");
+    await act(async () => (toggle.querySelectorAll("button")[1] as HTMLButtonElement).click());
+    expect(text()).toContain("$4.16");
+    expect(text()).toContain("$49.90");
+    expect(text()).toContain("$59.88");
+    expect(text()).toContain("وفّر ما يعادل شهرين");
+    expect(text()).toContain("$7.49");
+    expect(text()).toContain("$89.90");
+    expect(text()).toContain("$119.88");
+    expect(text()).toContain("وفّر ما يعادل 3 أشهر");
+    expect(text()).toContain("يُدفع مبلغ");
+    expect(text()).toContain("تُضاف النقاط شهرياً");
+  });
+
+  it("لا يعرض سنوياً أو سعر صفر عندما لا تُهيأ خيارات السنة", async () => {
+    vi.stubGlobal("fetch", mockFetch({
+      "/api/subscriptions/plans": {
+        plans: PLANS.map(({ billingOptions: _billingOptions, ...plan }) => plan),
+        pricingPageVisible: true,
+        paymentsEnabled: true,
+      },
+    }));
+    const text = await render(<PricingPage />);
+    const toggle = container.querySelector('[data-testid="billing-interval-toggle"]')!;
+    expect(toggle.textContent).not.toContain("سنوي");
+    expect(text()).not.toContain("$0.00");
   });
 
   it("قسم النقاط الإضافية: الحزم الحية + الشارات + نص السياسة الحرفي", async () => {

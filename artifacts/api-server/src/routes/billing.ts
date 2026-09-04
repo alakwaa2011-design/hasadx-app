@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, desc, and, ilike, or } from "drizzle-orm";
 import { z } from "zod";
-import { db, plansTable, subscriptionsTable, teachersTable, platformSettingsTable } from "@workspace/db";
+import { db, plansTable, planBillingOptionsTable, subscriptionsTable, teachersTable, platformSettingsTable } from "@workspace/db";
 import { featureAccess, FEATURES } from "@workspace/billing";
 import { CreditService } from "../lib/credit-service";
 import { notifyTeacherOfAward } from "../lib/credit-award-notifications";
@@ -227,13 +227,14 @@ router.get("/billing/admin/overview", requireAdminMw, async (_req, res) => {
   let totalSubscribers = 0;
   let activeSubscribers = 0;
   let mrrFils = 0;
+  const billingOptions = await db.select().from(planBillingOptionsTable);
   const plansWithCounts = plans.map((p) => {
     const c = byPlanId.get(p.id) ?? { total: 0, active: 0 };
     totalSubscribers += c.total;
     activeSubscribers += c.active;
     if (p.billingPeriodDays === 30) mrrFils += c.active * p.priceMinor;
     else if (p.billingPeriodDays === 365) mrrFils += Math.round((c.active * p.priceMinor) / 12);
-    return { ...p, subscriberCount: c.total, activeCount: c.active };
+    return { ...p, subscriberCount: c.total, activeCount: c.active, billingOptions: billingOptions.filter((o) => o.planId === p.id) };
   });
 
   res.json({
@@ -266,6 +267,13 @@ const PlanPatchSchema = z
     lemonProductId:   z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً").nullable().optional(),
     monthlyCredits:   z.number().int().min(0).nullable().optional(),
     rolloverCap:      z.number().int().min(0).nullable().optional(),
+    billingOptions: z.array(z.object({
+      billingInterval: z.enum(["month", "year"]),
+      lemonVariantId: z.string().regex(/^\d+$/, "يجب أن يكون رقماً صحيحاً"),
+      priceMinor: z.number().int().min(0),
+      currency: z.string().length(3).optional(),
+      isActive: z.boolean().optional(),
+    })).max(2).optional(),
   })
   .strict();
 
@@ -288,18 +296,34 @@ router.patch("/billing/admin/plans/:id", requireAdminMw, async (req: any, res) =
     .limit(1);
   if (!existing) return res.status(404).json({ message: "الباقة غير موجودة" });
   if (existing.code === "free") {
-    const lockedFields = ["priceMinor", "monthlyCredits", "rolloverCap", "lemonProductId", "lemonVariantId", "currency", "billingPeriodDays"];
+    const lockedFields = ["priceMinor", "monthlyCredits", "rolloverCap", "lemonProductId", "lemonVariantId", "currency", "billingPeriodDays", "billingOptions"];
     const attempted = Object.keys(parsed.data).filter((k) => lockedFields.includes(k));
     if (attempted.length > 0) {
       return res.status(400).json({ message: "لا يمكن تعديل حقول التسعير أو النقاط للخطة المجانية", fields: attempted });
     }
   }
+  const { billingOptions, ...planUpdate } = parsed.data;
+  if (billingOptions && new Set(billingOptions.map((o) => o.billingInterval)).size !== billingOptions.length) {
+    return res.status(400).json({ message: "لا يمكن تكرار فترة الفوترة" });
+  }
   const [updated] = await db
     .update(plansTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...planUpdate, updatedAt: new Date() })
     .where(eq(plansTable.id, id))
     .returning();
   if (!updated) return res.status(404).json({ message: "الباقة غير موجودة" });
+  if (billingOptions) {
+    for (const option of billingOptions) {
+      await db.insert(planBillingOptionsTable).values({
+        planId: id, billingInterval: option.billingInterval, lemonVariantId: option.lemonVariantId,
+        priceMinor: option.priceMinor, currency: option.currency ?? updated.currency,
+        isActive: option.isActive ?? true, updatedAt: new Date(),
+      }).onConflictDoUpdate({
+        target: [planBillingOptionsTable.planId, planBillingOptionsTable.billingInterval],
+        set: { lemonVariantId: option.lemonVariantId, priceMinor: option.priceMinor, currency: option.currency ?? updated.currency, isActive: option.isActive ?? true, updatedAt: new Date() },
+      });
+    }
+  }
 
   // Invalidate cache for every teacher on this plan so the new limits take effect immediately.
   const subs = await db

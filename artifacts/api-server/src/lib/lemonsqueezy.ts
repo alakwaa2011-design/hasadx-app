@@ -42,6 +42,7 @@ export function lemonConfigured(): boolean {
 
 export interface CheckoutCustomData {
   user_id: string;
+  billing_interval?: "month" | "year";
   /** required for one-time credit purchases; must be omitted (not empty-string) for subscription checkouts */
   package_id?: string;
   /** required for one-time credit purchases; must be omitted (not empty-string) for subscription checkouts */

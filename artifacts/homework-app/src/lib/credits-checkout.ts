@@ -135,12 +135,18 @@ export async function beginCreditPackageCheckout(
 export async function beginSubscriptionCheckout(
   planCode: string,
   fallbackError: string,
+  billingIntervalOrOptions: "month" | "year" | {
+    snapshotCreditBalance?: boolean;
+    redirect?: (checkoutUrl: string) => void | Promise<void>;
+  } = "month",
   options: {
     snapshotCreditBalance?: boolean;
     redirect?: (checkoutUrl: string) => void | Promise<void>;
   } = {},
 ) {
-  if (options.snapshotCreditBalance) {
+  const billingInterval = typeof billingIntervalOrOptions === "string" ? billingIntervalOrOptions : "month";
+  const checkoutOptions = typeof billingIntervalOrOptions === "string" ? options : billingIntervalOrOptions;
+  if (checkoutOptions.snapshotCreditBalance) {
     try {
       const balanceResponse = await creditsApiFetch("/api/credits/me");
       if (balanceResponse.ok) {
@@ -157,12 +163,12 @@ export async function beginSubscriptionCheckout(
 
   const response = await creditsApiFetch("/api/subscriptions/checkout", {
     method: "POST",
-    body: JSON.stringify({ planCode }),
+    body: JSON.stringify({ planCode, billingInterval }),
   });
   if (!response.ok) throw await responseError(response, fallbackError);
 
   const { checkoutUrl } = await response.json();
   trackMetaInitiateCheckout("subscription", planCode);
-  await (options.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
+  await (checkoutOptions.redirect ?? ((url) => { window.location.href = url; }))(checkoutUrl);
   return checkoutUrl as string;
 }

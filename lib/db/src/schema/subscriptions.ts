@@ -37,6 +37,15 @@ export const subscriptionsTable = pgTable(
     paymentProvider: text("payment_provider"),
     externalSubscriptionId: text("external_subscription_id"),
     externalCustomerId: text("external_customer_id"),
+    /** Option selected at checkout; retained so invoice webhooks cannot trust client input. */
+    billingInterval: text("billing_interval").notNull().default("month"),
+    lemonVariantId: text("lemon_variant_id"),
+    /** End of funds received (annual payments are released monthly until this date). */
+    paidThrough: timestamp("paid_through"),
+    /** End of the last monthly credit cycle released from an annual payment. */
+    releaseThrough: timestamp("release_through"),
+    /** Last authoritative provider object timestamp applied to this row. */
+    providerUpdatedAt: timestamp("provider_updated_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
