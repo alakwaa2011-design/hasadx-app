@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Flame, Send, ThumbsUp, ThumbsDown, Trophy, Medal, CheckCircle, Sparkles, AlertCircle, XCircle, Users } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getHotSeatSocket, disconnectHotSeatSocket } from "@/lib/hotseat-socket";
 import { toast } from "@/components/ui/sonner";
+import { HotSeatIcon } from "@/components/game-icons";
 
 const FIRE = "#FF6B2B";
 const FIRE2 = "#FF9F43";
@@ -625,7 +626,7 @@ export default function HotSeatPlay() {
       }
       setQuestionText("");
       play(playVoteSound);
-      toast.success(ar ? `تم إرسال سؤالك! 🎯 (${sent}/${max})` : `Question sent! 🎯 (${sent}/${max})`);
+      toast.success(ar ? `تم إرسال سؤالك! (${sent}/${max})` : `Question sent! (${sent}/${max})`);
     });
   };
 
@@ -652,8 +653,8 @@ export default function HotSeatPlay() {
   if (!state) {
     return (
       <div style={{ minHeight: "100dvh", background: DARK_BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-          <span style={{ fontSize: 56 }}>🔥</span>
+        <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+          <HotSeatIcon size={64} />
         </motion.div>
         <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>
           {ar ? "جاري الاتصال..." : "Connecting..."}
@@ -718,7 +719,7 @@ export default function HotSeatPlay() {
           {pin}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
-          <span>👥</span> {students.length}
+          <Users size={14} /> {students.length}
         </div>
         <button onClick={toggleMute} style={{
           padding: "5px 9px", borderRadius: 9,
@@ -735,31 +736,37 @@ export default function HotSeatPlay() {
 
         {/* ── LOBBY / WAITING ─────────────────────────────── */}
         {(phase === "lobby" || phase === "picking") && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: "center", paddingTop: 40 }}>
-            <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
-              <span style={{ fontSize: 64 }}>⏳</span>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: "center", paddingTop: 40, maxWidth: 480, marginInline: "auto" }}>
+            <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="inline-flex justify-center mb-6">
+              <HotSeatIcon size={64} />
             </motion.div>
-            <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "16px 0 8px" }}>
+            <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 12px" }}>
               {phase === "lobby"
                 ? (ar ? "في انتظار المعلم..." : "Waiting for teacher...")
                 : (ar ? "المعلم يختار من يجلس على الكرسي..." : "Teacher is picking the hot seat...")}
             </h2>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
-              {ar ? `أنت: ${myAvatar} ${myName}` : `You: ${myAvatar} ${myName}`}
-            </p>
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>
-              {ar ? `${students.length} طالب في الجلسة` : `${students.length} students in session`}
-            </p>
+            <div style={{
+              display: "inline-flex", flexDirection: "column", gap: 4, padding: "16px 32px",
+              borderRadius: 20, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+              marginBottom: 32
+            }}>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 800, margin: 0 }}>
+                {ar ? "أنت:" : "You:"} <span style={{ fontSize: 18, marginInlineStart: 4 }}>{myAvatar}</span> {myName}
+              </p>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, margin: 0, fontWeight: 700 }}>
+                {ar ? `${students.length} طالب في الجلسة` : `${students.length} students in session`}
+              </p>
+            </div>
             {/* Mini student grid */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 20 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
               {students.map(s => (
                 <div key={s.uid} style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "6px 10px",
+                  display: "flex", alignItems: "center", gap: 6, padding: "8px 12px",
                   borderRadius: 999, background: "rgba(255,255,255,0.06)",
-                  border: `1px solid ${s.color}40`, fontSize: 13,
+                  border: `1px solid ${s.color}60`, fontSize: 13,
                 }}>
                   <span>{s.avatar}</span>
-                  <span style={{ color: s.color, fontWeight: 700 }}>{s.name}</span>
+                  <span style={{ color: "#fff", fontWeight: 800 }}>{s.name}</span>
                 </div>
               ))}
             </div>
@@ -778,33 +785,33 @@ export default function HotSeatPlay() {
               transition={{ repeat: Infinity, duration: 1 }}
               style={{
                 display: "inline-block", marginBottom: 20,
-                background: `linear-gradient(135deg, #1a0800, #2d0f00)`,
-                borderRadius: 24, padding: "20px 30px",
-                border: `2px solid ${FIRE}`,
-                boxShadow: `0 0 60px ${FIRE}60`,
+                background: `linear-gradient(135deg, rgba(255,107,43,0.1), rgba(255,159,67,0.05))`,
+                borderRadius: 24, padding: "24px 32px",
+                border: `1px solid ${FIRE}`,
+                boxShadow: `0 0 60px rgba(255,107,43,0.4)`,
+                backdropFilter: "blur(12px)"
               }}
             >
-              <div style={{ fontSize: 16, color: FIRE, fontWeight: 900, marginBottom: 12 }}>
-                🔥🔥 {ar ? "أنت على الكرسي الساخن!" : "You're on the Hot Seat!"} 🔥🔥
+              <div style={{ fontSize: 16, color: FIRE, fontWeight: 900, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Flame size={20} /> {ar ? "أنت على الكرسي الساخن!" : "You're on the Hot Seat!"} <Flame size={20} />
               </div>
               <HotSeatCard student={{ uid: myUid, name: myName, avatar: myAvatar, color: FIRE, score: myScore, isOnSeat: true, roundsOnSeat: 1 }} />
             </motion.div>
-            <p style={{ color: "#fff", fontSize: 16, fontWeight: 800 }}>
+            <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 16, fontWeight: 800 }}>
               {ar ? "زملاؤك يرسلون أسئلة الآن..." : "Your classmates are sending questions..."}
             </p>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
               {ar ? "المعلم سيختار أفضل سؤال ليسألك إياه!" : "The teacher will pick the best question!"}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 24 }}>
               {[...Array(3)].map((_, i) => (
-                <motion.p
+                <motion.div
                   key={i}
-                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  animate={{ opacity: [0.3, 1, 0.3], y: [0, -10, 0] }}
                   transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.5 }}
-                  style={{ color: FIRE2, fontSize: 24, margin: 0 }}
                 >
-                  🔥
-                </motion.p>
+                  <Flame size={24} color={FIRE2} />
+                </motion.div>
               ))}
             </div>
           </motion.div>
@@ -815,19 +822,19 @@ export default function HotSeatPlay() {
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             {/* Seat person banner */}
             <div style={{
-              display: "flex", alignItems: "center", gap: 12, justifyContent: "center",
-              padding: "14px 20px", borderRadius: 20, marginBottom: 20,
-              background: `${FIRE}20`, border: `2px solid ${FIRE}50`,
+              display: "flex", alignItems: "center", gap: 16, justifyContent: "center",
+              padding: "16px 24px", borderRadius: 20, marginBottom: 24,
+              background: `linear-gradient(135deg, rgba(255,107,43,0.15), rgba(255,159,67,0.05))`, border: `1px solid rgba(255,107,43,0.3)`,
             }}>
               <motion.span animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}
-                style={{ fontSize: 32 }}>
+                style={{ fontSize: 40 }}>
                 {seatStudent.avatar}
               </motion.span>
               <div>
-                <p style={{ color: FIRE, fontSize: 11, fontWeight: 700, margin: 0 }}>
-                  {ar ? "🔥 على الكرسي" : "🔥 On the Seat"}
+                <p style={{ color: FIRE, fontSize: 13, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Flame size={14} /> {ar ? "على الكرسي" : "On the Seat"}
                 </p>
-                <p style={{ color: "#fff", fontSize: 18, fontWeight: 900, margin: 0 }}>
+                <p style={{ color: "#fff", fontSize: 20, fontWeight: 900, margin: 0 }}>
                   {seatStudent.name}
                 </p>
               </div>
@@ -838,13 +845,17 @@ export default function HotSeatPlay() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                style={{ textAlign: "center", padding: 28, borderRadius: 20, background: "rgba(255,255,255,0.05)" }}
+                style={{ textAlign: "center", padding: 32, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                <span style={{ fontSize: 40 }}>📚</span>
-                <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "8px 0 4px" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                  <div className="p-4 rounded-full bg-indigo-500/20 text-indigo-400">
+                    <CheckCircle size={32} />
+                  </div>
+                </div>
+                <p style={{ color: "#fff", fontWeight: 900, fontSize: 18, margin: "0 0 8px" }}>
                   {ar ? "المعلم يستخدم أسئلة الواجب" : "The teacher is using assignment questions"}
                 </p>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>
                   {ar ? "انتظر اختيار السؤال التالي" : "Wait for the next question"}
                 </p>
               </motion.div>
@@ -852,12 +863,14 @@ export default function HotSeatPlay() {
               <motion.div
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }}
                 style={{
-                  background: "rgba(34,197,94,0.15)", border: "1.5px solid rgba(34,197,94,0.4)",
-                  borderRadius: 20, padding: 20, textAlign: "center", marginBottom: 16,
+                  background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)",
+                  borderRadius: 24, padding: "32px 24px", textAlign: "center", marginBottom: 20,
                 }}
               >
-                <span style={{ fontSize: 40 }}>✅</span>
-                <p style={{ color: "#22c55e", fontWeight: 900, fontSize: 16, margin: "8px 0 4px" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                  <CheckCircle size={48} color="#22c55e" />
+                </div>
+                <p style={{ color: "#22c55e", fontWeight: 900, fontSize: 20, margin: "0 0 8px" }}>
                   {ar ? "وصلت للحد الأقصى من الأسئلة!" : "You've reached the question limit!"}
                 </p>
                 <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
@@ -903,15 +916,17 @@ export default function HotSeatPlay() {
                       onClick={sendQuestion}
                       disabled={!questionText.trim()}
                       style={{
-                        marginTop: 10, width: "100%", padding: "12px",
-                        borderRadius: 14, border: "none",
+                        marginTop: 12, width: "100%", padding: "16px",
+                        borderRadius: 16, border: "none",
                         background: questionText.trim()
                           ? `linear-gradient(135deg, ${FIRE}, ${FIRE2})`
                           : "rgba(255,255,255,0.1)",
-                        color: "#fff", fontWeight: 900, fontSize: 15, cursor: questionText.trim() ? "pointer" : "not-allowed",
+                        color: "#fff", fontWeight: 900, fontSize: 16, cursor: questionText.trim() ? "pointer" : "not-allowed",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s"
                       }}
+                      className="hover:scale-[1.02]"
                     >
-                      {ar ? "✈️ أرسل سؤالاً" : "✈️ Send Question"}
+                      <Send size={18} /> {ar ? "أرسل سؤالاً" : "Send Question"}
                     </button>
                 </div>
               </div>
@@ -919,29 +934,29 @@ export default function HotSeatPlay() {
 
             {/* Sent questions — like the best (only show non-preset ones sent by others) */}
             {questions.filter(q => !q.isPreset).length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginBottom: 8 }}>
+              <div style={{ marginTop: 24 }}>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 800, marginBottom: 12 }}>
                   {ar ? "أسئلة مُرسلة — أعطِ إعجابك للأفضل:" : "Sent questions — like the best:"}
                 </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {questions.filter(q => !q.isPreset).map(q => (
                     <div key={q.id} style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 12px", borderRadius: 12,
-                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "12px 16px", borderRadius: 16,
+                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
                     }}>
-                      <p style={{ flex: 1, color: "#fff", fontSize: 13, margin: 0 }}>{q.text}</p>
+                      <p style={{ flex: 1, color: "#fff", fontSize: 14, fontWeight: 700, margin: 0 }}>{q.text}</p>
                       <button
                         onClick={() => likeQuestion(q.id)}
                         style={{
-                          display: "flex", alignItems: "center", gap: 4,
-                          padding: "5px 10px", borderRadius: 8, border: "none",
-                          background: likedQuestions.has(q.id) ? `${FIRE}40` : "rgba(255,255,255,0.08)",
-                          color: likedQuestions.has(q.id) ? FIRE2 : "rgba(255,255,255,0.6)",
-                          fontSize: 13, fontWeight: 700, cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "8px 12px", borderRadius: 12, border: "none",
+                          background: likedQuestions.has(q.id) ? `rgba(255,107,43,0.2)` : "rgba(255,255,255,0.08)",
+                          color: likedQuestions.has(q.id) ? FIRE2 : "rgba(255,255,255,0.8)",
+                          fontSize: 14, fontWeight: 800, cursor: "pointer", transition: "all 0.2s"
                         }}
                       >
-                        👍 {q.likes}
+                        <ThumbsUp size={16} /> {q.likes}
                       </button>
                     </div>
                   ))}
@@ -959,20 +974,20 @@ export default function HotSeatPlay() {
             style={{ textAlign: "center" }}
           >
             <div style={{
-              background: `linear-gradient(135deg, ${FIRE}30, ${FIRE2}15)`,
-              border: `3px solid ${FIRE}`,
-              borderRadius: 28, padding: "28px 24px",
-              boxShadow: `0 0 80px ${FIRE}50`,
-              marginBottom: 20,
+              background: `linear-gradient(135deg, rgba(255,107,43,0.15), rgba(255,159,67,0.08))`,
+              border: `2px solid rgba(255,107,43,0.5)`,
+              borderRadius: 32, padding: "32px 24px",
+              boxShadow: `0 0 80px rgba(255,107,43,0.3)`,
+              marginBottom: 24, backdropFilter: "blur(12px)"
             }}>
-              <p style={{ color: FIRE2, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>
-                🔥🔥 {ar ? "الجميع يستمع!" : "Everyone is listening!"} 🔥🔥
-              </p>
+              <div style={{ color: FIRE2, fontSize: 15, fontWeight: 800, margin: "0 0 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Volume2 size={20} /> {ar ? "الجميع يستمع!" : "Everyone is listening!"} <Volume2 size={20} />
+              </div>
               <div style={{
-                background: "rgba(0,0,0,0.4)", borderRadius: 18, padding: "16px 18px",
-                marginBottom: 20, border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(0,0,0,0.5)", borderRadius: 24, padding: "24px 20px",
+                marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)",
               }}>
-                <p style={{ color: "#fff", fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1.5 }}>
+                <p style={{ color: "#fff", fontSize: 24, fontWeight: 900, margin: 0, lineHeight: 1.5 }}>
                   "{currentQuestion}"
                 </p>
                 {state.currentQuestionImageUrl && (
@@ -1035,15 +1050,19 @@ export default function HotSeatPlay() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {amOnSeat ? (
               <div style={{ textAlign: "center", paddingTop: 20 }}>
-                <span style={{ fontSize: 56 }}>🗳️</span>
-                <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 900, margin: "12px 0 6px" }}>
+                <div style={{ display: "inline-flex", justifyContent: "center", marginBottom: 16 }}>
+                  <div className="p-4 rounded-full bg-orange-500/20 text-orange-500">
+                    <CheckCircle size={48} />
+                  </div>
+                </div>
+                <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 8px" }}>
                   {ar ? "الجميع يصوّت الآن!" : "Everyone is voting!"}
                 </h2>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 15, fontWeight: 700 }}>
                   {ar ? `${votesCast} / ${totalVoters} صوّتوا حتى الآن` : `${votesCast} / ${totalVoters} voted so far`}
                 </p>
                 {/* Live vote bar */}
-                <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 16 }}>
+                <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 24, marginInline: "auto", maxWidth: 300 }}>
                   <motion.div
                     animate={{ width: `${votesCast > 0 ? Math.round((votes.yes / votesCast) * 100) : 0}%` }}
                     style={{ height: "100%", background: "#22c55e", borderRadius: 999 }}
@@ -1052,53 +1071,53 @@ export default function HotSeatPlay() {
               </div>
             ) : (
               <div>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, textAlign: "center", marginBottom: 14 }}>
-                  {ar ? "🗳️ هل الإجابة مقنعة؟" : "🗳️ Was the answer convincing?"}
+                <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 15, fontWeight: 800, textAlign: "center", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <CheckCircle size={18} /> {ar ? "هل الإجابة مقنعة؟" : "Was the answer convincing?"}
                 </p>
                 {seatStudent && (
                   <div style={{
-                    background: "rgba(0,0,0,0.3)", borderRadius: 18, padding: "14px 18px",
-                    marginBottom: 20, border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(0,0,0,0.4)", borderRadius: 20, padding: "16px 20px",
+                    marginBottom: 24, border: "1px solid rgba(255,255,255,0.1)",
                   }}>
-                    <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, margin: "0 0 6px" }}>
+                    <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>
                       {seatStudent.name} {ar ? "قال:" : "said:"}
                     </p>
-                    <p style={{ color: "#fff", fontSize: 15, fontWeight: 800, margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ color: "#fff", fontSize: 16, fontWeight: 900, margin: 0, lineHeight: 1.5 }}>
                       "{currentQuestion}"
                     </p>
                   </div>
                 )}
                 {!myVote ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <motion.button
-                      whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                       onClick={() => vote("yes")}
                       style={{
-                        padding: "24px 16px", borderRadius: 20,
-                        background: "linear-gradient(135deg, rgba(34,197,94,0.3), rgba(16,185,129,0.2))",
-                        border: "2px solid rgba(34,197,94,0.5)",
+                        padding: "32px 16px", borderRadius: 24,
+                        background: "linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.1))",
+                        border: "2px solid rgba(34,197,94,0.4)",
                         cursor: "pointer", display: "flex", flexDirection: "column",
-                        alignItems: "center", gap: 8,
+                        alignItems: "center", gap: 12,
                       } as React.CSSProperties}
                     >
-                      <span style={{ fontSize: 48 }}>👍</span>
-                      <span style={{ color: "#22c55e", fontWeight: 900, fontSize: 16 }}>
+                      <ThumbsUp size={48} color="#22c55e" />
+                      <span style={{ color: "#22c55e", fontWeight: 900, fontSize: 18 }}>
                         {ar ? "مقنعة" : "Convincing"}
                       </span>
                     </motion.button>
                     <motion.button
-                      whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                       onClick={() => vote("no")}
                       style={{
-                        padding: "24px 16px", borderRadius: 20,
-                        background: "linear-gradient(135deg, rgba(239,68,68,0.3), rgba(220,38,38,0.2))",
-                        border: "2px solid rgba(239,68,68,0.5)",
+                        padding: "32px 16px", borderRadius: 24,
+                        background: "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.1))",
+                        border: "2px solid rgba(239,68,68,0.4)",
                         cursor: "pointer", display: "flex", flexDirection: "column",
-                        alignItems: "center", gap: 8,
+                        alignItems: "center", gap: 12,
                       } as React.CSSProperties}
                     >
-                      <span style={{ fontSize: 48 }}>👎</span>
-                      <span style={{ color: "#ef4444", fontWeight: 900, fontSize: 16 }}>
+                      <ThumbsDown size={48} color="#ef4444" />
+                      <span style={{ color: "#ef4444", fontWeight: 900, fontSize: 18 }}>
                         {ar ? "غير مقنعة" : "Not convincing"}
                       </span>
                     </motion.button>
@@ -1107,21 +1126,23 @@ export default function HotSeatPlay() {
                   <motion.div
                     initial={{ scale: 0.9 }} animate={{ scale: 1 }}
                     style={{
-                      textAlign: "center", padding: "24px 20px", borderRadius: 20,
+                      textAlign: "center", padding: "32px 20px", borderRadius: 24,
                       background: myVote === "yes" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
                       border: `2px solid ${myVote === "yes" ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`,
                     }}
                   >
-                    <span style={{ fontSize: 48 }}>{myVote === "yes" ? "👍" : "👎"}</span>
-                    <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "8px 0 0" }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                      {myVote === "yes" ? <ThumbsUp size={48} color="#22c55e" /> : <ThumbsDown size={48} color="#ef4444" />}
+                    </div>
+                    <p style={{ color: "#fff", fontWeight: 900, fontSize: 18, margin: 0 }}>
                       {ar ? "تم تصويتك!" : "Vote recorded!"}
                     </p>
                   </motion.div>
                 )}
 
                 {/* Live vote count */}
-                <div style={{ marginTop: 16, textAlign: "center" }}>
-                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>
+                <div style={{ marginTop: 24, textAlign: "center" }}>
+                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, fontWeight: 700 }}>
                     {votesCast} / {totalVoters} {ar ? "صوّتوا" : "voted"}
                   </p>
                 </div>
@@ -1139,39 +1160,47 @@ export default function HotSeatPlay() {
           >
             <div style={{
               background: "rgba(255,255,255,0.06)",
-              border: `2px solid ${lastResult.convincingPct > 60 ? "#22c55e" : FIRE}50`,
-              borderRadius: 24, padding: "28px 20px", marginBottom: 16,
+              border: `1px solid ${lastResult.convincingPct > 60 ? "#22c55e" : lastResult.convincingPct >= 40 ? GOLD : "#ef4444"}`,
+              borderRadius: 28, padding: "32px 24px", marginBottom: 24, backdropFilter: "blur(12px)"
             }}>
-              <div style={{ fontSize: 64, marginBottom: 8 }}>
-                {lastResult.convincingPct > 60 ? "🎉" : lastResult.convincingPct >= 40 ? "😐" : "😬"}
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                {lastResult.convincingPct > 60 ? <div className="p-4 rounded-full bg-green-500/20 text-green-500"><ThumbsUp size={48} /></div>
+                  : lastResult.convincingPct >= 40 ? <div className="p-4 rounded-full bg-amber-500/20 text-amber-500"><AlertCircle size={48} /></div>
+                  : <div className="p-4 rounded-full bg-red-500/20 text-red-500"><ThumbsDown size={48} /></div>}
               </div>
-              <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 6px" }}>
+              <h2 style={{ color: "#fff", fontSize: 24, fontWeight: 900, margin: "0 0 8px" }}>
                 {amOnSeat
                   ? (lastResult.convincingPct > 60
-                    ? (ar ? "أقنعتهم! رائع 🏆" : "You convinced them! 🏆")
+                    ? (ar ? "أقنعتهم! رائع" : "You convinced them!")
                     : lastResult.convincingPct >= 40
                     ? (ar ? "إجابة محايدة..." : "Neutral answer...")
                     : (ar ? "لم تقنع الأغلبية هذه المرة" : "Didn't convince most"))
                   : (lastResult.convincingPct > 60
-                    ? (ar ? `أقنعكم ${seatStudent.name}! 🎉` : `${seatStudent.name} convinced you! 🎉`)
+                    ? (ar ? `أقنعكم ${seatStudent.name}!` : `${seatStudent.name} convinced you!`)
                     : (ar ? "لم يكن مقنعاً للأغلبية" : "Not very convincing"))}
               </h2>
-              <div style={{ display: "flex", justifyContent: "center", gap: 20, margin: "14px 0" }}>
+              <div style={{ display: "flex", justifyContent: "center", gap: 32, margin: "24px 0" }}>
                 <div>
-                  <p style={{ color: GOLD, fontWeight: 900, fontSize: 36, margin: 0 }}>{lastResult.convincingPct}%</p>
-                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, margin: 0 }}>
+                  <p style={{ color: lastResult.convincingPct > 60 ? "#22c55e" : lastResult.convincingPct >= 40 ? GOLD : "#ef4444", fontWeight: 900, fontSize: 40, margin: 0 }}>{lastResult.convincingPct}%</p>
+                  <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 800, margin: 0 }}>
                     {ar ? "مقنعة" : "Convincing"}
                   </p>
                 </div>
                 {amOnSeat && (
-                  <div>
-                    <p style={{ color: FIRE2, fontWeight: 900, fontSize: 36, margin: 0 }}>+{lastResult.pointsAwarded}</p>
-                    <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, margin: 0 }}>{ar ? "نقطة" : "pts"}</p>
-                  </div>
+                  <>
+                    <div style={{ width: 1, background: "rgba(255,255,255,0.1)" }} />
+                    <div>
+                      <p style={{ color: FIRE2, fontWeight: 900, fontSize: 40, margin: 0 }}>+{lastResult.pointsAwarded}</p>
+                      <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 800, margin: 0 }}>{ar ? "نقطة" : "pts"}</p>
+                    </div>
+                  </>
                 )}
               </div>
               {lastResult.speedBonus && amOnSeat && (
-                <p style={{ color: FIRE, fontSize: 14, fontWeight: 700 }}>⚡ {ar ? "مكافأة السرعة!" : "Speed bonus!"}</p>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,107,43,0.15)", padding: "6px 12px", borderRadius: 12 }}>
+                  <Sparkles size={16} color={FIRE} />
+                  <p style={{ color: FIRE, fontSize: 14, fontWeight: 800, margin: 0 }}>{ar ? "مكافأة السرعة!" : "Speed bonus!"}</p>
+                </div>
               )}
             </div>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
@@ -1182,48 +1211,50 @@ export default function HotSeatPlay() {
 
         {/* ── ENDED ─────────────────────────────────────────── */}
         {phase === "ended" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ paddingBottom: 40 }}>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ fontSize: 64, marginBottom: 8 }}>🏆</div>
+              <div style={{ display: "inline-flex", padding: "20px", borderRadius: "50%", background: "rgba(217, 165, 33, 0.15)", marginBottom: 16 }}>
+                <Trophy size={64} color={GOLD} />
+              </div>
               <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 900, margin: "0 0 6px" }}>
                 {ar ? "انتهت الجلسة!" : "Session Complete!"}
               </h1>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, fontWeight: 700 }}>
                 {state.grade} · {state.subject}{state.topic && ` · ${state.topic}`}
               </p>
               {/* My result */}
               <div style={{
-                display: "inline-flex", alignItems: "center", gap: 10,
-                padding: "12px 24px", borderRadius: 999, marginTop: 14,
-                background: `${GOLD}20`, border: `2px solid ${GOLD}50`,
+                display: "inline-flex", alignItems: "center", gap: 12,
+                padding: "16px 24px", borderRadius: 999, marginTop: 14,
+                background: `linear-gradient(135deg, rgba(217,165,33,0.2), rgba(217,165,33,0.05))`, border: `1px solid rgba(217,165,33,0.4)`,
               }}>
-                <span style={{ fontSize: 24 }}>{myAvatar}</span>
-                <span style={{ color: "#fff", fontWeight: 900, fontSize: 15 }}>{myName}</span>
-                <span style={{ color: GOLD, fontWeight: 900, fontSize: 18 }}>{myScore} {ar ? "نق" : "pts"}</span>
-                <span style={{ fontSize: 18 }}>
-                  {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : `#${myRank}`}
+                <span style={{ fontSize: 28 }}>{myAvatar}</span>
+                <span style={{ color: "#fff", fontWeight: 900, fontSize: 16 }}>{myName}</span>
+                <span style={{ color: GOLD, fontWeight: 900, fontSize: 20 }}>{myScore} {ar ? "نق" : "pts"}</span>
+                <span style={{ fontSize: 20, color: myRank === 1 ? GOLD : myRank === 2 ? "#cbd5e1" : myRank === 3 ? "#b45309" : "rgba(255,255,255,0.4)", fontWeight: 900, display: "flex", alignItems: "center" }}>
+                  {myRank <= 3 ? <Medal size={24} /> : `#${myRank}`}
                 </span>
               </div>
             </div>
 
             {/* Full ranking */}
-            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 20, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 24, overflow: "hidden", marginBottom: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
               {sortedStudents.map((s, i) => {
                 const isMe = s.uid === myUid || s.name === myName;
                 return (
                   <div key={s.uid} style={{
-                    display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+                    display: "flex", alignItems: "center", gap: 16, padding: "16px 20px",
                     borderBottom: i < sortedStudents.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined,
-                    background: isMe ? `${GOLD}15` : i === 0 ? `${FIRE}10` : undefined,
+                    background: isMe ? `rgba(217,165,33,0.15)` : i === 0 ? `rgba(255,107,43,0.1)` : undefined,
                   }}>
-                    <span style={{ fontSize: 18, width: 28 }}>
-                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                    <span style={{ color: i === 0 ? GOLD : i === 1 ? "#cbd5e1" : i === 2 ? "#b45309" : "rgba(255,255,255,0.3)", fontWeight: 900, fontSize: 16, width: 28, display: "flex", justifyContent: "center" }}>
+                      {i < 3 ? <Medal size={20} /> : i + 1}
                     </span>
-                    <span style={{ fontSize: 26 }}>{s.avatar}</span>
-                    <span style={{ flex: 1, color: "#fff", fontWeight: isMe ? 900 : 700, fontSize: 15 }}>
-                      {s.name} {isMe && <span style={{ color: FIRE2, fontSize: 11 }}> ({ar ? "أنت" : "you"})</span>}
+                    <span style={{ fontSize: 32 }}>{s.avatar}</span>
+                    <span style={{ flex: 1, color: "#fff", fontWeight: isMe ? 900 : 700, fontSize: 16 }}>
+                      {s.name} {isMe && <span style={{ color: FIRE2, fontSize: 12 }}> ({ar ? "أنت" : "you"})</span>}
                     </span>
-                    <span style={{ color: GOLD, fontWeight: 900, fontSize: 17 }}>{s.score}</span>
+                    <span style={{ color: GOLD, fontWeight: 900, fontSize: 18 }}>{s.score}</span>
                   </div>
                 );
               })}
@@ -1232,12 +1263,12 @@ export default function HotSeatPlay() {
             <button
               onClick={() => { disconnectHotSeatSocket(); setLocation("/"); }}
               style={{
-                width: "100%", padding: "14px", borderRadius: 16, border: "none",
-                background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-                color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer",
+                width: "100%", padding: "16px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.05)", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer", transition: "all 0.2s"
               }}
+              className="hover:bg-white/10"
             >
-              🏠 {ar ? "العودة للرئيسية" : "Go Home"}
+              {ar ? "العودة للرئيسية" : "Go Home"}
             </button>
           </motion.div>
         )}

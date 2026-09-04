@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Check, Users, Flame, ChevronRight, Volume2, VolumeX, BookOpen, FileText, X, Search, ChevronDown } from "lucide-react";
+import { Copy, Check, Users, Flame, ChevronRight, Volume2, VolumeX, BookOpen, FileText, X, Search, ChevronDown, Hash, Smartphone, Building, Lightbulb, Timer, Share2, Play, Sparkles } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getHotSeatSocket } from "@/lib/hotseat-socket";
 import { toast } from "@/components/ui/sonner";
@@ -9,6 +9,7 @@ import QRCode from "react-qr-code";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { HotSeatIcon } from "@/components/game-icons";
 
 const FIRE = "#FF6B2B";
 const FIRE2 = "#FF9F43";
@@ -144,7 +145,7 @@ export default function HotSeatCreate() {
       if (!subject && data.subject) setSubject(data.subject);
       if (!topic && effectiveTitle) setTopic(effectiveTitle);
       setAssignOpen(false);
-      toast.success(ar ? `✅ تم جلب ${qs.length} سؤال${effectiveTitle ? ` من "${effectiveTitle}"` : ""}` : `✅ Loaded ${qs.length} questions`);
+      toast.success(ar ? `تم جلب ${qs.length} سؤال${effectiveTitle ? ` من "${effectiveTitle}"` : ""}` : `Loaded ${qs.length} questions`);
     } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
     finally { setAssignImporting(null); }
   };
@@ -183,7 +184,7 @@ export default function HotSeatCreate() {
     }));
     setQuestions(prev => [...prev, ...qs].slice(0, 40));
     setBankOpen(false);
-    toast.success(ar ? `✅ تم استيراد ${qs.length} سؤال` : `✅ Imported ${qs.length} questions`);
+    toast.success(ar ? `تم استيراد ${qs.length} سؤال` : `Imported ${qs.length} questions`);
   };
 
   const filteredBank = bankSearch.trim()
@@ -242,34 +243,45 @@ export default function HotSeatCreate() {
 
     const shareWhatsApp = () => {
       const text = ar
-        ? `🔥 الكرسي الساخن${sessionInfo ? `\n📍 ${sessionInfo}` : ""}\n\n🔢 رمز الدخول:\n${gamePin}\n\n🔗 أو افتح الرابط:\n${joinUrl}`
-        : `🔥 HotSeat Game${sessionInfo ? `\n📍 ${sessionInfo}` : ""}\n\n🔢 Room Code:\n${gamePin}\n\n🔗 Or open:\n${joinUrl}`;
+        ? `[الكرسي الساخن]${sessionInfo ? `\n${sessionInfo}` : ""}\n\nرمز الدخول:\n${gamePin}\n\nأو افتح الرابط:\n${joinUrl}`
+        : `[HotSeat Game]${sessionInfo ? `\n${sessionInfo}` : ""}\n\nRoom Code:\n${gamePin}\n\nOr open:\n${joinUrl}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     };
 
     return (
-      <div dir={dir} style={{ minHeight: "100dvh", background: DARK_BG, position: "relative", overflow: "hidden" }}>
+      <div dir={dir} style={{ minHeight: "100dvh", background: DARK_BG, position: "relative", overflow: "hidden", fontFamily: "var(--font-display)" }}>
         {/* Embers */}
         <div style={{ position: "fixed", inset: 0, pointerEvents: "none" }}>
-          {[...Array(16)].map((_, i) => (
+          {[...Array(20)].map((_, i) => (
             <motion.div key={i}
-              animate={{ y: [-20, -140], opacity: [0.7, 0] }}
-              transition={{ repeat: Infinity, duration: 2 + Math.random() * 2, delay: Math.random() * 4 }}
-              style={{ position: "absolute", bottom: 0, left: `${5 + Math.random() * 90}%`, fontSize: 10 + Math.random() * 14 }}
-            >🔥</motion.div>
+              animate={{ y: [-20, -140], opacity: [0, 0.7, 0], scale: [0.5, 1.2, 0.5] }}
+              transition={{ repeat: Infinity, duration: 2 + Math.random() * 3, delay: Math.random() * 4, ease: "easeIn" }}
+              style={{
+                position: "absolute", bottom: "-5%", left: `${5 + Math.random() * 90}%`,
+                width: 4 + Math.random() * 6, height: 4 + Math.random() * 6,
+                borderRadius: "50%",
+                background: Math.random() > 0.5 ? FIRE : FIRE2,
+                boxShadow: `0 0 10px ${FIRE}, 0 0 20px ${FIRE2}`
+              }}
+            />
           ))}
         </div>
 
         <div style={{ position: "relative", zIndex: 10, padding: "20px 16px", maxWidth: 580, marginInline: "auto" }}>
           {/* Top bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <div>
-              <p style={{ color: FIRE2, fontSize: 11, fontWeight: 700, margin: 0 }}>
-                🔥 {ar ? "الكرسي الساخن — جلسة نشطة" : "HotSeat — Active Session"}
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, margin: "2px 0 0" }}>
-                {sessionInfo || (ar ? "جاهز للبدء" : "Ready to start")}
-              </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-md">
+                <Flame size={20} color={FIRE2} />
+              </div>
+              <div>
+                <p style={{ color: "#fff", fontSize: 14, fontWeight: 800, margin: 0 }}>
+                  {ar ? "الكرسي الساخن — جلسة نشطة" : "HotSeat — Active Session"}
+                </p>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, margin: "2px 0 0" }}>
+                  {sessionInfo || (ar ? "جاهز للبدء" : "Ready to start")}
+                </p>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               {/* Mute toggle */}
@@ -294,88 +306,95 @@ export default function HotSeatCreate() {
           </div>
 
           {/* PIN */}
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            style={{ background: "rgba(0,0,0,0.5)", border: `2px solid ${FIRE}60`, borderRadius: 28, padding: "24px 20px", marginBottom: 14 }}>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 800, textAlign: "center", letterSpacing: "0.15em", margin: "0 0 14px" }}>
-              {ar ? "🔢 رمز دخول الطلاب" : "🔢 Student Room Code"}
-            </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 16, direction: "ltr" }}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 28, padding: "32px 20px", marginBottom: 14, backdropFilter: "blur(12px)" }}>
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Hash size={16} color="rgba(255,255,255,0.5)" />
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 800, textAlign: "center", letterSpacing: "0.15em", margin: 0 }}>
+                {ar ? "رمز دخول الطلاب" : "STUDENT ROOM CODE"}
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 20, direction: "ltr" }}>
               {pinDigits.map((d, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 * i, type: "spring", stiffness: 400 }}
                   style={{
-                    width: 52, height: 64, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: `linear-gradient(180deg, ${FIRE}30 0%, ${FIRE}15 100%)`,
-                    border: `2px solid ${FIRE}80`, borderRadius: 14,
-                    fontSize: 40, fontWeight: 900, color: "#fff", fontFamily: "monospace",
-                    boxShadow: `0 4px 16px ${FIRE}30`,
+                    width: 56, height: 72, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: `linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)`,
+                    border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 16,
+                    fontSize: 44, fontWeight: 900, color: "#fff", fontFamily: "monospace",
+                    boxShadow: `0 8px 32px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.1)`,
                   }}>{d}</motion.div>
               ))}
             </div>
-            <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, textAlign: "center", margin: "0 0 14px", direction: "ltr", wordBreak: "break-all" }}>
-              {joinUrl}
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <div className="flex items-center justify-center gap-2 mb-6 opacity-60">
+              <Smartphone size={14} color="#fff" />
+              <p style={{ color: "#fff", fontSize: 11, textAlign: "center", margin: 0, direction: "ltr" }}>
+                {joinUrl.replace("https://", "")}
+              </p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <button onClick={copyLink} style={{
-                padding: "10px 8px", borderRadius: 12, border: "none",
-                background: copied ? "rgba(22,163,74,0.4)" : "rgba(255,255,255,0.1)",
-                color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                padding: "12px 8px", borderRadius: 16, border: "none",
+                background: copied ? "rgba(22,163,74,0.3)" : "rgba(255,255,255,0.06)",
+                color: copied ? "#4ade80" : "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s"
               }}>
-                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? <Check size={20} /> : <Copy size={20} />}
                 <span>{copied ? (ar ? "تم!" : "Copied!") : (ar ? "نسخ" : "Copy")}</span>
               </button>
               <button onClick={shareWhatsApp} style={{
-                padding: "10px 8px", borderRadius: 12,
-                border: "1px solid rgba(37,211,102,0.3)",
+                padding: "12px 8px", borderRadius: 16, border: "none",
                 background: "rgba(37,211,102,0.15)", color: "#25D366",
-                fontWeight: 800, fontSize: 12, cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                fontWeight: 800, fontSize: 13, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s"
               }}>
-                <span style={{ fontSize: 18 }}>📱</span>
-                <span>{ar ? "واتساب" : "WhatsApp"}</span>
+                <Share2 size={20} />
+                <span>{ar ? "مشاركة" : "Share"}</span>
               </button>
-              <div style={{ padding: "6px", borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <QRCode value={joinUrl} size={56} />
+              <div style={{ padding: "8px", borderRadius: 16, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <QRCode value={joinUrl} size={64} style={{ width: "100%", height: "100%" }} />
               </div>
             </div>
           </motion.div>
 
           {/* Students */}
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <Users size={15} color={FIRE} />
-              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700 }}>
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, padding: "16px 20px", marginBottom: 14, backdropFilter: "blur(12px)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Users size={16} color={FIRE2} />
+              <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 13, fontWeight: 700 }}>
                 {ar ? "الطلاب المنضمون" : "Students joined"}
               </span>
-              <span style={{ marginInlineStart: "auto", background: `${FIRE}30`, border: `1px solid ${FIRE}50`, color: FIRE2, fontWeight: 900, fontSize: 16, padding: "2px 12px", borderRadius: 999 }}>
+              <span style={{ marginInlineStart: "auto", background: "rgba(255,255,255,0.1)", color: "#fff", fontWeight: 900, fontSize: 14, padding: "2px 10px", borderRadius: 999 }}>
                 {students.length}
               </span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, minHeight: 36 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, minHeight: 40 }}>
               <AnimatePresence>
                 {students.map(s => (
                   <motion.div key={s.uid} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}
-                    style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 999, background: "rgba(255,255,255,0.07)", border: `1.5px solid ${s.color}50` }}>
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: `1px solid ${s.color}60` }}>
                     <span style={{ fontSize: 16 }}>{s.avatar}</span>
-                    <span style={{ color: s.color, fontSize: 12, fontWeight: 800 }}>{s.name}</span>
+                    <span style={{ color: "#fff", fontSize: 13, fontWeight: 800 }}>{s.name}</span>
                   </motion.div>
                 ))}
               </AnimatePresence>
               {students.length === 0 && (
-                <motion.p animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }}
-                  style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: 0 }}>
-                  {ar ? "شارك الرمز مع طلابك..." : "Share the code with your students..."}
-                </motion.p>
+                <motion.div animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }}
+                  className="flex items-center justify-center w-full h-10">
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, margin: 0, fontWeight: 600 }}>
+                    {ar ? "بانتظار انضمام الطلاب..." : "Waiting for students to join..."}
+                  </p>
+                </motion.div>
               )}
             </div>
           </div>
 
           {/* Questions indicator */}
           {questions.length > 0 && (
-            <div style={{ background: "rgba(255,107,43,0.1)", border: `1px solid ${FIRE}40`, borderRadius: 14, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-              <FileText size={15} color={FIRE2} />
-              <span style={{ color: FIRE2, fontSize: 13, fontWeight: 700 }}>
+            <div style={{ background: "rgba(255,159,67,0.1)", border: `1px solid rgba(255,159,67,0.3)`, borderRadius: 20, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+              <FileText size={16} color={FIRE2} />
+              <span style={{ color: FIRE2, fontSize: 13, fontWeight: 800 }}>
                 {ar ? `${questions.length} سؤال جاهز للجلسة` : `${questions.length} questions loaded`}
               </span>
             </div>
@@ -386,23 +405,19 @@ export default function HotSeatCreate() {
             whileTap={students.length > 0 ? { scale: 0.97 } : undefined}
             onClick={startGame} disabled={students.length === 0}
             style={{
-              width: "100%", padding: "16px", borderRadius: 20, border: "none",
-              background: students.length === 0 ? "rgba(255,107,43,0.2)" : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-              color: students.length === 0 ? "rgba(255,255,255,0.4)" : "#fff",
-              fontWeight: 900, fontSize: 17, cursor: students.length === 0 ? "not-allowed" : "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              boxShadow: students.length > 0 ? `0 12px 36px ${FIRE}50` : undefined,
+              width: "100%", padding: "18px", borderRadius: 24, border: "none",
+              background: students.length === 0 ? "rgba(255,255,255,0.06)" : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
+              color: students.length === 0 ? "rgba(255,255,255,0.3)" : "#fff",
+              fontWeight: 900, fontSize: 18, cursor: students.length === 0 ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+              boxShadow: students.length > 0 ? `0 12px 36px rgba(255,107,43,0.4)` : undefined,
+              transition: "all 0.3s"
             }}>
-            <Flame size={22} />
-            {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"}
-            {students.length > 0 && (
-              <span style={{ background: "rgba(0,0,0,0.25)", borderRadius: 999, padding: "2px 10px", fontSize: 13 }}>
-                {students.length} {ar ? "طالب" : "students"}
-              </span>
-            )}
+            <Play size={22} fill="currentColor" />
+            {ar ? "بدء الجلسة" : "Start Session"}
           </motion.button>
           {students.length < 1 && (
-            <p style={{ color: "rgba(255,107,43,0.6)", fontSize: 12, textAlign: "center", marginTop: 8 }}>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textAlign: "center", marginTop: 12, fontWeight: 600 }}>
               {ar ? "انتظر حتى ينضم طالب واحد على الأقل" : "At least 1 student must join first"}
             </p>
           )}
@@ -414,80 +429,87 @@ export default function HotSeatCreate() {
   // ── CREATE FORM ───────────────────────────────────────────────────────────
   return (
     <Layout>
-      <div dir={dir} className="min-h-screen py-8 px-4" style={{ background: "linear-gradient(180deg, #FCFAF8, #F4EBD9)" }}>
-        <div className="max-w-lg mx-auto">
-          <div className="mb-4">
+      <div dir={dir} className="min-h-screen py-8 px-4 relative overflow-hidden" style={{ background: "linear-gradient(180deg, #F8FAFC, #F1F5F9)" }}>
+        {/* Decorative background blur */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-500/10 blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="max-w-lg mx-auto relative z-10">
+          <div className="mb-6">
             <GameFlowBackButton onBack={() => setLocation("/")} />
           </div>
           {/* Header */}
-          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-7">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4"
-              style={{ background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`, boxShadow: `0 12px 32px ${FIRE}60` }}>
-              <span style={{ fontSize: 40 }}>🔥</span>
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+            <div className="inline-flex items-center justify-center mb-5">
+              <HotSeatIcon size={96} />
             </div>
-            <h1 className="text-3xl font-black mb-1" style={{ color: "#1a0a00" }}>
-              {ar ? "الكرسي الساخن 🔥" : "HotSeat 🔥"}
+            <h1 className="text-3xl font-black mb-2 text-slate-900 tracking-tight">
+              {ar ? "الكرسي الساخن" : "HotSeat"}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {ar ? "طالب على الكرسي يجيب على أسئلة زملائه — والجميع يُصوّت!" : "One student answers classmates' questions — everyone votes!"}
+            <p className="text-sm font-medium text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+              {ar ? "طالب على الكرسي يجيب على أسئلة زملائه — والجميع يُصوّت" : "One student answers classmates' questions — everyone votes"}
             </p>
           </motion.div>
 
           {/* Teacher name removed — mute button moved to toolbar */}
 
           {/* Grade + Subject */}
-          <Card className="p-5 mb-3">
-            <div className="flex justify-end mb-3">
+          <Card className="p-6 mb-4 shadow-sm border-slate-200/60 bg-white/80 backdrop-blur-xl rounded-3xl">
+            <div className="flex justify-end mb-4">
               <button onClick={toggleMute}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all hover:scale-[1.02]"
                 style={{
-                  borderColor: muted ? "#ef4444" : "#e5e7eb",
-                  background: muted ? "#fef2f2" : "#f9fafb",
-                  color: muted ? "#ef4444" : "#6b7280",
+                  borderColor: muted ? "#fecaca" : "#e2e8f0",
+                  background: muted ? "#fef2f2" : "#f8fafc",
+                  color: muted ? "#ef4444" : "#64748b",
                 }}>
-                {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
                 {muted ? (ar ? "صامت" : "Muted") : (ar ? "صوت" : "Sound")}
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-2">
-                  {ar ? "🏫 الصف (اختياري)" : "🏫 Class (optional)"}
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-2.5">
+                  <Building size={14} />
+                  {ar ? "الصف (اختياري)" : "Class (optional)"}
                 </label>
                 <input value={grade} onChange={e => setGrade(e.target.value)}
                   placeholder={ar ? "مثال: 3 متوسط أ" : "e.g. Grade 8B"}
-                  className="w-full bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/40 border-b border-border pb-1"
+                  className="w-full bg-slate-50 outline-none text-sm font-bold placeholder:text-slate-400 border border-slate-200 rounded-xl px-4 py-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                   maxLength={30} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-2">
-                  {ar ? "📚 المادة (اختياري)" : "📚 Subject (optional)"}
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-2.5">
+                  <BookOpen size={14} />
+                  {ar ? "المادة (اختياري)" : "Subject (optional)"}
                 </label>
                 <input value={subject} onChange={e => setSubject(e.target.value)}
                   placeholder={ar ? "مثال: رياضيات" : "e.g. Science"}
-                  className="w-full bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/40 border-b border-border pb-1"
+                  className="w-full bg-slate-50 outline-none text-sm font-bold placeholder:text-slate-400 border border-slate-200 rounded-xl px-4 py-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                   maxLength={30} />
               </div>
             </div>
           </Card>
 
           {/* Topic */}
-          <Card className="p-5 mb-3">
-            <label className="block text-xs font-bold text-muted-foreground mb-2">
-              {ar ? "💡 موضوع الجلسة (اختياري)" : "💡 Session Topic (optional)"}
+          <Card className="p-6 mb-4 shadow-sm border-slate-200/60 bg-white/80 backdrop-blur-xl rounded-3xl">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-2.5">
+              <Lightbulb size={14} />
+              {ar ? "موضوع الجلسة (اختياري)" : "Session Topic (optional)"}
             </label>
             <input value={topic} onChange={e => setTopic(e.target.value)}
               placeholder={ar ? "مثال: قوانين نيوتن، الكسور العشرية..." : "e.g. Newton's Laws..."}
-              className="w-full bg-transparent outline-none text-sm placeholder:text-muted-foreground/40 border-b border-border pb-1"
+              className="w-full bg-slate-50 outline-none text-sm font-bold placeholder:text-slate-400 border border-slate-200 rounded-xl px-4 py-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
               maxLength={80} />
           </Card>
 
           {/* Questions source */}
-          <Card className="p-5 mb-3">
-            <label className="block text-sm font-bold mb-3">
-              {ar ? "📋 مصدر أسئلة الجلسة" : "📋 Session question source"}
+          <Card className="p-6 mb-4 shadow-sm border-slate-200/60 bg-white/80 backdrop-blur-xl rounded-3xl">
+            <label className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-800">
+              <FileText size={16} />
+              {ar ? "مصدر أسئلة الجلسة" : "Session question source"}
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
               {([
                 {
                   value: "students" as const,
@@ -509,20 +531,20 @@ export default function HotSeatCreate() {
                   type="button"
                   key={option.value}
                   onClick={() => setQuestionMode(option.value)}
-                  className="rounded-xl border-2 p-3 text-start transition-all"
+                  className="rounded-2xl border-2 p-4 text-start transition-all hover:scale-[1.02]"
                   style={{
-                    borderColor: questionMode === option.value ? FIRE : "#e5e7eb",
-                    background: questionMode === option.value ? `${FIRE}12` : "#fff",
+                    borderColor: questionMode === option.value ? FIRE : "#e2e8f0",
+                    background: questionMode === option.value ? `linear-gradient(135deg, rgba(255,107,43,0.08), rgba(255,159,67,0.08))` : "#f8fafc",
                   }}
                 >
-                  <span className="block text-sm font-black" style={{ color: questionMode === option.value ? FIRE : "#374151" }}>
+                  <span className="block text-sm font-black mb-1" style={{ color: questionMode === option.value ? FIRE : "#475569" }}>
                     {option.title}
                   </span>
-                  <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{option.desc}</span>
+                  <span className="block text-[11px] leading-relaxed" style={{ color: questionMode === option.value ? FIRE2 : "#94a3b8" }}>{option.desc}</span>
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mb-3">
+            <p className="text-xs text-slate-500 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100 font-medium">
               {questionMode === "students"
                 ? (ar ? "لن تظهر أسئلة محمّلة؛ سيكتب الطلاب أسئلتهم أثناء الجولة." : "No loaded questions; students write questions during the round.")
                 : questionMode === "assignment"
@@ -531,47 +553,51 @@ export default function HotSeatCreate() {
             </p>
 
             {questionMode !== "students" && questions.length > 0 && (
-              <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl"
-                style={{ background: `${FIRE}15`, border: `1px solid ${FIRE}40` }}>
-                <FileText size={14} style={{ color: FIRE2 }} />
-                <span className="text-xs font-bold flex-1" style={{ color: FIRE2 }}>
+              <div className="flex items-center gap-3 mb-4 p-3.5 rounded-2xl bg-orange-50 border border-orange-200/60">
+                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                  <FileText size={16} className="text-orange-500" />
+                </div>
+                <span className="text-sm font-bold flex-1 text-orange-600">
                   {ar ? `${questions.length} سؤال محمّل` : `${questions.length} questions loaded`}
                 </span>
                 <button onClick={() => setQuestions([])}
-                  className="text-xs text-red-400 hover:text-red-600 font-bold">
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 transition-colors">
                   {ar ? "حذف" : "Clear"}
                 </button>
               </div>
             )}
 
-            {questionMode !== "students" && <div className="grid grid-cols-2 gap-2">
+            {questionMode !== "students" && <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setAssignOpen(true)}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 font-bold text-sm transition-all"
-                style={{ borderColor: `${FIRE}60`, background: `${FIRE}10`, color: FIRE }}>
-                <BookOpen size={15} />
+                className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:scale-[1.02]"
+                style={{ borderColor: `rgba(255,107,43,0.3)`, background: `rgba(255,107,43,0.05)`, color: FIRE }}>
+                <BookOpen size={16} />
                 {ar ? "من واجب" : "From Assignment"}
               </button>
               <button onClick={() => setBankOpen(true)}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 font-bold text-sm transition-all"
-                style={{ borderColor: "#6366f1", background: "#eef2ff", color: "#6366f1" }}>
-                <FileText size={15} />
+                className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:scale-[1.02]"
+                style={{ borderColor: "#c7d2fe", background: "#f0fdf4", color: "#6366f1" }}>
+                <Search size={16} />
                 {ar ? "من البنك" : "Question Bank"}
               </button>
             </div>}
           </Card>
 
           {/* Timer */}
-          <Card className="p-5 mb-6">
-            <label className="block text-sm font-bold mb-3">{ar ? "⏱ مدة الإجابة" : "⏱ Answer Time"}</label>
-            <div className="flex gap-2">
+          <Card className="p-6 mb-8 shadow-sm border-slate-200/60 bg-white/80 backdrop-blur-xl rounded-3xl">
+            <label className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-800">
+              <Timer size={16} />
+              {ar ? "مدة الإجابة" : "Answer Time"}
+            </label>
+            <div className="flex gap-3">
               {[15, 30, 45, 60].map(t => (
                 <button key={t} onClick={() => setTimerDuration(t)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all"
+                  className="flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all hover:scale-[1.02]"
                   style={{
-                    background: timerDuration === t ? FIRE : "#fff",
-                    color: timerDuration === t ? "#fff" : "#374151",
-                    borderColor: timerDuration === t ? FIRE : "#e5e7eb",
-                    boxShadow: timerDuration === t ? `0 4px 12px ${FIRE}40` : undefined,
+                    background: timerDuration === t ? FIRE : "#f8fafc",
+                    color: timerDuration === t ? "#fff" : "#475569",
+                    borderColor: timerDuration === t ? FIRE : "#e2e8f0",
+                    boxShadow: timerDuration === t ? `0 8px 24px rgba(255,107,43,0.3)` : undefined,
                   }}>
                   {t}{ar ? "ث" : "s"}
                 </button>
@@ -582,16 +608,11 @@ export default function HotSeatCreate() {
           {/* Create */}
           <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
             onClick={handleCreate} disabled={creating}
-            className="w-full py-4 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3"
-            style={{
-              background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-              boxShadow: `0 12px 32px ${FIRE}60`,
-              opacity: creating ? 0.7 : 1,
-              cursor: creating ? "not-allowed" : "pointer",
-            }}>
+            className="w-full py-4 rounded-3xl font-black text-lg text-white flex items-center justify-center gap-3 shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`, boxShadow: `0 12px 36px rgba(255,107,43,0.35)` }}>
             {creating
-              ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}>🔥</motion.span>
-              : <><Flame size={22} /> {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"} <ChevronRight size={20} /></>}
+              ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}><Sparkles size={22} /></motion.span>
+              : <><Play size={22} fill="currentColor" /> {ar ? "تجهيز الجلسة" : "Create Session"} <ChevronRight size={20} /></>}
           </motion.button>
         </div>
       </div>
