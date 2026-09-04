@@ -32,6 +32,27 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
+type MultiPointAnswer = {
+  answer: string;
+  points: Array<{ answer: string; reference: string }>;
+};
+
+function parseMultiPointAnswer(value: string): MultiPointAnswer | null {
+  try {
+    const parsed = JSON.parse(value) as Partial<MultiPointAnswer>;
+    if (
+      typeof parsed.answer !== "string" ||
+      !Array.isArray(parsed.points) ||
+      parsed.points.length < 2 ||
+      parsed.points.length > 5 ||
+      parsed.points.some((point) => typeof point?.answer !== "string" || typeof point?.reference !== "string")
+    ) return null;
+    return parsed as MultiPointAnswer;
+  } catch {
+    return null;
+  }
+}
+
 function todayDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -251,7 +272,7 @@ router.post("/islamic/questions", async (req, res) => {
   if (!(await requireEditor(req, res))) return;
   const { categoryId, questionText, audioUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, questionType, sourceUrl, sourceName } = req.body || {};
   const type = questionType || "mcq";
-  if (!["mcq", "short_answer"].includes(type) || !categoryId || !questionText || !correctAnswer || (type === "mcq" && (!optionA || !optionB || !optionC || !optionD))) {
+  if (!["mcq", "short_answer", "multi_point"].includes(type) || !categoryId || !questionText || !correctAnswer || (type === "mcq" && (!optionA || !optionB || !optionC || !optionD)) || (type === "multi_point" && !parseMultiPointAnswer(correctAnswer))) {
     res.status(400).json({ message: "بيانات السؤال غير مكتملة" });
     return;
   }
@@ -279,7 +300,7 @@ router.post("/islamic/questions", async (req, res) => {
 router.patch("/islamic/questions/:id", async (req, res) => {
   if (!(await requireEditor(req, res))) return;
   const id = parseInt(req.params.id);
-  if (req.body?.questionType !== undefined && !["mcq", "short_answer"].includes(req.body.questionType)) {
+  if (req.body?.questionType !== undefined && !["mcq", "short_answer", "multi_point"].includes(req.body.questionType)) {
     res.status(400).json({ message: "نوع السؤال غير صالح" });
     return;
   }
@@ -412,7 +433,7 @@ router.post("/islamic/import", upload.single("file"), async (req, res) => {
       const audioUrl = (row["audio_url"] || "").trim() || null;
       const sourceUrl = (row["source_url"] || row["رابط المصدر"] || "").trim() || null;
       const sourceName = (row["source_name"] || row["اسم المصدر"] || "").trim() || null;
-      if (!["mcq", "short_answer"].includes(questionType) || !sectionName || !categoryName || !text || !correct || (questionType === "mcq" && (!a || !b || !c || !d))) {
+      if (!["mcq", "short_answer", "multi_point"].includes(questionType) || !sectionName || !categoryName || !text || !correct || (questionType === "mcq" && (!a || !b || !c || !d)) || (questionType === "multi_point" && !parseMultiPointAnswer(correct))) {
         skipped++;
         continue;
       }
@@ -487,6 +508,7 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
     const opts = q.questionType === "mcq" ? [q.optionA, q.optionB, q.optionC, q.optionD].sort(() => Math.random() - 0.5) : [];
     const letterMap: Record<string, string> = { A: q.optionA, B: q.optionB, C: q.optionC, D: q.optionD };
     const correctAnswer = letterMap[q.correctAnswer] ?? q.correctAnswer;
+    const multiPointData = q.questionType === "multi_point" ? parseMultiPointAnswer(correctAnswer) : null;
     return {
       id: q.id,
       questionText: q.questionText,
@@ -495,7 +517,8 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
       sourceUrl: q.sourceUrl,
       sourceName: q.sourceName,
       options: opts,
-      correctAnswer,
+      correctAnswer: multiPointData?.answer ?? correctAnswer,
+      multiPointData,
       difficulty: q.difficulty,
       level,
     };
@@ -514,21 +537,37 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
 router.post("/islamic/answer", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
   const userId = req.session.teacherId!;
-  const { questionId, categoryId, isCorrect, assessment, timeSeconds, currentStreak, isFirstQuestion, sessionId } = req.body || {};
+  const { questionId, categoryId, isCorrect, assessment, recalledPoints, timeSeconds, currentStreak, isFirstQuestion, sessionId } = req.body || {};
   if (typeof questionId !== "number" || typeof categoryId !== "number") {
     res.status(400).json({ message: "بيانات ناقصة" });
     return;
   }
-  const [question] = await db.select({ questionType: islamicQuestionsTable.questionType, categoryId: islamicQuestionsTable.categoryId }).from(islamicQuestionsTable).where(eq(islamicQuestionsTable.id, questionId)).limit(1);
+  const [question] = await db.select({
+    questionType: islamicQuestionsTable.questionType,
+    categoryId: islamicQuestionsTable.categoryId,
+    correctAnswer: islamicQuestionsTable.correctAnswer,
+  }).from(islamicQuestionsTable).where(eq(islamicQuestionsTable.id, questionId)).limit(1);
   if (!question || question.categoryId !== categoryId) { res.status(400).json({ message: "السؤال لا ينتمي إلى هذه الفئة" }); return; }
   const shortAnswer = question.questionType === "short_answer";
+  const multiPoint = question.questionType === "multi_point";
   if (shortAnswer && !["full", "partial", "unknown"].includes(assessment)) { res.status(400).json({ message: "اختر تقييم إجابتك بعد كشفها" }); return; }
-  const resolvedCorrect = shortAnswer ? assessment === "full" : !!isCorrect;
+  const multiPointAnswer = multiPoint ? parseMultiPointAnswer(question.correctAnswer) : null;
+  if (multiPoint && (!multiPointAnswer || !Number.isInteger(recalledPoints) || recalledPoints < 0 || recalledPoints > multiPointAnswer.points.length)) {
+    res.status(400).json({ message: "عدد النقاط المتذكّرة غير صالح" });
+    return;
+  }
+  const resolvedCorrect = shortAnswer
+    ? assessment === "full"
+    : multiPoint
+      ? recalledPoints === multiPointAnswer!.points.length
+      : !!isCorrect;
   let stars = 0;
   if (shortAnswer) stars = assessment === "full" ? 3 : assessment === "partial" ? 1 : 0;
+  else if (multiPoint) stars = recalledPoints === multiPointAnswer!.points.length ? 3 : recalledPoints > 0 ? 1 : 0;
   else if (resolvedCorrect) stars = timeSeconds < 5 ? 3 : timeSeconds < 15 ? 2 : 1;
   let pointsAwarded = 0;
   if (shortAnswer) pointsAwarded = assessment === "full" ? 10 : assessment === "partial" ? 3 : 0;
+  else if (multiPoint) pointsAwarded = recalledPoints * 10;
   else if (resolvedCorrect) pointsAwarded = timeSeconds < 5 ? 10 : 5;
   if (resolvedCorrect && (currentStreak ?? 0) > 0 && (currentStreak + 1) % 5 === 0) pointsAwarded += 20;
 

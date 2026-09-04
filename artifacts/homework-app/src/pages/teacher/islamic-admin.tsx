@@ -49,6 +49,17 @@ interface Q {
   optionD: string;
   correctAnswer: string;
   difficulty: string;
+  questionType?: "mcq" | "short_answer" | "multi_point";
+}
+
+function questionAnswerLabel(q: Q): string {
+  if (q.questionType !== "multi_point") return q.correctAnswer;
+  try {
+    const parsed = JSON.parse(q.correctAnswer) as { answer?: string; points?: unknown[] };
+    return `${parsed.answer || "إجابة متعددة النقاط"} · ${parsed.points?.length || 0} نقاط`;
+  } catch {
+    return "إجابة متعددة النقاط";
+  }
 }
 
 interface QDraft {
@@ -414,10 +425,12 @@ export default function TeacherIslamicAdmin() {
             <div key={q.id} style={{ borderBottom: "1px solid rgba(217,119,6,0.15)", padding: "12px 0" }}>
               <div style={{ fontWeight: 600 }}>{q.questionText}</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-                الإجابة: {q.correctAnswer} · {q.difficulty}{q.audioUrl ? " · صوتي" : ""}
+                 الإجابة: {questionAnswerLabel(q)} · {q.difficulty}{q.questionType === "multi_point" ? " · متعدد النقاط" : ""}{q.audioUrl ? " · صوتي" : ""}
               </div>
               <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                <GhostButton onClick={() => { setEditing(fromQuestion(q)); setEditError(""); }}>تعديل</GhostButton>
+                 {q.questionType !== "multi_point" && (
+                   <GhostButton onClick={() => { setEditing(fromQuestion(q)); setEditError(""); }}>تعديل</GhostButton>
+                 )}
                 <GhostButton onClick={() => deleteQuestion(q)} style={{ color: "#fca5a5" }}>حذف</GhostButton>
               </div>
             </div>

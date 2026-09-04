@@ -11,7 +11,11 @@ interface Q {
   options: string[];
   correctAnswer: string;
   difficulty: string;
-  questionType: "mcq" | "short_answer";
+  questionType: "mcq" | "short_answer" | "multi_point";
+  multiPointData: {
+    answer: string;
+    points: Array<{ answer: string; reference: string }>;
+  } | null;
   sourceUrl: string | null;
   sourceName: string | null;
   level?: number;
@@ -19,6 +23,7 @@ interface Q {
 
 const BASE_TIME = 25;
 const SHORT_ANSWER_TIME = 45;
+const MULTI_POINT_TIME = 60;
 const QURRA_NAME = "من القارئ";
 
 const LEVEL_NAMES: Record<number, string> = { 1: "الأساسي", 2: "المتقدم", 3: "الخبراء" };
@@ -40,6 +45,7 @@ export default function IslamicPlay() {
   const doneRef = useRef<boolean>(false);
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const [recalledPoints, setRecalledPoints] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [stars, setStars] = useState<number[]>([]);
   const [points, setPoints] = useState(0);
@@ -86,7 +92,11 @@ export default function IslamicPlay() {
 
   useEffect(() => {
     if (!questions || done || revealed) return;
-    const questionTime = questions[idx]?.questionType === "short_answer" ? SHORT_ANSWER_TIME : BASE_TIME;
+    const questionTime = questions[idx]?.questionType === "multi_point"
+      ? MULTI_POINT_TIME
+      : questions[idx]?.questionType === "short_answer"
+        ? SHORT_ANSWER_TIME
+        : BASE_TIME;
     startRef.current = Date.now();
     audioListensRef.current = 0;
     setAudioPenaltyExtra(0);
@@ -101,7 +111,7 @@ export default function IslamicPlay() {
           if (timerRef.current) window.clearInterval(timerRef.current);
           // Reveal questions are self-assessed; do not silently mark them wrong.
           const currentQ = questions[idx];
-          if (currentQ?.audioUrl || currentQ?.questionType === "short_answer") {
+          if (currentQ?.audioUrl || currentQ?.questionType === "short_answer" || currentQ?.questionType === "multi_point") {
             setWaitingReveal(true);
           } else {
             handleAnswer(null);
@@ -117,7 +127,11 @@ export default function IslamicPlay() {
   }, [idx, questions, done, revealed, audioPenaltyExtra]);
 
   const q = questions?.[idx];
-  const questionTime = q?.questionType === "short_answer" ? SHORT_ANSWER_TIME : BASE_TIME;
+  const questionTime = q?.questionType === "multi_point"
+    ? MULTI_POINT_TIME
+    : q?.questionType === "short_answer"
+      ? SHORT_ANSWER_TIME
+      : BASE_TIME;
 
   function timeColor(): string {
     const ratio = secondsLeft / questionTime;
@@ -206,6 +220,36 @@ export default function IslamicPlay() {
     }
   }
 
+  async function assessMultiPoint(count: number) {
+    const maxPoints = q?.multiPointData?.points.length ?? 0;
+    if (!q || q.questionType !== "multi_point" || !revealed || recalledPoints !== null || count < 0 || count > maxPoints) return;
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    const elapsed = (Date.now() - startRef.current) / 1000;
+    const complete = count === maxPoints;
+    setRecalledPoints(count);
+    setWrongAttempt(!complete);
+    setStars((s) => [...s, complete ? 3 : count > 0 ? 1 : 0]);
+    if (count > 0) playCorrect();
+    else playWrong();
+    try {
+      const r = await api<{ stars: number; pointsAwarded: number; dailyBonus: number }>("/islamic/answer", {
+        method: "POST",
+        body: JSON.stringify({
+          questionId: q.id, categoryId, recalledPoints: count, timeSeconds: elapsed,
+          currentStreak: streak, isFirstQuestion: idx === 0, sessionId: sessionIdRef.current,
+        }),
+      });
+      setPoints((p) => p + r.pointsAwarded + r.dailyBonus);
+    } catch {}
+    answeredCountRef.current += 1;
+    if (complete) setStreak((s) => s + 1);
+    else setStreak(0);
+    if (certEnabled && !complete && !askedAboutCert) {
+      setCertificateMode(false);
+      setAskedAboutCert(true);
+    }
+  }
+
   async function next() {
     if (!questions) return;
     if (idx + 1 >= questions.length) {
@@ -236,6 +280,7 @@ export default function IslamicPlay() {
     }
     setIdx((i) => i + 1);
     setSelected(null);
+    setRecalledPoints(null);
     setRevealed(false);
     setWrongAttempt(null);
   }
@@ -248,6 +293,7 @@ export default function IslamicPlay() {
   function restartFromZero() {
     setIdx(0);
     setSelected(null);
+    setRecalledPoints(null);
     setRevealed(false);
     setStars([]);
     setPoints(0);
@@ -506,6 +552,75 @@ export default function IslamicPlay() {
         </div>
       )}
 
+      {q.questionType === "multi_point" && q.multiPointData && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          {!revealed ? (
+            <div>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px",
+                borderRadius: 999, background: "#fef3c7", color: "#92400e", fontWeight: 800, marginBottom: 10,
+              }}>
+                في الإجابة {q.multiPointData.points.length} نقاط
+              </div>
+              <p style={{ color: "#92400e", fontWeight: 700, marginTop: 0 }}>
+                استحضر أكبر عدد تستطيع، ثم اكشف الإجابة واحسب حصادك.
+              </p>
+              <GoldButton onClick={() => setRevealed(true)}>كشف نقاط الإجابة</GoldButton>
+            </div>
+          ) : (
+            <IslamicCard style={{ border: `2px solid ${ISLAMIC_GOLD}`, textAlign: "start" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: "#166534", marginBottom: 12, textAlign: "center" }}>
+                حصاد الإجابة
+              </div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {q.multiPointData.points.map((point, pointIndex) => (
+                  <div key={`${point.answer}-${pointIndex}`} style={{
+                    display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px",
+                    borderRadius: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#14532d",
+                  }}>
+                    <span style={{
+                      flex: "0 0 28px", width: 28, height: 28, display: "inline-flex", alignItems: "center",
+                      justifyContent: "center", borderRadius: 9, background: "#166534", color: "#fff", fontWeight: 900,
+                    }}>{pointIndex + 1}</span>
+                    <div>
+                      <div style={{ fontWeight: 800, lineHeight: 1.7 }}>{point.answer}</div>
+                      <div style={{ fontSize: 13, color: "#78716c" }}>{point.reference}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(q.sourceName || q.sourceUrl) && <div style={{ fontSize: 13, marginTop: 12, color: "#78716c", textAlign: "center" }}>
+                المصدر: {q.sourceUrl ? <a href={q.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#92400e" }}>{q.sourceName || q.sourceUrl}</a> : q.sourceName}
+              </div>}
+              {recalledPoints !== null ? (
+                <div style={{
+                  marginTop: 14, padding: "11px 14px", borderRadius: 12, textAlign: "center",
+                  background: recalledPoints === q.multiPointData.points.length ? "#dcfce7" : recalledPoints > 0 ? "#fef3c7" : "#fee2e2",
+                  color: recalledPoints === q.multiPointData.points.length ? "#166534" : recalledPoints > 0 ? "#92400e" : "#991b1b",
+                  fontWeight: 900,
+                }}>
+                  تذكّرت {recalledPoints} من {q.multiPointData.points.length} · {recalledPoints * 10} نقطة
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontWeight: 900, textAlign: "center", marginBottom: 8 }}>كم نقطة تذكّرت قبل الكشف؟</p>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                    {Array.from({ length: q.multiPointData.points.length + 1 }, (_, count) => (
+                      <button key={count} type="button" onClick={() => assessMultiPoint(count)} style={{
+                        minWidth: 48, minHeight: 44, borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
+                        fontSize: 17, fontWeight: 900, border: `1.5px solid ${count === q.multiPointData!.points.length ? "#16a34a" : "#d97706"}`,
+                        background: count === q.multiPointData!.points.length ? "#dcfce7" : "#fffbeb",
+                        color: count === q.multiPointData!.points.length ? "#166534" : "#92400e",
+                      }}>{count}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </IslamicCard>
+          )}
+        </div>
+      )}
+
       {q.questionType === "mcq" && <><style>{`
         .islamic-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
           font-family: inherit; font-size: 17px; font-weight: 600; line-height: 1.7;
@@ -576,7 +691,7 @@ export default function IslamicPlay() {
         </div>
       )}</>}
 
-      {revealed && (q.questionType === "mcq" || selected !== null) && (
+      {revealed && (q.questionType === "mcq" || selected !== null || recalledPoints !== null) && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <GoldButton onClick={next}>{idx + 1 >= questions.length ? t.islamic.finish : t.islamic.nextQuestion}</GoldButton>
         </div>

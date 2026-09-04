@@ -29,6 +29,7 @@ import { seedIslamicIfNeeded } from "./seedIslamic";
 import { seedIslamicExtraIfNeeded } from "./seedIslamicExtra";
 import { seedIslamicLevelsIfNeeded } from "./seedIslamicLevels";
 import { seedTaarifAyatShortIfNeeded } from "./seedTaarifAyatShort";
+import { seedIstihdarAyatIfNeeded } from "./seedIstihdarAyat";
 import { seedPlansIfMissing } from "./seedPlans";
 import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { seedStaticArenaIfNeeded } from "./seedStaticArena";
@@ -1506,6 +1507,7 @@ httpServer.listen(port, () => {
       // the canonical seed, so these must remain ordered.
       await seedIslamicIfNeeded();
       await seedTaarifAyatShortIfNeeded();
+      await seedIstihdarAyatIfNeeded();
       seedIslamicExtraIfNeeded();
       seedIslamicLevelsIfNeeded();
       seedArenaContentIfNeeded();
