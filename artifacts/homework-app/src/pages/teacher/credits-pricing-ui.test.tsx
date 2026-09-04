@@ -198,8 +198,9 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).toContain("$89.90");
     expect(text()).toContain("$119.88");
     expect(text()).toContain("3 أشهر مجانًا");
-    expect(text()).toContain("شهريًا عند الدفع السنوي");
-    expect(text()).toContain("يُدفع المبلغ السنوي الآن، وتُضاف النقاط شهريًا.");
+    expect(text()).toContain("/ شهر");
+    expect(text()).not.toContain("شهريًا عند الدفع السنوي");
+    expect(text()).toContain("يُدفع سنويًا، وتُضاف النقاط شهريًا.");
     expect(text()).not.toContain("ثم سنوياً عند التجديد");
     expect(text()).not.toContain("ليس دفعة 12 شهراً مقدماً");
   });

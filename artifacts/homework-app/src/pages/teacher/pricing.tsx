@@ -383,7 +383,9 @@ export function PricingContent() {
                 return (
                   <article
                     key={plan.code}
-                    className={`group relative flex min-h-[550px] flex-col overflow-hidden rounded-[28px] border p-5 sm:p-6 transition-all duration-300 ease-out hover:-translate-y-1.5 ${
+                    className={`group relative flex flex-col overflow-hidden rounded-[28px] border p-5 sm:p-6 transition-all duration-300 ease-out hover:-translate-y-1.5 ${
+                      annual ? "self-start" : "min-h-[550px]"
+                    } ${
                       plan.code === "pro"
                         ? "hover:shadow-[0_30px_60px_rgba(9,62,42,0.38)] hover:border-[#f2c856]/60"
                         : "hover:shadow-[0_24px_48px_rgba(13,68,46,0.16)] hover:border-[#9dbfa6]"
@@ -440,11 +442,11 @@ export function PricingContent() {
                     <div className={`mt-5 border-y py-5 text-center ${isPro ? "border-white/10" : "border-[#e9efea]"}`}>
                       {annual && !isFree ? (
                         <div data-testid={`annual-copy-${plan.code}`}>
-                          <div className="text-3xl font-black tracking-tight">${equivalentMonthly.toFixed(2)}</div>
-                          <div className={`mt-1 text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>
-                            شهريًا عند الدفع السنوي
+                          <div className="flex items-baseline justify-center gap-1.5">
+                            <span className="text-4xl font-black tracking-tight">${equivalentMonthly.toFixed(2)}</span>
+                            <span className={`text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>/ شهر</span>
                           </div>
-                          <div className={`mt-3 text-sm font-extrabold ${isPro ? "text-white" : "text-[#315543]"}`}>
+                          <div className={`mt-2 text-sm font-extrabold ${isPro ? "text-white" : "text-[#315543]"}`}>
                             ${annualPrice.toFixed(2)} سنويًا بدلًا من{" "}
                             <span className="line-through opacity-65">${originalAnnual.toFixed(2)}</span>
                           </div>
@@ -482,7 +484,7 @@ export function PricingContent() {
                     </div>
 
                     {/* المزايا — RTL لليمين */}
-                    <ul className="mt-5 flex-1 space-y-3 text-start">
+                    <ul className={`mt-5 space-y-3 text-start ${annual ? "" : "flex-1"}`}>
                       {meta?.features.map((f, idx) => {
                         const FIcon = f.icon;
                         const isProSaving = isPro && idx === 0;
@@ -537,12 +539,12 @@ export function PricingContent() {
                     </ul>
 
                     {/* CTA */}
-                    <div className="mt-6">
+                    <div className={annual ? "mt-4" : "mt-6"}>
                       {annual && !isFree && (
                         <p className={`mb-3 text-center text-[11px] font-semibold leading-5 ${
                           isPro ? "text-[#cfe3d4]" : "text-[#6d7e74]"
                         }`}>
-                          يُدفع المبلغ السنوي الآن، وتُضاف النقاط شهريًا.
+                          يُدفع سنويًا، وتُضاف النقاط شهريًا.
                         </p>
                       )}
                       {isCurrent && isFree ? (
