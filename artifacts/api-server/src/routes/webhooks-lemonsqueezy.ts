@@ -19,9 +19,8 @@ import {
 import { eq, and, sql } from "drizzle-orm";
 import { verifySignature } from "../lib/lemonsqueezy";
 import { CreditService } from "../lib/credit-service";
-import { checkEligibleForCreditGrant } from "../lib/subscription-utils";
 import { logger } from "../lib/logger";
-import { addOneCalendarMonth, addCalendarYearsUtc } from "../lib/annual-credit-release";
+import { addOneCalendarMonth, addCalendarMonthsUtc, lockProviderSubscription } from "../lib/annual-credit-release";
 
 const router: IRouter = Router();
 
@@ -246,6 +245,19 @@ async function fetchLSSubscriptionAttrs(subscriptionId: string): Promise<any | n
   }
 }
 
+/** Subscription Invoice is immutable historical evidence; unlike Subscription it
+ * is safe to fetch for delayed webhooks. */
+async function fetchLSInvoiceAttrs(invoiceId: string): Promise<any | null> {
+  const key = process.env["LEMON_SQUEEZY_API_KEY"];
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://api.lemonsqueezy.com/v1/subscription-invoices/${invoiceId}`,
+      { headers: { Authorization: `Bearer ${key}`, Accept: "application/vnd.api+json" } });
+    if (!r.ok) return null;
+    return (await r.json() as any)?.data?.attributes ?? null;
+  } catch { return null; }
+}
+
 function providerTimestamp(attrs: any): Date | null {
   const raw = attrs?.updated_at ?? attrs?.created_at ?? null;
   if (!raw) return null;
@@ -342,33 +354,74 @@ async function handleOrderRefunded(payload: any): Promise<void> {
   const orderId       = String(payload?.data?.id ?? "");
   const refundedCents = Number(attrs?.refunded_amount ?? 0);
   const totalCents    = Number(attrs?.total ?? 0);
-  const variantId     = String(attrs?.first_order_item?.variant_id ?? "");
   const subscriptionId = String(attrs?.subscription_id ?? "");
 
   // Subscription order refunds have no credit_purchase row. Stop unreleased
   // annual months immediately; already released credit handling remains the
   // existing invoice/batch policy and is intentionally not multiplied by 12.
-  if (variantId && await resolvePlanByVariant(variantId)) {
-    if (subscriptionId) {
+  if (subscriptionId) {
       const isFullRefund = totalCents > 0 && refundedCents >= totalCents;
       if (isFullRefund) {
-        const teacherId = await resolveTeacherFromSubscription(subscriptionId);
-        if (teacherId) await CreditService.expireSubscriptionBatches(teacherId);
-        await db.execute(sql`
-          UPDATE subscriptions
-          SET status = 'expired', payment_status = 'refunded', paid_through = NOW(), updated_at = NOW()
-          WHERE external_subscription_id = ${subscriptionId}
-        `);
+        await db.transaction(async (tx) => {
+          await lockProviderSubscription(tx, subscriptionId);
+          const revoked = await tx.execute(sql`
+            UPDATE subscription_credit_entitlements SET status = 'revoked', updated_at = NOW()
+            WHERE subscription_id = ${subscriptionId}
+              AND status = 'active'
+              AND ${orderId} <> ''
+              AND provider_order_id = ${orderId}
+            RETURNING id, teacher_id
+          `);
+          for (const entitlement of revoked.rows as any[]) {
+            // This removes only unused batches whose grant is bound to this
+            // invoice entitlement; another paid term is never touched.
+            const result = await CreditService.revokeEntitlementBatchesInTx(
+              tx, Number(entitlement.teacher_id), Number(entitlement.id)
+            );
+            if (result.shortfall > 0) {
+              await tx.execute(sql`
+                UPDATE subscription_credit_entitlements
+                SET refund_review_status = 'needs_review',
+                    refund_review_note = ${`refund batch/cache shortfall: ${result.shortfall}`},
+                    updated_at = NOW()
+                WHERE id = ${Number(entitlement.id)}
+              `);
+            }
+          }
+          if (revoked.rows.length === 0) {
+            // A concrete refund must never revoke unrelated/null-order paid
+            // terms. Keep them active and flag the unmatched refund for review.
+            await tx.execute(sql`
+              UPDATE subscription_credit_entitlements
+              SET refund_review_status = 'needs_review',
+                  refund_review_note = ${`unmatched full provider refund for order ${orderId || "unknown"}`},
+                  updated_at = NOW()
+              WHERE subscription_id = ${subscriptionId}
+                AND status = 'active'
+            `);
+          }
+          // Do not expire the current subscription projection here: a refund
+          // can target an older term. Authoritative lifecycle webhooks decide
+          // whether the current subscription itself is cancelled or expired.
+        });
       } else {
         /* A partial provider refund has no automatic entitlement policy. Keep
            paid access intact and leave an explicit audit signal for review. */
-        await db.execute(sql`
-          UPDATE subscriptions SET payment_status = 'partially_refunded', updated_at = NOW()
-          WHERE external_subscription_id = ${subscriptionId}
-        `);
+        await db.transaction(async (tx) => {
+          await lockProviderSubscription(tx, subscriptionId);
+          await tx.execute(sql`
+            UPDATE subscription_credit_entitlements
+            SET refund_review_status = 'needs_review',
+                refund_review_note = ${`partial provider refund ${refundedCents}/${totalCents}`}, updated_at = NOW()
+            WHERE subscription_id = ${subscriptionId}
+              AND (
+                (${orderId} <> '' AND provider_order_id = ${orderId})
+                OR (${orderId} = '' AND provider_order_id IS NULL)
+              )
+          `);
+        });
         logger.warn({ subscriptionId, refundedCents, totalCents }, "partial subscription refund requires review");
       }
-    }
     return;
   }
 
@@ -471,105 +524,83 @@ async function handleSubscriptionCreated(payload: any): Promise<void> {
 //
 // invoiceId    = payload.data.id          (unique LS invoice object ID)
 // subscriptionId = payload.data.attributes.subscription_id
-// periodEnd    = renews_at from the Subscription object (fetched via API)
-// nextPeriodEnd = periodEnd + 1 calendar month (batch expires_at)
+// Period and economics come only from immutable invoice fields, never the
+// mutable Subscription object's current renews_at/variant.
 
 async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
-  const attrs          = payload?.data?.attributes ?? {};
+  let attrs            = payload?.data?.attributes ?? {};
   const invoiceId      = String(payload?.data?.id ?? "");
-  const subscriptionId = String(attrs?.subscription_id ?? "");
+  let subscriptionId = String(attrs?.subscription_id ?? "");
 
-  if (!invoiceId || !subscriptionId) {
+  if (!invoiceId) {
     // عيب دائم في الـ payload — retry بنفس الحمولة لن يصلحه
     throw new TerminalWebhookError(`subscription_payment_success: invoice/subscription id مفقود (invoice=${invoiceId || "?"}, sub=${subscriptionId || "?"})`);
   }
-
-  const teacherId = await resolveTeacherFromSubscription(subscriptionId);
-  if (!teacherId) {
-    // الاشتراك غير مربوط محليًا بعد — فشل قابل لإعادة المحاولة بعد معالجة subscription_created
-    throw new Error(`subscription_payment_success: Subscription غير موجود محليًا (${subscriptionId}) — أعد المحاولة بعد ربط subscription_created`);
+  if (!attrs?.created_at || !(attrs?.variant_id ?? attrs?.first_order_item?.variant_id) || !attrs?.billing_reason) {
+    const fetched = await fetchLSInvoiceAttrs(invoiceId);
+    if (fetched) attrs = { ...attrs, ...fetched };
+    subscriptionId = String(attrs?.subscription_id ?? subscriptionId);
+  }
+  if (!subscriptionId) {
+    throw new Error(`subscription_payment_success: immutable invoice subscription_id unavailable (invoice ${invoiceId}); review/retry required`);
   }
 
-  const authoritative = await fetchLSSubscriptionAttrs(subscriptionId);
-  const renewsAtRaw = authoritative?.renews_at;
-  const periodEnd = renewsAtRaw ? new Date(renewsAtRaw) : null;
-  if (!periodEnd || Number.isNaN(periodEnd.getTime())) {
-    throw new Error(`subscription_payment_success: authoritative renews_at unavailable (sub ${subscriptionId}); retry required`);
+  const invoiceCreated = attrs?.created_at ? new Date(attrs.created_at) : null;
+  if (!invoiceCreated || Number.isNaN(invoiceCreated.getTime())) {
+    throw new Error(`subscription_payment_success: immutable invoice created_at unavailable (invoice ${invoiceId}); review/retry required`);
   }
-  // Cancellation is at period end, so an invoice for that already-paid period
-  // remains grantable. A later payment after cancellation is not.
-  const eligible = await checkEligibleForCreditGrant(subscriptionId, periodEnd);
-  if (!eligible) {
-    logger.info({ invoiceId, subscriptionId, teacherId }, "subscription_payment_success: skipped — no paid entitlement");
-    return;
+  const invoiceVariant = String(attrs?.variant_id ?? attrs?.first_order_item?.variant_id ?? "");
+  if (!invoiceVariant) throw new Error(`subscription_payment_success: immutable invoice variant unavailable (invoice ${invoiceId}); review/retry required`);
+  const billingReason = String(attrs?.billing_reason ?? "");
+  if (!["subscription_created", "subscription_renewed"].includes(billingReason)) {
+    throw new Error(`subscription_payment_success: ${billingReason || "missing"} billing reason is not a full-cycle invoice; review required`);
   }
+  const plan = await resolvePlanByVariant(invoiceVariant);
+  if (!plan) throw new Error(`subscription_payment_success: unknown invoice variant ${invoiceVariant}; review/retry required`);
+  const intervalMonths = plan.billingInterval === "year" ? 12 : 1;
+  const periodStart = invoiceCreated;
+  const periodEnd = addCalendarMonthsUtc(periodStart, intervalMonths);
+  const providerOrderId = attrs?.order_id ? String(attrs.order_id) : null;
+  const eventAt = providerTimestamp(attrs);
 
-  // nextPeriodEnd = end of the FOLLOWING period — this is the batch's expires_at
-  // so credits survive into the next billing cycle (2-month rollover window)
-  const nextPeriodEndRaw = addOneCalendarMonth(periodEnd);
-  const nextPeriodEnd: Date = nextPeriodEndRaw;
-
-  // Update subscription payment status
-  await db.execute(sql`
-    UPDATE subscriptions
-    SET payment_status     = 'active',
-        current_period_end = ${periodEnd},
-        updated_at         = NOW()
-    WHERE external_subscription_id = ${subscriptionId}
-  `);
-
-  // Resolve plan code
-  const [subRow] = await db
-    .select({ planCode: plansTable.code, billingInterval: subscriptionsTable.billingInterval, releaseThrough: subscriptionsTable.releaseThrough })
-    .from(subscriptionsTable)
-    .innerJoin(plansTable, eq(subscriptionsTable.planId, plansTable.id))
-    .where(eq(subscriptionsTable.externalSubscriptionId, subscriptionId))
-    .limit(1);
-
-  const planCode = subRow?.planCode ?? "basic";
-  if (subRow?.billingInterval === "year") {
-    // An annual invoice pays through renews_at, but grants exactly one monthly
-    // cycle now. Future cycles are claimed by the durable catch-up worker.
-    const paidThrough = periodEnd;
-    const paidStart = addCalendarYearsUtc(paidThrough, -1);
-    const firstReleaseThrough = addOneCalendarMonth(paidStart);
-    const cycleKey = `annual:${subscriptionId}:${firstReleaseThrough.toISOString()}`;
-    /* Only the first annual invoice starts the stream. A renewal must retain
-       the existing release cursor; resetting it would silently skip unpaid
-       monthly releases if catch-up was behind. */
-    const firstAnnualRelease = !subRow?.releaseThrough;
-    const { granted, alreadyGranted } = firstAnnualRelease
-      ? await CreditService.grantSubscriptionCredits(
-          teacherId, planCode, cycleKey, subscriptionId, firstReleaseThrough,
-          addOneCalendarMonth(firstReleaseThrough), cycleKey,
-        )
-      : { granted: 0, alreadyGranted: true };
-    await db.execute(sql`
-      UPDATE subscriptions
-      SET payment_status = 'active', current_period_end = ${paidThrough},
-          paid_through = GREATEST(COALESCE(paid_through, ${paidThrough}), ${paidThrough}),
-          release_through = COALESCE(release_through, ${firstReleaseThrough}),
-          updated_at = NOW()
+  await db.transaction(async (tx) => {
+    await lockProviderSubscription(tx, subscriptionId);
+    const local = await tx.execute(sql`
+      SELECT teacher_id FROM subscriptions WHERE external_subscription_id = ${subscriptionId} FOR UPDATE
+    `);
+    const teacherId = Number((local.rows[0] as any)?.teacher_id ?? 0);
+    if (!teacherId) throw new Error(`subscription_payment_success: Subscription غير موجود محليًا (${subscriptionId})`);
+    const inserted = await tx.execute(sql`
+      INSERT INTO subscription_credit_entitlements
+        (provider_invoice_id, subscription_id, provider_order_id, teacher_id, plan_code, billing_interval,
+         monthly_credits_snapshot, rollover_cap_snapshot, period_start, period_end, release_through, status, provider_event_at, created_at, updated_at)
+      VALUES (${invoiceId}, ${subscriptionId}, ${providerOrderId}, ${teacherId}, ${plan.code}, ${plan.billingInterval},
+        ${Number(plan.monthlyCredits ?? 0)}, ${plan.rolloverCap == null ? null : Number(plan.rolloverCap)},
+        ${periodStart}, ${periodEnd}, ${plan.billingInterval === "year" ? addOneCalendarMonth(periodStart) : periodEnd},
+        'active', ${eventAt}, NOW(), NOW())
+      ON CONFLICT (provider_invoice_id) DO NOTHING RETURNING *
+    `);
+    if (!inserted.rows.length) return;
+    const e = inserted.rows[0] as any;
+    // Keep lock while grant's inner transaction runs, so refund cannot revoke
+    // between entitlement creation/status check and batch creation.
+    const firstEnd = new Date(e.release_through);
+    const grantKey = plan.billingInterval === "year"
+      ? `annual:${invoiceId}:${firstEnd.toISOString()}` : invoiceId;
+    await CreditService.grantSubscriptionCredits(teacherId, String(plan.code), grantKey, subscriptionId,
+      plan.billingInterval === "year" ? firstEnd : periodEnd,
+      addOneCalendarMonth(plan.billingInterval === "year" ? firstEnd : periodEnd),
+      plan.billingInterval === "year" ? grantKey : undefined, {
+        monthlyCredits: Number(e.monthly_credits_snapshot),
+        rolloverCap: e.rollover_cap_snapshot == null ? null : Number(e.rollover_cap_snapshot),
+        entitlementId: Number(e.id),
+      });
+    await tx.execute(sql`
+      UPDATE subscriptions SET payment_status = 'active', current_period_end = ${periodEnd},
+        paid_through = GREATEST(COALESCE(paid_through, ${periodEnd}), ${periodEnd}), updated_at = NOW()
       WHERE external_subscription_id = ${subscriptionId}
     `);
-    logger.info({ invoiceId, subscriptionId, granted, alreadyGranted, paidThrough }, "annual payment: first monthly credits released");
-    return;
-  }
-
-  const { granted, alreadyGranted } = await CreditService.grantSubscriptionCredits(
-    teacherId,
-    planCode,
-    invoiceId,
-    subscriptionId,
-    periodEnd,
-    nextPeriodEnd
-  );
-
-  if (alreadyGranted) {
-    logger.info({ invoiceId, subscriptionId }, "subscription_payment_success: already granted");
-  } else {
-    logger.info({ invoiceId, subscriptionId, granted, periodEnd, nextPeriodEnd }, "subscription_payment_success: credits granted");
-  }
+  });
 }
 
 // ─── subscription_payment_failed ─────────────────────────────────────────────
@@ -615,7 +646,9 @@ async function handleSubscriptionCancelled(payload: any): Promise<void> {
   const endsAt         = attrs?.ends_at ? new Date(attrs.ends_at) : null;
   const eventAt        = providerTimestamp(attrs);
 
-  await db.execute(sql`
+  await db.transaction(async (tx) => {
+  await lockProviderSubscription(tx, subId);
+  await tx.execute(sql`
     UPDATE subscriptions
     SET status             = 'canceled',
         cancelled_at       = NOW(),
@@ -625,6 +658,7 @@ async function handleSubscriptionCancelled(payload: any): Promise<void> {
     WHERE external_subscription_id = ${subId}
       AND (provider_updated_at IS NULL OR ${eventAt} IS NULL OR provider_updated_at <= ${eventAt})
   `);
+  });
 
   logger.info({ subId }, "subscription_cancelled: credits remain until period end");
 }
@@ -641,7 +675,10 @@ async function handleSubscriptionExpired(payload: any): Promise<void> {
     throw new Error(`subscription_expired: Subscription غير موجود محليًا (${subId}) — أعد المحاولة بعد ربط subscription_created`);
   }
 
-  const updated = await db.execute(sql`
+  let didExpire = false;
+  await db.transaction(async (tx) => {
+  await lockProviderSubscription(tx, subId);
+  const updated = await tx.execute(sql`
     UPDATE subscriptions
     SET status = 'expired', provider_updated_at = COALESCE(${eventAt}, provider_updated_at), updated_at = NOW()
     WHERE external_subscription_id = ${subId}
@@ -649,9 +686,13 @@ async function handleSubscriptionExpired(payload: any): Promise<void> {
     RETURNING id
   `);
   // Never revoke a newer replacement/state due to a stale expiry webhook.
-  if (updated.rows.length > 0) await CreditService.expireSubscriptionBatches(teacherId);
+  if (updated.rows.length > 0) {
+    await CreditService.expireSubscriptionBatches(teacherId);
+    didExpire = true;
+  }
+  });
 
-  logger.info({ subId, teacherId }, "subscription_expired: batches zeroed");
+  logger.info({ subId, teacherId, didExpire }, "subscription_expired: batches zeroed");
 }
 
 // ─── subscription_resumed ─────────────────────────────────────────────────────
@@ -664,7 +705,9 @@ async function handleSubscriptionResumed(payload: any): Promise<void> {
   const eventAt        = providerTimestamp(attrs);
 
   // Metadata sync only — no credit grant.
-  await db.execute(sql`
+  await db.transaction(async (tx) => {
+  await lockProviderSubscription(tx, subId);
+  await tx.execute(sql`
     UPDATE subscriptions
     SET status               = 'active',
         cancelled_at         = NULL,
@@ -676,6 +719,7 @@ async function handleSubscriptionResumed(payload: any): Promise<void> {
     WHERE external_subscription_id = ${subId}
       AND (provider_updated_at IS NULL OR ${eventAt} IS NULL OR provider_updated_at <= ${eventAt})
   `);
+  });
 
   logger.info({ subId }, "subscription_resumed: cancelled_at cleared (no credit grant)");
 }
@@ -702,16 +746,13 @@ async function handleSubscriptionUpdated(payload: any): Promise<void> {
     billingInterval = plan.billingInterval;
   }
 
-  await db.execute(sql`
+  await db.transaction(async (tx) => {
+  await lockProviderSubscription(tx, subId);
+  await tx.execute(sql`
     UPDATE subscriptions
-    SET /* Do not replace the annual plan snapshot before its prepaid monthly
-           releases finish; otherwise its entitlement stream would vanish. */
-        plan_id = CASE WHEN billing_interval = 'year' AND paid_through > NOW()
-                       THEN plan_id ELSE COALESCE(${planId ?? null}, plan_id) END,
-         billing_interval = CASE WHEN billing_interval = 'year' AND paid_through > NOW()
-                                 THEN billing_interval ELSE COALESCE(${billingInterval ?? null}, billing_interval) END,
-         lemon_variant_id = CASE WHEN billing_interval = 'year' AND paid_through > NOW()
-                                 THEN lemon_variant_id ELSE COALESCE(NULLIF(${variantId}, ''), lemon_variant_id) END,
+    SET plan_id = COALESCE(${planId ?? null}, plan_id),
+         billing_interval = COALESCE(${billingInterval ?? null}, billing_interval),
+         lemon_variant_id = COALESCE(NULLIF(${variantId}, ''), lemon_variant_id),
         current_period_end   = COALESCE(${renewsAt}, current_period_end),
         external_customer_id = COALESCE(NULLIF(${customerId}, ''), external_customer_id),
          provider_updated_at  = COALESCE(${eventAt}, provider_updated_at),
@@ -719,6 +760,7 @@ async function handleSubscriptionUpdated(payload: any): Promise<void> {
     WHERE external_subscription_id = ${subId}
       AND (provider_updated_at IS NULL OR ${eventAt} IS NULL OR provider_updated_at <= ${eventAt})
   `);
+  });
 
   logger.info({ subId, planId }, "subscription_updated: metadata synced (no credit grant)");
 }

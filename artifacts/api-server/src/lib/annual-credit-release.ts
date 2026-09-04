@@ -14,61 +14,57 @@ export function addCalendarMonthsUtc(date: Date, months: number): Date {
   const targetYear = year + Math.floor(month / 12);
   const targetMonth = ((month % 12) + 12) % 12;
   const maxDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
-  return new Date(Date.UTC(
-    targetYear, targetMonth, Math.min(date.getUTCDate(), maxDay),
-    date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds(),
-  ));
+  return new Date(Date.UTC(targetYear, targetMonth, Math.min(date.getUTCDate(), maxDay),
+    date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds()));
 }
 
 export function addCalendarYearsUtc(date: Date, years: number): Date {
   return addCalendarMonthsUtc(date, years * 12);
 }
 
-/** Releases overdue annual credit months. Idempotency is enforced by credit_cycle_key. */
+/** The same provider-subscription lock is used by payments, refunds and state handlers. */
+export async function lockProviderSubscription(tx: any, subscriptionId: string): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"provider-subscription:" + subscriptionId}))`);
+}
+
+/** Releases annual months from immutable paid-invoice snapshots, never current subscriptions. */
 export async function releaseDueAnnualCredits(now = new Date()): Promise<number> {
-  const result = await db.execute(sql`
-    SELECT s.teacher_id, s.external_subscription_id, s.release_through, s.paid_through, p.code
-    FROM subscriptions s JOIN plans p ON p.id = s.plan_id
-    WHERE s.billing_interval = 'year'
-      AND s.status IN ('active', 'canceled', 'cancelled')
-      AND s.paid_through > s.release_through
-      AND s.release_through <= NOW()
+  const due = await db.execute(sql`
+    SELECT id, subscription_id FROM subscription_credit_entitlements
+    WHERE billing_interval = 'year' AND status = 'active'
+      AND release_through < period_end AND release_through <= ${now}
   `);
   let released = 0;
-  for (const row of result.rows as any[]) {
-    /* Serialize each subscription with a transaction-scoped advisory lock.
-       CreditService owns its own transaction, so holding a row FOR UPDATE here
-       would deadlock when it locks the subscription to grant the batch. */
+  for (const dueRow of due.rows as any[]) {
     await db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"annual-release:" + String(row.external_subscription_id)}))`);
-    const locked = await tx.execute(sql`
-      SELECT s.teacher_id, s.external_subscription_id, s.release_through, s.paid_through, p.code
-      FROM subscriptions s JOIN plans p ON p.id = s.plan_id
-      WHERE s.external_subscription_id = ${String(row.external_subscription_id)}
-        AND s.billing_interval = 'year'
-        AND s.status IN ('active', 'canceled', 'cancelled')
-    `);
-    const claimed = locked.rows[0] as any;
-    if (!claimed || !claimed.release_through || !claimed.paid_through) return;
-    let cycleEnd = new Date(claimed.release_through);
-    const paidThrough = new Date(claimed.paid_through);
-    while (cycleEnd < paidThrough) {
-      const next = addOneCalendarMonth(cycleEnd);
-      if (next > now) break;
-      const end = next > paidThrough ? paidThrough : next;
-      const key = `annual:${row.external_subscription_id}:${end.toISOString()}`;
-      await CreditService.grantSubscriptionCredits(
-        Number(claimed.teacher_id), String(claimed.code), key, String(claimed.external_subscription_id),
-        end, addOneCalendarMonth(end), key,
-      );
-      await db.execute(sql`
-        UPDATE subscriptions SET release_through = ${end}, updated_at = NOW()
-        WHERE external_subscription_id = ${String(claimed.external_subscription_id)}
-          AND (release_through IS NULL OR release_through < ${end})
+      // Global order: provider advisory lock first, then entitlement row lock.
+      await lockProviderSubscription(tx, String((dueRow as any).subscription_id));
+      const current = await tx.execute(sql`
+        SELECT * FROM subscription_credit_entitlements WHERE id = ${Number(dueRow.id)} FOR UPDATE
       `);
-      cycleEnd = end;
-      released++;
-    }
+      const e = current.rows[0] as any;
+      if (!e || e.status !== "active") return;
+      let releaseThrough = new Date(e.release_through);
+      const periodEnd = new Date(e.period_end);
+      while (releaseThrough < periodEnd) {
+        const next = addOneCalendarMonth(releaseThrough);
+        if (next > now) break;
+        const cycleEnd = next > periodEnd ? periodEnd : next;
+        const key = `annual:${e.provider_invoice_id}:${cycleEnd.toISOString()}`;
+        // Lock remains held while this independently transactional credit grant runs.
+        await CreditService.grantSubscriptionCredits(Number(e.teacher_id), String(e.plan_code), key,
+          String(e.subscription_id), cycleEnd, addOneCalendarMonth(cycleEnd), key, {
+            monthlyCredits: Number(e.monthly_credits_snapshot),
+            rolloverCap: e.rollover_cap_snapshot == null ? null : Number(e.rollover_cap_snapshot),
+            entitlementId: Number(e.id),
+          });
+        await tx.execute(sql`
+          UPDATE subscription_credit_entitlements SET release_through = ${cycleEnd}, updated_at = NOW()
+          WHERE id = ${Number(e.id)} AND status = 'active' AND release_through < ${cycleEnd}
+        `);
+        releaseThrough = cycleEnd;
+        released++;
+      }
     });
   }
   return released;

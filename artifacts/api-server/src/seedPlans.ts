@@ -52,6 +52,11 @@ const PLANS = [
   },
 ];
 
+const ANNUAL_BILLING_OPTIONS = [
+  { planCode: "basic", lemonVariantId: "2019525", priceMinor: 4990 },
+  { planCode: "pro", lemonVariantId: "2092611", priceMinor: 8990 },
+] as const;
+
 export async function seedPlansIfMissing(): Promise<void> {
   try {
     for (const p of PLANS) {
@@ -73,6 +78,18 @@ export async function seedPlansIfMissing(): Promise<void> {
         ON CONFLICT (code) DO UPDATE
           SET monthly_credits = COALESCE(plans.monthly_credits, EXCLUDED.monthly_credits),
               currency        = COALESCE(plans.currency, EXCLUDED.currency)
+      `);
+    }
+    // Provider variant IDs are stable public identifiers, not credentials.
+    // Seed only missing annual options so administrator changes remain authoritative.
+    for (const option of ANNUAL_BILLING_OPTIONS) {
+      await db.execute(sql`
+        INSERT INTO plan_billing_options
+          (plan_id, billing_interval, lemon_variant_id, price_minor, currency, is_active)
+        SELECT id, 'year', ${option.lemonVariantId}, ${option.priceMinor}, 'USD', TRUE
+        FROM plans
+        WHERE code = ${option.planCode}
+        ON CONFLICT DO NOTHING
       `);
     }
     logger.info("[seedPlans] plans seeded/updated");

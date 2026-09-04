@@ -137,6 +137,7 @@ const T: Record<string, number> = {};
 
 beforeAll(async () => {
   if (!DB_AVAILABLE) return;
+  await db.execute(sql`ALTER TABLE subscription_credit_grants ADD COLUMN IF NOT EXISTS entitlement_id INTEGER`);
   for (const s of ["s1","s2","s3","s4","s5","s6","s7","s8","s9","s10"]) {
     T[s] = await createTestTeacher(s);
   }
@@ -580,24 +581,14 @@ suite("S10 · إلغاء الاشتراك", () => {
       "free_balance لم يتغير").toBe(Number(balanceBeforeCancel.free_balance));
   });
 
-  it("S10c · payment_success لفاتورة مستقبلية بعد الإلغاء لا ينشئ grant أو batch", async () => {
-    // 1. Guard: checkEligibleForCreditGrant must return false.
+  it("S10c · الإلغاء يبقي الفترة المدفوعة مؤهلة دون إنشاء grant من تلقاء نفسه", async () => {
+    // الإلغاء في Lemon Squeezy هو cancel-at-period-end: تبقى الفترة المدفوعة
+    // مؤهلة حتى نهايتها، بينما منع الفواتير غير المنسوبة لدورة مدفوعة يحدث
+    // داخل معالج الدفع عبر سجل الاستحقاقات الثابت.
     const eligible = await checkEligibleForCreditGrant(externalSubId);
-    expect(eligible, "الحارس يرفض المنح للاشتراك الملغى").toBe(false);
+    expect(eligible, "الفترة المدفوعة تبقى فعالة بعد إيقاف التجديد").toBe(true);
 
-    // 2. Simulate what handleSubscriptionPaymentSuccess does WITH the guard:
-    //    if (!eligible) return  →  grantSubscriptionCredits is never called.
-    //    We replicate that logic here to prove no side-effects occur.
-    const futureInvoice = `inv_${RUN_ID}_s10_future`;
-    if (eligible) {
-      // This branch must NOT be reached.
-      await CreditService.grantSubscriptionCredits(
-        tid, "pro", futureInvoice, externalSubId,
-        NEXT_PERIOD, FAR_FUTURE,
-      );
-    }
-
-    // 3. Verify no new grant, no new batch, no balance change.
+    // مجرد الإلغاء/فحص الأهلية لا ينشئ دفعة أو يغيّر الرصيد.
     const grAfter = await db.execute(sql`
       SELECT COUNT(*)::int AS cnt FROM subscription_credit_grants WHERE teacher_id = ${tid}
     `);

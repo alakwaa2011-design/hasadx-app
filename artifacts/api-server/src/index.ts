@@ -1256,10 +1256,49 @@ async function runSchemaMigrations() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_teacher_idx       ON subscription_credit_grants(teacher_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_subscription_idx  ON subscription_credit_grants(subscription_id)`);
     await db.execute(sql`ALTER TABLE subscription_credit_grants ADD COLUMN IF NOT EXISTS credit_cycle_key TEXT`);
+    await db.execute(sql`ALTER TABLE subscription_credit_grants ADD COLUMN IF NOT EXISTS entitlement_id INTEGER`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS scg_entitlement_idx ON subscription_credit_grants(entitlement_id)`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS scg_credit_cycle_uniq ON subscription_credit_grants(credit_cycle_key)`);
     logger.info("subscription_credit_grants table ready");
   } catch (err) {
     logger.error(err, "subscription_credit_grants migration failed");
+  }
+
+  // Provider invoices are immutable entitlement facts.  Do not derive future
+  // annual releases from subscriptions, which is intentionally only a current
+  // state projection and may have changed plans since payment.
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS subscription_credit_entitlements (
+        id                  SERIAL PRIMARY KEY,
+        provider_invoice_id TEXT NOT NULL UNIQUE,
+        subscription_id     TEXT NOT NULL,
+        provider_order_id   TEXT,
+        teacher_id          INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        plan_code           TEXT NOT NULL,
+        monthly_credits_snapshot INTEGER NOT NULL DEFAULT 0,
+        rollover_cap_snapshot INTEGER,
+        billing_interval    TEXT NOT NULL CHECK (billing_interval IN ('month', 'year')),
+        period_start        TIMESTAMP NOT NULL,
+        period_end          TIMESTAMP NOT NULL,
+        release_through     TIMESTAMP NOT NULL,
+        status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+        refund_review_status TEXT NOT NULL DEFAULT 'none',
+        refund_review_note  TEXT,
+        provider_event_at   TIMESTAMP,
+        created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`ALTER TABLE subscription_credit_entitlements ADD COLUMN IF NOT EXISTS monthly_credits_snapshot INTEGER NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE subscription_credit_entitlements ADD COLUMN IF NOT EXISTS rollover_cap_snapshot INTEGER`);
+    await db.execute(sql`ALTER TABLE subscription_credit_entitlements ADD COLUMN IF NOT EXISTS refund_review_status TEXT NOT NULL DEFAULT 'none', ADD COLUMN IF NOT EXISTS refund_review_note TEXT`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS sce_subscription_status_idx ON subscription_credit_entitlements(subscription_id, status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS sce_due_release_idx ON subscription_credit_entitlements(status, release_through)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS sce_provider_order_idx ON subscription_credit_entitlements(provider_order_id)`);
+    logger.info("subscription credit entitlements table ready");
+  } catch (err) {
+    logger.error(err, "subscription credit entitlements migration failed");
   }
 
   // ── Lemon Squeezy monthly/annual variants ─────────────────────────────────

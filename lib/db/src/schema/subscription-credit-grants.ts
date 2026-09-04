@@ -31,6 +31,8 @@ export const subscriptionCreditGrantsTable = pgTable(
     periodEnd:             timestamp("period_end").notNull(),
     /** Stable annual monthly-release key; NULL for legacy monthly invoice grants. */
     creditCycleKey:         text("credit_cycle_key"),
+    /** Immutable paid entitlement which authorized this cycle (NULL for legacy/manual grants). */
+    entitlementId:          integer("entitlement_id"),
     createdAt:             timestamp("created_at").notNull().default(sql`NOW()`),
   },
   (t) => ({

@@ -62,3 +62,4 @@
 - [Game locale coverage](game-locale-coverage.md) — language switching covers game chrome and built-in gameplay data; teacher-authored content stays unchanged.
 - [Published saved-game activities](published-saved-game-activities.md) — saved games are private by default; public discovery requires explicit sharing and admin-visible moderation fencing.
 - [Quran reveal questions](quran-reveal-questions.md) — verse recall supports full/partial or point-count self-assessment; keep non-MCQ items out of legacy live challenges.
+- [Annual subscription entitlements](annual-subscription-entitlements.md) — annual payments create immutable invoice entitlements; monthly releases and refunds stay bound to the paid term.

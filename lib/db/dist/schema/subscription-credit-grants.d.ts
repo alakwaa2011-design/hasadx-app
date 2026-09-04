@@ -153,6 +153,23 @@ export declare const subscriptionCreditGrantsTable: import("drizzle-orm/pg-core"
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        entitlementId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "entitlement_id";
+            tableName: "subscription_credit_grants";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "subscription_credit_grants";

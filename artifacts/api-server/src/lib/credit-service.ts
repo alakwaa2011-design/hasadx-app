@@ -621,7 +621,8 @@ export const CreditService = {
     subscriptionId: string,
     periodEnd: Date,
     nextPeriodEnd: Date,
-    creditCycleKey?: string
+    creditCycleKey?: string,
+    snapshot?: { monthlyCredits: number; rolloverCap: number | null; entitlementId: number }
   ): Promise<{ granted: number; alreadyGranted: boolean }> {
     return await db.transaction(async (tx) => {
       // ── Step 1: Claim the invoice (primary guard) ────────────────────────
@@ -629,9 +630,9 @@ export const CreditService = {
       // two concurrent webhooks from both proceeding.
       const claimed = await tx.execute(sql`
         INSERT INTO subscription_credit_grants
-          (subscription_invoice_id, subscription_id, teacher_id, plan_code, credits_granted, period_end, credit_cycle_key)
+          (subscription_invoice_id, subscription_id, teacher_id, plan_code, credits_granted, period_end, credit_cycle_key, entitlement_id)
         VALUES
-          (${invoiceId}, ${subscriptionId}, ${teacherId}, ${planCode}, 0, ${periodEnd}, ${creditCycleKey ?? null})
+          (${invoiceId}, ${subscriptionId}, ${teacherId}, ${planCode}, 0, ${periodEnd}, ${creditCycleKey ?? null}, ${snapshot?.entitlementId ?? null})
         ON CONFLICT DO NOTHING
         RETURNING id
       `);
@@ -646,17 +647,16 @@ export const CreditService = {
       // ── Step 2: Lock accounts + subscription row ─────────────────────────
       const acct = await lockAccount(tx, teacherId);
 
-      const subRows = await tx.execute(sql`
-        SELECT s.id, s.last_credited_period_end, p.monthly_credits, p.rollover_cap
-        FROM subscriptions s
-        JOIN plans p ON s.plan_id = p.id
-        WHERE s.teacher_id = ${teacherId}
-        FOR UPDATE
-      `);
-      const sub = subRows.rows[0] as any;
-
-      const monthlyCredits = Number(sub?.monthly_credits ?? 0);
-      const rolloverCap    = sub?.rollover_cap != null ? Number(sub.rollover_cap) : null;
+       // The paid plan is an invoice/entitlement snapshot.  Looking through the
+       // mutable subscriptions projection here would price an old annual month
+       // using a later upgrade/downgrade.
+       const planRows = snapshot ? null : await tx.execute(sql`
+         SELECT monthly_credits, rollover_cap FROM plans WHERE code = ${planCode} LIMIT 1
+       `);
+       const plan = planRows?.rows[0] as any;
+       if (!snapshot && !plan) throw new Error(`Subscription grant references unknown plan: ${planCode}`);
+       const monthlyCredits = snapshot ? Number(snapshot.monthlyCredits) : Number(plan.monthly_credits ?? 0);
+       const rolloverCap = snapshot ? snapshot.rolloverCap : (plan.rollover_cap != null ? Number(plan.rollover_cap) : null);
 
       // ── Step 3: Calculate credits to add (respecting rollover cap) ────────
       // Sum remaining non-expired subscription batches (true current balance)
@@ -709,6 +709,44 @@ export const CreditService = {
 
       return { granted, alreadyGranted: false };
     });
+  },
+
+  /** Remove only unspent batches authorized by one refunded entitlement. */
+  async revokeEntitlementBatchesInTx(tx: any, teacherId: number, entitlementId: number): Promise<{ removed: number; shortfall: number }> {
+    const acct = await lockAccount(tx, teacherId);
+    const grants = await tx.execute(sql`
+      SELECT subscription_invoice_id FROM subscription_credit_grants
+      WHERE entitlement_id = ${entitlementId}
+    `);
+    let removed = 0;
+    for (const grant of grants.rows as any[]) {
+      const referenceId = String(grant.subscription_invoice_id);
+      const rows = await tx.execute(sql`
+        SELECT id, amount_remaining FROM credit_batches
+        WHERE teacher_id = ${teacherId} AND source = 'subscription'
+          AND reference_id = ${referenceId} AND amount_remaining > 0
+        FOR UPDATE
+      `);
+      for (const batch of rows.rows as any[]) {
+        const amount = Number(batch.amount_remaining);
+        await tx.execute(sql`UPDATE credit_batches SET amount_remaining = 0, updated_at = NOW() WHERE id = ${Number(batch.id)}`);
+        removed += amount;
+      }
+    }
+    const balance = Number(acct?.balance ?? 0);
+    const subBalance = Number(acct?.subscription_balance ?? 0);
+    // A corrupted/legacy cache must never become negative; retain the explicit
+    // shortfall for refund review rather than inventing debt.
+    const applied = Math.min(removed, balance, subBalance);
+    const shortfall = removed - applied;
+    if (applied > 0) await tx.execute(sql`
+      UPDATE credit_accounts
+      SET balance = GREATEST(0, balance - ${applied}),
+          subscription_balance = GREATEST(0, subscription_balance - ${applied}),
+          updated_at = NOW()
+      WHERE teacher_id = ${teacherId}
+    `);
+    return { removed, shortfall };
   },
 
   /**
