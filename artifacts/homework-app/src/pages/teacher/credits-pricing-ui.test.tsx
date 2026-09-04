@@ -193,13 +193,15 @@ describe("صفحة الباقات /teacher/pricing", () => {
     expect(text()).toContain("$4.16");
     expect(text()).toContain("$49.90");
     expect(text()).toContain("$59.88");
-    expect(text()).toContain("وفّر ما يعادل شهرين");
+    expect(text()).toContain("شهران مجانًا");
     expect(text()).toContain("$7.49");
     expect(text()).toContain("$89.90");
     expect(text()).toContain("$119.88");
-    expect(text()).toContain("وفّر ما يعادل 3 أشهر");
-    expect(text()).toContain("يُدفع مبلغ");
-    expect(text()).toContain("تُضاف النقاط شهرياً");
+    expect(text()).toContain("3 أشهر مجانًا");
+    expect(text()).toContain("شهريًا عند الدفع السنوي");
+    expect(text()).toContain("يُدفع المبلغ السنوي الآن، وتُضاف النقاط شهريًا.");
+    expect(text()).not.toContain("ثم سنوياً عند التجديد");
+    expect(text()).not.toContain("ليس دفعة 12 شهراً مقدماً");
   });
 
   it("لا يعرض سنوياً أو سعر صفر عندما لا تُهيأ خيارات السنة", async () => {

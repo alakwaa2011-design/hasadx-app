@@ -376,11 +376,7 @@ export function PricingContent() {
                 const monthlyPrice = (monthlyOption?.priceMinor ?? plan.priceMinor) / 100;
                 const equivalentMonthly = annualPrice / 12;
                 const originalAnnual = monthlyPrice * 12;
-                const savings = Math.max(0, originalAnnual - annualPrice);
-                const monthsEquivalent = monthlyPrice > 0 ? Math.round(savings / monthlyPrice) : 0;
-                const monthsEquivalentLabel = monthsEquivalent === 2 ? "شهرين"
-                  : monthsEquivalent === 3 ? "3 أشهر"
-                  : `${monthsEquivalent} أشهر`;
+                const annualGiftLabel = plan.code === "basic" ? "شهران مجانًا" : "3 أشهر مجانًا";
                 const planName = lang === "ar" ? plan.nameAr : plan.nameEn;
                 const Icon = meta?.icon ?? Sparkles;
 
@@ -442,20 +438,32 @@ export function PricingContent() {
 
                     {/* السعر والنقاط — حية من الـAPI */}
                     <div className={`mt-5 border-y py-5 text-center ${isPro ? "border-white/10" : "border-[#e9efea]"}`}>
-                      <div className="flex items-end justify-center gap-2">
-                        <span className="text-3xl font-black tracking-tight">
-                          {isFree ? p.freePlanLabel : annual ? `$${equivalentMonthly.toFixed(2)}` : `$${priceUSD.toFixed(2)}`}
-                        </span>
-                        {!isFree && (
-                          <span className={`mb-1 text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>{annual ? "شهرياً (ما يعادله عند الدفع سنوياً)" : p.perMonth}</span>
-                        )}
-                      </div>
-                       {annual && !isFree && (
-                         <div className={`mt-2 text-xs font-bold leading-5 ${isPro ? "text-[#f4d978]" : "text-[#8e6a17]"}`} data-testid={`annual-copy-${plan.code}`}>
-                            <div><span className="line-through opacity-70">${originalAnnual.toFixed(2)}</span> <span className="text-base">${annualPrice.toFixed(2)}</span> — وفّر ${savings.toFixed(2)} ({`وفّر ما يعادل ${monthsEquivalentLabel}`})</div>
-                            <div>يُدفع مبلغ ${annualPrice.toFixed(2)} الآن ثم سنوياً عند التجديد. تُضاف النقاط شهرياً، وليس دفعة 12 شهراً مقدماً.</div>
-                         </div>
-                       )}
+                      {annual && !isFree ? (
+                        <div data-testid={`annual-copy-${plan.code}`}>
+                          <div className="text-3xl font-black tracking-tight">${equivalentMonthly.toFixed(2)}</div>
+                          <div className={`mt-1 text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>
+                            شهريًا عند الدفع السنوي
+                          </div>
+                          <div className={`mt-3 text-sm font-extrabold ${isPro ? "text-white" : "text-[#315543]"}`}>
+                            ${annualPrice.toFixed(2)} سنويًا بدلًا من{" "}
+                            <span className="line-through opacity-65">${originalAnnual.toFixed(2)}</span>
+                          </div>
+                          <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-[11px] font-black ${
+                            isPro ? "bg-[#f1c657] text-[#163a2b]" : "bg-[#fff4d7] text-[#8e6a17]"
+                          }`}>
+                            {annualGiftLabel}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-end justify-center gap-2">
+                          <span className="text-3xl font-black tracking-tight">
+                            {isFree ? p.freePlanLabel : `$${priceUSD.toFixed(2)}`}
+                          </span>
+                          {!isFree && (
+                            <span className={`mb-1 text-sm font-bold ${isPro ? "text-[#cfe3d4]" : "text-[#73837a]"}`}>{p.perMonth}</span>
+                          )}
+                        </div>
+                      )}
                       <div className={`mt-2 flex items-center justify-center gap-3 text-xs font-bold ${isPro ? "text-[#f4d978]" : "text-[#a17d28]"}`}>
                         {isFree ? (
                           <>
@@ -530,6 +538,13 @@ export function PricingContent() {
 
                     {/* CTA */}
                     <div className="mt-6">
+                      {annual && !isFree && (
+                        <p className={`mb-3 text-center text-[11px] font-semibold leading-5 ${
+                          isPro ? "text-[#cfe3d4]" : "text-[#6d7e74]"
+                        }`}>
+                          يُدفع المبلغ السنوي الآن، وتُضاف النقاط شهريًا.
+                        </p>
+                      )}
                       {isCurrent && isFree ? (
                         <button
                           type="button"
