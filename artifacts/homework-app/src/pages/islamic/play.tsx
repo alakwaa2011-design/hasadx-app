@@ -11,10 +11,14 @@ interface Q {
   options: string[];
   correctAnswer: string;
   difficulty: string;
+  questionType: "mcq" | "short_answer";
+  sourceUrl: string | null;
+  sourceName: string | null;
   level?: number;
 }
 
 const BASE_TIME = 25;
+const SHORT_ANSWER_TIME = 45;
 const QURRA_NAME = "من القارئ";
 
 const LEVEL_NAMES: Record<number, string> = { 1: "الأساسي", 2: "المتقدم", 3: "الخبراء" };
@@ -82,21 +86,22 @@ export default function IslamicPlay() {
 
   useEffect(() => {
     if (!questions || done || revealed) return;
+    const questionTime = questions[idx]?.questionType === "short_answer" ? SHORT_ANSWER_TIME : BASE_TIME;
     startRef.current = Date.now();
     audioListensRef.current = 0;
     setAudioPenaltyExtra(0);
     setWaitingReveal(false);
-    setSecondsLeft(BASE_TIME);
+    setSecondsLeft(questionTime);
     if (timerRef.current) window.clearInterval(timerRef.current);
     timerRef.current = window.setInterval(() => {
       setSecondsLeft((s) => {
         const elapsed = (Date.now() - startRef.current) / 1000;
-        const remaining = Math.max(0, BASE_TIME - elapsed - audioPenaltyExtra);
+        const remaining = Math.max(0, questionTime - elapsed - audioPenaltyExtra);
         if (remaining <= 0) {
           if (timerRef.current) window.clearInterval(timerRef.current);
-          // For audio questions: freeze and wait for manual reveal instead of auto-revealing
+          // Reveal questions are self-assessed; do not silently mark them wrong.
           const currentQ = questions[idx];
-          if (currentQ?.audioUrl) {
+          if (currentQ?.audioUrl || currentQ?.questionType === "short_answer") {
             setWaitingReveal(true);
           } else {
             handleAnswer(null);
@@ -112,9 +117,10 @@ export default function IslamicPlay() {
   }, [idx, questions, done, revealed, audioPenaltyExtra]);
 
   const q = questions?.[idx];
+  const questionTime = q?.questionType === "short_answer" ? SHORT_ANSWER_TIME : BASE_TIME;
 
   function timeColor(): string {
-    const ratio = secondsLeft / BASE_TIME;
+    const ratio = secondsLeft / questionTime;
     if (ratio > 0.5) return "#10b981";
     if (ratio > 0.25) return "#eab308";
     return "#ef4444";
@@ -167,6 +173,36 @@ export default function IslamicPlay() {
         setCertificateMode(false);
         setAskedAboutCert(true);
       }
+    }
+  }
+
+  async function assessShortAnswer(assessment: "full" | "partial" | "unknown") {
+    if (!q || q.questionType !== "short_answer" || !revealed || selected !== null) return;
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    const elapsed = (Date.now() - startRef.current) / 1000;
+    const isCorrect = assessment === "full";
+    setRevealed(true);
+    setSelected(assessment);
+    setWrongAttempt(!isCorrect);
+    setStars((s) => [...s, assessment === "full" ? 3 : assessment === "partial" ? 1 : 0]);
+    if (assessment === "unknown") playWrong();
+    else playCorrect();
+    try {
+      const r = await api<{ stars: number; pointsAwarded: number; dailyBonus: number }>("/islamic/answer", {
+        method: "POST",
+        body: JSON.stringify({
+          questionId: q.id, categoryId, assessment, timeSeconds: elapsed,
+          currentStreak: streak, isFirstQuestion: idx === 0, sessionId: sessionIdRef.current,
+        }),
+      });
+      setPoints((p) => p + r.pointsAwarded + r.dailyBonus);
+    } catch {}
+    answeredCountRef.current += 1;
+    if (isCorrect) setStreak((s) => s + 1);
+    else setStreak(0);
+    if (certEnabled && !isCorrect && !askedAboutCert) {
+      setCertificateMode(false);
+      setAskedAboutCert(true);
     }
   }
 
@@ -399,14 +435,17 @@ export default function IslamicPlay() {
         </IslamicCard>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 14 }}>
         <div>{t.islamic.question} {idx + 1} / {questions.length}</div>
         <div>{t.islamic.points} <strong style={{ color: ISLAMIC_GOLD }}>{points}</strong></div>
+        <div aria-label={`الوقت المتبقي ${Math.ceil(secondsLeft)} ثانية`}>
+          الوقت <strong style={{ color: timeColor() }}>{Math.ceil(secondsLeft)}ث</strong>
+        </div>
         <div>{t.islamic.streak} {streak}🔥</div>
       </div>
 
       <div style={{ height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
-        <div style={{ width: `${(secondsLeft / BASE_TIME) * 100}%`, height: "100%", background: timeColor(), transition: "all 0.1s linear, background-color 0.3s" }} />
+        <div style={{ width: `${(secondsLeft / questionTime) * 100}%`, height: "100%", background: timeColor(), transition: "all 0.1s linear, background-color 0.3s" }} />
       </div>
 
       <IslamicCard
@@ -429,7 +468,45 @@ export default function IslamicPlay() {
         )}
       </IslamicCard>
 
-      <style>{`
+      {q.questionType === "short_answer" && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          {!revealed ? (
+            <div>
+              <p style={{ color: "#92400e", fontWeight: 700 }}>خذ وقتك للتفكير، ثم اكشف الإجابة لتقيّم نفسك.</p>
+              <GoldButton onClick={() => setRevealed(true)}>كشف الإجابة</GoldButton>
+            </div>
+          ) : (
+            <IslamicCard style={{ border: `2px solid ${ISLAMIC_GOLD}` }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#166534", marginBottom: 8 }}>الإجابة: {q.correctAnswer}</div>
+              {(q.sourceName || q.sourceUrl) && <div style={{ fontSize: 13, marginBottom: 14, color: "#78716c" }}>
+                المصدر: {q.sourceUrl ? <a href={q.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#92400e" }}>{q.sourceName || q.sourceUrl}</a> : q.sourceName}
+              </div>}
+              {selected ? (
+                <div style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  background: selected === "full" ? "#dcfce7" : selected === "partial" ? "#fef3c7" : "#fee2e2",
+                  color: selected === "full" ? "#166534" : selected === "partial" ? "#92400e" : "#991b1b",
+                  fontWeight: 800,
+                }}>
+                  {selected === "full" ? "إجابة كاملة · 10 نقاط" : selected === "partial" ? "إجابة جزئية · 3 نقاط" : "لم أعرف · دون نقاط"}
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontWeight: 700 }}>كيف كانت إجابتك؟</p>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                    <GoldButton onClick={() => assessShortAnswer("full")}>إجابة كاملة</GoldButton>
+                    <GhostButton onClick={() => assessShortAnswer("partial")} style={{ borderColor: "#d97706", color: "#92400e" }}>إجابة جزئية</GhostButton>
+                    <GhostButton onClick={() => assessShortAnswer("unknown")} style={{ borderColor: "#dc2626", color: "#991b1b" }}>لم أعرف</GhostButton>
+                  </div>
+                </>
+              )}
+            </IslamicCard>
+          )}
+        </div>
+      )}
+
+      {q.questionType === "mcq" && <><style>{`
         .islamic-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
           font-family: inherit; font-size: 17px; font-weight: 600; line-height: 1.7;
           text-align: start; cursor: pointer; transition: all .18s ease; width: 100%;
@@ -497,9 +574,9 @@ export default function IslamicPlay() {
             <GoldButton onClick={() => handleAnswer(null)}>🔍 كشف الإجابة</GoldButton>
           </div>
         </div>
-      )}
+      )}</>}
 
-      {revealed && (
+      {revealed && (q.questionType === "mcq" || selected !== null) && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <GoldButton onClick={next}>{idx + 1 >= questions.length ? t.islamic.finish : t.islamic.nextQuestion}</GoldButton>
         </div>

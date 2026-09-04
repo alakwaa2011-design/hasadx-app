@@ -840,10 +840,14 @@ export interface PresentationBrief {
      */
     gradeLevel: string;
     /**
-     * @minLength 1
      * @maxLength 120
      */
     topic: string;
+    /**
+     * Pasted educational source content, kept separate from teacher notes
+     * @maxLength 12000
+     */
+    sourceText?: string | null;
     presentationKind: PresentationBriefPresentationKind;
     /**
      * @minimum 5

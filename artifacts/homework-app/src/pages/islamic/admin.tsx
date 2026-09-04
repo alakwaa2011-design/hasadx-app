@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 
 interface Category { id: number; sectionId: number; name: string; description: string | null; level: string; isVisible: boolean; order: number; questionCount: number; }
 interface Section { id: number; name: string; description: string | null; isVisible: boolean; order: number; categories: Category[]; }
-interface Q { id: number; categoryId: number; questionText: string; audioUrl: string | null; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; difficulty: string; }
+interface Q { id: number; categoryId: number; questionText: string; audioUrl: string | null; questionType: "mcq" | "short_answer"; sourceUrl: string | null; sourceName: string | null; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; difficulty: string; }
 
 export default function IslamicAdmin() {
   const { t } = useI18n();
@@ -83,7 +83,7 @@ export default function IslamicAdmin() {
     setSaveError("");
     // Client-side validation
     if (!editing.questionText?.trim()) { setSaveError(t.islamic.questionRequired); return; }
-    if (!editing.optionA?.trim() || !editing.optionB?.trim() || !editing.optionC?.trim() || !editing.optionD?.trim()) {
+    if ((editing.questionType || "mcq") === "mcq" && (!editing.optionA?.trim() || !editing.optionB?.trim() || !editing.optionC?.trim() || !editing.optionD?.trim())) {
       setSaveError(t.islamic.optionsRequired);
       return;
     }
@@ -92,6 +92,9 @@ export default function IslamicAdmin() {
       categoryId: activeCat.id,
       questionText: editing.questionText,
       audioUrl: editing.audioUrl || null,
+      questionType: editing.questionType || "mcq",
+      sourceUrl: editing.sourceUrl || null,
+      sourceName: editing.sourceName || null,
       optionA: editing.optionA, optionB: editing.optionB, optionC: editing.optionC, optionD: editing.optionD,
       correctAnswer: editing.correctAnswer, difficulty: editing.difficulty || "medium",
     };
@@ -240,7 +243,7 @@ export default function IslamicAdmin() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <GoldButton onClick={() => setEditing({ optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", questionText: "", difficulty: "medium" })}>+ {t.islamic.newQuestion}</GoldButton>
+                  <GoldButton onClick={() => setEditing({ optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", questionText: "", questionType: "mcq", difficulty: "medium" })}>+ {t.islamic.newQuestion}</GoldButton>
                   <GhostButton onClick={() => setActiveCat(null)}>✕ {t.islamic.close}</GhostButton>
                 </div>
               </div>
@@ -253,7 +256,7 @@ export default function IslamicAdmin() {
                 <div key={q.id} style={{ borderBottom: "1px solid #e8d8b8", padding: "12px 0" }}>
                   <div style={{ fontWeight: 600, color: "#1c1208" }}>{q.questionText}</div>
                   <div style={{ fontSize: 13, color: "#78716c", marginTop: 4 }}>
-                    {t.islamic.correctAnswer}: <strong style={{ color: "#16a34a" }}>{q.correctAnswer}</strong>
+                    {q.questionType === "short_answer" ? "سؤال كشف وتقييم ذاتي · " : `${t.islamic.correctAnswer}: `}<strong style={{ color: "#16a34a" }}>{q.correctAnswer}</strong>
                     {" · "}{q.difficulty}
                     {q.audioUrl && <span style={{ marginRight: 6, background: "#fef3c7", color: "#b45309", borderRadius: 4, padding: "1px 6px", fontSize: 11, fontWeight: 700 }}>🔊 صوتي</span>}
                   </div>
@@ -272,6 +275,17 @@ export default function IslamicAdmin() {
               <div onClick={(e) => e.stopPropagation()} style={{ background: "#fffbf0", borderRadius: 20, padding: 24, maxWidth: 560, width: "100%", maxHeight: "90vh", overflow: "auto", border: "1px solid rgba(180,83,9,0.3)", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
                 <h3 style={{ fontSize: 18, color: "#92400e", fontWeight: 900, marginBottom: 12 }}>{editing.id ? t.islamic.edit : t.islamic.newQuestion}</h3>
                 <textarea placeholder={t.islamic.questionText} value={editing.questionText || ""} onChange={(e) => setEditing({ ...editing, questionText: e.target.value })} style={inpStyle} rows={3} />
+                 <select value={editing.questionType || "mcq"} onChange={(e) => setEditing({ ...editing, questionType: e.target.value as Q["questionType"] })} style={inpStyle}>
+                   <option value="mcq">اختيار من متعدد</option><option value="short_answer">سؤال قصير — كشف وتقييم ذاتي</option>
+                 </select>
+                 {editing.questionType === "short_answer" && (
+                   <>
+                     <textarea placeholder="الإجابة النموذجية التي ستظهر بعد الكشف" value={editing.correctAnswer || ""} onChange={(e) => setEditing({ ...editing, correctAnswer: e.target.value })} style={inpStyle} rows={3} />
+                     <input placeholder="اسم المصدر (اختياري)" value={editing.sourceName || ""} onChange={(e) => setEditing({ ...editing, sourceName: e.target.value })} style={inpStyle} />
+                     <input placeholder="رابط المصدر (اختياري)" value={editing.sourceUrl || ""} onChange={(e) => setEditing({ ...editing, sourceUrl: e.target.value })} style={inpStyle} />
+                   </>
+                 )}
+                 {(editing.questionType || "mcq") === "mcq" && (<>
                 {[
                   { label: `${t.islamic.option} A`, key: "optionA" as const },
                   { label: `${t.islamic.option} B`, key: "optionB" as const },
@@ -299,6 +313,7 @@ export default function IslamicAdmin() {
                     )}
                   </div>
                 </div>
+                 </>)}
                 <select value={editing.difficulty || "medium"} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} style={inpStyle}>
                   <option value="easy">{t.islamic.easy}</option><option value="medium">{t.islamic.medium}</option><option value="hard">{t.islamic.hard}</option>
                 </select>
@@ -356,14 +371,14 @@ export default function IslamicAdmin() {
         <IslamicCard>
           <h3 style={{ fontSize: 20, color: ISLAMIC_GOLD, marginBottom: 12 }}>{t.islamic.importQuestions}</h3>
           <p style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.8 }}>
-            الأعمدة المطلوبة: <code>section_name</code>, <code>category_name</code>, <code>نص السؤال</code>, <code>الخيار أ</code>, <code>الخيار ب</code>, <code>الخيار ج</code>, <code>الخيار د</code>, <code>الإجابة الصحيحة</code>, <code>الصعوبة</code>, <code>audio_url</code> (اختياري).
+            للأختيار من متعدد: <code>section_name</code>, <code>category_name</code>, <code>نص السؤال</code>, الخيارات الأربعة، <code>الإجابة الصحيحة</code>. وللسؤال القصير أضف <code>question_type</code> بالقيمة <code>short_answer</code>؛ الخيارات غير مطلوبة. يدعم أيضاً <code>source_name</code> و<code>source_url</code>.
             <br />
             تُنشأ الأقسام والفئات تلقائياً إن لم تكن موجودة.
           </p>
           <div style={{ marginTop: 12 }}>
             <a
               href={URL.createObjectURL(new Blob([
-                ["section_name","category_name","نص السؤال","الخيار أ","الخيار ب","الخيار ج","الخيار د","الإجابة الصحيحة","الصعوبة","audio_url"].join(",")
+                ["section_name","category_name","نص السؤال","question_type","الخيار أ","الخيار ب","الخيار ج","الخيار د","الإجابة الصحيحة","الصعوبة","audio_url","source_name","source_url"].join(",")
               ], { type: "text/csv" }))}
               download="islamic-questions-template.csv"
               style={{ color: ISLAMIC_GOLD }}

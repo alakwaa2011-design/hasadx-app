@@ -61,3 +61,4 @@
 - [Password login has no device challenge](password-login-no-device-challenge.md) — valid email/password or Google login must never require a new-device OTP.
 - [Game locale coverage](game-locale-coverage.md) — language switching covers game chrome and built-in gameplay data; teacher-authored content stays unchanged.
 - [Published saved-game activities](published-saved-game-activities.md) — saved games are private by default; public discovery requires explicit sharing and admin-visible moderation fencing.
+- [Quran reveal questions](quran-reveal-questions.md) — concise verse-recall items use reveal + self-assessment; keep them out of MCQ-only live challenges.

@@ -28,6 +28,7 @@ import { seedMillionBankIfEmpty } from "./seedMillionBank";
 import { seedIslamicIfNeeded } from "./seedIslamic";
 import { seedIslamicExtraIfNeeded } from "./seedIslamicExtra";
 import { seedIslamicLevelsIfNeeded } from "./seedIslamicLevels";
+import { seedTaarifAyatShortIfNeeded } from "./seedTaarifAyatShort";
 import { seedPlansIfMissing } from "./seedPlans";
 import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { seedStaticArenaIfNeeded } from "./seedStaticArena";
@@ -340,6 +341,14 @@ async function runSchemaMigrations() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS islamic_events_session_idx ON islamic_events(session_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS islamic_events_type_idx ON islamic_events(event_type, created_at)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS islamic_events_category_idx ON islamic_events(category_id, created_at)`);
+    // Reveal/self-assessment questions retain the legacy MCQ columns for
+    // backwards compatibility; question_type determines how they are played.
+    await db.execute(sql`
+      ALTER TABLE islamic_questions
+        ADD COLUMN IF NOT EXISTS question_type TEXT NOT NULL DEFAULT 'mcq',
+        ADD COLUMN IF NOT EXISTS source_url TEXT,
+        ADD COLUMN IF NOT EXISTS source_name TEXT
+    `);
     // Ensure teachers.role column exists, then backfill from is_admin so legacy
     // admin accounts get role='admin' instead of the default 'teacher'.
     await db.execute(sql`
@@ -1489,11 +1498,14 @@ httpServer.listen(port, () => {
   ensureSessionTable()
     .then(() => runSchemaMigrations())
     .then(() => db.execute(XP_MIGRATION_SQL))
-    .then(() => {
+    .then(async () => {
       seedAdmins().then(() => backfillAdminSharedApproval());
       seedPlansIfMissing();
       seedMillionBankIfEmpty();
-      seedIslamicIfNeeded();
+      // The dedicated reveal-question seed relies on the section created by
+      // the canonical seed, so these must remain ordered.
+      await seedIslamicIfNeeded();
+      await seedTaarifAyatShortIfNeeded();
       seedIslamicExtraIfNeeded();
       seedIslamicLevelsIfNeeded();
       seedArenaContentIfNeeded();

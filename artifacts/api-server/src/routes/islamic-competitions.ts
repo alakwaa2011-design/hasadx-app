@@ -249,8 +249,9 @@ router.get("/islamic/categories/:id/questions", async (req, res) => {
 
 router.post("/islamic/questions", async (req, res) => {
   if (!(await requireEditor(req, res))) return;
-  const { categoryId, questionText, audioUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty } = req.body || {};
-  if (!categoryId || !questionText || !optionA || !optionB || !optionC || !optionD || !correctAnswer) {
+  const { categoryId, questionText, audioUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, questionType, sourceUrl, sourceName } = req.body || {};
+  const type = questionType || "mcq";
+  if (!["mcq", "short_answer"].includes(type) || !categoryId || !questionText || !correctAnswer || (type === "mcq" && (!optionA || !optionB || !optionC || !optionD))) {
     res.status(400).json({ message: "بيانات السؤال غير مكتملة" });
     return;
   }
@@ -260,10 +261,13 @@ router.post("/islamic/questions", async (req, res) => {
       categoryId,
       questionText,
       audioUrl: audioUrl || null,
-      optionA,
-      optionB,
-      optionC,
-      optionD,
+      questionType: type,
+      sourceUrl: sourceUrl || null,
+      sourceName: sourceName || null,
+      optionA: optionA || "",
+      optionB: optionB || "",
+      optionC: optionC || "",
+      optionD: optionD || "",
       correctAnswer,
       difficulty: difficulty || "medium",
       createdBy: req.session.teacherId!,
@@ -275,8 +279,12 @@ router.post("/islamic/questions", async (req, res) => {
 router.patch("/islamic/questions/:id", async (req, res) => {
   if (!(await requireEditor(req, res))) return;
   const id = parseInt(req.params.id);
+  if (req.body?.questionType !== undefined && !["mcq", "short_answer"].includes(req.body.questionType)) {
+    res.status(400).json({ message: "نوع السؤال غير صالح" });
+    return;
+  }
   const patch: Record<string, unknown> = {};
-  for (const k of ["questionText", "audioUrl", "optionA", "optionB", "optionC", "optionD", "correctAnswer", "difficulty", "categoryId"])
+  for (const k of ["questionText", "audioUrl", "optionA", "optionB", "optionC", "optionD", "correctAnswer", "difficulty", "categoryId", "questionType", "sourceUrl", "sourceName"])
     if (k in req.body) patch[k] = (req.body as Record<string, unknown>)[k];
   const [row] = await db.update(islamicQuestionsTable).set(patch).where(eq(islamicQuestionsTable.id, id)).returning();
   res.json(row);
@@ -394,6 +402,7 @@ router.post("/islamic/import", upload.single("file"), async (req, res) => {
       const sectionName = (row["section_name"] || row["القسم"] || "").trim();
       const categoryName = (row["category_name"] || row["الفئة"] || "").trim();
       const text = (row["نص السؤال"] || row["question"] || row["question_text"] || "").trim();
+      const questionType = ((row["question_type"] || row["نوع السؤال"] || "mcq").trim() || "mcq").toLowerCase();
       const a = (row["الخيار أ"] || row["option_a"] || row["A"] || "").trim();
       const b = (row["الخيار ب"] || row["option_b"] || row["B"] || "").trim();
       const c = (row["الخيار ج"] || row["option_c"] || row["C"] || "").trim();
@@ -401,7 +410,9 @@ router.post("/islamic/import", upload.single("file"), async (req, res) => {
       const correct = (row["الإجابة الصحيحة"] || row["correct_answer"] || "").trim();
       const difficulty = ((row["الصعوبة"] || row["difficulty"] || "medium").trim() || "medium").toLowerCase();
       const audioUrl = (row["audio_url"] || "").trim() || null;
-      if (!sectionName || !categoryName || !text || !a || !b || !c || !d || !correct) {
+      const sourceUrl = (row["source_url"] || row["رابط المصدر"] || "").trim() || null;
+      const sourceName = (row["source_name"] || row["اسم المصدر"] || "").trim() || null;
+      if (!["mcq", "short_answer"].includes(questionType) || !sectionName || !categoryName || !text || !correct || (questionType === "mcq" && (!a || !b || !c || !d))) {
         skipped++;
         continue;
       }
@@ -426,10 +437,13 @@ router.post("/islamic/import", upload.single("file"), async (req, res) => {
       await db.insert(islamicQuestionsTable).values({
         categoryId,
         questionText: text,
-        optionA: a,
-        optionB: b,
-        optionC: c,
-        optionD: d,
+        questionType,
+        sourceUrl,
+        sourceName,
+        optionA: a || "",
+        optionB: b || "",
+        optionC: c || "",
+        optionD: d || "",
         correctAnswer: normalizedCorrect,
         difficulty: ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium",
         audioUrl,
@@ -470,13 +484,16 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
   }
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   const questions = shuffled.map((q) => {
-    const opts = [q.optionA, q.optionB, q.optionC, q.optionD].sort(() => Math.random() - 0.5);
+    const opts = q.questionType === "mcq" ? [q.optionA, q.optionB, q.optionC, q.optionD].sort(() => Math.random() - 0.5) : [];
     const letterMap: Record<string, string> = { A: q.optionA, B: q.optionB, C: q.optionC, D: q.optionD };
     const correctAnswer = letterMap[q.correctAnswer] ?? q.correctAnswer;
     return {
       id: q.id,
       questionText: q.questionText,
       audioUrl: q.audioUrl,
+      questionType: q.questionType,
+      sourceUrl: q.sourceUrl,
+      sourceName: q.sourceName,
       options: opts,
       correctAnswer,
       difficulty: q.difficulty,
@@ -497,16 +514,23 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
 router.post("/islamic/answer", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
   const userId = req.session.teacherId!;
-  const { questionId, categoryId, isCorrect, timeSeconds, currentStreak, isFirstQuestion, sessionId } = req.body || {};
+  const { questionId, categoryId, isCorrect, assessment, timeSeconds, currentStreak, isFirstQuestion, sessionId } = req.body || {};
   if (typeof questionId !== "number" || typeof categoryId !== "number") {
     res.status(400).json({ message: "بيانات ناقصة" });
     return;
   }
+  const [question] = await db.select({ questionType: islamicQuestionsTable.questionType, categoryId: islamicQuestionsTable.categoryId }).from(islamicQuestionsTable).where(eq(islamicQuestionsTable.id, questionId)).limit(1);
+  if (!question || question.categoryId !== categoryId) { res.status(400).json({ message: "السؤال لا ينتمي إلى هذه الفئة" }); return; }
+  const shortAnswer = question.questionType === "short_answer";
+  if (shortAnswer && !["full", "partial", "unknown"].includes(assessment)) { res.status(400).json({ message: "اختر تقييم إجابتك بعد كشفها" }); return; }
+  const resolvedCorrect = shortAnswer ? assessment === "full" : !!isCorrect;
   let stars = 0;
-  if (isCorrect) stars = timeSeconds < 5 ? 3 : timeSeconds < 15 ? 2 : 1;
+  if (shortAnswer) stars = assessment === "full" ? 3 : assessment === "partial" ? 1 : 0;
+  else if (resolvedCorrect) stars = timeSeconds < 5 ? 3 : timeSeconds < 15 ? 2 : 1;
   let pointsAwarded = 0;
-  if (isCorrect) pointsAwarded = timeSeconds < 5 ? 10 : 5;
-  if (isCorrect && (currentStreak ?? 0) > 0 && (currentStreak + 1) % 5 === 0) pointsAwarded += 20;
+  if (shortAnswer) pointsAwarded = assessment === "full" ? 10 : assessment === "partial" ? 3 : 0;
+  else if (resolvedCorrect) pointsAwarded = timeSeconds < 5 ? 10 : 5;
+  if (resolvedCorrect && (currentStreak ?? 0) > 0 && (currentStreak + 1) % 5 === 0) pointsAwarded += 20;
 
   let dailyBonus = 0;
   if (isFirstQuestion) {
@@ -527,8 +551,8 @@ router.post("/islamic/answer", async (req, res) => {
       questionsAnswered: 1,
       starsEarned: stars,
       totalPoints: pointsAwarded + dailyBonus,
-      correctAnswers: isCorrect ? 1 : 0,
-      bestStreak: isCorrect ? 1 : 0,
+      correctAnswers: resolvedCorrect ? 1 : 0,
+      bestStreak: resolvedCorrect ? 1 : 0,
     })
     .onConflictDoUpdate({
       target: [islamicProgressTable.userId, islamicProgressTable.categoryId],
@@ -536,8 +560,8 @@ router.post("/islamic/answer", async (req, res) => {
         questionsAnswered: sql`${islamicProgressTable.questionsAnswered} + 1`,
         starsEarned: sql`${islamicProgressTable.starsEarned} + ${stars}`,
         totalPoints: sql`${islamicProgressTable.totalPoints} + ${pointsAwarded + dailyBonus}`,
-        correctAnswers: sql`${islamicProgressTable.correctAnswers} + ${isCorrect ? 1 : 0}`,
-        bestStreak: sql`GREATEST(${islamicProgressTable.bestStreak}, ${(currentStreak ?? 0) + (isCorrect ? 1 : 0)})`,
+        correctAnswers: sql`${islamicProgressTable.correctAnswers} + ${resolvedCorrect ? 1 : 0}`,
+        bestStreak: sql`GREATEST(${islamicProgressTable.bestStreak}, ${(currentStreak ?? 0) + (resolvedCorrect ? 1 : 0)})`,
         lastUpdated: new Date(),
       },
     });
@@ -549,8 +573,8 @@ router.post("/islamic/answer", async (req, res) => {
     categoryId: typeof categoryId === "number" ? categoryId : null,
     sessionId: typeof sessionId === "string" ? sessionId : null,
     timeTaken: typeof timeSeconds === "number" ? timeSeconds : null,
-    isCorrect: typeof isCorrect === "boolean" ? isCorrect : null,
-    metadata: { stars, pointsAwarded, dailyBonus, currentStreak: currentStreak ?? 0 },
+    isCorrect: resolvedCorrect,
+    metadata: { stars, pointsAwarded, dailyBonus, currentStreak: currentStreak ?? 0, assessment: shortAnswer ? assessment : null },
   });
 
   res.json({ stars, pointsAwarded, dailyBonus });
@@ -806,8 +830,8 @@ router.post("/islamic/challenges", async (req, res) => {
     return;
   }
   const baseWhere = expertsOnly
-    ? and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.difficulty, "hard"))
-    : eq(islamicQuestionsTable.categoryId, categoryId);
+    ? and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.difficulty, "hard"), eq(islamicQuestionsTable.questionType, "mcq"))
+    : and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.questionType, "mcq"));
   const all = await db.select({ id: islamicQuestionsTable.id }).from(islamicQuestionsTable).where(baseWhere);
   if (all.length === 0) {
     res.status(400).json({
@@ -994,13 +1018,24 @@ const questionInputSchema = z
     categoryId: z.number().int().positive(),
     questionText: z.string().trim().min(3, "نص السؤال قصير جداً").max(2000),
     audioUrl: z.string().trim().max(1000).optional().nullable(),
-    options: z.array(z.string().trim().min(1, "الخيار لا يمكن أن يكون فارغاً").max(500)).length(4, "يجب توفير 4 خيارات"),
-    correctIndex: z.number().int().min(0).max(3),
+    questionType: z.enum(["mcq", "short_answer"]).default("mcq"),
+    sourceUrl: z.string().trim().max(2000).optional().nullable(),
+    sourceName: z.string().trim().max(300).optional().nullable(),
+    options: z.array(z.string().trim().min(1, "الخيار لا يمكن أن يكون فارغاً").max(500)).length(4, "يجب توفير 4 خيارات").optional(),
+    correctIndex: z.number().int().min(0).max(3).optional(),
+    correctAnswer: z.string().trim().min(1, "الإجابة النموذجية مطلوبة").max(2000).optional(),
     difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   })
-  .refine((v) => new Set(v.options.map((o) => o.trim())).size === 4, {
-    message: "يجب أن تكون الخيارات الأربعة فريدة",
-    path: ["options"],
+  .superRefine((v, ctx) => {
+    if (v.questionType === "mcq" && (!v.options || v.correctIndex === undefined)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "يجب توفير 4 خيارات والإجابة الصحيحة", path: ["options"] });
+    }
+    if (v.questionType === "mcq" && v.options && new Set(v.options.map((o) => o.trim())).size !== 4) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "يجب أن تكون الخيارات الأربعة فريدة", path: ["options"] });
+    }
+    if (v.questionType === "short_answer" && !v.correctAnswer) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "الإجابة النموذجية مطلوبة", path: ["correctAnswer"] });
+    }
   });
 
 function sendZodError(res: Response, err: z.ZodError): void {
@@ -1180,11 +1215,14 @@ router.post("/islamic/teacher/questions", async (req, res) => {
       categoryId: v.categoryId,
       questionText: v.questionText,
       audioUrl: v.audioUrl || null,
-      optionA: v.options[0],
-      optionB: v.options[1],
-      optionC: v.options[2],
-      optionD: v.options[3],
-      correctAnswer: v.options[v.correctIndex],
+      questionType: v.questionType,
+      sourceUrl: v.sourceUrl || null,
+      sourceName: v.sourceName || null,
+      optionA: v.options?.[0] || "",
+      optionB: v.options?.[1] || "",
+      optionC: v.options?.[2] || "",
+      optionD: v.options?.[3] || "",
+      correctAnswer: v.questionType === "short_answer" ? v.correctAnswer! : v.options![v.correctIndex!],
       difficulty: v.difficulty || "medium",
       createdBy: teacherId,
     })
@@ -1213,11 +1251,14 @@ router.patch("/islamic/teacher/questions/:id", async (req, res) => {
       categoryId: v.categoryId,
       questionText: v.questionText,
       audioUrl: v.audioUrl || null,
-      optionA: v.options[0],
-      optionB: v.options[1],
-      optionC: v.options[2],
-      optionD: v.options[3],
-      correctAnswer: v.options[v.correctIndex],
+      questionType: v.questionType,
+      sourceUrl: v.sourceUrl || null,
+      sourceName: v.sourceName || null,
+      optionA: v.options?.[0] || "",
+      optionB: v.options?.[1] || "",
+      optionC: v.options?.[2] || "",
+      optionD: v.options?.[3] || "",
+      correctAnswer: v.questionType === "short_answer" ? v.correctAnswer! : v.options![v.correctIndex!],
       difficulty: v.difficulty || "medium",
     })
     .where(eq(islamicQuestionsTable.id, id))
@@ -1422,11 +1463,11 @@ router.post("/islamic/teacher/import", upload.single("file"), async (req, res) =
         categoryId,
         questionText: parsed.data.questionText,
         audioUrl: parsed.data.audioUrl || null,
-        optionA: parsed.data.options[0],
-        optionB: parsed.data.options[1],
-        optionC: parsed.data.options[2],
-        optionD: parsed.data.options[3],
-        correctAnswer: parsed.data.options[parsed.data.correctIndex],
+        optionA: parsed.data.options![0],
+        optionB: parsed.data.options![1],
+        optionC: parsed.data.options![2],
+        optionD: parsed.data.options![3],
+        correctAnswer: parsed.data.options![parsed.data.correctIndex!],
         difficulty: parsed.data.difficulty || "medium",
         createdBy: teacherId,
       });
@@ -1510,8 +1551,8 @@ router.post("/islamic/tournaments", async (req, res) => {
   if (cleanTeams.length < 2) { res.status(400).json({ message: "أسماء الفرق غير صالحة" }); return; }
 
   const baseWhere = expertsOnly
-    ? and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.difficulty, "hard"))
-    : eq(islamicQuestionsTable.categoryId, categoryId);
+    ? and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.difficulty, "hard"), eq(islamicQuestionsTable.questionType, "mcq"))
+    : and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.questionType, "mcq"));
   const all = await db.select({ id: islamicQuestionsTable.id }).from(islamicQuestionsTable).where(baseWhere);
   if (all.length === 0) {
     res.status(400).json({
