@@ -44,6 +44,8 @@ interface BankQuestion {
   correctAnswer?: string;
 }
 
+type QuestionMode = "students" | "assignment" | "mixed";
+
 // Mute state persisted in localStorage
 function useMuteState() {
   const [muted, setMuted] = useState(() => {
@@ -71,6 +73,7 @@ export default function HotSeatCreate() {
   const [topic, setTopic] = useState("");
   const [timerDuration, setTimerDuration] = useState(30);
   const [creating, setCreating] = useState(false);
+  const [questionMode, setQuestionMode] = useState<QuestionMode>("mixed");
 
   // Questions to use as seed for discussion (optional)
   const [questions, setQuestions] = useState<HotSeatQuestion[]>([]);
@@ -127,6 +130,7 @@ export default function HotSeatCreate() {
       const res = await fetch(`${API_BASE}/api/assignments/${assignId}`, { credentials: "include" });
       if (!res.ok) { toast.error(ar ? "تعذّر التحميل" : "Failed to load"); return; }
       const data = await res.json();
+      const effectiveTitle = assignTitle || data.title || "";
       const qs: HotSeatQuestion[] = (data.questions || []).map((q: { id: number; text: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string; questionType?: string; imageUrl?: string | null }) => ({
         id: String(q.id),
         text: q.text,
@@ -138,12 +142,21 @@ export default function HotSeatCreate() {
       if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة" : "No questions found"); return; }
       setQuestions(qs.slice(0, 40));
       if (!subject && data.subject) setSubject(data.subject);
-      if (!topic && assignTitle) setTopic(assignTitle);
+      if (!topic && effectiveTitle) setTopic(effectiveTitle);
       setAssignOpen(false);
-      toast.success(ar ? `✅ تم جلب ${qs.length} سؤال من "${assignTitle}"` : `✅ Loaded ${qs.length} questions`);
+      toast.success(ar ? `✅ تم جلب ${qs.length} سؤال${effectiveTitle ? ` من "${effectiveTitle}"` : ""}` : `✅ Loaded ${qs.length} questions`);
     } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
     finally { setAssignImporting(null); }
   };
+
+  const autoImportedAssignmentRef = useRef(false);
+  useEffect(() => {
+    const assignmentId = Number(new URLSearchParams(window.location.search).get("assignmentId"));
+    if (!Number.isInteger(assignmentId) || assignmentId <= 0 || autoImportedAssignmentRef.current) return;
+    autoImportedAssignmentRef.current = true;
+    setQuestionMode("mixed");
+    void importFromAssignment(assignmentId, "");
+  }, []);
 
   // Load bank
   const loadBank = useCallback(async () => {
@@ -179,6 +192,10 @@ export default function HotSeatCreate() {
 
   const handleCreate = () => {
     if (!grade.trim() && !subject.trim()) { toast.error(ar ? "أدخل الصف أو المادة" : "Enter grade or subject"); return; }
+    if (questionMode === "assignment" && questions.length === 0) {
+      toast.error(ar ? "اختر واجبًا أو أسئلة من البنك أولًا" : "Choose an assignment or question-bank items first");
+      return;
+    }
     setCreating(true);
     const socket = getHotSeatSocket();
     socket.emit("hotseat:create", {
@@ -187,7 +204,8 @@ export default function HotSeatCreate() {
       subject: subject.trim() || "",
       topic: topic.trim() || undefined,
       timerDuration,
-      seedQuestions: questions.length > 0 ? questions : undefined,
+      questionMode,
+      seedQuestions: questionMode !== "students" && questions.length > 0 ? questions : undefined,
     }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
       setCreating(false);
       if (res.error) { toast.error(res.error); return; }
@@ -467,15 +485,52 @@ export default function HotSeatCreate() {
           {/* Questions source */}
           <Card className="p-5 mb-3">
             <label className="block text-sm font-bold mb-3">
-              {ar ? "📋 أسئلة للجلسة (اختياري)" : "📋 Session Questions (optional)"}
+              {ar ? "📋 مصدر أسئلة الجلسة" : "📋 Session question source"}
             </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+              {([
+                {
+                  value: "students" as const,
+                  title: ar ? "الطلاب فقط" : "Students only",
+                  desc: ar ? "يكتب الطلاب أسئلتهم مباشرة" : "Students submit live questions",
+                },
+                {
+                  value: "assignment" as const,
+                  title: ar ? "الواجب فقط" : "Assignment only",
+                  desc: ar ? "يختار المعلم من الأسئلة المحمّلة" : "Teacher uses loaded questions",
+                },
+                {
+                  value: "mixed" as const,
+                  title: ar ? "دمج المصدرين" : "Combine both",
+                  desc: ar ? "أسئلة الواجب مع أسئلة الطلاب" : "Loaded and student questions",
+                },
+              ]).map((option) => (
+                <button
+                  type="button"
+                  key={option.value}
+                  onClick={() => setQuestionMode(option.value)}
+                  className="rounded-xl border-2 p-3 text-start transition-all"
+                  style={{
+                    borderColor: questionMode === option.value ? FIRE : "#e5e7eb",
+                    background: questionMode === option.value ? `${FIRE}12` : "#fff",
+                  }}
+                >
+                  <span className="block text-sm font-black" style={{ color: questionMode === option.value ? FIRE : "#374151" }}>
+                    {option.title}
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{option.desc}</span>
+                </button>
+              ))}
+            </div>
             <p className="text-xs text-muted-foreground mb-3">
-              {ar
-                ? "يمكنك جلب أسئلة من واجباتك أو بنك الأسئلة — ستُعرض كاقتراحات على المعلم أثناء الجلسة"
-                : "Import questions from assignments or bank — shown as suggestions to the teacher during the session"}
+              {questionMode === "students"
+                ? (ar ? "لن تظهر أسئلة محمّلة؛ سيكتب الطلاب أسئلتهم أثناء الجولة." : "No loaded questions; students write questions during the round.")
+                : questionMode === "assignment"
+                  ? (ar ? "حمّل أسئلة من واجب أو البنك، ولن يُسمح للطلاب بإرسال أسئلة مباشرة." : "Load questions from an assignment or bank; live student submissions are disabled.")
+                  : (ar ? "حمّل أسئلة من واجب أو البنك، وسيستطيع الطلاب إضافة أسئلتهم أثناء الجولة." : "Load questions and also allow students to submit live questions.")}
             </p>
 
-            {questions.length > 0 && (
+            {questionMode !== "students" && questions.length > 0 && (
               <div className="flex items-center gap-2 mb-3 p-2.5 rounded-xl"
                 style={{ background: `${FIRE}15`, border: `1px solid ${FIRE}40` }}>
                 <FileText size={14} style={{ color: FIRE2 }} />
@@ -489,7 +544,7 @@ export default function HotSeatCreate() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            {questionMode !== "students" && <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setAssignOpen(true)}
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 font-bold text-sm transition-all"
                 style={{ borderColor: `${FIRE}60`, background: `${FIRE}10`, color: FIRE }}>
@@ -502,7 +557,7 @@ export default function HotSeatCreate() {
                 <FileText size={15} />
                 {ar ? "من البنك" : "Question Bank"}
               </button>
-            </div>
+            </div>}
           </Card>
 
           {/* Timer */}

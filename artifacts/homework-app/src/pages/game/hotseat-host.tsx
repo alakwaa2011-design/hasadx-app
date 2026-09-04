@@ -20,6 +20,7 @@ interface GameState {
   timerDuration: number; timerVal: number; currentSeatUid?: string; currentQuestion?: string;
   votes: { yes: number; no: number }; rounds: number;
   students: Student[]; questions: Question[];
+  questionMode: "students" | "assignment" | "mixed";
   lastResult?: { convincingPct: number; pointsAwarded: number; speedBonus: boolean };
 }
 
@@ -52,15 +53,6 @@ function CircleTimer({ val, max, size = 160 }: { val: number; max: number; size?
     </svg>
   );
 }
-
-const PRESET_QUESTIONS_AR = [
-  "اشرح الفكرة بكلامك أنت",
-  "ما أصعب جزء في هذا الموضوع؟",
-  "كيف تطبق هذا في الحياة الواقعية؟",
-  "ما الفرق بين... و...؟",
-  "هل يمكنك إعطاء مثال آخر؟",
-  "ماذا سيحدث لو...؟",
-];
 
 export default function HotSeatHost() {
   const { pin } = useParams<{ pin: string }>();
@@ -505,13 +497,21 @@ export default function HotSeatHost() {
                 </span>
               </motion.div>
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, margin: "8px 0 0" }}>
-                {ar ? "الطلاب يرسلون أسئلة مجهولة..." : "Students are sending anonymous questions..."}
+                {state.questionMode === "assignment"
+                  ? (ar ? "اختر سؤالًا من الواجب..." : "Choose an assignment question...")
+                  : state.questionMode === "students"
+                    ? (ar ? "الطلاب يرسلون أسئلة مجهولة..." : "Students are sending anonymous questions...")
+                    : (ar ? "اختر من أسئلة الواجب أو الطلاب..." : "Choose from assignment or student questions...")}
               </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: state.questionMode === "mixed" ? "1fr 1fr" : "1fr",
+              gap: 14,
+            }}>
               {/* Student questions */}
-              <div>
+              {state.questionMode !== "assignment" && <div>
                 <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
                   {ar ? "أسئلة الطلاب" : "Student Questions"}
                   {questions.filter(q => !q.isPreset).length > 0 && (
@@ -530,10 +530,10 @@ export default function HotSeatHost() {
                     </p>
                   )}
                 </div>
-              </div>
+              </div>}
 
               {/* Preset / custom */}
-              <div>
+              {state.questionMode !== "students" && <div>
                 <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
                   {ar ? "أسئلة جاهزة" : "Ready Questions"}
                   {questions.filter(q => q.isPreset).length > 0 && (
@@ -561,24 +561,7 @@ export default function HotSeatHost() {
                         <Flame size={13} color={FIRE2} />
                       </button>
                     ))
-                  ) : (
-                    // Fallback: hardcoded preset questions if no imported ones
-                    PRESET_QUESTIONS_AR.map((text, i) => (
-                      <button
-                        key={i}
-                        onClick={() => emit("hotseat:pick-question", { customText: text })}
-                        style={{
-                          padding: "10px 14px", borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.1)",
-                          background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.8)",
-                          fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "start",
-                          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                        }}
-                      >
-                        <span>{text}</span>
-                        <Flame size={13} color={FIRE} />
-                      </button>
-                    ))
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Custom question */}
@@ -611,7 +594,7 @@ export default function HotSeatHost() {
                     <Send size={16} />
                   </button>
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
         )}

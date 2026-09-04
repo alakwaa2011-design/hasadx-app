@@ -13,6 +13,8 @@ export type HotSeatPhase =
   | "result"
   | "ended";
 
+export type HotSeatQuestionMode = "students" | "assignment" | "mixed";
+
 export interface HotSeatStudent {
   socketId: string;
   uid: string;
@@ -57,9 +59,24 @@ interface HotSeatGame {
   votes: { yes: number; no: number };
   rounds: number;
   questions: Record<string, HotSeatQuestion>;
+  presetQuestions: Record<string, HotSeatQuestion>;
+  questionMode: HotSeatQuestionMode;
   questionCountByUid: Record<string, number>;  // uid → how many questions sent this round
   maxQuestionsPerStudent: number;
   lastResult?: { convincingPct: number; pointsAwarded: number; speedBonus: boolean };
+}
+
+export function selectHotSeatRoundQuestions(
+  questionMode: HotSeatQuestionMode,
+  presetQuestions: Record<string, HotSeatQuestion>,
+): Record<string, HotSeatQuestion> {
+  if (questionMode === "students") return {};
+  return Object.fromEntries(
+    Object.entries(presetQuestions).map(([id, question]) => [
+      id,
+      { ...question, likes: 0, likedBy: [] },
+    ]),
+  );
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -142,6 +159,7 @@ function baseState(game: HotSeatGame) {
     lastResult: game.lastResult,
     students: getPublicStudents(game),
     questions: getPublicQuestions(game),
+    questionMode: game.questionMode,
   };
 }
 
@@ -174,6 +192,7 @@ export function setupHotSeatSocket(io: Server) {
       subject: string;
       topic?: string;
       timerDuration?: number;
+      questionMode?: HotSeatQuestionMode;
       seedQuestions?: Array<{ id: string; text: string; type?: string; options?: string[]; correct?: string; imageUrl?: string | null }>;
     }, cb: (r: object) => void) => {
       try {
@@ -197,6 +216,10 @@ export function setupHotSeatSocket(io: Server) {
           });
         }
 
+        const questionMode: HotSeatQuestionMode =
+          data.questionMode === "students" || data.questionMode === "assignment"
+            ? data.questionMode
+            : "mixed";
         const game: HotSeatGame = {
           pin, creatorSocketId: socket.id, creatorToken,
           teacherName: (data.teacherName || "المعلم").trim(),
@@ -207,7 +230,9 @@ export function setupHotSeatSocket(io: Server) {
           phase: "lobby",
           students: {}, uidBySocket: {},
           timerVal: 0, votes: { yes: 0, no: 0 }, rounds: 0,
-          questions: presetQuestions,
+          questions: selectHotSeatRoundQuestions(questionMode, presetQuestions),
+          presetQuestions,
+          questionMode,
           questionCountByUid: {},
           maxQuestionsPerStudent: 2,
         };
@@ -313,7 +338,7 @@ export function setupHotSeatSocket(io: Server) {
       student.roundsOnSeat++;
       game.currentSeatUid = data.uid;
       game.phase = "asking";
-      game.questions = {};
+      game.questions = selectHotSeatRoundQuestions(game.questionMode, game.presetQuestions);
       game.votes = { yes: 0, no: 0 };
       game.currentQuestion = undefined;
       game.currentQuestionId = undefined;
@@ -334,6 +359,7 @@ export function setupHotSeatSocket(io: Server) {
       const game = games.get(data.pin);
       if (!game) return cb({ error: "الغرفة غير موجودة." });
       if (game.phase !== "asking") return cb({ error: "ليس وقت الأسئلة الآن." });
+      if (game.questionMode === "assignment") return cb({ error: "المعلم اختار استخدام أسئلة الواجب فقط." });
 
       const uid = game.uidBySocket[socket.id];
       const text = (data.text || "").trim();
@@ -395,7 +421,9 @@ export function setupHotSeatSocket(io: Server) {
       const text = (data.text || "").trim();
       if (!text) return cb({ error: "نص فارغ." });
       const id = randomBytes(6).toString("hex");
-      game.questions[id] = { id, text, isPreset: true, authorUid: "teacher", likes: 0, likedBy: [] };
+      const question = { id, text, isPreset: true, authorUid: "teacher", likes: 0, likedBy: [] };
+      game.questions[id] = question;
+      game.presetQuestions[id] = { ...question };
       ns.to(`hotseat:${game.pin}`).emit("hotseat:questions-updated", {
         questions: getPublicQuestions(game),
       });
@@ -541,7 +569,7 @@ export function setupHotSeatSocket(io: Server) {
       game.currentQuestion = undefined;
       game.currentQuestionId = undefined;
       game.currentQuestionImageUrl = null;
-      game.questions = {};
+      game.questions = selectHotSeatRoundQuestions(game.questionMode, game.presetQuestions);
       game.votes = { yes: 0, no: 0 };
       game.phase = "picking";
 

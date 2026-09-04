@@ -21,6 +21,7 @@ interface GameState {
   currentQuestionImageUrl?: string | null;
   votes: { yes: number; no: number }; rounds: number;
   students: Student[]; questions: Question[];
+  questionMode: "students" | "assignment" | "mixed";
   lastResult?: { convincingPct: number; pointsAwarded: number; speedBonus: boolean };
 }
 
@@ -833,7 +834,21 @@ export default function HotSeatPlay() {
             </div>
 
             {/* Question input / preset picker */}
-            {questionSent ? (
+            {state.questionMode === "assignment" ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{ textAlign: "center", padding: 28, borderRadius: 20, background: "rgba(255,255,255,0.05)" }}
+              >
+                <span style={{ fontSize: 40 }}>📚</span>
+                <p style={{ color: "#fff", fontWeight: 900, fontSize: 16, margin: "8px 0 4px" }}>
+                  {ar ? "المعلم يستخدم أسئلة الواجب" : "The teacher is using assignment questions"}
+                </p>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
+                  {ar ? "انتظر اختيار السؤال التالي" : "Wait for the next question"}
+                </p>
+              </motion.div>
+            ) : questionSent ? (
               <motion.div
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }}
                 style={{
@@ -854,9 +869,7 @@ export default function HotSeatPlay() {
                 {/* Counter badge */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 700, margin: 0 }}>
-                    {questions.filter(q => q.isPreset).length > 0
-                      ? (ar ? "📋 اختر سؤالاً لتطرحه:" : "📋 Pick a question to ask:")
-                      : (ar ? "📩 أرسل سؤالاً مجهولاً:" : "📩 Send an anonymous question:")}
+                    {ar ? "📩 أرسل سؤالاً مجهولاً:" : "📩 Send an anonymous question:"}
                   </p>
                   <span style={{
                     background: questionSentCount > 0 ? `${FIRE}30` : "rgba(255,255,255,0.1)",
@@ -867,40 +880,7 @@ export default function HotSeatPlay() {
                   </span>
                 </div>
 
-                {/* Preset questions from assignment */}
-                {questions.filter(q => q.isPreset).length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {questions.filter(q => q.isPreset).map(q => (
-                      <button
-                        key={q.id}
-                        onClick={() => {
-                          emit("hotseat:send-question", { text: q.text }, (r: { error?: string; sentCount?: number; maxAllowed?: number }) => {
-                            if (r.error) { toast.error(r.error); return; }
-                            const sent = r.sentCount ?? 1;
-                            const max = r.maxAllowed ?? 2;
-                            setQuestionSentCount(sent);
-                            if (sent >= max) setQuestionSent(true);
-                            play(playVoteSound);
-                            toast.success(ar ? `تم إرسال السؤال! 🎯 (${sent}/${max})` : `Sent! 🎯 (${sent}/${max})`);
-                          });
-                        }}
-                        style={{
-                          padding: "12px 16px", borderRadius: 14,
-                          background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,107,43,0.2)",
-                          color: "#fff", fontSize: 14, fontWeight: 700,
-                          cursor: "pointer", textAlign: "start" as const,
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = `${FIRE}25`)}
-                        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
-                      >
-                        🔥 {q.text}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  /* Free-text input when no preset questions */
-                  <div style={{
+                <div style={{
                     background: "rgba(255,255,255,0.05)",
                     border: "1.5px solid rgba(255,107,43,0.25)", borderRadius: 20, padding: 20,
                   }}>
@@ -933,8 +913,7 @@ export default function HotSeatPlay() {
                     >
                       {ar ? "✈️ أرسل سؤالاً" : "✈️ Send Question"}
                     </button>
-                  </div>
-                )}
+                </div>
               </div>
             )}
 
