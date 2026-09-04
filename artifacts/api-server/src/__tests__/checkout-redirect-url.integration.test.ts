@@ -142,6 +142,7 @@ describe("Checkout redirect_url — payload unit tests (no real LS call)", () =>
       await createCheckout({
         variantId,
         restrictToVariant: true,
+        compactSubscriptionCheckout: true,
         successUrl: `${process.env.FRONTEND_URL}/teacher/credits?subscribed=1`,
         email: "teacher@school.kw",
         name: "مريم المطيري",
@@ -153,6 +154,13 @@ describe("Checkout redirect_url — payload unit tests (no real LS call)", () =>
       const co = capturedBody?.data?.attributes?.checkout_options;
 
       expect(co?.locale).toBe("en");
+      expect(co).toMatchObject({
+        media: false,
+        logo: false,
+        desc: false,
+        discount: true,
+        subscription_preview: true,
+      });
       expect(po?.redirect_url).toBe("https://example.hasad.app/teacher/credits?subscribed=1");
       expect(po?.enabled_variants).toEqual([Number(variantId)]);
       expect(capturedBody?.data?.relationships?.variant?.data?.id).toBe(variantId);

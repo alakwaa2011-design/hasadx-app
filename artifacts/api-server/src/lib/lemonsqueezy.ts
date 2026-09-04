@@ -56,6 +56,7 @@ export async function createCheckout(opts: {
   name?: string | null;
   successUrl?: string | null;
   restrictToVariant?: boolean;
+  compactSubscriptionCheckout?: boolean;
 }): Promise<{ checkoutUrl: string }> {
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
   const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
@@ -68,7 +69,20 @@ export async function createCheckout(opts: {
       type: "checkouts",
       attributes: {
         // يتجاوز لغة المتصفح وإعداد المتجر لكل Checkout يُنشأ من حصاد.
-        checkout_options: { locale: "en" },
+        checkout_options: {
+          locale: "en",
+          ...(opts.compactSubscriptionCheckout
+            ? {
+                // خيارات Lemon Squeezy الرسمية لتقليل العناصر المكررة في
+                // Checkout الاشتراك، مع إبقاء الخصم وملخص التجديد ظاهرين.
+                media: false,
+                logo: false,
+                desc: false,
+                discount: true,
+                subscription_preview: true,
+              }
+            : {}),
+        },
         checkout_data: {
           // بيانات المعلم تملأ الحقول مسبقًا (قابلة للتعديل في صفحة الدفع)
           ...(opts.email ? { email: opts.email } : {}),

@@ -161,6 +161,7 @@ router.post("/subscriptions/checkout", async (req, res) => {
     const { checkoutUrl } = await createCheckout({
       variantId:  plan.lemonVariantId,
       restrictToVariant: true,
+      compactSubscriptionCheckout: true,
       email:      teacher?.email ?? null,
       name:       teacher?.name  ?? null,
       successUrl: `${frontendOrigin()}/teacher/credits?subscribed=1`,
