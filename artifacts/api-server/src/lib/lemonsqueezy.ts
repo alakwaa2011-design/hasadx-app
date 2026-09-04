@@ -55,6 +55,7 @@ export async function createCheckout(opts: {
   email?: string | null;
   name?: string | null;
   successUrl?: string | null;
+  restrictToVariant?: boolean;
 }): Promise<{ checkoutUrl: string }> {
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
   const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
@@ -76,7 +77,16 @@ export async function createCheckout(opts: {
           billing_address: { country: "KW" },
           custom: opts.customData,
         },
-        ...(successUrl ? { product_options: { redirect_url: successUrl } } : {}),
+        ...(successUrl || opts.restrictToVariant
+          ? {
+              product_options: {
+                ...(successUrl ? { redirect_url: successUrl } : {}),
+                ...(opts.restrictToVariant
+                  ? { enabled_variants: [Number(opts.variantId)] }
+                  : {}),
+              },
+            }
+          : {}),
       },
       relationships: {
         store:   { data: { type: "stores",   id: String(storeId) } },
