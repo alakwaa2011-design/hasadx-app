@@ -365,6 +365,7 @@ export default function CreateAssignment() {
 
   const emptyElectronicQuestion: QuestionWithTts = {
     text: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", points: 1,
+    difficulty: 2, skill: "",
     readAloud: false, allowMultipleAnswers: false, repeatQuestion: false, correctAnswers: ["A"],
   };
 
@@ -1733,6 +1734,40 @@ export default function CreateAssignment() {
                     </div>
                   ) : (
                     <div className="space-y-3">
+                      {/* Adaptive authoring must be discoverable before questions are added. */}
+                      <div className={`rounded-2xl border-2 p-4 ${isAdaptive ? "border-violet-300 bg-violet-50/70 dark:border-violet-800 dark:bg-violet-950/20" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-[#15201B]"} ${!isAdmin ? "opacity-70" : ""}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2.5">
+                            <Brain className={`mt-0.5 h-5 w-5 shrink-0 ${isAdaptive ? "text-violet-600" : "text-slate-400"}`} />
+                            <div>
+                              <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                                {lang === "ar" ? "هل تريد اختبارًا تكيّفيًا؟" : "Create an adaptive test?"}
+                              </p>
+                              <p className="mt-0.5 text-[11px] font-bold text-slate-500">
+                                {lang === "ar"
+                                  ? "فعّله أولًا، ثم حدّد مستوى ومهارة كل سؤال."
+                                  : "Turn it on first, then set each question's difficulty and skill."}
+                              </p>
+                              {!isAdmin && (
+                                <p className="mt-1 text-[10px] font-black text-amber-700 dark:text-amber-400">
+                                  {lang === "ar" ? "التفعيل يحتاج موافقة المسؤول حاليًا." : "Activation currently requires admin approval."}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => isAdmin && setIsAdaptive(!isAdaptive)}
+                            disabled={!isAdmin}
+                            aria-pressed={isAdaptive}
+                            aria-label={lang === "ar" ? "تفعيل الاختبار التكيفي" : "Enable adaptive test"}
+                            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isAdaptive ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"} disabled:cursor-not-allowed`}
+                          >
+                            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Question editor — only shown when method=manual OR real questions have arrived */}
                       {(questionMethod === "manual" || questions.some(q => q.text?.trim())) && (
                       <><DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
@@ -1790,6 +1825,48 @@ export default function CreateAssignment() {
                                 {/* Question text */}
                                 <input required value={q.text} onChange={e => handleQuestionChange(qIndex, 'text', e.target.value)} placeholder={t.createAssignment.questionPlaceholder} 
                                   className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all mb-2" />
+
+                                {isAdaptive && (
+                                  <div className="mb-2 grid grid-cols-1 gap-2 rounded-xl border border-violet-200 bg-violet-50/70 p-3 dark:border-violet-800 dark:bg-violet-950/20 sm:grid-cols-[auto_1fr] sm:items-end">
+                                    <div>
+                                      <Label className="mb-1 block text-[11px] font-black text-violet-800 dark:text-violet-300">
+                                        {lang === "ar" ? "مستوى السؤال" : "Question difficulty"}
+                                      </Label>
+                                      <div className="flex rounded-lg border border-violet-200 bg-white p-1 dark:border-violet-800 dark:bg-[#15201B]">
+                                        {([
+                                          { value: 1, ar: "سهل", en: "Easy" },
+                                          { value: 2, ar: "متوسط", en: "Medium" },
+                                          { value: 3, ar: "صعب", en: "Hard" },
+                                        ] as const).map(option => (
+                                          <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() => handleQuestionChange(qIndex, "difficulty", option.value)}
+                                            aria-pressed={(q.difficulty ?? 2) === option.value}
+                                            className={`rounded-md px-3 py-1.5 text-[11px] font-black transition-colors ${(q.difficulty ?? 2) === option.value ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-violet-50 dark:hover:bg-violet-900/30"}`}
+                                          >
+                                            {lang === "ar" ? option.ar : option.en}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="mb-1 block text-[11px] font-black text-violet-800 dark:text-violet-300">
+                                        {lang === "ar" ? "المهارة" : "Skill"}
+                                      </Label>
+                                      <input
+                                        value={q.skill ?? ""}
+                                        onChange={e => handleQuestionChange(qIndex, "skill", e.target.value)}
+                                        list={`adaptive-skills-${q._clientId}`}
+                                        placeholder={lang === "ar" ? "مثال: الجمع أو الكسور" : "e.g. Addition or fractions"}
+                                        className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-violet-500 dark:border-violet-800 dark:bg-[#15201B]"
+                                      />
+                                      <datalist id={`adaptive-skills-${q._clientId}`}>
+                                        {adaptiveSkills.map(skill => <option key={skill} value={skill} />)}
+                                      </datalist>
+                                    </div>
+                                  </div>
+                                )}
 
                                 {/* Math toolbar (auto-open if math subject, or manually toggled) */}
                                 {(isMathSubject || mathToolbarFor === qIndex) && (
