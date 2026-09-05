@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, questionsTable, adaptiveSessionsTable, submissionsTable, answersTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, asc } from "drizzle-orm";
 import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
 
 const router: IRouter = Router();
@@ -391,12 +391,54 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
     const assignmentQuestions = await db.select({
       id: questionsTable.id,
       text: questionsTable.text,
-    }).from(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
-    const questionTextById = new Map(assignmentQuestions.map(question => [question.id, question.text]));
+      correctAnswer: questionsTable.correctAnswer,
+      difficulty: questionsTable.difficulty,
+      skill: questionsTable.skill,
+    }).from(questionsTable)
+      .where(eq(questionsTable.assignmentId, assignmentId))
+      .orderBy(asc(questionsTable.id));
+    const questionById = new Map(assignmentQuestions.map((question, index) => [
+      question.id,
+      { ...question, questionNumber: index + 1 },
+    ]));
     const allSkills = new Set<string>();
     const students = sessions.map(session => {
       const skillAbilities = parseAbilities(session.skillAbilities);
+      const sequence = parseSequence(session.questionSequence);
       Object.keys(skillAbilities).forEach(skill => allSkills.add(skill));
+      const path = sequence.map(answer => {
+        const question = questionById.get(answer.questionId);
+        return {
+          questionId: answer.questionId,
+          questionNumber: question?.questionNumber || null,
+          questionText: question?.text || "",
+          selectedAnswer: answer.selectedAnswer,
+          correctAnswer: question?.correctAnswer || "",
+          isCorrect: answer.isCorrect,
+          difficulty: answer.difficulty || question?.difficulty || null,
+          skill: answer.skill || question?.skill || "",
+          status: "answered",
+        };
+      });
+      if (
+        session.completionReason === "timeout"
+        && session.lastQuestionId
+        && !sequence.some(answer => answer.questionId === session.lastQuestionId)
+      ) {
+        const question = questionById.get(session.lastQuestionId);
+        path.push({
+          questionId: session.lastQuestionId,
+          questionNumber: question?.questionNumber || null,
+          questionText: question?.text || "",
+          selectedAnswer: null,
+          correctAnswer: question?.correctAnswer || "",
+          isCorrect: null,
+          difficulty: question?.difficulty || null,
+          skill: question?.skill || "",
+          status: "timed_out",
+        });
+      }
+      const lastQuestion = session.lastQuestionId ? questionById.get(session.lastQuestionId) : null;
       return {
         sessionId: session.id,
         studentName: session.studentName,
@@ -411,7 +453,9 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
         completionReason: session.completionReason || "completed",
         timedOut: session.completionReason === "timeout",
         lastQuestionId: session.lastQuestionId,
-        lastQuestionText: session.lastQuestionId ? questionTextById.get(session.lastQuestionId) || null : null,
+        lastQuestionNumber: lastQuestion?.questionNumber || null,
+        lastQuestionText: lastQuestion?.text || null,
+        path,
         startedAt: session.startedAt.toISOString(),
         completedAt: session.completedAt?.toISOString() || null,
       };

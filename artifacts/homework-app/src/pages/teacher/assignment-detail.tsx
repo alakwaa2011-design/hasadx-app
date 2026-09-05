@@ -1727,8 +1727,77 @@ export default function TeacherAssignmentDetail() {
                                   {Boolean(student.lastQuestionText) && (
                                     <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                                       <span className="font-black text-foreground">{lang === "ar" ? "آخر سؤال وصل إليه: " : "Last question reached: "}</span>
+                                      {student.lastQuestionNumber ? `#${String(student.lastQuestionNumber)} — ` : ""}
                                       {String(student.lastQuestionText)}
                                     </p>
+                                  )}
+                                  {Array.isArray(student.path) && student.path.length > 0 && (
+                                    <details className="mt-3 group">
+                                      <summary className="cursor-pointer select-none text-[11px] font-black text-violet-700 dark:text-violet-300">
+                                        {lang === "ar"
+                                          ? `عرض مسار الطالب (${student.path.length} سؤال)`
+                                          : `View student path (${student.path.length} questions)`}
+                                      </summary>
+                                      <div className="mt-2 space-y-2">
+                                        {(student.path as Array<Record<string, unknown>>).map((step, index) => {
+                                          const difficulty = Number(step.difficulty);
+                                          const difficultyLabel = difficulty === 1
+                                            ? (lang === "ar" ? "سهل" : "Easy")
+                                            : difficulty === 2
+                                              ? (lang === "ar" ? "متوسط" : "Medium")
+                                              : (lang === "ar" ? "صعب" : "Hard");
+                                          const timedOut = step.status === "timed_out";
+                                          return (
+                                            <div
+                                              key={`${String(step.questionId)}-${index}`}
+                                              className={`rounded-lg border p-2.5 ${
+                                                timedOut
+                                                  ? "border-amber-200 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/20"
+                                                  : step.isCorrect
+                                                    ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/15"
+                                                    : "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/15"
+                                              }`}
+                                            >
+                                              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                                <span className="text-[10px] font-black">
+                                                  {lang === "ar" ? "السؤال" : "Question"} {step.questionNumber ? `#${String(step.questionNumber)}` : `#${index + 1}`}
+                                                </span>
+                                                <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+                                                  {difficultyLabel}
+                                                </span>
+                                                {Boolean(step.skill) && (
+                                                  <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 text-[9px] font-bold text-violet-700 dark:text-violet-300">
+                                                    {String(step.skill)}
+                                                  </span>
+                                                )}
+                                                <span className={`ms-auto text-[9px] font-black ${
+                                                  timedOut ? "text-amber-700 dark:text-amber-300" : step.isCorrect ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"
+                                                }`}>
+                                                  {timedOut
+                                                    ? (lang === "ar" ? "انتهى الوقت هنا" : "Timed out here")
+                                                    : step.isCorrect
+                                                      ? (lang === "ar" ? "صحيحة" : "Correct")
+                                                      : (lang === "ar" ? "غير صحيحة" : "Incorrect")}
+                                                </span>
+                                              </div>
+                                              <p className="text-[11px] font-bold leading-relaxed text-foreground">{String(step.questionText)}</p>
+                                              {!timedOut && (
+                                                <div className="mt-1.5 grid gap-1 text-[10px] text-muted-foreground sm:grid-cols-2">
+                                                  <p>
+                                                    <span className="font-black text-foreground">{lang === "ar" ? "إجابة الطالب: " : "Student answer: "}</span>
+                                                    {String(step.selectedAnswer || "—")}
+                                                  </p>
+                                                  <p>
+                                                    <span className="font-black text-foreground">{lang === "ar" ? "الإجابة الصحيحة: " : "Correct answer: "}</span>
+                                                    {String(step.correctAnswer || "—")}
+                                                  </p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </details>
                                   )}
                                 </div>
                               ))}
