@@ -29,6 +29,7 @@ const arabicFontFamilies = [
 let teacher: TestTeacher;
 let worksheetId: number;
 let longAnswerWorksheetId: number;
+let arabicFormattingWorksheetId: number;
 
 let singleHugeAnswerWorksheetId: number;
 const arabicLongAnswerWorksheetIds = new Map<
@@ -119,6 +120,54 @@ test.beforeAll(async ({ baseURL }) => {
     }
     const worksheet = await response.json();
     worksheetId = worksheet.id;
+
+    const arabicFormattingQuestions = [
+      {
+        id: "e2e-arabic-format-q-1",
+        type: "mcq" as const,
+        prompt: "سؤال التنسيق العربي الأول",
+        options: ["الإجابة الأولى", "الإجابة الثانية", "الإجابة الثالثة", "الإجابة الرابعة"],
+        correctIndex: 2,
+      },
+      {
+        id: "e2e-arabic-format-q-2",
+        type: "mcq" as const,
+        prompt: "سؤال التنسيق العربي الثاني",
+        options: ["الخيار ألف", "الخيار باء", "الخيار جيم", "الخيار دال"],
+        correctIndex: 1,
+      },
+      {
+        id: "e2e-arabic-format-q-3",
+        type: "true_false" as const,
+        prompt: "سؤال التنسيق العربي الثالث",
+        correct: true,
+      },
+    ];
+    const arabicFormattingResponse = await api.post("/api/worksheets", {
+      headers: { Cookie: teacher.cookieHeader },
+      data: {
+        title: "اختبار ثبات تنسيق الأسئلة",
+        language: "ar",
+        gradeLevel: "اختبار",
+        subject: "ثبات التنسيق",
+        questions: arabicFormattingQuestions,
+        settings: {
+          includeName: true,
+          includeDate: true,
+          includeClass: true,
+          includeAnswerKey: true,
+          columns: 1,
+          fontFamily: "cairo",
+          fontSizePt: 12,
+          showWatermark: true,
+          template: "arabic_ink",
+        },
+      },
+    });
+    if (!arabicFormattingResponse.ok()) {
+      throw new Error(`Arabic formatting worksheet seed failed: ${arabicFormattingResponse.status()} ${await arabicFormattingResponse.text()}`);
+    }
+    arabicFormattingWorksheetId = (await arabicFormattingResponse.json()).id;
 
     const longAnswerQuestions = Array.from({ length: 18 }, (_, index) => ({
       id: `e2e-long-answer-q-${index + 1}`,
@@ -234,6 +283,75 @@ test.afterAll(async () => {
 
 test.beforeEach(async ({ context, baseURL }) => {
   await attachSession(context, baseURL!, teacher);
+});
+
+test("Arabic question formatting and option layout survive save, reload, and PDF export", async ({
+  page,
+}) => {
+  const prompts = [
+    "سؤال التنسيق العربي الأول",
+    "سؤال التنسيق العربي الثاني",
+    "سؤال التنسيق العربي الثالث",
+  ];
+  const answers = ["(ج) الإجابة الثالثة", "(ب) الخيار باء", "صح"];
+
+  await page.goto(`/teacher/worksheets/${arabicFormattingWorksheetId}/print`);
+  const printable = page.locator("#ws-printable-root");
+  await expect(printable).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "تحرير الورقة", exact: true }).click();
+
+  const firstPrompt = printable.locator(".ws-q-prompt .ws-editable").first();
+  await firstPrompt.click();
+  const formattingToolbar = page.getByRole("toolbar", { name: "تنسيق النص المحدد" });
+  await expect(formattingToolbar).toBeVisible();
+  await formattingToolbar.getByTitle("تكبير الخط").click();
+  await formattingToolbar.getByTitle("تكبير الخط").click();
+  await formattingToolbar.getByTitle("عريض").click();
+  await formattingToolbar.getByTitle("توسيط").click();
+  await formattingToolbar.getByRole("button", { name: "خياران في سطر" }).click();
+
+  await page.getByRole("button", { name: "حفظ", exact: true }).click();
+  await expect(page.getByText("تم حفظ تعديلات الورقة")).toBeVisible();
+  await page.reload();
+  await expect(printable).toBeVisible({ timeout: 20_000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  const reloadedPrompt = printable
+    .locator("[data-worksheet-page] .ws-q-prompt")
+    .filter({ hasText: prompts[0] })
+    .locator("span")
+    .first();
+  await expect(reloadedPrompt).toHaveCSS("font-size", "18.6667px");
+  await expect(reloadedPrompt).toHaveCSS("font-weight", "800");
+  await expect(reloadedPrompt).toHaveCSS("text-align", "center");
+  expect(
+    await printable.locator("[data-worksheet-page] .ws-mcq").first().evaluate(
+      element => getComputedStyle(element).gridTemplateColumns.split(" ").length,
+    ),
+  ).toBe(2);
+
+  const worksheetPrompts = (await printable
+    .locator("[data-worksheet-page] .ws-q-prompt")
+    .allTextContents())
+    .map(text => text.trim());
+  expect(worksheetPrompts).toEqual(prompts);
+
+  const answerRows = (await printable
+    .locator("[data-answer-key-page] .ws-answer-line")
+    .allTextContents())
+    .map(text => text.replace(/^الإجابة:\s*/, "").trim());
+  expect(answerRows).toEqual(answers);
+
+  const domPageCount = await printable.locator(".ws-page").count();
+  const pdf = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    preferCSSPageSize: true,
+  });
+  expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
 
 test("A4 PDF preserves every DOM page without duplicated questions or a detached footer", async ({

@@ -60,6 +60,7 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('"ترتيب الخيارات"');
     expect(source).toContain('"عمودي"');
     expect(source).toContain('"خياران في سطر"');
+    expect(source).toContain('role="toolbar"');
   });
 
   it("applies and persists local field and question formatting", () => {

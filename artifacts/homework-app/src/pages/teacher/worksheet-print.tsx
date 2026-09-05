@@ -1488,7 +1488,12 @@ function QuestionFormattingToolbar({
     { value: "end", Icon: ar ? AlignLeft : AlignRight },
   ];
   return (
-    <div className="no-print ws-format-toolbar" dir={ar ? "rtl" : "ltr"} aria-label={ar ? "تنسيق النص المحدد" : "Selected text formatting"}>
+    <div
+      className="no-print ws-format-toolbar"
+      dir={ar ? "rtl" : "ltr"}
+      role="toolbar"
+      aria-label={ar ? "تنسيق النص المحدد" : "Selected text formatting"}
+    >
       <div className="ws-format-group">
         <span className="ws-format-label">{ar ? "النص" : "Text"}</span>
         <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.max(8, fontSize - 1) })} title={ar ? "تصغير الخط" : "Smaller text"}>
@@ -1502,7 +1507,15 @@ function QuestionFormattingToolbar({
           <strong>ب</strong>
         </button>
         {alignments.map(({ value, Icon }) => (
-          <button type="button" key={value} className={fieldStyle?.align === value ? "is-active" : ""} onClick={() => onFieldChange({ align: value })}>
+          <button
+            type="button"
+            key={value}
+            className={fieldStyle?.align === value ? "is-active" : ""}
+            onClick={() => onFieldChange({ align: value })}
+            title={ar
+              ? ({ start: "محاذاة للبداية", center: "توسيط", end: "محاذاة للنهاية" }[value])
+              : ({ start: "Align start", center: "Align center", end: "Align end" }[value])}
+          >
             <Icon />
           </button>
         ))}
