@@ -15,6 +15,7 @@ import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
 } from "./worksheet-themes";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { createClientRequestId } from "@/lib/client-request-id";
 import {
@@ -258,6 +259,7 @@ export default function WorksheetCreate() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/teacher");
   const [clientRequestId] = useState(createClientRequestId);
 
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
@@ -865,6 +867,15 @@ export default function WorksheetCreate() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={goBack}
+              className="w-10 h-10 rounded-xl border border-border bg-background hover:bg-muted text-primary flex items-center justify-center"
+              title={ar ? "رجوع" : "Back"}
+              aria-label={ar ? "رجوع" : "Back"}
+            >
+              <ArrowLeft className={cn("w-5 h-5", ar && "rotate-180")} />
+            </button>
             <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-sm">
               <FileText className="w-6 h-6" />
             </div>
@@ -1368,6 +1379,21 @@ export default function WorksheetCreate() {
             </div>
             
             <div className="flex flex-wrap gap-2">
+              {questions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirm(ar ? "هل تريد حذف جميع الأسئلة؟ يمكنك إضافة أسئلة جديدة قبل الحفظ." : "Delete all questions? You can add new questions before saving.")) return;
+                    setQuestions([]);
+                    setSettings(current => ({ ...current, pageBreaks: [], questionStyles: [] }));
+                    toast.success(ar ? "تم حذف جميع الأسئلة من المسودة" : "All questions removed from the draft");
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-destructive/30 bg-background hover:bg-destructive/5 text-destructive transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {ar ? "حذف جميع الأسئلة" : "Delete all"}
+                </button>
+              )}
               {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
                 <button
                   key={t}

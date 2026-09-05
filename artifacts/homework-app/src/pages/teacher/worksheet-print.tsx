@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, type CSSProperties } from "react";
 import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import {
@@ -283,6 +284,15 @@ export function WorksheetPrintView({
     onLayoutChange?.(localQs, [...localBreaks], localQuestionStyles);
     setLayoutDirty(false);
   }, [localQs, localBreaks, localQuestionStyles, onLayoutChange]);
+
+  const discardLayoutChanges = useCallback(() => {
+    setLocalQs(data.questions);
+    setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
+    setLocalQuestionStyles(data.settings.questionStyles ?? []);
+    setSelectedField(null);
+    setLayoutDirty(false);
+    setEditMode(false);
+  }, [data]);
 
   // Update a single question in-place (called by QuestionView on text blur)
   const onEditQuestion = useCallback((updated: Question) => {
@@ -801,6 +811,25 @@ export function WorksheetPrintView({
               {ar ? "حفظ" : "Save"}
             </button>
           )}
+          {editMode && layoutDirty && (
+            <button
+              type="button"
+              onClick={discardLayoutChanges}
+              title={ar ? "إلغاء تعديلات هذه الجلسة والعودة إلى آخر نسخة محفوظة" : "Discard this session's changes"}
+              style={{
+                background: "transparent",
+                color: "white",
+                border: "1px solid rgba(255,255,255,0.75)",
+                borderRadius: 999,
+                padding: "3px 10px",
+                fontWeight: 800,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              {ar ? "تجاهل التعديلات" : "Discard"}
+            </button>
+          )}
           {editMode && localBreaks.size > 0 && (
             <button
               type="button"
@@ -989,6 +1018,7 @@ export default function WorksheetPrint() {
   const id = params?.id;
   const { lang: uiLang } = useI18n();
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/teacher/worksheets/create");
   const [data, setData] = useState<WorksheetData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -1039,12 +1069,12 @@ export default function WorksheetPrint() {
         className="no-print sticky top-0 z-40 flex items-center justify-between gap-2 px-4 py-2.5 border-b shadow-sm bg-white"
       >
         <button
-          onClick={() => setLocation("/teacher")}
+          onClick={goBack}
           className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
           style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          {uiLang === "ar" ? "اللوحة" : "Dashboard"}
+          {uiLang === "ar" ? "رجوع" : "Back"}
         </button>
         <div className="text-xs font-bold truncate flex-1 text-center" style={{ color: BRAND_PRIMARY }}>
           {data.title}

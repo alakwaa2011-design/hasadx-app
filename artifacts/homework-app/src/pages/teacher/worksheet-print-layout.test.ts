@@ -49,6 +49,12 @@ describe("worksheet PDF page sizing", () => {
     expect(source).toContain("setLocalBreaks(new Set())");
     expect(source).toContain("Remove manual page breaks and repaginate");
   });
+
+  it("lets teachers discard all unsaved print-editor changes", () => {
+    expect(source).toContain("discardLayoutChanges");
+    expect(source).toContain('"تجاهل التعديلات"');
+    expect(source).toContain("setLocalQs(data.questions)");
+  });
 });
 
 describe("official worksheet question layout", () => {
