@@ -14,14 +14,14 @@ import {
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
-import { buildSystemPrompt } from "../lib/ai-system-prompt";
+import { buildSystemPrompt, HASAD_SYSTEM_PROMPT } from "../lib/ai-system-prompt";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
 
 const router: Router = Router();
 
-// Per-plan daily AI caps are the source of truth via @workspace/billing.
+// Retain recent turns for conversational continuity.
 const HISTORY_TURNS = 4; // last 4 user+assistant pairs
 const MAX_CHAT_MESSAGE_CHARS = 24_000;
 
@@ -36,6 +36,10 @@ function normalizeForHash(s: string): string {
 function hashQuestion(s: string): string {
   return crypto.createHash("sha256").update(normalizeForHash(s)).digest("hex");
 }
+
+// Changes automatically whenever the bundled persona, knowledge, or FAQ changes,
+// preventing an old first-turn answer from surviving a knowledge update.
+const KNOWLEDGE_CACHE_VERSION = hashQuestion(HASAD_SYSTEM_PROMPT).slice(0, 16);
 
 async function getTeacherId(req: any, res: any): Promise<number | null> {
   const tid = req.session?.teacherId;
@@ -260,7 +264,7 @@ async function handleSendMessage(req: any, res: any) {
   }
 
   // First-turn cache lookup — runs BEFORE rate-limit, since cached hits are free.
-  const qHash = hashQuestion(`${language}:${message}`);
+  const qHash = hashQuestion(`${KNOWLEDGE_CACHE_VERSION}:${language}:${message}`);
   if (isFirstTurn) {
     const cached = await db
       .select()
