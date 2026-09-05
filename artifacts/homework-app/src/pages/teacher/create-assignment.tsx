@@ -445,6 +445,7 @@ export default function CreateAssignment() {
   const [adaptiveQuestionsPerSession, setAdaptiveQuestionsPerSession] = useState(10);
   const [adaptiveShowImmediateFeedback, setAdaptiveShowImmediateFeedback] = useState(false);
   const [adaptiveShowAnswersAfterResult, setAdaptiveShowAnswersAfterResult] = useState(false);
+  const [showAdaptiveSetup, setShowAdaptiveSetup] = useState(false);
 
   // ── Per-question UI ──
   const [mathToolbarFor, setMathToolbarFor] = useState<number>(-1);
@@ -1432,10 +1433,8 @@ export default function CreateAssignment() {
                 <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-5">
 
                   {!isPaper && (
-                    <div
-                      data-testid="card-adaptive-entry"
-                      className={`rounded-2xl border-2 p-4 ${isAdaptive ? "border-violet-300 bg-violet-50/70 dark:border-violet-800 dark:bg-violet-950/20" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-[#15201B]"} ${!isAdmin ? "opacity-70" : ""}`}
-                    >
+                    <>
+                    <div data-testid="card-adaptive-entry" className={`rounded-2xl border-2 p-4 ${isAdaptive ? "border-violet-300 bg-violet-50/70 dark:border-violet-800 dark:bg-violet-950/20" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-[#15201B]"} ${!isAdmin ? "opacity-70" : ""}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
                           <Brain className={`mt-0.5 h-5 w-5 shrink-0 ${isAdaptive ? "text-violet-600" : "text-slate-400"}`} />
@@ -1458,16 +1457,117 @@ export default function CreateAssignment() {
                         <button
                           type="button"
                           data-testid="toggle-adaptive-entry"
-                          onClick={() => isAdmin && setIsAdaptive(!isAdaptive)}
+                          onClick={() => {
+                            if (!isAdmin) return;
+                            if (!isAdaptive) setIsAdaptive(true);
+                            setShowAdaptiveSetup(true);
+                          }}
                           disabled={!isAdmin}
-                          aria-pressed={isAdaptive}
-                          aria-label={lang === "ar" ? "تفعيل الاختبار التكيفي" : "Enable adaptive test"}
-                          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isAdaptive ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"} disabled:cursor-not-allowed`}
+                          className={`shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-colors disabled:cursor-not-allowed ${isAdaptive ? "border border-violet-300 bg-white text-violet-700 dark:border-violet-700 dark:bg-[#15201B] dark:text-violet-300" : "bg-violet-600 text-white hover:bg-violet-700"}`}
                         >
-                          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : "left-0.5"}`} />
+                          {isAdaptive
+                            ? (lang === "ar" ? "تعديل الإعدادات" : "Edit settings")
+                            : (lang === "ar" ? "فتح وإعداد" : "Open & configure")}
                         </button>
                       </div>
+                      {isAdaptive && (
+                        <div className="mt-3 flex flex-wrap gap-2 border-t border-violet-200 pt-3 text-[10px] font-bold text-violet-700 dark:border-violet-800 dark:text-violet-300">
+                          <span className="rounded-full bg-violet-100 px-2 py-1 dark:bg-violet-900/30">
+                            {adaptiveQuestionsPerSession} {lang === "ar" ? "أسئلة لكل طالب" : "questions per student"}
+                          </span>
+                          <span className="rounded-full bg-violet-100 px-2 py-1 dark:bg-violet-900/30">
+                            {adaptiveSkills.length} {lang === "ar" ? "مهارات" : "skills"}
+                          </span>
+                        </div>
+                      )}
                     </div>
+
+                    <Dialog open={showAdaptiveSetup} onOpenChange={setShowAdaptiveSetup}>
+                      <DialogContent dir={lang === "ar" ? "rtl" : "ltr"} className="max-w-xl overflow-hidden rounded-3xl border-violet-200 p-0 dark:border-violet-800">
+                        <div className="bg-gradient-to-br from-violet-600 to-indigo-700 px-6 py-5 text-white">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-lg font-black text-white">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15"><Brain className="h-5 w-5" /></span>
+                              {lang === "ar" ? "إعداد الاختبار التكيفي" : "Adaptive test settings"}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <p className="mt-2 text-xs font-medium text-white/80">
+                            {lang === "ar" ? "اضبط الاختبار أولًا، ثم اختر طريقة إنشاء الأسئلة." : "Configure the test first, then choose how to create the questions."}
+                          </p>
+                        </div>
+
+                        <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
+                          <section className="space-y-3">
+                            <div>
+                              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "المهارات التي يقيسها الاختبار" : "Skills measured by the test"}</h3>
+                              <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "أضف المهارات، ثم اربط كل سؤال بإحدى هذه المهارات." : "Add skills, then assign each question to one of them."}</p>
+                            </div>
+                            <div className="flex min-h-10 flex-wrap gap-1.5 rounded-xl border border-violet-100 bg-violet-50/60 p-2 dark:border-violet-900 dark:bg-violet-950/20">
+                              {adaptiveSkills.length === 0 && <span className="p-1 text-[11px] font-bold text-muted-foreground">{lang === "ar" ? "لم تضف مهارات بعد" : "No skills added yet"}</span>}
+                              {adaptiveSkills.map((skill, index) => (
+                                <span key={skill} className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-xs font-black text-violet-700 shadow-sm dark:bg-[#15201B] dark:text-violet-300">
+                                  {skill}
+                                  <button type="button" onClick={() => setAdaptiveSkills(adaptiveSkills.filter((_, i) => i !== index))} className="rounded p-0.5 hover:bg-red-50 hover:text-red-600"><X className="h-3 w-3" /></button>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                value={adaptiveSkillInput}
+                                onChange={e => setAdaptiveSkillInput(e.target.value)}
+                                placeholder={lang === "ar" ? "مثال: الجمع أو الكسور" : "e.g. Addition or fractions"}
+                                className="min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-violet-500 dark:border-slate-700"
+                                onKeyDown={e => {
+                                  if (e.key === "Enter" && adaptiveSkillInput.trim()) {
+                                    e.preventDefault();
+                                    if (!adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]);
+                                    setAdaptiveSkillInput("");
+                                  }
+                                }}
+                              />
+                              <button type="button" onClick={() => {
+                                if (adaptiveSkillInput.trim() && !adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]);
+                                setAdaptiveSkillInput("");
+                              }} className="rounded-xl bg-violet-600 px-4 text-white hover:bg-violet-700"><Plus className="h-4 w-4" /></button>
+                            </div>
+                          </section>
+
+                          <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <h3 className="text-sm font-black">{lang === "ar" ? "عدد الأسئلة لكل طالب" : "Questions per student"}</h3>
+                                <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "يختار النظام هذا العدد من بنك الأسئلة بحسب أداء الطالب." : "The system selects this many questions based on student performance."}</p>
+                              </div>
+                              <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))} className="w-20 rounded-xl border-2 border-violet-200 bg-background px-2 py-2 text-center text-lg font-black text-violet-700 outline-none focus:border-violet-500 dark:border-violet-800 dark:text-violet-300" />
+                            </div>
+                          </section>
+
+                          <section className="space-y-2">
+                            <h3 className="text-sm font-black">{lang === "ar" ? "ما الذي يراه الطالب؟" : "What can the student see?"}</h3>
+                            <div className="rounded-2xl border border-slate-200 px-4 dark:border-slate-700">
+                              <div className="flex items-center justify-between gap-3 border-b border-slate-100 py-3 dark:border-slate-800">
+                                <div><span className="block text-xs font-black">{lang === "ar" ? "إظهار صحة الإجابة مباشرة" : "Show correctness immediately"}</span><span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "بعد كل سؤال" : "After each question"}</span></div>
+                                <Toggle on={adaptiveShowImmediateFeedback} onChange={() => setAdaptiveShowImmediateFeedback(!adaptiveShowImmediateFeedback)} color="green" />
+                              </div>
+                              <div className="flex items-center justify-between gap-3 py-3">
+                                <div><span className="block text-xs font-black">{lang === "ar" ? "إظهار الإجابات بعد النتيجة" : "Show answers after results"}</span><span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "إجابة الطالب والإجابة الصحيحة" : "Student and correct answers"}</span></div>
+                                <Toggle on={adaptiveShowAnswersAfterResult} onChange={() => setAdaptiveShowAnswersAfterResult(!adaptiveShowAnswersAfterResult)} color="green" />
+                              </div>
+                            </div>
+                          </section>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-[#111916]">
+                          <button type="button" onClick={() => { setIsAdaptive(false); setShowAdaptiveSetup(false); }} className="text-xs font-bold text-slate-500 hover:text-red-600">
+                            {lang === "ar" ? "إلغاء الاختبار التكيفي" : "Disable adaptive test"}
+                          </button>
+                          <button type="button" onClick={() => setShowAdaptiveSetup(false)} className="rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-black text-white shadow-sm hover:bg-violet-700">
+                            {lang === "ar" ? "حفظ ومتابعة" : "Save & continue"}
+                          </button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    </>
                   )}
 
                   {/* ── Method chooser gate: «كيف تريد إضافة الأسئلة؟» ── */}
@@ -2463,64 +2563,6 @@ export default function CreateAssignment() {
                                     </AnimatePresence>
                                   </div>
                                 )}
-                                <div className={`p-3 rounded-xl bg-muted/30 ${!isAdmin ? "opacity-50" : ""}`}>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex items-start gap-1.5 min-w-0">
-                                      <Brain className={`w-4 h-4 shrink-0 mt-0.5 ${isAdaptive ? "text-violet-500" : "text-muted-foreground"}`} />
-                                      <div>
-                                        <span className="text-sm font-bold block leading-tight text-violet-700 dark:text-violet-300">{lang === "ar" ? "الوضع التكيّفي" : "Adaptive Mode"}</span>
-                                        <span className="text-[11px] text-muted-foreground">{lang === "ar" ? "أسئلة حسب مستوى كل طالب" : "Questions matched to each student"}</span>
-                                        {!isAdmin && <span className="block text-[10px] text-amber-600 font-bold mt-0.5">{lang === "ar" ? "يحتاج موافقة المسؤول" : "Requires admin"}</span>}
-                                      </div>
-                                    </div>
-                                    <button type="button" onClick={() => isAdmin && setIsAdaptive(!isAdaptive)} disabled={!isAdmin}
-                                      className={`relative w-11 h-6 rounded-full transition-colors duration-300 shrink-0 ${isAdaptive ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"}`}>
-                                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
-                                    </button>
-                                  </div>
-                                  <AnimatePresence>
-                                    {isAdaptive && (
-                                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                        <div className="mt-2 p-3 rounded-xl border-2 border-primary/20 bg-primary/5 space-y-3">
-                                          <div className="flex flex-wrap gap-1.5">
-                                            {adaptiveSkills.map((sk, i) => (
-                                              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground text-xs font-bold">
-                                                {sk}<button type="button" onClick={() => setAdaptiveSkills(adaptiveSkills.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
-                                              </span>
-                                            ))}
-                                          </div>
-                                          <div className="flex gap-2">
-                                            <input value={adaptiveSkillInput} onChange={e => setAdaptiveSkillInput(e.target.value)}
-                                              placeholder={lang === "ar" ? "أضف مهارة" : "Add a skill"} className="text-sm flex-1"
-                                              onKeyDown={e => { if (e.key === "Enter" && adaptiveSkillInput.trim()) { e.preventDefault(); if (!adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); } }} />
-                                            <button type="button" onClick={() => { if (adaptiveSkillInput.trim() && !adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); }}
-                                              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold"><Plus className="w-4 h-4" /></button>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <Label className="text-xs font-bold text-violet-700">{lang === "ar" ? "أسئلة لكل طالب:" : "Questions per student:"}</Label>
-                                            <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(parseInt(e.target.value) || 10)} className="w-24 text-sm" />
-                                          </div>
-                                          <div className="space-y-2 border-t border-primary/15 pt-3">
-                                            <div className="flex items-center justify-between gap-3">
-                                              <div>
-                                                <span className="block text-xs font-bold">{lang === "ar" ? "إظهار صحة الإجابة مباشرة" : "Show correctness immediately"}</span>
-                                                <span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "يُخبر الطالب بعد كل سؤال إن كانت إجابته صحيحة أو خاطئة" : "Tell the student after each question whether the answer was correct"}</span>
-                                              </div>
-                                              <Toggle on={adaptiveShowImmediateFeedback} onChange={() => setAdaptiveShowImmediateFeedback(!adaptiveShowImmediateFeedback)} color="green" />
-                                            </div>
-                                            <div className="flex items-center justify-between gap-3">
-                                              <div>
-                                                <span className="block text-xs font-bold">{lang === "ar" ? "إظهار الإجابات بعد النتيجة" : "Show answers after results"}</span>
-                                                <span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "يعرض إجابة الطالب والإجابة الصحيحة بعد إنهاء الاختبار" : "Show the student's answer and the correct answer after finishing"}</span>
-                                              </div>
-                                              <Toggle on={adaptiveShowAnswersAfterResult} onChange={() => setAdaptiveShowAnswersAfterResult(!adaptiveShowAnswersAfterResult)} color="green" />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
                               </div>
                             </div>
 
