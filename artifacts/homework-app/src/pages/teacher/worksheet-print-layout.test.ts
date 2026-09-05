@@ -88,6 +88,13 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('className="ws-tf-box"');
   });
 
+  it("defaults multiple choice to two columns and true/false to explicit choices", () => {
+    expect(source).toContain("questionStyle?.choiceColumns ?? 2");
+    expect(source).toContain('questionStyle?.trueFalseLayout ?? "choices"');
+    expect(source).toContain("اختر «صح» أو «خطأ» لكل عبارة مما يلي:");
+    expect(source).toContain("ضع علامة (✓) داخل القوس أمام العبارة الصحيحة");
+  });
+
   it("applies and persists local field and question formatting", () => {
     expect(source).toContain("data.settings.questionStyles ?? []");
     expect(source).toContain("onSelectField={key => setSelectedField");
