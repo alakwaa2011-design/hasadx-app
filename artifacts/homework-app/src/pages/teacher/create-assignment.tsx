@@ -421,6 +421,14 @@ export default function CreateAssignment() {
   const [extractSourceText, setExtractSourceText] = useState("");
   const [extractCounts, setExtractCounts] = useState<ExtractCounts>({ mcq: 10, true_false: 0, fill_blank: 0 });
   const [extractInstructions, setExtractInstructions] = useState("");
+  const [extractLanguage, setExtractLanguage] = useState<"ar" | "en">(() => lang === "ar" ? "ar" : "en");
+  const [extractSubject, setExtractSubject] = useState("");
+  const [extractGradeLevel, setExtractGradeLevel] = useState("");
+  const [extractRecommendation, setExtractRecommendation] = useState<{
+    counts: ExtractCounts;
+    difficulty: "easy" | "medium" | "hard";
+    reason: string;
+  } | null>(null);
   /* Credit cost/balance for the extract operation — comes from the server's
      central pricing (Pro discount applied once, server-side). */
   const [extractCredit, setExtractCredit] = useState<{
@@ -727,9 +735,11 @@ export default function CreateAssignment() {
       } else {
         form.append("sourceText", extractSourceText.trim());
       }
-      form.append("language", lang === "ar" ? "ar" : "en");
+      form.append("language", extractLanguage);
       form.append("difficulty", extractDifficulty);
       form.append("pages", "1");
+      if (extractSubject.trim() || subject.trim()) form.append("subject", extractSubject.trim() || subject.trim());
+      if (extractGradeLevel.trim()) form.append("gradeLevel", extractGradeLevel.trim());
       if (extractInstructions.trim()) form.append("topicHint", extractInstructions.trim());
       /* Activity editor supports mcq / true_false / fill_blank. */
       form.append("counts", JSON.stringify({
@@ -778,6 +788,27 @@ export default function CreateAssignment() {
          or restore the balance). No client-side deduction math. */
       refreshCreditsBalance();
     }
+  };
+
+  const recommendExtractionSettings = () => {
+    const sourceSize = extractSourceMode === "text"
+      ? extractSourceText.trim().length
+      : extractFiles.reduce((sum, file) => sum + file.size, 0);
+    const total = sourceSize > 30_000 ? 18 : sourceSize > 8_000 ? 12 : 8;
+    const mcq = Math.max(4, Math.round(total * 0.6));
+    const trueFalse = Math.max(2, Math.round(total * 0.2));
+    const counts = {
+      mcq,
+      true_false: trueFalse,
+      fill_blank: Math.max(1, total - mcq - trueFalse),
+    };
+    setExtractRecommendation({
+      counts,
+      difficulty: "medium",
+      reason: lang === "ar"
+        ? `المصدر ${sourceSize > 30_000 ? "كبير" : sourceSize > 8_000 ? "متوسط" : "مختصر"}؛ يُفضّل تنويع الأسئلة مع تركيز أكبر على الاختيار المتعدد.`
+        : `The source is ${sourceSize > 30_000 ? "large" : sourceSize > 8_000 ? "medium-sized" : "brief"}; a mixed set weighted toward multiple choice is recommended.`,
+    });
   };
 
   const handleExtractFromSource = async () => {
@@ -2330,6 +2361,66 @@ export default function CreateAssignment() {
                               <div className="text-end text-[10px] font-bold text-muted-foreground">{extractSourceText.length}/{MAX_SOURCE_TEXT_LENGTH}</div>
                             </div>
                           )}
+                           <div className="rounded-xl border border-primary/15 bg-background/70 p-3 space-y-3">
+                             <div className="flex items-start justify-between gap-3">
+                               <div>
+                                 <p className="text-xs font-black text-foreground">{lang === "ar" ? "إعدادات الاستخراج" : "Extraction settings"}</p>
+                                 <p className="text-[10px] text-muted-foreground">{lang === "ar" ? "راجعها قبل إنشاء الأسئلة؛ لن تُطبّق أي اختيارات مخفية." : "Review before creating questions; no hidden choices are applied."}</p>
+                               </div>
+                               <button
+                                 type="button"
+                                 onClick={recommendExtractionSettings}
+                                 disabled={extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5}
+                                 className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[11px] font-black text-primary disabled:opacity-40"
+                               >
+                                 <Sparkles className="w-3.5 h-3.5" />
+                                 {lang === "ar" ? "اقترح الإعدادات" : "Suggest settings"}
+                               </button>
+                             </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                               <label className="space-y-1">
+                                 <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "لغة الأسئلة" : "Question language"}</span>
+                                 <select value={extractLanguage} onChange={e => setExtractLanguage(e.target.value as "ar" | "en")}
+                                   className="w-full rounded-lg border border-border bg-background px-2 py-2 text-xs font-bold outline-none focus:border-primary">
+                                   <option value="ar">العربية</option>
+                                   <option value="en">English</option>
+                                 </select>
+                               </label>
+                               <label className="space-y-1">
+                                 <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "المادة (اختياري)" : "Subject (optional)"}</span>
+                                 <input value={extractSubject} onChange={e => setExtractSubject(e.target.value)} maxLength={100}
+                                   placeholder={subject || (lang === "ar" ? "مثال: العلوم" : "e.g. Science")}
+                                   className="w-full rounded-lg border border-border bg-background px-2 py-2 text-xs font-bold outline-none focus:border-primary" />
+                               </label>
+                               <label className="space-y-1">
+                                 <span className="block text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "الصف (اختياري)" : "Grade (optional)"}</span>
+                                 <input value={extractGradeLevel} onChange={e => setExtractGradeLevel(e.target.value)} maxLength={50}
+                                   placeholder={lang === "ar" ? "مثال: الصف الخامس" : "e.g. Grade 5"}
+                                   className="w-full rounded-lg border border-border bg-background px-2 py-2 text-xs font-bold outline-none focus:border-primary" />
+                               </label>
+                             </div>
+                             {extractRecommendation && (
+                               <div className="rounded-xl border border-amber-300/50 bg-amber-50 p-3 text-amber-950 dark:bg-amber-950/20 dark:text-amber-100" data-testid="extract-settings-recommendation">
+                                 <div className="flex items-start justify-between gap-3">
+                                   <div>
+                                     <p className="text-xs font-black">{lang === "ar" ? "توصية ذكية قابلة للمراجعة" : "Reviewable smart recommendation"}</p>
+                                     <p className="mt-1 text-[10px] leading-relaxed opacity-80">{extractRecommendation.reason}</p>
+                                     <p className="mt-1.5 text-[10px] font-bold">
+                                       {lang === "ar"
+                                         ? `${extractRecommendation.counts.mcq} اختيار متعدد، ${extractRecommendation.counts.true_false} صح أو خطأ، ${extractRecommendation.counts.fill_blank} إكمال فراغ · صعوبة متوسطة`
+                                         : `${extractRecommendation.counts.mcq} multiple choice, ${extractRecommendation.counts.true_false} true/false, ${extractRecommendation.counts.fill_blank} fill blank · medium difficulty`}
+                                     </p>
+                                   </div>
+                                   <button type="button" onClick={() => {
+                                     setExtractCounts(extractRecommendation.counts);
+                                     setExtractDifficulty(extractRecommendation.difficulty);
+                                   }} className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1.5 text-[11px] font-black text-white">
+                                     {lang === "ar" ? "تطبيق" : "Apply"}
+                                   </button>
+                                 </div>
+                               </div>
+                             )}
+                           </div>
                           <div className="rounded-xl border border-primary/15 bg-background/70 p-3 space-y-3">
                             <div>
                               <p className="text-xs font-black text-foreground">{lang === "ar" ? "عدد الأسئلة وأنواعها" : "Question count and types"}</p>
