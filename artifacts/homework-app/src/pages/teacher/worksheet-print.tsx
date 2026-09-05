@@ -29,7 +29,7 @@ export type Question = QMcq | QTF | QShort | QFill | QMatch;
 interface AnswerItem {
   id: string;
   question: Question;
-  questionIndex: number;
+  questionLabel: string;
   text: string;
   continuation: boolean;
 }
@@ -235,6 +235,20 @@ export function WorksheetPrintView({
     }
     return set;
   }, [localQs]);
+  const questionLabelsById = useMemo(() => {
+    const result = new Map<string, string>();
+    let previousType: Question["type"] | null = null;
+    let indexWithinType = 0;
+    for (const question of localQs) {
+      if (question.type !== previousType) {
+        previousType = question.type;
+        indexWithinType = 0;
+      }
+      result.set(question.id, questionSequenceLabel(indexWithinType, ar));
+      indexWithinType += 1;
+    }
+    return result;
+  }, [localQs, ar]);
   const [showPanel, setShowPanel] = useState(false);
   const [layoutDirty, setLayoutDirty] = useState(false);
   // ── Inline text-editing state ──────────────────────────────────────────
@@ -344,7 +358,7 @@ export function WorksheetPrintView({
   const [pages, setPages] = useState<Question[][]>(() =>
     paginateByEstimate(data.questions, fontSizePt, cols, 190, 250),
   );
-  const answerItems = buildAnswerItems(data.questions, ar, labels);
+  const answerItems = buildAnswerItems(localQs, ar, labels);
   const [answerPages, setAnswerPages] = useState<AnswerItem[][]>(() => [answerItems]);
   const measureRef = useRef<HTMLDivElement>(null);
   const lastKeyRef = useRef("");
@@ -352,8 +366,7 @@ export function WorksheetPrintView({
   // After each render, measure actual heights and re-paginate
   useLayoutEffect(() => {
     const key = [
-      localQs.map(q => `${q.id}:${q.prompt}`).join(","),
-      data.questions.map(q => JSON.stringify(q)).join(","),
+      JSON.stringify(localQs),
       cols, fontSizePt,
       data.settings.schoolName ?? "", data.settings.section ?? "",
       data.settings.teacherName ?? "", logoUrl ? "logo" : "",
@@ -519,7 +532,7 @@ export function WorksheetPrintView({
       }
       if (answerPage.length > 0) nextAnswerPages.push(answerPage);
       setAnswerPages(nextAnswerPages);
-    } else if (data.questions.length === 0) {
+    } else if (localQs.length === 0) {
       setAnswerPages([[]]);
     }
   });
@@ -696,7 +709,7 @@ export function WorksheetPrintView({
         {localQs.map((q, i) => (
           <div key={q.id} data-q-measure style={{ width: qColWidth }}>
             <QuestionView
-              index={i + 1}
+              index={questionLabelsById.get(q.id) ?? questionSequenceLabel(i, ar)}
               q={q}
               ar={ar}
               labels={labels}
@@ -853,7 +866,7 @@ export function WorksheetPrintView({
                     return (
                       <QuestionView
                         key={q.id}
-                        index={idx + 1}
+                        index={questionLabelsById.get(q.id) ?? questionSequenceLabel(idx, ar)}
                         q={lq}
                         ar={ar}
                         labels={labels}
@@ -1498,7 +1511,7 @@ function QuestionFormattingToolbar({
         ))}
         {question.type === "mcq" && (
           <>
-            <span className="ws-format-label">{ar ? "الخيارات" : "Options"}</span>
+            <span className="ws-format-label">{ar ? "ترتيب الخيارات" : "Option layout"}</span>
             {[1, 2].map(value => (
               <button
                 type="button"
@@ -1506,7 +1519,9 @@ function QuestionFormattingToolbar({
                 className={(questionStyle?.choiceColumns ?? 1) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
                 onClick={() => onQuestionChange({ choiceColumns: value as 1 | 2 })}
               >
-                {value}
+                {ar
+                  ? (value === 1 ? "عمودي" : "خياران في سطر")
+                  : (value === 1 ? "Vertical" : "Two per row")}
               </button>
             ))}
           </>
@@ -1583,7 +1598,7 @@ function EditSpan({
 function QuestionView({
   index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField,
 }: {
-  index: number;
+  index: string;
   q: Question;
   ar: boolean;
   labels: { question: string; true: string; false: string; correct: string };
@@ -1611,7 +1626,6 @@ function QuestionView({
               </div>
             )}
             <div className="ws-q-prompt">
-            {q.type === "true_false" && <span className="ws-tf-mark" aria-hidden="true">(　　)</span>}
             <EditSpan
               text={q.prompt ?? (q.type === "matching" ? (ar ? "صل بين العمودين بخطوط:" : "Match the columns:") : "")}
               editMode={em}
@@ -1619,6 +1633,7 @@ function QuestionView({
               onSelect={() => onSelectField?.("prompt")}
               onCommit={val => edit({ ...q, prompt: val })}
             />
+            {q.type === "true_false" && <span className="ws-tf-mark" aria-hidden="true">(　　)</span>}
           </div>
         </div>
       </div>
@@ -1709,11 +1724,11 @@ function QuestionView({
 function AnswerView({
   item, ar, labels,
 }: { item: AnswerItem; ar: boolean; labels: { question: string; true: string; false: string; correct: string } }) {
-  const { question: q, questionIndex, text, continuation } = item;
+  const { question: q, questionLabel, text, continuation } = item;
   return (
     <div className="ws-q ws-answer" data-answer-continuation={continuation || undefined}>
       <div className="ws-q-head">
-        <span className="ws-q-num">{questionIndex + 1}</span>
+        <span className="ws-q-num">{questionLabel}</span>
         <div className="ws-q-prompt-wrap">
           <div className="ws-q-prompt">
             {q.type === "matching" ? (ar ? "أزواج التوصيل" : "Matching pairs") : q.prompt}
@@ -1729,9 +1744,20 @@ function AnswerView({
 }
 
 const ARABIC_OPTION_LABELS = ["أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي"];
+const ARABIC_QUESTION_LABELS = [
+  "أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي",
+  "ك", "ل", "م", "ن", "س", "ع", "ف", "ص", "ق", "ر",
+  "ش", "ت", "ث", "خ", "ذ", "ض", "ظ", "غ",
+];
 
-function optionLabel(index: number, ar: boolean): string {
+export function optionLabel(index: number, ar: boolean): string {
   return ar ? (ARABIC_OPTION_LABELS[index] ?? String(index + 1)) : String.fromCharCode(65 + index);
+}
+
+export function questionSequenceLabel(index: number, ar: boolean): string {
+  return ar
+    ? (ARABIC_QUESTION_LABELS[index] ?? String(index + 1))
+    : String.fromCharCode(65 + index);
 }
 
 // Deterministic permutation of [0..n-1] for the matching right-column.
@@ -2053,7 +2079,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         direction: ltr;
         white-space: nowrap;
         min-width: 17mm;
-        margin-${endSide}: 2mm;
+        margin-inline-start: 2mm;
         font-family: Arial, sans-serif;
         font-weight: 700;
         letter-spacing: 0.08em;
@@ -2486,18 +2512,28 @@ function GradeQrBadge({ worksheetId, page, total, ar }: {
     </div>
   );
 }
-function buildAnswerItems(
+export function buildAnswerItems(
   questions: Question[],
   ar: boolean,
   labels: { true: string; false: string },
 ): AnswerItem[] {
-  return questions.map((question, questionIndex) => ({
-    id: `${question.id}:answer`,
-    question,
-    questionIndex,
-    text: answerText(question, ar, labels),
-    continuation: false,
-  }));
+  let previousType: Question["type"] | null = null;
+  let indexWithinType = 0;
+  return questions.map(question => {
+    if (question.type !== previousType) {
+      previousType = question.type;
+      indexWithinType = 0;
+    }
+    const item: AnswerItem = {
+      id: `${question.id}:answer`,
+      question,
+      questionLabel: questionSequenceLabel(indexWithinType, ar),
+      text: answerText(question, ar, labels),
+      continuation: false,
+    };
+    indexWithinType += 1;
+    return item;
+  });
 }
 
 function splitAnswerItemHalf(item: AnswerItem): [AnswerItem, AnswerItem] | null {
@@ -2514,10 +2550,9 @@ function splitAnswerItemHalf(item: AnswerItem): [AnswerItem, AnswerItem] | null 
     { ...item, id: `${item.id}:b`, text: secondText, continuation: true },
   ];
 }
-function answerText(q: Question, ar: boolean, labels: { true: string; false: string }): string {
+export function answerText(q: Question, ar: boolean, labels: { true: string; false: string }): string {
   if (q.type === "mcq") {
-    const letter = ar ? `${"أبجده"[q.correctIndex] || (q.correctIndex + 1)}` : String.fromCharCode(65 + q.correctIndex);
-    return `${letter}) ${q.options[q.correctIndex] ?? ""}`;
+    return `(${optionLabel(q.correctIndex, ar)}) ${q.options[q.correctIndex] ?? ""}`;
   }
   if (q.type === "true_false") return q.correct ? labels.true : labels.false;
   if (q.type === "short_answer") return q.answer?.trim() || "—";
@@ -2525,6 +2560,6 @@ function answerText(q: Question, ar: boolean, labels: { true: string; false: str
   const order = matchingDisplayOrder(q.pairs.length);
   return q.pairs.map((_, i) => {
     const displayIdx = order.indexOf(i);
-    return `${i + 1} → ${String.fromCharCode(65 + (displayIdx >= 0 ? displayIdx : i))}`;
+    return `${i + 1} ← ${optionLabel(displayIdx >= 0 ? displayIdx : i, ar)}`;
   }).join("    ");
 }

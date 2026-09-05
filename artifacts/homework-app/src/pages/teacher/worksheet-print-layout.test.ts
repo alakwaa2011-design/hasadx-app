@@ -47,10 +47,25 @@ describe("official worksheet question layout", () => {
     expect(source).not.toContain('<span className="ws-bubble"');
   });
 
+  it("places the true/false mark after the statement and offers both MCQ layouts", () => {
+    const promptStart = source.indexOf("<EditSpan", source.indexOf('className="ws-q-prompt"'));
+    const markStart = source.indexOf('className="ws-tf-mark"', promptStart);
+    expect(markStart).toBeGreaterThan(promptStart);
+    expect(source).toContain('"ترتيب الخيارات"');
+    expect(source).toContain('"عمودي"');
+    expect(source).toContain('"خياران في سطر"');
+  });
+
   it("applies and persists local field and question formatting", () => {
     expect(source).toContain("data.settings.questionStyles ?? []");
     expect(source).toContain("onSelectField={key => setSelectedField");
     expect(source).toContain("questionStyles: QuestionStyle[]");
     expect(source).toContain("JSON.stringify(localQuestionStyles)");
+  });
+
+  it("builds the answer key from unsaved local edits", () => {
+    expect(source).toContain("buildAnswerItems(localQs, ar, labels)");
+    expect(source).toContain("JSON.stringify(localQs)");
+    expect(source).not.toContain("buildAnswerItems(data.questions, ar, labels)");
   });
 });
