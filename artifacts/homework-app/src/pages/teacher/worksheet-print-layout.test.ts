@@ -37,6 +37,12 @@ describe("worksheet PDF page sizing", () => {
     expect(source).toContain("page.getBoundingClientRect().height > a4HeightPx + 2");
     expect(source).toContain("next[overflowIndex].pop()");
   });
+
+  it("lets teachers clear stale manual breaks and invalidates them after question edits", () => {
+    expect(source).toContain('"توزيع تلقائي"');
+    expect(source).toContain("setLocalBreaks(new Set())");
+    expect(source).toContain("Remove manual page breaks and repaginate");
+  });
 });
 
 describe("official worksheet question layout", () => {
@@ -61,6 +67,13 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('"عمودي"');
     expect(source).toContain('"خياران في سطر"');
     expect(source).toContain('role="toolbar"');
+  });
+
+  it("offers both true/false answer layouts per question", () => {
+    expect(source).toContain('"قوس للعلامة"');
+    expect(source).toContain('"خيارا صح وخطأ"');
+    expect(source).toContain('questionStyle?.trueFalseLayout === "choices"');
+    expect(source).toContain('className="ws-tf-box"');
   });
 
   it("applies and persists local field and question formatting", () => {

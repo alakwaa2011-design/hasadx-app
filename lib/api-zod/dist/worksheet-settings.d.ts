@@ -210,6 +210,7 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }>, "many">>;
         spacing: z.ZodOptional<z.ZodEnum<["compact", "normal", "relaxed"]>>;
         choiceColumns: z.ZodOptional<z.ZodUnion<[z.ZodLiteral<1>, z.ZodLiteral<2>]>>;
+        trueFalseLayout: z.ZodOptional<z.ZodEnum<["mark", "choices"]>>;
         matchingLeftWidth: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         questionId: string;
@@ -221,6 +222,7 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
     }, {
         questionId: string;
@@ -232,6 +234,7 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
@@ -290,6 +293,7 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
     }[] | undefined;
 }, {
@@ -348,6 +352,7 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
     }[] | undefined;
 }>;

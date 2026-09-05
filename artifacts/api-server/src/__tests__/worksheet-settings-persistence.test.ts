@@ -132,6 +132,7 @@ const settings = {
     fields: [{ key: "prompt", fontSizePt: 16, bold: true, align: "start" }],
     spacing: "relaxed",
     choiceColumns: 2,
+    trueFalseLayout: "choices",
   }],
 } satisfies WorksheetSettings;
 

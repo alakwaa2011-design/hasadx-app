@@ -287,6 +287,7 @@ export function WorksheetPrintView({
   // Update a single question in-place (called by QuestionView on text blur)
   const onEditQuestion = useCallback((updated: Question) => {
     setLocalQs(prev => prev.map(q => q.id === updated.id ? updated : q));
+    setLocalBreaks(new Set());
     setLayoutDirty(true);
   }, []);
 
@@ -296,6 +297,7 @@ export function WorksheetPrintView({
       const next = update(current);
       return [...prev.filter(style => style.questionId !== questionId), next];
     });
+    setLocalBreaks(new Set());
     setLayoutDirty(true);
   }, []);
 
@@ -799,6 +801,28 @@ export function WorksheetPrintView({
               {ar ? "حفظ" : "Save"}
             </button>
           )}
+          {editMode && localBreaks.size > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setLocalBreaks(new Set());
+                setLayoutDirty(true);
+              }}
+              title={ar ? "إزالة فواصل الصفحات اليدوية وإعادة توزيع الأسئلة" : "Remove manual page breaks and repaginate"}
+              style={{
+                background: "white",
+                color: BRAND_PRIMARY,
+                border: "none",
+                borderRadius: 999,
+                padding: "3px 12px",
+                fontWeight: 800,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              {ar ? "توزيع تلقائي" : "Auto layout"}
+            </button>
+          )}
           <button
             onClick={() => {
               setEditMode(v => {
@@ -830,6 +854,7 @@ export function WorksheetPrintView({
                 ? convertQuestionType(question, type, ar)
                 : question,
             ));
+            setLocalBreaks(new Set());
             setSelectedField({ questionId: selectedField.questionId, key: "prompt" });
             setLayoutDirty(true);
           }}
@@ -1538,17 +1563,32 @@ function QuestionFormattingToolbar({
           </select>
         </label>
         {question.type === "true_false" && (
-          <label className="ws-format-type">
-            <span>{ar ? "الإجابة" : "Answer"}</span>
-            <select
-              value={question.correct ? "true" : "false"}
-              onChange={event => onQuestionEdit({ ...question, correct: event.target.value === "true" })}
-              aria-label={ar ? "الإجابة الصحيحة" : "Correct answer"}
-            >
-              <option value="true">{ar ? "صح" : "True"}</option>
-              <option value="false">{ar ? "خطأ" : "False"}</option>
-            </select>
-          </label>
+          <>
+            <span className="ws-format-label">{ar ? "طريقة الإجابة" : "Answer layout"}</span>
+            {(["mark", "choices"] as const).map(value => (
+              <button
+                type="button"
+                key={value}
+                className={(questionStyle?.trueFalseLayout ?? "mark") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+                onClick={() => onQuestionChange({ trueFalseLayout: value })}
+              >
+                {ar
+                  ? (value === "mark" ? "قوس للعلامة" : "خيارا صح وخطأ")
+                  : (value === "mark" ? "Mark parentheses" : "True / False choices")}
+              </button>
+            ))}
+            <label className="ws-format-type">
+              <span>{ar ? "الإجابة" : "Answer"}</span>
+              <select
+                value={question.correct ? "true" : "false"}
+                onChange={event => onQuestionEdit({ ...question, correct: event.target.value === "true" })}
+                aria-label={ar ? "الإجابة الصحيحة" : "Correct answer"}
+              >
+                <option value="true">{ar ? "صح" : "True"}</option>
+                <option value="false">{ar ? "خطأ" : "False"}</option>
+              </select>
+            </label>
+          </>
         )}
         {question.type === "mcq" && (
           <label className="ws-format-type">
@@ -1698,7 +1738,9 @@ function QuestionView({
               onSelect={() => onSelectField?.("prompt")}
               onCommit={val => edit({ ...q, prompt: val })}
             />
-            {q.type === "true_false" && <span className="ws-tf-mark" aria-hidden="true">(　　)</span>}
+            {q.type === "true_false" && (questionStyle?.trueFalseLayout ?? "mark") === "mark" && (
+              <span className="ws-tf-mark" aria-hidden="true">(　　)</span>
+            )}
           </div>
         </div>
       </div>
@@ -1723,6 +1765,12 @@ function QuestionView({
             </li>
           ))}
         </ol>
+      )}
+      {q.type === "true_false" && questionStyle?.trueFalseLayout === "choices" && (
+        <div className="ws-tf-choices">
+          <span className="ws-tf-choice"><span className="ws-tf-box" aria-hidden="true" />{labels.true}</span>
+          <span className="ws-tf-choice"><span className="ws-tf-box" aria-hidden="true" />{labels.false}</span>
+        </div>
       )}
       {q.type === "short_answer" && (
         <div className="ws-lines">
@@ -2181,6 +2229,27 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         font-family: Arial, sans-serif;
         font-weight: 700;
         letter-spacing: 0.08em;
+      }
+      .ws-tf-choices {
+        display: flex;
+        align-items: center;
+        gap: 14mm;
+        padding-${startSide}: 34px;
+        margin-top: 2mm;
+      }
+      .ws-tf-choice {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 700;
+      }
+      .ws-tf-box {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        border: 1.5px solid ${TC};
+        border-radius: 2px;
+        background: white;
       }
 
       .ws-lines { padding-${startSide}: 36px; margin-top: 2mm; }

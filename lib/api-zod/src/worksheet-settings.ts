@@ -45,6 +45,7 @@ const worksheetQuestionStyleSchema = z.object({
   fields: z.array(worksheetTextStyleSchema).max(25).optional(),
   spacing: z.enum(["compact", "normal", "relaxed"]).optional(),
   choiceColumns: z.union([z.literal(1), z.literal(2)]).optional(),
+  trueFalseLayout: z.enum(["mark", "choices"]).optional(),
   matchingLeftWidth: z.number().int().min(35).max(65).optional(),
 });
 
