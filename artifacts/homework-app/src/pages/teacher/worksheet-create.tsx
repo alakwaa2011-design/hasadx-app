@@ -23,6 +23,9 @@ import {
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
 import { toast } from "@/components/ui/sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
@@ -281,9 +284,7 @@ export default function WorksheetCreate() {
     customFields: _teacherProfile.customFields ?? DEFAULT_SETTINGS.customFields,
   });
 
-  const [headerOpen, setHeaderOpen] = useState(false);
-  const [designOpen, setDesignOpen] = useState(false);
-  
+
   const [aiTopic, setAiTopic] = useState("");
   const [sourceText, setSourceText] = useState("");
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
@@ -292,6 +293,7 @@ export default function WorksheetCreate() {
     _wsPrefs.aiCounts ?? { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0 },
   );
   const [generating, setGenerating] = useState(false);
+  const [activeAiTab, setActiveAiTab] = useState("topic");
 
   const wsDidMountRef = useRef(false);
   const wsSkipNextSaveRef = useRef(false);
@@ -893,179 +895,7 @@ export default function WorksheetCreate() {
           </button>
         </div>
 
-        {/* Smart Generator Hero */}
-        <Card className="p-6 sm:p-8 border-2 border-primary/20 shadow-lg relative overflow-hidden bg-gradient-to-b from-primary/5 to-transparent">
-          <div className="absolute top-0 left-0 p-8 opacity-5 pointer-events-none transform -scale-x-100">
-            <Wand2 className="w-64 h-64" />
-          </div>
-
-          <div className="relative z-10 space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/15 text-primary shadow-inner">
-                <Wand2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-primary">{ar ? "المولد الذكي" : "Smart Generator"}</h2>
-                <p className="text-sm text-muted-foreground">{ar ? "اكتب موضوعاً أو الصق نصاً تعليمياً ليبني الذكاء الاصطناعي الورقة" : "Enter a topic or paste educational source text and AI will build the worksheet"}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold mb-1.5">{ar ? "النص التعليمي المصدر (اختياري)" : "Educational source text (optional)"}</label>
-                <textarea
-                  value={sourceText}
-                  maxLength={MAX_SOURCE_TEXT_LENGTH}
-                  onChange={e => setSourceText(e.target.value)}
-                  placeholder={ar
-                    ? "الصق محتوى الدرس هنا؛ سيبقى منفصلاً عن موضوع/تعليمات المعلم."
-                    : "Paste lesson content here; it stays separate from the teacher topic/instructions."}
-                  className="w-full min-h-28 px-4 py-3 rounded-xl border-2 border-border bg-background text-sm focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none"
-                />
-                <p className="text-xs text-muted-foreground text-end mt-1">
-                  {sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <input 
-                  value={aiTopic}
-                  onChange={e => setAiTopic(e.target.value)}
-                  placeholder={ar ? "عن ماذا تتحدث الورقة؟ (مثال: أركان الصلاة، ضرب الكسور...)" : "What is this worksheet about?"}
-                  className="w-full text-lg px-4 py-4 rounded-xl border-2 border-border bg-background font-medium focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm outline-none"
-                />
-              </div>
-
-              {/* The One Row Requirement: Language, Difficulty, Pages */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <Field label={ar ? "لغة المحتوى" : "Language"}>
-                    <SegmentedControl 
-                       value={contentLang} 
-                       onChange={setContentLang as any}
-                       options={[{label: ar?"العربية":"Arabic", value:"ar"}, {label: ar?"English":"English", value:"en"}]}
-                    />
-                 </Field>
-                 <Field label={ar ? "مستوى الصعوبة" : "Difficulty"}>
-                    <SegmentedControl 
-                       value={aiDifficulty} 
-                       onChange={setAiDifficulty as any}
-                       options={[
-                         {label: ar?"سهل":"Easy", value:"easy"}, 
-                         {label: ar?"متوسط":"Med", value:"medium"}, 
-                         {label: ar?"صعب":"Hard", value:"hard"},
-                         {label: ar?"متنوّع":"Mixed", value:"mixed"}
-                       ]}
-                    />
-                 </Field>
-                 <Field label={ar ? "عدد الصفحات المستهدف" : "Pages"}>
-                    <SegmentedControl 
-                       value={aiPages} 
-                       onChange={setAiPages as any}
-                       options={[
-                         {label: ar?"١ صفحة":"1 Page", value: 1}, 
-                         {label: ar?"٢ صفحة":"2 Pages", value: 2}, 
-                         {label: ar?"٣ صفحات":"3 Pages", value: 3}
-                       ]}
-                    />
-                 </Field>
-              </div>
-
-              {/* Counts row - compact */}
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-                  <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
-                </div>
-                {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
-                  <CompactStepper
-                    key={k}
-                    label={typeLabel(k, ar)}
-                    value={aiCounts[k]}
-                    max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
-                    onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
-                  />
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button 
-                   onClick={generateWithAI}
-                   disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-                   className="flex-1 h-14 text-lg font-black rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
-                >
-                   {generating ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar?"جارٍ التوليد...":"Generating..."}</> : <><Sparkles className="w-5 h-5"/> {ar?"توليد الأسئلة":"Generate Questions"}</>}
-                </button>
-
-                <label className={cn(
-                   "h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all border-2",
-                   pickedFiles.length > 0 ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted text-muted-foreground bg-background"
-                )}>
-                   <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" className="hidden" 
-                     onChange={e => {
-                       const incoming = Array.from(e.target.files || []);
-                       if (incoming.length === 0) return;
-                       const merged = [...pickedFiles];
-                       for (const f of incoming) {
-                         if (f.size > fileLimits.maxBytes) {
-                           toast.error(ar ? `الملف "${f.name}" يتجاوز ${fileLimits.maxMb} ميجا` : `"${f.name}" exceeds ${fileLimits.maxMb} MB`);
-                           continue;
-                         }
-                         if (merged.some(m => m.name === f.name && m.size === f.size)) continue;
-                         merged.push(f);
-                       }
-                       if (merged.length > fileLimits.maxFiles) {
-                         toast.error(ar ? `الحد الأقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`);
-                         merged.length = fileLimits.maxFiles;
-                       }
-                       setPickedFiles(merged);
-                       if (fileInputRef.current) fileInputRef.current.value = "";
-                     }} 
-                   />
-                   <Upload className="w-5 h-5" />
-                   <span className="hidden sm:inline whitespace-nowrap">
-                     {pickedFiles.length > 0 ? (ar ? `تم اختيار ${pickedFiles.length}` : `${pickedFiles.length} selected`) : (ar ? "رفع ملف" : "Upload File")}
-                   </span>
-                </label>
-                
-                 {(pickedFiles.length > 0 || sourceText.trim()) && (
-                    <button onClick={extractFromFile} disabled={extracting || generating || autoSaveStatus === "saving" || autoSaveStatus === "error"} className="h-14 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 border-primary bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shadow-md">
-                     {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> {ar ? "استخراج" : "Extract"}</>}
-                   </button>
-                )}
-
-                <button
-                  onClick={handleWsRestoreDefaults}
-                  title={ar ? "استعادة الإعدادات الافتراضية" : "Restore defaults"}
-                  className="h-14 w-14 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors flex-shrink-0"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                </button>
-              </div>
-
-              {pickedFiles.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-2">
-                  {pickedFiles.map((f, idx) => (
-                    <span
-                      key={`${f.name}-${f.size}-${idx}`}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-primary text-[11px]"
-                    >
-                      {f.type.startsWith("image/") ? <ImageIcon className="w-3 h-3" /> : <FileType className="w-3 h-3" />}
-                      <span className="font-bold truncate max-w-[160px]">{f.name}</span>
-                      <span className="opacity-60">{Math.round(f.size / 1024)} KB</span>
-                      <button
-                        type="button"
-                        onClick={() => setPickedFiles(prev => prev.filter((_, i) => i !== idx))}
-                        className="ml-1 hover:text-destructive transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Worksheet Details */}
+        {/* 1. Worksheet Details Prominent Near Top */}
         <Card className="p-5 border border-border/60 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Field label={ar ? "عنوان الورقة" : "Worksheet Title"} className="md:col-span-1">
@@ -1099,16 +929,209 @@ export default function WorksheetCreate() {
           </div>
         </Card>
 
-        {/* Advanced Settings */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CollapsibleCard 
-            title={ar ? "بيانات الترويسة" : "Header Info"}
-            icon={Building2}
-            isOpen={headerOpen}
-            onToggle={() => setHeaderOpen(!headerOpen)}
-            summary={(settings.schoolName || settings.teacherName) ? [settings.schoolName, settings.teacherName].filter(Boolean).join(" · ") : undefined}
-          >
-            <div className="space-y-4">
+        {/* 2. Smart Generator Block */}
+        <Card className="border-2 border-primary/20 shadow-lg relative overflow-hidden bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="absolute top-0 left-0 p-8 opacity-5 pointer-events-none transform -scale-x-100">
+            <Wand2 className="w-64 h-64" />
+          </div>
+          <div className="relative z-10 p-5 sm:p-6 border-b border-primary/10 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/15 text-primary shadow-inner">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-primary">{ar ? "المولد الذكي" : "Smart Generator"}</h2>
+                <p className="text-sm text-muted-foreground">{ar ? "اكتب موضوعاً أو الصق نصاً تعليمياً ليبني الذكاء الاصطناعي الورقة" : "Enter a topic or paste educational source text and AI will build the worksheet"}</p>
+              </div>
+            </div>
+
+            <Tabs value={activeAiTab} onValueChange={setActiveAiTab} className="w-full text-start" dir={dir}>
+              <TabsList className="mb-4 w-full justify-start">
+                <TabsTrigger value="topic" className="gap-2 font-bold"><Type className="w-4 h-4"/>{ar ? "موضوع / تعليمات" : "Topic / Instruction"}</TabsTrigger>
+                <TabsTrigger value="source" className="gap-2 font-bold"><Layers className="w-4 h-4"/>{ar ? "مادة علمية (نص / ملفات)" : "Source Material (Text/Files)"}</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="topic" className="space-y-4 outline-none">
+                <input
+                  value={aiTopic}
+                  onChange={e => setAiTopic(e.target.value)}
+                  placeholder={ar ? "عن ماذا تتحدث الورقة؟ (مثال: أركان الصلاة، ضرب الكسور...)" : "What is this worksheet about?"}
+                  className="w-full text-lg px-4 py-4 rounded-xl border-2 border-border bg-background font-medium focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm outline-none text-start"
+                />
+              </TabsContent>
+
+              <TabsContent value="source" className="space-y-4 outline-none">
+                <div>
+                  <textarea
+                    value={sourceText}
+                    maxLength={MAX_SOURCE_TEXT_LENGTH}
+                    onChange={e => setSourceText(e.target.value)}
+                    placeholder={ar
+                      ? "الصق محتوى الدرس هنا؛ سيبقى منفصلاً عن موضوع/تعليمات المعلم."
+                      : "Paste lesson content here; it stays separate from the teacher topic/instructions."}
+                    className="w-full min-h-28 px-4 py-3 rounded-xl border-2 border-border bg-background text-sm focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none text-start"
+                  />
+                  <p className="text-xs text-muted-foreground text-end mt-1">
+                    {sourceText.length.toLocaleString()}/{MAX_SOURCE_TEXT_LENGTH.toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                  <label className={cn(
+                     "flex-1 h-12 px-6 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all border-2",
+                     pickedFiles.length > 0 ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted text-muted-foreground bg-background"
+                  )}>
+                     <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.pptx,.txt,.md" className="hidden"
+                       onChange={e => {
+                         const incoming = Array.from(e.target.files || []);
+                         if (incoming.length === 0) return;
+                         const merged = [...pickedFiles];
+                         for (const f of incoming) {
+                           if (f.size > fileLimits.maxBytes) {
+                             toast.error(ar ? `الملف "${f.name}" يتجاوز ${fileLimits.maxMb} ميجا` : `"${f.name}" exceeds ${fileLimits.maxMb} MB`);
+                             continue;
+                           }
+                           if (merged.some(m => m.name === f.name && m.size === f.size)) continue;
+                           merged.push(f);
+                         }
+                         if (merged.length > fileLimits.maxFiles) {
+                           toast.error(ar ? `الحد الأقصى ${fileLimits.maxFiles} ملفات` : `Max ${fileLimits.maxFiles} files`);
+                           merged.length = fileLimits.maxFiles;
+                         }
+                         setPickedFiles(merged);
+                         if (fileInputRef.current) fileInputRef.current.value = "";
+                       }}
+                     />
+                     <Upload className="w-5 h-5" />
+                     <span>
+                       {pickedFiles.length > 0 ? (ar ? `تم اختيار ${pickedFiles.length}` : `${pickedFiles.length} selected`) : (ar ? "رفع ملف تعليمي" : "Upload Educational File")}
+                     </span>
+                  </label>
+                </div>
+                {pickedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {pickedFiles.map((f, idx) => (
+                      <span
+                        key={`${f.name}-${f.size}-${idx}`}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-primary text-[11px]"
+                      >
+                        {f.type.startsWith("image/") ? <ImageIcon className="w-3 h-3" /> : <FileType className="w-3 h-3" />}
+                        <span className="font-bold truncate max-w-[160px]">{f.name}</span>
+                        <span className="opacity-60">{Math.round(f.size / 1024)} KB</span>
+                        <button
+                          type="button"
+                          onClick={() => setPickedFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="ml-1 hover:text-destructive transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <div className="px-5 py-4 sm:px-6 bg-background/60">
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 mb-2 rounded-lg hover:bg-muted text-sm font-bold text-foreground transition-colors group text-start">
+                <span className="flex items-center gap-2">
+                  <SettingsIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  {ar ? "إعدادات التوليد المتقدمة" : "Advanced Generation Settings"}
+                </span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <Field label={ar ? "لغة المحتوى" : "Language"}>
+                      <SegmentedControl
+                         value={contentLang}
+                         onChange={setContentLang as any}
+                         options={[{label: ar?"العربية":"Arabic", value:"ar"}, {label: ar?"English":"English", value:"en"}]}
+                      />
+                   </Field>
+                   <Field label={ar ? "مستوى الصعوبة" : "Difficulty"}>
+                      <SegmentedControl
+                         value={aiDifficulty}
+                         onChange={setAiDifficulty as any}
+                         options={[
+                           {label: ar?"سهل":"Easy", value:"easy"},
+                           {label: ar?"متوسط":"Med", value:"medium"},
+                           {label: ar?"صعب":"Hard", value:"hard"},
+                           {label: ar?"متنوّع":"Mixed", value:"mixed"}
+                         ]}
+                      />
+                   </Field>
+                   <Field label={ar ? "عدد الصفحات المستهدف" : "Pages"}>
+                      <SegmentedControl
+                         value={aiPages}
+                         onChange={setAiPages as any}
+                         options={[
+                           {label: ar?"١ صفحة":"1 Page", value: 1},
+                           {label: ar?"٢ صفحة":"2 Pages", value: 2},
+                           {label: ar?"٣ صفحات":"3 Pages", value: 3}
+                         ]}
+                      />
+                   </Field>
+                </div>
+
+                {/* Counts row - compact */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
+                  <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
+                  </div>
+                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
+                    <CompactStepper
+                      key={k}
+                      label={typeLabel(k, ar)}
+                      value={aiCounts[k]}
+                      max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                      onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+              <button
+                 onClick={activeAiTab === "topic" ? generateWithAI : extractFromFile}
+                 disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                 className="flex-1 h-14 text-lg font-black rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
+              >
+                 {(generating || extracting) ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar?"جارٍ التوليد...":"Generating..."}</> : <><Sparkles className="w-5 h-5"/> {activeAiTab === "topic" ? (ar?"توليد الأسئلة":"Generate Questions") : (ar?"استخراج الأسئلة":"Extract Questions")}</>}
+              </button>
+              <button
+                onClick={handleWsRestoreDefaults}
+                title={ar ? "استعادة الإعدادات الافتراضية" : "Restore defaults"}
+                className="h-14 w-14 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </Card>
+
+        {/* 3. Settings Area (Header Info & Design/Format) */}
+        <Card className="border border-border/60 shadow-sm overflow-hidden">
+          <Tabs defaultValue="header" className="w-full text-start" dir={dir}>
+            <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+               <div className="flex items-center gap-3">
+                 <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+                   <LayoutTemplate className="w-4 h-4" />
+                 </div>
+                 <h3 className="font-bold text-sm text-foreground">{ar ? "تنسيق الورقة" : "Worksheet Formatting"}</h3>
+               </div>
+               <TabsList className="bg-muted/50 w-full sm:w-auto h-auto p-1 justify-start">
+                 <TabsTrigger value="header" className="flex-1 sm:flex-none text-xs font-bold gap-1.5 py-1.5"><Building2 className="w-3.5 h-3.5"/>{ar ? "بيانات الترويسة" : "Header Data"}</TabsTrigger>
+                 <TabsTrigger value="design" className="flex-1 sm:flex-none text-xs font-bold gap-1.5 py-1.5"><SettingsIcon className="w-3.5 h-3.5"/>{ar ? "التصميم" : "Design"}</TabsTrigger>
+               </TabsList>
+            </div>
+
+            <TabsContent value="header" className="p-5 outline-none m-0">
+
+<div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                   <Save className="w-3.5 h-3.5" />
@@ -1127,7 +1150,7 @@ export default function WorksheetCreate() {
                   </button>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label={ar ? "اسم المدرسة" : "School name"}>
                   <input
@@ -1206,16 +1229,11 @@ export default function WorksheetCreate() {
                 )}
               </div>
             </div>
-          </CollapsibleCard>
+            </TabsContent>
 
-          <CollapsibleCard
-            title={ar ? "تصميم وتنسيق الورقة" : "Design & Formatting"}
-            icon={LayoutTemplate}
-            isOpen={designOpen}
-            onToggle={() => setDesignOpen(!designOpen)}
-            summary={settings.template ? (ar ? THEMES[settings.template].nameAr : THEMES[settings.template].nameEn) : undefined}
-          >
-            <div className="space-y-5">
+            <TabsContent value="design" className="p-5 outline-none m-0">
+
+<div className="space-y-5">
               {/* Template Picker */}
               <div>
                 <div className="text-[11px] font-bold mb-2 text-muted-foreground flex justify-between items-center">
@@ -1349,7 +1367,7 @@ export default function WorksheetCreate() {
                   className="w-full p-2 rounded-lg border bg-background text-sm outline-none focus:border-primary"
                 />
               </Field>
-              
+
               <Field label={ar ? "جملة الختام" : "Closing line"}>
                  <input value={settings.goodLuck ?? ""} onChange={e => setSettings(s => ({ ...s, goodLuck: e.target.value }))} placeholder={ar ? "نتمنى لك التوفيق (الافتراضي)" : "Good luck! (default)"} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={200} />
               </Field>
@@ -1362,23 +1380,39 @@ export default function WorksheetCreate() {
                 <Toggle label={ar ? "علامة مائية" : "Watermark"} value={settings.showWatermark} onChange={v => setSettings(s => ({ ...s, showWatermark: v }))} />
               </div>
             </div>
-          </CollapsibleCard>
-        </div>
+            </TabsContent>
+          </Tabs>
+        </Card>
 
-        {/* Questions List & Manual Adder */}
+        {/* 4. Questions List */}
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/40 p-4 rounded-2xl border border-border/50 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
-                <ListChecks className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-foreground">{ar ? "الأسئلة" : "Questions"} ({totalQs})</h3>
-                <p className="text-[11px] text-muted-foreground">{ar ? "أضف أسئلة يدوياً أو رتب القائمة" : "Add questions manually or reorder"}</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between gap-3 bg-muted/40 p-4 rounded-2xl border border-border/50 shadow-sm">
+            <DropdownMenu dir={dir}>
+              <DropdownMenuTrigger asChild>
+                <button className="px-4 py-2.5 rounded-xl border border-primary bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-bold flex items-center gap-2 shadow-sm">
+                  <Plus className="w-4 h-4" />
+                  {ar ? "إضافة سؤال" : "Add Question"}
+                  <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
+                  <DropdownMenuItem
+                    key={t}
+                    onClick={() => addQuestion(t)}
+                    className="gap-2 cursor-pointer font-medium text-start"
+                  >
+                    <span className="text-primary">{typeIcon(t)}</span>
+                    {typeLabel(t, ar)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1.5 rounded-lg bg-background border border-border text-[11px] font-bold text-muted-foreground whitespace-nowrap">
+                {ar ? `${totalQs} مضافة` : `${totalQs} added`}
+              </span>
               {questions.length > 0 && (
                 <button
                   type="button"
@@ -1388,23 +1422,12 @@ export default function WorksheetCreate() {
                     setSettings(current => ({ ...current, pageBreaks: [], questionStyles: [] }));
                     toast.success(ar ? "تم حذف جميع الأسئلة من المسودة" : "All questions removed from the draft");
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-destructive/30 bg-background hover:bg-destructive/5 text-destructive transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  className="px-3 py-1.5 rounded-lg border border-destructive/30 bg-background hover:bg-destructive/5 text-destructive transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm h-9"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  {ar ? "حذف جميع الأسئلة" : "Delete all"}
+                  <span className="hidden sm:inline">{ar ? "حذف الكل" : "Delete all"}</span>
                 </button>
               )}
-              {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => addQuestion(t)}
-                  className="px-3 py-1.5 rounded-lg border bg-background hover:bg-primary/5 hover:border-primary/30 transition-all text-xs font-bold flex items-center gap-1.5 text-foreground shadow-sm"
-                  title={typeLabel(t, ar)}
-                >
-                  <span className="text-primary">{typeIcon(t)}</span>
-                  <span>{typeLabel(t, ar)}</span>
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1504,7 +1527,7 @@ export default function WorksheetCreate() {
             )}
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
+          <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => {
                 if (!canSave) {
@@ -1514,7 +1537,7 @@ export default function WorksheetCreate() {
                 setCanvasEditorOpen(true);
               }}
               disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-              className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors"
+              className="min-w-0 px-2 sm:px-4 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-xs sm:text-sm"
             >
               <Layers className="w-4 h-4 text-primary" />
               {ar ? "تصميم حر" : "Canvas"}
@@ -1534,16 +1557,17 @@ export default function WorksheetCreate() {
                 setPreviewing(true);
               }}
               disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-              className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-amber-600 border-amber-600/30"
+              className="min-w-0 px-2 sm:px-4 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-amber-600 border-amber-600/30 text-xs sm:text-sm"
             >
               <Eye className="w-4 h-4" />
-              {ar ? "معاينة بدون حفظ" : "Preview"}
+              <span className="sm:hidden">{ar ? "معاينة" : "Preview"}</span>
+              <span className="hidden sm:inline">{ar ? "معاينة بدون حفظ" : "Preview without saving"}</span>
             </button>
 
             <button
               onClick={() => saveWorksheet()}
               disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-              className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-primary border-primary/30"
+              className="min-w-0 px-2 sm:px-4 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-primary border-primary/30 text-xs sm:text-sm"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {ar ? "حفظ كمسودة" : "Save Draft"}
@@ -1625,7 +1649,7 @@ export default function WorksheetCreate() {
               <div className="flex-1 overflow-auto p-4">
                 {savedLoading ? (
                   <div className="py-16 text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" /> 
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                     <span>{ar ? "جارٍ التحميل..." : "Loading..."}</span>
                   </div>
                 ) : savedRows.length === 0 ? (
@@ -1701,8 +1725,8 @@ export default function WorksheetCreate() {
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className={cn("block", className)}>
-      <div className="text-[11px] font-bold mb-1.5 text-muted-foreground px-1">{label}</div>
+    <label className={cn("block text-start", className)}>
+      <div className="text-[11px] font-bold mb-1.5 text-muted-foreground px-1 text-start">{label}</div>
       {children}
     </label>
   );
@@ -1729,12 +1753,12 @@ function CompactStepper({ label, value, max, onChange }: { label: string, value:
     <div className="flex items-center gap-2">
       <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">{label}</span>
       <div className="flex items-center bg-background border border-border rounded-md overflow-hidden shadow-sm h-7">
-        <button 
+        <button
           onClick={() => onChange(Math.max(0, value - 1))}
           className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
         >−</button>
         <span className="text-[11px] font-bold w-5 text-center">{value}</span>
-        <button 
+        <button
           onClick={() => onChange(Math.min(max, value + 1))}
           className="px-2 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
         >+</button>
