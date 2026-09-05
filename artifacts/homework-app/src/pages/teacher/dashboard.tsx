@@ -4180,7 +4180,7 @@ export function AssignmentRow({
               </div>
               <button
                 onClick={() =>
-                  setLocation(`/teacher/assignment/${assignment.id}`)
+                  setLocation(`/teacher/assignment/${assignment.id}?tab=results`)
                 }
                 className="text-xs font-bold px-3.5 py-2 min-h-[44px] bg-primary text-primary-foreground border border-primary rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5 shadow-sm"
               >
