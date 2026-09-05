@@ -17,6 +17,7 @@ import {
   Lock,
   AlertCircle,
   Loader2,
+  Clock,
   Target,
   FileText,
   Sparkles,
@@ -40,6 +41,13 @@ function getDeviceFingerprint(): string {
     localStorage.setItem(key, fp);
   }
   return fp;
+}
+
+function formatTime(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function ScoreRing({ score, size = 148 }: { score: number; size?: number }) {
@@ -137,6 +145,8 @@ export default function AdaptiveSolve() {
   const [detailResults, setDetailResults] = useState<ResultAnswer[]>([]);
   const [showImmediateFeedback, setShowImmediateFeedback] = useState(false);
   const [showAnswersAfterResult, setShowAnswersAfterResult] = useState(false);
+  const [examExpiresAt, setExamExpiresAt] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   // Persist a verified access code in sessionStorage so the student doesn't
   // re-enter it after a refresh in the same tab.
@@ -231,6 +241,7 @@ export default function AdaptiveSolve() {
       setAnsweredCount(data.answeredCount);
       setShowImmediateFeedback(data.showImmediateFeedback === true);
       setShowAnswersAfterResult(data.showAnswersAfterResult === true);
+      setExamExpiresAt(data.examExpiresAt || null);
       setCurrentQuestion(data.question);
       setStarted(true);
     } catch (err: unknown) {
@@ -239,6 +250,25 @@ export default function AdaptiveSolve() {
       setSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!started || done || !examExpiresAt) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const seconds = Math.max(0, Math.ceil((new Date(examExpiresAt).getTime() - Date.now()) / 1000));
+      setTimeLeft(seconds);
+      if (seconds === 0) {
+        setError(lang === "ar" ? "انتهى وقت الاختبار" : "Test time has ended");
+      }
+    };
+
+    updateTimer();
+    const interval = window.setInterval(updateTimer, 1000);
+    return () => window.clearInterval(interval);
+  }, [started, done, examExpiresAt, lang]);
 
   const handleAnswer = async () => {
     if (!sessionId || !currentQuestion || !selectedAnswer) return;
@@ -520,6 +550,22 @@ export default function AdaptiveSolve() {
                   </div>
                   <span className="font-black text-sm truncate">{assignment.title as string}</span>
                 </div>
+                {timeLeft !== null && (
+                  <div
+                    role="timer"
+                    aria-live="polite"
+                    className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 font-mono text-sm font-black ${
+                      timeLeft <= 60
+                        ? "bg-red-500 text-white animate-pulse"
+                        : timeLeft <= 300
+                          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+                          : "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                    }`}
+                  >
+                    <Clock className="h-4 w-4" />
+                    <span dir="ltr">{formatTime(timeLeft)}</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <p className="text-xs font-bold text-muted-foreground shrink-0">
@@ -546,6 +592,12 @@ export default function AdaptiveSolve() {
           </div>
 
           <div className="container mx-auto px-4 py-6 max-w-3xl">
+            {error && (
+              <div className="mb-4 flex items-center justify-center gap-2 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                {error}
+              </div>
+            )}
             <AnimatePresence mode="wait">
               {showImmediateFeedback && lastCorrect !== null && (
                 <motion.div
@@ -692,7 +744,7 @@ export default function AdaptiveSolve() {
                     <button
                       type="button"
                       onClick={handleAnswer}
-                      disabled={!selectedAnswer || submitting}
+                      disabled={!selectedAnswer || submitting || timeLeft === 0}
                       className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-base hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20"
                     >
                       {submitting ? (

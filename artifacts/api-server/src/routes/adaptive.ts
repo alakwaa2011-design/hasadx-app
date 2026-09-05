@@ -241,6 +241,9 @@ router.post("/adaptive/start", async (req, res) => {
       question: sanitizeQuestion(fullQ),
       showImmediateFeedback: config.showImmediateFeedback,
       showAnswersAfterResult: config.showAnswersAfterResult,
+      examExpiresAt: assignment.examMode && assignment.examDurationMinutes
+        ? new Date(session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000).toISOString()
+        : null,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "خطأ في بدء الجلسة";
@@ -283,11 +286,23 @@ router.post("/adaptive/answer", async (req, res) => {
     }
 
     const [assignment] = await db
-      .select({ adaptiveConfig: assignmentsTable.adaptiveConfig })
+      .select({
+        adaptiveConfig: assignmentsTable.adaptiveConfig,
+        examMode: assignmentsTable.examMode,
+        examDurationMinutes: assignmentsTable.examDurationMinutes,
+      })
       .from(assignmentsTable)
       .where(eq(assignmentsTable.id, session.assignmentId))
       .limit(1);
     const config = parseAdaptiveConfig(assignment?.adaptiveConfig ?? null);
+    if (
+      assignment?.examMode &&
+      assignment.examDurationMinutes &&
+      Date.now() >= session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000
+    ) {
+      res.status(403).json({ message: "انتهى وقت الاختبار" });
+      return;
+    }
 
     const previousSequence: QuestionSeqItem[] = session.questionSequence
       ? JSON.parse(session.questionSequence)
