@@ -98,6 +98,14 @@ describe("official worksheet question layout", () => {
     expect(source).toContain("border: 2px solid ${TC}");
   });
 
+  it("applies spacing to the complete question block rather than only its heading", () => {
+    expect(source).toContain('className={`ws-question-block ws-q-spacing-${questionStyle?.spacing ?? "normal"}');
+    expect(source).toContain(".ws-question-block.ws-q-spacing-compact");
+    expect(source).toContain(".ws-question-block.ws-q-spacing-relaxed");
+    expect(source).toContain(".ws-question-block > .ws-q { margin-bottom: 0; }");
+    expect(source).not.toContain('className={`ws-q ws-q-spacing-');
+  });
+
   it("offers both true/false answer layouts per question", () => {
     expect(source).toContain('"قوس للعلامة"');
     expect(source).toContain('"خيارا صح وخطأ"');

@@ -1779,7 +1779,7 @@ function QuestionView({
 
   return (
     <div
-      className={`ws-question-block${em ? " ws-q-editable" : ""}${selected ? " ws-q-selected" : ""}`}
+      className={`ws-question-block ws-q-spacing-${questionStyle?.spacing ?? "normal"}${em ? " ws-q-editable" : ""}${selected ? " ws-q-selected" : ""}`}
       onClick={event => {
         if (!em || (event.target as HTMLElement).closest(".ws-editable")) return;
         onSelectQuestion?.();
@@ -1789,7 +1789,7 @@ function QuestionView({
       {showTypeHeader && (
         <div className="ws-section-instr">{sectionInstruction(q.type, ar, questionStyle)}</div>
       )}
-      <div className={`ws-q ws-q-spacing-${questionStyle?.spacing ?? "normal"}`}>
+      <div className="ws-q">
         <div className="ws-q-head">
           <span className="ws-q-num" aria-label={`${labels.question} ${index}`}>{index}</span>
           <div className="ws-q-prompt-wrap">
@@ -2216,9 +2216,26 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         background: transparent;
         border-radius: 0;
       }
-      .ws-q-spacing-compact { margin-bottom: 2mm; padding-top: 1.5mm; padding-bottom: 1.5mm; }
-      .ws-q-spacing-relaxed { margin-bottom: 9mm; padding-top: 4mm; padding-bottom: 5mm; }
-      .ws-question-block { break-inside: avoid; page-break-inside: avoid; }
+      .ws-question-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin-bottom: 5mm;
+      }
+      .ws-question-block > .ws-q { margin-bottom: 0; }
+      .ws-question-block.ws-q-spacing-compact {
+        margin-bottom: 2mm;
+      }
+      .ws-question-block.ws-q-spacing-compact > .ws-q {
+        padding-top: 1.5mm;
+        padding-bottom: 1.5mm;
+      }
+      .ws-question-block.ws-q-spacing-relaxed {
+        margin-bottom: 9mm;
+      }
+      .ws-question-block.ws-q-spacing-relaxed > .ws-q {
+        padding-top: 4mm;
+        padding-bottom: 5mm;
+      }
       .ws-q-editable {
         cursor: pointer;
         border-radius: 8px;
