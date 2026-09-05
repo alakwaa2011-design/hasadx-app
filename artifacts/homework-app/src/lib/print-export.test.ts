@@ -9,19 +9,41 @@ describe("printToPdf", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the worksheet title as the suggested PDF filename", () => {
-    vi.useFakeTimers();
+  it("waits for a stable worksheet layout and uses its title as the PDF filename", async () => {
     document.title = "منصة حصاد";
     let titleAtPrint = "";
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
     vi.spyOn(window, "print").mockImplementation(() => {
       titleAtPrint = document.title;
     });
 
-    printToPdf("ورقة الكسور / الصف الخامس");
+    await printToPdf("ورقة الكسور / الصف الخامس");
 
     expect(titleAtPrint).toBe("ورقة الكسور - الصف الخامس");
-    vi.runAllTimers();
+    window.dispatchEvent(new Event("afterprint"));
     expect(document.title).toBe("منصة حصاد");
+  });
+
+  it("coalesces repeated PDF clicks while the layout is still preparing", async () => {
+    let resolveFrame: (() => void) | undefined;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      resolveFrame = () => callback(0);
+      return 1;
+    });
+    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+
+    const first = printToPdf("الأولى");
+    const second = printToPdf("الثانية");
+    expect(first).toBe(second);
+    for (let index = 0; index < 4; index += 1) {
+      resolveFrame?.();
+      await Promise.resolve();
+    }
+    await first;
+    expect(print).toHaveBeenCalledTimes(1);
   });
 });
 

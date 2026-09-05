@@ -201,7 +201,34 @@ export async function downloadAsWord(options: WordExportOptions): Promise<void> 
  * already enforces `@page { size: A4; margin: 0 }` so the dialog's
  * "Save as PDF" produces a true A4 PDF.
  */
-export function printToPdf(title?: string): void {
+let printInFlight: Promise<void> | null = null;
+
+async function waitForStablePrintLayout(): Promise<void> {
+  if ("fonts" in document) {
+    await document.fonts.ready.catch(() => undefined);
+  }
+
+  const nextFrame = () => new Promise<void>(resolve => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+    else window.setTimeout(resolve, 0);
+  });
+  let previousSignature: string | null = null;
+  let stableFrames = 0;
+  for (let attempt = 0; attempt < 12 && stableFrames < 2; attempt += 1) {
+    await nextFrame();
+    const pages = Array.from(document.querySelectorAll<HTMLElement>("[data-worksheet-page], [data-answer-key-page]"));
+    const signature = pages
+      .map(page => `${page.getBoundingClientRect().height}:${page.scrollHeight}:${page.textContent?.length ?? 0}`)
+      .join("|");
+    stableFrames = signature === previousSignature ? stableFrames + 1 : 0;
+    previousSignature = signature;
+  }
+}
+
+export function printToPdf(title?: string): Promise<void> {
+  if (printInFlight) return printInFlight;
+  printInFlight = (async () => {
+    await waitForStablePrintLayout();
   const previousTitle = document.title;
   if (title?.trim()) document.title = sanitizeFilename(title);
 
@@ -218,6 +245,10 @@ export function printToPdf(title?: string): void {
     // afterprint reliably, so keep a fallback without changing the PDF name.
     window.setTimeout(restoreTitle, 1000);
   }
+  })().finally(() => {
+    printInFlight = null;
+  });
+  return printInFlight;
 }
 
 function sanitizeFilename(s: string): string {
