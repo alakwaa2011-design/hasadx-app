@@ -257,6 +257,40 @@ export declare const adaptiveSessionsTable: import("drizzle-orm/pg-core").PgTabl
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        completionReason: import("drizzle-orm/pg-core").PgColumn<{
+            name: "completion_reason";
+            tableName: "adaptive_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lastQuestionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "last_question_id";
+            tableName: "adaptive_sessions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         startedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "started_at";
             tableName: "adaptive_sessions";

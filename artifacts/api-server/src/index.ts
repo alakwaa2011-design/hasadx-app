@@ -47,6 +47,11 @@ import { CONFIGURED_ADMIN_EMAILS } from "./lib/admin-identity";
 
 async function runSchemaMigrations() {
   try {
+    await db.execute(sql`
+      ALTER TABLE adaptive_sessions
+        ADD COLUMN IF NOT EXISTS completion_reason TEXT,
+        ADD COLUMN IF NOT EXISTS last_question_id INTEGER
+    `);
     // ── Persistent per-teacher TTS audio cache (metadata only; audio in Object Storage) ──
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS tts_audio_cache (

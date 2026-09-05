@@ -160,7 +160,17 @@ function pickNext(ability: number, pool: any[], answered: Set<number>, abilities
   return choices.sort((a, b) => ((abilities[a.skill || "general"]?.total || 0) - (abilities[b.skill || "general"]?.total || 0)))[0] || null;
 }
 
-async function finishSession(tx: any, session: any, pool: any[], sequence: QuestionSeqItem[], ability: number, abilities: SkillAbilities, correctCount: number, latestRuntime?: StageRuntime) {
+async function finishSession(
+  tx: any,
+  session: any,
+  pool: any[],
+  sequence: QuestionSeqItem[],
+  ability: number,
+  abilities: SkillAbilities,
+  correctCount: number,
+  latestRuntime?: StageRuntime,
+  completionReason: "completed" | "timeout" = "completed",
+) {
   if (session.submissionId) return { submissionId: session.submissionId, score: null, earnedPoints: null, totalPoints: null };
   const byId = new Map(pool.map(q => [q.id, q]));
   const totalPoints = sequence.reduce((n, a) => n + (byId.get(a.questionId)?.points || 1), 0);
@@ -178,6 +188,7 @@ async function finishSession(tx: any, session: any, pool: any[], sequence: Quest
     currentAbility: ability, skillAbilities: storeAbilities(abilities, latestRuntime || parseStored(session.skillAbilities).stageRuntime), questionSequence: JSON.stringify(sequence),
     currentQuestionId: null, answeredCount: sequence.length, correctCount, completed: 1,
     finalLevel: getLevel(ability), submissionId: submission.id, completedAt: new Date(),
+    completionReason, lastQuestionId: session.currentQuestionId,
   }).where(and(eq(adaptiveSessionsTable.id, session.id), eq(adaptiveSessionsTable.completed, 0)));
   return { submissionId: submission.id, score: Math.round(totalPoints ? earnedPoints / totalPoints * 100 : 0), earnedPoints, totalPoints };
 }
@@ -244,7 +255,7 @@ router.post("/adaptive/start", async (req, res) => {
         await tx.execute(sql`SELECT id FROM adaptive_sessions WHERE id = ${session.id} FOR UPDATE`);
         const [locked] = await tx.select().from(adaptiveSessionsTable).where(eq(adaptiveSessionsTable.id, session.id)).limit(1);
         if (!locked) throw new Error("الجلسة غير موجودة");
-        return finishSession(tx, locked, pool, sequence, locked.currentAbility, abilities, locked.correctCount, resumeRuntime);
+        return finishSession(tx, locked, pool, sequence, locked.currentAbility, abilities, locked.correctCount, resumeRuntime, "timeout");
       });
       return void res.json({
         sessionId: session.id,
@@ -280,7 +291,7 @@ router.post("/adaptive/answer", async (req, res) => {
       const expired = expiresAt(assignment, session);
       const stageExpired = stageExpiresAt(config, runtime);
       if (session.completed || (expired && expired <= new Date()) || (stageExpired && stageExpired <= new Date())) {
-        const final = session.completed ? { submissionId: session.submissionId, score: null, earnedPoints: null, totalPoints: null } : await finishSession(tx, session, pool, sequence, session.currentAbility, abilities, session.correctCount, runtime);
+        const final = session.completed ? { submissionId: session.submissionId, score: null, earnedPoints: null, totalPoints: null } : await finishSession(tx, session, pool, sequence, session.currentAbility, abilities, session.correctCount, runtime, "timeout");
         return { status: 200, body: { done: true, timedOut: !session.completed, answeredCount: sequence.length, totalQuestions: session.totalToAnswer, ...final, ...(resultsAvailable(assignment) ? { resultAvailable: true, showAnswersAfterResult: config.showAnswersAfterResult } : deniedResult()) } };
       }
       if (session.currentQuestionId !== questionId || sequence.some(a => a.questionId === questionId)) return { status: 400, body: { message: "السؤال المرسل لا يتطابق مع السؤال الحالي" } };
@@ -358,7 +369,7 @@ router.get("/adaptive/results/:sessionId", async (req, res) => {
       const q = pool.find(p => p.id === a.questionId);
       return { questionId: a.questionId, questionText: q?.text || "", selectedAnswer: a.selectedAnswer, correctAnswer: q?.correctAnswer || "", isCorrect: a.isCorrect, points: q?.points || 1, ...(teacher ? { difficulty: a.difficulty, skill: a.skill } : {}) };
     }) : [];
-    res.json({ sessionId: id, studentName: session.studentName, studentClass: session.studentClass, completed: !!session.completed, resultAvailable: true, finalLevel: session.finalLevel, currentAbility: session.currentAbility, answeredCount: session.answeredCount, correctCount: session.correctCount, totalToAnswer: session.totalToAnswer, skillAbilities: teacher ? abilities : undefined, answers, startedAt: session.startedAt.toISOString(), completedAt: session.completedAt?.toISOString() || null });
+    res.json({ sessionId: id, studentName: session.studentName, studentClass: session.studentClass, completed: !!session.completed, completionReason: session.completionReason || null, timedOut: session.completionReason === "timeout", lastQuestionId: session.lastQuestionId || null, resultAvailable: true, finalLevel: session.finalLevel, currentAbility: session.currentAbility, answeredCount: session.answeredCount, correctCount: session.correctCount, totalToAnswer: session.totalToAnswer, skillAbilities: teacher ? abilities : undefined, answers, startedAt: session.startedAt.toISOString(), completedAt: session.completedAt?.toISOString() || null });
   } catch (e: any) { res.status(500).json({ message: e.message || "خطأ" }); }
 });
 
@@ -377,6 +388,11 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
       eq(adaptiveSessionsTable.assignmentId, assignmentId),
       eq(adaptiveSessionsTable.completed, 1),
     ));
+    const assignmentQuestions = await db.select({
+      id: questionsTable.id,
+      text: questionsTable.text,
+    }).from(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
+    const questionTextById = new Map(assignmentQuestions.map(question => [question.id, question.text]));
     const allSkills = new Set<string>();
     const students = sessions.map(session => {
       const skillAbilities = parseAbilities(session.skillAbilities);
@@ -392,6 +408,10 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
         totalToAnswer: session.totalToAnswer,
         skillAbilities,
         stageRuntime: parseStored(session.skillAbilities).stageRuntime,
+        completionReason: session.completionReason || "completed",
+        timedOut: session.completionReason === "timeout",
+        lastQuestionId: session.lastQuestionId,
+        lastQuestionText: session.lastQuestionId ? questionTextById.get(session.lastQuestionId) || null : null,
         startedAt: session.startedAt.toISOString(),
         completedAt: session.completedAt?.toISOString() || null,
       };

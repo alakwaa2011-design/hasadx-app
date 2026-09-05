@@ -1644,12 +1644,14 @@ export default function TeacherAssignmentDetail() {
                             onClick={() => {
                               const students = adaptiveReport.students as Array<Record<string, unknown>>;
                               const skills = adaptiveReport.skills as string[];
-                              let csv = `${lang === "ar" ? "الطالب" : "Student"},${lang === "ar" ? "الصف" : "Class"},${lang === "ar" ? "المستوى" : "Level"},${lang === "ar" ? "الصحيحة" : "Correct"},${lang === "ar" ? "الإجمالي" : "Total"}`;
+                              let csv = `${lang === "ar" ? "الطالب" : "Student"},${lang === "ar" ? "الصف" : "Class"},${lang === "ar" ? "المستوى" : "Level"},${lang === "ar" ? "الصحيحة" : "Correct"},${lang === "ar" ? "الإجمالي" : "Total"},${lang === "ar" ? "سبب الانتهاء" : "Completion reason"},${lang === "ar" ? "آخر سؤال" : "Last question"}`;
                               if (skills?.length) csv += `,${skills.join(",")}`;
                               csv += "\n";
                               students.forEach((s: Record<string, unknown>) => {
                                 const sa = s.skillAbilities as Record<string, { ability: number; correct: number; total: number }> || {};
-                                let row = `${s.studentName},${s.studentClass || ""},${s.finalLevel},${s.correctCount},${s.answeredCount}`;
+                                const reason = s.timedOut ? (lang === "ar" ? "انتهى الوقت" : "Timed out") : (lang === "ar" ? "أكمل الاختبار" : "Completed");
+                                const lastQuestion = String(s.lastQuestionText || "").replaceAll('"', '""');
+                                let row = `${s.studentName},${s.studentClass || ""},${s.finalLevel},${s.correctCount},${s.answeredCount},${reason},"${lastQuestion}"`;
                                 if (skills?.length) row += `,${skills.map(sk => sa[sk] ? Math.round((sa[sk].correct / Math.max(1, sa[sk].total)) * 100) + "%" : "—").join(",")}`;
                                 csv += row + "\n";
                               });
@@ -1700,6 +1702,36 @@ export default function TeacherAssignmentDetail() {
                                   </div>
                                 );
                               })}
+                            </div>
+                          )}
+                          {(adaptiveReport.students as Array<Record<string, unknown>>)?.length > 0 && (
+                            <div className="space-y-2 pt-2 border-t border-violet-100 dark:border-violet-900/50">
+                              <p className="text-xs font-black text-foreground">
+                                {lang === "ar" ? "تفاصيل إنهاء الطلاب" : "Student completion details"}
+                              </p>
+                              {(adaptiveReport.students as Array<Record<string, unknown>>).map(student => (
+                                <div key={String(student.sessionId)} className="rounded-xl bg-violet-50/70 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/50 p-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                      <p className="text-xs font-black text-foreground">{String(student.studentName)}</p>
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {String(student.correctCount)} / {String(student.answeredCount)} {lang === "ar" ? "إجابة صحيحة" : "correct"}
+                                      </p>
+                                    </div>
+                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${student.timedOut ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"}`}>
+                                      {student.timedOut
+                                        ? (lang === "ar" ? "انتهى بسبب الوقت" : "Timed out")
+                                        : (lang === "ar" ? "أكمل الاختبار" : "Completed")}
+                                    </span>
+                                  </div>
+                                  {Boolean(student.lastQuestionText) && (
+                                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                                      <span className="font-black text-foreground">{lang === "ar" ? "آخر سؤال وصل إليه: " : "Last question reached: "}</span>
+                                      {String(student.lastQuestionText)}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>

@@ -17,6 +17,8 @@ export const adaptiveSessionsTable = pgTable("adaptive_sessions", {
   finalLevel: text("final_level"),
   submissionId: integer("submission_id"),
   completed: integer("completed").notNull().default(0),
+  completionReason: text("completion_reason"),
+  lastQuestionId: integer("last_question_id"),
   startedAt: timestamp("started_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
 });
