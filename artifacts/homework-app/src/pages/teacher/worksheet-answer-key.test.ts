@@ -33,7 +33,7 @@ describe("worksheet answer labels", () => {
     expect(answer).not.toMatch(/[A-Z]/);
   });
 
-  it("restarts Arabic question lettering for every new question type", () => {
+  it("restarts labels for every type and numbers MCQs separately from their lettered options", () => {
     const questions = [
       { id: "tf-1", type: "true_false", prompt: "عبارة 1", correct: true },
       { id: "tf-2", type: "true_false", prompt: "عبارة 2", correct: false },
@@ -43,6 +43,6 @@ describe("worksheet answer labels", () => {
 
     expect(buildAnswerItems(questions, true, { true: "صح", false: "خطأ" })
       .map(item => item.questionLabel))
-      .toEqual(["أ", "ب", "أ", "ب"]);
+      .toEqual(["أ", "ب", "١", "٢"]);
   });
 });

@@ -245,7 +245,7 @@ export function WorksheetPrintView({
         previousType = question.type;
         indexWithinType = 0;
       }
-      result.set(question.id, questionSequenceLabel(indexWithinType, ar));
+      result.set(question.id, questionLabelForType(question.type, indexWithinType, ar));
       indexWithinType += 1;
     }
     return result;
@@ -710,7 +710,7 @@ export function WorksheetPrintView({
         {localQs.map((q, i) => (
           <div key={q.id} data-q-measure style={{ width: qColWidth }}>
             <QuestionView
-              index={questionLabelsById.get(q.id) ?? questionSequenceLabel(i, ar)}
+              index={questionLabelsById.get(q.id) ?? questionLabelForType(q.type, i, ar)}
               q={q}
               ar={ar}
               labels={labels}
@@ -877,7 +877,7 @@ export function WorksheetPrintView({
                     return (
                       <QuestionView
                         key={q.id}
-                        index={questionLabelsById.get(q.id) ?? questionSequenceLabel(idx, ar)}
+                        index={questionLabelsById.get(q.id) ?? questionLabelForType(q.type, idx, ar)}
                         q={lq}
                         ar={ar}
                         labels={labels}
@@ -1806,6 +1806,14 @@ export function questionSequenceLabel(index: number, ar: boolean): string {
     : String.fromCharCode(65 + index);
 }
 
+export function questionLabelForType(type: QuestionType, index: number, ar: boolean): string {
+  if (type === "mcq") {
+    const number = String(index + 1);
+    return ar ? number.replace(/\d/g, digit => "٠١٢٣٤٥٦٧٨٩"[Number(digit)]) : number;
+  }
+  return questionSequenceLabel(index, ar);
+}
+
 export function convertQuestionType(question: Question, type: QuestionType, ar: boolean): Question {
   if (question.type === type) return question;
   const base = {
@@ -2610,7 +2618,7 @@ export function buildAnswerItems(
     const item: AnswerItem = {
       id: `${question.id}:answer`,
       question,
-      questionLabel: questionSequenceLabel(indexWithinType, ar),
+      questionLabel: questionLabelForType(question.type, indexWithinType, ar),
       text: answerText(question, ar, labels),
       continuation: false,
     };
