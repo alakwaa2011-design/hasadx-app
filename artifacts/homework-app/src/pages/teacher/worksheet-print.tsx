@@ -946,6 +946,10 @@ export function WorksheetPrintView({
                         onSelectField={key => setSelectedField({ questionId: q.id, key })}
                         selected={selectedField?.questionId === q.id}
                         onSelectQuestion={() => setSelectedField({ questionId: q.id, key: "prompt" })}
+                        onMatchingWidthChange={matchingLeftWidth => {
+                          updateQuestionStyle(q.id, current => ({ ...current, matchingLeftWidth }));
+                          setSelectedField({ questionId: q.id, key: "prompt" });
+                        }}
                       />
                     );
                   })}
@@ -1759,7 +1763,7 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onSelectQuestion,
+  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onSelectQuestion, onMatchingWidthChange,
 }: {
   index: string;
   q: Question;
@@ -1772,10 +1776,22 @@ function QuestionView({
   onSelectField?: (key: string) => void;
   selected?: boolean;
   onSelectQuestion?: () => void;
+  onMatchingWidthChange?: (leftWidth: number) => void;
 }) {
   const em = editMode ?? false;
   const edit = onEdit ?? (() => {});
-  const matchingFractions = q.type === "matching" ? matchingColumnFractions(q.pairs) : null;
+  const matchingRef = useRef<HTMLDivElement>(null);
+  const automaticMatchingFractions = q.type === "matching" ? matchingColumnFractions(q.pairs) : null;
+  const manualMatchingLeft = questionStyle?.matchingLeftWidth;
+  const matchingFractions = manualMatchingLeft
+    ? { left: manualMatchingLeft / 100, right: (100 - manualMatchingLeft) / 100 }
+    : automaticMatchingFractions;
+  const updateMatchingWidthFromPointer = (clientX: number) => {
+    const rect = matchingRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    const raw = ar ? (rect.right - clientX) / rect.width : (clientX - rect.left) / rect.width;
+    onMatchingWidthChange?.(Math.round(Math.min(0.65, Math.max(0.35, raw)) * 100));
+  };
 
   return (
     <div
@@ -1855,6 +1871,7 @@ function QuestionView({
       {q.type === "matching" && (
         <div
           className="ws-match"
+          ref={matchingRef}
           style={{
             gridTemplateColumns: `minmax(0, ${matchingFractions!.left}fr) 6mm minmax(0, ${matchingFractions!.right}fr)`,
           }}
@@ -1880,7 +1897,38 @@ function QuestionView({
               </li>
             ))}
           </ul>
-          <div className="ws-match-divider" aria-hidden="true" />
+          <div
+            className={`ws-match-divider${em ? " is-editable" : ""}`}
+            role={em ? "separator" : undefined}
+            aria-label={em ? (ar ? "اسحب لتغيير عرض عمودي التوصيل" : "Drag to resize matching columns") : undefined}
+            aria-orientation={em ? "vertical" : undefined}
+            aria-valuemin={em ? 35 : undefined}
+            aria-valuemax={em ? 65 : undefined}
+            aria-valuenow={em ? Math.round(matchingFractions!.left * 100) : undefined}
+            tabIndex={em ? 0 : undefined}
+            onPointerDown={event => {
+              if (!em) return;
+              event.preventDefault();
+              event.stopPropagation();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              updateMatchingWidthFromPointer(event.clientX);
+            }}
+            onPointerMove={event => {
+              if (!em || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+              updateMatchingWidthFromPointer(event.clientX);
+            }}
+            onKeyDown={event => {
+              if (!em || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const visualDelta = event.key === "ArrowRight" ? 2 : -2;
+              const delta = ar ? -visualDelta : visualDelta;
+              const current = Math.round(matchingFractions!.left * 100);
+              onMatchingWidthChange?.(Math.min(65, Math.max(35, current + delta)));
+            }}
+          >
+            {em && <span className="ws-match-divider-handle" aria-hidden="true">↔</span>}
+          </div>
           <ul className="ws-match-col">
             {matchingDisplayOrder(q.pairs.length).map((srcIdx, displayIdx) => (
               <li key={`r${displayIdx}`}>
@@ -2410,6 +2458,40 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         background: ${TC}22;
         width: 1px;
         margin: 0 auto;
+        position: relative;
+      }
+      .ws-match-divider.is-editable {
+        width: 6mm;
+        background: transparent;
+        cursor: col-resize;
+        touch-action: none;
+      }
+      .ws-match-divider.is-editable::before {
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        left: 50%;
+        width: 2px;
+        transform: translateX(-50%);
+        background: ${TC};
+      }
+      .ws-match-divider-handle {
+        position: sticky;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        left: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: ${TC};
+        color: white;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(20,40,32,0.25);
+        font-size: 12px;
+        font-weight: 900;
       }
 
       .ws-format-toolbar {

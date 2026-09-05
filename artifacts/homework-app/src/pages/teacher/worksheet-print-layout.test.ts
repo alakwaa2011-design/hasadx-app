@@ -73,6 +73,15 @@ describe("official worksheet question layout", () => {
     expect(source).not.toContain("matchingLeftWidth ?? 50");
   });
 
+  it("lets teachers drag the matching divider with safe width limits", () => {
+    expect(source).toContain("onMatchingWidthChange");
+    expect(source).toContain("setPointerCapture");
+    expect(source).toContain('role={em ? "separator"');
+    expect(source).toContain("aria-valuemin={em ? 35");
+    expect(source).toContain("aria-valuemax={em ? 65");
+    expect(source).toContain("ws-match-divider-handle");
+  });
+
   it("places the true/false mark after the statement and offers both MCQ layouts", () => {
     const promptStart = source.indexOf("<EditSpan", source.indexOf('className="ws-q-prompt"'));
     const markStart = source.indexOf('className="ws-tf-mark"', promptStart);
