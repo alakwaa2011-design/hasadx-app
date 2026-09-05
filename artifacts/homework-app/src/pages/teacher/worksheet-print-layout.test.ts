@@ -80,7 +80,14 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('"ترتيب الخيارات"');
     expect(source).toContain('"عمودي"');
     expect(source).toContain('"خياران في سطر"');
+    expect(source).toContain('data-testid="select-choice-columns"');
     expect(source).toContain('role="toolbar"');
+  });
+
+  it("keeps spacing and option-layout controls compact and indivisible", () => {
+    expect(source).toContain('data-testid="select-question-spacing"');
+    expect(source).toContain("مسافة السؤال");
+    expect(source).toContain(".ws-format-control { flex: 0 0 auto; white-space: nowrap; }");
   });
 
   it("offers both true/false answer layouts per question", () => {

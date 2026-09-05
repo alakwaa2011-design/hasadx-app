@@ -1667,37 +1667,32 @@ export function QuestionFormattingToolbar({
             />
           </label>
         )}
-        {(["compact", "normal", "relaxed"] as const).map(value => (
-          <button
-            type="button"
-            key={value}
-            className={(questionStyle?.spacing ?? "normal") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
-            onClick={() => onQuestionChange({ spacing: value })}
-            aria-pressed={(questionStyle?.spacing ?? "normal") === value}
-            aria-label={`${ar ? "تباعد السؤال" : "Question spacing"}: ${ar ? ({ compact: "مضغوط", normal: "عادي", relaxed: "واسع" }[value]) : value}`}
-            data-testid={`button-question-spacing-${value}`}
+        <label className="ws-format-type ws-format-control">
+          <span>{ar ? "مسافة السؤال" : "Question spacing"}</span>
+          <select
+            value={questionStyle?.spacing ?? "normal"}
+            onChange={event => onQuestionChange({ spacing: event.target.value as QuestionStyle["spacing"] })}
+            aria-label={ar ? "مسافة السؤال" : "Question spacing"}
+            data-testid="select-question-spacing"
           >
-            {ar ? ({ compact: "مضغوط", normal: "عادي", relaxed: "واسع" }[value]) : value}
-          </button>
-        ))}
+            <option value="compact">{ar ? "مضغوط" : "Compact"}</option>
+            <option value="normal">{ar ? "عادي" : "Normal"}</option>
+            <option value="relaxed">{ar ? "واسع" : "Wide"}</option>
+          </select>
+        </label>
         {question.type === "mcq" && (
-          <>
-            <span className="ws-format-label">{ar ? "ترتيب الخيارات" : "Option layout"}</span>
-            {[1, 2].map(value => (
-              <button
-                type="button"
-                key={value}
-                className={(questionStyle?.choiceColumns ?? 2) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
-                onClick={() => onQuestionChange({ choiceColumns: value as 1 | 2 })}
-                aria-pressed={(questionStyle?.choiceColumns ?? 1) === value}
-                data-testid={`button-choice-columns-${value}`}
-              >
-                {ar
-                  ? (value === 1 ? "عمودي" : "خياران في سطر")
-                  : (value === 1 ? "Vertical" : "Two per row")}
-              </button>
-            ))}
-          </>
+          <label className="ws-format-type ws-format-control">
+            <span>{ar ? "ترتيب الخيارات" : "Option layout"}</span>
+            <select
+              value={questionStyle?.choiceColumns ?? 2}
+              onChange={event => onQuestionChange({ choiceColumns: Number(event.target.value) as 1 | 2 })}
+              aria-label={ar ? "ترتيب خيارات السؤال" : "Question option layout"}
+              data-testid="select-choice-columns"
+            >
+              <option value={1}>{ar ? "عمودي" : "Vertical"}</option>
+              <option value={2}>{ar ? "خياران في سطر" : "Two per row"}</option>
+            </select>
+          </label>
         )}
         <button type="button" onClick={onResetQuestion} aria-label={ar ? "إعادة إعدادات السؤال" : "Reset question settings"} data-testid="button-reset-question-formatting">
           <RotateCcw />
@@ -2425,6 +2420,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-format-range { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: ${TC}; }
       .ws-format-range input { width: 86px; accent-color: ${TC}; }
       .ws-format-type { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: ${TC}; }
+      .ws-format-control { flex: 0 0 auto; white-space: nowrap; }
       .ws-format-type select, .ws-format-type input {
         height: 30px;
         max-width: 155px;
