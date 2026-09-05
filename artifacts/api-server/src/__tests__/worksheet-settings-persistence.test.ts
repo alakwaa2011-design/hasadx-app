@@ -156,6 +156,28 @@ function payload(nextSettings = settings) {
   };
 }
 
+function customFields(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    label: `حقل ${index + 1}`,
+    value: `قيمة ${index + 1}`,
+  }));
+}
+
+function layoutElements(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `element-${index + 1}`,
+    kind: "rect",
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+  }));
+}
+
+function pageBreaks(count: number) {
+  return Array.from({ length: count }, (_, index) => `question-${index + 1}`);
+}
+
 beforeEach(() => {
   mockState.queue.length = 0;
   mockState.writes.length = 0;
@@ -197,5 +219,72 @@ describe("worksheet appearance settings persistence", () => {
     const readResponse = await request(makeApp()).get("/api/worksheets/11");
     expect(readResponse.status).toBe(200);
     expect(readResponse.body.settings).toEqual(updatedSettings);
+  });
+
+  it.each([
+    ["theme color", { ...settings, themeColor: "green" }],
+    ["logo", { ...settings, logoUrl: "https://example.com/logo.png" }],
+    ["layout element", {
+      ...settings,
+      layout: {
+        elements: [{
+          id: "broken-element",
+          kind: "image",
+          x: 0,
+          y: 0,
+          width: 10,
+          height: 10,
+        }],
+      },
+    }],
+  ])("rejects an invalid %s with 400", async (_name, invalidSettings) => {
+    const response = await request(makeApp()).post("/api/worksheets").send(payload(invalidSettings as typeof settings));
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Invalid worksheet");
+    expect(mockState.writes).toHaveLength(0);
+  });
+
+  it("accepts the maximum supported counts", async () => {
+    const maximumSettings = {
+      ...settings,
+      customFields: customFields(6),
+      layout: { elements: layoutElements(100) },
+      pageBreaks: pageBreaks(59),
+    };
+    const created = { id: 12, teacherId: 7, ...payload(maximumSettings), linkedAssignmentId: null };
+    mockState.queue.push([created]);
+
+    const response = await request(makeApp()).post("/api/worksheets").send(payload(maximumSettings));
+
+    expect(response.status).toBe(201);
+    expect(mockState.writes[0]).toMatchObject({ settings: maximumSettings });
+  });
+
+  it.each([
+    ["custom fields", { ...settings, customFields: customFields(7) }],
+    ["layout elements", { ...settings, layout: { elements: layoutElements(101) } }],
+    ["page breaks", { ...settings, pageBreaks: pageBreaks(60) }],
+  ])("rejects too many %s with 400", async (_name, invalidSettings) => {
+    const response = await request(makeApp()).post("/api/worksheets").send(payload(invalidSettings));
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Invalid worksheet");
+    expect(mockState.writes).toHaveLength(0);
+  });
+
+  it("leaves the saved worksheet unchanged when an update is rejected", async () => {
+    const existing = { id: 11, teacherId: 7, ...payload(), linkedAssignmentId: null };
+    const invalidSettings = { ...settings, themeColor: "#not-a-color" };
+
+    const updateResponse = await request(makeApp()).put("/api/worksheets/11").send(payload(invalidSettings));
+
+    expect(updateResponse.status).toBe(400);
+    expect(mockState.writes).toHaveLength(0);
+
+    mockState.queue.push([{ worksheet: existing, owner: { id: 7, name: "المعلم", isAdmin: false } }]);
+    const readResponse = await request(makeApp()).get("/api/worksheets/11");
+    expect(readResponse.status).toBe(200);
+    expect(readResponse.body.settings).toEqual(settings);
   });
 });
