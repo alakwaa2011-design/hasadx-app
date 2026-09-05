@@ -34,6 +34,9 @@ export interface CanvasElement {
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
+  strokeStyle?: "solid" | "dashed" | "dotted";
+  borderRadius?: number;
+  opacity?: number;
 }
 
 export interface CanvasLayout {
@@ -60,6 +63,7 @@ export function CanvasLayerRenderer({ layout }: { layout?: CanvasLayout }) {
           pointerEvents: "none",
           boxSizing: "border-box",
           zIndex: 2,
+          opacity: el.opacity ?? 1,
         };
         if (el.kind === "text") {
           return (
@@ -83,9 +87,9 @@ export function CanvasLayerRenderer({ layout }: { layout?: CanvasLayout }) {
           return (
             <div key={el.id} style={{
               ...base,
-              border: `${el.strokeWidth ?? 2}px solid ${el.strokeColor ?? BRAND_PRIMARY}`,
+              border: `${el.strokeWidth ?? 2}px ${el.strokeStyle ?? "solid"} ${el.strokeColor ?? BRAND_PRIMARY}`,
               background: el.fillColor === "transparent" ? "transparent" : (el.fillColor ?? "transparent"),
-              borderRadius: "2px",
+              borderRadius: `${el.borderRadius ?? 2}px`,
               WebkitPrintColorAdjust: "exact",
               printColorAdjust: "exact",
             } as React.CSSProperties} />
@@ -95,7 +99,7 @@ export function CanvasLayerRenderer({ layout }: { layout?: CanvasLayout }) {
           return (
             <div key={el.id} style={{
               ...base,
-              border: `${el.strokeWidth ?? 2}px solid ${el.strokeColor ?? BRAND_PRIMARY}`,
+              border: `${el.strokeWidth ?? 2}px ${el.strokeStyle ?? "solid"} ${el.strokeColor ?? BRAND_PRIMARY}`,
               background: el.fillColor === "transparent" ? "transparent" : (el.fillColor ?? "transparent"),
               borderRadius: "50%",
               WebkitPrintColorAdjust: "exact",

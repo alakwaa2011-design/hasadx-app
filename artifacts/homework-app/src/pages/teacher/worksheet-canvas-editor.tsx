@@ -58,6 +58,7 @@ interface Props {
 }
 
 type Tool = "select" | CanvasElementKind;
+type ResizeHandle = "br" | "bl" | "tr" | "tl" | "top" | "right" | "bottom" | "left";
 
 export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave, onClose }: Props) {
   const { t, dir } = useI18n();
@@ -145,14 +146,14 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
 
   // ── Resize element via corner handle ─────────────────────────────────────
   const resizeState = useRef<{
-    id: string; corner: "br" | "bl" | "tr" | "tl";
+    id: string; corner: ResizeHandle;
     startX: number; startY: number;
     origX: number; origY: number;
     origW: number; origH: number;
   } | null>(null);
 
   const handleResizePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>, id: string, corner: "br" | "bl" | "tr" | "tl") => {
+    (e: React.PointerEvent<HTMLDivElement>, id: string, corner: ResizeHandle) => {
       e.stopPropagation();
       e.currentTarget.setPointerCapture(e.pointerId);
       const el = elements.find(x => x.id === id);
@@ -193,13 +194,29 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
           const newH = Math.max(MIN_H, rs.origH - dy);
           y = rs.origY + (rs.origH - newH);
           height = newH;
-        } else { // tl
+        } else if (rs.corner === "tl") {
           const newW = Math.max(MIN_W, rs.origW - dx);
           const newH = Math.max(MIN_H, rs.origH - dy);
           x = rs.origX + (rs.origW - newW);
           y = rs.origY + (rs.origH - newH);
           width = newW; height = newH;
+        } else if (rs.corner === "right") {
+          width = Math.max(MIN_W, rs.origW + dx);
+        } else if (rs.corner === "left") {
+          const newW = Math.max(MIN_W, rs.origW - dx);
+          x = rs.origX + (rs.origW - newW);
+          width = newW;
+        } else if (rs.corner === "bottom") {
+          height = Math.max(MIN_H, rs.origH + dy);
+        } else if (rs.corner === "top") {
+          const newH = Math.max(MIN_H, rs.origH - dy);
+          y = rs.origY + (rs.origH - newH);
+          height = newH;
         }
+        x = Math.max(0, Math.min(x, 100 - MIN_W));
+        y = Math.max(0, Math.min(y, 100 - MIN_H));
+        width = Math.max(MIN_W, Math.min(width, 100 - x));
+        height = Math.max(MIN_H, Math.min(height, 100 - y));
         return { ...el, x, y, width, height };
       }));
     },
@@ -348,6 +365,19 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
             className="flex-shrink-0 bg-neutral-100 border-b overflow-hidden"
           >
             <div className="flex flex-wrap gap-3 items-center px-4 py-2" dir={dir}>
+              <PropsLabel ar={ar}>{ar ? "الموقع س" : "X"}</PropsLabel>
+              <DimensionInput value={selected.x} max={100 - selected.width} onChange={x => patchSelected({ x })} />
+              <PropsLabel ar={ar}>{ar ? "الموقع ص" : "Y"}</PropsLabel>
+              <DimensionInput value={selected.y} max={100 - selected.height} onChange={y => patchSelected({ y })} />
+              <PropsLabel ar={ar}>{ar ? "العرض %" : "Width %"}</PropsLabel>
+              <DimensionInput value={selected.width} min={5} max={100 - selected.x} onChange={width => patchSelected({ width })} />
+              {selected.kind !== "line" && (
+                <>
+                  <PropsLabel ar={ar}>{ar ? "الارتفاع %" : "Height %"}</PropsLabel>
+                  <DimensionInput value={selected.height} min={2} max={100 - selected.y} onChange={height => patchSelected({ height })} />
+                </>
+              )}
+              <div className="w-px h-5 bg-border" />
               {selected.kind === "text" && (
                 <>
                   <PropsLabel ar={ar}>{t.worksheetCanvas.fontSize}</PropsLabel>
@@ -418,6 +448,28 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                   >
                     {t.worksheetCanvas.noFill}
                   </button>
+                  <PropsLabel ar={ar}>{ar ? "نمط الحد" : "Border"}</PropsLabel>
+                  <select
+                    value={selected.strokeStyle ?? "solid"}
+                    onChange={e => patchSelected({ strokeStyle: e.target.value as CanvasElement["strokeStyle"] })}
+                    className="rounded border bg-white px-2 py-1 text-xs"
+                  >
+                    <option value="solid">{ar ? "متصل" : "Solid"}</option>
+                    <option value="dashed">{ar ? "متقطع" : "Dashed"}</option>
+                    <option value="dotted">{ar ? "منقّط" : "Dotted"}</option>
+                  </select>
+                  {selected.kind === "rect" && (
+                    <>
+                      <PropsLabel ar={ar}>{ar ? "تدوير الحواف" : "Corners"}</PropsLabel>
+                      <input
+                        type="range" min={0} max={40} step={1}
+                        value={selected.borderRadius ?? 2}
+                        onChange={e => patchSelected({ borderRadius: Number(e.target.value) })}
+                        className="w-20"
+                        style={{ accentColor: BRAND_PRIMARY }}
+                      />
+                    </>
+                  )}
                 </>
               )}
               {selected.kind === "line" && (
@@ -440,6 +492,14 @@ export default function WorksheetCanvasEditor({ ar, data, initialLayout, onSave,
                   />
                 </>
               )}
+              <PropsLabel ar={ar}>{ar ? "الشفافية" : "Opacity"}</PropsLabel>
+              <input
+                type="range" min={20} max={100} step={5}
+                value={Math.round((selected.opacity ?? 1) * 100)}
+                onChange={e => patchSelected({ opacity: Number(e.target.value) / 100 })}
+                className="w-20"
+                style={{ accentColor: BRAND_PRIMARY }}
+              />
             </div>
           </motion.div>
         )}
@@ -611,7 +671,7 @@ interface CevProps {
   onDoubleClick: () => void;
   onTextChange: (t: string) => void;
   onBlurText: () => void;
-  onResizePointerDown: (e: React.PointerEvent<HTMLDivElement>, corner: "br" | "bl" | "tr" | "tl") => void;
+  onResizePointerDown: (e: React.PointerEvent<HTMLDivElement>, corner: ResizeHandle) => void;
 }
 
 function CanvasElementView({
@@ -629,6 +689,7 @@ function CanvasElementView({
     boxSizing: "border-box",
     outline: selected ? `2px dashed ${BRAND_PRIMARY}` : "none",
     outlineOffset: "1px",
+    opacity: el.opacity ?? 1,
   };
 
   const innerStyle: React.CSSProperties = {
@@ -689,16 +750,16 @@ function CanvasElementView({
     inner = (
       <div style={{
         ...innerStyle,
-        border: `${el.strokeWidth ?? 2}px solid ${el.strokeColor ?? BRAND_PRIMARY}`,
+        border: `${el.strokeWidth ?? 2}px ${el.strokeStyle ?? "solid"} ${el.strokeColor ?? BRAND_PRIMARY}`,
         background: el.fillColor === "transparent" ? "transparent" : (el.fillColor ?? "transparent"),
-        borderRadius: "2px",
+        borderRadius: `${el.borderRadius ?? 2}px`,
       }} />
     );
   } else if (el.kind === "circle") {
     inner = (
       <div style={{
         ...innerStyle,
-        border: `${el.strokeWidth ?? 2}px solid ${el.strokeColor ?? BRAND_PRIMARY}`,
+        border: `${el.strokeWidth ?? 2}px ${el.strokeStyle ?? "solid"} ${el.strokeColor ?? BRAND_PRIMARY}`,
         background: el.fillColor === "transparent" ? "transparent" : (el.fillColor ?? "transparent"),
         borderRadius: "50%",
       }} />
@@ -746,6 +807,14 @@ function CanvasElementView({
             onPointerDown={e => onResizePointerDown(e, "bl")} />
           <div style={{ ...hStyle, bottom: -HANDLE / 2, right: -HANDLE / 2, cursor: "nwse-resize" }}
             onPointerDown={e => onResizePointerDown(e, "br")} />
+          <div style={{ ...hStyle, top: -HANDLE / 2, left: "50%", transform: "translateX(-50%)", cursor: "ns-resize" }}
+            onPointerDown={e => onResizePointerDown(e, "top")} />
+          <div style={{ ...hStyle, bottom: -HANDLE / 2, left: "50%", transform: "translateX(-50%)", cursor: "ns-resize" }}
+            onPointerDown={e => onResizePointerDown(e, "bottom")} />
+          <div style={{ ...hStyle, top: "50%", left: -HANDLE / 2, transform: "translateY(-50%)", cursor: "ew-resize" }}
+            onPointerDown={e => onResizePointerDown(e, "left")} />
+          <div style={{ ...hStyle, top: "50%", right: -HANDLE / 2, transform: "translateY(-50%)", cursor: "ew-resize" }}
+            onPointerDown={e => onResizePointerDown(e, "right")} />
         </>
       )}
       {selected && !editing && el.kind === "line" && (
@@ -767,6 +836,28 @@ function ToolGroup({ children }: { children: React.ReactNode }) {
     <div className="flex items-center gap-0.5 border rounded-lg overflow-hidden" style={{ borderColor: `${BRAND_PRIMARY}33` }}>
       {children}
     </div>
+  );
+}
+
+function DimensionInput({ value, onChange, min = 0, max = 100 }: {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <input
+      type="number"
+      min={min}
+      max={Math.max(min, max)}
+      step={0.5}
+      value={Number(value.toFixed(1))}
+      onChange={e => {
+        const next = Number(e.target.value);
+        if (Number.isFinite(next)) onChange(Math.max(min, Math.min(Math.max(min, max), next)));
+      }}
+      className="w-16 rounded border bg-white px-2 py-1 text-sm"
+    />
   );
 }
 
