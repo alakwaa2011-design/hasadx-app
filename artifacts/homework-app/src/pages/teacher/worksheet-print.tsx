@@ -26,6 +26,13 @@ interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
 export type Question = QMcq | QTF | QShort | QFill | QMatch;
 
+interface AnswerItem {
+  id: string;
+  question: Question;
+  questionIndex: number;
+  text: string;
+  continuation: boolean;
+}
 export type Settings = WorksheetSettings;
 type QuestionStyle = NonNullable<Settings["questionStyles"]>[number];
 type FieldStyle = NonNullable<QuestionStyle["fields"]>[number];
@@ -337,7 +344,8 @@ export function WorksheetPrintView({
   const [pages, setPages] = useState<Question[][]>(() =>
     paginateByEstimate(data.questions, fontSizePt, cols, 190, 250),
   );
-  const [answerPages, setAnswerPages] = useState<Question[][]>(() => [data.questions]);
+  const answerItems = buildAnswerItems(data.questions, ar, labels);
+  const [answerPages, setAnswerPages] = useState<AnswerItem[][]>(() => [answerItems]);
   const measureRef = useRef<HTMLDivElement>(null);
   const lastKeyRef = useRef("");
 
@@ -407,7 +415,7 @@ export function WorksheetPrintView({
     if (page.length > 0) newPages.push(page);
     if (newPages.length > 0) setPages(newPages);
 
-    if (answerEls.length === data.questions.length && data.questions.length > 0) {
+    if (answerEls.length === answerItems.length && answerItems.length > 0) {
       const answerHeaderH = answerHeaderEl ? answerHeaderEl.offsetHeight : 38 * PX_MM;
       const answerContinuationH = answerContinuationEl ? answerContinuationEl.offsetHeight : 12 * PX_MM;
       // Answer rows are simpler than worksheet questions and the final visible
@@ -417,21 +425,97 @@ export function WorksheetPrintView({
       const ANSWER_SAFETY_OTHER = 3 * PX_MM;
       const answerFirstH = Math.max(contentH - answerHeaderH - footerH - ANSWER_SAFETY_FIRST, 80 * PX_MM);
       const answerOtherH = Math.max(contentH - answerContinuationH - footerH - ANSWER_SAFETY_OTHER, 150 * PX_MM);
-      const answerHeights = answerEls.map(el => el.offsetHeight + GAP);
-      const nextAnswerPages: Question[][] = [];
-      let answerPage: Question[] = [];
+      const nextAnswerPages: AnswerItem[][] = [];
+      let answerPage: AnswerItem[] = [];
       let answerUsedH = 0;
       let answerLimit = answerFirstH;
-      for (let i = 0; i < data.questions.length; i++) {
-        const h = answerHeights[i];
-        if (answerPage.length > 0 && answerUsedH + h > answerLimit) {
+
+      const measureAnswerPart = (template: HTMLElement, text: string, continuation: boolean) => {
+        const clone = template.cloneNode(true) as HTMLElement;
+        const line = clone.querySelector<HTMLElement>(".ws-answer-line");
+        const prompt = clone.querySelector<HTMLElement>(".ws-q-prompt");
+        if (line) line.textContent = `${continuation ? (ar ? "تابع الإجابة:" : "Answer continued:") : labels.correct} ${text}`;
+        if (continuation && prompt) prompt.append(` (${ar ? "تابع" : "continued"})`);
+        root.appendChild(clone);
+        const height = clone.offsetHeight + GAP;
+        clone.remove();
+        return height;
+      };
+
+      const fittingPrefixLength = (
+        template: HTMLElement,
+        text: string,
+        continuation: boolean,
+        maxHeight: number,
+      ) => {
+        let low = 1;
+        let high = text.length;
+        let best = 0;
+        while (low <= high) {
+          const middle = Math.floor((low + high) / 2);
+          if (measureAnswerPart(template, text.slice(0, middle), continuation) <= maxHeight) {
+            best = middle;
+            low = middle + 1;
+          } else {
+            high = middle - 1;
+          }
+        }
+        if (best <= 0) return 0;
+        const whitespace = Math.max(
+          text.lastIndexOf(" ", best),
+          text.lastIndexOf("\n", best),
+          text.lastIndexOf("\t", best),
+        );
+        let splitAt = whitespace >= Math.floor(best * 0.6) ? whitespace : best;
+        // Do not split a UTF-16 surrogate pair when forced to break a long token.
+        if (splitAt > 0 && /[\uD800-\uDBFF]/.test(text[splitAt - 1] ?? "")) splitAt -= 1;
+        return Math.max(1, splitAt);
+      };
+
+      for (let i = 0; i < answerItems.length; i++) {
+        const baseItem = answerItems[i];
+        const template = answerEls[i];
+        let remaining = baseItem.text;
+        let partIndex = 0;
+        while (remaining) {
+          const continuation = baseItem.continuation || partIndex > 0;
+          const item: AnswerItem = {
+            ...baseItem,
+            id: `${baseItem.id}:${partIndex}`,
+            text: remaining,
+            continuation,
+          };
+          const h = measureAnswerPart(template, remaining, continuation);
+          if (answerUsedH + h <= answerLimit) {
+            answerPage.push(item);
+            answerUsedH += h;
+            break;
+          }
+          if (answerPage.length > 0) {
+            nextAnswerPages.push(answerPage);
+            answerPage = [];
+            answerUsedH = 0;
+            answerLimit = answerOtherH;
+            continue;
+          }
+
+          const prefixLength = fittingPrefixLength(template, remaining, continuation, answerLimit);
+          if (prefixLength <= 0 || prefixLength >= remaining.length) {
+            // The visible-page guard will continue bisecting if an unexpected
+            // theme/font discrepancy still leaves this measured item too tall.
+            answerPage.push(item);
+            answerUsedH = h;
+            break;
+          }
+          const prefix = remaining.slice(0, prefixLength).trimEnd();
+          answerPage.push({ ...item, text: prefix });
           nextAnswerPages.push(answerPage);
           answerPage = [];
           answerUsedH = 0;
           answerLimit = answerOtherH;
+          remaining = remaining.slice(prefixLength).trimStart();
+          partIndex += 1;
         }
-        answerPage.push(data.questions[i]);
-        answerUsedH += h;
       }
       if (answerPage.length > 0) nextAnswerPages.push(answerPage);
       setAnswerPages(nextAnswerPages);
@@ -471,10 +555,18 @@ export function WorksheetPrintView({
     const pageEls = Array.from(root.querySelectorAll<HTMLElement>("[data-answer-key-page]"));
     const a4HeightPx = (297 / 25.4) * 96;
     const overflowIndex = pageEls.findIndex((page) => page.getBoundingClientRect().height > a4HeightPx + 2);
-    if (overflowIndex < 0 || (answerPages[overflowIndex]?.length ?? 0) <= 1) return;
+    if (overflowIndex < 0) return;
 
     setAnswerPages(prev => {
       const next = prev.map(page => [...page]);
+      if (next[overflowIndex].length === 1) {
+        const split = splitAnswerItemHalf(next[overflowIndex][0]);
+        if (!split) return prev;
+        next[overflowIndex] = [split[0]];
+        if (next[overflowIndex + 1]) next[overflowIndex + 1].unshift(split[1]);
+        else next.push([split[1]]);
+        return next;
+      }
       const moved = next[overflowIndex].pop();
       if (!moved) return prev;
       if (next[overflowIndex + 1]) next[overflowIndex + 1].unshift(moved);
@@ -638,9 +730,9 @@ export function WorksheetPrintView({
             <span className="ws-cont-page">{ar ? "صفحة متابعة" : "Continued"}</span>
           </div>
         </div>
-        {data.questions.map((q, i) => (
-          <div key={`answer-${q.id}`} data-answer-measure style={{ width: "174mm" }}>
-            <AnswerView index={i + 1} q={q} ar={ar} labels={labels} />
+        {answerItems.map(item => (
+          <div key={`answer-${item.id}`} data-answer-measure style={{ width: "174mm" }}>
+            <AnswerView item={item} ar={ar} labels={labels} />
           </div>
         ))}
       </div>
@@ -829,10 +921,9 @@ export function WorksheetPrintView({
                   </div>
                 )}
                 <section className="ws-questions" style={{ columnCount: 1 }}>
-                  {answerPageQs.map(q => {
-                    const index = data.questions.findIndex(candidate => candidate.id === q.id);
-                    return <AnswerView key={q.id} index={index + 1} q={q} ar={ar} labels={labels} />;
-                  })}
+                  {answerPageQs.map(item => (
+                    <AnswerView key={item.id} item={item} ar={ar} labels={labels} />
+                  ))}
                 </section>
                 <FooterStrip goodLuck="" />
               </div>
@@ -1616,35 +1707,23 @@ function QuestionView({
 }
 
 function AnswerView({
-  index, q, ar, labels,
-}: { index: number; q: Question; ar: boolean; labels: { question: string; true: string; false: string; correct: string } }) {
-  let answer = "";
-  if (q.type === "mcq") {
-    answer = `(${optionLabel(q.correctIndex, ar)}) ${q.options[q.correctIndex] ?? ""}`;
-  } else if (q.type === "true_false") {
-    answer = q.correct ? labels.true : labels.false;
-  } else if (q.type === "short_answer") {
-    answer = q.answer?.trim() || (ar ? "—" : "—");
-  } else if (q.type === "fill_blank") {
-    answer = q.answer;
-  } else if (q.type === "matching") {
-    const order = matchingDisplayOrder(q.pairs.length);
-    answer = q.pairs.map((_, i) => {
-      const displayIdx = order.indexOf(i);
-      return `${i + 1} ← ${optionLabel(displayIdx >= 0 ? displayIdx : i, ar)}`;
-    }).join("    ");
-  }
+  item, ar, labels,
+}: { item: AnswerItem; ar: boolean; labels: { question: string; true: string; false: string; correct: string } }) {
+  const { question: q, questionIndex, text, continuation } = item;
   return (
-    <div className="ws-q ws-answer">
+    <div className="ws-q ws-answer" data-answer-continuation={continuation || undefined}>
       <div className="ws-q-head">
-        <span className="ws-q-num">{index}</span>
+        <span className="ws-q-num">{questionIndex + 1}</span>
         <div className="ws-q-prompt-wrap">
           <div className="ws-q-prompt">
             {q.type === "matching" ? (ar ? "أزواج التوصيل" : "Matching pairs") : q.prompt}
+            {continuation && <span className="ws-answer-cont-label"> ({ar ? "تابع" : "continued"})</span>}
           </div>
         </div>
       </div>
-      <div className="ws-answer-line"><strong>{labels.correct}</strong> {answer}</div>
+      <div className="ws-answer-line">
+        <strong>{continuation ? (ar ? "تابع الإجابة:" : "Answer continued:") : labels.correct}</strong> {text}
+      </div>
     </div>
   );
 }
@@ -2151,8 +2230,11 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         padding-${startSide}: 36px;
         color: ${TC};
         font-size: ${Math.max(9.5, fontSizePt - 0.5)}pt;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       .ws-answer-line strong { color: ${BRAND_GOLD}; margin-${endSide}: 4px; }
+      .ws-answer-cont-label { color: ${TC}88; font-size: 0.9em; }
 
       /* ── Page layout panel (no-print) ─────────────────────────── */
       .ws-layout-panel {
@@ -2403,4 +2485,46 @@ function GradeQrBadge({ worksheetId, page, total, ar }: {
       </div>
     </div>
   );
+}
+function buildAnswerItems(
+  questions: Question[],
+  ar: boolean,
+  labels: { true: string; false: string },
+): AnswerItem[] {
+  return questions.map((question, questionIndex) => ({
+    id: `${question.id}:answer`,
+    question,
+    questionIndex,
+    text: answerText(question, ar, labels),
+    continuation: false,
+  }));
+}
+
+function splitAnswerItemHalf(item: AnswerItem): [AnswerItem, AnswerItem] | null {
+  if (item.text.length < 2) return null;
+  const midpoint = Math.floor(item.text.length / 2);
+  const before = item.text.lastIndexOf(" ", midpoint);
+  const after = item.text.indexOf(" ", midpoint);
+  const splitAt = before > midpoint * 0.6 ? before : after > 0 ? after : midpoint;
+  const firstText = item.text.slice(0, splitAt).trimEnd();
+  const secondText = item.text.slice(splitAt).trimStart();
+  if (!firstText || !secondText) return null;
+  return [
+    { ...item, id: `${item.id}:a`, text: firstText },
+    { ...item, id: `${item.id}:b`, text: secondText, continuation: true },
+  ];
+}
+function answerText(q: Question, ar: boolean, labels: { true: string; false: string }): string {
+  if (q.type === "mcq") {
+    const letter = ar ? `${"أبجده"[q.correctIndex] || (q.correctIndex + 1)}` : String.fromCharCode(65 + q.correctIndex);
+    return `${letter}) ${q.options[q.correctIndex] ?? ""}`;
+  }
+  if (q.type === "true_false") return q.correct ? labels.true : labels.false;
+  if (q.type === "short_answer") return q.answer?.trim() || "—";
+  if (q.type === "fill_blank") return q.answer;
+  const order = matchingDisplayOrder(q.pairs.length);
+  return q.pairs.map((_, i) => {
+    const displayIdx = order.indexOf(i);
+    return `${i + 1} → ${String.fromCharCode(65 + (displayIdx >= 0 ? displayIdx : i))}`;
+  }).join("    ");
 }

@@ -3,6 +3,7 @@ import {
   db,
   pool,
   teachersTable,
+  worksheetsTable,
 } from "../../../../lib/db/src/index.ts";
 import {
   attachSession,
@@ -28,6 +29,8 @@ const arabicFontFamilies = [
 let teacher: TestTeacher;
 let worksheetId: number;
 let longAnswerWorksheetId: number;
+
+let singleHugeAnswerWorksheetId: number;
 const arabicLongAnswerWorksheetIds = new Map<
   (typeof arabicFontFamilies)[number],
   number
@@ -150,6 +153,39 @@ test.beforeAll(async ({ baseURL }) => {
     }
     longAnswerWorksheetId = (await longAnswerResponse.json()).id;
 
+    const [hugeAnswerWorksheet] = await db
+      .insert(worksheetsTable)
+      .values({
+        teacherId: teacher.id,
+        title: "E2E SINGLE HUGE ANSWER",
+        language: "en",
+        gradeLevel: "E2E",
+        subject: "PDF regression",
+        questions: [{
+          id: "e2e-single-huge-answer",
+          type: "short_answer",
+          prompt: "SINGLE-HUGE-ANSWER-PROMPT",
+          lines: 1,
+          // Seed through the database to represent legacy/imported content that
+          // predates the current API's 800-character answer validation.
+          answer: `SINGLE-HUGE-ANSWER-START ${"W".repeat(4000)} SINGLE-HUGE-ANSWER-END`,
+        }],
+        settings: {
+          includeName: false,
+          includeDate: false,
+          includeClass: false,
+          includeAnswerKey: true,
+          columns: 1,
+          fontFamily: "inter",
+          fontSizePt: 18,
+          showWatermark: true,
+          template: "geometric",
+        },
+      })
+      .returning({ id: worksheetsTable.id });
+    if (!hugeAnswerWorksheet) throw new Error("Could not create huge answer worksheet fixture");
+    singleHugeAnswerWorksheetId = hugeAnswerWorksheet.id;
+
     const arabicLongAnswerQuestions = Array.from({ length: 18 }, (_, index) => ({
       id: `e2e-arabic-long-answer-q-${index + 1}`,
       type: "short_answer" as const,
@@ -205,7 +241,7 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
 }) => {
   await page.goto(`/teacher/worksheets/${worksheetId}/print`);
 
-  const printable = page.locator("#ws-printable-root");
+    const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
   await expect(printable.locator("[data-answer-key-page]")).toHaveCount(1);
 
@@ -246,7 +282,7 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
     .toMatch(/\|/);
 
   const worksheetPages = printable.locator("[data-worksheet-page]");
-  const domPageCount = await printable.locator(".ws-page").count();
+    const domPageCount = await printable.locator(".ws-page").count();
   expect(await worksheetPages.count()).toBeGreaterThanOrEqual(2);
   expect(domPageCount).toBe((await worksheetPages.count()) + 1);
 
@@ -274,11 +310,11 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
   const answerPage = printable.locator("[data-answer-key-page]");
   await expect(answerPage.locator(".ws-answer")).toHaveCount(questionCount);
 
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    preferCSSPageSize: true,
-  });
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
@@ -287,7 +323,6 @@ test("long answer keys become numbered A4 DOM pages that match the PDF", async (
   page,
 }) => {
   await page.goto(`/teacher/worksheets/${longAnswerWorksheetId}/print`);
-
   const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
   await page.evaluate(async () => {
@@ -324,6 +359,40 @@ test("long answer keys become numbered A4 DOM pages that match the PDF", async (
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
 
+test("one huge answer is split across contextual DOM pages that match the PDF", async ({
+  page,
+}) => {
+  await page.goto(`/teacher/worksheets/${singleHugeAnswerWorksheetId}/print`);
+    const printable = page.locator("#ws-printable-root");
+  await expect(printable).toBeVisible({ timeout: 20_000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+    const answerPages = printable.locator("[data-answer-key-page]");
+  await expect.poll(async () => answerPages.count(), { timeout: 15_000 }).toBeGreaterThan(1);
+  const answerParts = answerPages.locator(".ws-answer");
+  expect(await answerParts.count()).toBeGreaterThan(1);
+  await expect(answerParts.first()).toContainText("SINGLE-HUGE-ANSWER-START");
+  await expect(answerParts.last()).toContainText("SINGLE-HUGE-ANSWER-END");
+
+  for (const part of await answerParts.all()) {
+    await expect(part.locator(".ws-q-num")).toHaveText("1");
+    await expect(part.locator(".ws-q-prompt")).toContainText("SINGLE-HUGE-ANSWER-PROMPT");
+  }
+  await expect(answerParts.nth(1)).toHaveAttribute("data-answer-continuation", "true");
+  await expect(answerParts.nth(1)).toContainText("continued");
+
+    const domPageCount = await printable.locator(".ws-page").count();
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+  expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+});
+
 test("Arabic long answer keys preserve RTL continuation headers, answer order, and PDF page count", async ({
   page,
 }) => {
@@ -340,6 +409,7 @@ test("Arabic long answer keys preserve RTL continuation headers, answer order, a
 
     const worksheetPageCount = await printable.locator("[data-worksheet-page]").count();
     const answerPages = printable.locator("[data-answer-key-page]");
+
     await expect
       .poll(async () => answerPages.count(), { timeout: 15_000 })
       .toBeGreaterThan(1);
