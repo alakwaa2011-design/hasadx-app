@@ -20,6 +20,12 @@ describe("worksheet PDF page sizing", () => {
     );
   });
 
+  it("includes theme borders inside the physical A4 page height", () => {
+    const pageRule = source.match(/\.ws-page\s*\{[\s\S]*?\}/)?.[0] ?? "";
+    expect(pageRule).toContain("box-sizing: border-box");
+    expect(pageRule).toContain("min-height: 297mm");
+  });
+
   it("measures the same section headers that are rendered in the PDF", () => {
     expect(source).toContain("showTypeHeader={firstOfTypeSet.has(q.id)}");
     expect(source).toContain("if (qEls.length !== localQs.length) return");

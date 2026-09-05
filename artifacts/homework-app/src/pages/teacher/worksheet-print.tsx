@@ -1944,6 +1944,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .print-host { font-family: ${fontFamily}; }
       .ws-page {
         position: relative;
+        box-sizing: border-box;
         width: 210mm;
         min-height: 297mm;
         background: white;
