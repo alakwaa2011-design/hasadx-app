@@ -1459,25 +1459,28 @@ export default function CreateAssignment() {
                           data-testid="toggle-adaptive-entry"
                           onClick={() => {
                             if (!isAdmin) return;
-                            if (!isAdaptive) setIsAdaptive(true);
-                            setShowAdaptiveSetup(true);
+                            if (isAdaptive) {
+                              setIsAdaptive(false);
+                            } else {
+                              setIsAdaptive(true);
+                              setShowAdaptiveSetup(true);
+                            }
                           }}
                           disabled={!isAdmin}
-                          className={`shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-colors disabled:cursor-not-allowed ${isAdaptive ? "border border-violet-300 bg-white text-violet-700 dark:border-violet-700 dark:bg-[#15201B] dark:text-violet-300" : "bg-violet-600 text-white hover:bg-violet-700"}`}
+                          aria-pressed={isAdaptive}
+                          aria-label={lang === "ar" ? "تفعيل الاختبار التكيفي" : "Enable adaptive test"}
+                          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isAdaptive ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"} disabled:cursor-not-allowed`}
                         >
-                          {isAdaptive
-                            ? (lang === "ar" ? "تعديل الإعدادات" : "Edit settings")
-                            : (lang === "ar" ? "فتح وإعداد" : "Open & configure")}
+                          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : "left-0.5"}`} />
                         </button>
                       </div>
                       {isAdaptive && (
-                        <div className="mt-3 flex flex-wrap gap-2 border-t border-violet-200 pt-3 text-[10px] font-bold text-violet-700 dark:border-violet-800 dark:text-violet-300">
-                          <span className="rounded-full bg-violet-100 px-2 py-1 dark:bg-violet-900/30">
-                            {adaptiveQuestionsPerSession} {lang === "ar" ? "أسئلة لكل طالب" : "questions per student"}
-                          </span>
-                          <span className="rounded-full bg-violet-100 px-2 py-1 dark:bg-violet-900/30">
-                            {adaptiveSkills.length} {lang === "ar" ? "مهارات" : "skills"}
-                          </span>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-violet-200 pt-3 text-[10px] font-bold text-violet-700 dark:border-violet-800 dark:text-violet-300">
+                          <span className="rounded-full bg-violet-100 px-2 py-1 dark:bg-violet-900/30">{adaptiveQuestionsPerSession} {lang === "ar" ? "أسئلة لكل طالب" : "questions per student"}</span>
+                          <span className="rounded-full bg-violet-100 px-2 py-1 dark:bg-violet-900/30">{adaptiveSkills.length} {lang === "ar" ? "مهارات" : "skills"}</span>
+                          <button type="button" onClick={() => setShowAdaptiveSetup(true)} className="ms-auto rounded-lg px-2 py-1 underline-offset-2 hover:bg-violet-100 hover:underline dark:hover:bg-violet-900/30">
+                            {lang === "ar" ? "تعديل الإعدادات" : "Edit settings"}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1555,6 +1558,83 @@ export default function CreateAssignment() {
                               </div>
                             </div>
                           </section>
+
+                          <section className="space-y-3">
+                            <h3 className="flex items-center gap-2 text-sm font-black"><Clock className="h-4 w-4 text-orange-500" />{lang === "ar" ? "وقت الاختبار" : "Test timing"}</h3>
+                            <div className="rounded-2xl border border-slate-200 px-4 dark:border-slate-700">
+                              <div className="flex items-center justify-between gap-3 py-3">
+                                <div><span className="block text-xs font-black">{t.createAssignment.examMode}</span><span className="block text-[10px] text-muted-foreground">{t.createAssignment.examModeDesc}</span></div>
+                                <Toggle on={examMode} onChange={() => setExamMode(!examMode)} color="orange" />
+                              </div>
+                              {examMode && (
+                                <div className="flex items-center justify-between gap-3 border-t border-slate-100 py-3 dark:border-slate-800">
+                                  <Label className="text-xs font-bold">{t.createAssignment.examDuration}</Label>
+                                  <div className="flex items-center gap-2">
+                                    <input type="number" min={1} max={300} value={examDurationMinutes} onChange={e => setExamDurationMinutes(Math.max(1, Math.min(300, parseInt(e.target.value) || 30)))} className="w-20 rounded-xl border-2 border-orange-200 bg-background px-2 py-2 text-center font-black outline-none focus:border-orange-500 dark:border-orange-800" dir="ltr" />
+                                    <span className="text-xs font-bold text-muted-foreground">{lang === "ar" ? "دقيقة" : "minutes"}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </section>
+
+                          <section className="space-y-3">
+                            <h3 className="flex items-center gap-2 text-sm font-black"><Lock className="h-4 w-4 text-violet-500" />{lang === "ar" ? "الوصول والموعد" : "Access & deadline"}</h3>
+                            <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => setAccessMode("public")} className={`flex-1 rounded-xl border-2 px-3 py-2 text-xs font-black ${accessMode === "public" ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-300" : "border-slate-200 text-muted-foreground dark:border-slate-700"}`}><Globe className="me-1 inline h-3.5 w-3.5" />{t.createAssignment.public}</button>
+                                <button type="button" onClick={() => { setAccessMode("private"); setIsShared(false); }} className={`flex-1 rounded-xl border-2 px-3 py-2 text-xs font-black ${accessMode === "private" ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-300" : "border-slate-200 text-muted-foreground dark:border-slate-700"}`}><Lock className="me-1 inline h-3.5 w-3.5" />{t.createAssignment.privateCode}</button>
+                              </div>
+                              {accessMode === "private" && (
+                                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                  <input value={accessCode} onChange={e => setAccessCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={6} className="min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-background px-3 py-2 text-center font-mono tracking-widest dark:border-slate-700" dir="ltr" />
+                                  <button type="button" onClick={() => setAccessCode(generateAccessCode())} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">{t.createAssignment.newCode}</button>
+                                </div>
+                              )}
+                              <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                <Label className="text-xs font-bold">{t.createAssignment.deadlineLabel}</Label>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} className="min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-background px-3 py-2 text-xs outline-none focus:border-violet-500 dark:border-slate-700" dir="ltr" />
+                                  {deadline && <button type="button" onClick={() => setDeadline("")} className="rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600"><X className="h-4 w-4" /></button>}
+                                </div>
+                              </div>
+                            </div>
+                          </section>
+
+                          <section className="space-y-3">
+                            <h3 className="flex items-center gap-2 text-sm font-black"><Eye className="h-4 w-4 text-emerald-500" />{lang === "ar" ? "النتائج والمحاولات" : "Results & attempts"}</h3>
+                            <div className="rounded-2xl border border-slate-200 px-4 dark:border-slate-700">
+                              <div className="flex items-center justify-between gap-3 border-b border-slate-100 py-3 dark:border-slate-800">
+                                <div><span className="block text-xs font-black">{t.createAssignment.showResults}</span><span className="block text-[10px] text-muted-foreground">{showResults ? t.createAssignment.showResultsOn : t.createAssignment.showResultsOff}</span></div>
+                                <Toggle on={showResults} onChange={() => setShowResults(!showResults)} color="green" />
+                              </div>
+                              {showResults && (
+                                <div className="border-b border-slate-100 py-3 dark:border-slate-800">
+                                  <span className="mb-2 block text-xs font-bold">{t.createAssignment.resultsRelease}</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                      { value: "immediate" as const, label: lang === "ar" ? "فوري" : "Immediate" },
+                                      { value: "after_deadline" as const, label: lang === "ar" ? "بعد الموعد" : "After deadline" },
+                                      { value: "manual" as const, label: lang === "ar" ? "يدوي" : "Manual" },
+                                    ].map(option => (
+                                      <button key={option.value} type="button" onClick={() => setResultsReleaseMode(option.value)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${resultsReleaseMode === option.value ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-300" : "border-slate-200 text-muted-foreground dark:border-slate-700"}`}>{option.label}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between gap-3 py-3">
+                                <div><span className="block text-xs font-black">{lang === "ar" ? "السماح بإعادة المحاولة" : "Allow retry"}</span><span className="block text-[10px] text-muted-foreground">{allowRetry ? (lang === "ar" ? "يمكن للطالب إعادة الاختبار" : "Students can retake") : (lang === "ar" ? "محاولة واحدة فقط" : "One attempt only")}</span></div>
+                                <Toggle on={allowRetry} onChange={() => setAllowRetry(!allowRetry)} color="green" />
+                              </div>
+                            </div>
+                          </section>
+
+                          {accessMode !== "private" && (
+                            <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                              <div><span className="block text-xs font-black">{lang === "ar" ? "النشر في مكتبة الأنشطة" : "Publish in activity library"}</span><span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "إتاحة النشاط للمعلمين الآخرين" : "Make the activity available to other teachers"}</span></div>
+                              <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="green" />
+                            </section>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-[#111916]">
@@ -2278,7 +2358,7 @@ export default function CreateAssignment() {
                   )}
 
                   {/* AI Grading Instructions — only when paper submission OR fill_blank/whiteboard questions exist */}
-                  {(submissionMode === "paper" || submissionMode === "both" || questions.some(q => q.questionType === "fill_blank" || q.questionType === "whiteboard")) && (
+                  {!isAdaptive && (submissionMode === "paper" || submissionMode === "both" || questions.some(q => q.questionType === "fill_blank" || q.questionType === "whiteboard")) && (
                     <div className="rounded-3xl p-5 sm:p-6 shadow-sm border border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
                       <div className="flex items-center gap-2 mb-1"><Brain className="w-4 h-4 text-amber-600" /><h2 className="text-sm font-bold text-amber-800 dark:text-amber-200">{t.createAssignment.aiGradingInstructions}</h2></div>
                       <p className="text-xs text-amber-700/70 dark:text-amber-300/70 mb-2">{t.createAssignment.aiGradingInstructionsDesc}</p>
@@ -2321,17 +2401,17 @@ export default function CreateAssignment() {
                   </div>
 
                   {/* Secondary actions: preview / advanced settings */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid gap-2 ${isAdaptive ? "grid-cols-1" : "grid-cols-2"}`}>
                     <button type="button" data-testid="btn-student-preview" onClick={() => setShowStudentPreview(true)}
                       className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
                       <Eye className="w-4 h-4" />{lang === "ar" ? "معاينة" : "Preview"}
                     </button>
-                    <button type="button" data-testid="btn-advanced-settings" onClick={() => setShowAdvancedSettings(v => !v)}
+                    {!isAdaptive && <button type="button" data-testid="btn-advanced-settings" onClick={() => setShowAdvancedSettings(v => !v)}
                       aria-expanded={showAdvancedSettings}
                       className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-[#15201B] text-emerald-700 dark:text-emerald-300 text-sm font-black hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98]">
                       <Settings2 className="w-4 h-4" />{lang === "ar" ? "إعدادات متقدمة" : "Advanced settings"}
                       <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedSettings ? "rotate-180" : ""}`} />
-                    </button>
+                    </button>}
                   </div>
 
                   {/* Student preview modal */}
@@ -2394,7 +2474,7 @@ export default function CreateAssignment() {
                   {/* Advanced settings (collapsible) */}
                   <div className="p-0 overflow-hidden">
                     <AnimatePresence>
-                      {showAdvancedSettings && (
+                      {showAdvancedSettings && !isAdaptive && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                           <div className="border-t border-border divide-y divide-border/50">
 
