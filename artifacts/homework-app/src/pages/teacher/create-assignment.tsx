@@ -12,7 +12,7 @@ import {
   Calendar, Database, Clock, Settings, Settings2, Brain,
   Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
   Share2, ExternalLink, BarChart3, PartyPopper,
-  FilePenLine, ListChecks, Send as SendIcon, Check, RotateCcw, Gamepad2,
+  FilePenLine, ListChecks, Send as SendIcon, Check, RotateCcw, Gamepad2, AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -44,6 +44,9 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const MAX_SOURCE_TEXT_LENGTH = 12000;
+const ADAPTIVE_SUPPORTED_QUESTION_TYPES = ["mcq", "true_false", "fill_blank"] as const;
+const isAdaptiveSupportedQuestionType = (type?: string | null) =>
+  ADAPTIVE_SUPPORTED_QUESTION_TYPES.includes((type || "mcq") as typeof ADAPTIVE_SUPPORTED_QUESTION_TYPES[number]);
 /** Hasaad brand — dark forest green (matches dashboard / layout), not teal/cyan */
 const HASAD_GREEN = "#1E4D35";
 const HASAD_GREEN_MID = "#225739";
@@ -1003,6 +1006,12 @@ export default function CreateAssignment() {
         setWizardStep(2); return;
       }
     }
+    if (isAdaptive && !adaptiveReadiness.isReady) {
+      toast.error(lang === "ar" ? "أكمل جاهزية بنك الأسئلة التكيفي قبل النشر" : "Complete the adaptive question-bank readiness checks before publishing");
+      setWizardStep(2);
+      setShowAdaptiveSetup(true);
+      return;
+    }
     if (accessMode === "private" && !/^\d{6}$/.test(accessCode)) {
       toast.error(lang === "ar" ? "كود الدخول يجب أن يكون 6 أرقام" : "Access code must be exactly 6 digits");
       setShowAdvancedSettings(true); setWizardStep(3); return;
@@ -1033,6 +1042,7 @@ export default function CreateAssignment() {
         adaptiveConfig: (isAdaptive ? {
           questionsPerSession: adaptiveQuestionsPerSession,
           skills: adaptiveSkills,
+          allowRetry,
           showImmediateFeedback: adaptiveShowImmediateFeedback,
           showAnswersAfterResult: adaptiveShowAnswersAfterResult,
         } : undefined) as any,
@@ -1054,13 +1064,51 @@ export default function CreateAssignment() {
   ];
   const extractRequestedTotal = extractCounts.mcq + extractCounts.true_false + extractCounts.fill_blank;
 
-  const canLeaveStep2 = hasAtLeastOneQuestion(questions, isPaper);
+  const adaptiveReadiness = (() => {
+    const skills = adaptiveSkills.map(skill => ({
+      skill,
+      easy: 0,
+      medium: 0,
+      hard: 0,
+    }));
+    const bySkill = new Map(skills.map(row => [row.skill, row]));
+    const noSkill: number[] = [];
+    const undeclaredSkill: number[] = [];
+    const unsupportedType: number[] = [];
+    questions.forEach((question, index) => {
+      const type = question.questionType || "mcq";
+      if (!isAdaptiveSupportedQuestionType(type)) unsupportedType.push(index + 1);
+      const skill = question.skill?.trim() || "";
+      if (!skill) { noSkill.push(index + 1); return; }
+      const row = bySkill.get(skill);
+      if (!row) { undeclaredSkill.push(index + 1); return; }
+      if (question.difficulty === 1) row.easy += 1;
+      else if (question.difficulty === 3) row.hard += 1;
+      else row.medium += 1;
+    });
+    const incompleteSkills = skills.filter(row => row.easy < 2 || row.medium < 2 || row.hard < 2);
+    return {
+      skills,
+      noSkill,
+      undeclaredSkill,
+      unsupportedType,
+      incompleteSkills,
+      isReady: skills.length > 0 && incompleteSkills.length === 0 && noSkill.length === 0 && undeclaredSkill.length === 0 && unsupportedType.length === 0,
+    };
+  })();
+  const canLeaveStep2 = hasAtLeastOneQuestion(questions, isPaper) && (!isAdaptive || adaptiveReadiness.isReady);
   const publishBlock = getPublishBlockReason(title, questions, isPaper);
   const blockMessages = lang === "ar" ? PUBLISH_BLOCK_MESSAGES_AR : PUBLISH_BLOCK_MESSAGES_EN;
 
   const goNext = () => {
     if (wizardStep === 1 && !title.trim()) { toast.error(lang === "ar" ? "أدخل عنوان النشاط أولاً" : "Please enter an activity title"); return; }
-    if (wizardStep === 2 && !canLeaveStep2) { toast.error(blockMessages.no_question); return; }
+    if (wizardStep === 2 && !canLeaveStep2) {
+      toast.error(isAdaptive
+        ? (lang === "ar" ? "أكمل جاهزية بنك الأسئلة التكيفي للمتابعة" : "Complete the adaptive question-bank readiness checks to continue")
+        : blockMessages.no_question);
+      if (isAdaptive) setShowAdaptiveSetup(true);
+      return;
+    }
     if (wizardStep < 3) setWizardStep(s => (s + 1) as 1 | 2 | 3);
   };
   const goPrev = () => {
@@ -1535,6 +1583,39 @@ export default function CreateAssignment() {
                             </div>
                           </section>
 
+                          <section className={`rounded-2xl border p-4 ${adaptiveReadiness.isReady ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/20" : "border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20"}`}>
+                            <div className="mb-3 flex items-center gap-2">
+                              {adaptiveReadiness.isReady ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertCircle className="h-5 w-5 text-amber-600" />}
+                              <div>
+                                <h3 className="text-sm font-black">{lang === "ar" ? "جاهزية بنك الأسئلة" : "Question bank readiness"}</h3>
+                                <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "يلزم سؤالان على الأقل لكل مستوى في كل مهارة." : "At least two questions are required at every level for every skill."}</p>
+                              </div>
+                            </div>
+                            {adaptiveReadiness.skills.length === 0 ? (
+                              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{lang === "ar" ? "أضف مهارة واحدة على الأقل." : "Add at least one skill."}</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {adaptiveReadiness.skills.map(row => {
+                                  const complete = row.easy >= 2 && row.medium >= 2 && row.hard >= 2;
+                                  return <div key={row.skill} className="flex flex-wrap items-center gap-2 rounded-xl bg-white/80 px-3 py-2 text-xs dark:bg-[#15201B]/80">
+                                    <span className="min-w-24 flex-1 font-black">{row.skill}</span>
+                                    <span className={row.easy >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "سهل" : "Easy"} {row.easy}/2</span>
+                                    <span className={row.medium >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "متوسط" : "Medium"} {row.medium}/2</span>
+                                    <span className={row.hard >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "صعب" : "Hard"} {row.hard}/2</span>
+                                    {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
+                                  </div>;
+                                })}
+                              </div>
+                            )}
+                            {(adaptiveReadiness.noSkill.length > 0 || adaptiveReadiness.undeclaredSkill.length > 0 || adaptiveReadiness.unsupportedType.length > 0) && (
+                              <div className="mt-3 space-y-1 text-[11px] font-bold text-red-700 dark:text-red-300">
+                                {adaptiveReadiness.noSkill.length > 0 && <p>{lang === "ar" ? `أسئلة بلا مهارة: ${adaptiveReadiness.noSkill.join("، ")}` : `Questions without a skill: ${adaptiveReadiness.noSkill.join(", ")}`}</p>}
+                                {adaptiveReadiness.undeclaredSkill.length > 0 && <p>{lang === "ar" ? `مهارة غير معلنة في الأسئلة: ${adaptiveReadiness.undeclaredSkill.join("، ")}` : `Questions with an undeclared skill: ${adaptiveReadiness.undeclaredSkill.join(", ")}`}</p>}
+                                {adaptiveReadiness.unsupportedType.length > 0 && <p>{lang === "ar" ? `أنواع غير مدعومة في الأسئلة: ${adaptiveReadiness.unsupportedType.join("، ")}` : `Unsupported question types: ${adaptiveReadiness.unsupportedType.join(", ")}`}</p>}
+                              </div>
+                            )}
+                          </section>
+
                           <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
                             <div className="flex items-center justify-between gap-4">
                               <div>
@@ -2001,7 +2082,7 @@ export default function CreateAssignment() {
                                 {/* Type + Points */}
                                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                                   <span className="text-[11px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-1 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50">{t.createAssignment.questionLabel} {qIndex + 1}</span>
-                                  <select value={q.questionType === "whiteboard" ? (q.optionA === "lined" ? "whiteboard" : "whiteboard_blank") : (q.questionType || "mcq")}
+                                  <select value={isAdaptive && !isAdaptiveSupportedQuestionType(q.questionType) ? "unsupported" : q.questionType === "whiteboard" ? (q.optionA === "lined" ? "whiteboard" : "whiteboard_blank") : (q.questionType || "mcq")}
                                     onChange={e => {
                                     const v = e.target.value;
                                     if (v === "mcq" || v === "true_false" || v === "fill_blank" || v === "whiteboard" || v === "whiteboard_blank" || v === "dictation") handleQuestionTypeChange(qIndex, v);
@@ -2010,9 +2091,8 @@ export default function CreateAssignment() {
                                     <option value="mcq">{t.createAssignment.questionTypeMcq}</option>
                                     <option value="true_false">{t.createAssignment.questionTypeTrueFalse}</option>
                                     <option value="fill_blank">{t.createAssignment.questionTypeFillBlank}</option>
-                                    <option value="dictation">🎙 {lang === "ar" ? "إملاء صوتي" : "Dictation"}</option>
-                                    <option value="whiteboard_blank">{t.createAssignment.questionTypeWhiteboardBlank}</option>
-                                    <option value="whiteboard">{t.createAssignment.questionTypeWhiteboard}</option>
+                                    {isAdaptive && !isAdaptiveSupportedQuestionType(q.questionType) && <option value="unsupported" disabled>{lang === "ar" ? "نوع غير مدعوم — اختر نوعًا متاحًا" : "Unsupported type — choose an available type"}</option>}
+                                    {!isAdaptive && <><option value="dictation">🎙 {lang === "ar" ? "إملاء صوتي" : "Dictation"}</option><option value="whiteboard_blank">{t.createAssignment.questionTypeWhiteboardBlank}</option><option value="whiteboard">{t.createAssignment.questionTypeWhiteboard}</option></>}
                                   </select>
                                   <div className="flex items-center gap-1.5 ml-auto rtl:mr-auto rtl:ml-0">
                                     <span className="text-[11px] font-bold text-slate-500">{t.createAssignment.gradeLabel}</span>
@@ -2053,16 +2133,14 @@ export default function CreateAssignment() {
                                       <Label className="mb-1 block text-[11px] font-black text-violet-800 dark:text-violet-300">
                                         {lang === "ar" ? "المهارة" : "Skill"}
                                       </Label>
-                                      <input
+                                      <select
                                         value={q.skill ?? ""}
                                         onChange={e => handleQuestionChange(qIndex, "skill", e.target.value)}
-                                        list={`adaptive-skills-${q._clientId}`}
-                                        placeholder={lang === "ar" ? "مثال: الجمع أو الكسور" : "e.g. Addition or fractions"}
                                         className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-violet-500 dark:border-violet-800 dark:bg-[#15201B]"
-                                      />
-                                      <datalist id={`adaptive-skills-${q._clientId}`}>
+                                      >
+                                        <option value="" disabled>{lang === "ar" ? "اختر مهارة (غير محددة)" : "Select a skill (not set)"}</option>
                                         {adaptiveSkills.map(skill => <option key={skill} value={skill} />)}
-                                      </datalist>
+                                      </select>
                                     </div>
                                   </div>
                                 )}

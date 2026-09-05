@@ -32,6 +32,9 @@ const OPTION_COLORS = [
   "from-amber-500 to-amber-600",
   "from-emerald-500 to-emerald-600",
 ];
+const ADAPTIVE_SUPPORTED_QUESTION_TYPES = ["mcq", "true_false", "fill_blank"] as const;
+const isAdaptiveSupportedQuestionType = (type?: string | null) =>
+  ADAPTIVE_SUPPORTED_QUESTION_TYPES.includes((type || "mcq") as typeof ADAPTIVE_SUPPORTED_QUESTION_TYPES[number]);
 
 function getDeviceFingerprint(): string {
   const key = "hw_device_fp";
@@ -147,6 +150,8 @@ export default function AdaptiveSolve() {
   const [showAnswersAfterResult, setShowAnswersAfterResult] = useState(false);
   const [examExpiresAt, setExamExpiresAt] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [timeExpired, setTimeExpired] = useState(false);
+  const [waitingForResult, setWaitingForResult] = useState(false);
 
   // Persist a verified access code in sessionStorage so the student doesn't
   // re-enter it after a refresh in the same tab.
@@ -217,6 +222,40 @@ export default function AdaptiveSolve() {
     }
   };
 
+  const setResultFromResponse = (payload: Record<string, unknown>): boolean => {
+    const result = (payload.result && typeof payload.result === "object" ? payload.result : payload) as Record<string, unknown>;
+    if (typeof result.score !== "number" || typeof result.earnedPoints !== "number" || typeof result.totalPoints !== "number" || typeof result.correctAnswers !== "number") return false;
+    setFinalResult({
+      score: result.score,
+      earnedPoints: result.earnedPoints,
+      totalPoints: result.totalPoints,
+      correctAnswers: result.correctAnswers,
+      submissionId: typeof result.submissionId === "number" ? result.submissionId : 0,
+    });
+    return true;
+  };
+
+  const applySessionResponse = (data: Record<string, unknown>) => {
+    if (typeof data.sessionId === "number") setSessionId(data.sessionId);
+    if (typeof data.totalQuestions === "number") setTotalQuestions(data.totalQuestions);
+    if (typeof data.answeredCount === "number") setAnsweredCount(data.answeredCount);
+    setShowImmediateFeedback(data.showImmediateFeedback === true);
+    setShowAnswersAfterResult(data.showAnswersAfterResult === true);
+    const expiresAt = typeof data.expiresAt === "string" ? data.expiresAt : typeof data.examExpiresAt === "string" ? data.examExpiresAt : null;
+    setExamExpiresAt(expiresAt);
+    const terminal = data.done === true || data.timedOut === true;
+    if (terminal) {
+      setDone(true);
+      setTimeExpired(data.timedOut === true);
+      setWaitingForResult(data.resultAvailable === false || !setResultFromResponse(data));
+      return;
+    }
+    setCurrentQuestion((data.question as AdaptiveQuestion | null) || null);
+    setSelectedAnswer("");
+    setStarted(true);
+    setTimeExpired(false);
+  };
+
   const handleStart = async () => {
     if (!studentName.trim()) return;
     setSubmitting(true);
@@ -234,16 +273,9 @@ export default function AdaptiveSolve() {
           accessCode: accessCode || undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setSessionId(data.sessionId);
-      setTotalQuestions(data.totalQuestions);
-      setAnsweredCount(data.answeredCount);
-      setShowImmediateFeedback(data.showImmediateFeedback === true);
-      setShowAnswersAfterResult(data.showAnswersAfterResult === true);
-      setExamExpiresAt(data.examExpiresAt || null);
-      setCurrentQuestion(data.question);
-      setStarted(true);
+      const data = await res.json() as Record<string, unknown>;
+      if (!res.ok) throw new Error(typeof data.message === "string" ? data.message : t.solve.error);
+      applySessionResponse(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t.solve.error);
     } finally {
@@ -262,6 +294,7 @@ export default function AdaptiveSolve() {
       setTimeLeft(seconds);
       if (seconds === 0) {
         setError(lang === "ar" ? "انتهى وقت الاختبار" : "Test time has ended");
+        setTimeExpired(true);
       }
     };
 
@@ -269,6 +302,26 @@ export default function AdaptiveSolve() {
     const interval = window.setInterval(updateTimer, 1000);
     return () => window.clearInterval(interval);
   }, [started, done, examExpiresAt, lang]);
+
+  // Let the server make the final timeout decision. This is backwards
+  // compatible with older start responses and avoids inventing a finish
+  // request when that endpoint/contract is not available.
+  useEffect(() => {
+    if (!started || done || !timeExpired || submitting) return;
+    void handleStart();
+    // handleStart is deliberately triggered once per expiry transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeExpired]);
+
+  useEffect(() => {
+    if (!started || done) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [started, done]);
 
   const handleAnswer = async () => {
     if (!sessionId || !currentQuestion || !selectedAnswer) return;
@@ -286,28 +339,24 @@ export default function AdaptiveSolve() {
           deviceFingerprint: getDeviceFingerprint(),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      const data = await res.json() as Record<string, unknown>;
+      if (!res.ok) throw new Error(typeof data.message === "string" ? data.message : t.solve.error);
 
       setLastCorrect(typeof data.isCorrect === "boolean" ? data.isCorrect : null);
-      setAnsweredCount(data.answeredCount);
+      if (typeof data.answeredCount === "number") setAnsweredCount(data.answeredCount);
 
       if (typeof data.isCorrect === "boolean") {
         if (data.isCorrect) setStreak(s => s + 1);
         else setStreak(0);
       }
 
-      if (data.done) {
+      if (data.done === true || data.timedOut === true) {
         setDone(true);
-        setFinalResult({
-          score: data.score,
-          earnedPoints: data.earnedPoints,
-          totalPoints: data.totalPoints,
-          correctAnswers: data.correctAnswers,
-          submissionId: data.submissionId,
-        });
+        setTimeExpired(data.timedOut === true);
+        const resultIsAvailable = data.resultAvailable !== false && setResultFromResponse(data);
+        setWaitingForResult(!resultIsAvailable);
 
-        if (showAnswersAfterResult || data.showAnswersAfterResult === true) {
+        if (resultIsAvailable && (showAnswersAfterResult || data.showAnswersAfterResult === true)) {
           const detailRes = await fetch(`${API_BASE}/api/adaptive/results/${sessionId}?fp=${encodeURIComponent(getDeviceFingerprint())}`, { credentials: "include" });
           if (detailRes.ok) {
             const detail = await detailRes.json();
@@ -316,7 +365,7 @@ export default function AdaptiveSolve() {
         }
       } else {
         setTimeout(() => {
-          setCurrentQuestion(data.question);
+          setCurrentQuestion((data.question as AdaptiveQuestion | null) || null);
           setSelectedAnswer("");
           setLastCorrect(null);
         }, showImmediateFeedback ? 1100 : 150);
@@ -379,6 +428,29 @@ export default function AdaptiveSolve() {
     return (
       <Layout>
         <div className="text-center p-20 text-xl font-bold">{error || t.solve.notFound}</div>
+      </Layout>
+    );
+  }
+
+  if (done && !finalResult) {
+    return (
+      <Layout>
+        <div className="mx-auto flex min-h-[60vh] max-w-lg items-center px-4">
+          <Card className="w-full p-8 text-center shadow-xl">
+            <Clock className={`mx-auto mb-4 h-12 w-12 ${timeExpired ? "text-orange-500" : "text-violet-500"}`} />
+            <h1 className="text-xl font-black">{timeExpired ? (lang === "ar" ? "انتهى وقت الاختبار" : "Test time has ended") : (lang === "ar" ? "اكتمل الاختبار" : "Test complete")}</h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {waitingForResult
+                ? (lang === "ar" ? "حُفظت إجاباتك. النتيجة قيد الإعداد، أعد المحاولة للحصول عليها." : "Your answers are saved. The result is being prepared; retry to retrieve it.")
+                : (lang === "ar" ? "تم حفظ حالة الاختبار." : "The test status has been saved.")}
+            </p>
+            {waitingForResult && (
+              <Button className="mt-6" disabled={submitting} onClick={() => void handleStart()}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (lang === "ar" ? "تحديث النتيجة" : "Refresh result")}
+              </Button>
+            )}
+          </Card>
+        </div>
       </Layout>
     );
   }
@@ -528,6 +600,20 @@ export default function AdaptiveSolve() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (started && currentQuestion && !isAdaptiveSupportedQuestionType(currentQuestion.questionType)) {
+    return (
+      <Layout>
+        <div className="mx-auto flex min-h-[60vh] max-w-lg items-center px-4">
+          <Card className="w-full p-8 text-center shadow-xl">
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
+            <h1 className="text-xl font-black">{lang === "ar" ? "نوع سؤال غير مدعوم" : "Unsupported question type"}</h1>
+            <p className="mt-3 text-sm text-muted-foreground">{lang === "ar" ? "لا يمكن عرض هذا السؤال في الاختبار التكيفي، ولم تُرسل إجابة له." : "This question cannot be shown in an adaptive test, and no answer was submitted."}</p>
+          </Card>
         </div>
       </Layout>
     );
