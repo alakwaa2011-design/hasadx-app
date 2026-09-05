@@ -135,6 +135,8 @@ type WizardDraft = {
   isAdaptive: boolean;
   adaptiveSkills: string[];
   adaptiveQuestionsPerSession: number;
+  adaptiveShowImmediateFeedback?: boolean;
+  adaptiveShowAnswersAfterResult?: boolean;
   questions: QuestionWithTts[];
   savedAt: number;
 };
@@ -441,6 +443,8 @@ export default function CreateAssignment() {
   const [adaptiveSkills, setAdaptiveSkills] = useState<string[]>([]);
   const [adaptiveSkillInput, setAdaptiveSkillInput] = useState("");
   const [adaptiveQuestionsPerSession, setAdaptiveQuestionsPerSession] = useState(10);
+  const [adaptiveShowImmediateFeedback, setAdaptiveShowImmediateFeedback] = useState(false);
+  const [adaptiveShowAnswersAfterResult, setAdaptiveShowAnswersAfterResult] = useState(false);
 
   // ── Per-question UI ──
   const [mathToolbarFor, setMathToolbarFor] = useState<number>(-1);
@@ -832,6 +836,8 @@ export default function CreateAssignment() {
     setIsAdaptive(d.isAdaptive);
     setAdaptiveSkills(d.adaptiveSkills);
     setAdaptiveQuestionsPerSession(d.adaptiveQuestionsPerSession);
+    setAdaptiveShowImmediateFeedback(d.adaptiveShowImmediateFeedback ?? false);
+    setAdaptiveShowAnswersAfterResult(d.adaptiveShowAnswersAfterResult ?? false);
     if (Array.isArray(d.questions) && d.questions.length > 0) setQuestions(d.questions);
     // A resumed draft goes straight to the editor — no method chooser again
     setQuestionMethod("manual");
@@ -879,6 +885,8 @@ export default function CreateAssignment() {
       isAdaptive,
       adaptiveSkills,
       adaptiveQuestionsPerSession,
+      adaptiveShowImmediateFeedback,
+      adaptiveShowAnswersAfterResult,
       questions,
       savedAt: Date.now(),
     };
@@ -897,7 +905,8 @@ export default function CreateAssignment() {
     targetClasses, submissionMode, accessMode, accessCode, showResults, deadline,
     paperTotalPoints, examMode, examDurationMinutes, resultsReleaseMode, allowRetry,
     modelImage, aiGradingInstructions, isShared, categoryId, isAdaptive,
-    adaptiveSkills, adaptiveQuestionsPerSession, questions,
+    adaptiveSkills, adaptiveQuestionsPerSession, adaptiveShowImmediateFeedback,
+    adaptiveShowAnswersAfterResult, questions,
     t.createAssignment.paperAnswer,
   ]);
 
@@ -1020,7 +1029,12 @@ export default function CreateAssignment() {
         // contest mode → "مكتبة المسابقات الجاهزة", otherwise "مكتبة الأنشطة".
         contentKind: isContestMode ? "competition" : "homework",
         isAdaptive: isAdaptive || undefined,
-        adaptiveConfig: isAdaptive ? { questionsPerSession: adaptiveQuestionsPerSession, skills: adaptiveSkills } : undefined,
+        adaptiveConfig: (isAdaptive ? {
+          questionsPerSession: adaptiveQuestionsPerSession,
+          skills: adaptiveSkills,
+          showImmediateFeedback: adaptiveShowImmediateFeedback,
+          showAnswersAfterResult: adaptiveShowAnswersAfterResult,
+        } : undefined) as any,
         questions: isPaper
           ? [{ text: t.createAssignment.paperAnswer, points: paperTotalPoints }]
           : questions.map(({ allowMultipleAnswers: _a, repeatQuestion: _r, correctAnswers: _ca, _clientId: _cid, _extractKey: _ek, ...apiQ }) => ({
@@ -2485,6 +2499,22 @@ export default function CreateAssignment() {
                                           <div className="flex items-center gap-2">
                                             <Label className="text-xs font-bold text-violet-700">{lang === "ar" ? "أسئلة لكل طالب:" : "Questions per student:"}</Label>
                                             <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(parseInt(e.target.value) || 10)} className="w-24 text-sm" />
+                                          </div>
+                                          <div className="space-y-2 border-t border-primary/15 pt-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                              <div>
+                                                <span className="block text-xs font-bold">{lang === "ar" ? "إظهار صحة الإجابة مباشرة" : "Show correctness immediately"}</span>
+                                                <span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "يُخبر الطالب بعد كل سؤال إن كانت إجابته صحيحة أو خاطئة" : "Tell the student after each question whether the answer was correct"}</span>
+                                              </div>
+                                              <Toggle on={adaptiveShowImmediateFeedback} onChange={() => setAdaptiveShowImmediateFeedback(!adaptiveShowImmediateFeedback)} color="green" />
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                              <div>
+                                                <span className="block text-xs font-bold">{lang === "ar" ? "إظهار الإجابات بعد النتيجة" : "Show answers after results"}</span>
+                                                <span className="block text-[10px] text-muted-foreground">{lang === "ar" ? "يعرض إجابة الطالب والإجابة الصحيحة بعد إنهاء الاختبار" : "Show the student's answer and the correct answer after finishing"}</span>
+                                              </div>
+                                              <Toggle on={adaptiveShowAnswersAfterResult} onChange={() => setAdaptiveShowAnswersAfterResult(!adaptiveShowAnswersAfterResult)} color="green" />
+                                            </div>
                                           </div>
                                         </div>
                                       </motion.div>

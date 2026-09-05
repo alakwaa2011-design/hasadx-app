@@ -128,9 +128,24 @@ function sanitizeQuestion(q: {
     optionC: q.optionC,
     optionD: q.optionD,
     imageUrl: q.imageUrl,
-    difficulty: q.difficulty,
-    skill: q.skill,
   };
+}
+
+function parseAdaptiveConfig(value: string | null): {
+  questionsPerSession?: number;
+  showImmediateFeedback: boolean;
+  showAnswersAfterResult: boolean;
+} {
+  try {
+    const parsed = value ? JSON.parse(value) : {};
+    return {
+      questionsPerSession: parsed.questionsPerSession,
+      showImmediateFeedback: parsed.showImmediateFeedback === true,
+      showAnswersAfterResult: parsed.showAnswersAfterResult === true,
+    };
+  } catch {
+    return { showImmediateFeedback: false, showAnswersAfterResult: false };
+  }
 }
 
 router.post("/adaptive/start", async (req, res) => {
@@ -188,7 +203,7 @@ router.post("/adaptive/start", async (req, res) => {
       return;
     }
 
-    const config = assignment.adaptiveConfig ? JSON.parse(assignment.adaptiveConfig) : {};
+    const config = parseAdaptiveConfig(assignment.adaptiveConfig);
     const totalToAnswer = Math.min(config.questionsPerSession || 10, pool.length);
 
     const firstQ = pickNextQuestion(2.0, pool, new Set(), {});
@@ -223,10 +238,9 @@ router.post("/adaptive/start", async (req, res) => {
       sessionId: session.id,
       totalQuestions: totalToAnswer,
       answeredCount: 0,
-      currentAbility: 2.0,
-      currentLevel: "intermediate",
       question: sanitizeQuestion(fullQ),
-      poolCoverage: coverage,
+      showImmediateFeedback: config.showImmediateFeedback,
+      showAnswersAfterResult: config.showAnswersAfterResult,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "خطأ في بدء الجلسة";
@@ -267,6 +281,13 @@ router.post("/adaptive/answer", async (req, res) => {
       res.status(404).json({ message: "السؤال غير موجود" });
       return;
     }
+
+    const [assignment] = await db
+      .select({ adaptiveConfig: assignmentsTable.adaptiveConfig })
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, session.assignmentId))
+      .limit(1);
+    const config = parseAdaptiveConfig(assignment?.adaptiveConfig ?? null);
 
     const previousSequence: QuestionSeqItem[] = session.questionSequence
       ? JSON.parse(session.questionSequence)
@@ -397,17 +418,15 @@ router.post("/adaptive/answer", async (req, res) => {
 
       res.json({
         done: true,
-        isCorrect,
+        isCorrect: config.showImmediateFeedback ? isCorrect : undefined,
         answeredCount: newAnswered,
         totalQuestions: session.totalToAnswer,
-        currentAbility: ability,
-        currentLevel: finalLevel,
         submissionId: submission.id,
         score: totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0,
         earnedPoints,
         totalPoints,
         correctAnswers: newCorrect,
-        skillAbilities,
+        showAnswersAfterResult: config.showAnswersAfterResult,
       });
       return;
     }
@@ -434,11 +453,9 @@ router.post("/adaptive/answer", async (req, res) => {
 
     res.json({
       done: false,
-      isCorrect,
+      isCorrect: config.showImmediateFeedback ? isCorrect : undefined,
       answeredCount: newAnswered,
       totalQuestions: session.totalToAnswer,
-      currentAbility: ability,
-      currentLevel: getLevel(ability),
       question: nextQ ? sanitizeQuestion(pool.find((q) => q.id === nextQ.id)!) : null,
     });
   } catch (error: unknown) {
@@ -466,12 +483,13 @@ router.get("/adaptive/results/:sessionId", async (req, res) => {
       return;
     }
 
+    const [ownerAssignment] = await db
+      .select({ teacherId: assignmentsTable.teacherId, adaptiveConfig: assignmentsTable.adaptiveConfig })
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, session.assignmentId))
+      .limit(1);
+
     if (req.session.teacherId) {
-      const [ownerAssignment] = await db
-        .select({ teacherId: assignmentsTable.teacherId })
-        .from(assignmentsTable)
-        .where(eq(assignmentsTable.id, session.assignmentId))
-        .limit(1);
       if (!ownerAssignment || ownerAssignment.teacherId !== req.session.teacherId) {
         res.status(403).json({ message: "غير مصرح" });
         return;
@@ -496,7 +514,9 @@ router.get("/adaptive/results/:sessionId", async (req, res) => {
       .from(questionsTable)
       .where(eq(questionsTable.assignmentId, session.assignmentId));
 
-    const answers = questionSequence.map((qi) => {
+    const config = parseAdaptiveConfig(ownerAssignment?.adaptiveConfig ?? null);
+    const canSeeAnswerDetails = Boolean(req.session.teacherId) || config.showAnswersAfterResult;
+    const answers = canSeeAnswerDetails ? questionSequence.map((qi) => {
       const q = pool.find((p) => p.id === qi.questionId);
       return {
         questionId: qi.questionId,
@@ -504,11 +524,10 @@ router.get("/adaptive/results/:sessionId", async (req, res) => {
         selectedAnswer: qi.selectedAnswer,
         correctAnswer: q?.correctAnswer || "",
         isCorrect: qi.isCorrect,
-        difficulty: qi.difficulty,
-        skill: qi.skill,
+        ...(req.session.teacherId ? { difficulty: qi.difficulty, skill: qi.skill } : {}),
         points: q?.points || 1,
       };
-    });
+    }) : [];
 
     res.json({
       sessionId: session.id,

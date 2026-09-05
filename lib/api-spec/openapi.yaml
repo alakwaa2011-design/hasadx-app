@@ -1602,6 +1602,12 @@ components:
               type: array
               items:
                 type: string
+            showImmediateFeedback:
+              type: boolean
+              default: false
+            showAnswersAfterResult:
+              type: boolean
+              default: false
         activityType:
           type: string
           nullable: true

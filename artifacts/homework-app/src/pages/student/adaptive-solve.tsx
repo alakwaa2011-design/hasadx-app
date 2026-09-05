@@ -17,7 +17,6 @@ import {
   Lock,
   AlertCircle,
   Loader2,
-  BarChart3,
   Target,
   FileText,
   Sparkles,
@@ -90,14 +89,6 @@ interface AdaptiveQuestion {
   optionC: string | null;
   optionD: string | null;
   imageUrl: string | null;
-  difficulty: number | null;
-  skill: string | null;
-}
-
-interface SkillAbility {
-  ability: number;
-  correct: number;
-  total: number;
 }
 
 interface ResultAnswer {
@@ -106,8 +97,6 @@ interface ResultAnswer {
   selectedAnswer: string | null;
   correctAnswer: string;
   isCorrect: boolean | null;
-  difficulty: number;
-  skill: string;
   points: number;
 }
 
@@ -132,12 +121,9 @@ export default function AdaptiveSolve() {
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [answeredCount, setAnsweredCount] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
-  const [currentLevel, setCurrentLevel] = useState("intermediate");
   const [submitting, setSubmitting] = useState(false);
   const [lastCorrect, setLastCorrect] = useState<boolean | null>(null);
   const [streak, setStreak] = useState(0);
-  const [levelChanged, setLevelChanged] = useState<null | "up" | "down">(null);
-  const [prevLevel, setPrevLevel] = useState("intermediate");
 
   const [done, setDone] = useState(false);
   const [finalResult, setFinalResult] = useState<{
@@ -145,13 +131,12 @@ export default function AdaptiveSolve() {
     earnedPoints: number;
     totalPoints: number;
     correctAnswers: number;
-    finalLevel: string;
-    currentAbility: number;
-    skillAbilities: Record<string, SkillAbility>;
     submissionId: number;
   } | null>(null);
 
   const [detailResults, setDetailResults] = useState<ResultAnswer[]>([]);
+  const [showImmediateFeedback, setShowImmediateFeedback] = useState(false);
+  const [showAnswersAfterResult, setShowAnswersAfterResult] = useState(false);
 
   // Persist a verified access code in sessionStorage so the student doesn't
   // re-enter it after a refresh in the same tab.
@@ -244,8 +229,8 @@ export default function AdaptiveSolve() {
       setSessionId(data.sessionId);
       setTotalQuestions(data.totalQuestions);
       setAnsweredCount(data.answeredCount);
-      setCurrentLevel(data.currentLevel);
-      setPrevLevel(data.currentLevel);
+      setShowImmediateFeedback(data.showImmediateFeedback === true);
+      setShowAnswersAfterResult(data.showAnswersAfterResult === true);
       setCurrentQuestion(data.question);
       setStarted(true);
     } catch (err: unknown) {
@@ -274,20 +259,13 @@ export default function AdaptiveSolve() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      setLastCorrect(data.isCorrect);
+      setLastCorrect(typeof data.isCorrect === "boolean" ? data.isCorrect : null);
       setAnsweredCount(data.answeredCount);
 
-      if (data.isCorrect) setStreak(s => s + 1);
-      else setStreak(0);
-
-      const levelOrder = { beginner: 0, intermediate: 1, advanced: 2 } as const;
-      const oldL = levelOrder[prevLevel as keyof typeof levelOrder] ?? 1;
-      const newL = levelOrder[data.currentLevel as keyof typeof levelOrder] ?? 1;
-      if (newL > oldL) setLevelChanged("up");
-      else if (newL < oldL) setLevelChanged("down");
-      else setLevelChanged(null);
-      setPrevLevel(data.currentLevel);
-      setCurrentLevel(data.currentLevel);
+      if (typeof data.isCorrect === "boolean") {
+        if (data.isCorrect) setStreak(s => s + 1);
+        else setStreak(0);
+      }
 
       if (data.done) {
         setDone(true);
@@ -296,57 +274,28 @@ export default function AdaptiveSolve() {
           earnedPoints: data.earnedPoints,
           totalPoints: data.totalPoints,
           correctAnswers: data.correctAnswers,
-          finalLevel: data.currentLevel,
-          currentAbility: data.currentAbility,
-          skillAbilities: data.skillAbilities,
           submissionId: data.submissionId,
         });
 
-        const detailRes = await fetch(`${API_BASE}/api/adaptive/results/${sessionId}?fp=${encodeURIComponent(getDeviceFingerprint())}`, { credentials: "include" });
-        if (detailRes.ok) {
-          const detail = await detailRes.json();
-          setDetailResults(detail.answers || []);
+        if (showAnswersAfterResult || data.showAnswersAfterResult === true) {
+          const detailRes = await fetch(`${API_BASE}/api/adaptive/results/${sessionId}?fp=${encodeURIComponent(getDeviceFingerprint())}`, { credentials: "include" });
+          if (detailRes.ok) {
+            const detail = await detailRes.json();
+            setDetailResults(detail.answers || []);
+          }
         }
       } else {
         setTimeout(() => {
           setCurrentQuestion(data.question);
           setSelectedAnswer("");
           setLastCorrect(null);
-          setLevelChanged(null);
-        }, 1100);
+        }, showImmediateFeedback ? 1100 : 150);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t.solve.error);
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const levelConfig = {
-    beginner: {
-      label: copy.beginner,
-      color: "text-orange-600 dark:text-orange-300",
-      bg: "bg-orange-100 dark:bg-orange-900/30",
-      border: "border-orange-300",
-      icon: "🌱",
-      gradient: "from-orange-400 to-orange-600",
-    },
-    intermediate: {
-      label: copy.intermediate,
-      color: "text-blue-600 dark:text-blue-300",
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      border: "border-blue-300",
-      icon: "⭐",
-      gradient: "from-blue-400 to-blue-600",
-    },
-    advanced: {
-      label: copy.advanced,
-      color: "text-emerald-600 dark:text-emerald-300",
-      bg: "bg-emerald-100 dark:bg-emerald-900/30",
-      border: "border-emerald-300",
-      icon: "🏆",
-      gradient: "from-emerald-400 to-emerald-600",
-    },
   };
 
   if (loading) {
@@ -405,8 +354,6 @@ export default function AdaptiveSolve() {
   }
 
   if (done && finalResult) {
-    const lc = levelConfig[finalResult.finalLevel as keyof typeof levelConfig] || levelConfig.intermediate;
-    const skills = Object.entries(finalResult.skillAbilities);
     const score = Math.round(finalResult.score);
     const isGreat = score >= 80;
     const isOk = score >= 50;
@@ -454,16 +401,6 @@ export default function AdaptiveSolve() {
                     </p>
                   )}
 
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.45, type: "spring", stiffness: 220 }}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${lc.bg} ${lc.color} font-bold text-base mt-2`}
-                  >
-                    <Brain className="w-4 h-4" />
-                    {copy.yourLevel} <span className="text-lg">{lc.icon}</span> {lc.label}
-                  </motion.div>
-
                   <div className="flex items-center justify-center my-6">
                     <div className="relative inline-flex items-center justify-center">
                       <ScoreRing score={score} size={148} />
@@ -481,14 +418,6 @@ export default function AdaptiveSolve() {
                   </div>
 
                   <ScoreStars score={score} />
-
-                  <p className="text-sm text-muted-foreground mb-2 max-w-md mx-auto">
-                    {finalResult.finalLevel === "advanced"
-                      ? copy.advancedFeedback
-                      : finalResult.finalLevel === "intermediate"
-                      ? copy.intermediateFeedback
-                      : copy.beginnerFeedback}
-                  </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-lg mx-auto mt-6 mb-2">
                     <div className="bg-muted/40 rounded-2xl p-4 text-center">
@@ -508,38 +437,6 @@ export default function AdaptiveSolve() {
                     </div>
                   </div>
 
-                  {skills.length > 0 && (
-                    <div className={`${dir === "rtl" ? "text-right" : "text-left"} space-y-3 mt-6 bg-muted/20 rounded-2xl p-5 border border-border`}>
-                      <h3 className="font-bold text-sm text-muted-foreground flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4" />
-                        {copy.skillsAnalysis}
-                      </h3>
-                      {skills.map(([skill, data]) => {
-                        const pct = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                        const slc = levelConfig[
-                          data.ability < 1.5 ? "beginner" : data.ability <= 2.5 ? "intermediate" : "advanced"
-                        ];
-                        return (
-                          <div key={skill} className="space-y-1">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="font-bold">{skill}</span>
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${slc.bg} ${slc.color}`}>
-                                {slc.label} — {pct}%
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${pct}%` }}
-                                transition={{ delay: 0.3, duration: 0.8 }}
-                                className={`h-full rounded-full bg-gradient-to-r ${slc.gradient}`}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -562,12 +459,6 @@ export default function AdaptiveSolve() {
                             {ans.isCorrect ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                           </div>
                           <p className="font-bold text-sm flex-1">{copy.question} {i + 1}: {ans.questionText}</p>
-                          <div className="flex gap-1.5 shrink-0">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ans.difficulty === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : ans.difficulty === 2 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
-                              {ans.difficulty === 1 ? copy.easy : ans.difficulty === 2 ? copy.medium : copy.hard}
-                            </span>
-                            {ans.skill && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">{ans.skill}</span>}
-                          </div>
                         </div>
                         <div className="px-4 py-3 flex flex-wrap gap-4 text-sm">
                           <div className="w-full">
@@ -613,7 +504,6 @@ export default function AdaptiveSolve() {
   }
 
   if (started && currentQuestion) {
-    const lc = levelConfig[currentLevel as keyof typeof levelConfig] || levelConfig.intermediate;
     const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
     const qt = currentQuestion.questionType || "mcq";
     const questionNumber = answeredCount + 1;
@@ -626,19 +516,10 @@ export default function AdaptiveSolve() {
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shrink-0">
-                    <Brain className="w-4 h-4" />
+                    <FileText className="w-4 h-4" />
                   </div>
                   <span className="font-black text-sm truncate">{assignment.title as string}</span>
                 </div>
-                <motion.div
-                  key={currentLevel}
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ${lc.bg} ${lc.color} flex items-center gap-1`}
-                >
-                  <span>{lc.icon}</span>
-                  <span>{lc.label}</span>
-                </motion.div>
               </div>
               <div className="flex items-center gap-3">
                 <p className="text-xs font-bold text-muted-foreground shrink-0">
@@ -666,7 +547,7 @@ export default function AdaptiveSolve() {
 
           <div className="container mx-auto px-4 py-6 max-w-3xl">
             <AnimatePresence mode="wait">
-              {lastCorrect !== null && (
+              {showImmediateFeedback && lastCorrect !== null && (
                 <motion.div
                   key="feedback"
                   initial={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -681,16 +562,6 @@ export default function AdaptiveSolve() {
                   {lastCorrect && streak >= 2 && (
                     <span className="ms-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-800 dark:bg-amber-500/30 dark:text-amber-200 text-xs">
                       <Sparkles className="w-3 h-3" /> {streak} {copy.streak}
-                    </span>
-                  )}
-                  {levelChanged === "up" && (
-                    <span className="ms-1 px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 dark:bg-emerald-500/30 dark:text-emerald-200 text-xs font-bold">
-                      ⬆ {copy.levelUp}
-                    </span>
-                  )}
-                  {levelChanged === "down" && (
-                    <span className="ms-1 px-2 py-0.5 rounded-full bg-orange-200/80 text-orange-800 dark:bg-orange-500/30 dark:text-orange-200 text-xs font-bold">
-                      ⬇ {copy.easierNext}
                     </span>
                   )}
                 </motion.div>
@@ -714,18 +585,6 @@ export default function AdaptiveSolve() {
                         {copy.questionLong} {questionNumber} / {totalQuestions}
                       </p>
                       <h2 className="text-lg md:text-xl font-black leading-snug">{currentQuestion.text}</h2>
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0 items-end">
-                      {currentQuestion.difficulty && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${currentQuestion.difficulty === 1 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : currentQuestion.difficulty === 2 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
-                          {currentQuestion.difficulty === 1 ? copy.easy : currentQuestion.difficulty === 2 ? copy.intermediate : copy.hard}
-                        </span>
-                      )}
-                      {currentQuestion.skill && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 max-w-[120px] truncate">
-                          {currentQuestion.skill}
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -874,21 +733,14 @@ export default function AdaptiveSolve() {
             </Link>
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Brain className="w-6 h-6" />
+                <FileText className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-xs font-bold bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full inline-block mb-1">
-                  {copy.adaptiveTest}
-                </div>
                 <h1 className="text-2xl md:text-4xl font-black leading-tight">{assignment.title as string}</h1>
               </div>
             </div>
             {assignment.description ? <p className="text-white/80 text-base max-w-2xl mb-4">{assignment.description as string}</p> : null}
             <div className="mt-2 flex items-center gap-2 text-sm font-medium flex-wrap">
-              <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg">
-                <Brain className="w-4 h-4" />
-                {copy.adaptive}
-              </span>
               {assignment.subject ? (
                 <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg">
                   <Star className="w-4 h-4" /> {assignment.subject as string}
@@ -913,26 +765,14 @@ export default function AdaptiveSolve() {
                   transition={{ type: "spring", stiffness: 220 }}
                   className="text-5xl mb-3"
                 >
-                  🧠
+                  📝
                 </motion.div>
                 <h2 className="text-xl font-black mb-2">
-                  {copy.smartAdaptiveTest}
+                  {lang === "ar" ? "جاهز للبدء؟" : "Ready to begin?"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {copy.smartAdaptiveDescription}
+                  {lang === "ar" ? "أدخل بياناتك ثم ابدأ الاختبار." : "Enter your details, then start the test."}
                 </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 my-4">
-                {(["beginner", "intermediate", "advanced"] as const).map(lv => {
-                  const c = levelConfig[lv];
-                  return (
-                    <div key={lv} className={`flex flex-col items-center gap-1 p-2 rounded-xl border ${c.bg} border-border`}>
-                      <span className="text-xl">{c.icon}</span>
-                      <span className={`text-[11px] font-bold ${c.color}`}>{c.label}</span>
-                    </div>
-                  );
-                })}
               </div>
 
               <div>
@@ -987,8 +827,8 @@ export default function AdaptiveSolve() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    <Brain className="w-5 h-5" />
-                    {copy.startAdaptiveTest}
+                    <FileText className="w-5 h-5" />
+                    {lang === "ar" ? "ابدأ الاختبار" : "Start test"}
                   </>
                 )}
               </button>
