@@ -350,6 +350,7 @@ export function WorksheetPrintView({
   const [pages, setPages] = useState<Question[][]>(() =>
     paginateByEstimate(data.questions, fontSizePt, cols, 190, 250),
   );
+  const [answerPages, setAnswerPages] = useState<Question[][]>(() => [data.questions]);
   const measureRef = useRef<HTMLDivElement>(null);
   const lastKeyRef = useRef("");
 
@@ -357,6 +358,7 @@ export function WorksheetPrintView({
   useLayoutEffect(() => {
     const key = [
       localQs.map(q => `${q.id}:${q.prompt}`).join(","),
+      data.questions.map(q => JSON.stringify(q)).join(","),
       cols, fontSizePt,
       data.settings.schoolName ?? "", data.settings.section ?? "",
       data.settings.teacherName ?? "", logoUrl ? "logo" : "",
@@ -375,6 +377,9 @@ export function WorksheetPrintView({
     const headerEl = root.querySelector("[data-header-measure]") as HTMLElement | null;
     const continuationEl = root.querySelector("[data-continuation-measure]") as HTMLElement | null;
     const footerEl = root.querySelector("[data-footer-measure]") as HTMLElement | null;
+    const answerEls = Array.from(root.querySelectorAll("[data-answer-measure]")) as HTMLElement[];
+    const answerHeaderEl = root.querySelector("[data-answer-header-measure]") as HTMLElement | null;
+    const answerContinuationEl = root.querySelector("[data-answer-continuation-measure]") as HTMLElement | null;
     lastKeyRef.current = key;
 
     const PX_MM = 3.7795;
@@ -413,6 +418,38 @@ export function WorksheetPrintView({
     }
     if (page.length > 0) newPages.push(page);
     if (newPages.length > 0) setPages(newPages);
+
+    if (answerEls.length === data.questions.length && data.questions.length > 0) {
+      const answerHeaderH = answerHeaderEl ? answerHeaderEl.offsetHeight : 38 * PX_MM;
+      const answerContinuationH = answerContinuationEl ? answerContinuationEl.offsetHeight : 12 * PX_MM;
+      // Answer rows are simpler than worksheet questions and the final visible
+      // page guard below catches any remaining font/theme variance. A smaller
+      // reserve keeps compact keys on one sheet as they were before pagination.
+      const ANSWER_SAFETY_FIRST = 4 * PX_MM;
+      const ANSWER_SAFETY_OTHER = 3 * PX_MM;
+      const answerFirstH = Math.max(contentH - answerHeaderH - footerH - ANSWER_SAFETY_FIRST, 80 * PX_MM);
+      const answerOtherH = Math.max(contentH - answerContinuationH - footerH - ANSWER_SAFETY_OTHER, 150 * PX_MM);
+      const answerHeights = answerEls.map(el => el.offsetHeight + GAP);
+      const nextAnswerPages: Question[][] = [];
+      let answerPage: Question[] = [];
+      let answerUsedH = 0;
+      let answerLimit = answerFirstH;
+      for (let i = 0; i < data.questions.length; i++) {
+        const h = answerHeights[i];
+        if (answerPage.length > 0 && answerUsedH + h > answerLimit) {
+          nextAnswerPages.push(answerPage);
+          answerPage = [];
+          answerUsedH = 0;
+          answerLimit = answerOtherH;
+        }
+        answerPage.push(data.questions[i]);
+        answerUsedH += h;
+      }
+      if (answerPage.length > 0) nextAnswerPages.push(answerPage);
+      setAnswerPages(nextAnswerPages);
+    } else if (data.questions.length === 0) {
+      setAnswerPages([[]]);
+    }
   });
 
   // Final rendered-height guard. Font loading and theme selectors can make the
@@ -435,6 +472,28 @@ export function WorksheetPrintView({
       return next;
     });
   }, [pages]);
+
+  // Answer keys need the same rendered-height protection as worksheet pages:
+  // a long answer or a late-loading font must never make Chromium create an
+  // unrepresented physical PDF page.
+  useLayoutEffect(() => {
+    if (!data.settings.includeAnswerKey) return;
+    const root = document.getElementById("ws-printable-root");
+    if (!root) return;
+    const pageEls = Array.from(root.querySelectorAll<HTMLElement>("[data-answer-key-page]"));
+    const a4HeightPx = (297 / 25.4) * 96;
+    const overflowIndex = pageEls.findIndex((page) => page.getBoundingClientRect().height > a4HeightPx + 2);
+    if (overflowIndex < 0 || (answerPages[overflowIndex]?.length ?? 0) <= 1) return;
+
+    setAnswerPages(prev => {
+      const next = prev.map(page => [...page]);
+      const moved = next[overflowIndex].pop();
+      if (!moved) return prev;
+      if (next[overflowIndex + 1]) next[overflowIndex + 1].unshift(moved);
+      else next.push([moved]);
+      return next;
+    });
+  }, [answerPages, data.settings.includeAnswerKey]);
 
   // ── Classic (default) header — used when no theme is active ──
   const classicHeader = (
@@ -564,6 +623,30 @@ export function WorksheetPrintView({
             goodLuck={data.settings.goodLuck?.trim() || labels.goodLuck}
           />
         </div>
+        <div data-answer-header-measure style={{ width: "174mm" }}>
+          <header className="ws-header">
+            <div className="ws-headgrid ws-headgrid-titleonly">
+              <div className="ws-headcenter">
+                <h1 className="ws-title" style={{ color: BRAND_GOLD }}>{labels.answerKey}</h1>
+                <div className="ws-kicker-center" style={{ color: BRAND_GOLD, background: `${BRAND_GOLD}1f` }}>
+                  {data.title}
+                </div>
+                <DoubleDivider gold />
+              </div>
+            </div>
+          </header>
+        </div>
+        <div data-answer-continuation-measure style={{ width: "174mm" }}>
+          <div className="ws-cont-header">
+            <span className="ws-cont-title">{labels.answerKey} · {data.title}</span>
+            <span className="ws-cont-page">{ar ? "صفحة متابعة" : "Continued"}</span>
+          </div>
+        </div>
+        {data.questions.map((q, i) => (
+          <div key={`answer-${q.id}`} data-answer-measure style={{ width: "174mm" }}>
+            <AnswerView index={i + 1} q={q} ar={ar} labels={labels} />
+          </div>
+        ))}
       </div>
 
       {/* ── Edit mode floating bar (no-print) ──────────────────── */}
@@ -691,32 +774,52 @@ export function WorksheetPrintView({
         })}
 
         {/* ── Answer key page ──────────────────────────────────── */}
-        {data.settings.includeAnswerKey && (
-          <article data-answer-key-page className={pageClass} lang={data.language} style={{ background: themeBg }}>
-            {showWatermark && <WatermarkLayer ar={ar} />}
-            {!themeId && <CornerOrnaments />}
-            {themeId === "arabic_ink" && <CornerOrnaments />}
-            <div className="ws-content">
-              <header className="ws-header">
-                <div className="ws-headgrid ws-headgrid-titleonly">
-                  <div className="ws-headcenter">
-                    <h1 className="ws-title" style={{ color: BRAND_GOLD }}>{labels.answerKey}</h1>
-                    <div className="ws-kicker-center" style={{ color: BRAND_GOLD, background: `${BRAND_GOLD}1f` }}>
-                      {data.title}
+        {data.settings.includeAnswerKey && answerPages.map((answerPageQs, answerPageIndex) => {
+          const physicalPageNum = pages.length + answerPageIndex + 1;
+          return (
+            <article
+              data-answer-key-page
+              data-answer-key-page-number={answerPageIndex + 1}
+              key={`answer-page-${answerPageIndex + 1}`}
+              className={pageClass}
+              lang={data.language}
+              style={{ background: themeBg }}
+            >
+              {showWatermark && <WatermarkLayer ar={ar} />}
+              {!themeId && <CornerOrnaments />}
+              {themeId === "arabic_ink" && <CornerOrnaments />}
+              <div className="ws-content">
+                {answerPageIndex === 0 ? (
+                  <header className="ws-header">
+                    <div className="ws-headgrid ws-headgrid-titleonly">
+                      <div className="ws-headcenter">
+                        <h1 className="ws-title" style={{ color: BRAND_GOLD }}>{labels.answerKey}</h1>
+                        <div className="ws-kicker-center" style={{ color: BRAND_GOLD, background: `${BRAND_GOLD}1f` }}>
+                          {data.title}
+                        </div>
+                        <DoubleDivider gold />
+                      </div>
                     </div>
-                    <DoubleDivider gold />
+                  </header>
+                ) : (
+                  <div className="ws-cont-header" data-answer-key-continuation>
+                    <span className="ws-cont-title">{labels.answerKey} · {data.title}</span>
+                    <span className="ws-cont-page">
+                      {ar ? `صفحة ${physicalPageNum}` : `Page ${physicalPageNum}`}
+                    </span>
                   </div>
-                </div>
-              </header>
-              <section className="ws-questions" style={{ columnCount: 1 }}>
-                {data.questions.map((q, i) => (
-                  <AnswerView key={q.id} index={i + 1} q={q} ar={ar} labels={labels} />
-                ))}
-              </section>
-              <FooterStrip goodLuck="" />
-            </div>
-          </article>
-        )}
+                )}
+                <section className="ws-questions" style={{ columnCount: 1 }}>
+                  {answerPageQs.map(q => {
+                    const index = data.questions.findIndex(candidate => candidate.id === q.id);
+                    return <AnswerView key={q.id} index={index + 1} q={q} ar={ar} labels={labels} />;
+                  })}
+                </section>
+                <FooterStrip goodLuck="" />
+              </div>
+            </article>
+          );
+        })}
       </div>
     </>
   );

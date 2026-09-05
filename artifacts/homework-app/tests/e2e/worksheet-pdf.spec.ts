@@ -18,6 +18,7 @@ const questionPrompts = Array.from(
 
 let teacher: TestTeacher;
 let worksheetId: number;
+let longAnswerWorksheetId: number;
 
 function countChromiumPdfPages(pdf: Buffer): number {
   // Chromium writes every physical page as a /Type /Page object. The word
@@ -102,6 +103,39 @@ test.beforeAll(async ({ baseURL }) => {
     }
     const worksheet = await response.json();
     worksheetId = worksheet.id;
+
+    const longAnswerQuestions = Array.from({ length: 18 }, (_, index) => ({
+      id: `e2e-long-answer-q-${index + 1}`,
+      type: "short_answer" as const,
+      prompt: `LONG-ANSWER-PROMPT-${index + 1}`,
+      lines: 1,
+      answer: `LONG-ANSWER-${index + 1}-MARKER ${"A deliberately verbose answer used to verify measured A4 answer-key pagination. ".repeat(5)}`,
+    }));
+    const longAnswerResponse = await api.post("/api/worksheets", {
+      headers: { Cookie: teacher.cookieHeader },
+      data: {
+        title: "E2E LONG ANSWER KEY",
+        language: "en",
+        gradeLevel: "E2E",
+        subject: "PDF regression",
+        questions: longAnswerQuestions,
+        settings: {
+          includeName: false,
+          includeDate: false,
+          includeClass: false,
+          includeAnswerKey: true,
+          columns: 1,
+          fontFamily: "inter",
+          fontSizePt: 12,
+          showWatermark: true,
+          template: "geometric",
+        },
+      },
+    });
+    if (!longAnswerResponse.ok()) {
+      throw new Error(`Long answer worksheet seed failed: ${longAnswerResponse.status()} ${await longAnswerResponse.text()}`);
+    }
+    longAnswerWorksheetId = (await longAnswerResponse.json()).id;
   } finally {
     await api.dispose();
   }
@@ -189,6 +223,47 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
   const answerPage = printable.locator("[data-answer-key-page]");
   await expect(answerPage.locator(".ws-answer")).toHaveCount(questionCount);
 
+  const pdf = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    preferCSSPageSize: true,
+  });
+  expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+});
+
+test("long answer keys become numbered A4 DOM pages that match the PDF", async ({
+  page,
+}) => {
+  await page.goto(`/teacher/worksheets/${longAnswerWorksheetId}/print`);
+
+  const printable = page.locator("#ws-printable-root");
+  await expect(printable).toBeVisible({ timeout: 20_000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  const answerPages = printable.locator("[data-answer-key-page]");
+  await expect
+    .poll(async () => answerPages.count(), { timeout: 15_000 })
+    .toBeGreaterThan(1);
+
+  await expect(answerPages.nth(1).locator("[data-answer-key-continuation]")).toBeVisible();
+  await expect(answerPages.nth(1).locator(".ws-cont-title")).toContainText("Answer Key");
+  await expect(answerPages.nth(1).locator(".ws-cont-page")).toContainText("Page");
+
+  const answerMarkers = (await answerPages.locator(".ws-answer-line").allTextContents())
+    .map(text => text.match(/LONG-ANSWER-\d+-MARKER/)?.[0])
+    .filter((marker): marker is string => Boolean(marker));
+  expect(answerMarkers).toEqual(
+    Array.from({ length: 18 }, (_, index) => `LONG-ANSWER-${index + 1}-MARKER`),
+  );
+
+  for (const answerPage of await answerPages.all()) {
+    expect(await answerPage.locator(".ws-answer").count()).toBeGreaterThan(0);
+  }
+
+  const domPageCount = await printable.locator(".ws-page").count();
   const pdf = await page.pdf({
     format: "A4",
     printBackground: true,
