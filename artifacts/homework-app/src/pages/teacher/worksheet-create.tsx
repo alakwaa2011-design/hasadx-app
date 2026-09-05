@@ -26,6 +26,7 @@ import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/workshee
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
+import type { WorksheetSettings } from "@workspace/api-zod";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const MAX_SOURCE_TEXT_LENGTH = 12000;
@@ -141,31 +142,8 @@ type Question = QMcq | QTF | QShort | QFill | QMatch;
 
 type FontFamily = "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia";
 
-interface CustomField { label: string; value: string }
-
-interface Settings {
-  instructions?: string;
-  includeName: boolean;
-  includeDate: boolean;
-  includeClass: boolean;
-  includeAnswerKey: boolean;
-  columns: 1 | 2;
-  headerNote?: string;
-  footerNote?: string;
-  goodLuck?: string;
-  schoolName?: string;
-  section?: string;
-  teacherName?: string;
-  customFields?: CustomField[];
-  fontFamily: FontFamily;
-  fontSizePt: number;
-  showWatermark: boolean;
-  themeColor?: string;
-  logoUrl?: string;
-  template?: ThemeId;
-  layout?: CanvasLayout;
-  pageBreaks?: string[];
-}
+type Settings = WorksheetSettings;
+type CustomField = NonNullable<Settings["customFields"]>[number];
 
 const MAX_CUSTOM_FIELDS = 6;
 

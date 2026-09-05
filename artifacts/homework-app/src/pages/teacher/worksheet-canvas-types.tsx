@@ -5,43 +5,18 @@
  * creating a circular dependency with worksheet-canvas-editor.tsx.
  */
 import React from "react";
+import type {
+  WorksheetCanvasElement,
+  WorksheetCanvasLayout,
+} from "@workspace/api-zod";
 
 const BRAND_PRIMARY = "#225739";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type CanvasElementKind = "text" | "rect" | "circle" | "line";
-
-export interface CanvasElement {
-  id: string;
-  kind: CanvasElementKind;
-  /** Position as % of page width (0–100). */
-  x: number;
-  /** Position as % of page height (0–100). */
-  y: number;
-  /** Width as % of page width. */
-  width: number;
-  /** Height as % of page height. */
-  height: number;
-  // Text
-  text?: string;
-  fontSize?: number;
-  fontColor?: string;
-  bold?: boolean;
-  italic?: boolean;
-  align?: "left" | "center" | "right";
-  // Shape
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  strokeStyle?: "solid" | "dashed" | "dotted";
-  borderRadius?: number;
-  opacity?: number;
-}
-
-export interface CanvasLayout {
-  elements: CanvasElement[];
-}
+export type CanvasElement = WorksheetCanvasElement;
+export type CanvasElementKind = CanvasElement["kind"];
+export type CanvasLayout = WorksheetCanvasLayout;
 
 // ─── Canvas layer renderer (used in print view) ──────────────────────────────
 

@@ -18,17 +18,11 @@
  */
 
 import type React from "react";
+import type { WorksheetThemeId } from "@workspace/api-zod";
 
 // ─── Types ───────────────────────────────────────────────────────
 
-export type ThemeId =
-  | "geometric"    // Math / Physics — grid, squares, navy blue
-  | "arabic_ink"   // Arabic Language — arabesque, cream, Amiri
-  | "modern_band"  // English / General — vivid top band, clean cards
-  | "exam_paper"   // High School — formal tabular, minimal
-  | "kids_play"    // Kindergarten — playful, stars, rounded
-  | "science_lab"  // Science — teal, graph paper, clipboard
-  | "editorial";   // Literature / History / Islamic — serif masthead
+export type ThemeId = WorksheetThemeId;
 
 export type HeaderLayout =
   | "classic"    // 3-column: identity | title | spacer (base default)

@@ -11,6 +11,7 @@ import {
   type HeaderProps,
 } from "./worksheet-themes";
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
+import type { WorksheetSettings } from "@workspace/api-zod";
 import QRCode from "react-qr-code";
 import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon } from "lucide-react";
 
@@ -25,60 +26,8 @@ interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
 export type Question = QMcq | QTF | QShort | QFill | QMatch;
 
-export type FontFamily = "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia";
-
-export interface CustomField { label: string; value: string }
-
-export interface Settings {
-  instructions?: string;
-
-  includeName: boolean;
-
-  includeDate: boolean;
-
-  includeClass: boolean;
-
-  includeAnswerKey: boolean;
-
-  columns: 1 | 2;
-
-  headerNote?: string;
-
-  footerNote?: string;
-  /** Custom closing line (overrides the default "نتمنى لك التوفيق"). */
-  goodLuck?: string;
-
-  schoolName?: string;
-
-  section?: string;
-
-  teacherName?: string;
-  /** Optional teacher-defined extra header fields (label + value). */
-
-  customFields?: CustomField[];
-
-  fontFamily?: FontFamily;
-
-  fontSizePt?: number;
-
-  showWatermark?: boolean;
-  /** Custom accent color (hex). Defaults to Hasaad green. */
-
-  themeColor?: string;
-  /** Base64 or URL of school logo — shown in the header identity panel. */
-
-  logoUrl?: string;
-  /** Design template ID — auto-selected by AI, overrideable by teacher. */
-  /** Question IDs that have a forced page break inserted before them. */
-
-  template?: ThemeId;
-  /** Free-form canvas overlay elements (text, shapes) placed by the teacher. */
-
-  layout?: CanvasLayout;
-
-  pageBreaks?: string[];
-}
-
+export type Settings = WorksheetSettings;
+export type FontFamily = Settings["fontFamily"];
 export interface WorksheetData {
   id: number;
   title: string;

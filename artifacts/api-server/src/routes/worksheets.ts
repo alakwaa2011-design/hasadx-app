@@ -4,6 +4,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { featureAccess } from "@workspace/billing";
 import { z } from "zod";
+import { worksheetSettingsSchema } from "@workspace/api-zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -149,74 +150,6 @@ const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine(
   });
 });
 
-const settingsSchema = z.object({
-  instructions: z.string().max(2000).optional(),
-  includeName: z.boolean().default(true),
-  includeDate: z.boolean().default(true),
-  includeClass: z.boolean().default(true),
-  includeAnswerKey: z.boolean().default(false),
-  columns: z.union([z.literal(1), z.literal(2)]).default(1),
-  headerNote: z.string().max(300).optional(),
-  footerNote: z.string().max(300).optional(),
-  goodLuck: z.string().max(200).optional(),
-  // Header identity fields (school / section / teacher name) printed at
-  // the top of the worksheet so a single class can reuse the same
-  // header across many printouts.
-  schoolName: z.string().max(200).optional(),
-  section: z.string().max(100).optional(),
-  teacherName: z.string().max(100).optional(),
-  customFields: z.array(z.object({
-    label: z.string().max(40),
-    value: z.string().max(120),
-  })).max(6).optional(),
-  // Typography controls — let the teacher pick their font and base size.
-  fontFamily: z.enum(["default", "cairo", "tajawal", "amiri", "noto-naskh", "inter", "georgia"]).default("default"),
-  fontSizePt: z.number().int().min(9).max(18).default(12),
-  // Watermark behind worksheet content. Currently always available; once
-  // billing is wired up, the frontend will hide the toggle for paid plans.
-  showWatermark: z.boolean().default(true),
-  themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  logoUrl: z.string().max(700_000).refine(
-    (value) => /^data:image\/(?:png|jpe?g|webp|svg\+xml);base64,/.test(value),
-    "logoUrl must be a supported image data URL",
-  ).optional(),
-  template: z.enum([
-    "geometric",
-    "arabic_ink",
-    "modern_band",
-    "exam_paper",
-    "kids_play",
-    "science_lab",
-    "editorial",
-  ]).optional(),
-  layout: z.object({
-    elements: z.array(z.object({
-      id: z.string().min(1).max(100),
-      kind: z.enum(["text", "rect", "circle", "line"]),
-      x: z.number().min(0).max(100),
-      y: z.number().min(0).max(100),
-      width: z.number().min(0).max(100),
-      height: z.number().min(0).max(100),
-      text: z.string().max(2000).optional(),
-      fontSize: z.number().min(6).max(200).optional(),
-      fontColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-      bold: z.boolean().optional(),
-      italic: z.boolean().optional(),
-      align: z.enum(["left", "center", "right"]).optional(),
-      fillColor: z.union([
-        z.string().regex(/^#[0-9a-fA-F]{6}$/),
-        z.literal("transparent"),
-      ]).optional(),
-      strokeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-      strokeWidth: z.number().min(0).max(20).optional(),
-      strokeStyle: z.enum(["solid", "dashed", "dotted"]).optional(),
-      borderRadius: z.number().min(0).max(100).optional(),
-      opacity: z.number().min(0).max(1).optional(),
-    })).max(100),
-  }).optional(),
-  pageBreaks: z.array(z.string().min(1).max(100)).max(59).optional(),
-});
-
 const upsertBody = z.object({
   clientRequestId: z.string().uuid().optional(),
   title: z.string().min(2).max(200),
@@ -224,7 +157,7 @@ const upsertBody = z.object({
   gradeLevel: z.string().max(50).nullish(),
   subject: z.string().max(100).nullish(),
   questions: questionsArraySchema,
-  settings: settingsSchema,
+  settings: worksheetSettingsSchema,
   /** Enable smart paper grading: a hidden internal assignment is created/
    *  synced behind the scenes so the existing grading engine can grade
    *  photos of this worksheet. Optional for backwards compatibility. */

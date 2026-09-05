@@ -71,6 +71,10 @@ vi.mock("../lib/file-upload", () => ({
 
 import express from "express";
 import request from "supertest";
+import type {
+  WorksheetCanvasElement,
+  WorksheetSettings,
+} from "@workspace/api-zod";
 import worksheetsRouter from "../routes/worksheets";
 
 const settings = {
@@ -123,7 +127,7 @@ const settings = {
     }],
   },
   pageBreaks: ["q2"],
-};
+} satisfies WorksheetSettings;
 
 const questions = [{
   id: "q1",
@@ -144,7 +148,7 @@ function makeApp() {
   return app;
 }
 
-function payload(nextSettings = settings) {
+function payload(nextSettings: unknown = settings) {
   return {
     title: "ورقة اختبار",
     language: "ar",
@@ -163,7 +167,7 @@ function customFields(count: number) {
   }));
 }
 
-function layoutElements(count: number) {
+function layoutElements(count: number): WorksheetCanvasElement[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `element-${index + 1}`,
     kind: "rect",
