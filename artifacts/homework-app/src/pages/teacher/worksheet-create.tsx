@@ -2053,7 +2053,7 @@ function PreviewOverlay({
             <FileType className="w-4 h-4" /> {ar ? "وورد (Word)" : "Word"}
           </button>
           <button
-            onClick={() => printToPdf()}
+            onClick={() => printToPdf(data.title)}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
             title={ar ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
           >

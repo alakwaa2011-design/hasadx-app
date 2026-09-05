@@ -356,7 +356,7 @@ export function WorksheetPrintView({
   // After each render, measure actual heights and re-paginate
   useLayoutEffect(() => {
     const key = [
-      data.questions.map(q => q.id).join(","),
+      localQs.map(q => `${q.id}:${q.prompt}`).join(","),
       cols, fontSizePt,
       data.settings.schoolName ?? "", data.settings.section ?? "",
       data.settings.teacherName ?? "", logoUrl ? "logo" : "",
@@ -365,25 +365,29 @@ export function WorksheetPrintView({
       data.settings.includeClass ? "c" : "",
       data.settings.instructions ?? "",
       themeId ?? "",
+      [...localBreaks].sort().join(","),
     ].join("|");
     if (key === lastKeyRef.current) return;
     const root = measureRef.current;
     if (!root) return;
     const qEls = Array.from(root.querySelectorAll("[data-q-measure]")) as HTMLElement[];
-    if (qEls.length !== data.questions.length) return;
+    if (qEls.length !== localQs.length) return;
     const headerEl = root.querySelector("[data-header-measure]") as HTMLElement | null;
+    const continuationEl = root.querySelector("[data-continuation-measure]") as HTMLElement | null;
+    const footerEl = root.querySelector("[data-footer-measure]") as HTMLElement | null;
     lastKeyRef.current = key;
 
     const PX_MM = 3.7795;
     const contentH = (297 - 18 - 16) * PX_MM;
     const headerH = headerEl ? headerEl.offsetHeight : 60 * PX_MM;
-    const footerH = 12 * PX_MM;
+    const continuationH = continuationEl ? continuationEl.offsetHeight : 12 * PX_MM;
+    const footerH = footerEl ? footerEl.offsetHeight : 18 * PX_MM;
     // هامش أمان: القوالب تضيف هوامش/إطارات لا تدخل في القياس، وأي تجاوز
     // ولو ببكسلات يقسم الصفحة المطبوعة إلى صفحتين (شريحة مكررة).
     const SAFETY_FIRST = 12 * PX_MM;
     const SAFETY_OTHER = 8 * PX_MM;
     const firstPageH = Math.max(contentH - headerH - footerH - SAFETY_FIRST, 80 * PX_MM);
-    const otherPageH = Math.max(contentH - footerH - 12 * PX_MM - SAFETY_OTHER, 150 * PX_MM);
+    const otherPageH = Math.max(contentH - footerH - continuationH - SAFETY_OTHER, 150 * PX_MM);
     const GAP = 4 * PX_MM;
     const heights = qEls.map(el => el.offsetHeight + GAP);
     const newPages: Question[][] = [];
@@ -391,24 +395,46 @@ export function WorksheetPrintView({
     let usedH = 0;
     let limit = firstPageH;
     if (cols === 2) {
-      for (let i = 0; i < data.questions.length; i += 2) {
+      for (let i = 0; i < localQs.length; i += 2) {
         const rowH = Math.max(heights[i] ?? 0, heights[i + 1] ?? 0);
-        if (page.length > 0 && usedH + rowH > limit) { newPages.push(page); page = []; usedH = 0; limit = otherPageH; }
-        page.push(data.questions[i]);
-        if (i + 1 < data.questions.length) page.push(data.questions[i + 1]);
+        const forceBreak = localBreaks.has(localQs[i].id) || (i + 1 < localQs.length && localBreaks.has(localQs[i + 1].id));
+        if (page.length > 0 && (forceBreak || usedH + rowH > limit)) { newPages.push(page); page = []; usedH = 0; limit = otherPageH; }
+        page.push(localQs[i]);
+        if (i + 1 < localQs.length) page.push(localQs[i + 1]);
         usedH += rowH;
       }
     } else {
-      for (let i = 0; i < data.questions.length; i++) {
+      for (let i = 0; i < localQs.length; i++) {
         const h = heights[i];
-        if (page.length > 0 && usedH + h > limit) { newPages.push(page); page = []; usedH = 0; limit = otherPageH; }
-        page.push(data.questions[i]);
+        if (page.length > 0 && (localBreaks.has(localQs[i].id) || usedH + h > limit)) { newPages.push(page); page = []; usedH = 0; limit = otherPageH; }
+        page.push(localQs[i]);
         usedH += h;
       }
     }
     if (page.length > 0) newPages.push(page);
     if (newPages.length > 0) setPages(newPages);
   });
+
+  // Final rendered-height guard. Font loading and theme selectors can make the
+  // visible page taller than the hidden estimate. Move one trailing question
+  // at a time until every worksheet article fits a physical A4 sheet.
+  useLayoutEffect(() => {
+    const root = document.getElementById("ws-printable-root");
+    if (!root) return;
+    const pageEls = Array.from(root.querySelectorAll<HTMLElement>("[data-worksheet-page]"));
+    const a4HeightPx = (297 / 25.4) * 96;
+    const overflowIndex = pageEls.findIndex((page) => page.getBoundingClientRect().height > a4HeightPx + 2);
+    if (overflowIndex < 0 || (pages[overflowIndex]?.length ?? 0) <= 1) return;
+
+    setPages(prev => {
+      const next = prev.map(page => [...page]);
+      const moved = next[overflowIndex].pop();
+      if (!moved) return prev;
+      if (next[overflowIndex + 1]) next[overflowIndex + 1].unshift(moved);
+      else next.push([moved]);
+      return next;
+    });
+  }, [pages]);
 
   // ── Classic (default) header — used when no theme is active ──
   const classicHeader = (
@@ -515,11 +541,29 @@ export function WorksheetPrintView({
         dir={dir}
       >
         <div data-header-measure style={{ width: "174mm" }}>{page1Header}</div>
-        {data.questions.map((q, i) => (
+        <div data-continuation-measure style={{ width: "174mm" }}>
+          <div className="ws-cont-header">
+            <span className="ws-cont-title">{data.title}</span>
+            <span className="ws-cont-page">{ar ? "صفحة 2" : "Page 2"}</span>
+          </div>
+        </div>
+        {localQs.map((q, i) => (
           <div key={q.id} data-q-measure style={{ width: qColWidth }}>
-            <QuestionView index={i + 1} q={q} ar={ar} labels={labels} />
+            <QuestionView
+              index={i + 1}
+              q={q}
+              ar={ar}
+              labels={labels}
+              showTypeHeader={firstOfTypeSet.has(q.id)}
+            />
           </div>
         ))}
+        <div data-footer-measure style={{ width: "174mm" }}>
+          <FooterStrip
+            note={data.settings.footerNote}
+            goodLuck={data.settings.goodLuck?.trim() || labels.goodLuck}
+          />
+        </div>
       </div>
 
       {/* ── Edit mode floating bar (no-print) ──────────────────── */}
@@ -594,7 +638,7 @@ export function WorksheetPrintView({
           const isFirst = pi === 0;
           const isLast = pi === pages.length - 1;
           return (
-            <article key={pageNum} className={pageClass} lang={data.language} style={{ background: themeBg }}>
+            <article data-worksheet-page key={pageNum} className={pageClass} lang={data.language} style={{ background: themeBg }}>
               {showWatermark && <WatermarkLayer ar={ar} />}
               {/* Classic corner ornaments only for no-theme or themes that keep them */}
               {!themeId && <CornerOrnaments />}
@@ -777,7 +821,7 @@ export default function WorksheetPrint() {
             {uiLang === "ar" ? "وورد" : "Word"}
           </button>
           <button
-            onClick={() => printToPdf()}
+            onClick={() => printToPdf(data.title)}
             className="px-4 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
             style={{ background: BRAND_PRIMARY }}
             title={uiLang === "ar" ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
@@ -1428,12 +1472,13 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-content {
         position: relative;
         z-index: 1;
+        box-sizing: border-box;
         padding: 18mm 18mm 16mm 18mm;
         display: flex;
         flex-direction: column;
-        /* --ws-frame = مجموع سماكة إطار الصفحة (أعلى+أسفل) في القوالب ذات الحدود.
-           بدون خصمه يتجاوز ارتفاع الصفحة 297mm بضع بكسلات فتنقسم كل صفحة
-           مطبوعة إلى صفحتين (شريحة مكررة) عند الطباعة/تصدير PDF. */
+        /* Include the 34mm vertical padding inside the A4 height. Without
+           border-box Chromium fragments every worksheet article and can
+           repeat the first-looking fragment in Save as PDF. */
         min-height: calc(297mm - var(--ws-frame, 0px));
       }
 
@@ -2033,6 +2078,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         /* عند الطباعة نترك بضع بكسلات احتياطاً — أي صفحة يتجاوز ارتفاعها
            297mm ولو بكسراً واحداً تنقسم في PDF إلى صفحة + شريحة مكررة. */
         .ws-content {
+          box-sizing: border-box !important;
           min-height: calc(297mm - var(--ws-frame, 0px) - 10px) !important;
         }
         /* Core base elements */

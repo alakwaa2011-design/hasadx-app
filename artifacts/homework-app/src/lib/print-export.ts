@@ -134,8 +134,23 @@ export function downloadAsWord({ element, title, lang = "ar" }: WordExportOption
  * already enforces `@page { size: A4; margin: 0 }` so the dialog's
  * "Save as PDF" produces a true A4 PDF.
  */
-export function printToPdf(): void {
-  window.print();
+export function printToPdf(title?: string): void {
+  const previousTitle = document.title;
+  if (title?.trim()) document.title = sanitizeFilename(title);
+
+  const restoreTitle = () => {
+    document.title = previousTitle;
+    window.removeEventListener("afterprint", restoreTitle);
+  };
+
+  window.addEventListener("afterprint", restoreTitle, { once: true });
+  try {
+    window.print();
+  } finally {
+    // Chromium blocks until the dialog closes; other browsers may not emit
+    // afterprint reliably, so keep a fallback without changing the PDF name.
+    window.setTimeout(restoreTitle, 1000);
+  }
 }
 
 function escapeHtml(s: string): string {
