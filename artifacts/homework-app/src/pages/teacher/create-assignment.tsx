@@ -539,7 +539,7 @@ export default function CreateAssignment() {
     if (!aiTopic.trim() && !aiSourceText.trim()) return;
     setAiLoading(true); setAiError("");
     try {
-      const endpoint = aiWithImages && !aiSourceText.trim() ? "/api/ai/generate-questions-with-images" : "/api/ai/generate-questions";
+      const endpoint = !isAdaptive && aiWithImages && !aiSourceText.trim() ? "/api/ai/generate-questions-with-images" : "/api/ai/generate-questions";
       /* Respect the template structure: send the prepared slots' question types
          so AI generates the same mix (e.g. true/false template → true/false questions). */
       const slotTypes = questions.map(q =>
@@ -547,16 +547,20 @@ export default function CreateAssignment() {
       const hasNonMcq = slotTypes.some(t => t !== "mcq");
       /* With a typed template, generate exactly the prepared slot count so the
          template structure (count + type order) is preserved 1:1. */
-      const requestCount = hasNonMcq ? slotTypes.length : aiCount;
+      const adaptiveCountOptions = [12, 18, 24, 30];
+      const adaptiveCount = adaptiveCountOptions.includes(aiCount) ? aiCount : 24;
+      const requestCount = isAdaptive ? adaptiveCount : (hasNonMcq ? slotTypes.length : aiCount);
       const res = await creditAwareFetch(`${API_BASE}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({
           topic: aiTopic,
           sourceText: aiSourceText.trim() || undefined,
-          count: aiWithImages ? Math.min(requestCount, 20) : requestCount,
+          count: !isAdaptive && aiWithImages ? Math.min(requestCount, 20) : requestCount,
           difficulty: aiDifficulty,
           subject: subject || undefined,
           language: lang,
+          adaptive: isAdaptive,
+          adaptiveSkills: isAdaptive && adaptiveSkills.length === requestCount / 6 ? adaptiveSkills : undefined,
           questionTypes: hasNonMcq ? slotTypes.slice(0, aiWithImages ? 20 : slotTypes.length) : undefined,
         }),
       });
@@ -572,10 +576,41 @@ export default function CreateAssignment() {
         /* Object-storage paths (/objects/...) are only reachable via the API server at /api/objects/... */
         imageUrl: q.imageUrl ?? null, /* keep raw /objects/... path; resolveImageUrl() handles display */
       }));
+      if (isAdaptive) {
+        const generatedSkills = Array.isArray(data.suggestedSkills)
+          ? data.suggestedSkills.filter((skill: unknown): skill is string => typeof skill === "string" && !!skill.trim())
+          : [];
+        if (generatedSkills.length > 0) setAdaptiveSkills(generatedSkills);
+        if (adaptiveMode === "staged" && adaptiveStages.length === 0) {
+          const questionsPerStage = requestCount / 3;
+          setAdaptiveStages([
+            {
+              id: crypto.randomUUID(), name: lang === "ar" ? "الأساسيات" : "Foundations",
+              questionCount: questionsPerStage, passRuleType: "percent", passThreshold: 70,
+              difficulties: [1], skills: [], failureAction: "continue",
+              supportQuestionCount: 0, maxRepeats: 0,
+            },
+            {
+              id: crypto.randomUUID(), name: lang === "ar" ? "التطبيق" : "Application",
+              questionCount: questionsPerStage, passRuleType: "percent", passThreshold: 70,
+              difficulties: [2], skills: [], failureAction: "continue",
+              supportQuestionCount: 0, maxRepeats: 0,
+            },
+            {
+              id: crypto.randomUUID(), name: lang === "ar" ? "التحدي" : "Challenge",
+              questionCount: questionsPerStage, passRuleType: "percent", passThreshold: 70,
+              difficulties: [3], skills: [], failureAction: "continue",
+              supportQuestionCount: 0, maxRepeats: 0,
+            },
+          ]);
+        }
+      }
       const hasRealQuestions = questions.length > 0 && questions.some(q => q.text && q.text !== t.createAssignment.paperAnswer);
       setQuestions(hasRealQuestions ? [...questions, ...generated] : generated);
        setShowAiPanel(false); setAiTopic(""); setAiSourceText("");
-      toast.success(lang === "ar" ? `تم توليد ${generated.length} سؤال بنجاح` : `${generated.length} questions generated successfully`);
+      toast.success(lang === "ar"
+        ? `تم توليد ${generated.length} سؤال${isAdaptive ? " وتصنيفها تكيفياً" : ""} بنجاح`
+        : `${generated.length} questions generated${isAdaptive ? " and adaptively classified" : ""} successfully`);
       const failedImages = Number(data.failedImages) || 0;
       if (failedImages > 0) {
         toast.warning(lang === "ar"
@@ -2105,21 +2140,28 @@ export default function CreateAssignment() {
                             </p>
                           </div>
                           <div className="flex gap-2">
-                            <select value={aiCount} onChange={e => setAiCount(parseInt(e.target.value))} className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-primary/20 text-sm focus:outline-none focus:border-primary">
-                              {(aiWithImages ? [5, 10, 15, 20] : [5, 10, 15, 20, 25, 30]).map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}
+                            <select value={isAdaptive && ![12, 18, 24, 30].includes(aiCount) ? 24 : aiCount} onChange={e => setAiCount(parseInt(e.target.value))} className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-primary/20 text-sm focus:outline-none focus:border-primary">
+                              {(isAdaptive ? [12, 18, 24, 30] : aiWithImages ? [5, 10, 15, 20] : [5, 10, 15, 20, 25, 30]).map(n => <option key={n} value={n}>{n} {t.createAssignment.aiQuestions}</option>)}
                             </select>
-                            <div className="flex gap-1 flex-1">
+                            {!isAdaptive && <div className="flex gap-1 flex-1">
                               {difficultyOptions.map(d => (
                                 <button key={d.value} type="button" onClick={() => setAiDifficulty(d.value)}
                                   className={`flex-1 py-2 rounded-lg border-2 text-xs font-bold transition-all ${aiDifficulty === d.value ? d.color === "green" ? "border-green-500 bg-green-100 dark:bg-green-900/30 text-green-700" : d.color === "yellow" ? "border-yellow-500 bg-yellow-100 text-yellow-700" : "border-red-500 bg-red-100 text-red-700" : "border-border bg-background text-muted-foreground"}`}>
                                   {d.label}
                                 </button>
                               ))}
-                            </div>
+                            </div>}
                           </div>
+                          {isAdaptive && (
+                            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white/70 dark:bg-black/10 px-3 py-2 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                              {lang === "ar"
+                                ? "سيحدد الذكاء الاصطناعي المهارات ويولّد لكل مهارة سؤالين سهلين وسؤالين متوسطين وسؤالين صعبين، ثم يضع التصنيف تلقائياً."
+                                : "AI will identify the skills and generate two easy, two medium, and two hard questions per skill, with classifications filled automatically."}
+                            </div>
+                          )}
                           {/* Image-per-question toggle — internal admin-only tool.
                               Hidden entirely for regular teachers (server enforces 403 too). */}
-                          {isAdmin && (
+                          {isAdmin && !isAdaptive && (
                           <>
                           <button
                             type="button"
@@ -2148,7 +2190,7 @@ export default function CreateAssignment() {
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {aiLoading
                               ? <><Loader2 className="w-4 h-4 animate-spin" />{aiWithImages ? (lang === "ar" ? "جارٍ توليد الأسئلة والصور…" : "Generating questions & images…") : t.createAssignment.aiGenerating}</>
-                              : <><Sparkles className="w-4 h-4" />{t.createAssignment.aiGenerateBtn} {aiWithImages ? Math.min(aiCount, 20) : aiCount}{aiWithImages ? (lang === "ar" ? " بصور" : " with images") : ""}</>}
+                              : <><Sparkles className="w-4 h-4" />{t.createAssignment.aiGenerateBtn} {isAdaptive && ![12, 18, 24, 30].includes(aiCount) ? 24 : !isAdaptive && aiWithImages ? Math.min(aiCount, 20) : aiCount}{!isAdaptive && aiWithImages ? (lang === "ar" ? " بصور" : " with images") : ""}</>}
                           </button>
                         </motion.div>
                       )}
