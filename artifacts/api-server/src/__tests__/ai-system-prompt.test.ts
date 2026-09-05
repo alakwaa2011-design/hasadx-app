@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildSystemPrompt } from "../lib/ai-system-prompt";
+import {
+  HASAD_GUIDE_ROUTES,
+  HASAD_GUIDE_ROUTE_EXCLUSIONS,
+} from "../data/hasad-guide-route-contract";
+
+const APP_ROUTE_PATTERN = /<Route\s+path="([^"]+)"/g;
+const DOCUMENTED_ROUTE_PATTERN = /`(\/[^`\s]+)`/g;
 
 describe("Hasad Guide system prompt", () => {
   it("loads the current adaptive-assessment knowledge", () => {
@@ -43,21 +50,53 @@ describe("Hasad Guide system prompt", () => {
     expect(prompt).not.toContain("من `/organizer` (لوحة المنظّم)");
   });
 
-  it("documents current high-value routes and rejects retired links", () => {
+  it("keeps every guide route registered in the web app and documented", () => {
     const prompt = buildSystemPrompt();
+    const appPath = resolve(process.cwd(), "../homework-app/src/App.tsx");
+    const appSource = readFileSync(appPath, "utf8");
+    const registeredRoutes = new Set(
+      Array.from(appSource.matchAll(APP_ROUTE_PATTERN), (match) => match[1]),
+    );
 
-    expect(prompt).toContain("/student/login");
-    expect(prompt).toContain("/game/join");
-    expect(prompt).toContain("/game/wameeth/create");
-    expect(prompt).toContain("/game/rocket/create");
-    expect(prompt).toContain("/game/hotseat/create");
-    expect(prompt).toContain("/game/tug/create");
-    expect(prompt).toContain("/game/wheel/create");
-    expect(prompt).toContain("/teacher/worksheets/create");
-    expect(prompt).toContain("/teacher/lesson-plans/create");
-    expect(prompt).toContain("/teacher/admin");
+    for (const route of HASAD_GUIDE_ROUTES) {
+      expect(
+        registeredRoutes,
+        `${route.appPath} is documented by the Hasad Guide but is not registered in App.tsx`,
+      ).toContain(route.appPath);
+      expect(
+        prompt,
+        `${route.guidePath} is in the guide route contract but missing from the knowledge base`,
+      ).toContain(route.guidePath);
+    }
+
     expect(prompt).not.toContain("/student-login");
     expect(prompt).not.toContain("/game/wameedh");
+  });
+
+  it("does not turn privileged administration URLs into enforced guide routes", () => {
+    const enforcedPaths = HASAD_GUIDE_ROUTES.flatMap((route) => [
+      route.guidePath,
+      route.appPath,
+    ]);
+
+    expect(enforcedPaths).not.toContain("/teacher/admin");
+    expect(enforcedPaths.some((path) => path.startsWith("/admin/"))).toBe(false);
+  });
+
+  it("requires every documented route to be classified by the central contract", () => {
+    const prompt = buildSystemPrompt();
+    const documentedPaths = new Set(
+      Array.from(prompt.matchAll(DOCUMENTED_ROUTE_PATTERN), (match) => match[1]),
+    );
+    const classifiedPaths = new Set<string>([
+      ...HASAD_GUIDE_ROUTES.map((route) => route.guidePath),
+      ...HASAD_GUIDE_ROUTE_EXCLUSIONS,
+    ]);
+
+    expect(
+      [...documentedPaths].filter((path) => !classifiedPaths.has(path)),
+      "Route-like links in the knowledge base must be public guide routes or explicit privileged exclusions",
+    ).toEqual([]);
   });
 
   it("keeps the FAQ data internally consistent with the prompt policy", () => {
