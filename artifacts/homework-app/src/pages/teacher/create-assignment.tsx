@@ -1417,6 +1417,45 @@ export default function CreateAssignment() {
               {wizardStep === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="space-y-5">
 
+                  {!isPaper && (
+                    <div
+                      data-testid="card-adaptive-entry"
+                      className={`rounded-2xl border-2 p-4 ${isAdaptive ? "border-violet-300 bg-violet-50/70 dark:border-violet-800 dark:bg-violet-950/20" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-[#15201B]"} ${!isAdmin ? "opacity-70" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <Brain className={`mt-0.5 h-5 w-5 shrink-0 ${isAdaptive ? "text-violet-600" : "text-slate-400"}`} />
+                          <div>
+                            <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                              {lang === "ar" ? "هل تريد اختبارًا تكيّفيًا؟" : "Create an adaptive test?"}
+                            </p>
+                            <p className="mt-0.5 text-[11px] font-bold text-slate-500">
+                              {lang === "ar"
+                                ? "فعّله أولًا، ثم اختر طريقة إضافة الأسئلة وحدّد مستوى ومهارة كل سؤال."
+                                : "Turn it on first, then choose how to add questions and set each question's difficulty and skill."}
+                            </p>
+                            {!isAdmin && (
+                              <p className="mt-1 text-[10px] font-black text-amber-700 dark:text-amber-400">
+                                {lang === "ar" ? "التفعيل يحتاج موافقة المسؤول حاليًا." : "Activation currently requires admin approval."}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          data-testid="toggle-adaptive-entry"
+                          onClick={() => isAdmin && setIsAdaptive(!isAdaptive)}
+                          disabled={!isAdmin}
+                          aria-pressed={isAdaptive}
+                          aria-label={lang === "ar" ? "تفعيل الاختبار التكيفي" : "Enable adaptive test"}
+                          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isAdaptive ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"} disabled:cursor-not-allowed`}
+                        >
+                          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : "left-0.5"}`} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Method chooser gate: «كيف تريد إضافة الأسئلة؟» ── */}
                   {!isPaper && questionMethod === null ? (
                     <div className="bg-white dark:bg-[#15201B] rounded-3xl p-4 sm:p-6 shadow-sm border border-emerald-50 dark:border-emerald-900/30 space-y-3 sm:space-y-4" data-testid="card-method-chooser">
@@ -1734,40 +1773,6 @@ export default function CreateAssignment() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {/* Adaptive authoring must be discoverable before questions are added. */}
-                      <div className={`rounded-2xl border-2 p-4 ${isAdaptive ? "border-violet-300 bg-violet-50/70 dark:border-violet-800 dark:bg-violet-950/20" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-[#15201B]"} ${!isAdmin ? "opacity-70" : ""}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2.5">
-                            <Brain className={`mt-0.5 h-5 w-5 shrink-0 ${isAdaptive ? "text-violet-600" : "text-slate-400"}`} />
-                            <div>
-                              <p className="text-sm font-black text-slate-800 dark:text-slate-100">
-                                {lang === "ar" ? "هل تريد اختبارًا تكيّفيًا؟" : "Create an adaptive test?"}
-                              </p>
-                              <p className="mt-0.5 text-[11px] font-bold text-slate-500">
-                                {lang === "ar"
-                                  ? "فعّله أولًا، ثم حدّد مستوى ومهارة كل سؤال."
-                                  : "Turn it on first, then set each question's difficulty and skill."}
-                              </p>
-                              {!isAdmin && (
-                                <p className="mt-1 text-[10px] font-black text-amber-700 dark:text-amber-400">
-                                  {lang === "ar" ? "التفعيل يحتاج موافقة المسؤول حاليًا." : "Activation currently requires admin approval."}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => isAdmin && setIsAdaptive(!isAdaptive)}
-                            disabled={!isAdmin}
-                            aria-pressed={isAdaptive}
-                            aria-label={lang === "ar" ? "تفعيل الاختبار التكيفي" : "Enable adaptive test"}
-                            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${isAdaptive ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"} disabled:cursor-not-allowed`}
-                          >
-                            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
-                          </button>
-                        </div>
-                      </div>
-
                       {/* Question editor — only shown when method=manual OR real questions have arrived */}
                       {(questionMethod === "manual" || questions.some(q => q.text?.trim())) && (
                       <><DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
