@@ -876,6 +876,7 @@ export function WorksheetPrintView({
         <QuestionFormattingToolbar
           ar={ar}
           question={selectedQuestion}
+          questionNumber={localQs.findIndex(question => question.id === selectedQuestion.id) + 1}
           questionStyle={selectedQuestionStyle}
           fieldStyle={selectedTextStyle}
           onFieldChange={patch => updateFieldStyle(selectedField.questionId, selectedField.key, patch)}
@@ -943,6 +944,8 @@ export function WorksheetPrintView({
                         showTypeHeader={firstOfTypeSet.has(q.id)}
                         questionStyle={localQuestionStyles.find(style => style.questionId === q.id)}
                         onSelectField={key => setSelectedField({ questionId: q.id, key })}
+                        selected={selectedField?.questionId === q.id}
+                        onSelectQuestion={() => setSelectedField({ questionId: q.id, key: "prompt" })}
                       />
                     );
                   })}
@@ -1530,10 +1533,11 @@ function fieldStyleToCss(style?: FieldStyle): CSSProperties | undefined {
 }
 
 export function QuestionFormattingToolbar({
-  ar, question, questionStyle, fieldStyle, onFieldChange, onQuestionChange, onQuestionTypeChange, onQuestionEdit, onResetField, onResetQuestion,
+  ar, question, questionNumber, questionStyle, fieldStyle, onFieldChange, onQuestionChange, onQuestionTypeChange, onQuestionEdit, onResetField, onResetQuestion,
 }: {
   ar: boolean;
   question: Question;
+  questionNumber: number;
   questionStyle?: QuestionStyle;
   fieldStyle?: FieldStyle;
   onFieldChange: (patch: Partial<Omit<FieldStyle, "key">>) => void;
@@ -1578,6 +1582,9 @@ export function QuestionFormattingToolbar({
       onKeyDown={handleToolbarKeyDown}
       data-testid="toolbar-question-formatting"
     >
+      <div className="ws-format-selection" aria-live="polite">
+        {ar ? `تعديل السؤال ${questionNumber}` : `Editing question ${questionNumber}`}
+      </div>
       <div className="ws-format-group">
         <span className="ws-format-label">{ar ? "النص" : "Text"}</span>
         <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.max(8, fontSize - 1) })} aria-label={ar ? "تصغير الخط" : "Decrease font size"} data-testid="button-decrease-font-size">
@@ -1752,7 +1759,7 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField,
+  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onSelectQuestion,
 }: {
   index: string;
   q: Question;
@@ -1763,13 +1770,22 @@ function QuestionView({
   showTypeHeader?: boolean;
   questionStyle?: QuestionStyle;
   onSelectField?: (key: string) => void;
+  selected?: boolean;
+  onSelectQuestion?: () => void;
 }) {
   const em = editMode ?? false;
   const edit = onEdit ?? (() => {});
   const matchingFractions = q.type === "matching" ? matchingColumnFractions(q.pairs) : null;
 
   return (
-    <>
+    <div
+      className={`ws-question-block${em ? " ws-q-editable" : ""}${selected ? " ws-q-selected" : ""}`}
+      onClick={event => {
+        if (!em || (event.target as HTMLElement).closest(".ws-editable")) return;
+        onSelectQuestion?.();
+      }}
+      data-question-selected={selected || undefined}
+    >
       {showTypeHeader && (
         <div className="ws-section-instr">{sectionInstruction(q.type, ar, questionStyle)}</div>
       )}
@@ -1887,7 +1903,7 @@ function QuestionView({
         </div>
       )}
     </div>
-    </>
+    </div>
   );
 }
 
@@ -2202,6 +2218,18 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       }
       .ws-q-spacing-compact { margin-bottom: 2mm; padding-top: 1.5mm; padding-bottom: 1.5mm; }
       .ws-q-spacing-relaxed { margin-bottom: 9mm; padding-top: 4mm; padding-bottom: 5mm; }
+      .ws-question-block { break-inside: avoid; page-break-inside: avoid; }
+      .ws-q-editable {
+        cursor: pointer;
+        border-radius: 8px;
+        transition: outline-color 120ms ease, background-color 120ms ease;
+      }
+      .ws-q-editable:hover { background: ${TC}08; outline: 1px dashed ${TC}55; }
+      .ws-q-selected {
+        background: ${TC}0d;
+        outline: 2px solid ${TC};
+        outline-offset: 3px;
+      }
       .ws-q-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 3mm; }
       .ws-q-num {
         flex: 0 0 auto;
@@ -2380,14 +2408,30 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         justify-content: center;
         gap: 7px 12px;
         padding: 9px 12px;
-        background: rgba(255,255,255,0.98);
+        background: linear-gradient(135deg, #edf7f2 0%, #f7fbf9 100%);
         color: #22312c;
-        border: 1px solid ${TC}33;
-        border-radius: 12px;
-        box-shadow: 0 8px 28px rgba(20,40,32,0.18);
+        border: 2px solid ${TC};
+        border-radius: 14px;
+        box-shadow: 0 12px 34px rgba(20,40,32,0.28);
         font-family: ${headingFont};
       }
-      .ws-format-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: center; }
+      .ws-format-selection {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: ${TC};
+        color: white;
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .ws-format-group {
+        display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: center;
+        padding: 5px 7px;
+        background: rgba(255,255,255,0.82);
+        border: 1px solid ${TC}24;
+        border-radius: 9px;
+      }
       .ws-format-label { font-size: 10px; font-weight: 800; color: ${TC}; margin-inline: 2px; }
       .ws-format-toolbar button {
         min-width: 30px; height: 30px;

@@ -90,6 +90,14 @@ describe("official worksheet question layout", () => {
     expect(source).toContain(".ws-format-control { flex: 0 0 auto; white-space: nowrap; }");
   });
 
+  it("makes question selection and the formatting toolbar visually explicit", () => {
+    expect(source).toContain("ws-q-selected");
+    expect(source).toContain("data-question-selected");
+    expect(source).toContain("تعديل السؤال");
+    expect(source).toContain("background: linear-gradient(135deg, #edf7f2");
+    expect(source).toContain("border: 2px solid ${TC}");
+  });
+
   it("offers both true/false answer layouts per question", () => {
     expect(source).toContain('"قوس للعلامة"');
     expect(source).toContain('"خيارا صح وخطأ"');
