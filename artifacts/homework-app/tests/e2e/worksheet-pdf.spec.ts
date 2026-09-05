@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { JSDOM } from "jsdom";
+import JSZip from "jszip";
 import {
   db,
   pool,
@@ -383,29 +383,28 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "وورد", exact: true }).click();
   const wordDownload = await downloadPromise;
-  expect(wordDownload.suggestedFilename()).toBe("اختبار ثبات تنسيق الأسئلة.doc");
+  expect(wordDownload.suggestedFilename()).toBe("اختبار ثبات تنسيق الأسئلة.docx");
   const wordPath = await wordDownload.path();
   expect(wordPath).not.toBeNull();
-  const wordHtml = (await readFile(wordPath!)).toString("utf8").replace(/^\uFEFF/, "");
-  const wordDocument = new JSDOM(wordHtml).window.document;
-
-  const wordPrompt = Array.from(wordDocument.querySelectorAll(".ws-q-prompt span"))
-    .find(element => element.textContent?.trim() === prompts[0]);
-  expect(wordPrompt).not.toBeUndefined();
-  expect(wordPrompt!.getAttribute("style")).toContain("font-size: 14pt");
-  expect(wordPrompt!.getAttribute("style")).toContain("font-weight: 800");
-  expect(wordPrompt!.getAttribute("style")).toContain("text-align: center");
-
-  const wordPrompts = Array.from(wordDocument.querySelectorAll("[data-worksheet-page] .ws-q-prompt > span:first-child"))
-    .map(element => element.textContent?.trim());
-  expect(wordPrompts).toEqual(prompts);
-
-  const firstChoiceTable = wordDocument.querySelector(".ws-mcq-word-table");
-  expect(firstChoiceTable).not.toBeNull();
-  expect(firstChoiceTable!.querySelectorAll("tr")).toHaveLength(2);
-  expect(firstChoiceTable!.querySelectorAll("td")).toHaveLength(4);
-  expect(Array.from(firstChoiceTable!.querySelectorAll("li")).map(element => element.textContent?.trim()))
-    .toEqual(["(أ)الإجابة الأولى", "(ب)الإجابة الثانية", "(ج)الإجابة الثالثة", "(د)الإجابة الرابعة"]);
+  const wordBytes = await readFile(wordPath!);
+  expect(wordBytes.subarray(0, 2).toString("ascii")).toBe("PK");
+  const zip = await JSZip.loadAsync(wordBytes);
+  expect(zip.file("[Content_Types].xml")).not.toBeNull();
+  expect(zip.file("word/document.xml")).not.toBeNull();
+  const wordXml = await zip.file("word/document.xml")!.async("string");
+  expect(wordXml).toContain("<w:document");
+  expect(wordXml).toContain("<w:bidi");
+  expect(wordXml).toContain("<w:rtl");
+  expect(wordXml).toContain("<w:sz w:val=\"28\"");
+  expect(wordXml).toContain("<w:b");
+  expect(wordXml).toContain("<w:jc w:val=\"center\"");
+  for (const prompt of prompts) expect(wordXml).toContain(prompt);
+  for (const answer of answers) expect(wordXml).toContain(answer);
+  expect(wordXml.match(/<w:tr>/g)?.length).toBeGreaterThanOrEqual(2);
+  expect(wordXml.match(/<w:tc>/g)?.length).toBeGreaterThanOrEqual(4);
+  for (const choice of ["الإجابة الأولى", "الإجابة الثانية", "الإجابة الثالثة", "الإجابة الرابعة"]) {
+    expect(wordXml).toContain(choice);
+  }
 
   const domPageCount = await printable.locator(".ws-page").count();
   const pdf = await page.pdf({

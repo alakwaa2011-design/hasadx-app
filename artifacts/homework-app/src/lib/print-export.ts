@@ -1,10 +1,19 @@
-// Lightweight export helpers for the teacher's printable surfaces
-// (worksheets, lesson plans). Word export is implemented as
-// "HTML wrapped in MS-Word MIME headers, downloaded as .doc" which is a
-// long-standing technique that requires zero runtime dependencies and
-// preserves the brand's CSS styling, RTL layout, gold/green colors,
-// dashed borders, and watermark gradient. Word opens the resulting file
-// natively and respects the embedded @page A4 setup.
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  Packer,
+  PageBreak,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+  type ISectionOptions,
+} from "docx";
+
+// Lightweight export helpers for the teacher's printable surfaces.
 
 export interface WordExportOptions {
   /** The DOM element whose HTML should be exported. */
@@ -15,143 +24,171 @@ export interface WordExportOptions {
   lang?: "ar" | "en";
 }
 
-function prepareWordBody(element: HTMLElement): string {
-  const clone = element.cloneNode(true) as HTMLElement;
+type WordChild = Paragraph | Table;
 
-  // Word's HTML renderer does not reliably support CSS Grid. Convert only the
-  // exported copy of two-column choices to a real table, preserving the source
-  // DOM (and therefore browser/PDF rendering) unchanged.
-  clone.querySelectorAll<HTMLOListElement>(".ws-mcq[data-choice-columns='2']").forEach(list => {
-    const choices = Array.from(list.children);
-    const table = document.createElement("table");
-    table.className = "ws-mcq ws-mcq-word-table";
-    table.setAttribute("dir", list.getAttribute("dir") ?? "auto");
-
-    const body = document.createElement("tbody");
-    for (let index = 0; index < choices.length; index += 2) {
-      const row = document.createElement("tr");
-      for (let column = 0; column < 2; column += 1) {
-        const cell = document.createElement("td");
-        cell.className = "ws-mcq-word-cell";
-        const choice = choices[index + column];
-        if (choice) cell.appendChild(choice.cloneNode(true));
-        row.appendChild(cell);
-      }
-      body.appendChild(row);
-    }
-    table.appendChild(body);
-    list.replaceWith(table);
-  });
-
-  return clone.outerHTML;
+function pointsFromCss(value: string, fallback = 12): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  if (value.endsWith("px")) return parsed * 0.75;
+  if (value.endsWith("pt")) return parsed;
+  return fallback;
 }
 
-export function buildWordDocumentHtml({
+function alignmentFor(
+  element: Element,
+  rtl: boolean,
+): (typeof AlignmentType)[keyof typeof AlignmentType] {
+  const explicitlyAligned = [element, ...element.querySelectorAll<HTMLElement>("[style]")]
+    .find(candidate => (candidate as HTMLElement).style.textAlign);
+  const alignment = (explicitlyAligned as HTMLElement | undefined)?.style.textAlign
+    || window.getComputedStyle(element).textAlign;
+  if (alignment === "center") return AlignmentType.CENTER;
+  if (alignment === "right" || alignment === "end") return AlignmentType.RIGHT;
+  if (alignment === "justify") return AlignmentType.JUSTIFIED;
+  return rtl ? AlignmentType.RIGHT : AlignmentType.LEFT;
+}
+
+function textRuns(element: Element, rtl: boolean): TextRun[] {
+  const runs: TextRun[] = [];
+  const visit = (node: Node, inherited: Partial<CSSStyleDeclaration> = {}) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.replace(/\s+/g, " ") ?? "";
+      if (!text) return;
+      const parent = node.parentElement;
+      const computed = parent ? window.getComputedStyle(parent) : null;
+      const inline = parent?.style;
+      const size = pointsFromCss(inline?.fontSize || computed?.fontSize || "", 12);
+      const weight = inline?.fontWeight || computed?.fontWeight || inherited.fontWeight || "";
+      runs.push(new TextRun({
+        text,
+        bold: Number.parseInt(weight, 10) >= 600 || weight === "bold",
+        italics: (inline?.fontStyle || computed?.fontStyle) === "italic",
+        size: Math.round(size * 2),
+        font: inline?.fontFamily?.split(",")[0]?.replace(/['"]/g, "") || (rtl ? "Cairo" : "Arial"),
+        rightToLeft: rtl,
+      }));
+      return;
+    }
+    node.childNodes.forEach(child => visit(child, inherited));
+  };
+  visit(element);
+  return runs.length ? runs : [new TextRun({ text: "", rightToLeft: rtl })];
+}
+
+function paragraphFor(element: Element, rtl: boolean, text?: string): Paragraph {
+  return new Paragraph({
+    children: text == null
+      ? textRuns(element, rtl)
+      : [new TextRun({ text, rightToLeft: rtl, font: rtl ? "Cairo" : "Arial", size: 24 })],
+    bidirectional: rtl,
+    alignment: alignmentFor(element, rtl),
+    spacing: { after: 100, line: 300 },
+  });
+}
+
+function choiceTable(list: Element, rtl: boolean): Table {
+  const choices = Array.from(list.children);
+  const columns = list.getAttribute("data-choice-columns") === "2" ? 2 : 1;
+  const rows: TableRow[] = [];
+  for (let index = 0; index < choices.length; index += columns) {
+    rows.push(new TableRow({
+      children: Array.from({ length: columns }, (_, column) => {
+        const choice = choices[index + column];
+        return new TableCell({
+          width: { size: 100 / columns, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+          },
+          children: [choice ? paragraphFor(choice, rtl) : new Paragraph("")],
+        });
+      }),
+    }));
+  }
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
+    },
+    rows,
+  });
+}
+
+function pageChildren(page: Element, rtl: boolean): WordChild[] {
+  const output: WordChild[] = [];
+  const selectors = [
+    "h1", "h2", "h3",
+    ".ws-kicker-center", ".ws-cont-title", ".ws-cont-page",
+    ".ws-identity-cell", ".ws-field-label", ".ws-subtitle", ".ws-instructions",
+    ".ws-section-instr", ".ws-q-head", ".ws-q-prompt", ".ws-answer-line",
+    ".ws-tf-choice", ".ws-match-pair", ".ws-footer-note", ".ws-good-luck",
+    ".ws-mcq",
+  ].join(",");
+  page.querySelectorAll(selectors).forEach(element => {
+    if (element.matches(".ws-mcq")) {
+      output.push(choiceTable(element, rtl));
+      return;
+    }
+    if (element.closest(".ws-mcq")) return;
+    if (element.matches(".ws-q-prompt") && element.closest(".ws-q-head")) return;
+    const text = element.textContent?.trim();
+    if (text) output.push(paragraphFor(element, rtl));
+  });
+  return output.length ? output : [paragraphFor(page, rtl)];
+}
+
+export function buildWordDocument({
   element,
   title,
   lang = "ar",
-}: WordExportOptions): string {
-  const bodyHtml = prepareWordBody(element);
-
-  const styles = Array.from(document.querySelectorAll("style"))
-    .map(s => s.innerHTML)
-    .join("\n");
-
-  const fontImport =
-    "@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;700&family=Reem+Kufi:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');";
-
-  const wordPageCss = `
-    @page WordSection1 {
-      size: 210mm 297mm;
-      mso-page-orientation: portrait;
-      margin: 12mm 10mm 12mm 10mm;
+}: WordExportOptions): Document {
+  const rtl = lang === "ar";
+  const pages = Array.from(element.querySelectorAll(
+    "[data-worksheet-page], [data-answer-key-page], .lp-page",
+  ));
+  const sourcePages = pages.length ? pages : [element];
+  const children: WordChild[] = [];
+  sourcePages.forEach((page, index) => {
+    if (index > 0) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
     }
-    div.WordSection1 { page: WordSection1; }
-    body { font-family: 'Cairo','Inter',Arial,sans-serif; background: white !important; margin: 0; padding: 0; }
-    .WordSection1 .ws-page,
-    .WordSection1 .lp-page {
-      width: auto !important;
-      max-width: 100% !important;
-      min-height: 0 !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    .WordSection1 #ws-printable-root,
-    .WordSection1 #lp-printable-root {
-      background: white !important;
-      padding: 0 !important;
-      min-height: 0 !important;
-      display: block !important;
-    }
-    .WordSection1 .ws-mcq-word-table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      table-layout: fixed !important;
-    }
-    .WordSection1 .ws-mcq-word-cell {
-      width: 50% !important;
-      border: 0 !important;
-      padding: 2mm 1.5mm !important;
-      vertical-align: top !important;
-    }
-    .WordSection1 .ws-mcq-word-cell > li {
-      display: block !important;
-    }
-  `;
-
-  const dir = lang === "ar" ? "rtl" : "ltr";
-
-  return `<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office"
-      xmlns:w="urn:schemas-microsoft-com:office:word"
-      xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"
-      xmlns="http://www.w3.org/TR/REC-html40"
-      lang="${lang}" dir="${dir}">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>${escapeHtml(title)}</title>
-    <!--[if gte mso 9]>
-      <xml>
-        <w:WordDocument>
-          <w:View>Print</w:View>
-          <w:Zoom>100</w:Zoom>
-          <w:DoNotOptimizeForBrowser/>
-        </w:WordDocument>
-      </xml>
-    <![endif]-->
-    <style>
-      ${fontImport}
-      ${wordPageCss}
-      ${styles}
-    </style>
-  </head>
-  <body dir="${dir}">
-    <div class="WordSection1">
-      ${bodyHtml}
-    </div>
-  </body>
-</html>`;
+    children.push(...pageChildren(page, rtl));
+  });
+  const section: ISectionOptions = {
+    properties: {
+      page: {
+        size: { width: 11906, height: 16838 },
+        margin: { top: 680, right: 567, bottom: 680, left: 567 },
+      },
+    },
+    children,
+  };
+  return new Document({
+    creator: "Hasad",
+    title,
+    description: rtl ? "ورقة عمل من منصة حصاد" : "Worksheet from Hasad",
+    sections: [section],
+  });
 }
 
 /**
- * Trigger a `.doc` download containing the rendered HTML of `element`,
- * wrapped with the headers Microsoft Word recognises so it opens with
- * full A4 page setup, the same CSS, and full RTL/LTR direction.
+ * Trigger a real `.docx` download containing native OOXML paragraphs and
+ * tables so modern Word clients do not show a file-format mismatch warning.
  */
-export function downloadAsWord({ element, title, lang = "ar" }: WordExportOptions): void {
-  const html = buildWordDocumentHtml({ element, title, lang });
-
-  const blob = new Blob(
-    ["\ufeff", html], // BOM helps Word detect UTF-8 reliably for Arabic.
-    { type: "application/msword" },
-  );
+export async function downloadAsWord(options: WordExportOptions): Promise<void> {
+  const { title } = options;
+  const blob = await Packer.toBlob(buildWordDocument(options));
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${sanitizeFilename(title)}.doc`;
+  a.download = `${sanitizeFilename(title)}.docx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -181,15 +218,6 @@ export function printToPdf(title?: string): void {
     // afterprint reliably, so keep a fallback without changing the PDF name.
     window.setTimeout(restoreTitle, 1000);
   }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function sanitizeFilename(s: string): string {
