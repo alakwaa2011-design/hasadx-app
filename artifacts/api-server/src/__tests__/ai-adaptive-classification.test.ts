@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapTypedQuestion, validateAdaptiveDistribution } from "../routes/ai-questions";
+import { mapTypedQuestion, validateAdaptiveDistribution, validateAdaptiveTarget } from "../routes/ai-questions";
 
 describe("adaptive AI question classification", () => {
   it("normalizes textual difficulty and preserves the skill", () => {
@@ -46,5 +46,14 @@ describe("adaptive AI question classification", () => {
   it("rejects an uneven distribution", () => {
     const questions = Array.from({ length: 12 }, () => ({ skill: "الجمع", difficulty: 1 }));
     expect(validateAdaptiveDistribution(questions, 12).ready).toBe(false);
+  });
+
+  it("accepts a targeted batch only when every question matches the requested gap", () => {
+    const questions = [
+      { skill: "الكسور", difficulty: 3 },
+      { skill: "الكسور", difficulty: 3 },
+    ];
+    expect(validateAdaptiveTarget(questions, 2, "الكسور", 3)).toBe(true);
+    expect(validateAdaptiveTarget(questions, 2, "الكسور", 2)).toBe(false);
   });
 });

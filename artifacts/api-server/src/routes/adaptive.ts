@@ -7,7 +7,19 @@ const router: IRouter = Router();
 const SUPPORTED_TYPES = new Set(["mcq", "true_false", "fill_blank"]);
 
 interface SkillAbilities { [skill: string]: { ability: number; correct: number; total: number } }
-interface QuestionSeqItem { questionId: number; selectedAnswer: string | null; isCorrect: boolean | null; difficulty: number; skill: string }
+interface QuestionSeqItem {
+  questionId: number;
+  selectedAnswer: string | null;
+  isCorrect: boolean | null;
+  difficulty: number;
+  skill: string;
+  answeredAt?: string;
+  responseTimeSeconds?: number | null;
+  stageId?: string | null;
+  stageName?: string | null;
+  stagePhase?: "main" | "support" | null;
+  stageAttempt?: number | null;
+}
 export interface AdaptiveStage {
   id: string; name?: string; questionCount: number;
   passRule: { type: "percent" | "correctCount"; threshold: number };
@@ -189,6 +201,8 @@ async function finishSession(
     currentQuestionId: null, answeredCount: sequence.length, correctCount, completed: 1,
     finalLevel: getLevel(ability), submissionId: submission.id, completedAt: new Date(),
     completionReason, lastQuestionId: session.currentQuestionId,
+    lastQuestionStartedAt: session.currentQuestionStartedAt,
+    currentQuestionStartedAt: null,
   }).where(and(eq(adaptiveSessionsTable.id, session.id), eq(adaptiveSessionsTable.completed, 0)));
   return { submissionId: submission.id, score: Math.round(totalPoints ? earnedPoints / totalPoints * 100 : 0), earnedPoints, totalPoints };
 }
@@ -240,7 +254,9 @@ router.post("/adaptive/start", async (req, res) => {
     if (!initialPool.length) return void res.status(400).json({ message: "لا توجد أسئلة مطابقة للمرحلة الحالية" });
     const session = old && !old.completed ? old : (await db.insert(adaptiveSessionsTable).values({
       assignmentId, studentName, studentClass: studentClass || "", deviceFingerprint, currentAbility: 2, questionSequence: "[]",
-      currentQuestionId: pickNext(2, initialPool, new Set(), {})!.id, answeredCount: 0,
+      currentQuestionId: pickNext(2, initialPool, new Set(), {})!.id,
+      currentQuestionStartedAt: new Date(),
+      answeredCount: 0,
       totalToAnswer: config.mode === "staged" ? config.stages.reduce((total, stage) => total + stage.questionCount * (stage.failureAction === "repeat" ? stage.maxRepeats + 1 : 1) + (stage.failureAction === "support" ? stage.supportQuestionCount : 0), 0) : Math.min(config.questionsPerSession || 10, pool.length),
       correctCount: 0, completed: 0, skillAbilities: storeAbilities({}, runtime),
     }).returning())[0];
@@ -266,6 +282,11 @@ router.post("/adaptive/start", async (req, res) => {
         ...final,
         ...(resultsAvailable(assignment) ? { resultAvailable: true, showAnswersAfterResult: config.showAnswersAfterResult } : deniedResult()),
       });
+    }
+    if (session.currentQuestionId && !session.currentQuestionStartedAt) {
+      await db.update(adaptiveSessionsTable)
+        .set({ currentQuestionStartedAt: new Date() })
+        .where(eq(adaptiveSessionsTable.id, session.id));
     }
     const current = pool.find(q => q.id === session.currentQuestionId);
     const neutralProgress = config.mode === "staged" ? { progress: { completedQuestions: session.answeredCount } } : {};
@@ -300,7 +321,24 @@ router.post("/adaptive/answer", async (req, res) => {
       const answer = String(selectedAnswer || "").trim().toLowerCase();
       const correct = (question.correctAnswer || "").split("|").map((a: string) => a.trim().toLowerCase()).filter(Boolean).includes(answer);
       const skill = question.skill || "general", difficulty = question.difficulty || 2;
-      sequence.push({ questionId, selectedAnswer: selectedAnswer || null, isCorrect: correct, difficulty, skill });
+      const answeredAt = new Date();
+      const activeStage = config.mode === "staged" && runtime ? config.stages[runtime.stageIndex] : undefined;
+      const responseTimeSeconds = session.currentQuestionStartedAt
+        ? Math.max(0, Math.round((answeredAt.getTime() - session.currentQuestionStartedAt.getTime()) / 1000))
+        : null;
+      sequence.push({
+        questionId,
+        selectedAnswer: selectedAnswer || null,
+        isCorrect: correct,
+        difficulty,
+        skill,
+        answeredAt: answeredAt.toISOString(),
+        responseTimeSeconds,
+        stageId: activeStage?.id || null,
+        stageName: activeStage?.name || null,
+        stagePhase: runtime?.phase || null,
+        stageAttempt: runtime ? runtime.repeats + 1 : null,
+      });
       let ability = Math.max(.5, Math.min(3.5, session.currentAbility + (correct ? getDelta(session.answeredCount) : -getDelta(session.answeredCount))));
       const sa = abilities[skill] || (abilities[skill] = { ability: 2, correct: 0, total: 0 });
       sa.ability = Math.max(.5, Math.min(3.5, sa.ability + (correct ? getDelta(sa.total) : -getDelta(sa.total)))); sa.total++; if (correct) sa.correct++;
@@ -343,11 +381,11 @@ router.post("/adaptive/answer", async (req, res) => {
           const final = await finishSession(tx, session, pool, sequence, ability, abilities, correctCount, runtime);
           return { status: 200, body: { done: true, timedOut: false, answeredCount: sequence.length, totalQuestions: session.totalToAnswer, ...final, ...(resultsAvailable(assignment) ? { resultAvailable: true, showAnswersAfterResult: config.showAnswersAfterResult } : deniedResult()) } };
         }
-        await tx.update(adaptiveSessionsTable).set({ currentAbility: ability, skillAbilities: storeAbilities(abilities, runtime), questionSequence: JSON.stringify(sequence), currentQuestionId: next.id, answeredCount: sequence.length, correctCount }).where(eq(adaptiveSessionsTable.id, session.id));
+        await tx.update(adaptiveSessionsTable).set({ currentAbility: ability, skillAbilities: storeAbilities(abilities, runtime), questionSequence: JSON.stringify(sequence), currentQuestionId: next.id, currentQuestionStartedAt: new Date(), answeredCount: sequence.length, correctCount }).where(eq(adaptiveSessionsTable.id, session.id));
         return { status: 200, body: { done: false, isCorrect: config.showImmediateFeedback ? correct : undefined, answeredCount: sequence.length, totalQuestions: session.totalToAnswer, question: sanitizeQuestion(next), progress: { completedQuestions: sequence.length }, ...(config.showStageNames ? { stageName: config.stages[runtime.stageIndex]?.name || null } : {}) } };
       }
       const next = pickNext(ability, pool, new Set(sequence.map(a => a.questionId)), abilities);
-      await tx.update(adaptiveSessionsTable).set({ currentAbility: ability, skillAbilities: storeAbilities(abilities), questionSequence: JSON.stringify(sequence), currentQuestionId: next?.id || null, answeredCount: sequence.length, correctCount }).where(eq(adaptiveSessionsTable.id, session.id));
+      await tx.update(adaptiveSessionsTable).set({ currentAbility: ability, skillAbilities: storeAbilities(abilities), questionSequence: JSON.stringify(sequence), currentQuestionId: next?.id || null, currentQuestionStartedAt: next ? new Date() : null, answeredCount: sequence.length, correctCount }).where(eq(adaptiveSessionsTable.id, session.id));
       return { status: 200, body: { done: false, isCorrect: config.showImmediateFeedback ? correct : undefined, answeredCount: sequence.length, totalQuestions: session.totalToAnswer, question: next ? sanitizeQuestion(next) : null } };
     });
     res.status(outcome.status).json(outcome.body);
@@ -401,6 +439,7 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
       question.id,
       { ...question, questionNumber: index + 1 },
     ]));
+    const config = parseAdaptiveConfig(assignment.adaptiveConfig);
     const allSkills = new Set<string>();
     const students = sessions.map(session => {
       const skillAbilities = parseAbilities(session.skillAbilities);
@@ -417,6 +456,12 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
           isCorrect: answer.isCorrect,
           difficulty: answer.difficulty || question?.difficulty || null,
           skill: answer.skill || question?.skill || "",
+          answeredAt: answer.answeredAt || null,
+          responseTimeSeconds: answer.responseTimeSeconds ?? null,
+          stageId: answer.stageId || null,
+          stageName: answer.stageName || null,
+          stagePhase: answer.stagePhase || null,
+          stageAttempt: answer.stageAttempt || null,
           status: "answered",
         };
       });
@@ -426,6 +471,12 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
         && !sequence.some(answer => answer.questionId === session.lastQuestionId)
       ) {
         const question = questionById.get(session.lastQuestionId);
+        const timedOutAt = session.completedAt || new Date();
+        const responseTimeSeconds = session.lastQuestionStartedAt
+          ? Math.max(0, Math.round((timedOutAt.getTime() - session.lastQuestionStartedAt.getTime()) / 1000))
+          : null;
+        const stageRuntime = parseStored(session.skillAbilities).stageRuntime;
+        const stage = stageRuntime ? config.stages[stageRuntime.stageIndex] : undefined;
         path.push({
           questionId: session.lastQuestionId,
           questionNumber: question?.questionNumber || null,
@@ -435,6 +486,12 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
           isCorrect: null,
           difficulty: question?.difficulty || null,
           skill: question?.skill || "",
+          answeredAt: null,
+          responseTimeSeconds,
+          stageId: stage?.id || null,
+          stageName: stage?.name || null,
+          stagePhase: stageRuntime?.phase || null,
+          stageAttempt: stageRuntime ? stageRuntime.repeats + 1 : null,
           status: "timed_out",
         });
       }
@@ -456,6 +513,9 @@ router.get("/adaptive/report/:assignmentId", async (req, res) => {
         lastQuestionNumber: lastQuestion?.questionNumber || null,
         lastQuestionText: lastQuestion?.text || null,
         path,
+        durationSeconds: session.completedAt
+          ? Math.max(0, Math.round((session.completedAt.getTime() - session.startedAt.getTime()) / 1000))
+          : null,
         startedAt: session.startedAt.toISOString(),
         completedAt: session.completedAt?.toISOString() || null,
       };

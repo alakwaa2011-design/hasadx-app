@@ -411,6 +411,7 @@ export default function CreateAssignment() {
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [aiWithImages, setAiWithImages] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [adaptiveGapLoading, setAdaptiveGapLoading] = useState("");
   const [aiError, setAiError] = useState("");
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [showImageExtract, setShowImageExtract] = useState(false);
@@ -620,6 +621,53 @@ export default function CreateAssignment() {
     } catch (err: any) { setAiError(err.message || t.common.error); } finally {
       setAiLoading(false);
       /* AI generation charges credits server-side — refresh the shared balance. */
+      refreshCreditsBalance();
+    }
+  };
+
+  const handleGenerateAdaptiveGap = async (skill: string, difficulty: 1 | 2 | 3, count: number) => {
+    if (count <= 0 || adaptiveGapLoading) return;
+    const loadingKey = `${skill}:${difficulty}`;
+    setAdaptiveGapLoading(loadingKey);
+    try {
+      const topic = [title.trim(), subject.trim()].filter(Boolean).join(" — ");
+      if (!topic) {
+        toast.error(lang === "ar" ? "أدخل عنوان النشاط أو المادة أولاً" : "Enter the activity title or subject first");
+        return;
+      }
+      const difficultyName = difficulty === 1 ? "easy" : difficulty === 2 ? "medium" : "hard";
+      const res = await creditAwareFetch(`${API_BASE}/api/ai/generate-questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          topic,
+          sourceText: aiSourceText.trim() || undefined,
+          subject: subject || undefined,
+          count,
+          language: lang,
+          adaptive: true,
+          adaptiveTargetSkill: skill,
+          adaptiveTargetDifficulty: difficultyName,
+        }),
+      });
+      let data: any;
+      try { data = await res.json(); } catch { throw new Error(t.createAssignment.connectionError); }
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) return;
+        throw new Error(data.message || t.createAssignment.generateError);
+      }
+      if (!Array.isArray(data.questions) || data.questions.length !== count) {
+        throw new Error(lang === "ar" ? "لم يكتمل توليد الجزء الناقص" : "The missing batch was incomplete");
+      }
+      setQuestions(current => ensureClientIds([...current, ...data.questions]));
+      toast.success(lang === "ar"
+        ? `تمت إضافة ${count} سؤال لمهارة ${skill}`
+        : `Added ${count} question${count === 1 ? "" : "s"} for ${skill}`);
+    } catch (err: any) {
+      toast.error(err.message || t.common.error);
+    } finally {
+      setAdaptiveGapLoading("");
       refreshCreditsBalance();
     }
   };
@@ -1732,6 +1780,30 @@ export default function CreateAssignment() {
                                       <span className={row.medium >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "متوسط" : "Medium"} {row.medium}/2</span>
                                       <span className={row.hard >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "صعب" : "Hard"} {row.hard}/2</span>
                                       {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
+                                      {!complete && (
+                                        <div className="flex w-full flex-wrap gap-1.5 border-t border-amber-100 pt-2 dark:border-amber-900/40">
+                                          {([
+                                            { value: 1 as const, label: lang === "ar" ? "سهل" : "Easy", current: row.easy },
+                                            { value: 2 as const, label: lang === "ar" ? "متوسط" : "Medium", current: row.medium },
+                                            { value: 3 as const, label: lang === "ar" ? "صعب" : "Hard", current: row.hard },
+                                          ]).filter(item => item.current < 2).map(item => {
+                                            const missing = 2 - item.current;
+                                            const loadingKey = `${row.skill}:${item.value}`;
+                                            return (
+                                              <button
+                                                key={item.value}
+                                                type="button"
+                                                disabled={Boolean(adaptiveGapLoading)}
+                                                onClick={() => handleGenerateAdaptiveGap(row.skill, item.value, missing)}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2 py-1 text-[10px] font-black text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
+                                              >
+                                                {adaptiveGapLoading === loadingKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                {lang === "ar" ? `ولّد ${missing} ${item.label}` : `Generate ${missing} ${item.label}`}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
                                     </div>;
                                   })}
                                 </div>

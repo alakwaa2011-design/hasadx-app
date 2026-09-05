@@ -19,6 +19,8 @@ export const adaptiveSessionsTable = pgTable("adaptive_sessions", {
   completed: integer("completed").notNull().default(0),
   completionReason: text("completion_reason"),
   lastQuestionId: integer("last_question_id"),
+  currentQuestionStartedAt: timestamp("current_question_started_at"),
+  lastQuestionStartedAt: timestamp("last_question_started_at"),
   startedAt: timestamp("started_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
 });

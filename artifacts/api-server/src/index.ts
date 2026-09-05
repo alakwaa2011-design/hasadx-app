@@ -50,7 +50,9 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE adaptive_sessions
         ADD COLUMN IF NOT EXISTS completion_reason TEXT,
-        ADD COLUMN IF NOT EXISTS last_question_id INTEGER
+        ADD COLUMN IF NOT EXISTS last_question_id INTEGER,
+        ADD COLUMN IF NOT EXISTS current_question_started_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS last_question_started_at TIMESTAMP
     `);
     // ── Persistent per-teacher TTS audio cache (metadata only; audio in Object Storage) ──
     await db.execute(sql`

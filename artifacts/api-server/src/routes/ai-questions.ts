@@ -138,6 +138,16 @@ export function validateAdaptiveDistribution(
       [1, 2, 3].every(level => questions.filter(question => question.skill === skill && question.difficulty === level).length === 2));
   return { ready, skills };
 }
+
+export function validateAdaptiveTarget(
+  questions: Array<{ skill?: string; difficulty?: number | null }>,
+  expectedCount: number,
+  skill: string,
+  difficulty: number,
+) {
+  return questions.length === expectedCount && questions.every(question =>
+    question.skill === skill && question.difficulty === difficulty);
+}
 /** Extract the FIRST complete top-level JSON array from model output.
     Quote/escape-aware bracket balancing — robust against both truncation
     (non-greedy regex stopped at the first "]") and trailing prose containing
@@ -178,6 +188,11 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
 
   const { topic, sourceText, count, difficulty, subject } = req.body || {};
   const adaptiveRequested = req.body?.adaptive === true;
+  const adaptiveTargetSkill = typeof req.body?.adaptiveTargetSkill === "string"
+    ? req.body.adaptiveTargetSkill.trim()
+    : "";
+  const adaptiveTargetDifficulty = ({ easy: 1, medium: 2, hard: 3 } as Record<string, number>)[String(req.body?.adaptiveTargetDifficulty || "").toLowerCase()] || 0;
+  const targetedAdaptiveRequest = adaptiveRequested && !!adaptiveTargetSkill && !!adaptiveTargetDifficulty;
   const rawTopic = typeof topic === "string" ? topic.trim() : "";
   const rawSourceText = typeof sourceText === "string" ? sourceText.trim() : "";
   const requestedLanguage = req.body?.language === "en" ? "en" : "ar";
@@ -186,6 +201,17 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
   if ((!rawTopic && !rawSourceText) || (topic !== undefined && typeof topic !== "string") || (sourceText !== undefined && typeof sourceText !== "string")) {
     await refundCredits(req, "invalid input");
     res.status(400).json({ message: inputError("أدخل موضوعاً أو نصاً تعليمياً مصدرياً", "Enter a topic or educational source text") });
+    return;
+  }
+  if (
+    adaptiveRequested
+    && (
+      (!!adaptiveTargetSkill !== !!adaptiveTargetDifficulty)
+      || adaptiveTargetSkill.length > 100
+    )
+  ) {
+    await refundCredits(req, "invalid adaptive target");
+    res.status(400).json({ message: inputError("بيانات المهارة أو الصعوبة المستهدفة غير صالحة", "The targeted skill or difficulty is invalid") });
     return;
   }
 
@@ -213,7 +239,7 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
     res.status(400).json({ message: `عدد الأسئلة يجب أن يكون بين ${MIN_QUESTIONS} و ${MAX_QUESTIONS}` });
     return;
   }
-  if (adaptiveRequested && parsedCount % 6 !== 0) {
+  if (adaptiveRequested && !targetedAdaptiveRequest && parsedCount % 6 !== 0) {
     await refundCredits(req, "invalid adaptive question count");
     res.status(400).json({ message: inputError("عدد أسئلة الاختبار التكيفي يجب أن يكون من مضاعفات 6", "Adaptive question count must be a multiple of 6") });
     return;
@@ -222,7 +248,11 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
   const diff = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
   const questionLanguage = resolveQuestionLanguage(req.body?.language, rawSourceText || rawTopic, subject);
   const english = questionLanguage === "en";
-  const difficultyText = adaptiveRequested
+  const difficultyText = targetedAdaptiveRequest
+    ? (english
+      ? (adaptiveTargetDifficulty === 1 ? "easy" : adaptiveTargetDifficulty === 2 ? "medium" : "hard")
+      : (adaptiveTargetDifficulty === 1 ? "سهلة" : adaptiveTargetDifficulty === 2 ? "متوسطة" : "صعبة"))
+    : adaptiveRequested
     ? (english ? "mixed according to the exact adaptive distribution below" : "متدرجة حسب التوزيع التكيفي المحدد أدناه")
     : english
       ? (diff === "easy" ? "easy" : diff === "hard" ? "hard" : "medium")
@@ -234,7 +264,17 @@ router.post("/ai/generate-questions", checkCredits("ai-questions"), async (req, 
       .map((value: string) => value.trim()))].slice(0, 5)
     : [];
   const adaptiveSkillCount = adaptiveRequested ? parsedCount / 6 : 0;
-  const adaptiveBlock = !adaptiveRequested ? "" : english
+  const adaptiveBlock = !adaptiveRequested ? "" : targetedAdaptiveRequest
+    ? english
+      ? `\nAdaptive classification requirements:
+- Every question MUST use exactly this skill label: ${adaptiveTargetSkill}
+- Every question MUST use exactly this difficulty: ${adaptiveTargetDifficulty === 1 ? "easy" : adaptiveTargetDifficulty === 2 ? "medium" : "hard"}
+- Every question object MUST include both "skill" and "difficulty".`
+      : `\nمتطلبات التصنيف التكيفي:
+- يجب أن يستخدم كل سؤال اسم المهارة التالي حرفياً: ${adaptiveTargetSkill}
+- يجب أن تكون صعوبة كل سؤال: ${adaptiveTargetDifficulty === 1 ? "easy" : adaptiveTargetDifficulty === 2 ? "medium" : "hard"}
+- يجب أن يحتوي كل سؤال على "skill" و"difficulty".`
+    : english
     ? `\nAdaptive classification requirements:
 - Return exactly ${adaptiveSkillCount} distinct educational skills${requestedAdaptiveSkills.length === adaptiveSkillCount ? ` using exactly these labels: ${requestedAdaptiveSkills.join(" | ")}` : ", choosing concise labels from the supplied topic/content"}.
 - For EACH skill, return exactly 2 easy, 2 medium, and 2 hard questions.
@@ -427,6 +467,16 @@ ${subject ? `المادة: ${subject.trim()}` : ""}
       return;
     }
     if (adaptiveRequested) {
+      if (targetedAdaptiveRequest) {
+        if (!validateAdaptiveTarget(validQuestions, parsedCount, adaptiveTargetSkill, adaptiveTargetDifficulty)) {
+          await refundCredits(req, "targeted adaptive classification incomplete");
+          res.status(502).json({ message: inputError("لم يلتزم التوليد بالمهارة والصعوبة المطلوبة. أعد المحاولة.", "Generation did not match the requested skill and difficulty. Please try again.") });
+          return;
+        }
+        await captureCredits(req);
+        res.json({ questions: validQuestions, suggestedSkills: [adaptiveTargetSkill] });
+        return;
+      }
       const distribution = validateAdaptiveDistribution(validQuestions, parsedCount);
       if (!distribution.ready) {
         await refundCredits(req, "adaptive classification distribution incomplete");

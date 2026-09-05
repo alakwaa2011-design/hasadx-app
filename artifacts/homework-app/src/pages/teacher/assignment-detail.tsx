@@ -1644,14 +1644,15 @@ export default function TeacherAssignmentDetail() {
                             onClick={() => {
                               const students = adaptiveReport.students as Array<Record<string, unknown>>;
                               const skills = adaptiveReport.skills as string[];
-                              let csv = `${lang === "ar" ? "الطالب" : "Student"},${lang === "ar" ? "الصف" : "Class"},${lang === "ar" ? "المستوى" : "Level"},${lang === "ar" ? "الصحيحة" : "Correct"},${lang === "ar" ? "الإجمالي" : "Total"},${lang === "ar" ? "سبب الانتهاء" : "Completion reason"},${lang === "ar" ? "آخر سؤال" : "Last question"}`;
+                              let csv = `${lang === "ar" ? "الطالب" : "Student"},${lang === "ar" ? "الصف" : "Class"},${lang === "ar" ? "المستوى" : "Level"},${lang === "ar" ? "الصحيحة" : "Correct"},${lang === "ar" ? "الإجمالي" : "Total"},${lang === "ar" ? "المدة بالدقائق" : "Duration (minutes)"},${lang === "ar" ? "سبب الانتهاء" : "Completion reason"},${lang === "ar" ? "آخر سؤال" : "Last question"}`;
                               if (skills?.length) csv += `,${skills.join(",")}`;
                               csv += "\n";
                               students.forEach((s: Record<string, unknown>) => {
                                 const sa = s.skillAbilities as Record<string, { ability: number; correct: number; total: number }> || {};
                                 const reason = s.timedOut ? (lang === "ar" ? "انتهى الوقت" : "Timed out") : (lang === "ar" ? "أكمل الاختبار" : "Completed");
                                 const lastQuestion = String(s.lastQuestionText || "").replaceAll('"', '""');
-                                let row = `${s.studentName},${s.studentClass || ""},${s.finalLevel},${s.correctCount},${s.answeredCount},${reason},"${lastQuestion}"`;
+                                const durationMinutes = typeof s.durationSeconds === "number" ? Math.round(s.durationSeconds / 60) : "";
+                                let row = `${s.studentName},${s.studentClass || ""},${s.finalLevel},${s.correctCount},${s.answeredCount},${durationMinutes},${reason},"${lastQuestion}"`;
                                 if (skills?.length) row += `,${skills.map(sk => sa[sk] ? Math.round((sa[sk].correct / Math.max(1, sa[sk].total)) * 100) + "%" : "—").join(",")}`;
                                 csv += row + "\n";
                               });
@@ -1716,6 +1717,12 @@ export default function TeacherAssignmentDetail() {
                                       <p className="text-xs font-black text-foreground">{String(student.studentName)}</p>
                                       <p className="text-[10px] text-muted-foreground">
                                         {String(student.correctCount)} / {String(student.answeredCount)} {lang === "ar" ? "إجابة صحيحة" : "correct"}
+                                        {typeof student.durationSeconds === "number" && (
+                                          <>
+                                            {" · "}
+                                            {Math.floor(student.durationSeconds / 60)} {lang === "ar" ? "دقيقة" : "min"}
+                                          </>
+                                        )}
                                       </p>
                                     </div>
                                     <span className={`text-[10px] font-black px-2 py-1 rounded-full ${student.timedOut ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"}`}>
@@ -1747,6 +1754,12 @@ export default function TeacherAssignmentDetail() {
                                               ? (lang === "ar" ? "متوسط" : "Medium")
                                               : (lang === "ar" ? "صعب" : "Hard");
                                           const timedOut = step.status === "timed_out";
+                                          const responseSeconds = typeof step.responseTimeSeconds === "number" ? step.responseTimeSeconds : null;
+                                          const responseTimeLabel = responseSeconds === null
+                                            ? null
+                                            : responseSeconds >= 60
+                                              ? `${Math.floor(responseSeconds / 60)}:${String(responseSeconds % 60).padStart(2, "0")}`
+                                              : `${responseSeconds}${lang === "ar" ? "ث" : "s"}`;
                                           return (
                                             <div
                                               key={`${String(step.questionId)}-${index}`}
@@ -1768,6 +1781,22 @@ export default function TeacherAssignmentDetail() {
                                                 {Boolean(step.skill) && (
                                                   <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 text-[9px] font-bold text-violet-700 dark:text-violet-300">
                                                     {String(step.skill)}
+                                                  </span>
+                                                )}
+                                                {Boolean(step.stageName) && (
+                                                  <span className="rounded-full bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300">
+                                                    {String(step.stageName)}
+                                                    {Number(step.stageAttempt) > 1
+                                                      ? ` · ${lang === "ar" ? "المحاولة" : "attempt"} ${String(step.stageAttempt)}`
+                                                      : ""}
+                                                    {step.stagePhase === "support"
+                                                      ? ` · ${lang === "ar" ? "دعم" : "support"}`
+                                                      : ""}
+                                                  </span>
+                                                )}
+                                                {responseTimeLabel && (
+                                                  <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+                                                    {lang === "ar" ? "الزمن: " : "Time: "}{responseTimeLabel}
                                                   </span>
                                                 )}
                                                 <span className={`ms-auto text-[9px] font-black ${
