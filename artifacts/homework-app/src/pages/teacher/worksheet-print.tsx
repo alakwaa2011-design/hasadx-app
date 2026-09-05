@@ -1495,11 +1495,13 @@ function questionTypeLabel(type: Question["type"], ar: boolean) {
 }
 
 /** Instruction shown once before the first question of each type group. */
-function sectionInstruction(type: Question["type"], ar: boolean): string {
+function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?: QuestionStyle): string {
   if (ar) {
     return ({
       mcq:          "اختر الإجابة الصحيحة من الاختيارات التالية:",
-      true_false:   "ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:",
+      true_false:   (questionStyle?.trueFalseLayout ?? "choices") === "mark"
+        ? "ضع علامة (✓) داخل القوس أمام العبارة الصحيحة وعلامة (✗) داخل القوس أمام العبارة الخاطئة:"
+        : "اختر «صح» أو «خطأ» لكل عبارة مما يلي:",
       short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
       fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
       matching:     "صل كل عبارة بما يناسبها من العمود الثاني:",
@@ -1507,7 +1509,9 @@ function sectionInstruction(type: Question["type"], ar: boolean): string {
   }
   return ({
     mcq:          "Choose the correct answer from the following:",
-    true_false:   "Write (✓) for True and (✗) for False:",
+    true_false:   (questionStyle?.trueFalseLayout ?? "choices") === "mark"
+      ? "Put a tick (✓) or cross (✗) in the parentheses for each statement:"
+      : "Choose True or False for each statement:",
     short_answer: "Answer the following questions briefly:",
     fill_blank:   "Fill in the blanks with the appropriate word:",
     matching:     "Match each item with its corresponding choice in the second column:",
@@ -1616,7 +1620,7 @@ export function QuestionFormattingToolbar({
               <button
                 type="button"
                 key={value}
-                className={(questionStyle?.trueFalseLayout ?? "mark") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+                className={(questionStyle?.trueFalseLayout ?? "choices") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
                 onClick={() => onQuestionChange({ trueFalseLayout: value })}
               >
                 {ar
@@ -1683,7 +1687,7 @@ export function QuestionFormattingToolbar({
               <button
                 type="button"
                 key={value}
-                className={(questionStyle?.choiceColumns ?? 1) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+                className={(questionStyle?.choiceColumns ?? 2) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
                 onClick={() => onQuestionChange({ choiceColumns: value as 1 | 2 })}
                 aria-pressed={(questionStyle?.choiceColumns ?? 1) === value}
                 data-testid={`button-choice-columns-${value}`}
@@ -1767,11 +1771,12 @@ function QuestionView({
 }) {
   const em = editMode ?? false;
   const edit = onEdit ?? (() => {});
+  const matchingFractions = q.type === "matching" ? matchingColumnFractions(q.pairs) : null;
 
   return (
     <>
       {showTypeHeader && (
-        <div className="ws-section-instr">{sectionInstruction(q.type, ar)}</div>
+        <div className="ws-section-instr">{sectionInstruction(q.type, ar, questionStyle)}</div>
       )}
       <div className={`ws-q ws-q-spacing-${questionStyle?.spacing ?? "normal"}`}>
         <div className="ws-q-head">
@@ -1790,7 +1795,7 @@ function QuestionView({
               onSelect={() => onSelectField?.("prompt")}
               onCommit={val => edit({ ...q, prompt: val })}
             />
-            {q.type === "true_false" && (questionStyle?.trueFalseLayout ?? "mark") === "mark" && (
+            {q.type === "true_false" && (questionStyle?.trueFalseLayout ?? "choices") === "mark" && (
               <span className="ws-tf-mark" aria-hidden="true">(　　)</span>
             )}
           </div>
@@ -1799,8 +1804,8 @@ function QuestionView({
       {q.type === "mcq" && (
         <ol
           className="ws-mcq"
-          data-choice-columns={questionStyle?.choiceColumns ?? 1}
-          style={{ gridTemplateColumns: `repeat(${questionStyle?.choiceColumns ?? 1}, minmax(0, 1fr))` }}
+          data-choice-columns={questionStyle?.choiceColumns ?? 2}
+          style={{ gridTemplateColumns: `repeat(${questionStyle?.choiceColumns ?? 2}, minmax(0, 1fr))` }}
         >
           {q.options.map((opt, i) => (
             <li key={i}>
@@ -1822,7 +1827,7 @@ function QuestionView({
           ))}
         </ol>
       )}
-      {q.type === "true_false" && questionStyle?.trueFalseLayout === "choices" && (
+      {q.type === "true_false" && (questionStyle?.trueFalseLayout ?? "choices") === "choices" && (
         <div className="ws-tf-choices">
           <span className="ws-tf-choice"><span className="ws-tf-box" aria-hidden="true" />{labels.true}</span>
           <span className="ws-tf-choice"><span className="ws-tf-box" aria-hidden="true" />{labels.false}</span>
@@ -1837,7 +1842,14 @@ function QuestionView({
         <div className="ws-fill"><span className="ws-fill-rule" /></div>
       )}
       {q.type === "matching" && (
-        <div className="ws-match">
+        <div
+          className="ws-match"
+          style={{
+            gridTemplateColumns: `minmax(0, ${matchingFractions!.left}fr) 6mm minmax(0, ${matchingFractions!.right}fr)`,
+          }}
+          data-matching-left-share={matchingFractions!.left}
+          data-matching-right-share={matchingFractions!.right}
+        >
           <ul className="ws-match-col">
             {q.pairs.map((p, i) => (
               <li key={`l${i}`}>
@@ -1963,6 +1975,20 @@ function matchingDisplayOrder(n: number): number[] {
     [order[0], order[1]] = [order[1], order[0]];
   }
   return order;
+}
+
+export function matchingColumnFractions(pairs: Array<{ left: string; right: string }>): { left: number; right: number } {
+  const score = (values: string[]) => {
+    if (values.length === 0) return 1;
+    const lengths = values.map(value => value.trim().length);
+    const average = lengths.reduce((sum, length) => sum + length, 0) / lengths.length;
+    return average + Math.max(...lengths) * 0.5;
+  };
+  const leftScore = score(pairs.map(pair => pair.left));
+  const rightScore = score(pairs.map(pair => pair.right));
+  const rawLeft = leftScore / (leftScore + rightScore);
+  const left = Math.round(Math.min(0.65, Math.max(0.35, rawLeft)) * 100) / 100;
+  return { left, right: Math.round((1 - left) * 100) / 100 };
 }
 
 function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: { fontFamily: string; headingFont: string; fontSizePt: number; lang: "ar" | "en"; themeColor: string }) {
@@ -2308,7 +2334,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
 
       .ws-match {
         display: grid;
-        grid-template-columns: 1fr 6mm 1fr;
+        grid-template-columns: minmax(0, 1fr) 6mm minmax(0, 1fr);
         gap: 6mm;
         padding-${startSide}: 36px;
         margin-top: 3mm;

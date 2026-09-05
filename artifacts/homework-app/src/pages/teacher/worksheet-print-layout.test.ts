@@ -65,9 +65,11 @@ describe("official worksheet question layout", () => {
     expect(source).not.toContain('<span className="ws-bubble"');
   });
 
-  it("keeps both matching columns equal and leaves the first column unboxed", () => {
+  it("adapts matching-column widths to their content and leaves the first column unboxed", () => {
     const matchingRule = source.match(/\.ws-match\s*\{[\s\S]*?\}/)?.[0] ?? "";
-    expect(matchingRule).toContain("grid-template-columns: 1fr 6mm 1fr");
+    expect(matchingRule).toContain("grid-template-columns: minmax(0, 1fr) 6mm minmax(0, 1fr)");
+    expect(source).toContain("matchingColumnFractions(q.pairs)");
+    expect(source).toContain("data-matching-left-share");
     expect(source).not.toContain("matchingLeftWidth ?? 50");
   });
 
@@ -84,7 +86,7 @@ describe("official worksheet question layout", () => {
   it("offers both true/false answer layouts per question", () => {
     expect(source).toContain('"قوس للعلامة"');
     expect(source).toContain('"خيارا صح وخطأ"');
-    expect(source).toContain('questionStyle?.trueFalseLayout === "choices"');
+    expect(source).toContain('(questionStyle?.trueFalseLayout ?? "choices") === "choices"');
     expect(source).toContain('className="ws-tf-box"');
   });
 
