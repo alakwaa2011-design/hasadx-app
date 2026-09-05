@@ -15,10 +15,23 @@ const questionPrompts = Array.from(
   { length: questionCount },
   (_, index) => `E2E-Q${String(index + 1).padStart(2, "0")}-ORDER-MARKER`,
 );
+const arabicFontFamilies = [
+  "default",
+  "cairo",
+  "tajawal",
+  "amiri",
+  "noto-naskh",
+  "inter",
+  "georgia",
+] as const;
 
 let teacher: TestTeacher;
 let worksheetId: number;
 let longAnswerWorksheetId: number;
+const arabicLongAnswerWorksheetIds = new Map<
+  (typeof arabicFontFamilies)[number],
+  number
+>();
 
 function countChromiumPdfPages(pdf: Buffer): number {
   // Chromium writes every physical page as a /Type /Page object. The word
@@ -136,6 +149,44 @@ test.beforeAll(async ({ baseURL }) => {
       throw new Error(`Long answer worksheet seed failed: ${longAnswerResponse.status()} ${await longAnswerResponse.text()}`);
     }
     longAnswerWorksheetId = (await longAnswerResponse.json()).id;
+
+    const arabicLongAnswerQuestions = Array.from({ length: 18 }, (_, index) => ({
+      id: `e2e-arabic-long-answer-q-${index + 1}`,
+      type: "short_answer" as const,
+      prompt: `سؤال ترتيب الإجابات العربية ${index + 1}`,
+      lines: 1,
+      answer: `إجابة عربية رقم ${index + 1} — ${"نص عربي طويل للتحقق من ثبات تقسيم صفحة الإجابات وقياسات الخط العربي. ".repeat(5)}`,
+    }));
+    for (const fontFamily of arabicFontFamilies) {
+      const arabicLongAnswerResponse = await api.post("/api/worksheets", {
+        headers: { Cookie: teacher.cookieHeader },
+        data: {
+          title: `اختبار مفتاح الإجابات العربية الطويل — ${fontFamily}`,
+          language: "ar",
+          gradeLevel: "اختبار",
+          subject: "ثبات الطباعة",
+          questions: arabicLongAnswerQuestions,
+          settings: {
+            includeName: false,
+            includeDate: false,
+            includeClass: false,
+            includeAnswerKey: true,
+            columns: 1,
+            fontFamily,
+            fontSizePt: 13,
+            showWatermark: true,
+            template: "arabic_ink",
+          },
+        },
+      });
+      if (!arabicLongAnswerResponse.ok()) {
+        throw new Error(`Arabic long answer worksheet seed failed for ${fontFamily}: ${arabicLongAnswerResponse.status()} ${await arabicLongAnswerResponse.text()}`);
+      }
+      arabicLongAnswerWorksheetIds.set(
+        fontFamily,
+        (await arabicLongAnswerResponse.json()).id,
+      );
+    }
   } finally {
     await api.dispose();
   }
@@ -271,4 +322,59 @@ test("long answer keys become numbered A4 DOM pages that match the PDF", async (
   });
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+});
+
+test("Arabic long answer keys preserve RTL continuation headers, answer order, and PDF page count", async ({
+  page,
+}) => {
+  for (const fontFamily of arabicFontFamilies) {
+    const worksheetId = arabicLongAnswerWorksheetIds.get(fontFamily);
+    expect(worksheetId, `missing Arabic fixture for ${fontFamily}`).toBeDefined();
+    await page.goto(`/teacher/worksheets/${worksheetId}/print`);
+
+    const printable = page.locator("#ws-printable-root");
+    await expect(printable).toBeVisible({ timeout: 20_000 });
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+
+    const worksheetPageCount = await printable.locator("[data-worksheet-page]").count();
+    const answerPages = printable.locator("[data-answer-key-page]");
+    await expect
+      .poll(async () => answerPages.count(), { timeout: 15_000 })
+      .toBeGreaterThan(1);
+
+    const continuationHeaders = answerPages.locator("[data-answer-key-continuation]");
+    const continuationHeaderCount = await continuationHeaders.count();
+    expect(continuationHeaderCount).toBe((await answerPages.count()) - 1);
+    for (let index = 0; index < continuationHeaderCount; index += 1) {
+      const continuationHeader = continuationHeaders.nth(index);
+      await expect(continuationHeader.locator(".ws-cont-title")).toContainText("صفحة الإجابات");
+      await expect(continuationHeader.locator(".ws-cont-page")).toHaveText(
+        `صفحة ${worksheetPageCount + index + 2}`,
+      );
+      expect(
+        await continuationHeader.evaluate((node) => getComputedStyle(node).direction),
+      ).toBe("rtl");
+    }
+
+    const answerNumbers = (await answerPages.locator(".ws-answer .ws-q-num").allTextContents())
+      .map((text) => Number.parseInt(text.trim(), 10));
+    expect(answerNumbers).toEqual(
+      Array.from({ length: 18 }, (_, index) => index + 1),
+    );
+
+    for (const answerPage of await answerPages.all()) {
+      expect(await answerPage.locator(".ws-answer").count()).toBeGreaterThan(0);
+    }
+
+    const domPageCount = await printable.locator(".ws-page").count();
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+    expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+  }
 });
