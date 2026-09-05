@@ -15,36 +15,51 @@ export interface WordExportOptions {
   lang?: "ar" | "en";
 }
 
-/**
- * Trigger a `.doc` download containing the rendered HTML of `element`,
- * wrapped with the headers Microsoft Word recognises so it opens with
- * full A4 page setup, the same CSS, and full RTL/LTR direction.
- */
-export function downloadAsWord({ element, title, lang = "ar" }: WordExportOptions): void {
-  // Serialize the element (outerHTML preserves classes the page CSS hooks into).
-  const bodyHtml = element.outerHTML;
+function prepareWordBody(element: HTMLElement): string {
+  const clone = element.cloneNode(true) as HTMLElement;
 
-  // Collect every <style> block on the page so the embedded CSS travels
-  // with the document. Without this, Word would render unstyled HTML.
+  // Word's HTML renderer does not reliably support CSS Grid. Convert only the
+  // exported copy of two-column choices to a real table, preserving the source
+  // DOM (and therefore browser/PDF rendering) unchanged.
+  clone.querySelectorAll<HTMLOListElement>(".ws-mcq[data-choice-columns='2']").forEach(list => {
+    const choices = Array.from(list.children);
+    const table = document.createElement("table");
+    table.className = "ws-mcq ws-mcq-word-table";
+    table.setAttribute("dir", list.getAttribute("dir") ?? "auto");
+
+    const body = document.createElement("tbody");
+    for (let index = 0; index < choices.length; index += 2) {
+      const row = document.createElement("tr");
+      for (let column = 0; column < 2; column += 1) {
+        const cell = document.createElement("td");
+        cell.className = "ws-mcq-word-cell";
+        const choice = choices[index + column];
+        if (choice) cell.appendChild(choice.cloneNode(true));
+        row.appendChild(cell);
+      }
+      body.appendChild(row);
+    }
+    table.appendChild(body);
+    list.replaceWith(table);
+  });
+
+  return clone.outerHTML;
+}
+
+export function buildWordDocumentHtml({
+  element,
+  title,
+  lang = "ar",
+}: WordExportOptions): string {
+  const bodyHtml = prepareWordBody(element);
+
   const styles = Array.from(document.querySelectorAll("style"))
     .map(s => s.innerHTML)
     .join("\n");
 
-  // Pull the same Google Fonts the print page uses so Arabic + Latin
-  // rendering matches the on-screen preview as closely as Word allows.
   const fontImport =
     "@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;700&family=Reem+Kufi:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');";
 
-  // Word-only @page size + portrait + small margins. The print CSS uses
-  // `@page { size: A4; margin: 0 }` but Word ignores margin:0, so we set
-  // a sensible non-zero margin for the .doc render.
-  //
-  // The on-screen print pages (`.ws-page`, `.lp-page`) are sized at a
-  // fixed 210mm width so they look like a real A4 sheet in the browser.
-  // Word's printable area inside our 12/10mm margins is only ~190mm, so
-  // forcing those pages to `width: auto` and stripping the screen-only
-  // chrome (shadow, rounded corners, page-fill min-height) is what keeps
-  // the document from overflowing the page or scaling unexpectedly.
   const wordPageCss = `
     @page WordSection1 {
       size: 210mm 297mm;
@@ -53,8 +68,6 @@ export function downloadAsWord({ element, title, lang = "ar" }: WordExportOption
     }
     div.WordSection1 { page: WordSection1; }
     body { font-family: 'Cairo','Inter',Arial,sans-serif; background: white !important; margin: 0; padding: 0; }
-    /* Neutralize fixed page width / on-screen chrome inside Word so the
-       printable content sits inside Word's actual margin box. */
     .WordSection1 .ws-page,
     .WordSection1 .lp-page {
       width: auto !important;
@@ -65,8 +78,6 @@ export function downloadAsWord({ element, title, lang = "ar" }: WordExportOption
       margin: 0 !important;
       padding: 0 !important;
     }
-    /* The wrapper hosts (the elements we serialize) include screen-only
-       gray padding — drop it so Word treats them as transparent. */
     .WordSection1 #ws-printable-root,
     .WordSection1 #lp-printable-root {
       background: white !important;
@@ -74,15 +85,25 @@ export function downloadAsWord({ element, title, lang = "ar" }: WordExportOption
       min-height: 0 !important;
       display: block !important;
     }
+    .WordSection1 .ws-mcq-word-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      table-layout: fixed !important;
+    }
+    .WordSection1 .ws-mcq-word-cell {
+      width: 50% !important;
+      border: 0 !important;
+      padding: 2mm 1.5mm !important;
+      vertical-align: top !important;
+    }
+    .WordSection1 .ws-mcq-word-cell > li {
+      display: block !important;
+    }
   `;
 
   const dir = lang === "ar" ? "rtl" : "ltr";
 
-  // The xmlns:o / xmlns:w / xmlns:m attributes are what tell Word "this
-  // is really a Word document, not just HTML in disguise". Without them
-  // Word still opens the file but treats it as plain HTML and ignores
-  // @page / WordSection1.
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:w="urn:schemas-microsoft-com:office:word"
       xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"
@@ -113,6 +134,15 @@ export function downloadAsWord({ element, title, lang = "ar" }: WordExportOption
     </div>
   </body>
 </html>`;
+}
+
+/**
+ * Trigger a `.doc` download containing the rendered HTML of `element`,
+ * wrapped with the headers Microsoft Word recognises so it opens with
+ * full A4 page setup, the same CSS, and full RTL/LTR direction.
+ */
+export function downloadAsWord({ element, title, lang = "ar" }: WordExportOptions): void {
+  const html = buildWordDocumentHtml({ element, title, lang });
 
   const blob = new Blob(
     ["\ufeff", html], // BOM helps Word detect UTF-8 reliably for Arabic.

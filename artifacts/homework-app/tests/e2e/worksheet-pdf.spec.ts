@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { JSDOM } from "jsdom";
 import {
   db,
   pool,
@@ -333,7 +335,7 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
   ).toBe(2);
 
   const worksheetPrompts = (await printable
-    .locator("[data-worksheet-page] .ws-q-prompt")
+    .locator("[data-worksheet-page] .ws-q-prompt > span:first-child")
     .allTextContents())
     .map(text => text.trim());
   expect(worksheetPrompts).toEqual(prompts);
@@ -343,6 +345,33 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
     .allTextContents())
     .map(text => text.replace(/^الإجابة:\s*/, "").trim());
   expect(answerRows).toEqual(answers);
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "وورد", exact: true }).click();
+  const wordDownload = await downloadPromise;
+  expect(wordDownload.suggestedFilename()).toBe("اختبار ثبات تنسيق الأسئلة.doc");
+  const wordPath = await wordDownload.path();
+  expect(wordPath).not.toBeNull();
+  const wordHtml = (await readFile(wordPath!)).toString("utf8").replace(/^\uFEFF/, "");
+  const wordDocument = new JSDOM(wordHtml).window.document;
+
+  const wordPrompt = Array.from(wordDocument.querySelectorAll(".ws-q-prompt span"))
+    .find(element => element.textContent?.trim() === prompts[0]);
+  expect(wordPrompt).not.toBeUndefined();
+  expect(wordPrompt!.getAttribute("style")).toContain("font-size: 14pt");
+  expect(wordPrompt!.getAttribute("style")).toContain("font-weight: 800");
+  expect(wordPrompt!.getAttribute("style")).toContain("text-align: center");
+
+  const wordPrompts = Array.from(wordDocument.querySelectorAll("[data-worksheet-page] .ws-q-prompt > span:first-child"))
+    .map(element => element.textContent?.trim());
+  expect(wordPrompts).toEqual(prompts);
+
+  const firstChoiceTable = wordDocument.querySelector(".ws-mcq-word-table");
+  expect(firstChoiceTable).not.toBeNull();
+  expect(firstChoiceTable!.querySelectorAll("tr")).toHaveLength(2);
+  expect(firstChoiceTable!.querySelectorAll("td")).toHaveLength(4);
+  expect(Array.from(firstChoiceTable!.querySelectorAll("li")).map(element => element.textContent?.trim()))
+    .toEqual(["(أ)الإجابة الأولى", "(ب)الإجابة الثانية", "(ج)الإجابة الثالثة", "(د)الإجابة الرابعة"]);
 
   const domPageCount = await printable.locator(".ws-page").count();
   const pdf = await page.pdf({

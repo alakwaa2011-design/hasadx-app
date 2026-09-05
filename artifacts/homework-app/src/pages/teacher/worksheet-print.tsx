@@ -1745,7 +1745,11 @@ function QuestionView({
         </div>
       </div>
       {q.type === "mcq" && (
-        <ol className="ws-mcq" style={{ gridTemplateColumns: `repeat(${questionStyle?.choiceColumns ?? 1}, minmax(0, 1fr))` }}>
+        <ol
+          className="ws-mcq"
+          data-choice-columns={questionStyle?.choiceColumns ?? 1}
+          style={{ gridTemplateColumns: `repeat(${questionStyle?.choiceColumns ?? 1}, minmax(0, 1fr))` }}
+        >
           {q.options.map((opt, i) => (
             <li key={i}>
               <span className="ws-mcq-letter">({optionLabel(i, ar)})</span>
