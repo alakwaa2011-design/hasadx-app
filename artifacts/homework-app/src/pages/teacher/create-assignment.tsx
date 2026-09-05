@@ -112,6 +112,20 @@ const COLOR_THEMES = [
 // ══════════════════════════════════════════════
 const DRAFT_KEY = "createAssignmentDraft:v1";
 
+export interface AdaptiveStage {
+  id: string;
+  name?: string;
+  questionCount: number;
+  passRuleType: "percent" | "correctCount";
+  passThreshold: number;
+  difficulties: number[];
+  skills: string[];
+  failureAction: "support" | "repeat" | "continue" | "finish";
+  supportQuestionCount: number;
+  maxRepeats: number;
+  durationMinutes?: number;
+}
+
 type WizardDraft = {
   v: 1;
   wizardStep: 1 | 2 | 3;
@@ -136,10 +150,13 @@ type WizardDraft = {
   isShared: boolean;
   categoryId: number | null;
   isAdaptive: boolean;
+  adaptiveMode?: "continuous" | "staged";
   adaptiveSkills: string[];
   adaptiveQuestionsPerSession: number;
   adaptiveShowImmediateFeedback?: boolean;
   adaptiveShowAnswersAfterResult?: boolean;
+  adaptiveStages?: AdaptiveStage[];
+  adaptiveShowStageNames?: boolean;
   questions: QuestionWithTts[];
   savedAt: number;
 };
@@ -445,6 +462,9 @@ export default function CreateAssignment() {
   const [isAdaptive, setIsAdaptive] = useState(false);
   const [adaptiveSkills, setAdaptiveSkills] = useState<string[]>([]);
   const [adaptiveSkillInput, setAdaptiveSkillInput] = useState("");
+  const [adaptiveMode, setAdaptiveMode] = useState<"continuous" | "staged">("continuous");
+  const [adaptiveStages, setAdaptiveStages] = useState<AdaptiveStage[]>([]);
+  const [adaptiveShowStageNames, setAdaptiveShowStageNames] = useState(false);
   const [adaptiveQuestionsPerSession, setAdaptiveQuestionsPerSession] = useState(10);
   const [adaptiveShowImmediateFeedback, setAdaptiveShowImmediateFeedback] = useState(false);
   const [adaptiveShowAnswersAfterResult, setAdaptiveShowAnswersAfterResult] = useState(false);
@@ -838,6 +858,9 @@ export default function CreateAssignment() {
     setIsShared(d.isShared);
     setCategoryId(d.categoryId);
     setIsAdaptive(d.isAdaptive);
+    setAdaptiveMode(d.adaptiveMode || "continuous");
+    setAdaptiveStages(d.adaptiveStages || []);
+    setAdaptiveShowStageNames(d.adaptiveShowStageNames || false);
     setAdaptiveSkills(d.adaptiveSkills);
     setAdaptiveQuestionsPerSession(d.adaptiveQuestionsPerSession);
     setAdaptiveShowImmediateFeedback(d.adaptiveShowImmediateFeedback ?? false);
@@ -887,6 +910,9 @@ export default function CreateAssignment() {
       isShared,
       categoryId,
       isAdaptive,
+      adaptiveMode,
+      adaptiveStages,
+      adaptiveShowStageNames,
       adaptiveSkills,
       adaptiveQuestionsPerSession,
       adaptiveShowImmediateFeedback,
@@ -909,6 +935,7 @@ export default function CreateAssignment() {
     targetClasses, submissionMode, accessMode, accessCode, showResults, deadline,
     paperTotalPoints, examMode, examDurationMinutes, resultsReleaseMode, allowRetry,
     modelImage, aiGradingInstructions, isShared, categoryId, isAdaptive,
+    adaptiveMode, adaptiveStages, adaptiveShowStageNames,
     adaptiveSkills, adaptiveQuestionsPerSession, adaptiveShowImmediateFeedback,
     adaptiveShowAnswersAfterResult, questions,
     t.createAssignment.paperAnswer,
@@ -1040,6 +1067,12 @@ export default function CreateAssignment() {
         contentKind: isContestMode ? "competition" : "homework",
         isAdaptive: isAdaptive || undefined,
         adaptiveConfig: (isAdaptive ? {
+          mode: adaptiveMode,
+          stages: adaptiveStages.map(s => ({
+            ...s,
+            passRule: { type: s.passRuleType, threshold: s.passThreshold }
+          })),
+          showStageNames: adaptiveShowStageNames,
           questionsPerSession: adaptiveQuestionsPerSession,
           skills: adaptiveSkills,
           allowRetry,
@@ -1076,6 +1109,8 @@ export default function CreateAssignment() {
     const undeclaredSkill: number[] = [];
     const unsupportedType: number[] = [];
     questions.forEach((question, index) => {
+      // Only count valid non-empty questions
+      if (!question.text?.trim()) return;
       const type = question.questionType || "mcq";
       if (!isAdaptiveSupportedQuestionType(type)) unsupportedType.push(index + 1);
       const skill = question.skill?.trim() || "";
@@ -1087,13 +1122,50 @@ export default function CreateAssignment() {
       else row.medium += 1;
     });
     const incompleteSkills = skills.filter(row => row.easy < 2 || row.medium < 2 || row.hard < 2);
+
+    const stagedErrors: string[] = [];
+    if (adaptiveMode === "staged") {
+      if (adaptiveStages.length === 0) stagedErrors.push(lang === "ar" ? "أضف مرحلة واحدة على الأقل" : "Add at least one stage");
+      adaptiveStages.forEach((stage, i) => {
+        let requiredCount = stage.questionCount;
+        if (stage.failureAction === "repeat") {
+          requiredCount = stage.questionCount * (stage.maxRepeats + 1);
+        } else if (stage.failureAction === "support") {
+          requiredCount = stage.questionCount + stage.supportQuestionCount;
+        }
+
+        if (stage.passRuleType === "percent" && (stage.passThreshold < 0 || stage.passThreshold > 100)) {
+          stagedErrors.push(lang === "ar" ? `المرحلة ${i + 1} تتطلب نسبة نجاح بين 0 و 100` : `Stage ${i + 1} requires a pass percentage between 0 and 100`);
+        }
+        if (stage.passRuleType === "correctCount" && (stage.passThreshold < 0 || stage.passThreshold > stage.questionCount)) {
+          stagedErrors.push(lang === "ar" ? `المرحلة ${i + 1} تتطلب شرط اجتياز لا يتجاوز عدد الأسئلة (${stage.questionCount})` : `Stage ${i + 1} requires a pass threshold no greater than its question count (${stage.questionCount})`);
+        }
+
+        const matchCount = questions.filter(q => {
+          if (!q.text?.trim() || !isAdaptiveSupportedQuestionType(q.questionType || "mcq")) return false;
+          const s = (q.skill || "").trim();
+          const d = q.difficulty || 2;
+          const matchesSkill = stage.skills.length === 0 || stage.skills.includes(s);
+          const matchesDiff = stage.difficulties.length === 0 || stage.difficulties.includes(d);
+          return matchesSkill && matchesDiff;
+        }).length;
+        if (matchCount < requiredCount) {
+          stagedErrors.push(lang === "ar" ? `المرحلة ${i + 1} تتطلب ${requiredCount} سؤالاً فريداً كحد أقصى، لكن يوجد ${matchCount} فقط يتطابق مع شروطها` : `Stage ${i + 1} requires a worst-case of ${requiredCount} unique questions, but only ${matchCount} match its criteria`);
+        }
+      });
+    }
+
+    const isReadyContinuous = skills.length > 0 && incompleteSkills.length === 0 && noSkill.length === 0 && undeclaredSkill.length === 0 && unsupportedType.length === 0;
+    const isReadyStaged = stagedErrors.length === 0 && noSkill.length === 0 && undeclaredSkill.length === 0 && unsupportedType.length === 0;
+
     return {
       skills,
       noSkill,
       undeclaredSkill,
       unsupportedType,
       incompleteSkills,
-      isReady: skills.length > 0 && incompleteSkills.length === 0 && noSkill.length === 0 && undeclaredSkill.length === 0 && unsupportedType.length === 0,
+      stagedErrors,
+      isReady: adaptiveMode === "staged" ? isReadyStaged : isReadyContinuous,
     };
   })();
   const canLeaveStep2 = hasAtLeastOneQuestion(questions, isPaper) && (!isAdaptive || adaptiveReadiness.isReady);
@@ -1548,6 +1620,23 @@ export default function CreateAssignment() {
                         </div>
 
                         <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
+                          <div className="flex gap-2 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => setAdaptiveMode("continuous")}
+                              className={`flex-1 rounded-lg py-2 text-xs font-black transition-colors ${adaptiveMode === "continuous" ? "bg-white text-violet-700 shadow-sm dark:bg-[#15201B] dark:text-violet-300" : "text-muted-foreground hover:bg-slate-200 dark:hover:bg-slate-700"}`}
+                            >
+                              {lang === "ar" ? "تلقائي (مستمر)" : "Continuous"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAdaptiveMode("staged")}
+                              className={`flex-1 rounded-lg py-2 text-xs font-black transition-colors ${adaptiveMode === "staged" ? "bg-white text-violet-700 shadow-sm dark:bg-[#15201B] dark:text-violet-300" : "text-muted-foreground hover:bg-slate-200 dark:hover:bg-slate-700"}`}
+                            >
+                              {lang === "ar" ? "التكيفي متعدد المراحل" : "Staged Adaptive"}
+                            </button>
+                          </div>
+
                           <section className="space-y-3">
                             <div>
                               <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "المهارات التي يقيسها الاختبار" : "Skills measured by the test"}</h3>
@@ -1588,23 +1677,39 @@ export default function CreateAssignment() {
                               {adaptiveReadiness.isReady ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertCircle className="h-5 w-5 text-amber-600" />}
                               <div>
                                 <h3 className="text-sm font-black">{lang === "ar" ? "جاهزية بنك الأسئلة" : "Question bank readiness"}</h3>
-                                <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "يلزم سؤالان على الأقل لكل مستوى في كل مهارة." : "At least two questions are required at every level for every skill."}</p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {adaptiveMode === "staged"
+                                    ? (lang === "ar" ? "يجب توفر العدد المطلوب من الأسئلة لكل مرحلة." : "Must have required number of questions per stage.")
+                                    : (lang === "ar" ? "يلزم سؤالان على الأقل لكل مستوى في كل مهارة." : "At least two questions are required at every level for every skill.")}
+                                </p>
                               </div>
                             </div>
-                            {adaptiveReadiness.skills.length === 0 ? (
-                              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{lang === "ar" ? "أضف مهارة واحدة على الأقل." : "Add at least one skill."}</p>
-                            ) : (
-                              <div className="space-y-2">
-                                {adaptiveReadiness.skills.map(row => {
-                                  const complete = row.easy >= 2 && row.medium >= 2 && row.hard >= 2;
-                                  return <div key={row.skill} className="flex flex-wrap items-center gap-2 rounded-xl bg-white/80 px-3 py-2 text-xs dark:bg-[#15201B]/80">
-                                    <span className="min-w-24 flex-1 font-black">{row.skill}</span>
-                                    <span className={row.easy >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "سهل" : "Easy"} {row.easy}/2</span>
-                                    <span className={row.medium >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "متوسط" : "Medium"} {row.medium}/2</span>
-                                    <span className={row.hard >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "صعب" : "Hard"} {row.hard}/2</span>
-                                    {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
-                                  </div>;
-                                })}
+                            {adaptiveMode === "continuous" && (
+                              adaptiveReadiness.skills.length === 0 ? (
+                                <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{lang === "ar" ? "أضف مهارة واحدة على الأقل." : "Add at least one skill."}</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {adaptiveReadiness.skills.map(row => {
+                                    const complete = row.easy >= 2 && row.medium >= 2 && row.hard >= 2;
+                                    return <div key={row.skill} className="flex flex-wrap items-center gap-2 rounded-xl bg-white/80 px-3 py-2 text-xs dark:bg-[#15201B]/80">
+                                      <span className="min-w-24 flex-1 font-black">{row.skill}</span>
+                                      <span className={row.easy >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "سهل" : "Easy"} {row.easy}/2</span>
+                                      <span className={row.medium >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "متوسط" : "Medium"} {row.medium}/2</span>
+                                      <span className={row.hard >= 2 ? "text-emerald-700" : "text-amber-700"}>{lang === "ar" ? "صعب" : "Hard"} {row.hard}/2</span>
+                                      {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
+                                    </div>;
+                                  })}
+                                </div>
+                              )
+                            )}
+                            {adaptiveMode === "staged" && adaptiveReadiness.stagedErrors.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {adaptiveReadiness.stagedErrors.map((err, i) => (
+                                  <div key={i} className="flex items-start gap-2 rounded-lg bg-amber-100/50 p-2 text-xs font-bold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>{err}</span>
+                                  </div>
+                                ))}
                               </div>
                             )}
                             {(adaptiveReadiness.noSkill.length > 0 || adaptiveReadiness.undeclaredSkill.length > 0 || adaptiveReadiness.unsupportedType.length > 0) && (
@@ -1616,15 +1721,180 @@ export default function CreateAssignment() {
                             )}
                           </section>
 
-                          <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <h3 className="text-sm font-black">{lang === "ar" ? "عدد الأسئلة لكل طالب" : "Questions per student"}</h3>
-                                <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "يختار النظام هذا العدد من بنك الأسئلة بحسب أداء الطالب." : "The system selects this many questions based on student performance."}</p>
+                          {adaptiveMode === "continuous" ? (
+                            <section className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                              <div className="flex items-center justify-between gap-4">
+                                <div>
+                                  <h3 className="text-sm font-black">{lang === "ar" ? "عدد الأسئلة لكل طالب" : "Questions per student"}</h3>
+                                  <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "يختار النظام هذا العدد من بنك الأسئلة بحسب أداء الطالب." : "The system selects this many questions based on student performance."}</p>
+                                </div>
+                                <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))} className="w-20 rounded-xl border-2 border-violet-200 bg-background px-2 py-2 text-center text-lg font-black text-violet-700 outline-none focus:border-violet-500 dark:border-violet-800 dark:text-violet-300" />
                               </div>
-                              <input type="number" min={3} max={50} value={adaptiveQuestionsPerSession} onChange={e => setAdaptiveQuestionsPerSession(Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))} className="w-20 rounded-xl border-2 border-violet-200 bg-background px-2 py-2 text-center text-lg font-black text-violet-700 outline-none focus:border-violet-500 dark:border-violet-800 dark:text-violet-300" />
-                            </div>
-                          </section>
+                            </section>
+                          ) : (
+                            <section className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">{lang === "ar" ? "مراحل الاختبار" : "Test Stages"}</h3>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "إظهار أسماء المراحل للطلاب" : "Show stage names to students"}</span>
+                                  <Toggle on={adaptiveShowStageNames} onChange={() => setAdaptiveShowStageNames(!adaptiveShowStageNames)} color="violet" />
+                                </div>
+                              </div>
+                              <div className="space-y-3">
+                                {adaptiveStages.map((stage, stageIndex) => (
+                                  <div key={stage.id} className="relative rounded-xl border border-violet-200 bg-violet-50/30 p-3 shadow-sm dark:border-violet-800 dark:bg-violet-950/10">
+                                    <div className="mb-3 flex items-center justify-between gap-2 border-b border-violet-100 pb-2 dark:border-violet-900">
+                                      <input
+                                        value={stage.name || ""}
+                                        onChange={e => {
+                                          const copy = [...adaptiveStages];
+                                          copy[stageIndex].name = e.target.value;
+                                          setAdaptiveStages(copy);
+                                        }}
+                                        placeholder={lang === "ar" ? `المرحلة ${stageIndex + 1}` : `Stage ${stageIndex + 1}`}
+                                        className="w-1/2 rounded bg-transparent px-1 py-0.5 text-sm font-black text-violet-700 outline-none focus:bg-white dark:text-violet-300 dark:focus:bg-[#15201B]"
+                                      />
+                                      <div className="flex items-center gap-1">
+                                        <button type="button" onClick={() => {
+                                          if (stageIndex === 0) return;
+                                          const copy = [...adaptiveStages];
+                                          const temp = copy[stageIndex];
+                                          copy[stageIndex] = copy[stageIndex - 1];
+                                          copy[stageIndex - 1] = temp;
+                                          setAdaptiveStages(copy);
+                                        }} disabled={stageIndex === 0} className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-300"><ChevronUp className="h-4 w-4" /></button>
+                                        <button type="button" onClick={() => {
+                                          if (stageIndex === adaptiveStages.length - 1) return;
+                                          const copy = [...adaptiveStages];
+                                          const temp = copy[stageIndex];
+                                          copy[stageIndex] = copy[stageIndex + 1];
+                                          copy[stageIndex + 1] = temp;
+                                          setAdaptiveStages(copy);
+                                        }} disabled={stageIndex === adaptiveStages.length - 1} className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-300"><ChevronDown className="h-4 w-4" /></button>
+                                        <button type="button" onClick={() => setAdaptiveStages(adaptiveStages.filter((_, i) => i !== stageIndex))} className="rounded p-1 text-red-400 hover:bg-red-100 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                      <div className="space-y-1">
+                                        <label className="font-bold">{lang === "ar" ? "عدد الأسئلة" : "Question count"}</label>
+                                        <input type="number" min={1} value={stage.questionCount} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].questionCount = Math.max(1, parseInt(e.target.value) || 1); setAdaptiveStages(copy); }} className="w-full rounded border border-slate-200 bg-background px-2 py-1.5 font-bold outline-none focus:border-violet-500" />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="font-bold">{lang === "ar" ? "شرط الاجتياز" : "Pass rule"}</label>
+                                        <div className="flex rounded border border-slate-200 bg-background overflow-hidden focus-within:border-violet-500">
+                                          <input type="number" min={0} max={stage.passRuleType === "percent" ? 100 : stage.questionCount} value={stage.passThreshold} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].passThreshold = Math.max(0, parseInt(e.target.value) || 0); setAdaptiveStages(copy); }} className="w-full bg-transparent px-2 py-1.5 font-bold outline-none" />
+                                          <select value={stage.passRuleType} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].passRuleType = e.target.value as "percent" | "correctCount"; setAdaptiveStages(copy); }} className="bg-slate-100 px-1 text-[10px] font-bold outline-none dark:bg-slate-800 border-s border-slate-200 dark:border-slate-700">
+                                            <option value="percent">%</option>
+                                            <option value="correctCount">{lang === "ar" ? "صحيحة" : "correct"}</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="font-bold">{lang === "ar" ? "عند الرسوب" : "On fail"}</label>
+                                        <select value={stage.failureAction} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].failureAction = e.target.value as any; setAdaptiveStages(copy); }} className="w-full rounded border border-slate-200 bg-background px-2 py-1.5 font-bold outline-none focus:border-violet-500">
+                                          <option value="support">{lang === "ar" ? "مسار مساندة" : "Support track"}</option>
+                                          <option value="repeat">{lang === "ar" ? "إعادة المرحلة" : "Repeat stage"}</option>
+                                          <option value="continue">{lang === "ar" ? "تجاوز وإكمال" : "Continue anyway"}</option>
+                                          <option value="finish">{lang === "ar" ? "إنهاء الاختبار" : "Finish test"}</option>
+                                        </select>
+                                      </div>
+                                      {stage.failureAction === "repeat" && (
+                                        <div className="space-y-1">
+                                          <label className="font-bold">{lang === "ar" ? "أقصى تكرار" : "Max repeats"}</label>
+                                          <input type="number" min={1} value={stage.maxRepeats} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].maxRepeats = Math.max(1, parseInt(e.target.value) || 1); setAdaptiveStages(copy); }} className="w-full rounded border border-slate-200 bg-background px-2 py-1.5 font-bold outline-none focus:border-violet-500" />
+                                        </div>
+                                      )}
+                                      {stage.failureAction === "support" && (
+                                        <div className="space-y-1">
+                                          <label className="font-bold">{lang === "ar" ? "أسئلة المساندة" : "Support qs"}</label>
+                                          <input type="number" min={1} value={stage.supportQuestionCount} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].supportQuestionCount = Math.max(1, parseInt(e.target.value) || 1); setAdaptiveStages(copy); }} className="w-full rounded border border-slate-200 bg-background px-2 py-1.5 font-bold outline-none focus:border-violet-500" />
+                                        </div>
+                                      )}
+                                      <div className="space-y-1">
+                                        <label className="font-bold">{lang === "ar" ? "المدة (دقائق)" : "Duration (min)"}</label>
+                                        <input type="number" min={0} value={stage.durationMinutes || ""} onChange={e => { const copy = [...adaptiveStages]; copy[stageIndex].durationMinutes = parseInt(e.target.value) > 0 ? parseInt(e.target.value) : undefined; setAdaptiveStages(copy); }} placeholder={lang === "ar" ? "مفتوح" : "None"} className="w-full rounded border border-slate-200 bg-background px-2 py-1.5 font-bold outline-none focus:border-violet-500" />
+                                      </div>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs pt-3 border-t border-violet-100 dark:border-violet-900">
+                                      <div className="space-y-1">
+                                        <label className="font-bold">{lang === "ar" ? "المهارات (اختياري)" : "Skills (opt)"}</label>
+                                        <select
+                                          value=""
+                                          onChange={e => {
+                                            const v = e.target.value;
+                                            if (!v || stage.skills.includes(v)) return;
+                                            const copy = [...adaptiveStages];
+                                            copy[stageIndex].skills.push(v);
+                                            setAdaptiveStages(copy);
+                                          }}
+                                          className="w-full rounded border border-slate-200 bg-background px-2 py-1.5 font-bold outline-none focus:border-violet-500"
+                                        >
+                                          <option value="">{lang === "ar" ? "إضافة مهارة..." : "Add skill..."}</option>
+                                          {adaptiveSkills.filter(s => !stage.skills.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                        {stage.skills.length > 0 && (
+                                          <div className="mt-1 flex flex-wrap gap-1">
+                                            {stage.skills.map(s => (
+                                              <span key={s} className="inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                                                {s}
+                                                <button type="button" onClick={() => { const copy = [...adaptiveStages]; copy[stageIndex].skills = copy[stageIndex].skills.filter(sk => sk !== s); setAdaptiveStages(copy); }}><X className="h-3 w-3 hover:text-red-500" /></button>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="font-bold">{lang === "ar" ? "الصعوبة (اختياري)" : "Difficulty (opt)"}</label>
+                                        <div className="flex gap-1">
+                                          {[
+                                            { val: 1, label: lang === "ar" ? "سهل" : "Easy" },
+                                            { val: 2, label: lang === "ar" ? "متوسط" : "Med" },
+                                            { val: 3, label: lang === "ar" ? "صعب" : "Hard" },
+                                          ].map(d => (
+                                            <button
+                                              key={d.val}
+                                              type="button"
+                                              onClick={() => {
+                                                const copy = [...adaptiveStages];
+                                                if (copy[stageIndex].difficulties.includes(d.val)) {
+                                                  copy[stageIndex].difficulties = copy[stageIndex].difficulties.filter(v => v !== d.val);
+                                                } else {
+                                                  copy[stageIndex].difficulties.push(d.val);
+                                                }
+                                                setAdaptiveStages(copy);
+                                              }}
+                                              className={`flex-1 rounded border px-1 py-1 text-[10px] font-bold transition-colors ${stage.difficulties.includes(d.val) ? "border-violet-500 bg-violet-500 text-white" : "border-slate-200 bg-background text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"}`}
+                                            >
+                                              {d.label}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setAdaptiveStages([...adaptiveStages, {
+                                    id: nextClientId(),
+                                    name: "",
+                                    questionCount: 5,
+                                    passRuleType: "percent",
+                                    passThreshold: 60,
+                                    difficulties: [],
+                                    skills: [],
+                                    failureAction: "support",
+                                    supportQuestionCount: 3,
+                                    maxRepeats: 1,
+                                  }])}
+                                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-200 py-3 text-xs font-black text-violet-600 transition-colors hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/20"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  {lang === "ar" ? "إضافة مرحلة جديدة" : "Add new stage"}
+                                </button>
+                              </div>
+                            </section>
+                          )}
 
                           <section className="space-y-2">
                             <h3 className="text-sm font-black">{lang === "ar" ? "ما الذي يراه الطالب؟" : "What can the student see?"}</h3>

@@ -149,6 +149,7 @@ export default function AdaptiveSolve() {
   const [showImmediateFeedback, setShowImmediateFeedback] = useState(false);
   const [showAnswersAfterResult, setShowAnswersAfterResult] = useState(false);
   const [examExpiresAt, setExamExpiresAt] = useState<string | null>(null);
+  const [stageName, setStageName] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timeExpired, setTimeExpired] = useState(false);
   const [waitingForResult, setWaitingForResult] = useState(false);
@@ -241,6 +242,8 @@ export default function AdaptiveSolve() {
     if (typeof data.answeredCount === "number") setAnsweredCount(data.answeredCount);
     setShowImmediateFeedback(data.showImmediateFeedback === true);
     setShowAnswersAfterResult(data.showAnswersAfterResult === true);
+    if (typeof data.stageName === "string") setStageName(data.stageName);
+    else if (data.stageName === undefined) setStageName(null);
     const expiresAt = typeof data.expiresAt === "string" ? data.expiresAt : typeof data.examExpiresAt === "string" ? data.examExpiresAt : null;
     setExamExpiresAt(expiresAt);
     const terminal = data.done === true || data.timedOut === true;
@@ -344,6 +347,9 @@ export default function AdaptiveSolve() {
 
       setLastCorrect(typeof data.isCorrect === "boolean" ? data.isCorrect : null);
       if (typeof data.answeredCount === "number") setAnsweredCount(data.answeredCount);
+      if (typeof data.totalQuestions === "number") setTotalQuestions(data.totalQuestions);
+      if (typeof data.stageName === "string") setStageName(data.stageName);
+      else if (data.stageName === undefined) setStageName(null);
 
       if (typeof data.isCorrect === "boolean") {
         if (data.isCorrect) setStreak(s => s + 1);
@@ -635,6 +641,11 @@ export default function AdaptiveSolve() {
                     <FileText className="w-4 h-4" />
                   </div>
                   <span className="font-black text-sm truncate">{assignment.title as string}</span>
+                  {stageName && (
+                    <span className="shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                      {stageName}
+                    </span>
+                  )}
                 </div>
                 {timeLeft !== null && (
                   <div

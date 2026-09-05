@@ -1602,12 +1602,74 @@ components:
               type: array
               items:
                 type: string
+            allowRetry:
+              type: boolean
+              default: false
             showImmediateFeedback:
               type: boolean
               default: false
             showAnswersAfterResult:
               type: boolean
               default: false
+            mode:
+              type: string
+              enum: [continuous, staged]
+              default: continuous
+            showStageNames:
+              type: boolean
+              default: false
+            stages:
+              type: array
+              items:
+                type: object
+                required:
+                  - id
+                  - questionCount
+                  - passRule
+                  - difficulties
+                  - skills
+                  - failureAction
+                  - supportQuestionCount
+                  - maxRepeats
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  questionCount:
+                    type: integer
+                    minimum: 1
+                  passRule:
+                    type: object
+                    required: [type, threshold]
+                    properties:
+                      type:
+                        type: string
+                        enum: [percent, correctCount]
+                      threshold:
+                        type: number
+                        minimum: 0
+                  difficulties:
+                    type: array
+                    items:
+                      type: integer
+                      enum: [1, 2, 3]
+                  skills:
+                    type: array
+                    items:
+                      type: string
+                  failureAction:
+                    type: string
+                    enum: [support, repeat, continue, finish]
+                  supportQuestionCount:
+                    type: integer
+                    minimum: 0
+                  maxRepeats:
+                    type: integer
+                    minimum: 0
+                  durationMinutes:
+                    type: number
+                    exclusiveMinimum: 0
         activityType:
           type: string
           nullable: true
