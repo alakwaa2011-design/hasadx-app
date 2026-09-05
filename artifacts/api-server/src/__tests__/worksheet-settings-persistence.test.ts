@@ -127,6 +127,11 @@ const settings = {
     }],
   },
   pageBreaks: ["q2"],
+  questionStyles: [{
+    questionId: "q1",
+    fields: [{ key: "prompt", fontSizePt: 16, bold: true, align: "start" }],
+    spacing: "relaxed",
+  }],
 } satisfies WorksheetSettings;
 
 const questions = [{

@@ -33,6 +33,21 @@ export const worksheetCanvasElementSchema = z.object({
   opacity: z.number().min(0).max(1).optional(),
 });
 
+const worksheetTextStyleSchema = z.object({
+  key: z.string().regex(/^(prompt|option:\d+|match-left:\d+|match-right:\d+)$/).max(30),
+  fontSizePt: z.number().int().min(8).max(24).optional(),
+  bold: z.boolean().optional(),
+  align: z.enum(["start", "center", "end"]).optional(),
+});
+
+const worksheetQuestionStyleSchema = z.object({
+  questionId: z.string().min(1).max(100),
+  fields: z.array(worksheetTextStyleSchema).max(25).optional(),
+  spacing: z.enum(["compact", "normal", "relaxed"]).optional(),
+  choiceColumns: z.union([z.literal(1), z.literal(2)]).optional(),
+  matchingLeftWidth: z.number().int().min(35).max(65).optional(),
+});
+
 export const worksheetSettingsSchema = z.object({
   instructions: z.string().max(2000).optional(),
   includeName: z.boolean().default(true),
@@ -71,6 +86,7 @@ export const worksheetSettingsSchema = z.object({
     elements: z.array(worksheetCanvasElementSchema).max(100),
   }).optional(),
   pageBreaks: z.array(z.string().min(1).max(100)).max(59).optional(),
+  questionStyles: z.array(worksheetQuestionStyleSchema).max(60).optional(),
 });
 
 export type WorksheetThemeId = z.infer<typeof worksheetThemeIdSchema>;

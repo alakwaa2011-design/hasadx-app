@@ -1993,11 +1993,15 @@ function PreviewOverlay({
     downloadAsWord({ element: root, title: data.title, lang: data.language });
   };
 
-  const handleLayoutChange = (newQuestions: Question[], newPageBreaks: string[]) => {
+  const handleLayoutChange = (
+    newQuestions: Question[],
+    newPageBreaks: string[],
+    questionStyles: NonNullable<WorksheetData["settings"]["questionStyles"]>,
+  ) => {
     setData(prev => ({
       ...prev,
       questions: newQuestions,
-      settings: { ...prev.settings, pageBreaks: newPageBreaks },
+      settings: { ...prev.settings, pageBreaks: newPageBreaks, questionStyles },
     }));
   };
 

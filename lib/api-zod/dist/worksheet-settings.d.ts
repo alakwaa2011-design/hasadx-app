@@ -190,6 +190,50 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     }>>;
     pageBreaks: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    questionStyles: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        questionId: z.ZodString;
+        fields: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            key: z.ZodString;
+            fontSizePt: z.ZodOptional<z.ZodNumber>;
+            bold: z.ZodOptional<z.ZodBoolean>;
+            align: z.ZodOptional<z.ZodEnum<["start", "center", "end"]>>;
+        }, "strip", z.ZodTypeAny, {
+            key: string;
+            bold?: boolean | undefined;
+            align?: "center" | "start" | "end" | undefined;
+            fontSizePt?: number | undefined;
+        }, {
+            key: string;
+            bold?: boolean | undefined;
+            align?: "center" | "start" | "end" | undefined;
+            fontSizePt?: number | undefined;
+        }>, "many">>;
+        spacing: z.ZodOptional<z.ZodEnum<["compact", "normal", "relaxed"]>>;
+        choiceColumns: z.ZodOptional<z.ZodUnion<[z.ZodLiteral<1>, z.ZodLiteral<2>]>>;
+        matchingLeftWidth: z.ZodOptional<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        questionId: string;
+        fields?: {
+            key: string;
+            bold?: boolean | undefined;
+            align?: "center" | "start" | "end" | undefined;
+            fontSizePt?: number | undefined;
+        }[] | undefined;
+        spacing?: "compact" | "normal" | "relaxed" | undefined;
+        choiceColumns?: 1 | 2 | undefined;
+        matchingLeftWidth?: number | undefined;
+    }, {
+        questionId: string;
+        fields?: {
+            key: string;
+            bold?: boolean | undefined;
+            align?: "center" | "start" | "end" | undefined;
+            fontSizePt?: number | undefined;
+        }[] | undefined;
+        spacing?: "compact" | "normal" | "relaxed" | undefined;
+        choiceColumns?: 1 | 2 | undefined;
+        matchingLeftWidth?: number | undefined;
+    }>, "many">>;
 }, "strip", z.ZodTypeAny, {
     includeName: boolean;
     includeDate: boolean;
@@ -236,6 +280,18 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     } | undefined;
     pageBreaks?: string[] | undefined;
+    questionStyles?: {
+        questionId: string;
+        fields?: {
+            key: string;
+            bold?: boolean | undefined;
+            align?: "center" | "start" | "end" | undefined;
+            fontSizePt?: number | undefined;
+        }[] | undefined;
+        spacing?: "compact" | "normal" | "relaxed" | undefined;
+        choiceColumns?: 1 | 2 | undefined;
+        matchingLeftWidth?: number | undefined;
+    }[] | undefined;
 }, {
     instructions?: string | undefined;
     includeName?: boolean | undefined;
@@ -282,6 +338,18 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     } | undefined;
     pageBreaks?: string[] | undefined;
+    questionStyles?: {
+        questionId: string;
+        fields?: {
+            key: string;
+            bold?: boolean | undefined;
+            align?: "center" | "start" | "end" | undefined;
+            fontSizePt?: number | undefined;
+        }[] | undefined;
+        spacing?: "compact" | "normal" | "relaxed" | undefined;
+        choiceColumns?: 1 | 2 | undefined;
+        matchingLeftWidth?: number | undefined;
+    }[] | undefined;
 }>;
 export type WorksheetThemeId = z.infer<typeof worksheetThemeIdSchema>;
 export type WorksheetCanvasElement = z.infer<typeof worksheetCanvasElementSchema>;

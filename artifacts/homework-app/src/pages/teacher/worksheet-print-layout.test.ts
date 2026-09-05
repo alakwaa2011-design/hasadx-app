@@ -38,3 +38,19 @@ describe("worksheet PDF page sizing", () => {
     expect(source).toContain("next[overflowIndex].pop()");
   });
 });
+
+describe("official worksheet question layout", () => {
+  it("uses paper-style marks instead of AI-style answer bubbles", () => {
+    expect(source).toContain('className="ws-tf-mark"');
+    expect(source).toContain('className="ws-match-answer-slot"');
+    expect(source).toContain("اكتب حرف الإجابة المناسبة داخل القوس");
+    expect(source).not.toContain('<span className="ws-bubble"');
+  });
+
+  it("applies and persists local field and question formatting", () => {
+    expect(source).toContain("data.settings.questionStyles ?? []");
+    expect(source).toContain("onSelectField={key => setSelectedField");
+    expect(source).toContain("questionStyles: QuestionStyle[]");
+    expect(source).toContain("JSON.stringify(localQuestionStyles)");
+  });
+});

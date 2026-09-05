@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, type CSSProperties } from "react";
 import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -13,7 +13,7 @@ import {
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
 import QRCode from "react-qr-code";
-import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon } from "lucide-react";
+import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon, Minus, Plus, RotateCcw, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -27,6 +27,10 @@ interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{
 export type Question = QMcq | QTF | QShort | QFill | QMatch;
 
 export type Settings = WorksheetSettings;
+type QuestionStyle = NonNullable<Settings["questionStyles"]>[number];
+type FieldStyle = NonNullable<QuestionStyle["fields"]>[number];
+type FieldAlign = NonNullable<FieldStyle["align"]>;
+type SelectedField = { questionId: string; key: string };
 export type FontFamily = Settings["fontFamily"];
 export interface WorksheetData {
   id: number;
@@ -183,7 +187,7 @@ export function WorksheetPrintView({
   onLayoutChange,
 }: {
   data: WorksheetData;
-  onLayoutChange?: (newQuestions: Question[], newPageBreaks: string[]) => void;
+  onLayoutChange?: (newQuestions: Question[], newPageBreaks: string[], questionStyles: QuestionStyle[]) => void;
 }) {
   const ar = data.language === "ar";
   const dir = ar ? "rtl" : "ltr";
@@ -209,6 +213,10 @@ export function WorksheetPrintView({
   const [localBreaks, setLocalBreaks] = useState<Set<string>>(
     () => new Set(data.settings.pageBreaks ?? []),
   );
+  const [localQuestionStyles, setLocalQuestionStyles] = useState<QuestionStyle[]>(
+    () => data.settings.questionStyles ?? [],
+  );
+  const [selectedField, setSelectedField] = useState<SelectedField | null>(null);
 
   // IDs of questions that are the first in a consecutive run of the same type.
   // These get a one-time section instruction printed above them.
@@ -234,6 +242,8 @@ export function WorksheetPrintView({
     prevDataRef.current = data;
     setLocalQs(data.questions);
     setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
+    setLocalQuestionStyles(data.settings.questionStyles ?? []);
+    setSelectedField(null);
     setLayoutDirty(false);
   }, [data]);
 
@@ -248,15 +258,43 @@ export function WorksheetPrintView({
   }, []);
 
   const saveLayout = useCallback(() => {
-    onLayoutChange?.(localQs, [...localBreaks]);
+    onLayoutChange?.(localQs, [...localBreaks], localQuestionStyles);
     setLayoutDirty(false);
-  }, [localQs, localBreaks, onLayoutChange]);
+  }, [localQs, localBreaks, localQuestionStyles, onLayoutChange]);
 
   // Update a single question in-place (called by QuestionView on text blur)
   const onEditQuestion = useCallback((updated: Question) => {
     setLocalQs(prev => prev.map(q => q.id === updated.id ? updated : q));
     setLayoutDirty(true);
   }, []);
+
+  const updateQuestionStyle = useCallback((questionId: string, update: (current: QuestionStyle) => QuestionStyle) => {
+    setLocalQuestionStyles(prev => {
+      const current = prev.find(style => style.questionId === questionId) ?? { questionId };
+      const next = update(current);
+      return [...prev.filter(style => style.questionId !== questionId), next];
+    });
+    setLayoutDirty(true);
+  }, []);
+
+  const updateFieldStyle = useCallback((questionId: string, key: string, patch: Partial<Omit<FieldStyle, "key">>) => {
+    updateQuestionStyle(questionId, current => {
+      const fields = current.fields ?? [];
+      const existing = fields.find(field => field.key === key) ?? { key };
+      return {
+        ...current,
+        fields: [...fields.filter(field => field.key !== key), { ...existing, ...patch }],
+      };
+    });
+  }, [updateQuestionStyle]);
+
+  const resetSelectedStyle = useCallback(() => {
+    if (!selectedField) return;
+    updateQuestionStyle(selectedField.questionId, current => ({
+      ...current,
+      fields: (current.fields ?? []).filter(field => field.key !== selectedField.key),
+    }));
+  }, [selectedField, updateQuestionStyle]);
 
   const handleDropOnPage = useCallback((targetPageIndex: number) => {
     if (!dragQId) return;
@@ -317,6 +355,7 @@ export function WorksheetPrintView({
       data.settings.instructions ?? "",
       themeId ?? "",
       [...localBreaks].sort().join(","),
+      JSON.stringify(localQuestionStyles),
     ].join("|");
     if (key === lastKeyRef.current) return;
     const root = measureRef.current;
@@ -519,6 +558,13 @@ export function WorksheetPrintView({
   const pageClass = `ws-page${themeId ? ` ws-theme-${themeId}` : ""}`;
   // Use theme background for the screen wrapper tint
   const hostBg = "bg-neutral-200";
+  const selectedQuestion = selectedField ? localQs.find(q => q.id === selectedField.questionId) : undefined;
+  const selectedQuestionStyle = selectedField
+    ? localQuestionStyles.find(style => style.questionId === selectedField.questionId)
+    : undefined;
+  const selectedTextStyle = selectedField
+    ? selectedQuestionStyle?.fields?.find(field => field.key === selectedField.key)
+    : undefined;
 
   return (
     <>
@@ -563,6 +609,7 @@ export function WorksheetPrintView({
               ar={ar}
               labels={labels}
               showTypeHeader={firstOfTypeSet.has(q.id)}
+              questionStyle={localQuestionStyles.find(style => style.questionId === q.id)}
             />
           </div>
         ))}
@@ -647,15 +694,36 @@ export function WorksheetPrintView({
             </button>
           )}
           <button
-            onClick={() => setEditMode(v => !v)}
+            onClick={() => {
+              setEditMode(v => {
+                if (v) setSelectedField(null);
+                return !v;
+              });
+            }}
             style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "inherit", fontWeight: 700, fontSize: 13, padding: 0 }}
           >
             <PenLine style={{ width: 15, height: 15 }} />
             {editMode
               ? (ar ? "إنهاء التعديل" : "Done editing")
-              : (ar ? "تعديل النص" : "Edit text")}
+              : (ar ? "تحرير الورقة" : "Edit worksheet")}
           </button>
         </div>
+      )}
+
+      {editMode && selectedField && selectedQuestion && (
+        <QuestionFormattingToolbar
+          ar={ar}
+          question={selectedQuestion}
+          questionStyle={selectedQuestionStyle}
+          fieldStyle={selectedTextStyle}
+          onFieldChange={patch => updateFieldStyle(selectedField.questionId, selectedField.key, patch)}
+          onQuestionChange={patch => updateQuestionStyle(selectedField.questionId, current => ({ ...current, ...patch }))}
+          onResetField={resetSelectedStyle}
+          onResetQuestion={() => {
+            setLocalQuestionStyles(prev => prev.filter(style => style.questionId !== selectedField.questionId));
+            setLayoutDirty(true);
+          }}
+        />
       )}
 
       {/* ── Visible paginated pages ──────────────────────────────── */}
@@ -700,6 +768,8 @@ export function WorksheetPrintView({
                         editMode={editMode}
                         onEdit={onEditQuestion}
                         showTypeHeader={firstOfTypeSet.has(q.id)}
+                        questionStyle={localQuestionStyles.find(style => style.questionId === q.id)}
+                        onSelectField={key => setSelectedField({ questionId: q.id, key })}
                       />
                     );
                   })}
@@ -886,11 +956,11 @@ export default function WorksheetPrint() {
 
       <WorksheetPrintView
         data={data}
-        onLayoutChange={data.isOwner !== false ? async (newQs, newBreaks) => {
+        onLayoutChange={data.isOwner !== false ? async (newQs, newBreaks, questionStyles) => {
           const updated: WorksheetData = {
             ...data,
             questions: newQs,
-            settings: { ...data.settings, pageBreaks: newBreaks },
+            settings: { ...data.settings, pageBreaks: newBreaks, questionStyles },
           };
           try {
             const res = await fetch(`${API_BASE}/api/worksheets/${data.id}`, {
@@ -908,7 +978,7 @@ export default function WorksheetPrint() {
             });
             if (!res.ok) throw new Error("save failed");
             setData(updated);
-            toast.success(uiLang === "ar" ? "تم حفظ توزيع الصفحات" : "Layout saved");
+            toast.success(uiLang === "ar" ? "تم حفظ تعديلات الورقة" : "Worksheet changes saved");
           } catch {
             toast.error(uiLang === "ar" ? "تعذّر الحفظ" : "Save failed");
           }
@@ -1259,7 +1329,7 @@ function sectionInstruction(type: Question["type"], ar: boolean): string {
       true_false:   "ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:",
       short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
       fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
-      matching:     "صل بين العمودين بخطوط:",
+      matching:     "اكتب حرف الإجابة المناسبة داخل القوس أمام كل عبارة:",
     } as Record<Question["type"], string>)[type];
   }
   return ({
@@ -1267,19 +1337,120 @@ function sectionInstruction(type: Question["type"], ar: boolean): string {
     true_false:   "Write (✓) for True and (✗) for False:",
     short_answer: "Answer the following questions briefly:",
     fill_blank:   "Fill in the blanks with the appropriate word:",
-    matching:     "Match the following columns:",
+    matching:     "Write the matching answer letter in the parentheses:",
   } as Record<Question["type"], string>)[type];
+}
+
+function fieldStyleToCss(style?: FieldStyle): CSSProperties | undefined {
+  if (!style) return undefined;
+  return {
+    fontSize: style.fontSizePt ? `${style.fontSizePt}pt` : undefined,
+    fontWeight: style.bold ? 800 : undefined,
+    textAlign: style.align === "start" ? "start" : style.align === "end" ? "end" : style.align,
+    display: style.align ? "inline-block" : undefined,
+    width: style.align ? "100%" : undefined,
+  };
+}
+
+function QuestionFormattingToolbar({
+  ar, question, questionStyle, fieldStyle, onFieldChange, onQuestionChange, onResetField, onResetQuestion,
+}: {
+  ar: boolean;
+  question: Question;
+  questionStyle?: QuestionStyle;
+  fieldStyle?: FieldStyle;
+  onFieldChange: (patch: Partial<Omit<FieldStyle, "key">>) => void;
+  onQuestionChange: (patch: Partial<Omit<QuestionStyle, "questionId" | "fields">>) => void;
+  onResetField: () => void;
+  onResetQuestion: () => void;
+}) {
+  const fontSize = fieldStyle?.fontSizePt ?? 12;
+  const alignments: Array<{ value: FieldAlign; Icon: typeof AlignLeft }> = [
+    { value: "start", Icon: ar ? AlignRight : AlignLeft },
+    { value: "center", Icon: AlignCenter },
+    { value: "end", Icon: ar ? AlignLeft : AlignRight },
+  ];
+  return (
+    <div className="no-print ws-format-toolbar" dir={ar ? "rtl" : "ltr"} aria-label={ar ? "تنسيق النص المحدد" : "Selected text formatting"}>
+      <div className="ws-format-group">
+        <span className="ws-format-label">{ar ? "النص" : "Text"}</span>
+        <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.max(8, fontSize - 1) })} title={ar ? "تصغير الخط" : "Smaller text"}>
+          <Minus />
+        </button>
+        <span className="ws-format-value">{fontSize}</span>
+        <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.min(24, fontSize + 1) })} title={ar ? "تكبير الخط" : "Larger text"}>
+          <Plus />
+        </button>
+        <button type="button" className={fieldStyle?.bold ? "is-active" : ""} onClick={() => onFieldChange({ bold: !fieldStyle?.bold })} title={ar ? "عريض" : "Bold"}>
+          <strong>ب</strong>
+        </button>
+        {alignments.map(({ value, Icon }) => (
+          <button type="button" key={value} className={fieldStyle?.align === value ? "is-active" : ""} onClick={() => onFieldChange({ align: value })}>
+            <Icon />
+          </button>
+        ))}
+        <button type="button" onClick={onResetField} title={ar ? "إعادة تنسيق النص" : "Reset text formatting"}>
+          <RotateCcw />
+        </button>
+      </div>
+      <div className="ws-format-group">
+        <span className="ws-format-label">{ar ? "السؤال" : "Question"}</span>
+        {(["compact", "normal", "relaxed"] as const).map(value => (
+          <button
+            type="button"
+            key={value}
+            className={(questionStyle?.spacing ?? "normal") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+            onClick={() => onQuestionChange({ spacing: value })}
+          >
+            {ar ? ({ compact: "مضغوط", normal: "عادي", relaxed: "واسع" }[value]) : value}
+          </button>
+        ))}
+        {question.type === "mcq" && (
+          <>
+            <span className="ws-format-label">{ar ? "الخيارات" : "Options"}</span>
+            {[1, 2].map(value => (
+              <button
+                type="button"
+                key={value}
+                className={(questionStyle?.choiceColumns ?? 1) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+                onClick={() => onQuestionChange({ choiceColumns: value as 1 | 2 })}
+              >
+                {value}
+              </button>
+            ))}
+          </>
+        )}
+        {question.type === "matching" && (
+          <label className="ws-format-range">
+            <span>{ar ? "عرض العمود الأول" : "First column"}</span>
+            <input
+              type="range"
+              min={35}
+              max={65}
+              value={questionStyle?.matchingLeftWidth ?? 50}
+              onChange={event => onQuestionChange({ matchingLeftWidth: Number(event.target.value) })}
+            />
+          </label>
+        )}
+        <button type="button" onClick={onResetQuestion} title={ar ? "إعادة إعدادات السؤال" : "Reset question settings"}>
+          <RotateCcw />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** Editable span — shows a yellow highlight in edit mode, plain in view mode */
 function EditSpan({
-  text, editMode, className, onCommit, placeholder,
+  text, editMode, className, onCommit, placeholder, style, onSelect,
 }: {
   text: string;
   editMode: boolean;
   className?: string;
   onCommit: (val: string) => void;
   placeholder?: string;
+  style?: FieldStyle;
+  onSelect?: () => void;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
 
@@ -1290,15 +1461,18 @@ function EditSpan({
     }
   }, [text, editMode]);
 
-  if (!editMode) return <span className={className}>{text || placeholder}</span>;
+  const visualStyle = fieldStyleToCss(style);
+  if (!editMode) return <span className={className} style={visualStyle}>{text || placeholder}</span>;
 
   return (
     <span
       ref={ref}
       className={`ws-editable${className ? ` ${className}` : ""}`}
+      style={visualStyle}
       contentEditable
       suppressContentEditableWarning
       onFocus={e => {
+        onSelect?.();
         // Initialise if empty
         if (!e.currentTarget.textContent) e.currentTarget.textContent = text;
       }}
@@ -1316,7 +1490,7 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit, showTypeHeader,
+  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField,
 }: {
   index: number;
   q: Question;
@@ -1325,6 +1499,8 @@ function QuestionView({
   editMode?: boolean;
   onEdit?: (updated: Question) => void;
   showTypeHeader?: boolean;
+  questionStyle?: QuestionStyle;
+  onSelectField?: (key: string) => void;
 }) {
   const em = editMode ?? false;
   const edit = onEdit ?? (() => {});
@@ -1334,7 +1510,7 @@ function QuestionView({
       {showTypeHeader && (
         <div className="ws-section-instr">{sectionInstruction(q.type, ar)}</div>
       )}
-      <div className="ws-q">
+      <div className={`ws-q ws-q-spacing-${questionStyle?.spacing ?? "normal"}`}>
         <div className="ws-q-head">
           <span className="ws-q-num" aria-label={`${labels.question} ${index}`}>{index}</span>
           <div className="ws-q-prompt-wrap">
@@ -1344,24 +1520,28 @@ function QuestionView({
               </div>
             )}
             <div className="ws-q-prompt">
+            {q.type === "true_false" && <span className="ws-tf-mark" aria-hidden="true">(　　)</span>}
             <EditSpan
               text={q.prompt ?? (q.type === "matching" ? (ar ? "صل بين العمودين بخطوط:" : "Match the columns:") : "")}
               editMode={em}
+              style={questionStyle?.fields?.find(field => field.key === "prompt")}
+              onSelect={() => onSelectField?.("prompt")}
               onCommit={val => edit({ ...q, prompt: val })}
             />
           </div>
         </div>
       </div>
       {q.type === "mcq" && (
-        <ol className="ws-mcq">
+        <ol className="ws-mcq" style={{ gridTemplateColumns: `repeat(${questionStyle?.choiceColumns ?? 1}, minmax(0, 1fr))` }}>
           {q.options.map((opt, i) => (
             <li key={i}>
-              <span className="ws-mcq-letter">{ar ? `${"أبجده"[i] || (i + 1)}` : String.fromCharCode(65 + i)})</span>
-              <span className="ws-bubble" />
+              <span className="ws-mcq-letter">({optionLabel(i, ar)})</span>
               <span className="ws-mcq-text">
                 <EditSpan
                   text={opt}
                   editMode={em}
+                  style={questionStyle?.fields?.find(field => field.key === `option:${i}`)}
+                  onSelect={() => onSelectField?.(`option:${i}`)}
                   onCommit={val => {
                     const opts = q.options.slice();
                     opts[i] = val;
@@ -1373,12 +1553,6 @@ function QuestionView({
           ))}
         </ol>
       )}
-      {q.type === "true_false" && (
-        <div className="ws-tf">
-          <span className="ws-tf-opt"><span className="ws-bubble" /> {labels.true}</span>
-          <span className="ws-tf-opt"><span className="ws-bubble" /> {labels.false}</span>
-        </div>
-      )}
       {q.type === "short_answer" && (
         <div className="ws-lines">
           {Array.from({ length: q.lines ?? 2 }).map((_, i) => <span key={i} className="ws-line" />)}
@@ -1388,22 +1562,29 @@ function QuestionView({
         <div className="ws-fill"><span className="ws-fill-rule" /></div>
       )}
       {q.type === "matching" && (
-        <div className="ws-match">
+        <div
+          className="ws-match"
+          style={{
+            gridTemplateColumns: `${questionStyle?.matchingLeftWidth ?? 50}fr 6mm ${100 - (questionStyle?.matchingLeftWidth ?? 50)}fr`,
+          }}
+        >
           <ul className="ws-match-col">
             {q.pairs.map((p, i) => (
               <li key={`l${i}`}>
-                <span className="ws-match-bullet ws-match-num">{i + 1}</span>
+                <span className="ws-match-answer-slot">(　)</span>
+                <span className="ws-match-bullet ws-match-num">{i + 1}.</span>
                 <span className="ws-match-text">
                   <EditSpan
                     text={p.left}
                     editMode={em}
+                    style={questionStyle?.fields?.find(field => field.key === `match-left:${i}`)}
+                    onSelect={() => onSelectField?.(`match-left:${i}`)}
                     onCommit={val => {
                       const pairs = q.pairs.map((pr, j) => j === i ? { ...pr, left: val } : pr);
                       edit({ ...q, pairs });
                     }}
                   />
                 </span>
-                <span className="ws-match-tab" />
               </li>
             ))}
           </ul>
@@ -1411,12 +1592,13 @@ function QuestionView({
           <ul className="ws-match-col">
             {matchingDisplayOrder(q.pairs.length).map((srcIdx, displayIdx) => (
               <li key={`r${displayIdx}`}>
-                <span className="ws-match-tab" />
-                <span className="ws-match-bullet ws-match-letter">{String.fromCharCode(65 + displayIdx)}</span>
+                <span className="ws-match-bullet ws-match-letter">({optionLabel(displayIdx, ar)})</span>
                 <span className="ws-match-text">
                   <EditSpan
                     text={q.pairs[srcIdx].right}
                     editMode={em}
+                    style={questionStyle?.fields?.find(field => field.key === `match-right:${srcIdx}`)}
+                    onSelect={() => onSelectField?.(`match-right:${srcIdx}`)}
                     onCommit={val => {
                       const pairs = q.pairs.map((pr, j) => j === srcIdx ? { ...pr, right: val } : pr);
                       edit({ ...q, pairs });
@@ -1438,8 +1620,7 @@ function AnswerView({
 }: { index: number; q: Question; ar: boolean; labels: { question: string; true: string; false: string; correct: string } }) {
   let answer = "";
   if (q.type === "mcq") {
-    const letter = ar ? `${"أبجده"[q.correctIndex] || (q.correctIndex + 1)}` : String.fromCharCode(65 + q.correctIndex);
-    answer = `${letter}) ${q.options[q.correctIndex] ?? ""}`;
+    answer = `(${optionLabel(q.correctIndex, ar)}) ${q.options[q.correctIndex] ?? ""}`;
   } else if (q.type === "true_false") {
     answer = q.correct ? labels.true : labels.false;
   } else if (q.type === "short_answer") {
@@ -1450,7 +1631,7 @@ function AnswerView({
     const order = matchingDisplayOrder(q.pairs.length);
     answer = q.pairs.map((_, i) => {
       const displayIdx = order.indexOf(i);
-      return `${i + 1} → ${String.fromCharCode(65 + (displayIdx >= 0 ? displayIdx : i))}`;
+      return `${i + 1} ← ${optionLabel(displayIdx >= 0 ? displayIdx : i, ar)}`;
     }).join("    ");
   }
   return (
@@ -1466,6 +1647,12 @@ function AnswerView({
       <div className="ws-answer-line"><strong>{labels.correct}</strong> {answer}</div>
     </div>
   );
+}
+
+const ARABIC_OPTION_LABELS = ["أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي"];
+
+function optionLabel(index: number, ar: boolean): string {
+  return ar ? (ARABIC_OPTION_LABELS[index] ?? String(index + 1)) : String.fromCharCode(65 + index);
 }
 
 // Deterministic permutation of [0..n-1] for the matching right-column.
@@ -1695,25 +1882,27 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-q {
         break-inside: avoid;
         page-break-inside: avoid;
-        margin-bottom: 6mm;
-        padding: 4mm 4mm 4mm 5mm;
-        border-${startSide}: 3px solid ${BRAND_GOLD};
-        background: linear-gradient(180deg, #ffffff 0%, ${TC}04 100%);
-        border-radius: 0 6px 6px 0;
-        ${isAr ? "border-radius: 6px 0 0 6px;" : ""}
+        margin-bottom: 5mm;
+        padding: 2.5mm 0 3mm;
+        border-bottom: 1px solid ${TC}18;
+        background: transparent;
+        border-radius: 0;
       }
+      .ws-q-spacing-compact { margin-bottom: 2mm; padding-top: 1.5mm; padding-bottom: 1.5mm; }
+      .ws-q-spacing-relaxed { margin-bottom: 9mm; padding-top: 4mm; padding-bottom: 5mm; }
       .ws-q-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 3mm; }
       .ws-q-num {
         flex: 0 0 auto;
         display: inline-flex; align-items: center; justify-content: center;
-        width: 26px; height: 26px;
-        background: ${TC};
-        color: white;
-        border-radius: 50%;
+        width: 24px; height: 24px;
+        background: white;
+        color: ${TC};
+        border: 1.5px solid ${TC};
+        border-radius: 2px;
         font-weight: 800;
         font-size: ${Math.max(9.5, fontSizePt - 1)}pt;
         font-family: ${headingFont};
-        box-shadow: 0 0 0 2px ${BRAND_GOLD}55;
+        box-shadow: none;
       }
       .ws-q-prompt-wrap { flex: 1; min-width: 0; }
       /* Section instruction — shown once before the first question of each type group */
@@ -1763,55 +1952,33 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       }
       @media print { .ws-editable { background: none !important; box-shadow: none !important; } }
 
-      .ws-mcq { list-style: none; padding-${startSide}: 36px; margin: 2mm 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm 16px; }
+      .ws-mcq { list-style: none; padding-${startSide}: 34px; margin: 2mm 0 0; display: grid; grid-template-columns: 1fr; gap: 2mm 16px; }
       .ws-mcq li {
-        display: flex; gap: 7px; align-items: center;
+        display: flex; gap: 8px; align-items: baseline;
         line-height: 1.6;
+        min-height: 6mm;
+        border-bottom: 1px dotted ${TC}24;
+        padding-bottom: 1mm;
       }
       .ws-mcq-letter {
         display: inline-block;
-        min-width: 18px;
-        font-weight: 800;
-        color: ${BRAND_GOLD};
+        min-width: 24px;
+        font-weight: 700;
+        color: ${TC};
         font-family: ${headingFont};
-      }
-      .ws-bubble {
-        display: inline-block;
-        width: 14px; height: 14px;
-        border: 1.6px solid ${TC}88;
-        border-radius: 50%;
-        flex: 0 0 auto;
-        background: white;
       }
       .ws-mcq-text { flex: 1; }
 
-      .ws-tf {
-        display: flex; gap: 24px;
-        padding-${startSide}: 36px;
-        margin-top: 2mm;
-        align-items: center;
-      }
-      .ws-tf-opt {
-        display: inline-flex; align-items: center; gap: 8px;
+      .ws-tf-mark {
+        display: inline-block;
+        direction: ltr;
+        white-space: nowrap;
+        min-width: 17mm;
+        margin-${endSide}: 2mm;
+        font-family: Arial, sans-serif;
         font-weight: 700;
+        letter-spacing: 0.08em;
       }
-      /* Square checkbox for true/false (override the default circle bubble) */
-      .ws-tf .ws-bubble {
-        border-radius: 2px;
-        width: 15px; height: 15px;
-      }
-      .ws-tf-sym {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 22px; height: 22px;
-        border: 1.8px solid currentColor;
-        border-radius: 4px;
-        font-size: ${Math.max(11, fontSizePt)}pt;
-        font-weight: 900;
-        line-height: 1;
-        flex: 0 0 auto;
-      }
-      .ws-tf-sym-check { color: #1a7a3f; }
-      .ws-tf-sym-cross  { color: #c0392b; }
 
       .ws-lines { padding-${startSide}: 36px; margin-top: 2mm; }
       .ws-line {
@@ -1840,31 +2007,86 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         display: flex; flex-direction: column; gap: 2.5mm;
       }
       .ws-match-col li {
-        display: flex; align-items: center; gap: 7px;
-        background: white;
-        border: 1px solid ${TC}22;
-        border-radius: 6px;
-        padding: 4px 9px;
+        display: flex; align-items: baseline; gap: 7px;
+        background: transparent;
+        border: 0;
+        border-bottom: 1px dotted ${TC}33;
+        border-radius: 0;
+        padding: 3px 2px 5px;
         font-weight: 500;
+        min-height: 7mm;
       }
       .ws-match-bullet {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 22px; height: 22px;
-        border-radius: 50%;
-        font-weight: 800;
+        display: inline-flex; align-items: center; justify-content: flex-start;
+        min-width: 22px;
+        font-weight: 700;
         font-family: ${headingFont};
-        font-size: ${Math.max(8.5, fontSizePt - 2.5)}pt;
+        font-size: ${Math.max(9, fontSizePt - 1.5)}pt;
         flex: 0 0 auto;
       }
-      .ws-match-num { background: ${TC}; color: white; }
-      .ws-match-letter { background: ${BRAND_GOLD}; color: white; }
+      .ws-match-num { background: transparent; color: ${TC}; }
+      .ws-match-letter { background: transparent; color: ${TC}; }
+      .ws-match-answer-slot {
+        direction: ltr;
+        white-space: nowrap;
+        font-family: Arial, sans-serif;
+        color: ${TC};
+        font-weight: 700;
+      }
       .ws-match-text { flex: 1; }
       .ws-match-tab { flex: 0 0 0; }
       .ws-match-divider {
-        background: repeating-linear-gradient(to bottom, ${BRAND_GOLD} 0 4px, transparent 4px 9px);
-        width: 2px;
+        background: ${TC}22;
+        width: 1px;
         margin: 0 auto;
       }
+
+      .ws-format-toolbar {
+        position: fixed;
+        left: 50%;
+        bottom: 68px;
+        transform: translateX(-50%);
+        z-index: 50;
+        width: min(760px, calc(100vw - 24px));
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 7px 12px;
+        padding: 9px 12px;
+        background: rgba(255,255,255,0.98);
+        color: #22312c;
+        border: 1px solid ${TC}33;
+        border-radius: 12px;
+        box-shadow: 0 8px 28px rgba(20,40,32,0.18);
+        font-family: ${headingFont};
+      }
+      .ws-format-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: center; }
+      .ws-format-label { font-size: 10px; font-weight: 800; color: ${TC}; margin-inline: 2px; }
+      .ws-format-toolbar button {
+        min-width: 30px; height: 30px;
+        border: 1px solid ${TC}28;
+        border-radius: 7px;
+        background: white;
+        color: ${TC};
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .ws-format-toolbar button:hover, .ws-format-toolbar button.is-active {
+        background: ${TC};
+        color: white;
+        border-color: ${TC};
+      }
+      .ws-format-toolbar button svg { width: 14px; height: 14px; }
+      .ws-format-text-btn { padding-inline: 8px; }
+      .ws-format-value { min-width: 22px; text-align: center; font-size: 11px; font-weight: 800; }
+      .ws-format-range { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: ${TC}; }
+      .ws-format-range input { width: 86px; accent-color: ${TC}; }
 
       /* Footer strip — brand line removed per teacher request; only the
          "good luck" cheer and optional teacher footer note remain. */
