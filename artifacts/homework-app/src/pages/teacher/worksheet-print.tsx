@@ -25,6 +25,7 @@ interface QShort { id: string; type: "short_answer"; prompt: string; lines?: num
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
 export type Question = QMcq | QTF | QShort | QFill | QMatch;
+type QuestionType = Question["type"];
 
 interface AnswerItem {
   id: string;
@@ -823,6 +824,16 @@ export function WorksheetPrintView({
           fieldStyle={selectedTextStyle}
           onFieldChange={patch => updateFieldStyle(selectedField.questionId, selectedField.key, patch)}
           onQuestionChange={patch => updateQuestionStyle(selectedField.questionId, current => ({ ...current, ...patch }))}
+          onQuestionTypeChange={type => {
+            setLocalQs(prev => prev.map(question =>
+              question.id === selectedField.questionId
+                ? convertQuestionType(question, type, ar)
+                : question,
+            ));
+            setSelectedField({ questionId: selectedField.questionId, key: "prompt" });
+            setLayoutDirty(true);
+          }}
+          onQuestionEdit={onEditQuestion}
           onResetField={resetSelectedStyle}
           onResetQuestion={() => {
             setLocalQuestionStyles(prev => prev.filter(style => style.questionId !== selectedField.questionId));
@@ -1433,7 +1444,7 @@ function sectionInstruction(type: Question["type"], ar: boolean): string {
       true_false:   "ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:",
       short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
       fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
-      matching:     "اكتب حرف الإجابة المناسبة داخل القوس أمام كل عبارة:",
+      matching:     "صل كل عبارة بما يناسبها من العمود الثاني:",
     } as Record<Question["type"], string>)[type];
   }
   return ({
@@ -1441,7 +1452,7 @@ function sectionInstruction(type: Question["type"], ar: boolean): string {
     true_false:   "Write (✓) for True and (✗) for False:",
     short_answer: "Answer the following questions briefly:",
     fill_blank:   "Fill in the blanks with the appropriate word:",
-    matching:     "Write the matching answer letter in the parentheses:",
+    matching:     "Match each item with its corresponding choice in the second column:",
   } as Record<Question["type"], string>)[type];
 }
 
@@ -1457,7 +1468,7 @@ function fieldStyleToCss(style?: FieldStyle): CSSProperties | undefined {
 }
 
 function QuestionFormattingToolbar({
-  ar, question, questionStyle, fieldStyle, onFieldChange, onQuestionChange, onResetField, onResetQuestion,
+  ar, question, questionStyle, fieldStyle, onFieldChange, onQuestionChange, onQuestionTypeChange, onQuestionEdit, onResetField, onResetQuestion,
 }: {
   ar: boolean;
   question: Question;
@@ -1465,6 +1476,8 @@ function QuestionFormattingToolbar({
   fieldStyle?: FieldStyle;
   onFieldChange: (patch: Partial<Omit<FieldStyle, "key">>) => void;
   onQuestionChange: (patch: Partial<Omit<QuestionStyle, "questionId" | "fields">>) => void;
+  onQuestionTypeChange: (type: QuestionType) => void;
+  onQuestionEdit: (question: Question) => void;
   onResetField: () => void;
   onResetQuestion: () => void;
 }) {
@@ -1499,6 +1512,57 @@ function QuestionFormattingToolbar({
       </div>
       <div className="ws-format-group">
         <span className="ws-format-label">{ar ? "السؤال" : "Question"}</span>
+        <label className="ws-format-type">
+          <span>{ar ? "نوعه" : "Type"}</span>
+          <select
+            value={question.type}
+            onChange={event => onQuestionTypeChange(event.target.value as QuestionType)}
+            aria-label={ar ? "تغيير نوع السؤال" : "Change question type"}
+          >
+            {(["true_false", "mcq", "matching", "short_answer", "fill_blank"] as const).map(type => (
+              <option key={type} value={type}>{questionTypeLabel(type, ar)}</option>
+            ))}
+          </select>
+        </label>
+        {question.type === "true_false" && (
+          <label className="ws-format-type">
+            <span>{ar ? "الإجابة" : "Answer"}</span>
+            <select
+              value={question.correct ? "true" : "false"}
+              onChange={event => onQuestionEdit({ ...question, correct: event.target.value === "true" })}
+              aria-label={ar ? "الإجابة الصحيحة" : "Correct answer"}
+            >
+              <option value="true">{ar ? "صح" : "True"}</option>
+              <option value="false">{ar ? "خطأ" : "False"}</option>
+            </select>
+          </label>
+        )}
+        {question.type === "mcq" && (
+          <label className="ws-format-type">
+            <span>{ar ? "الإجابة الصحيحة" : "Correct answer"}</span>
+            <select
+              value={question.correctIndex}
+              onChange={event => onQuestionEdit({ ...question, correctIndex: Number(event.target.value) })}
+              aria-label={ar ? "اختيار الإجابة الصحيحة" : "Choose the correct answer"}
+            >
+              {question.options.map((option, index) => (
+                <option key={index} value={index}>
+                  ({optionLabel(index, ar)}) {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {(question.type === "short_answer" || question.type === "fill_blank") && (
+          <label className="ws-format-type">
+            <span>{ar ? "الإجابة النموذجية" : "Model answer"}</span>
+            <input
+              value={question.answer ?? ""}
+              onChange={event => onQuestionEdit({ ...question, answer: event.target.value })}
+              aria-label={ar ? "الإجابة النموذجية" : "Model answer"}
+            />
+          </label>
+        )}
         {(["compact", "normal", "relaxed"] as const).map(value => (
           <button
             type="button"
@@ -1525,18 +1589,6 @@ function QuestionFormattingToolbar({
               </button>
             ))}
           </>
-        )}
-        {question.type === "matching" && (
-          <label className="ws-format-range">
-            <span>{ar ? "عرض العمود الأول" : "First column"}</span>
-            <input
-              type="range"
-              min={35}
-              max={65}
-              value={questionStyle?.matchingLeftWidth ?? 50}
-              onChange={event => onQuestionChange({ matchingLeftWidth: Number(event.target.value) })}
-            />
-          </label>
         )}
         <button type="button" onClick={onResetQuestion} title={ar ? "إعادة إعدادات السؤال" : "Reset question settings"}>
           <RotateCcw />
@@ -1668,16 +1720,10 @@ function QuestionView({
         <div className="ws-fill"><span className="ws-fill-rule" /></div>
       )}
       {q.type === "matching" && (
-        <div
-          className="ws-match"
-          style={{
-            gridTemplateColumns: `${questionStyle?.matchingLeftWidth ?? 50}fr 6mm ${100 - (questionStyle?.matchingLeftWidth ?? 50)}fr`,
-          }}
-        >
+        <div className="ws-match">
           <ul className="ws-match-col">
             {q.pairs.map((p, i) => (
               <li key={`l${i}`}>
-                <span className="ws-match-answer-slot">(　)</span>
                 <span className="ws-match-bullet ws-match-num">{i + 1}.</span>
                 <span className="ws-match-text">
                   <EditSpan
@@ -1758,6 +1804,37 @@ export function questionSequenceLabel(index: number, ar: boolean): string {
   return ar
     ? (ARABIC_QUESTION_LABELS[index] ?? String(index + 1))
     : String.fromCharCode(65 + index);
+}
+
+export function convertQuestionType(question: Question, type: QuestionType, ar: boolean): Question {
+  if (question.type === type) return question;
+  const base = {
+    id: question.id,
+    prompt: question.prompt ?? "",
+    ...(question.points !== undefined ? { points: question.points } : {}),
+  };
+  const existingAnswer =
+    question.type === "mcq" ? (question.options[question.correctIndex] ?? "") :
+    question.type === "true_false" ? (question.correct ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False")) :
+    question.type === "matching" ? "" :
+    (question.answer ?? "");
+
+  if (type === "true_false") return { ...base, type, correct: true };
+  if (type === "short_answer") return { ...base, type, lines: 2, answer: existingAnswer };
+  if (type === "fill_blank") return { ...base, type, answer: existingAnswer };
+  if (type === "mcq") {
+    const options = question.type === "matching"
+      ? question.pairs.map(pair => pair.right).filter(Boolean).slice(0, 4)
+      : [];
+    while (options.length < 4) options.push(ar ? `الخيار ${options.length + 1}` : `Option ${options.length + 1}`);
+    return { ...base, type, options, correctIndex: 0 };
+  }
+  const sourceOptions = question.type === "mcq" ? question.options : [];
+  const pairs = Array.from({ length: Math.max(3, Math.min(4, sourceOptions.length)) }, (_, index) => ({
+    left: ar ? `العبارة ${index + 1}` : `Item ${index + 1}`,
+    right: sourceOptions[index] || (ar ? `الإجابة ${index + 1}` : `Answer ${index + 1}`),
+  }));
+  return { ...base, type, pairs };
 }
 
 // Deterministic permutation of [0..n-1] for the matching right-column.
@@ -2131,13 +2208,6 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       }
       .ws-match-num { background: transparent; color: ${TC}; }
       .ws-match-letter { background: transparent; color: ${TC}; }
-      .ws-match-answer-slot {
-        direction: ltr;
-        white-space: nowrap;
-        font-family: Arial, sans-serif;
-        color: ${TC};
-        font-weight: 700;
-      }
       .ws-match-text { flex: 1; }
       .ws-match-tab { flex: 0 0 0; }
       .ws-match-divider {
@@ -2192,6 +2262,19 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-format-value { min-width: 22px; text-align: center; font-size: 11px; font-weight: 800; }
       .ws-format-range { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: ${TC}; }
       .ws-format-range input { width: 86px; accent-color: ${TC}; }
+      .ws-format-type { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: ${TC}; }
+      .ws-format-type select, .ws-format-type input {
+        height: 30px;
+        max-width: 155px;
+        border: 1px solid ${TC}38;
+        border-radius: 7px;
+        background: white;
+        color: ${TC};
+        padding-inline: 8px;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+      }
 
       /* Footer strip — brand line removed per teacher request; only the
          "good luck" cheer and optional teacher footer note remain. */

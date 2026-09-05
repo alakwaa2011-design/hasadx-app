@@ -42,9 +42,15 @@ describe("worksheet PDF page sizing", () => {
 describe("official worksheet question layout", () => {
   it("uses paper-style marks instead of AI-style answer bubbles", () => {
     expect(source).toContain('className="ws-tf-mark"');
-    expect(source).toContain('className="ws-match-answer-slot"');
-    expect(source).toContain("اكتب حرف الإجابة المناسبة داخل القوس");
+    expect(source).not.toContain('className="ws-match-answer-slot"');
+    expect(source).not.toContain("داخل القوس أمام كل عبارة");
     expect(source).not.toContain('<span className="ws-bubble"');
+  });
+
+  it("keeps both matching columns equal and leaves the first column unboxed", () => {
+    const matchingRule = source.match(/\.ws-match\s*\{[\s\S]*?\}/)?.[0] ?? "";
+    expect(matchingRule).toContain("grid-template-columns: 1fr 6mm 1fr");
+    expect(source).not.toContain("matchingLeftWidth ?? 50");
   });
 
   it("places the true/false mark after the statement and offers both MCQ layouts", () => {
@@ -67,5 +73,11 @@ describe("official worksheet question layout", () => {
     expect(source).toContain("buildAnswerItems(localQs, ar, labels)");
     expect(source).toContain("JSON.stringify(localQs)");
     expect(source).not.toContain("buildAnswerItems(data.questions, ar, labels)");
+  });
+
+  it("lets the teacher change both question type and its correct answer", () => {
+    expect(source).toContain('aria-label={ar ? "تغيير نوع السؤال"');
+    expect(source).toContain('aria-label={ar ? "اختيار الإجابة الصحيحة"');
+    expect(source).toContain('aria-label={ar ? "الإجابة النموذجية"');
   });
 });
