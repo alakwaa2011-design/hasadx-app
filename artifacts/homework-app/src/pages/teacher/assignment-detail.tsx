@@ -39,7 +39,7 @@ interface EditQuestion {
 export default function TeacherAssignmentDetail() {
   const [, params] = useRoute("/teacher/assignment/:id");
   const id = parseInt(params?.id || "0");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { t, lang, dir } = useI18n();
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
@@ -58,6 +58,10 @@ export default function TeacherAssignmentDetail() {
 
   const [activeDetailTab, setActiveDetailTab] = useState<"questions" | "results">(() =>
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "results" ? "results" : "questions");
+  useEffect(() => {
+    const query = location.includes("?") ? location.slice(location.indexOf("?") + 1) : window.location.search;
+    setActiveDetailTab(new URLSearchParams(query).get("tab") === "results" ? "results" : "questions");
+  }, [location]);
   const [resultsSearch, setResultsSearch] = useState("");
   const [resultsScoreFilter, setResultsScoreFilter] = useState<"all" | "below50" | "50to69" | "70to84" | "85to100">("all");
   const [assignmentShared, setAssignmentShared] = useState(false);
@@ -1412,7 +1416,12 @@ export default function TeacherAssignmentDetail() {
               ].map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveDetailTab(tab.id)}
+                  onClick={() => {
+                    setActiveDetailTab(tab.id);
+                    setLocation(tab.id === "results"
+                      ? `/teacher/assignment/${id}?tab=results`
+                      : `/teacher/assignment/${id}`);
+                  }}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all border ${
                     activeDetailTab === tab.id
                       ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20"
