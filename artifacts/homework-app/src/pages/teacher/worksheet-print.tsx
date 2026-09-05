@@ -692,7 +692,7 @@ export function WorksheetPrintView({
 
         {/* ── Answer key page ──────────────────────────────────── */}
         {data.settings.includeAnswerKey && (
-          <article className={pageClass} lang={data.language} style={{ background: themeBg }}>
+          <article data-answer-key-page className={pageClass} lang={data.language} style={{ background: themeBg }}>
             {showWatermark && <WatermarkLayer ar={ar} />}
             {!themeId && <CornerOrnaments />}
             {themeId === "arabic_ink" && <CornerOrnaments />}

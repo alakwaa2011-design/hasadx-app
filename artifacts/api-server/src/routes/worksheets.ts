@@ -170,6 +170,15 @@ const settingsSchema = z.object({
   // Watermark behind worksheet content. Currently always available; once
   // billing is wired up, the frontend will hide the toggle for paid plans.
   showWatermark: z.boolean().default(true),
+  template: z.enum([
+    "geometric",
+    "arabic_ink",
+    "modern_band",
+    "exam_paper",
+    "kids_play",
+    "science_lab",
+    "editorial",
+  ]).optional(),
 });
 
 const upsertBody = z.object({
