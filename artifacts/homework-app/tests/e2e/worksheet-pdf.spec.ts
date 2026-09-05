@@ -30,6 +30,7 @@ const arabicFontFamilies = [
 
 let teacher: TestTeacher;
 let worksheetId: number;
+let framedWorksheetId: number;
 let longAnswerWorksheetId: number;
 let arabicFormattingWorksheetId: number;
 
@@ -122,6 +123,39 @@ test.beforeAll(async ({ baseURL }) => {
     }
     const worksheet = await response.json();
     worksheetId = worksheet.id;
+
+    const framedQuestions = Array.from({ length: 6 }, (_, index) => ({
+      id: `e2e-framed-q-${index + 1}`,
+      type: "short_answer" as const,
+      prompt: `FRAMED-Q${index + 1}-MARKER`,
+      lines: 1,
+      answer: `FRAMED-ANSWER-${index + 1}`,
+    }));
+    const framedResponse = await api.post("/api/worksheets", {
+      headers: { Cookie: teacher.cookieHeader },
+      data: {
+        title: "E2E FRAMED KIDS WORKSHEET",
+        language: "en",
+        gradeLevel: "E2E",
+        subject: "Framed A4 regression",
+        questions: framedQuestions,
+        settings: {
+          includeName: true,
+          includeDate: true,
+          includeClass: true,
+          includeAnswerKey: false,
+          columns: 1,
+          fontFamily: "inter",
+          fontSizePt: 12,
+          showWatermark: true,
+          template: "kids_play",
+        },
+      },
+    });
+    if (!framedResponse.ok()) {
+      throw new Error(`Framed worksheet seed failed: ${framedResponse.status()} ${await framedResponse.text()}`);
+    }
+    framedWorksheetId = (await framedResponse.json()).id;
 
     const arabicFormattingQuestions = [
       {
@@ -462,6 +496,47 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
       printBackground: true,
       preferCSSPageSize: true,
     });
+  expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+});
+
+test("framed Kids Play pages keep usable A4 space in preview and Chromium PDF", async ({
+  page,
+}) => {
+  await page.goto(`/teacher/worksheets/${framedWorksheetId}/print`);
+  const printable = page.locator("#ws-printable-root");
+  await expect(printable).toBeVisible({ timeout: 20_000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  const worksheetPages = printable.locator("[data-worksheet-page]");
+  await expect.poll(async () => worksheetPages.count(), { timeout: 15_000 }).toBeGreaterThan(1);
+
+  await expect
+    .poll(
+      async () => worksheetPages.first().locator(".ws-q-prompt").allTextContents(),
+      { timeout: 15_000 },
+    )
+    .toContain("FRAMED-Q4-MARKER");
+
+  const previewHeights = await worksheetPages.evaluateAll((pages) => {
+    const a4HeightPx = (297 / 25.4) * 96;
+    return pages.map((worksheetPage) => ({
+      height: worksheetPage.getBoundingClientRect().height,
+      a4HeightPx,
+    }));
+  });
+  for (const { height, a4HeightPx } of previewHeights) {
+    expect(height).toBeLessThanOrEqual(a4HeightPx + 2);
+  }
+
+  const domPageCount = await printable.locator(".ws-page").count();
+  const pdf = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    preferCSSPageSize: true,
+  });
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
