@@ -75,7 +75,7 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-portrait",
-      testIgnore: /(escape-setup|worksheet-pdf)\.spec\.ts/,
+      testIgnore: /(escape-setup|worksheet-pdf|lesson-plan-word)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
@@ -104,7 +104,7 @@ export default defineConfig({
     },
     {
       name: "desktop-worksheet-pdf",
-      testMatch: /worksheet-pdf\.spec\.ts/,
+      testMatch: /(worksheet-pdf|lesson-plan-word)\.spec\.ts/,
       use: {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
