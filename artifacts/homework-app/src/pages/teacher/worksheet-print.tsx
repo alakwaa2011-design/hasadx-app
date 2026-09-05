@@ -999,7 +999,7 @@ function FooterStrip({ note, goodLuck }: { note?: string; goodLuck: string }) {
   );
 }
 
-// Faint big "حصاد" / "Hasaad" watermark sitting behind worksheet content.
+// Subtle "حصاد" / "Hasaad" watermark behind the worksheet content.
 function WatermarkLayer({ ar }: { ar: boolean }) {
   const text = ar ? "حصاد" : "Hasaad";
   return (
@@ -1446,12 +1446,12 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-watermark-word {
         font-family: ${headingFont};
         font-weight: 800;
-        font-size: 200pt;
+        font-size: 112pt;
         color: ${TC};
-        opacity: 0.05;
-        transform: rotate(-22deg);
+        opacity: 0.022;
+        transform: rotate(-16deg);
         white-space: nowrap;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.035em;
         user-select: none;
       }
 

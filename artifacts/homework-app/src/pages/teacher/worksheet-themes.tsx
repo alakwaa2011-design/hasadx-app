@@ -136,7 +136,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
         /* No classic corner ornaments — replaced by the border frame */
         .ws-theme-geometric .ws-corner { display: none; }
         /* Watermark: very faint, rotated */
-        .ws-theme-geometric .ws-watermark-word { opacity: 0.03; color: ${TC}; }
+        .ws-theme-geometric .ws-watermark-word { opacity: 0.018; color: ${TC}; }
         /* Square number badges — geometric feel */
         .ws-theme-geometric .ws-q-num {
           border-radius: 3px;
@@ -456,7 +456,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
         }
         .ws-theme-exam_paper .ws-content { padding: 15mm 18mm 14mm; }
         .ws-theme-exam_paper .ws-corner { display: none; }
-        .ws-theme-exam_paper .ws-watermark-word { opacity: 0.025; color: ${TC}; }
+        .ws-theme-exam_paper .ws-watermark-word { opacity: 0.016; color: ${TC}; }
         /* Questions: plain numbered list — no boxes */
         .ws-theme-exam_paper .ws-q {
           border-${startSide}: 0;
@@ -564,7 +564,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
         }
         .ws-theme-kids_play .ws-content { padding: 14mm 16mm 14mm; }
         .ws-theme-kids_play .ws-corner { display: none; }
-        .ws-theme-kids_play .ws-watermark-word { opacity: 0.04; color: ${GOLD}; }
+        .ws-theme-kids_play .ws-watermark-word { opacity: 0.022; color: ${GOLD}; }
         /* Large rounded question cards */
         .ws-theme-kids_play .ws-q {
           border-${startSide}: 0;
@@ -702,7 +702,7 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
         }
         .ws-theme-science_lab .ws-content { padding: 14mm 16mm 13mm; }
         .ws-theme-science_lab .ws-corner { display: none; }
-        .ws-theme-science_lab .ws-watermark-word { opacity: 0.03; }
+        .ws-theme-science_lab .ws-watermark-word { opacity: 0.018; }
         /* Lab-notebook question boxes */
         .ws-theme-science_lab .ws-q {
           border-${startSide}: 0;
