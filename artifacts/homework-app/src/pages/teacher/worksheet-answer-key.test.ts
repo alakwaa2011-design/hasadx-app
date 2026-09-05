@@ -33,16 +33,15 @@ describe("worksheet answer labels", () => {
     expect(answer).not.toMatch(/[A-Z]/);
   });
 
-  it("restarts labels for every type and numbers MCQs separately from their lettered options", () => {
+  it("keeps global numeric question numbering across question types", () => {
     const questions = [
       { id: "tf-1", type: "true_false", prompt: "عبارة 1", correct: true },
       { id: "tf-2", type: "true_false", prompt: "عبارة 2", correct: false },
       { id: "mcq-1", type: "mcq", prompt: "اختر 1", options: ["أ", "ب"], correctIndex: 0 },
       { id: "mcq-2", type: "mcq", prompt: "اختر 2", options: ["أ", "ب"], correctIndex: 1 },
     ] as WorksheetQuestion[];
-
     expect(buildAnswerItems(questions, true, { true: "صح", false: "خطأ" })
       .map(item => item.questionLabel))
-      .toEqual(["أ", "ب", "١", "٢"]);
+      .toEqual(["1", "2", "3", "4"]);
   });
 });

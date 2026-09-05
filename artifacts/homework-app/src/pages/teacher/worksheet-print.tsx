@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, type CSSProperties, type KeyboardEvent } from "react";
 import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { useSmartBack } from "@/lib/nav-history";
@@ -237,20 +237,6 @@ export function WorksheetPrintView({
     }
     return set;
   }, [localQs]);
-  const questionLabelsById = useMemo(() => {
-    const result = new Map<string, string>();
-    let previousType: Question["type"] | null = null;
-    let indexWithinType = 0;
-    for (const question of localQs) {
-      if (question.type !== previousType) {
-        previousType = question.type;
-        indexWithinType = 0;
-      }
-      result.set(question.id, questionLabelForType(question.type, indexWithinType, ar));
-      indexWithinType += 1;
-    }
-    return result;
-  }, [localQs, ar]);
   const [showPanel, setShowPanel] = useState(false);
   const [layoutDirty, setLayoutDirty] = useState(false);
   // ── Inline text-editing state ──────────────────────────────────────────
@@ -684,6 +670,23 @@ export function WorksheetPrintView({
     ? selectedQuestionStyle?.fields?.find(field => field.key === selectedField.key)
     : undefined;
 
+  useEffect(() => {
+    if (!selectedField) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (!window.matchMedia("(max-width: 640px)").matches) return;
+      const activeField = document.activeElement;
+      const toolbar = document.querySelector<HTMLElement>(".ws-format-toolbar");
+      if (!(activeField instanceof HTMLElement) || !activeField.matches(".ws-editable") || !toolbar) return;
+      const fieldRect = activeField.getBoundingClientRect();
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const scrollOffset = mobileToolbarScrollOffset(fieldRect.bottom, toolbarRect.top);
+      if (scrollOffset > 0) {
+        window.scrollBy({ top: scrollOffset, behavior: "smooth" });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedField]);
+
   return (
     <>
       <PrintStyles fontFamily={fontFamily} headingFont={headingFont} fontSizePt={fontSizePt} lang={data.language} themeColor={themeColor} />
@@ -722,7 +725,7 @@ export function WorksheetPrintView({
         {localQs.map((q, i) => (
           <div key={q.id} data-q-measure style={{ width: qColWidth }}>
             <QuestionView
-              index={questionLabelsById.get(q.id) ?? questionLabelForType(q.type, i, ar)}
+              index={String(i + 1)}
               q={q}
               ar={ar}
               labels={labels}
@@ -899,7 +902,7 @@ export function WorksheetPrintView({
       {/* ── Visible paginated pages ──────────────────────────────── */}
       <div
         id="ws-printable-root"
-        className={`print-host ${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`}
+        className={`print-host ${selectedField ? "ws-format-toolbar-open " : ""}${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`}
         dir={dir}
         style={editMode ? { outline: "none" } : undefined}
       >
@@ -931,7 +934,7 @@ export function WorksheetPrintView({
                     return (
                       <QuestionView
                         key={q.id}
-                        index={questionLabelsById.get(q.id) ?? questionLabelForType(q.type, idx, ar)}
+                        index={String(idx + 1)}
                         q={lq}
                         ar={ar}
                         labels={labels}
@@ -1522,7 +1525,7 @@ function fieldStyleToCss(style?: FieldStyle): CSSProperties | undefined {
   };
 }
 
-function QuestionFormattingToolbar({
+export function QuestionFormattingToolbar({
   ar, question, questionStyle, fieldStyle, onFieldChange, onQuestionChange, onQuestionTypeChange, onQuestionEdit, onResetField, onResetQuestion,
 }: {
   ar: boolean;
@@ -1542,39 +1545,53 @@ function QuestionFormattingToolbar({
     { value: "center", Icon: AlignCenter },
     { value: "end", Icon: ar ? AlignLeft : AlignRight },
   ];
+  const alignmentLabels: Record<FieldAlign, string> = ar
+    ? { start: "محاذاة للبداية", center: "توسيط", end: "محاذاة للنهاية" }
+    : { start: "Align to start", center: "Center align", end: "Align to end" };
+  const handleToolbarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
+    const controls = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled)"),
+    );
+    const currentIndex = controls.indexOf(document.activeElement as HTMLElement);
+    if (currentIndex < 0 || controls.length === 0) return;
+    event.preventDefault();
+    const isForward = event.key === (ar ? "ArrowLeft" : "ArrowRight");
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? controls.length - 1
+        : (currentIndex + (isForward ? 1 : -1) + controls.length) % controls.length;
+    controls[nextIndex]?.focus();
+  };
   return (
     <div
       className="no-print ws-format-toolbar"
       dir={ar ? "rtl" : "ltr"}
       role="toolbar"
-      aria-label={ar ? "تنسيق النص المحدد" : "Selected text formatting"}
+      aria-label={ar ? "تنسيق النص والسؤال المحددين" : "Selected text and question formatting"}
+      onKeyDown={handleToolbarKeyDown}
+      data-testid="toolbar-question-formatting"
     >
       <div className="ws-format-group">
         <span className="ws-format-label">{ar ? "النص" : "Text"}</span>
-        <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.max(8, fontSize - 1) })} title={ar ? "تصغير الخط" : "Smaller text"}>
+        <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.max(8, fontSize - 1) })} aria-label={ar ? "تصغير الخط" : "Decrease font size"} data-testid="button-decrease-font-size">
           <Minus />
         </button>
-        <span className="ws-format-value">{fontSize}</span>
-        <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.min(24, fontSize + 1) })} title={ar ? "تكبير الخط" : "Larger text"}>
+        <span className="ws-format-value" aria-live="polite" data-testid="text-font-size">{fontSize}</span>
+        <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.min(24, fontSize + 1) })} aria-label={ar ? "تكبير الخط" : "Increase font size"} data-testid="button-increase-font-size">
           <Plus />
         </button>
-        <button type="button" className={fieldStyle?.bold ? "is-active" : ""} onClick={() => onFieldChange({ bold: !fieldStyle?.bold })} title={ar ? "عريض" : "Bold"}>
+        <button type="button" className={fieldStyle?.bold ? "is-active" : ""} onClick={() => onFieldChange({ bold: !fieldStyle?.bold })} aria-label={ar ? "نص عريض" : "Bold text"} aria-pressed={Boolean(fieldStyle?.bold)} data-testid="button-toggle-bold">
           <strong>ب</strong>
         </button>
         {alignments.map(({ value, Icon }) => (
-          <button
-            type="button"
-            key={value}
-            className={fieldStyle?.align === value ? "is-active" : ""}
-            onClick={() => onFieldChange({ align: value })}
-            title={ar
-              ? ({ start: "محاذاة للبداية", center: "توسيط", end: "محاذاة للنهاية" }[value])
-              : ({ start: "Align start", center: "Align center", end: "Align end" }[value])}
-          >
+          <button type="button" key={value} className={fieldStyle?.align === value ? "is-active" : ""} onClick={() => onFieldChange({ align: value })} aria-label={alignmentLabels[value]} aria-pressed={fieldStyle?.align === value} data-testid={`button-align-${value}`}>
             <Icon />
           </button>
         ))}
-        <button type="button" onClick={onResetField} title={ar ? "إعادة تنسيق النص" : "Reset text formatting"}>
+        <button type="button" onClick={onResetField} aria-label={ar ? "إعادة تنسيق النص" : "Reset text formatting"} data-testid="button-reset-text-formatting">
           <RotateCcw />
         </button>
       </div>
@@ -1652,6 +1669,9 @@ function QuestionFormattingToolbar({
             key={value}
             className={(questionStyle?.spacing ?? "normal") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
             onClick={() => onQuestionChange({ spacing: value })}
+            aria-pressed={(questionStyle?.spacing ?? "normal") === value}
+            aria-label={`${ar ? "تباعد السؤال" : "Question spacing"}: ${ar ? ({ compact: "مضغوط", normal: "عادي", relaxed: "واسع" }[value]) : value}`}
+            data-testid={`button-question-spacing-${value}`}
           >
             {ar ? ({ compact: "مضغوط", normal: "عادي", relaxed: "واسع" }[value]) : value}
           </button>
@@ -1665,6 +1685,8 @@ function QuestionFormattingToolbar({
                 key={value}
                 className={(questionStyle?.choiceColumns ?? 1) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
                 onClick={() => onQuestionChange({ choiceColumns: value as 1 | 2 })}
+                aria-pressed={(questionStyle?.choiceColumns ?? 1) === value}
+                data-testid={`button-choice-columns-${value}`}
               >
                 {ar
                   ? (value === 1 ? "عمودي" : "خياران في سطر")
@@ -1673,7 +1695,7 @@ function QuestionFormattingToolbar({
             ))}
           </>
         )}
-        <button type="button" onClick={onResetQuestion} title={ar ? "إعادة إعدادات السؤال" : "Reset question settings"}>
+        <button type="button" onClick={onResetQuestion} aria-label={ar ? "إعادة إعدادات السؤال" : "Reset question settings"} data-testid="button-reset-question-formatting">
           <RotateCcw />
         </button>
       </div>
@@ -1885,30 +1907,13 @@ function AnswerView({
 }
 
 const ARABIC_OPTION_LABELS = ["أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي"];
-const ARABIC_QUESTION_LABELS = [
-  "أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي",
-  "ك", "ل", "م", "ن", "س", "ع", "ف", "ص", "ق", "ر",
-  "ش", "ت", "ث", "خ", "ذ", "ض", "ظ", "غ",
-];
-
 export function optionLabel(index: number, ar: boolean): string {
   return ar ? (ARABIC_OPTION_LABELS[index] ?? String(index + 1)) : String.fromCharCode(65 + index);
 }
 
-export function questionSequenceLabel(index: number, ar: boolean): string {
-  return ar
-    ? (ARABIC_QUESTION_LABELS[index] ?? String(index + 1))
-    : String.fromCharCode(65 + index);
+export function mobileToolbarScrollOffset(fieldBottom: number, toolbarTop: number, gap = 16): number {
+  return Math.max(0, fieldBottom - (toolbarTop - gap));
 }
-
-export function questionLabelForType(type: QuestionType, index: number, ar: boolean): string {
-  if (type === "mcq") {
-    const number = String(index + 1);
-    return ar ? number.replace(/\d/g, digit => "٠١٢٣٤٥٦٧٨٩"[Number(digit)]) : number;
-  }
-  return questionSequenceLabel(index, ar);
-}
-
 export function convertQuestionType(question: Question, type: QuestionType, ar: boolean): Question {
   if (question.type === type) return question;
   const base = {
@@ -2382,6 +2387,12 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         color: white;
         border-color: ${TC};
       }
+      .ws-format-toolbar button:focus-visible,
+      .ws-format-toolbar input:focus-visible,
+      .ws-format-toolbar select:focus-visible {
+        outline: 3px solid ${BRAND_GOLD};
+        outline-offset: 2px;
+      }
       .ws-format-toolbar button svg { width: 14px; height: 14px; }
       .ws-format-text-btn { padding-inline: 8px; }
       .ws-format-value { min-width: 22px; text-align: center; font-size: 11px; font-weight: 800; }
@@ -2399,6 +2410,37 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         font: inherit;
         font-size: 11px;
         font-weight: 700;
+      }
+      @media (max-width: 640px) {
+        .ws-format-toolbar {
+          bottom: max(8px, env(safe-area-inset-bottom));
+          width: calc(100vw - 16px);
+          max-height: min(42vh, 250px);
+          justify-content: flex-start;
+          overflow-x: hidden;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding: 8px;
+          gap: 6px;
+        }
+        .ws-format-group {
+          width: 100%;
+          justify-content: flex-start;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          padding: 3px 2px;
+          scrollbar-width: thin;
+        }
+        .ws-format-toolbar button {
+          min-width: 38px;
+          height: 38px;
+          flex: 0 0 auto;
+        }
+        .ws-format-text-btn { min-width: max-content !important; }
+        .ws-format-toolbar-open {
+          padding-bottom: min(46vh, 270px) !important;
+        }
+        .ws-editable { scroll-margin-bottom: min(46vh, 270px); }
       }
 
       /* Footer strip — brand line removed per teacher request; only the
@@ -2725,22 +2767,14 @@ export function buildAnswerItems(
   ar: boolean,
   labels: { true: string; false: string },
 ): AnswerItem[] {
-  let previousType: Question["type"] | null = null;
-  let indexWithinType = 0;
-  return questions.map(question => {
-    if (question.type !== previousType) {
-      previousType = question.type;
-      indexWithinType = 0;
-    }
-    const item: AnswerItem = {
+  return questions.map((question, index) => {
+    return {
       id: `${question.id}:answer`,
       question,
-      questionLabel: questionLabelForType(question.type, indexWithinType, ar),
+      questionLabel: String(index + 1),
       text: answerText(question, ar, labels),
       continuation: false,
     };
-    indexWithinType += 1;
-    return item;
   });
 }
 

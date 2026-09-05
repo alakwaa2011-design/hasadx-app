@@ -332,19 +332,19 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
   const answers = ["(ج) الإجابة الثالثة", "(ب) الخيار باء", "صح"];
 
   await page.goto(`/teacher/worksheets/${arabicFormattingWorksheetId}/print`);
-  const printable = page.locator("#ws-printable-root");
+    const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "تحرير الورقة", exact: true }).click();
 
   const firstPrompt = printable.locator(".ws-q-prompt .ws-editable").first();
   await firstPrompt.click();
-  const formattingToolbar = page.getByRole("toolbar", { name: "تنسيق النص المحدد" });
+  const formattingToolbar = page.getByTestId("toolbar-question-formatting");
   await expect(formattingToolbar).toBeVisible();
-  await formattingToolbar.getByTitle("تكبير الخط").click();
-  await formattingToolbar.getByTitle("تكبير الخط").click();
-  await formattingToolbar.getByTitle("عريض").click();
-  await formattingToolbar.getByTitle("توسيط").click();
-  await formattingToolbar.getByRole("button", { name: "خياران في سطر" }).click();
+  await formattingToolbar.getByTestId("button-increase-font-size").click();
+  await formattingToolbar.getByTestId("button-increase-font-size").click();
+  await formattingToolbar.getByTestId("button-toggle-bold").click();
+  await formattingToolbar.getByTestId("button-align-center").click();
+  await formattingToolbar.getByTestId("button-choice-columns-2").click();
 
   await page.getByRole("button", { name: "حفظ", exact: true }).click();
   await expect(page.getByText("تم حفظ تعديلات الورقة")).toBeVisible();
@@ -357,7 +357,7 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
   const reloadedPrompt = printable
     .locator("[data-worksheet-page] .ws-q-prompt")
     .filter({ hasText: prompts[0] })
-    .locator("span")
+    .locator(":scope > span:not(.ws-tf-mark)")
     .first();
   await expect(reloadedPrompt).toHaveCSS("font-size", "18.6667px");
   await expect(reloadedPrompt).toHaveCSS("font-weight", "800");
@@ -369,7 +369,7 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
   ).toBe(2);
 
   const worksheetPrompts = (await printable
-    .locator("[data-worksheet-page] .ws-q-prompt > span:first-child")
+    .locator("[data-worksheet-page] .ws-q-prompt > span:not(.ws-tf-mark)")
     .allTextContents())
     .map(text => text.trim());
   expect(worksheetPrompts).toEqual(prompts);
@@ -406,12 +406,12 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
     expect(wordXml).toContain(choice);
   }
 
-  const domPageCount = await printable.locator(".ws-page").count();
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    preferCSSPageSize: true,
-  });
+    const domPageCount = await printable.locator(".ws-page").count();
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
@@ -420,7 +420,6 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
   page,
 }) => {
   await page.goto(`/teacher/worksheets/${worksheetId}/print`);
-
     const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
   await expect(printable.locator("[data-answer-key-page]")).toHaveCount(1);
@@ -544,13 +543,13 @@ test("long answer keys become numbered A4 DOM pages that match the PDF", async (
   page,
 }) => {
   await page.goto(`/teacher/worksheets/${longAnswerWorksheetId}/print`);
-  const printable = page.locator("#ws-printable-root");
+    const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
 
-  const answerPages = printable.locator("[data-answer-key-page]");
+    const answerPages = printable.locator("[data-answer-key-page]");
   await expect
     .poll(async () => answerPages.count(), { timeout: 15_000 })
     .toBeGreaterThan(1);
@@ -570,12 +569,12 @@ test("long answer keys become numbered A4 DOM pages that match the PDF", async (
     expect(await answerPage.locator(".ws-answer").count()).toBeGreaterThan(0);
   }
 
-  const domPageCount = await printable.locator(".ws-page").count();
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    preferCSSPageSize: true,
-  });
+    const domPageCount = await printable.locator(".ws-page").count();
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
