@@ -39,7 +39,10 @@ function tryRead(filename: string): string {
   return "";
 }
 
-const KB_RAW = tryRead("hasad_knowledge_base.md");
+// Keep this as the single runtime source of platform feature and policy claims.
+// Documentation must link to it rather than maintaining an independently edited copy.
+const KNOWLEDGE_BASE_FILENAME = "hasad_knowledge_base.md";
+const KB_RAW = tryRead(KNOWLEDGE_BASE_FILENAME);
 
 let FAQ_BLOCK = "";
 try {

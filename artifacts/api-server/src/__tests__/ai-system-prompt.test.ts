@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { basename, relative, resolve } from "node:path";
 import { buildSystemPrompt } from "../lib/ai-system-prompt";
 import {
   HASAD_GUIDE_ROUTES,
@@ -10,7 +10,69 @@ import {
 const APP_ROUTE_PATTERN = /<Route\s+path="([^"]+)"/g;
 const DOCUMENTED_ROUTE_PATTERN = /`(\/[^`\s]+)`/g;
 
+const API_ROOT = resolve(process.cwd());
+const REPOSITORY_ROOT = resolve(API_ROOT, "../..");
+const CANONICAL_KNOWLEDGE_PATH = resolve(
+  API_ROOT,
+  "src/data/hasad_knowledge_base.md",
+);
+
+function findSecondaryKnowledgeFiles(directory: string): string[] {
+  const ignoredDirectories = new Set([
+    ".git",
+    ".local",
+    "attached_assets",
+    "dist",
+    "node_modules",
+  ]);
+  const matches: string[] = [];
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (!ignoredDirectories.has(entry.name)) {
+        matches.push(...findSecondaryKnowledgeFiles(resolve(directory, entry.name)));
+      }
+      continue;
+    }
+
+    const normalizedName = entry.name.toLowerCase().replaceAll("-", "_");
+    if (
+      entry.isFile() &&
+      normalizedName.endsWith(".md") &&
+      normalizedName.includes("hasad") &&
+      normalizedName.includes("knowledge")
+    ) {
+      matches.push(resolve(directory, entry.name));
+    }
+  }
+
+  return matches;
+}
+
 describe("Hasad Guide system prompt", () => {
+  it("keeps one editable source for platform feature and policy claims", () => {
+    expect(existsSync(CANONICAL_KNOWLEDGE_PATH)).toBe(true);
+
+    const knowledgeFiles = findSecondaryKnowledgeFiles(REPOSITORY_ROOT)
+      .map((path) => relative(REPOSITORY_ROOT, path))
+      .sort();
+
+    expect(knowledgeFiles).toEqual([
+      relative(REPOSITORY_ROOT, CANONICAL_KNOWLEDGE_PATH),
+    ]);
+
+    const source = readFileSync(
+      resolve(API_ROOT, "src/lib/ai-system-prompt.ts"),
+      "utf8",
+    );
+    expect(source).toContain(
+      'const KNOWLEDGE_BASE_FILENAME = "hasad_knowledge_base.md"',
+    );
+    expect(basename(CANONICAL_KNOWLEDGE_PATH)).toBe(
+      "hasad_knowledge_base.md",
+    );
+  });
+
   it("loads the current adaptive-assessment knowledge", () => {
     const prompt = buildSystemPrompt();
 
