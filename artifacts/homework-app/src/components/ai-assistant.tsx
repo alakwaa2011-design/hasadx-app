@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import {
   Bot,
   ChevronDown,
+  Headphones,
   Loader2,
   Plus,
   Send,
@@ -30,7 +31,7 @@ const GUIDE_GREEN_SOFT =
 
 interface ChatMessage {
   id?: number;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "admin" | "support_system";
   content: string;
   cached?: number;
 }
@@ -39,7 +40,10 @@ interface ConversationListItem {
   id: number;
   title: string;
   updatedAt: string;
+  supportStatus?: SupportStatus;
 }
+
+type SupportStatus = "ai" | "requested" | "human";
 
 interface UsageInfo {
   used: number;
@@ -74,12 +78,24 @@ function copy(lang: string) {
     deleteConfirm: isAr ? "هل تريد حذف هذه المحادثة؟" : "Delete this conversation?",
     errorGeneric: isAr ? "حدث خطأ" : "Something went wrong",
     errorNet: isAr ? "تعذّر الاتصال. حاول مرة أخرى." : "Could not connect. Try again.",
+    supportOffer: isAr
+      ? "إذا لم يحل المرشد مشكلتك، يمكنك تحويل هذه المحادثة إلى الدعم الفني مباشرة."
+      : "If the guide did not solve your issue, you can transfer this conversation directly to support.",
+    transferSupport: isAr ? "تحويل للدعم الفني" : "Transfer to support",
+    transferConfirm: isAr
+      ? "سيطّلع فريق الدعم على سجل هذه المحادثة وسيكمل الرد هنا. هل تريد المتابعة؟"
+      : "Support will see this conversation history and continue replying here. Continue?",
+    supportWaiting: isAr ? "تم التحويل — بانتظار رد الدعم" : "Transferred — waiting for support",
+    supportActive: isAr ? "أنت الآن تتحدث مع دعم حصاد" : "You are now chatting with Hasaad Support",
+    supportPlaceholder: isAr ? "اكتب رسالتك لفريق الدعم…" : "Write to the support team…",
+    supportAgent: isAr ? "دعم حصاد" : "Hasaad Support",
   };
 }
 
 export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string }) {
   const isAr = lang === "ar";
   const t = copy(lang);
+  const search = useSearch();
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const [open, setOpen] = useState(false);
@@ -99,7 +115,10 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [supportStatus, setSupportStatus] = useState<SupportStatus>("ai");
+  const [requestingSupport, setRequestingSupport] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const openedDeepLinkRef = useRef<number | null>(null);
 
   const minimizeLauncher = () => {
     try {
@@ -125,6 +144,21 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     fetchUsage();
     fetchConversations();
   }, [open, enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const id = Number(new URLSearchParams(search).get("guideConversation"));
+    if (!Number.isSafeInteger(id) || id <= 0 || openedDeepLinkRef.current === id) return;
+    openedDeepLinkRef.current = id;
+    setOpen(true);
+    loadConversation(id);
+  }, [enabled, search]);
+
+  useEffect(() => {
+    if (!open || !conversationId || supportStatus === "ai") return;
+    const timer = window.setInterval(() => loadConversation(conversationId, true), 10_000);
+    return () => window.clearInterval(timer);
+  }, [open, conversationId, supportStatus]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -153,7 +187,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     }
   }
 
-  async function loadConversation(id: number) {
+  async function loadConversation(id: number, quiet = false) {
     try {
       const r = await fetch(`${API_BASE}/api/ai-chat/conversations/${id}`, {
         credentials: "include",
@@ -162,8 +196,11 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
       const data = await r.json();
       setConversationId(id);
       setMessages(data.messages || []);
-      setShowHistory(false);
-      setError(null);
+      setSupportStatus(data.conversation?.supportStatus || "ai");
+      if (!quiet) {
+        setShowHistory(false);
+        setError(null);
+      }
     } catch {
       /* ignore */
     }
@@ -179,6 +216,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
       if (conversationId === id) {
         setConversationId(null);
         setMessages([]);
+        setSupportStatus("ai");
       }
       fetchConversations();
     } catch {
@@ -189,6 +227,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
   function newChat() {
     setConversationId(null);
     setMessages([]);
+    setSupportStatus("ai");
     setShowHistory(false);
     setError(null);
   }
@@ -201,12 +240,17 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     setInput("");
     setMessages((m) => [...m, { role: "user", content: text }]);
     try {
-      const r = await creditAwareFetch(`${API_BASE}/api/ai-chat/messages`, {
+      const inSupport = supportStatus !== "ai" && conversationId !== null;
+      const endpoint = inSupport
+        ? `${API_BASE}/api/ai-chat/conversations/${conversationId}/support-messages`
+        : `${API_BASE}/api/ai-chat/messages`;
+      const request = {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, message: text, language: lang }),
-      });
+        body: JSON.stringify(inSupport ? { message: text } : { conversationId, message: text, language: lang }),
+      } as const;
+      const r = inSupport ? await fetch(endpoint, request) : await creditAwareFetch(endpoint, request);
       const data = await r.json();
       if (!r.ok) {
         if (isInsufficientCreditsResponse(r)) {
@@ -216,6 +260,11 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
         setError(data.message || data.error || t.errorGeneric);
         setMessages((m) => m.slice(0, -1));
         if (data.usage) setUsage(data.usage);
+        return;
+      }
+      if (inSupport) {
+        await loadConversation(conversationId!, true);
+        fetchConversations();
         return;
       }
       setConversationId(data.conversationId);
@@ -231,6 +280,31 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     } finally {
       setSending(false);
       refreshCreditsBalance();
+    }
+  }
+
+  async function requestSupport() {
+    if (!conversationId || requestingSupport || supportStatus !== "ai") return;
+    if (!confirm(t.transferConfirm)) return;
+    setRequestingSupport(true);
+    setError(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/ai-chat/conversations/${conversationId}/request-support`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        setError(data.message || t.errorGeneric);
+        return;
+      }
+      setSupportStatus(data.supportStatus || "requested");
+      await loadConversation(conversationId, true);
+      fetchConversations();
+    } catch {
+      setError(t.errorNet);
+    } finally {
+      setRequestingSupport(false);
     }
   }
 
@@ -412,23 +486,37 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                   </div>
                 )}
                 {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${m.role === "user" ? (isAr ? "justify-start" : "justify-end") : isAr ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words ${
-                        m.role === "user"
-                          ? `bg-[#1f5a3e] text-white shadow-sm ${isAr ? "rounded-tr-sm" : "rounded-tl-sm"}`
-                          : `bg-muted text-foreground border border-border/60 ${isAr ? "rounded-tl-sm" : "rounded-tr-sm"}`
-                      }`}
-                    >
+                  m.role === "support_system" ? (
+                    <div key={m.id ?? i} className="mx-auto max-w-[92%] rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                       {m.content}
-                      {m.cached === 1 && (
-                        <div className="text-[10px] opacity-70 mt-1">{t.cached}</div>
-                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div
+                      key={m.id ?? i}
+                      className={`flex ${m.role === "user" ? (isAr ? "justify-start" : "justify-end") : isAr ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words ${
+                          m.role === "user"
+                            ? `bg-[#1f5a3e] text-white shadow-sm ${isAr ? "rounded-tr-sm" : "rounded-tl-sm"}`
+                            : m.role === "admin"
+                              ? `bg-amber-50 text-amber-950 border border-amber-300/70 dark:bg-amber-950/30 dark:text-amber-100 dark:border-amber-800 ${isAr ? "rounded-tl-sm" : "rounded-tr-sm"}`
+                              : `bg-muted text-foreground border border-border/60 ${isAr ? "rounded-tl-sm" : "rounded-tr-sm"}`
+                        }`}
+                      >
+                        {m.role === "admin" && (
+                          <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                            <Headphones className="h-3 w-3" />
+                            {t.supportAgent}
+                          </div>
+                        )}
+                        {m.content}
+                        {m.cached === 1 && (
+                          <div className="text-[10px] opacity-70 mt-1">{t.cached}</div>
+                        )}
+                      </div>
+                    </div>
+                  )
                 ))}
                 {sending && (
                   <div className={`flex ${isAr ? "justify-end" : "justify-start"}`}>
@@ -449,6 +537,28 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
 
             {!showHistory && (
               <div className="border-t border-border p-3 shrink-0 bg-background/95 backdrop-blur-sm">
+                {conversationId && supportStatus === "ai" && messages.length > 0 && (
+                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2">
+                    <Headphones className="h-4 w-4 shrink-0 text-[#1f5a3e]" />
+                    <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {t.supportOffer}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={requestSupport}
+                      disabled={requestingSupport}
+                      className="shrink-0 rounded-lg border border-[#1f5a3e]/30 bg-background px-2.5 py-1.5 text-[11px] font-bold text-[#1f5a3e] hover:bg-[#1f5a3e]/5 disabled:opacity-50"
+                    >
+                      {requestingSupport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t.transferSupport}
+                    </button>
+                  </div>
+                )}
+                {supportStatus !== "ai" && (
+                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                    <Headphones className="h-4 w-4 shrink-0" />
+                    {supportStatus === "requested" ? t.supportWaiting : t.supportActive}
+                  </div>
+                )}
                 <div className="flex items-end gap-2">
                   <textarea
                     value={input}
@@ -461,7 +571,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                     }}
                     rows={1}
                     maxLength={MAX_CHAT_MESSAGE_CHARS}
-                    placeholder={t.placeholder}
+                    placeholder={supportStatus === "ai" ? t.placeholder : t.supportPlaceholder}
                     disabled={sending || (hasDailyCap(usage) && usage.remaining <= 0)}
                     className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1f5a3e]/35 max-h-32"
                   />

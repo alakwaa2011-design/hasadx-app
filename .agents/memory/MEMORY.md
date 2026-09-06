@@ -66,3 +66,4 @@
 - [Lemon Squeezy checkout layout limits](lemon-checkout-layout-limits.md) — official API can hide media/logo/description, but not the summary column, Tax ID, compact layout, or overlay dimensions.
 - [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — current generator rewrites Zod output with APIs incompatible with the installed Zod version; verify generated diffs and library typecheck.
 - [Worksheet PDF pagination](worksheet-pdf-pagination.md) — hidden estimates miss theme/font/footer height; preserve the rendered A4 overflow guard or PDF pages split and repeat.
+- [Hasaad Guide human handoff](hasaad-guide-human-handoff.md) — support continues inside the original guide conversation; AI must pause and ignore human-support messages as future model context.

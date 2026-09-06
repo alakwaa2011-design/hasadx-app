@@ -9,6 +9,7 @@ import {
   aiCustomInstructionsTable,
   conversations,
   messages,
+  notificationsTable,
   teachersTable,
 } from "@workspace/db";
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
@@ -24,7 +25,6 @@ const router: Router = Router();
 // Retain recent turns for conversational continuity.
 const HISTORY_TURNS = 4; // last 4 user+assistant pairs
 const MAX_CHAT_MESSAGE_CHARS = 24_000;
-
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -136,6 +136,8 @@ router.get("/conversations", async (req, res) => {
     .select({
       id: conversations.id,
       title: conversations.title,
+      supportStatus: conversations.supportStatus,
+      supportRequestedAt: conversations.supportRequestedAt,
       createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
     })
@@ -188,6 +190,141 @@ const sendBody = z.object({
   conversationId: z.number().int().positive().nullable().optional(),
   message: z.string().trim().min(1).max(MAX_CHAT_MESSAGE_CHARS),
   language: z.enum(["ar", "en"]).optional(),
+});
+
+const supportMessageBody = z.object({
+  message: z.string().trim().min(1).max(MAX_CHAT_MESSAGE_CHARS),
+});
+
+async function notifyAdminsOfSupportRequest(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: { teacherId: number; teacherName: string; conversationId: number; title: string; preview: string },
+) {
+  const admins = await tx
+    .select({ id: teachersTable.id })
+    .from(teachersTable)
+    .where(eq(teachersTable.isAdmin, true));
+  const recipients = admins.filter((admin) => admin.id !== input.teacherId);
+  if (recipients.length === 0) return;
+  await tx.insert(notificationsTable).values(
+    recipients.map((admin) => ({
+      teacherId: admin.id,
+      type: "ai_support_request",
+      title: `طلب دعم عبر مرشد حصاد من ${input.teacherName}`,
+      body: input.preview.length > 120 ? `${input.preview.slice(0, 120)}…` : input.preview,
+      actionUrl: `/teacher/admin?tab=ai-chat&conversation=${input.conversationId}`,
+    })),
+  );
+}
+
+// POST /api/ai-chat/conversations/:id/request-support
+router.post("/conversations/:id/request-support", async (req, res) => {
+  const teacherId = await getTeacherId(req, res);
+  if (!teacherId) return;
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "bad_id" });
+
+  const result = await db.transaction(async (tx) => {
+    const [conversation] = await tx
+      .select({
+        id: conversations.id,
+        title: conversations.title,
+        supportStatus: conversations.supportStatus,
+        teacherName: teachersTable.name,
+      })
+      .from(conversations)
+      .innerJoin(teachersTable, eq(conversations.teacherId, teachersTable.id))
+      .where(and(eq(conversations.id, id), eq(conversations.teacherId, teacherId)))
+      .limit(1);
+    if (!conversation) return null;
+    if (conversation.supportStatus !== "ai") {
+      return { supportStatus: conversation.supportStatus, alreadyRequested: true };
+    }
+
+    const now = new Date();
+    const updated = await tx
+      .update(conversations)
+      .set({ supportStatus: "requested", supportRequestedAt: now, updatedAt: now })
+      .where(and(
+        eq(conversations.id, id),
+        eq(conversations.teacherId, teacherId),
+        eq(conversations.supportStatus, "ai"),
+      ))
+      .returning({ supportStatus: conversations.supportStatus });
+    if (!updated[0]) {
+      const [current] = await tx
+        .select({ supportStatus: conversations.supportStatus })
+        .from(conversations)
+        .where(and(eq(conversations.id, id), eq(conversations.teacherId, teacherId)))
+        .limit(1);
+      return {
+        supportStatus: current?.supportStatus ?? "requested",
+        alreadyRequested: true,
+      };
+    }
+    await tx.insert(messages).values({
+      conversationId: id,
+      role: "support_system",
+      content: "تم تحويل هذه المحادثة إلى الدعم الفني. يمكنك متابعة الكتابة هنا، وسيظهر رد فريق حصاد داخل المحادثة نفسها.",
+    });
+    await notifyAdminsOfSupportRequest(tx, {
+      teacherId,
+      teacherName: conversation.teacherName,
+      conversationId: id,
+      title: conversation.title,
+      preview: conversation.title,
+    });
+    return { supportStatus: "requested" as const, alreadyRequested: false };
+  });
+
+  if (!result) return res.status(404).json({ error: "not_found" });
+  res.json(result);
+});
+
+// POST /api/ai-chat/conversations/:id/support-messages
+router.post("/conversations/:id/support-messages", async (req, res) => {
+  const teacherId = await getTeacherId(req, res);
+  if (!teacherId) return;
+  const id = Number(req.params.id);
+  const parsed = supportMessageBody.safeParse(req.body);
+  if (!Number.isSafeInteger(id) || id <= 0 || !parsed.success) {
+    return res.status(400).json({ error: "bad_request" });
+  }
+
+  const result = await db.transaction(async (tx) => {
+    const [conversation] = await tx
+      .select({
+        id: conversations.id,
+        title: conversations.title,
+        supportStatus: conversations.supportStatus,
+        teacherName: teachersTable.name,
+      })
+      .from(conversations)
+      .innerJoin(teachersTable, eq(conversations.teacherId, teachersTable.id))
+      .where(and(eq(conversations.id, id), eq(conversations.teacherId, teacherId)))
+      .limit(1);
+    if (!conversation) return { kind: "not_found" as const };
+    if (!["requested", "human"].includes(conversation.supportStatus)) {
+      return { kind: "not_support" as const };
+    }
+    const [created] = await tx.insert(messages).values({
+      conversationId: id,
+      role: "user",
+      content: parsed.data.message,
+    }).returning({ id: messages.id, createdAt: messages.createdAt });
+    await tx.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id));
+    await notifyAdminsOfSupportRequest(tx, {
+      teacherId,
+      teacherName: conversation.teacherName,
+      conversationId: id,
+      title: conversation.title,
+      preview: parsed.data.message,
+    });
+    return { kind: "ok" as const, message: created };
+  });
+  if (result.kind === "not_found") return res.status(404).json({ error: "not_found" });
+  if (result.kind === "not_support") return res.status(409).json({ error: "not_in_support" });
+  res.status(201).json({ ok: true, message: result.message });
 });
 
 // POST /api/ai-chat/messages — send a message, get a reply
@@ -244,7 +381,7 @@ async function handleSendMessage(req: any, res: any) {
   let isFirstTurn: boolean;
   if (conversationId) {
     const owned = await db
-      .select({ id: conversations.id })
+      .select({ id: conversations.id, supportStatus: conversations.supportStatus })
       .from(conversations)
       .where(
         and(eq(conversations.id, conversationId), eq(conversations.teacherId, teacherId)),
@@ -253,6 +390,14 @@ async function handleSendMessage(req: any, res: any) {
     if (!owned[0]) {
       await refundCredits(req, "conversation not found");
       return res.status(404).json({ error: "conversation_not_found" });
+    }
+    if (owned[0].supportStatus !== "ai") {
+      await refundCredits(req, "conversation is handled by human support");
+      return res.status(409).json({
+        error: "support_mode",
+        message: "هذه المحادثة محالة إلى الدعم الفني. ستصل رسالتك التالية إلى فريق حصاد مباشرة.",
+        supportStatus: owned[0].supportStatus,
+      });
     }
     const priorCount = await db
       .select({ c: sql<number>`count(*)::int` })
@@ -354,10 +499,12 @@ async function handleSendMessage(req: any, res: any) {
     .limit(HISTORY_TURNS * 2);
   recent.reverse();
 
-  const apiMessages = recent.map((m) => ({
-    role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
-    content: m.content,
-  }));
+  const apiMessages = recent
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as "assistant" | "user",
+      content: m.content,
+    }));
 
   let assistantText = "";
   let tokensIn = 0;
@@ -492,10 +639,16 @@ router.get("/admin/conversations", async (req, res) => {
       teacherEmail: teachersTable.email,
       createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
+      supportStatus: conversations.supportStatus,
+      supportRequestedAt: conversations.supportRequestedAt,
+      supportAdminId: conversations.supportAdminId,
     })
     .from(conversations)
     .leftJoin(teachersTable, eq(conversations.teacherId, teachersTable.id))
-    .orderBy(desc(conversations.updatedAt))
+    .orderBy(
+      sql`CASE WHEN ${conversations.supportStatus} = 'requested' THEN 0 WHEN ${conversations.supportStatus} = 'human' THEN 1 ELSE 2 END`,
+      desc(conversations.updatedAt),
+    )
     .limit(200);
   res.json({ conversations: rows });
 });
@@ -516,6 +669,9 @@ router.get("/admin/conversations/:id", async (req, res) => {
       teacherName: teachersTable.name,
       teacherEmail: teachersTable.email,
       createdAt: conversations.createdAt,
+      supportStatus: conversations.supportStatus,
+      supportRequestedAt: conversations.supportRequestedAt,
+      supportAdminId: conversations.supportAdminId,
     })
     .from(conversations)
     .leftJoin(teachersTable, eq(conversations.teacherId, teachersTable.id))
@@ -528,6 +684,107 @@ router.get("/admin/conversations/:id", async (req, res) => {
     .where(eq(messages.conversationId, id))
     .orderBy(asc(messages.createdAt));
   res.json({ conversation: convo[0], messages: msgs });
+});
+
+const adminReplyBody = z.object({
+  message: z.string().trim().min(1).max(MAX_CHAT_MESSAGE_CHARS),
+});
+
+// POST /api/ai-chat/admin/conversations/:id/reply — continue a transferred chat as support
+router.post("/admin/conversations/:id/reply", async (req, res) => {
+  const adminId = await getTeacherId(req, res);
+  if (!adminId) return;
+  if (!(await isAdmin(adminId))) return res.status(403).json({ error: "forbidden" });
+  const id = Number(req.params.id);
+  const parsed = adminReplyBody.safeParse(req.body);
+  if (!Number.isSafeInteger(id) || id <= 0 || !parsed.success) {
+    return res.status(400).json({ error: "bad_request" });
+  }
+
+  const result = await db.transaction(async (tx) => {
+    const [conversation] = await tx
+      .select({
+        teacherId: conversations.teacherId,
+        supportStatus: conversations.supportStatus,
+      })
+      .from(conversations)
+      .where(eq(conversations.id, id))
+      .limit(1);
+    if (!conversation) return { kind: "not_found" as const };
+    if (!["requested", "human"].includes(conversation.supportStatus)) {
+      return { kind: "not_support" as const };
+    }
+    const now = new Date();
+    const [created] = await tx.insert(messages).values({
+      conversationId: id,
+      role: "admin",
+      content: parsed.data.message,
+    }).returning({
+      id: messages.id,
+      role: messages.role,
+      content: messages.content,
+      createdAt: messages.createdAt,
+    });
+    await tx.update(conversations).set({
+      supportStatus: "human",
+      supportAdminId: adminId,
+      updatedAt: now,
+    }).where(eq(conversations.id, id));
+    await tx.insert(notificationsTable).values({
+      teacherId: conversation.teacherId,
+      type: "ai_support_reply",
+      title: "رد جديد من دعم حصاد",
+      body: parsed.data.message.length > 120
+        ? `${parsed.data.message.slice(0, 120)}…`
+        : parsed.data.message,
+      actionUrl: `/teacher/dashboard?guideConversation=${id}`,
+    });
+    return { kind: "ok" as const, message: created };
+  });
+  if (result.kind === "not_found") return res.status(404).json({ error: "not_found" });
+  if (result.kind === "not_support") return res.status(409).json({ error: "not_in_support" });
+  res.status(201).json({ ok: true, supportStatus: "human", message: result.message });
+});
+
+// POST /api/ai-chat/admin/conversations/:id/close-support — return the chat to the guide
+router.post("/admin/conversations/:id/close-support", async (req, res) => {
+  const adminId = await getTeacherId(req, res);
+  if (!adminId) return;
+  if (!(await isAdmin(adminId))) return res.status(403).json({ error: "forbidden" });
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "bad_id" });
+
+  const result = await db.transaction(async (tx) => {
+    const [conversation] = await tx
+      .select({ teacherId: conversations.teacherId, supportStatus: conversations.supportStatus })
+      .from(conversations)
+      .where(eq(conversations.id, id))
+      .limit(1);
+    if (!conversation) return null;
+    const now = new Date();
+    await tx.update(conversations).set({
+      supportStatus: "ai",
+      supportAdminId: null,
+      updatedAt: now,
+    }).where(eq(conversations.id, id));
+    if (conversation.supportStatus !== "ai") {
+      await tx.insert(messages).values({
+        conversationId: id,
+        role: "support_system",
+        content: "أنهى فريق الدعم المحادثة. يمكنك الآن متابعة الحديث مع مرشد حصاد.",
+      });
+      await tx.insert(notificationsTable).values({
+        teacherId: conversation.teacherId,
+        type: "ai_support_closed",
+        title: "اكتملت متابعة دعم حصاد",
+        body: "يمكنك الآن متابعة الحديث مع مرشد حصاد في المحادثة نفسها.",
+        actionUrl: `/teacher/dashboard?guideConversation=${id}`,
+      });
+    }
+    return { supportStatus: "ai" as const };
+  });
+  if (!result) return res.status(404).json({ error: "not_found" });
+  res.json(result);
 });
 
 // GET /api/ai-chat/admin/stats — admin: usage stats

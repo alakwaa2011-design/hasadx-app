@@ -107,6 +107,17 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url TEXT
     `);
+    // ── Hasaad Guide: hand a teacher conversation to human support ──
+    await db.execute(sql`
+      ALTER TABLE conversations
+        ADD COLUMN IF NOT EXISTS support_status TEXT NOT NULL DEFAULT 'ai',
+        ADD COLUMN IF NOT EXISTS support_requested_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS support_admin_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS conversations_support_status_updated_idx
+        ON conversations(support_status, updated_at DESC)
+    `);
     // ── Unified analytics & presence (task: realtime analytics) ──
     await db.execute(sql`
       ALTER TABLE activity_logs

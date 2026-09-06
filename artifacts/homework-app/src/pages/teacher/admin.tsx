@@ -4615,6 +4615,9 @@ interface AdminConvo {
   teacherEmail: string | null;
   createdAt: string;
   updatedAt: string;
+  supportStatus: "ai" | "requested" | "human";
+  supportRequestedAt: string | null;
+  supportAdminId: number | null;
 }
 
 interface AdminMessage {
@@ -4652,6 +4655,8 @@ function AdminAiChatTab({ lang }: { lang: string }) {
   const [instructions, setInstructions] = useState("");
   const [instructionsDraft, setInstructionsDraft] = useState("");
   const [savingInstructions, setSavingInstructions] = useState(false);
+  const [supportReply, setSupportReply] = useState("");
+  const [sendingSupportReply, setSendingSupportReply] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -4666,6 +4671,8 @@ function AdminAiChatTab({ lang }: { lang: string }) {
         setInstructions(txt);
         setInstructionsDraft(txt);
         setLoading(false);
+        const requestedId = Number(new URLSearchParams(window.location.search).get("conversation"));
+        if (Number.isSafeInteger(requestedId) && requestedId > 0) loadConvo(requestedId);
       })
       .catch(() => setLoading(false));
   }, []);
@@ -4699,6 +4706,53 @@ function AdminAiChatTab({ lang }: { lang: string }) {
       const d = await r.json();
       setSelectedMsgs(d.messages || []);
     }
+  }
+
+  async function refreshConversations() {
+    const r = await fetch(`${API_BASE}/api/ai-chat/admin/conversations`, { credentials: "include" });
+    if (r.ok) {
+      const d = await r.json();
+      setConvos(d.conversations || []);
+    }
+  }
+
+  async function sendSupportReply() {
+    const message = supportReply.trim();
+    if (!selectedId || !message || sendingSupportReply) return;
+    setSendingSupportReply(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/ai-chat/admin/conversations/${selectedId}/reply`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!r.ok) {
+        toast.error(lang === "ar" ? "تعذّر إرسال الرد" : "Could not send reply");
+        return;
+      }
+      setSupportReply("");
+      await Promise.all([loadConvo(selectedId), refreshConversations()]);
+      toast.success(lang === "ar" ? "تم إرسال الرد للمعلم" : "Reply sent to teacher");
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر الاتصال" : "Connection failed");
+    } finally {
+      setSendingSupportReply(false);
+    }
+  }
+
+  async function closeSupport() {
+    if (!selectedId) return;
+    const r = await fetch(`${API_BASE}/api/ai-chat/admin/conversations/${selectedId}/close-support`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!r.ok) {
+      toast.error(lang === "ar" ? "تعذّر إنهاء متابعة الدعم" : "Could not close support");
+      return;
+    }
+    await Promise.all([loadConvo(selectedId), refreshConversations()]);
+    toast.success(lang === "ar" ? "عادت المحادثة إلى مرشد حصاد" : "Conversation returned to Hasaad Guide");
   }
 
   const fmtCost = (micro: number | null) =>
@@ -4786,6 +4840,17 @@ function AdminAiChatTab({ lang }: { lang: string }) {
                 }`}
               >
                 <div className="font-medium text-sm truncate">{c.title}</div>
+                {c.supportStatus !== "ai" && (
+                  <div className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    c.supportStatus === "requested"
+                      ? "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                  }`}>
+                    {c.supportStatus === "requested"
+                      ? (lang === "ar" ? "طلب دعم جديد" : "New support request")
+                      : (lang === "ar" ? "قيد المتابعة" : "In support")}
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
                   <span>{c.teacherName || c.teacherEmail || `#${c.teacherId}`}</span>
                   <span>•</span>
@@ -4812,11 +4877,23 @@ function AdminAiChatTab({ lang }: { lang: string }) {
                 className={`rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
                   m.role === "user"
                     ? "bg-emerald-500/10 border border-emerald-500/30"
-                    : "bg-muted border border-border"
+                    : m.role === "admin"
+                      ? "bg-amber-500/10 border border-amber-500/30"
+                      : m.role === "support_system"
+                        ? "bg-blue-500/10 border border-blue-500/30 text-center"
+                        : "bg-muted border border-border"
                 }`}
               >
                 <div className="text-xs font-bold mb-1 flex items-center gap-2 text-muted-foreground">
-                  <span>{m.role === "user" ? (lang === "ar" ? "المعلم" : "Teacher") : (lang === "ar" ? "المساعد" : "Assistant")}</span>
+                  <span>
+                    {m.role === "user"
+                      ? (lang === "ar" ? "المعلم" : "Teacher")
+                      : m.role === "admin"
+                        ? (lang === "ar" ? "دعم حصاد" : "Hasaad Support")
+                        : m.role === "support_system"
+                          ? (lang === "ar" ? "حالة المحادثة" : "Conversation status")
+                          : (lang === "ar" ? "المساعد" : "Assistant")}
+                  </span>
                   {m.cached === 1 && <span className="text-[10px]">⚡ {lang === "ar" ? "ذاكرة" : "cache"}</span>}
                   {m.tokensIn != null && (
                     <span className="ml-auto text-[10px]">
@@ -4828,6 +4905,36 @@ function AdminAiChatTab({ lang }: { lang: string }) {
               </div>
             ))}
           </div>
+          {selectedId && convos.find(c => c.id === selectedId)?.supportStatus !== "ai" && (
+            <div className="border-t border-border bg-background p-3 space-y-2">
+              <textarea
+                value={supportReply}
+                onChange={(e) => setSupportReply(e.target.value)}
+                rows={3}
+                maxLength={24_000}
+                placeholder={lang === "ar" ? "اكتب ردك للمعلم…" : "Write your reply to the teacher…"}
+                className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={closeSupport}
+                  className="rounded-lg border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
+                >
+                  {lang === "ar" ? "إنهاء الدعم وإعادة المرشد" : "Close support"}
+                </button>
+                <button
+                  type="button"
+                  onClick={sendSupportReply}
+                  disabled={!supportReply.trim() || sendingSupportReply}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
+                >
+                  {sendingSupportReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {lang === "ar" ? "إرسال للمعلم" : "Send to teacher"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

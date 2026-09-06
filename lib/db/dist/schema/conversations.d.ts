@@ -54,6 +54,57 @@ export declare const conversations: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        supportStatus: import("drizzle-orm/pg-core").PgColumn<{
+            name: "support_status";
+            tableName: "conversations";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        supportRequestedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "support_requested_at";
+            tableName: "conversations";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        supportAdminId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "support_admin_id";
+            tableName: "conversations";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "conversations";
@@ -94,6 +145,9 @@ export declare const conversations: import("drizzle-orm/pg-core").PgTableWithCol
 export declare const insertConversationSchema: z.ZodObject<{
     teacherId: z.ZodInt;
     title: z.ZodString;
+    supportStatus: z.ZodOptional<z.ZodString>;
+    supportRequestedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    supportAdminId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
 }, {
     out: {};
     in: {};
