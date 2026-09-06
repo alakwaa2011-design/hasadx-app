@@ -143,6 +143,7 @@ const ticTacToeSchema = z.object({
     text: z.string().min(1).max(500),
     category: z.string().min(1).max(80),
     imageUrl: worksheetImagePathSchema.optional(),
+    imageSuggested: z.boolean().optional(),
   })).length(9),
   points: z.number().int().min(0).max(100).optional(),
 });
@@ -162,6 +163,14 @@ const TIC_TAC_TOE_LINES = [
   [0, 4, 8], [2, 4, 6],
 ] as const;
 
+export function findTicTacToeDiversityViolations(cells: Array<{ category: string }>): number[] {
+  if (cells.length !== 9) return TIC_TAC_TOE_LINES.map((_, index) => index);
+  return TIC_TAC_TOE_LINES.flatMap((line, lineIndex) => {
+    const categories = line.map(index => cells[index].category.trim().toLocaleLowerCase());
+    return new Set(categories).size < 3 ? [lineIndex] : [];
+  });
+}
+
 const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine((arr, ctx) => {
   arr.forEach((q, i) => {
     if (q.type === "mcq" && q.correctIndex >= q.options.length) {
@@ -172,15 +181,12 @@ const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine(
       });
     }
     if (q.type === "tic_tac_toe") {
-      TIC_TAC_TOE_LINES.forEach((line, lineIndex) => {
-        const categories = line.map(index => q.cells[index].category.trim().toLocaleLowerCase());
-        if (new Set(categories).size < 3) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: [i, "cells"],
-            message: `Tic-Tac-Toe line ${lineIndex + 1} must contain three different task categories`,
-          });
-        }
+      findTicTacToeDiversityViolations(q.cells).forEach((lineIndex) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [i, "cells"],
+          message: `Tic-Tac-Toe line ${lineIndex + 1} must contain three different task categories`,
+        });
       });
     }
   });
@@ -897,6 +903,7 @@ const countsSchema = z.object({
   short_answer: z.number().int().min(0).max(40).default(2),
   fill_blank: z.number().int().min(0).max(40).default(2),
   matching: z.number().int().min(0).max(10).default(0),
+  tic_tac_toe: z.number().int().min(0).max(1).default(0),
 });
 const aiGenerateBody = z.object({
   language: z.enum(["ar", "en"]).default("ar"),
@@ -939,7 +946,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     };
     language = body.language;
 
-    const total = body.counts.mcq + body.counts.true_false + body.counts.short_answer + body.counts.fill_blank + body.counts.matching;
+    const total = body.counts.mcq + body.counts.true_false + body.counts.short_answer + body.counts.fill_blank + body.counts.matching + body.counts.tic_tac_toe;
     if (total === 0) {
       await refundCredits(req, "لا أنواع أسئلة محددة");
       res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
@@ -1046,7 +1053,7 @@ router.post(
 
       const maxTotal = parsedBody.pages * 30;
       const effectiveCounts = parsedBody.counts;
-      const total = effectiveCounts.mcq + effectiveCounts.true_false + effectiveCounts.short_answer + effectiveCounts.fill_blank + effectiveCounts.matching;
+      const total = effectiveCounts.mcq + effectiveCounts.true_false + effectiveCounts.short_answer + effectiveCounts.fill_blank + effectiveCounts.matching + effectiveCounts.tic_tac_toe;
       if (total === 0) {
         await refundCredits(req, "لا أنواع أسئلة محددة");
         res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
@@ -1151,7 +1158,7 @@ function parseJsonLoose(text: string): any {
 
 export function sanitizeGeneratedQuestions(
   raw: any[],
-  counts: z.infer<typeof aiGenerateBody>["counts"],
+  counts: Omit<z.infer<typeof aiGenerateBody>["counts"], "tic_tac_toe"> & { tic_tac_toe?: number },
 ): z.infer<typeof questionSchema>[] {
   const out: z.infer<typeof questionSchema>[] = [];
   let idx = 0;
@@ -1161,8 +1168,9 @@ export function sanitizeGeneratedQuestions(
     short_answer: counts.short_answer,
     fill_blank: counts.fill_blank,
     matching: counts.matching,
+    tic_tac_toe: counts.tic_tac_toe ?? 0,
   };
-  const tally = { mcq: 0, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0 };
+  const tally = { mcq: 0, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0, tic_tac_toe: 0 };
 
   for (const q of raw) {
     if (!q || typeof q !== "object") continue;
@@ -1252,6 +1260,17 @@ export function sanitizeGeneratedQuestions(
       if (pairs.length < 2) continue;
       out.push({ id, type: "matching", prompt: prompt || undefined, pairs });
       tally.matching++;
+    } else if (type === "tic_tac_toe" && tally.tic_tac_toe < cap.tic_tac_toe) {
+      const cells = Array.isArray(q.cells)
+        ? q.cells.map((cell: any) => ({
+            text: typeof cell?.text === "string" ? cell.text.trim().slice(0, 500) : "",
+            category: typeof cell?.category === "string" ? cell.category.trim().slice(0, 80) : "",
+            imageSuggested: cell?.imageSuggested === true,
+          })).filter((cell: { text: string; category: string }) => cell.text && cell.category).slice(0, 9)
+        : [];
+      if (cells.length !== 9) continue;
+      out.push({ id, type: "tic_tac_toe", prompt, cells });
+      tally.tic_tac_toe++;
     }
   }
 
@@ -1275,6 +1294,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
   if (counts.short_answer > 0) requested.push(ar ? `${counts.short_answer} إجابة قصيرة` : `${counts.short_answer} short-answer`);
   if (counts.fill_blank > 0) requested.push(ar ? `${counts.fill_blank} إكمال الفراغ` : `${counts.fill_blank} fill-in-the-blank`);
   if (counts.matching > 0) requested.push(ar ? `${counts.matching} توصيل (مع 4–6 أزواج)` : `${counts.matching} matching (with 4–6 pairs)`);
+  if (counts.tic_tac_toe > 0) requested.push(ar ? "لوحة تيك تاك توك واحدة من 9 مهام" : "one Tic-Tac-Toe choice board with 9 tasks");
 
   const sourceBlock = sourceText
     ? (ar
@@ -1292,25 +1312,27 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
     ? [
         "أعد ردًّا بصيغة JSON نقية فقط — بدون أي شرح أو ترميز خارج الـ JSON.",
         "صيغة الرد: { \"questions\": [...] }.",
-        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching.",
+        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
         "⚠️ mcq (إلزامي): كل سؤال اختيار متعدد يجب أن يحتوي على حقل options وهو مصفوفة من 4 نصوص مختلفة، وحقل correctIndex بين 0 و 3. لا تكتب سؤال mcq بدون options أبداً.",
         mcqExample,
         "true_false: correct قيمة منطقية (true أو false).",
         "short_answer: prompt هو السؤال، lines رقم بين 1 و 5، answer هو الإجابة.",
         "fill_blank: prompt يحتوي على '____' مكان الفراغ، answer هو الكلمة الصحيحة.",
         "matching: pairs مصفوفة من 4–6 أزواج {left, right}.",
+        "tic_tac_toe: كائن واحد يحتوي prompt وتعليمات الاختيار، وcells مصفوفة من 9 عناصر {text, category, imageSuggested}. اجعل كل text مهمة دقيقة قابلة للتنفيذ ومناسبة للمادة والمرحلة والصعوبة. category نوع نشاط مختصر، ويجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اجعل imageSuggested=true فقط عندما تفيد صورة تعليمية، ولا تنشئ imageUrl.",
         "اجعل الأسئلة دقيقة وتربوية ومناسبة للمرحلة الدراسية.",
       ]
     : [
         "Reply with strict JSON ONLY — no prose, no code fences.",
         "Reply shape: { \"questions\": [...] }.",
-        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching.",
+        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
         "⚠️ mcq (MANDATORY): every MCQ must have an 'options' array of EXACTLY 4 distinct strings and a 'correctIndex' (0–3). Never omit options.",
         mcqExample,
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains '____' where the blank goes; answer is the missing word.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
+        "tic_tac_toe: one object with prompt and exactly 9 cells shaped {text, category, imageSuggested}. Tasks must be precise and appropriate for the subject, grade, and difficulty. All three categories must differ in every row, column, and both diagonals. Set imageSuggested=true only where an educational image helps; never produce imageUrl.",
         "Keep questions accurate, pedagogical, and grade-appropriate.",
       ];
 
@@ -1358,6 +1380,7 @@ function buildExtractionPrompt(opts: {
   if (c.short_answer > 0) requested.push(ar ? `${c.short_answer} إجابة قصيرة` : `${c.short_answer} short-answer`);
   if (c.fill_blank > 0) requested.push(ar ? `${c.fill_blank} إكمال الفراغ` : `${c.fill_blank} fill-in-the-blank`);
   if (c.matching > 0) requested.push(ar ? `${c.matching} توصيل` : `${c.matching} matching`);
+  if (c.tic_tac_toe > 0) requested.push(ar ? "لوحة تيك تاك توك واحدة من 9 مهام" : "one Tic-Tac-Toe choice board with 9 tasks");
 
   const sourceBlock = opts.sourceText
     ? (ar
@@ -1369,23 +1392,25 @@ function buildExtractionPrompt(opts: {
     ? [
         "أعد ردًّا بصيغة JSON نقية فقط — بدون أي شرح أو ترميز.",
         "صيغة الرد: { \"questions\": [...] }.",
-        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching.",
+        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
         "للـ mcq: options مصفوفة من 4 خيارات نصّية بالضبط (لا أقل ولا أكثر)، و correctIndex فهرس صحيح بين 0 و 3.",
         "للـ true_false: correct قيمة منطقية.",
         "للـ short_answer: prompt هو السؤال، و lines رقم بين 1 و 5، و answer هو الإجابة المُقترحة.",
         "للـ fill_blank: prompt يحتوي على \"____\" مكان الفراغ، و answer هو الكلمة الصحيحة.",
         "للـ matching: pairs مصفوفة من 4-6 أزواج {left, right}.",
+        "للـ tic_tac_toe: prompt وتعليمات اختيار، وcells من 9 عناصر {text, category, imageSuggested}. يجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اقترح الصورة عبر imageSuggested فقط ولا تنشئ imageUrl.",
         "اعتمد فقط على المحتوى المعطى. لا تخترع حقائق غير واردة فيه.",
       ]
     : [
         "Reply with strict JSON ONLY — no prose, no code fences.",
         "Reply shape: { \"questions\": [...] }.",
-        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching.",
+        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
         "mcq: options must be an array of EXACTLY 4 strings (no more, no less); correctIndex is 0–3.",
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains \"____\" where the blank goes; answer is the missing word/phrase.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
+        "tic_tac_toe: prompt plus exactly 9 cells shaped {text, category, imageSuggested}; all three categories must differ in every row, column, and both diagonals. Suggest visuals only with imageSuggested and never create imageUrl.",
         "Ground questions ONLY in the provided source. Do not invent facts not present.",
       ];
 

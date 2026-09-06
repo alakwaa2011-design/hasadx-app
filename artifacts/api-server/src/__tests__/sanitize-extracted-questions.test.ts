@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { sanitizeGeneratedQuestions } from "../routes/worksheets";
+import { findTicTacToeDiversityViolations, sanitizeGeneratedQuestions } from "../routes/worksheets";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,12 @@ const DEFAULT_EXTRACT_COUNTS = {
   fill_blank: 0,
   matching: 0,
 };
+
+const VALID_TIC_TAC_TOE_CATEGORIES = [
+  "تذكّر", "فسّر", "طبّق",
+  "قارن", "ارسم", "اكتب",
+  "حلّل", "أنشئ", "برّر",
+];
 
 // ── Equivalent-format normalization (never inventing answers) ───────────────
 
@@ -103,6 +109,46 @@ describe("equivalent-format normalization", () => {
   it("rejects optionA..D shape when one option is empty (never invents options)", () => {
     const raw = [{ type: "mcq", prompt: "Q?", optionA: "Alpha", optionB: "", optionC: "Gamma", optionD: "Delta", correctAnswer: "A" }];
     expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+});
+
+describe("Tic-Tac-Toe AI board normalization", () => {
+  it("keeps nine precise tasks and image suggestions when a board is requested", () => {
+    const raw = [{
+      type: "tic_tac_toe",
+      prompt: "اختر ثلاثة مربعات متصلة",
+      cells: VALID_TIC_TAC_TOE_CATEGORIES.map((category, index) => ({
+        category,
+        text: `مهمة تعليمية دقيقة ${index + 1}`,
+        imageSuggested: index === 4,
+        imageUrl: "https://example.com/model-must-not-control-images.png",
+      })),
+    }];
+
+    const result = sanitizeGeneratedQuestions(raw, {
+      ...DEFAULT_EXTRACT_COUNTS,
+      mcq: 0,
+      tic_tac_toe: 1,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "tic_tac_toe",
+      cells: expect.arrayContaining([
+        expect.objectContaining({ imageSuggested: true }),
+      ]),
+    });
+    expect((result[0] as any).cells.every((cell: any) => cell.imageUrl === undefined)).toBe(true);
+  });
+
+  it("detects repeated task categories in every row, column, or diagonal", () => {
+    expect(findTicTacToeDiversityViolations(
+      VALID_TIC_TAC_TOE_CATEGORIES.map(category => ({ category })),
+    )).toEqual([]);
+
+    const invalid = VALID_TIC_TAC_TOE_CATEGORIES.map(category => ({ category }));
+    invalid[8] = { category: invalid[0].category };
+    expect(findTicTacToeDiversityViolations(invalid)).toContain(6);
   });
 });
 

@@ -60,14 +60,14 @@ interface WsPrefs {
   contentLang?: "ar" | "en";
   aiDifficulty?: "easy" | "medium" | "hard" | "mixed";
   aiPages?: 1 | 2 | 3;
-  aiCounts?: { mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number };
+  aiCounts?: { mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number };
 }
 
 const WS_DEFAULT_PREFS: Required<WsPrefs> = {
   contentLang: "ar",
   aiDifficulty: "medium",
   aiPages: 1,
-  aiCounts: { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0 },
+  aiCounts: { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
 };
 
 const WS_VALID_DIFFICULTIES = new Set(["easy", "medium", "hard", "mixed"]);
@@ -88,9 +88,9 @@ function validateWsPrefs(raw: unknown): WsPrefs {
     const c = p.aiCounts as Record<string, unknown>;
     const safe = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 40 ? Math.round(v) : undefined;
     const mcq = safe(c.mcq); const tf = safe(c.true_false); const sa = safe(c.short_answer);
-    const fb = safe(c.fill_blank); const ma = safe(c.matching);
-    if (mcq !== undefined && tf !== undefined && sa !== undefined && fb !== undefined && ma !== undefined) {
-      result.aiCounts = { mcq, true_false: tf, short_answer: sa, fill_blank: fb, matching: ma };
+    const fb = safe(c.fill_blank); const ma = safe(c.matching); const ttt = safe(c.tic_tac_toe) ?? 0;
+    if (mcq !== undefined && tf !== undefined && sa !== undefined && fb !== undefined && ma !== undefined && ttt <= 1) {
+      result.aiCounts = { mcq, true_false: tf, short_answer: sa, fill_blank: fb, matching: ma, tic_tac_toe: ttt };
     }
   }
   return result;
@@ -161,7 +161,7 @@ interface QTF { id: string; type: "true_false"; prompt: string; correct: boolean
 interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number }
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
-interface QTicTacToeCell { text: string; category: string; imageUrl?: string }
+interface QTicTacToeCell { text: string; category: string; imageUrl?: string; imageSuggested?: boolean }
 interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: QTicTacToeCell[]; points?: number }
 type Question = QMcq | QTF | QShort | QFill | QMatch | QTicTacToe;
 const TIC_TAC_TOE_LINES = [
@@ -330,8 +330,8 @@ export default function WorksheetCreate() {
   const [sourceText, setSourceText] = useState("");
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
   const [aiPages, setAiPages] = useState<1 | 2 | 3>(_wsPrefs.aiPages ?? 1);
-  const [aiCounts, setAiCounts] = useState<{ mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number }>(
-    _wsPrefs.aiCounts ?? { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0 },
+  const [aiCounts, setAiCounts] = useState<{ mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number }>(
+    _wsPrefs.aiCounts ?? { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
   );
   const [generating, setGenerating] = useState(false);
   const [activeAiTab, setActiveAiTab] = useState("topic");
@@ -460,7 +460,7 @@ export default function WorksheetCreate() {
   }, []);
 
   const totalQs = questions.length;
-  const aiTotal = aiCounts.mcq + aiCounts.true_false + aiCounts.short_answer + aiCounts.fill_blank + aiCounts.matching;
+  const aiTotal = aiCounts.mcq + aiCounts.true_false + aiCounts.short_answer + aiCounts.fill_blank + aiCounts.matching + aiCounts.tic_tac_toe;
   const aiMaxTotal = aiPages * 30;
   const canSave = title.trim().length >= 2 && totalQs >= 1;
 
@@ -1129,12 +1129,12 @@ export default function WorksheetCreate() {
                   <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                     <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
                   </div>
-                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
+                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching", "tic_tac_toe"] as const).map(k => (
                     <CompactStepper
                       key={k}
                       label={typeLabel(k, ar)}
                       value={aiCounts[k]}
-                      max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                      max={k === "tic_tac_toe" ? 1 : k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
                       onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
                     />
                   ))}
@@ -2091,7 +2091,14 @@ function QuestionEditor({
                 <div key={i} className="rounded-xl border bg-background p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-primary">{ar ? `المربع ${i + 1}` : `Square ${i + 1}`}</span>
-                    <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5">
+                      {cell.imageSuggested && !cell.imageUrl && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                          {ar ? "تُفيدها صورة" : "Image suggested"}
+                        </span>
+                      )}
+                      <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
                   </div>
                   <input
                     value={cell.category}
