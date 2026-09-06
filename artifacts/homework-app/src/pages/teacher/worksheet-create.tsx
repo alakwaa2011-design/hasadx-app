@@ -2219,15 +2219,20 @@ function QuestionEditor({
                       </button>
                     </div>
                   </div>
-                  <input
-                    value={cell.category}
-                    onChange={e => {
-                      const cells = question.cells.map((item, j) => j === i ? { ...item, category: e.target.value } : item);
-                      onUpdate({ cells } as any);
-                    }}
-                    className="w-full h-9 px-3 rounded-lg border bg-background text-xs font-bold"
-                    placeholder={ar ? "نوع المهمة: رسم، تفسير..." : "Task type: draw, explain..."}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-[9px] text-muted-foreground">
+                      {ar ? "تصنيف داخلي" : "Internal category"}
+                    </span>
+                    <input
+                      value={cell.category}
+                      onChange={e => {
+                        const cells = question.cells.map((item, j) => j === i ? { ...item, category: e.target.value } : item);
+                        onUpdate({ cells } as any);
+                      }}
+                      className="min-w-0 flex-1 h-7 px-2 rounded-md border bg-muted/30 text-[10px] text-muted-foreground"
+                      placeholder={ar ? "رسم، تفسير..." : "Draw, explain..."}
+                    />
+                  </div>
                   <textarea
                     value={cell.text}
                     onChange={e => {

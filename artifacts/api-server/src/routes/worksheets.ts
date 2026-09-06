@@ -1522,7 +1522,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
         "short_answer: prompt هو السؤال، lines رقم بين 1 و 5، answer هو الإجابة.",
         "fill_blank: prompt يحتوي على '____' مكان الفراغ، answer هو الكلمة الصحيحة.",
         "matching: pairs مصفوفة من 4–6 أزواج {left, right}.",
-        "tic_tac_toe: كائن واحد يحتوي prompt وتعليمات الاختيار، وcells مصفوفة من 9 عناصر {text, category, imageSuggested}. اجعل كل text مهمة دقيقة قابلة للتنفيذ ومناسبة للمادة والمرحلة والصعوبة. category نوع نشاط مختصر، ويجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اجعل imageSuggested=true فقط عندما تفيد صورة تعليمية، ولا تنشئ imageUrl.",
+        "tic_tac_toe: كائن واحد يحتوي prompt وتعليمات الاختيار، وcells مصفوفة من 9 عناصر {text, category, imageSuggested}. اكتب كل text كتوجيه مباشر وواضح للطالب، يحدد بدقة ما الذي سيكتبه أو يرسمه أو يجيب عنه داخل المربع، بجملة قصيرة مناسبة لمساحة الكتابة. لا تجعل التصنيف بديلًا عن نص المهمة. category تصنيف تربوي داخلي مختصر، ويجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اجعل imageSuggested=true فقط عندما تساعد صورة تعليمية محددة على فهم المهمة، ولا تنشئ imageUrl.",
         "اجعل الأسئلة دقيقة وتربوية ومناسبة للمرحلة الدراسية.",
       ]
     : [
@@ -1535,7 +1535,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains '____' where the blank goes; answer is the missing word.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
-        "tic_tac_toe: one object with prompt and exactly 9 cells shaped {text, category, imageSuggested}. Tasks must be precise and appropriate for the subject, grade, and difficulty. All three categories must differ in every row, column, and both diagonals. Set imageSuggested=true only where an educational image helps; never produce imageUrl.",
+        "tic_tac_toe: one object with prompt and exactly 9 cells shaped {text, category, imageSuggested}. Write every text as a short, direct student instruction that states exactly what to write, draw, or answer inside the square. Never use the category as a substitute for the task. category is a short internal teaching label. All three categories must differ in every row, column, and both diagonals. Set imageSuggested=true only where a specific educational visual improves understanding; never produce imageUrl.",
         "Keep questions accurate, pedagogical, and grade-appropriate.",
       ];
 
@@ -1601,7 +1601,7 @@ function buildExtractionPrompt(opts: {
         "للـ short_answer: prompt هو السؤال، و lines رقم بين 1 و 5، و answer هو الإجابة المُقترحة.",
         "للـ fill_blank: prompt يحتوي على \"____\" مكان الفراغ، و answer هو الكلمة الصحيحة.",
         "للـ matching: pairs مصفوفة من 4-6 أزواج {left, right}.",
-        "للـ tic_tac_toe: prompt وتعليمات اختيار، وcells من 9 عناصر {text, category, imageSuggested}. يجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اقترح الصورة عبر imageSuggested فقط ولا تنشئ imageUrl.",
+        "للـ tic_tac_toe: prompt وتعليمات اختيار، وcells من 9 عناصر {text, category, imageSuggested}. اكتب text كتوجيه مباشر وقصير يوضح للطالب بالضبط ما سيكتبه أو يرسمه أو يجيب عنه داخل المربع، ولا تستخدم category بدلًا من المهمة. يجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اقترح صورة تعليمية محددة عبر imageSuggested فقط عندما تحسن فهم المهمة، ولا تنشئ imageUrl.",
         "اعتمد فقط على المحتوى المعطى. لا تخترع حقائق غير واردة فيه.",
       ]
     : [
@@ -1613,7 +1613,7 @@ function buildExtractionPrompt(opts: {
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains \"____\" where the blank goes; answer is the missing word/phrase.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
-        "tic_tac_toe: prompt plus exactly 9 cells shaped {text, category, imageSuggested}; all three categories must differ in every row, column, and both diagonals. Suggest visuals only with imageSuggested and never create imageUrl.",
+        "tic_tac_toe: prompt plus exactly 9 cells shaped {text, category, imageSuggested}. Make every text a short, direct instruction stating exactly what the student should write, draw, or answer in the square; category is internal and must not replace the task. All three categories must differ in every row, column, and both diagonals. Suggest a specific useful visual only with imageSuggested and never create imageUrl.",
         "Ground questions ONLY in the provided source. Do not invent facts not present.",
       ];
 

@@ -107,7 +107,7 @@ function paginateByEstimate(
       case "short_answer": return base + (q.lines ?? 2) * 9;
       case "fill_blank": return base + 3;
       case "matching": return base + q.pairs.length * lineH * 1.3;
-      case "tic_tac_toe": return Math.max(150, base + 135);
+      case "tic_tac_toe": return Math.max(185, base + 165);
     }
   };
   const pages: Question[][] = [];
@@ -1957,13 +1957,26 @@ function QuestionView({
         </div>
       )}
       {q.type === "tic_tac_toe" && (
-        <div className="ws-tic-board" role="group" aria-label={ar ? "لوحة اختيار تيك تاك توك" : "Tic-Tac-Toe choice board"}>
+        <div className="ws-tic-board" role="group" aria-label={ar ? "لوحة الاختيار — ثلاثة على خط" : "Three-in-a-row choice board"}>
           {q.cells.map((cell, i) => (
             <div className="ws-tic-cell" key={i}>
               <span className="ws-tic-check" aria-hidden="true" />
-              <span className="ws-tic-category">{cell.category}</span>
               {cell.imageUrl && <img className="ws-tic-image" src={resolveImageUrl(cell.imageUrl) ?? ""} alt="" />}
-              <span className="ws-tic-text">{cell.text}</span>
+              <span className="ws-tic-text">
+                <EditSpan
+                  text={cell.text}
+                  editMode={em}
+                  style={questionStyle?.fields?.find(field => field.key === `tic-cell:${i}`)}
+                  onSelect={() => onSelectField?.(`tic-cell:${i}`)}
+                  onCommit={value => {
+                    const cells = q.cells.map((item, index) => index === i ? { ...item, text: value } : item);
+                    edit({ ...q, cells });
+                  }}
+                />
+              </span>
+              <span className="ws-tic-writing" aria-hidden="true">
+                <span /><span /><span />
+              </span>
             </div>
           ))}
         </div>
@@ -2495,14 +2508,14 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       }
       .ws-tic-cell {
         position: relative;
-        min-height: 43mm;
-        padding: 4mm 3mm 3mm;
+        min-height: 55mm;
+        padding: 7mm 4mm 3.5mm;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 2mm;
-        text-align: center;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 2.5mm;
+        text-align: start;
         border-inline-end: 0.3mm solid color-mix(in srgb, ${TC} 45%, transparent);
         border-bottom: 0.3mm solid color-mix(in srgb, ${TC} 45%, transparent);
       }
@@ -2517,18 +2530,32 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         border: 0.35mm solid ${TC};
         border-radius: 1mm;
       }
-      .ws-tic-category {
-        color: ${TC};
-        font-size: 8pt;
-        font-weight: 800;
-      }
       .ws-tic-image {
         width: 100%;
-        max-height: 20mm;
+        max-height: 22mm;
         object-fit: contain;
         border-radius: 1.5mm;
       }
-      .ws-tic-text { font-size: 9pt; line-height: 1.55; font-weight: 600; }
+      .ws-tic-text {
+        font-size: 9.5pt;
+        line-height: 1.65;
+        font-weight: 700;
+        text-wrap: pretty;
+      }
+      .ws-tic-writing {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 17mm;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 6mm;
+        margin-top: auto;
+      }
+      .ws-tic-writing > span {
+        display: block;
+        height: 0;
+        border-bottom: 0.25mm dotted ${TC}66;
+      }
       .ws-match-tab { flex: 0 0 0; }
       .ws-match-divider {
         background: ${TC}22;
