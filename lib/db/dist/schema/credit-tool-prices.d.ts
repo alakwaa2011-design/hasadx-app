@@ -36,6 +36,23 @@ export declare const creditToolPricesTable: import("drizzle-orm/pg-core").PgTabl
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        toolNameEn: import("drizzle-orm/pg-core").PgColumn<{
+            name: "tool_name_en";
+            tableName: "credit_tool_prices";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         category: import("drizzle-orm/pg-core").PgColumn<{
             name: "category";
             tableName: "credit_tool_prices";

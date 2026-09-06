@@ -80,16 +80,47 @@ describe("AI cost report helpers", () => {
 
   it("normalizes each grouped breakdown into camelCase API fields", () => {
     expect(normalizeAiCostReportBreakdown({
-      provider: "openai", model: "gpt-5", tool_key: "ai-chat", day: "2026-01-01",
+      provider: "openai", model: "gpt-5", tool_key: "ai-chat",
+      tool_name_ar: "مرشد حصاد (محادثة)", tool_name_en: "Hasaad Guide Chat",
+      day: "2026-01-01",
       attempts: "2", successful: "1", failed: "1",
       cached: "0", tokens_in: "11", tokens_out: "7", cost_micro_usd: "55",
       cost_unavailable_count: "1", refunded_operations: "1",
       completed_credit_points: "25", refunded_credit_points: "10",
     })).toEqual({
-      provider: "openai", model: "gpt-5", toolKey: "ai-chat", day: "2026-01-01",
+      provider: "openai", model: "gpt-5", toolKey: "ai-chat",
+      toolNameAr: "مرشد حصاد (محادثة)", toolNameEn: "Hasaad Guide Chat",
+      day: "2026-01-01",
       attempts: 2, successful: 1, failed: 1, cached: 0, tokensIn: 11, tokensOut: 7,
       costMicroUsd: 55, costUnavailableCount: 1, distinctTeachers: 0, refundedOperations: 1,
       completedCreditPoints: 25, refundedCreditPoints: 10,
+    });
+  });
+
+  it("labels internal unpriced AI operations from the central catalog", () => {
+    expect(normalizeAiCostReportBreakdown({
+      tool_key: "assignment-ai-grading",
+    })).toMatchObject({
+      toolKey: "assignment-ai-grading",
+      toolNameAr: "تصحيح الواجب بالذكاء الاصطناعي",
+      toolNameEn: "AI Assignment Grading",
+    });
+
+    expect(normalizeAiCostReportBreakdown({
+      tool_key: "presentation-outline",
+    })).toMatchObject({
+      toolNameAr: "إنشاء مخطط العرض",
+      toolNameEn: "Generate Presentation Outline",
+    });
+  });
+
+  it("gives newly emitted unknown keys a readable fallback label", () => {
+    expect(normalizeAiCostReportBreakdown({
+      tool_key: "future-ai-tool",
+    })).toMatchObject({
+      toolKey: "future-ai-tool",
+      toolNameAr: "أداة ذكاء: Future AI Tool",
+      toolNameEn: "Future AI Tool",
     });
   });
 });

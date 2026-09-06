@@ -625,6 +625,7 @@ async function runSchemaMigrations() {
       CREATE TABLE IF NOT EXISTS credit_tool_prices (
         tool_key               TEXT PRIMARY KEY,
         tool_name_ar           TEXT NOT NULL,
+        tool_name_en           TEXT,
         category               TEXT NOT NULL DEFAULT 'ai',
         credits_cost           INTEGER NOT NULL DEFAULT 0,
         default_credits_cost   INTEGER NOT NULL DEFAULT 0,
@@ -634,6 +635,10 @@ async function runSchemaMigrations() {
         updated_by             INTEGER,
         updated_at             TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE credit_tool_prices
+      ADD COLUMN IF NOT EXISTS tool_name_en TEXT
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS credit_accounts (
@@ -786,41 +791,42 @@ async function runSchemaMigrations() {
 
     // ── Seed default tool prices (INSERT only — never overwrite customized values) ──
     await db.execute(sql`
-      INSERT INTO credit_tool_prices (tool_key, tool_name_ar, category, credits_cost, default_credits_cost, timeout_seconds)
+      INSERT INTO credit_tool_prices (tool_key, tool_name_ar, tool_name_en, category, credits_cost, default_credits_cost, timeout_seconds)
       VALUES
-        ('whiteboard',       'السبورة الذكية',          'ai',     5,  5,  120),
-        ('mindmap',          'الخريطة الذهنية',         'ai',     5,  5,  120),
-        ('ai-questions',     'توليد أسئلة AI',          'ai',    10, 10,  120),
-        ('ai-image',         'توليد صورة AI',           'ai',    10, 10,   60),
-        ('worksheet',        'ورقة العمل',              'ai',    15, 15,  120),
-        ('worksheet-tic-tac-toe-cell', 'إعادة توليد مربع تيك تاك توك', 'ai', 2, 2, 120),
-        ('lesson-plan',      'خطة الدرس',               'ai',    15, 15,  120),
-        ('pdf-to-questions', 'استخراج أسئلة من PDF',    'ai',    15, 15,  120),
-        ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'ai', 10, 10, 180),
-        ('presentation',     'العرض التقديمي',           'ai',    20, 20,  300),
-        ('presentation-slide','توليد شريحة واحدة',       'ai',     5,  5,  120),
-        ('video-interactive','الفيديو التفاعلي',         'ai',    20, 20,  180),
-        ('adaptive-test',    'الاختبار التكيّفي',        'ai',    20, 20,  120),
-        ('tts',              'تحويل النص إلى صوت',      'ai',     2,  2,  120),
-        ('ai-chat',          'مرشد حصاد (محادثة)',       'ai',     1,  1,   60),
-        ('arena-generate',   'توليد أسئلة الميدان',      'ai',     5,  5,  120),
-        ('quick-challenge',  'التحدي السريع (AI)',       'ai',     5,  5,  120),
-        ('arena',            'ميدان التحدي',            'game',   0,  0,   60),
-        ('hack',             'لعبة هاك',                'game',   0,  0,   60),
-        ('solo',             'التحدي الفردي',           'game',   0,  0,   60),
-        ('flags',            'لعبة الأعلام',            'game',   0,  0,   60),
-        ('colors',           'لعبة الألوان',            'game',   0,  0,   60),
-        ('memory',           'الذاكرة',                 'game',   0,  0,   60),
-        ('multiply',         'الضرب السريع',            'game',   0,  0,   60),
-        ('scramble',         'الكلمات المبعثرة',        'game',   0,  0,   60),
-        ('capitals',         'عواصم العالم',            'game',   0,  0,   60),
-        ('million',          'من سيربح المليون',        'game',   0,  0,   60),
-        ('stroop',           'اختبار ستروب',            'game',   0,  0,   60),
-        ('secret-game',      'اكتشف السر',              'game',   0,  0,   60),
-        ('letrly',           'كلمة اليوم',              'game',   0,  0,   60),
-        ('assignments',      'الواجبات',               'tool',    0,  0,   60),
-        ('video-lessons',    'دروس الفيديو',            'tool',    0,  0,   60)
-      ON CONFLICT (tool_key) DO NOTHING
+        ('whiteboard',       'السبورة الذكية',          'Smart Whiteboard',                 'ai',     5,  5,  120),
+        ('mindmap',          'الخريطة الذهنية',         'Mind Map',                         'ai',     5,  5,  120),
+        ('ai-questions',     'توليد أسئلة AI',          'AI Question Generation',           'ai',    10, 10,  120),
+        ('ai-image',         'توليد صورة AI',           'AI Image Generation',              'ai',    10, 10,   60),
+        ('worksheet',        'ورقة العمل',              'Worksheet',                        'ai',    15, 15,  120),
+        ('worksheet-tic-tac-toe-cell', 'إعادة توليد مربع تيك تاك توك', 'Regenerate Tic-Tac-Toe Square', 'ai', 2, 2, 120),
+        ('lesson-plan',      'خطة الدرس',               'Lesson Plan',                      'ai',    15, 15,  120),
+        ('pdf-to-questions', 'استخراج أسئلة من PDF',    'Extract Questions from PDF',       'ai',    15, 15,  120),
+        ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'Extract Questions from Source', 'ai', 10, 10, 180),
+        ('presentation',     'العرض التقديمي',           'Presentation',                     'ai',    20, 20,  300),
+        ('presentation-slide','توليد شريحة واحدة',       'Generate One Slide',               'ai',     5,  5,  120),
+        ('video-interactive','الفيديو التفاعلي',         'Interactive Video',                'ai',    20, 20,  180),
+        ('adaptive-test',    'الاختبار التكيّفي',        'Adaptive Test',                    'ai',    20, 20,  120),
+        ('tts',              'تحويل النص إلى صوت',      'Text to Speech',                   'ai',     2,  2,  120),
+        ('ai-chat',          'مرشد حصاد (محادثة)',       'Hasaad Guide Chat',                'ai',     1,  1,   60),
+        ('arena-generate',   'توليد أسئلة الميدان',      'Arena Question Generation',        'ai',     5,  5,  120),
+        ('quick-challenge',  'التحدي السريع (AI)',       'AI Quick Challenge',               'ai',     5,  5,  120),
+        ('arena',            'ميدان التحدي',            'Challenge Arena',                  'game',   0,  0,   60),
+        ('hack',             'لعبة هاك',                'Hack Game',                        'game',   0,  0,   60),
+        ('solo',             'التحدي الفردي',           'Solo Challenge',                   'game',   0,  0,   60),
+        ('flags',            'لعبة الأعلام',            'Flags Game',                       'game',   0,  0,   60),
+        ('colors',           'لعبة الألوان',            'Colors Game',                      'game',   0,  0,   60),
+        ('memory',           'الذاكرة',                 'Memory Game',                      'game',   0,  0,   60),
+        ('multiply',         'الضرب السريع',            'Quick Multiplication',             'game',   0,  0,   60),
+        ('scramble',         'الكلمات المبعثرة',        'Word Scramble',                    'game',   0,  0,   60),
+        ('capitals',         'عواصم العالم',            'World Capitals',                   'game',   0,  0,   60),
+        ('million',          'من سيربح المليون',        'Who Wants to Be a Millionaire',    'game',   0,  0,   60),
+        ('stroop',           'اختبار ستروب',            'Stroop Test',                      'game',   0,  0,   60),
+        ('secret-game',      'اكتشف السر',              'Discover the Secret',              'game',   0,  0,   60),
+        ('letrly',           'كلمة اليوم',              'Word of the Day',                  'game',   0,  0,   60),
+        ('assignments',      'الواجبات',                'Assignments',                      'tool',   0,  0,   60),
+        ('video-lessons',    'دروس الفيديو',            'Video Lessons',                    'tool',   0,  0,   60)
+      ON CONFLICT (tool_key) DO UPDATE
+      SET tool_name_en = COALESCE(credit_tool_prices.tool_name_en, EXCLUDED.tool_name_en)
     `);
     logger.info("Credits tables ready");
   } catch (err) {

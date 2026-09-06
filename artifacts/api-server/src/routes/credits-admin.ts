@@ -14,6 +14,7 @@ import {
   notifyTeacherOfAward,
   notifyTeachersOfCreditAward,
 } from "../lib/credit-award-notifications";
+import { getAiToolLabel } from "../lib/ai-tool-labels";
 
 const router: IRouter = Router();
 
@@ -57,6 +58,8 @@ export function normalizeAiCostReportTotals(row: Record<string, unknown> | undef
 
 export function normalizeAiCostReportBreakdown(row: Record<string, unknown>) {
   const number = (value: unknown) => Number(value ?? 0);
+  const nonemptyString = (value: unknown) =>
+    typeof value === "string" && value.trim() ? value.trim() : undefined;
   const base = {
     attempts: number(row.attempts),
     successful: number(row.successful),
@@ -74,7 +77,13 @@ export function normalizeAiCostReportBreakdown(row: Record<string, unknown>) {
   const dimensions: Record<string, string> = {};
   if (row.provider != null) dimensions.provider = String(row.provider);
   if (row.model != null) dimensions.model = String(row.model);
-  if (row.tool_key != null) dimensions.toolKey = String(row.tool_key);
+  if (row.tool_key != null) {
+    const toolKey = String(row.tool_key);
+    const fallbackLabel = getAiToolLabel(toolKey);
+    dimensions.toolKey = toolKey;
+    dimensions.toolNameAr = nonemptyString(row.tool_name_ar) ?? fallbackLabel.ar;
+    dimensions.toolNameEn = nonemptyString(row.tool_name_en) ?? fallbackLabel.en;
+  }
   if (row.day != null) dimensions.day = String(row.day);
   return { ...dimensions, ...base };
 }
@@ -170,7 +179,10 @@ router.get("/ai-cost-report", async (req, res) => {
       `),
       db.execute(sql`
         ${rangedOperations}
-        SELECT tool_key, count(*)::int AS attempts,
+        SELECT operations.tool_key,
+          prices.tool_name_ar,
+          prices.tool_name_en,
+          count(*)::int AS attempts,
           count(*) FILTER (WHERE status = 'succeeded')::int AS successful, count(*) FILTER (WHERE status = 'failed')::int AS failed,
           count(*) FILTER (WHERE status = 'cached')::int AS cached, coalesce(sum(tokens_in),0)::bigint AS tokens_in,
           coalesce(sum(tokens_out),0)::bigint AS tokens_out, coalesce(sum(cost_micro_usd),0)::bigint AS cost_micro_usd,
@@ -179,8 +191,10 @@ router.get("/ai-cost-report", async (req, res) => {
           count(*) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded')::int AS refunded_operations,
           coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'completed'), 0)::bigint AS completed_credit_points,
           coalesce(sum(abs(credit_amount)) FILTER (WHERE operation_call_rank = 1 AND credit_status = 'refunded'), 0)::bigint AS refunded_credit_points
-        FROM ranged_operations
-        GROUP BY tool_key ORDER BY tool_key
+        FROM ranged_operations operations
+        LEFT JOIN credit_tool_prices prices ON prices.tool_key = operations.tool_key
+        GROUP BY operations.tool_key, prices.tool_name_ar, prices.tool_name_en
+        ORDER BY operations.tool_key
       `),
       db.execute(sql`
         ${rangedOperations}

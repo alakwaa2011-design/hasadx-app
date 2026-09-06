@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 export const creditToolPricesTable = pgTable("credit_tool_prices", {
   toolKey:           text("tool_key").primaryKey(),
   toolNameAr:        text("tool_name_ar").notNull(),
+  toolNameEn:        text("tool_name_en"),
   category:          text("category").notNull().default("ai"),
   creditsCost:       integer("credits_cost").notNull().default(0),
   defaultCreditsCost:integer("default_credits_cost").notNull().default(0),
