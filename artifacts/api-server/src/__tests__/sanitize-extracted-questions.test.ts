@@ -10,7 +10,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { findTicTacToeDiversityViolations, sanitizeGeneratedQuestions } from "../routes/worksheets";
+import {
+  buildTicTacToeDiversityRetryPrompt,
+  findTicTacToeDiversityViolations,
+  sanitizeGeneratedQuestions,
+} from "../routes/worksheets";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -149,6 +153,23 @@ describe("Tic-Tac-Toe AI board normalization", () => {
     const invalid = VALID_TIC_TAC_TOE_CATEGORIES.map(category => ({ category }));
     invalid[8] = { category: invalid[0].category };
     expect(findTicTacToeDiversityViolations(invalid)).toContain(6);
+  });
+
+  it.each([
+    [0, [0, 1]], [1, [3, 4]], [2, [6, 7]],
+    [3, [0, 3]], [4, [1, 4]], [5, [2, 5]],
+    [6, [0, 4]], [7, [2, 4]],
+  ])("detects a repeated category on board line %i", (lineIndex, [first, second]) => {
+    const cells = VALID_TIC_TAC_TOE_CATEGORIES.map(category => ({ category }));
+    cells[second] = { category: cells[first].category };
+    expect(findTicTacToeDiversityViolations(cells)).toContain(lineIndex);
+  });
+
+  it("builds a single retry instruction that explicitly checks all eight lines", () => {
+    const retryPrompt = buildTicTacToeDiversityRetryPrompt("original", "en");
+    expect(retryPrompt).toContain("original");
+    expect(retryPrompt).toContain("all eight board lines");
+    expect(retryPrompt).toContain("Regenerate the complete response once");
   });
 });
 

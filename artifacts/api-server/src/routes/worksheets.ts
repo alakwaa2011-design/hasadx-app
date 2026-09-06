@@ -171,6 +171,32 @@ export function findTicTacToeDiversityViolations(cells: Array<{ category: string
   });
 }
 
+function hasTicTacToeDiversityIssues(error: z.ZodError): boolean {
+  return error.issues.some(issue =>
+    issue.message.startsWith("Tic-Tac-Toe line "),
+  );
+}
+
+export function buildTicTacToeDiversityRetryPrompt(
+  originalPrompt: string,
+  language: "ar" | "en",
+): string {
+  const correction = language === "ar"
+    ? [
+        "المحاولة السابقة خالفت شرط تنوع لوحة تيك تاك توك.",
+        "أعد توليد الرد كاملًا مرة واحدة بصيغة JSON نفسها.",
+        "راجع المسارات الثمانية للوحة (3 صفوف، 3 أعمدة، وقطران): يجب أن تحتوي كل ثلاثة مربعات في كل مسار على ثلاث فئات نشاط مختلفة.",
+        "لا تُرجع شرحًا أو Markdown.",
+      ].join("\n")
+    : [
+        "The previous attempt violated the Tic-Tac-Toe board diversity rule.",
+        "Regenerate the complete response once in the same JSON shape.",
+        "Check all eight board lines (3 rows, 3 columns, and 2 diagonals): every line's three cells must use three different activity categories.",
+        "Return no prose or Markdown.",
+      ].join("\n");
+  return `${originalPrompt}\n\n${correction}`;
+}
+
 const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine((arr, ctx) => {
   arr.forEach((q, i) => {
     if (q.type === "mcq" && q.correctIndex >= q.options.length) {
@@ -965,16 +991,38 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     const system = body.language === "ar"
       ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
       : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
-    const text = await runTierCompletion({ tier, prompt, system, maxTokens: 4000 + body.pages * 4000, usage: { req, toolKey: "worksheet", callKey: "generate:completion" } });
-    const json = parseJsonLoose(text);
-    const raw = Array.isArray(json?.questions) ? json.questions : [];
-    const cleaned = sanitizeGeneratedQuestions(raw, body.counts);
-
-    const validated = questionsArraySchema.safeParse(cleaned);
+    const maxTokens = 4000 + body.pages * 4000;
+    const generateQuestions = async (attemptPrompt: string, callKey: string) => {
+      const text = await runTierCompletion({
+        tier,
+        prompt: attemptPrompt,
+        system,
+        maxTokens,
+        usage: { req, toolKey: "worksheet", callKey },
+      });
+      const json = parseJsonLoose(text);
+      const raw = Array.isArray(json?.questions) ? json.questions : [];
+      return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(raw, body.counts));
+    };
+    let validated = await generateQuestions(prompt, "generate:completion");
+    if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
+      req.log.warn({ issues: validated.error.issues }, "AI worksheet board diversity failed; retrying once");
+      validated = await generateQuestions(
+        buildTicTacToeDiversityRetryPrompt(prompt, body.language),
+        "generate:diversity-retry",
+      );
+    }
     if (!validated.success) {
       req.log.warn({ issues: validated.error.issues }, "AI worksheet questions failed strict validation");
       await refundCredits(req, "تنسيق غير صالح من مولّد الأوراق");
-      res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
+      const diversityFailed = hasTicTacToeDiversityIssues(validated.error);
+      res.status(500).json({
+        message: diversityFailed
+          ? (language === "ar"
+              ? "تعذّر إنشاء لوحة متنوعة بعد المحاولة الثانية. حاول مرة أخرى."
+              : "Could not create a diverse board after the second attempt. Please try again.")
+          : (language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format"),
+      });
       return;
     }
     await captureCredits(req);
@@ -1095,19 +1143,42 @@ router.post(
       const system = parsedBody.language === "ar"
         ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
         : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
-      const text = prepared.images.length > 0
-        ? await runVisionCompletionMulti({ tier, prompt, images: prepared.images, maxTokens, usage: { req, toolKey: "extract_questions_from_source", callKey: "extract:vision" } })
-        : await runTierCompletion({ tier, prompt, system, maxTokens, usage: { req, toolKey: "extract_questions_from_source", callKey: "extract:completion" } });
-
-      const json = parseJsonLoose(text);
-      const raw = Array.isArray(json?.questions) ? json.questions : [];
-      const cleaned = sanitizeGeneratedQuestions(raw, effectiveCounts);
-
-      const validated = questionsArraySchema.safeParse(cleaned);
+      const generateQuestions = async (attemptPrompt: string, callKey: string) => {
+        const text = prepared.images.length > 0
+          ? await runVisionCompletionMulti({
+              tier, prompt: attemptPrompt, images: prepared.images, maxTokens,
+              usage: { req, toolKey: "extract_questions_from_source", callKey },
+            })
+          : await runTierCompletion({
+              tier, prompt: attemptPrompt, system, maxTokens,
+              usage: { req, toolKey: "extract_questions_from_source", callKey },
+            });
+        const json = parseJsonLoose(text);
+        const raw = Array.isArray(json?.questions) ? json.questions : [];
+        return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(raw, effectiveCounts));
+      };
+      let validated = await generateQuestions(
+        prompt,
+        prepared.images.length > 0 ? "extract:vision" : "extract:completion",
+      );
+      if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
+        req.log.warn({ issues: validated.error.issues }, "AI extracted board diversity failed; retrying once");
+        validated = await generateQuestions(
+          buildTicTacToeDiversityRetryPrompt(prompt, parsedBody.language),
+          prepared.images.length > 0 ? "extract:vision-diversity-retry" : "extract:diversity-retry",
+        );
+      }
       if (!validated.success) {
         req.log.warn({ issues: validated.error.issues }, "AI extraction questions failed strict validation");
         await refundCredits(req, "فشل استخراج الأسئلة");
-        res.status(500).json({ message: language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format" });
+        const diversityFailed = hasTicTacToeDiversityIssues(validated.error);
+        res.status(500).json({
+          message: diversityFailed
+            ? (language === "ar"
+                ? "تعذّر إنشاء لوحة متنوعة بعد المحاولة الثانية. حاول مرة أخرى."
+                : "Could not create a diverse board after the second attempt. Please try again.")
+            : (language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format"),
+        });
         return;
       }
       const responseBody = { questions: validated.data, language };
