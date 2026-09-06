@@ -27,7 +27,30 @@ interface QShort { id: string; type: "short_answer"; prompt: string; lines?: num
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
 interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: Array<{ text: string; category: string; imageUrl?: string }>; points?: number }
-export type Question = QMcq | QTF | QShort | QFill | QMatch | QTicTacToe;
+interface QWorkedProblem {
+  id: string; type: "worked_problem"; prompt: string; points?: number;
+  steps?: number; answer: string;
+}
+interface QExtendedResponse {
+  id: string; type: "extended_response"; prompt: string; points?: number;
+  lines?: number; answer?: string;
+}
+interface QErrorCorrection {
+  id: string; type: "error_correction"; prompt: string; points?: number;
+  incorrectText: string; correction: string; explanation?: string;
+}
+interface QWordBank {
+  id: string; type: "word_bank"; prompt: string; points?: number;
+  items: string[]; answers: string[];
+}
+interface QCompare {
+  id: string; type: "compare"; prompt: string; points?: number;
+  leftLabel: string; rightLabel: string;
+  similarities?: string; differences?: string;
+}
+export type Question =
+  | QMcq | QTF | QShort | QFill | QMatch | QTicTacToe
+  | QWorkedProblem | QExtendedResponse | QErrorCorrection | QWordBank | QCompare;
 type QuestionType = Question["type"];
 
 interface AnswerItem {
@@ -108,6 +131,11 @@ function paginateByEstimate(
       case "fill_blank": return base + 3;
       case "matching": return base + q.pairs.length * lineH * 1.3;
       case "tic_tac_toe": return Math.max(185, base + 165);
+      case "worked_problem": return base + Math.max(4, q.steps ?? 4) * 8 + 12;
+      case "extended_response": return base + Math.max(3, q.lines ?? 6) * 8;
+      case "error_correction": return base + 2 * 8 + 2 * 8 + 12;
+      case "word_bank": return base + 14 + Math.max(1, q.items.length) * lineH * 1.4;
+      case "compare": return base + 42;
     }
   };
   const pages: Question[][] = [];
@@ -1203,6 +1231,7 @@ function PageLayoutPanel({
 }) {
   const qTypeIcon: Record<Question["type"], string> = {
     mcq: "⊙", true_false: "✓✗", short_answer: "✎", fill_blank: "░", matching: "⇔", tic_tac_toe: "▦",
+    worked_problem: "∑", extended_response: "¶", error_correction: "⌫", word_bank: "▤", compare: "⇄",
   };
 
   return (
@@ -1504,14 +1533,20 @@ function questionIcon(type: Question["type"]) {
     case "fill_blank": return <IconFill />;
     case "matching": return <IconMatch />;
     case "tic_tac_toe": return <IconLightbulb />;
+    case "worked_problem":
+    case "extended_response":
+    case "error_correction":
+    case "word_bank":
+    case "compare":
+      return <IconShort />;
   }
 }
 
 function questionTypeLabel(type: Question["type"], ar: boolean) {
   if (ar) {
-    return { mcq: "اختيار من متعدد", true_false: "صح / خطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين", tic_tac_toe: "تيك تاك توك" }[type];
+    return { mcq: "اختيار من متعدد", true_false: "صح / خطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين", tic_tac_toe: "لوحة الاختيار (Tic-Tac-Toe)", worked_problem: "مسألة مع خطوات الحل", extended_response: "إجابة مطولة", error_correction: "اكتشف الخطأ وصححه", word_bank: "بنك الكلمات", compare: "قارن" }[type];
   }
-  return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching", tic_tac_toe: "Tic-Tac-Toe" }[type];
+  return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching", tic_tac_toe: "Choice Board (Tic-Tac-Toe)", worked_problem: "Worked problem", extended_response: "Extended response", error_correction: "Find & correct the error", word_bank: "Word bank", compare: "Compare" }[type];
 }
 
 /** Instruction shown once before the first question of each type group. */
@@ -1530,6 +1565,11 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
         : (questionStyle?.ticTacToeStrategy === "full_board")
           ? "نفّذ جميع المهام في اللوحة التالية:"
           : "اختر ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا:",
+      worked_problem: "حل المسألة موضحًا خطوات العمل، ثم اكتب الإجابة النهائية:",
+      extended_response: "اكتب إجابة موسعة تدعمها بالتفاصيل والأدلة:",
+      error_correction: "حدّد الخطأ، ثم اكتب التصحيح واشرح سبب التعديل:",
+      word_bank: "استخدم الكلمات في الصندوق لإكمال البنود التالية:",
+      compare: "قارن بين العنصرين، موضحًا أوجه التشابه والاختلاف:",
     } as Record<Question["type"], string>)[type];
   }
   return ({
@@ -1545,6 +1585,11 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
       : (questionStyle?.ticTacToeStrategy === "full_board")
         ? "Complete all tasks in the board:"
         : "Choose three connected squares horizontally, vertically, or diagonally:",
+    worked_problem: "Solve the problem, showing each step, then give the final answer:",
+    extended_response: "Write an extended response supported with details and evidence:",
+    error_correction: "Identify the error, write the correction, and explain your reasoning:",
+    word_bank: "Use the words in the box to complete the following items:",
+    compare: "Compare the two items, including their similarities and differences:",
   } as Record<Question["type"], string>)[type];
 }
 
@@ -2039,6 +2084,75 @@ function QuestionView({
           ))}
         </div>
       )}
+      {q.type === "worked_problem" && (
+        <div className="ws-worked-problem">
+          <div className="ws-response-label">{ar ? "خطوات الحل / مساحة العمل" : "Steps / Work area"}</div>
+          <div className="ws-work-steps">
+            {Array.from({
+              length: Math.max(3, q.steps ?? 4),
+            }).map((_, i) => (
+              <div className="ws-work-step" key={i}>
+                <span className="ws-work-step-num">{i + 1}</span>
+                <span className="ws-work-step-line" />
+              </div>
+            ))}
+          </div>
+          <div className="ws-final-answer">
+            <strong>{ar ? "الإجابة النهائية" : "Final answer"}</strong>
+            <span />
+          </div>
+        </div>
+      )}
+      {q.type === "extended_response" && (
+        <div className="ws-extended-response" aria-label={ar ? "مساحة الإجابة الموسعة" : "Extended response writing area"}>
+          {Array.from({ length: Math.max(3, q.lines ?? 6) }).map((_, i) => <span className="ws-line" key={i} />)}
+        </div>
+      )}
+      {q.type === "error_correction" && (
+        <div className="ws-error-correction">
+          <div className="ws-incorrect-box">
+            <strong>{ar ? "النص غير الصحيح:" : "Incorrect text:"}</strong>
+            <span>{q.incorrectText}</span>
+          </div>
+          <div className="ws-correction-area">
+            <div className="ws-response-label">{ar ? "التصحيح" : "Correction"}</div>
+            {Array.from({ length: 2 }).map((_, i) => <span className="ws-line" key={i} />)}
+          </div>
+          <div className="ws-explanation-area">
+            <div className="ws-response-label">{ar ? "التفسير" : "Explanation"}</div>
+            {Array.from({ length: 2 }).map((_, i) => <span className="ws-line" key={i} />)}
+          </div>
+        </div>
+      )}
+      {q.type === "word_bank" && (
+        <div className="ws-word-bank-question">
+          <div className="ws-word-bank" aria-label={ar ? "بنك الكلمات" : "Word bank"}>
+            <strong>{ar ? "بنك الكلمات" : "Word bank"}</strong>
+            <div>{Array.from(new Set(q.answers.filter(Boolean))).map((word, i) => <span key={i}>{word}</span>)}</div>
+          </div>
+          <ol className="ws-word-bank-items">
+            {q.items.map((item, i) => <li key={i}><span>{item}</span><span className="ws-word-bank-blank" /></li>)}
+          </ol>
+        </div>
+      )}
+      {q.type === "compare" && (
+        <div className="ws-compare-organizer">
+          <div className="ws-compare-panel">
+            <strong>{q.leftLabel}</strong>
+            <span className="ws-compare-subtitle">{ar ? "خصائص واختلافات" : "Traits and differences"}</span>
+            {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
+          </div>
+          <div className="ws-compare-panel ws-compare-similarities">
+            <strong>{ar ? "أوجه التشابه" : "Similarities"}</strong>
+            {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
+          </div>
+          <div className="ws-compare-panel">
+            <strong>{q.rightLabel}</strong>
+            <span className="ws-compare-subtitle">{ar ? "خصائص واختلافات" : "Traits and differences"}</span>
+            {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
+          </div>
+        </div>
+      )}
       {(q.type === "short_answer" || q.type === "tic_tac_toe") && questionStyle?.rubric && (
         <div className="ws-rubric">
           <strong>{ar ? "معيار النجاح:" : "Success criterion:"}</strong>
@@ -2090,12 +2204,25 @@ export function convertQuestionType(question: Question, type: QuestionType, ar: 
   const existingAnswer =
     question.type === "mcq" ? (question.options[question.correctIndex] ?? "") :
     question.type === "true_false" ? (question.correct ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False")) :
-    question.type === "matching" || question.type === "tic_tac_toe" ? "" :
-    (question.answer ?? "");
+    question.type === "short_answer" || question.type === "fill_blank" ||
+    question.type === "worked_problem" || question.type === "extended_response"
+      ? (question.answer ?? "")
+      : question.type === "error_correction" ? question.correction
+      : "";
 
   if (type === "true_false") return { ...base, type, correct: true };
   if (type === "short_answer") return { ...base, type, lines: 2, answer: existingAnswer };
   if (type === "fill_blank") return { ...base, type, answer: existingAnswer };
+  if (type === "worked_problem") return { ...base, type, steps: 4, answer: existingAnswer };
+  if (type === "extended_response") return { ...base, type, lines: 6, answer: existingAnswer };
+  if (type === "error_correction") return { ...base, type, incorrectText: base.prompt, correction: existingAnswer, explanation: "" };
+  if (type === "word_bank") return { ...base, type, items: [], answers: [] };
+  if (type === "compare") return {
+    ...base, type,
+    leftLabel: ar ? "العنصر الأول" : "Item A",
+    rightLabel: ar ? "العنصر الثاني" : "Item B",
+    similarities: "", differences: "",
+  };
   if (type === "mcq") {
     const options = question.type === "matching"
       ? question.pairs.map(pair => pair.right).filter(Boolean).slice(0, 4)
@@ -2549,6 +2676,66 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         border-bottom: 1px dotted ${TC}66;
         height: 8mm;
       }
+      .ws-response-label {
+        color: ${TC};
+        font-weight: 800;
+        font-size: ${Math.max(8.5, fontSizePt - 2)}pt;
+        margin-bottom: 1mm;
+      }
+      .ws-worked-problem, .ws-extended-response, .ws-error-correction,
+      .ws-word-bank-question, .ws-compare-organizer {
+        margin-top: 2mm;
+        margin-inline-start: 9mm;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .ws-work-steps { display: flex; flex-direction: column; gap: 1mm; }
+      .ws-work-step { display: flex; align-items: flex-end; gap: 2mm; min-height: 7mm; }
+      .ws-work-step-num {
+        color: ${TC}; font-weight: 700; font-size: 8pt;
+        width: 5mm; flex: 0 0 5mm; text-align: center;
+      }
+      .ws-work-step-line, .ws-final-answer > span, .ws-word-bank-blank {
+        flex: 1; min-width: 12mm; border-bottom: 0.3mm dotted ${TC}77;
+      }
+      .ws-final-answer {
+        display: flex; align-items: flex-end; gap: 3mm;
+        margin-top: 3mm; padding: 2mm 3mm;
+        border: 0.4mm solid ${TC}; border-radius: 1.5mm;
+      }
+      .ws-final-answer strong { color: ${TC}; white-space: nowrap; }
+      .ws-extended-response { display: flex; flex-direction: column; }
+      .ws-incorrect-box {
+        padding: 2.5mm 3mm; border: 0.35mm solid #9f3434;
+        border-inline-start-width: 1mm; background: #fff8f7;
+        display: flex; gap: 2mm; align-items: baseline;
+      }
+      .ws-incorrect-box strong { color: #8b2e2e; white-space: nowrap; }
+      .ws-correction-area, .ws-explanation-area { margin-top: 2.5mm; }
+      .ws-word-bank {
+        border: 0.4mm solid ${TC}; border-radius: 2mm;
+        padding: 2mm 3mm; text-align: center; background: ${TC}08;
+      }
+      .ws-word-bank > strong { display: block; color: ${TC}; font-size: 8.5pt; margin-bottom: 1mm; }
+      .ws-word-bank > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 1mm 4mm; }
+      .ws-word-bank > div > span { white-space: nowrap; font-weight: 700; }
+      .ws-word-bank-items { margin: 3mm 0 0; padding-inline-start: 7mm; }
+      .ws-word-bank-items li { padding: 1mm 0; min-height: 7mm; display: flex; gap: 2mm; align-items: flex-end; }
+      .ws-word-bank-items li::marker { color: ${TC}; font-weight: 800; }
+      .ws-compare-organizer {
+        display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) minmax(0, 1fr);
+        border: 0.4mm solid ${TC}; border-radius: 2mm; overflow: hidden;
+      }
+      .ws-compare-panel {
+        min-width: 0; min-height: 35mm; padding: 3mm;
+        display: flex; flex-direction: column; gap: 2mm;
+        border-inline-end: 0.3mm solid ${TC}66;
+      }
+      .ws-compare-panel:last-child { border-inline-end: 0; }
+      .ws-compare-panel > strong { color: ${TC}; text-align: center; line-height: 1.35; }
+      .ws-compare-similarities { background: ${TC}0A; }
+      .ws-compare-subtitle { color: #5a6663; font-size: 8pt; text-align: center; }
+      .ws-compare-line { display: block; flex: 1 1 6mm; min-height: 5mm; border-bottom: 0.25mm dotted ${TC}66; }
 
       .ws-fill { padding-${startSide}: 36px; margin-top: 1mm; }
       .ws-fill-rule {
@@ -3160,6 +3347,31 @@ export function answerText(q: Question, ar: boolean, labels: { true: string; fal
   if (q.type === "true_false") return q.correct ? labels.true : labels.false;
   if (q.type === "short_answer") return q.answer?.trim() || "—";
   if (q.type === "fill_blank") return q.answer;
+  if (q.type === "worked_problem" || q.type === "extended_response") {
+    return q.answer?.trim() || "—";
+  }
+  if (q.type === "error_correction") {
+    const correction = q.correction.trim() || "—";
+    const explanation = q.explanation?.trim();
+    return explanation
+      ? `${ar ? "التصحيح:" : "Correction:"} ${correction} — ${ar ? "التفسير:" : "Explanation:"} ${explanation}`
+      : `${ar ? "التصحيح:" : "Correction:"} ${correction}`;
+  }
+  if (q.type === "word_bank") {
+    return q.items.map((item, index) => {
+      const answer = q.answers[index];
+      return `${index + 1}. ${answer?.trim() || "—"}`;
+    }).join("    ");
+  }
+  if (q.type === "compare") {
+    const similarities = q.similarities;
+    const differences = q.differences;
+    const parts = [
+      similarities?.trim() ? `${ar ? "أوجه التشابه:" : "Similarities:"} ${similarities.trim()}` : "",
+      differences?.trim() ? `${ar ? "أوجه الاختلاف:" : "Differences:"} ${differences.trim()}` : "",
+    ].filter(Boolean);
+    return parts.join(" — ") || "—";
+  }
   if (q.type === "tic_tac_toe") return ar
     ? "تُقيّم المهام الثلاث المتصلة التي اختارها الطالب"
     : "Grade the three connected tasks selected by the student";

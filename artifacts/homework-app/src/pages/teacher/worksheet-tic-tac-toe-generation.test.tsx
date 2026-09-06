@@ -190,6 +190,11 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       short_answer: 0,
       fill_blank: 0,
       matching: 0,
+      worked_problem: 0,
+      extended_response: 0,
+      error_correction: 0,
+      word_bank: 0,
+      compare: 0,
       tic_tac_toe: 1,
     });
 

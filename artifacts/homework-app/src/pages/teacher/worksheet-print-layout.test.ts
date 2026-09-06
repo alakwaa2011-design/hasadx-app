@@ -58,6 +58,38 @@ describe("worksheet PDF page sizing", () => {
 });
 
 describe("official worksheet question layout", () => {
+  it("renders the five rich worksheet question types with printable organizers", () => {
+    expect(source).toContain('q.type === "worked_problem"');
+    expect(source).toContain('className="ws-work-steps"');
+    expect(source).toContain('className="ws-final-answer"');
+    expect(source).toContain('q.type === "extended_response"');
+    expect(source).toContain("Math.max(3, q.lines ?? 6)");
+    expect(source).toContain('className="ws-incorrect-box"');
+    expect(source).toContain('className="ws-correction-area"');
+    expect(source).toContain('className="ws-explanation-area"');
+    expect(source).toContain('className="ws-word-bank"');
+    expect(source).toContain('className="ws-word-bank-items"');
+    expect(source).toContain('className="ws-compare-organizer"');
+  });
+
+  it("keeps rich response organizers together and direction-neutral", () => {
+    const organizerRule = source.match(/\.ws-worked-problem,[\s\S]*?\}/)?.[0] ?? "";
+    expect(organizerRule).toContain("break-inside: avoid");
+    expect(organizerRule).toContain("page-break-inside: avoid");
+    expect(source).toContain("margin-inline-start: 9mm");
+    expect(source).toContain("border-inline-end");
+    expect(source).toContain("grid-template-columns: minmax(0, 1fr)");
+  });
+
+  it("prints model answers for each rich question type", () => {
+    expect(source).toContain('q.type === "worked_problem" || q.type === "extended_response"');
+    expect(source).toContain('q.type === "error_correction"');
+    expect(source).toContain('q.type === "word_bank"');
+    expect(source).toContain('q.type === "compare"');
+    expect(source).toContain('ar ? "أوجه التشابه:" : "Similarities:"');
+    expect(source).toContain('ar ? "أوجه الاختلاف:" : "Differences:"');
+  });
+
   it("uses paper-style marks instead of AI-style answer bubbles", () => {
     expect(source).toContain('className="ws-tf-mark"');
     expect(source).not.toContain('className="ws-match-answer-slot"');

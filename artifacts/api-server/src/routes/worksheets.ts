@@ -131,6 +131,54 @@ const matchingSchema = z.object({
   points: z.number().int().min(0).max(100).optional(),
 });
 
+const workedProblemSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("worked_problem"),
+  prompt: z.string().min(1).max(1000),
+  steps: z.number().int().min(1).max(20).optional(),
+  answer: z.string().min(1).max(2000),
+  points: z.number().int().min(0).max(100).optional(),
+}).strict();
+
+const extendedResponseSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("extended_response"),
+  prompt: z.string().min(1).max(1000),
+  lines: z.number().int().min(1).max(40).optional(),
+  answer: z.string().max(3000).optional(),
+  points: z.number().int().min(0).max(100).optional(),
+}).strict();
+
+const errorCorrectionSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("error_correction"),
+  prompt: z.string().min(1).max(1000),
+  incorrectText: z.string().min(1).max(1500),
+  correction: z.string().min(1).max(1500),
+  explanation: z.string().max(1500).optional(),
+  points: z.number().int().min(0).max(100).optional(),
+}).strict();
+
+const wordBankSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("word_bank"),
+  prompt: z.string().min(1).max(2000),
+  items: z.array(z.string().min(1).max(300)).min(1).max(20),
+  answers: z.array(z.string().min(1).max(300)).min(1).max(20),
+  points: z.number().int().min(0).max(100).optional(),
+}).strict();
+
+const compareSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("compare"),
+  prompt: z.string().min(1).max(1000),
+  leftLabel: z.string().min(1).max(200),
+  rightLabel: z.string().min(1).max(200),
+  similarities: z.string().max(1500).optional(),
+  differences: z.string().max(1500).optional(),
+  points: z.number().int().min(0).max(100).optional(),
+}).strict();
+
 const worksheetImagePathSchema = z.string().max(2000).refine(
   value => value.startsWith("/objects/") || value.startsWith("/public-objects/") || /^data:image\/(?:png|jpeg|webp);base64,/i.test(value),
   "imageUrl must reference an uploaded worksheet image",
@@ -155,6 +203,11 @@ const questionSchema = z.discriminatedUnion("type", [
   shortAnswerSchema,
   fillBlankSchema,
   matchingSchema,
+  workedProblemSchema,
+  extendedResponseSchema,
+  errorCorrectionSchema,
+  wordBankSchema,
+  compareSchema,
   ticTacToeSchema,
 ]);
 
@@ -221,6 +274,13 @@ const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine(
         message: "correctIndex must be within options",
       });
     }
+    if (q.type === "word_bank" && q.items.length !== q.answers.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [i, "answers"],
+        message: "word_bank items and answers must have the same length",
+      });
+    }
     if (q.type === "tic_tac_toe") {
       findTicTacToeDiversityViolations(q.cells).forEach((lineIndex) => {
         ctx.addIssue({
@@ -232,6 +292,7 @@ const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine(
     }
   });
 });
+export const worksheetQuestionsSchema = questionsArraySchema;
 
 const upsertBody = z.object({
   clientRequestId: z.string().uuid().optional(),
@@ -293,6 +354,25 @@ function worksheetToGradingData(questions: WorksheetQuestion[], language: "ar" |
         points,
       });
       keyLines.push(`${n}: ${q.pairs.map((p) => `${p.left} → ${p.right}`).join("، ")}`);
+    } else if (q.type === "worked_problem") {
+      rows.push({ text: q.prompt, points });
+      keyLines.push(`${n}: ${q.answer}`);
+    } else if (q.type === "extended_response") {
+      rows.push({ text: q.prompt, points });
+      keyLines.push(`${n}: ${q.answer?.trim() || (ar ? "إجابة ممتدة مفتوحة — قيّم حسب الفهم والأدلة" : "Open extended response — grade on understanding and evidence")}`);
+    } else if (q.type === "error_correction") {
+      rows.push({ text: `${q.prompt}\n${q.incorrectText}`, points });
+      keyLines.push(`${n}: ${q.correction}${q.explanation ? ` — ${q.explanation}` : ""}`);
+    } else if (q.type === "word_bank") {
+      rows.push({ text: `${q.prompt}\n${q.items.join(" / ")}`, points });
+      keyLines.push(`${n}: ${q.items.map((item, j) => `${item} → ${q.answers[j]}`).join("، ")}`);
+    } else if (q.type === "compare") {
+      rows.push({ text: `${q.prompt}\n${q.leftLabel} ↔ ${q.rightLabel}`, points });
+      const comparisonKey = [
+        q.similarities ? `${ar ? "أوجه الشبه" : "Similarities"}: ${q.similarities}` : "",
+        q.differences ? `${ar ? "أوجه الاختلاف" : "Differences"}: ${q.differences}` : "",
+      ].filter(Boolean).join("; ");
+      keyLines.push(`${n}: ${comparisonKey || (ar ? "إجابة مفتوحة — قيّم المقارنة المدعومة" : "Open answer — grade the supported comparison")}`);
     } else {
       rows.push({
         text: `${q.prompt}\n${q.cells.map((cell, j) => `${j + 1}. [${cell.category}] ${cell.text}`).join("\n")}`,
@@ -944,6 +1024,11 @@ const countsSchema = z.object({
   short_answer: z.number().int().min(0).max(40).default(2),
   fill_blank: z.number().int().min(0).max(40).default(2),
   matching: z.number().int().min(0).max(10).default(0),
+  worked_problem: z.number().int().min(0).max(40).default(0),
+  extended_response: z.number().int().min(0).max(40).default(0),
+  error_correction: z.number().int().min(0).max(40).default(0),
+  word_bank: z.number().int().min(0).max(20).default(0),
+  compare: z.number().int().min(0).max(40).default(0),
   tic_tac_toe: z.number().int().min(0).max(1).default(0),
 });
 const aiGenerateBody = z.object({
@@ -1054,7 +1139,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     };
     language = body.language;
 
-    const total = body.counts.mcq + body.counts.true_false + body.counts.short_answer + body.counts.fill_blank + body.counts.matching + body.counts.tic_tac_toe;
+    const total = Object.values(body.counts).reduce((sum, count) => sum + count, 0);
     if (total === 0) {
       await refundCredits(req, "لا أنواع أسئلة محددة");
       res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
@@ -1295,7 +1380,7 @@ router.post(
 
       const maxTotal = parsedBody.pages * 30;
       const effectiveCounts = parsedBody.counts;
-      const total = effectiveCounts.mcq + effectiveCounts.true_false + effectiveCounts.short_answer + effectiveCounts.fill_blank + effectiveCounts.matching + effectiveCounts.tic_tac_toe;
+      const total = Object.values(effectiveCounts).reduce((sum, count) => sum + count, 0);
       if (total === 0) {
         await refundCredits(req, "لا أنواع أسئلة محددة");
         res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
@@ -1438,7 +1523,7 @@ function parseJsonLoose(text: string): any {
 
 export function sanitizeGeneratedQuestions(
   raw: any[],
-  counts: Omit<z.infer<typeof aiGenerateBody>["counts"], "tic_tac_toe"> & { tic_tac_toe?: number },
+  counts: Partial<z.infer<typeof countsSchema>> & Pick<z.infer<typeof countsSchema>, "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching">,
   options?: { normalizeTicTacToeDiversity?: boolean; language?: "ar" | "en" },
 ): z.infer<typeof questionSchema>[] {
   const out: z.infer<typeof questionSchema>[] = [];
@@ -1449,9 +1534,18 @@ export function sanitizeGeneratedQuestions(
     short_answer: counts.short_answer,
     fill_blank: counts.fill_blank,
     matching: counts.matching,
+    worked_problem: counts.worked_problem ?? 0,
+    extended_response: counts.extended_response ?? 0,
+    error_correction: counts.error_correction ?? 0,
+    word_bank: counts.word_bank ?? 0,
+    compare: counts.compare ?? 0,
     tic_tac_toe: counts.tic_tac_toe ?? 0,
   };
-  const tally = { mcq: 0, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0, tic_tac_toe: 0 };
+  const tally = {
+    mcq: 0, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0,
+    worked_problem: 0, extended_response: 0, error_correction: 0, word_bank: 0,
+    compare: 0, tic_tac_toe: 0,
+  };
 
   for (const q of raw) {
     if (!q || typeof q !== "object") continue;
@@ -1467,6 +1561,9 @@ export function sanitizeGeneratedQuestions(
     const prompt = promptRaw.trim().slice(0, 1000);
     if (!prompt && type !== "matching") continue;
     const id = `q_${++idx}_${Date.now().toString(36)}`;
+    const points = Number.isInteger(q.points) && q.points >= 0 && q.points <= 100
+      ? q.points as number
+      : undefined;
 
     if (type === "mcq" && tally.mcq < cap.mcq) {
       // Recover options from multiple possible model output formats:
@@ -1541,6 +1638,57 @@ export function sanitizeGeneratedQuestions(
       if (pairs.length < 2) continue;
       out.push({ id, type: "matching", prompt: prompt || undefined, pairs });
       tally.matching++;
+    } else if (type === "worked_problem" && tally.worked_problem < cap.worked_problem) {
+      const answer = typeof q.answer === "string" ? q.answer.trim().slice(0, 2000) : "";
+      if (!answer) continue;
+      const steps = Number.isInteger(q.steps) && q.steps >= 1 && q.steps <= 20 ? q.steps : undefined;
+      out.push({ id, type: "worked_problem", prompt, answer, ...(steps ? { steps } : {}), ...(points !== undefined ? { points } : {}) });
+      tally.worked_problem++;
+    } else if (type === "extended_response" && tally.extended_response < cap.extended_response) {
+      const lines = Number.isInteger(q.lines) && q.lines >= 1 && q.lines <= 40 ? q.lines : undefined;
+      const answer = typeof q.answer === "string" ? q.answer.trim().slice(0, 3000) : undefined;
+      out.push({
+        id, type: "extended_response", prompt,
+        ...(lines ? { lines } : {}),
+        ...(answer ? { answer } : {}),
+        ...(points !== undefined ? { points } : {}),
+      });
+      tally.extended_response++;
+    } else if (type === "error_correction" && tally.error_correction < cap.error_correction) {
+      const incorrectText = typeof q.incorrectText === "string" ? q.incorrectText.trim().slice(0, 1500) : "";
+      const correction = typeof q.correction === "string" ? q.correction.trim().slice(0, 1500) : "";
+      const explanation = typeof q.explanation === "string" ? q.explanation.trim().slice(0, 1500) : undefined;
+      if (!incorrectText || !correction) continue;
+      out.push({
+        id, type: "error_correction", prompt, incorrectText, correction,
+        ...(explanation ? { explanation } : {}),
+        ...(points !== undefined ? { points } : {}),
+      });
+      tally.error_correction++;
+    } else if (type === "word_bank" && tally.word_bank < cap.word_bank) {
+      if (!Array.isArray(q.items) || !Array.isArray(q.answers)) continue;
+      if (
+        q.items.length < 1 || q.items.length > 20 || q.items.length !== q.answers.length
+        || q.items.some((item: unknown) => typeof item !== "string" || !item.trim())
+        || q.answers.some((answer: unknown) => typeof answer !== "string" || !answer.trim())
+      ) continue;
+      const items = q.items.map((item: string) => item.trim().slice(0, 300));
+      const answers = q.answers.map((answer: string) => answer.trim().slice(0, 300));
+      out.push({ id, type: "word_bank", prompt, items, answers, ...(points !== undefined ? { points } : {}) });
+      tally.word_bank++;
+    } else if (type === "compare" && tally.compare < cap.compare) {
+      const leftLabel = typeof q.leftLabel === "string" ? q.leftLabel.trim().slice(0, 200) : "";
+      const rightLabel = typeof q.rightLabel === "string" ? q.rightLabel.trim().slice(0, 200) : "";
+      const similarities = typeof q.similarities === "string" ? q.similarities.trim().slice(0, 1500) : undefined;
+      const differences = typeof q.differences === "string" ? q.differences.trim().slice(0, 1500) : undefined;
+      if (!leftLabel || !rightLabel) continue;
+      out.push({
+        id, type: "compare", prompt, leftLabel, rightLabel,
+        ...(similarities ? { similarities } : {}),
+        ...(differences ? { differences } : {}),
+        ...(points !== undefined ? { points } : {}),
+      });
+      tally.compare++;
     } else if (type === "tic_tac_toe" && tally.tic_tac_toe < cap.tic_tac_toe) {
       const cells = Array.isArray(q.cells)
         ? q.cells.map((cell: any) => ({
@@ -1614,6 +1762,11 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
   if (counts.short_answer > 0) requested.push(ar ? `${counts.short_answer} إجابة قصيرة` : `${counts.short_answer} short-answer`);
   if (counts.fill_blank > 0) requested.push(ar ? `${counts.fill_blank} إكمال الفراغ` : `${counts.fill_blank} fill-in-the-blank`);
   if (counts.matching > 0) requested.push(ar ? `${counts.matching} توصيل (مع 4–6 أزواج)` : `${counts.matching} matching (with 4–6 pairs)`);
+  if (counts.worked_problem > 0) requested.push(ar ? `${counts.worked_problem} مسألة محلولة` : `${counts.worked_problem} worked problem`);
+  if (counts.extended_response > 0) requested.push(ar ? `${counts.extended_response} إجابة ممتدة` : `${counts.extended_response} extended response`);
+  if (counts.error_correction > 0) requested.push(ar ? `${counts.error_correction} تصحيح خطأ` : `${counts.error_correction} error correction`);
+  if (counts.word_bank > 0) requested.push(ar ? `${counts.word_bank} بنك كلمات` : `${counts.word_bank} word bank`);
+  if (counts.compare > 0) requested.push(ar ? `${counts.compare} مقارنة` : `${counts.compare} compare`);
   if (counts.tic_tac_toe > 0) requested.push(ar ? "لوحة تيك تاك توك واحدة من 9 مهام" : "one Tic-Tac-Toe choice board with 9 tasks");
 
   const sourceBlock = sourceText
@@ -1632,26 +1785,36 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
     ? [
         "أعد ردًّا بصيغة JSON نقية فقط — بدون أي شرح أو ترميز خارج الـ JSON.",
         "صيغة الرد: { \"questions\": [...] }.",
-        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
+        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "⚠️ mcq (إلزامي): كل سؤال اختيار متعدد يجب أن يحتوي على حقل options وهو مصفوفة من 4 نصوص مختلفة، وحقل correctIndex بين 0 و 3. لا تكتب سؤال mcq بدون options أبداً.",
         mcqExample,
         "true_false: correct قيمة منطقية (true أو false).",
         "short_answer: prompt هو السؤال، lines رقم بين 1 و 5، answer هو الإجابة.",
         "fill_blank: prompt يحتوي على '____' مكان الفراغ، answer هو الكلمة الصحيحة.",
         "matching: pairs مصفوفة من 4–6 أزواج {left, right}.",
+        "worked_problem: prompt للمسألة، steps عدد اختياري من 1–20، وanswer حل نموذجي كامل غير فارغ.",
+        "extended_response: prompt للسؤال، lines عدد اختياري من 1–40، وanswer نموذج إجابة اختياري.",
+        "error_correction: prompt وتعليماته، incorrectText نص الخطأ، correction التصحيح الصحيح، وexplanation اختياري.",
+        "word_bank: prompt يحتوي عناصر أو فراغات مرقمة، وitems بنك الكلمات، وanswers الإجابات بالترتيب نفسه وبالعدد نفسه.",
+        "compare: prompt وleftLabel وrightLabel، ويمكن إضافة similarities وdifferences كنموذج إجابة.",
         "tic_tac_toe: كائن واحد يحتوي prompt وتعليمات الاختيار، وcells مصفوفة من 9 عناصر {text, category, imageSuggested}. اكتب كل text كتوجيه مباشر وواضح للطالب، يحدد بدقة ما الذي سيكتبه أو يرسمه أو يجيب عنه داخل المربع، بجملة قصيرة مناسبة لمساحة الكتابة. لا تجعل التصنيف بديلًا عن نص المهمة. category تصنيف تربوي داخلي مختصر، ويجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اجعل imageSuggested=true فقط عندما تساعد صورة تعليمية محددة على فهم المهمة، ولا تنشئ imageUrl.",
         "اجعل الأسئلة دقيقة وتربوية ومناسبة للمرحلة الدراسية.",
       ]
     : [
         "Reply with strict JSON ONLY — no prose, no code fences.",
         "Reply shape: { \"questions\": [...] }.",
-        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
+        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "⚠️ mcq (MANDATORY): every MCQ must have an 'options' array of EXACTLY 4 distinct strings and a 'correctIndex' (0–3). Never omit options.",
         mcqExample,
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains '____' where the blank goes; answer is the missing word.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
+        "worked_problem: prompt is the problem; optional steps is 1–20; answer is a complete, non-empty worked answer.",
+        "extended_response: prompt is the question; optional lines is 1–40; answer is an optional model response.",
+        "error_correction: include prompt, incorrectText, correction, and optional explanation.",
+        "word_bank: prompt has numbered blanks/items; items is the word bank and answers is the same-length ordered answer array.",
+        "compare: include prompt, leftLabel, rightLabel, and optional similarities and differences model answers.",
         "tic_tac_toe: one object with prompt and exactly 9 cells shaped {text, category, imageSuggested}. Write every text as a short, direct student instruction that states exactly what to write, draw, or answer inside the square. Never use the category as a substitute for the task. category is a short internal teaching label. All three categories must differ in every row, column, and both diagonals. Set imageSuggested=true only where a specific educational visual improves understanding; never produce imageUrl.",
         "Keep questions accurate, pedagogical, and grade-appropriate.",
       ];
@@ -1706,6 +1869,11 @@ function buildExtractionPrompt(opts: {
   if (c.short_answer > 0) requested.push(ar ? `${c.short_answer} إجابة قصيرة` : `${c.short_answer} short-answer`);
   if (c.fill_blank > 0) requested.push(ar ? `${c.fill_blank} إكمال الفراغ` : `${c.fill_blank} fill-in-the-blank`);
   if (c.matching > 0) requested.push(ar ? `${c.matching} توصيل` : `${c.matching} matching`);
+  if (c.worked_problem > 0) requested.push(ar ? `${c.worked_problem} مسألة محلولة` : `${c.worked_problem} worked problem`);
+  if (c.extended_response > 0) requested.push(ar ? `${c.extended_response} إجابة ممتدة` : `${c.extended_response} extended response`);
+  if (c.error_correction > 0) requested.push(ar ? `${c.error_correction} تصحيح خطأ` : `${c.error_correction} error correction`);
+  if (c.word_bank > 0) requested.push(ar ? `${c.word_bank} بنك كلمات` : `${c.word_bank} word bank`);
+  if (c.compare > 0) requested.push(ar ? `${c.compare} مقارنة` : `${c.compare} compare`);
   if (c.tic_tac_toe > 0) requested.push(ar ? "لوحة تيك تاك توك واحدة من 9 مهام" : "one Tic-Tac-Toe choice board with 9 tasks");
 
   const sourceBlock = opts.sourceText
@@ -1718,24 +1886,34 @@ function buildExtractionPrompt(opts: {
     ? [
         "أعد ردًّا بصيغة JSON نقية فقط — بدون أي شرح أو ترميز.",
         "صيغة الرد: { \"questions\": [...] }.",
-        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
+        "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "للـ mcq: options مصفوفة من 4 خيارات نصّية بالضبط (لا أقل ولا أكثر)، و correctIndex فهرس صحيح بين 0 و 3.",
         "للـ true_false: correct قيمة منطقية.",
         "للـ short_answer: prompt هو السؤال، و lines رقم بين 1 و 5، و answer هو الإجابة المُقترحة.",
         "للـ fill_blank: prompt يحتوي على \"____\" مكان الفراغ، و answer هو الكلمة الصحيحة.",
         "للـ matching: pairs مصفوفة من 4-6 أزواج {left, right}.",
+        "للـ worked_problem: prompt وanswer كامل غير فارغ، وsteps اختياري من 1-20.",
+        "للـ extended_response: prompt وlines اختياري من 1-40، وanswer نموذجي اختياري.",
+        "للـ error_correction: prompt وincorrectText وcorrection، وexplanation اختياري.",
+        "للـ word_bank: prompt ذو فراغات أو عناصر مرقمة، وitems وanswers مصفوفتان متساويتان في العدد والترتيب.",
+        "للـ compare: prompt وleftLabel وrightLabel، وsimilarities وdifferences اختياريان.",
         "للـ tic_tac_toe: prompt وتعليمات اختيار، وcells من 9 عناصر {text, category, imageSuggested}. اكتب text كتوجيه مباشر وقصير يوضح للطالب بالضبط ما سيكتبه أو يرسمه أو يجيب عنه داخل المربع، ولا تستخدم category بدلًا من المهمة. يجب أن تختلف الفئات الثلاث في كل صف وكل عمود وكلا القطرين. اقترح صورة تعليمية محددة عبر imageSuggested فقط عندما تحسن فهم المهمة، ولا تنشئ imageUrl.",
         "اعتمد فقط على المحتوى المعطى. لا تخترع حقائق غير واردة فيه.",
       ]
     : [
         "Reply with strict JSON ONLY — no prose, no code fences.",
         "Reply shape: { \"questions\": [...] }.",
-        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | tic_tac_toe.",
+        "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "mcq: options must be an array of EXACTLY 4 strings (no more, no less); correctIndex is 0–3.",
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains \"____\" where the blank goes; answer is the missing word/phrase.",
         "matching: pairs is an array of 4–6 {left, right} string pairs.",
+        "worked_problem: prompt plus a complete non-empty answer; optional steps is 1–20.",
+        "extended_response: prompt plus optional lines (1–40) and optional model answer.",
+        "error_correction: prompt, incorrectText, correction, and optional explanation.",
+        "word_bank: prompt has numbered blanks/items; items and ordered answers are same-length arrays.",
+        "compare: prompt, leftLabel, rightLabel, and optional similarities and differences.",
         "tic_tac_toe: prompt plus exactly 9 cells shaped {text, category, imageSuggested}. Make every text a short, direct instruction stating exactly what the student should write, draw, or answer in the square; category is internal and must not replace the task. All three categories must differ in every row, column, and both diagonals. Suggest a specific useful visual only with imageSuggested and never create imageUrl.",
         "Ground questions ONLY in the provided source. Do not invent facts not present.",
       ];

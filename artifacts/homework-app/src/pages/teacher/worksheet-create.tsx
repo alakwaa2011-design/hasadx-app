@@ -10,7 +10,7 @@ import {
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
   ArrowLeft, Printer, Download, RotateCcw, LayoutTemplate, ChevronDown, Layers, ArrowUp, ArrowDown,
-  AlertTriangle, Clock3, Coins, Target, ClipboardCheck
+  AlertTriangle, Clock3, Coins, Target, ClipboardCheck, Calculator, AlignLeft, Columns2
 } from "lucide-react";
 import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
@@ -61,12 +61,26 @@ interface WsPrefs {
   contentLang?: "ar" | "en";
   aiDifficulty?: "easy" | "medium" | "hard" | "mixed";
   aiPages?: 1 | 2 | 3;
-  aiCounts?: { mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number };
+  aiCounts?: AiCounts;
   aiLearningObjective?: string;
   aiCognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create";
   aiActivityDuration?: number;
   aiDifferentiation?: "none" | "support" | "enrichment" | "scaffolded";
   aiAssessment?: "diagnostic" | "formative" | "summative";
+}
+
+interface AiCounts {
+  mcq: number;
+  true_false: number;
+  short_answer: number;
+  fill_blank: number;
+  matching: number;
+  worked_problem: number;
+  extended_response: number;
+  error_correction: number;
+  word_bank: number;
+  compare: number;
+  tic_tac_toe: number;
 }
 
 interface ToolCreditPrice {
@@ -81,7 +95,7 @@ const WS_DEFAULT_PREFS: Required<WsPrefs> = {
   contentLang: "ar",
   aiDifficulty: "medium",
   aiPages: 1,
-  aiCounts: { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
+  aiCounts: { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, worked_problem: 0, extended_response: 0, error_correction: 0, word_bank: 0, compare: 0, tic_tac_toe: 0 },
   aiLearningObjective: "",
   aiCognitiveSkill: "mixed",
   aiActivityDuration: 15,
@@ -109,7 +123,15 @@ function validateWsPrefs(raw: unknown): WsPrefs {
     const mcq = safe(c.mcq); const tf = safe(c.true_false); const sa = safe(c.short_answer);
     const fb = safe(c.fill_blank); const ma = safe(c.matching); const ttt = safe(c.tic_tac_toe) ?? 0;
     if (mcq !== undefined && tf !== undefined && sa !== undefined && fb !== undefined && ma !== undefined && ttt <= 1) {
-      result.aiCounts = { mcq, true_false: tf, short_answer: sa, fill_blank: fb, matching: ma, tic_tac_toe: ttt };
+      result.aiCounts = {
+        mcq, true_false: tf, short_answer: sa, fill_blank: fb, matching: ma,
+        worked_problem: safe(c.worked_problem) ?? 0,
+        extended_response: safe(c.extended_response) ?? 0,
+        error_correction: safe(c.error_correction) ?? 0,
+        word_bank: safe(c.word_bank) ?? 0,
+        compare: safe(c.compare) ?? 0,
+        tic_tac_toe: ttt,
+      };
     }
   }
   if (typeof p.aiLearningObjective === "string") result.aiLearningObjective = p.aiLearningObjective;
@@ -186,16 +208,21 @@ function clearTeacherProfile() {
   try { localStorage.removeItem(TEACHER_PROFILE_KEY); } catch { }
 }
 
-type QType = "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "tic_tac_toe";
+type QType = "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
 
 interface QMcq { id: string; type: "mcq"; prompt: string; options: string[]; correctIndex: number; points?: number }
 interface QTF { id: string; type: "true_false"; prompt: string; correct: boolean; points?: number }
 interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number }
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
+interface QWorkedProblem { id: string; type: "worked_problem"; prompt: string; steps?: number; answer: string; points?: number }
+interface QExtendedResponse { id: string; type: "extended_response"; prompt: string; lines?: number; answer?: string; points?: number }
+interface QErrorCorrection { id: string; type: "error_correction"; prompt: string; incorrectText: string; correction: string; explanation?: string; points?: number }
+interface QWordBank { id: string; type: "word_bank"; prompt: string; items: string[]; answers: string[]; points?: number }
+interface QCompare { id: string; type: "compare"; prompt: string; leftLabel: string; rightLabel: string; similarities?: string; differences?: string; points?: number }
 interface QTicTacToeCell { text: string; category: string; imageUrl?: string; imageSuggested?: boolean }
 interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: QTicTacToeCell[]; points?: number }
-type Question = QMcq | QTF | QShort | QFill | QMatch | QTicTacToe;
+type Question = QMcq | QTF | QShort | QFill | QMatch | QWorkedProblem | QExtendedResponse | QErrorCorrection | QWordBank | QCompare | QTicTacToe;
 const TIC_TAC_TOE_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
   [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -265,6 +292,21 @@ function inspectWorksheetQuality(
     if (question.type === "short_answer" && !question.answer?.trim()) {
       issues.push({ id: `model-answer-${question.id}`, questionId: question.id, level: "warning", ar: `أضف إجابة نموذجية للسؤال ${index + 1}.`, en: `Add a model answer for question ${index + 1}.` });
     }
+    if (question.type === "worked_problem" && !question.answer.trim()) {
+      issues.push({ id: `worked-answer-${question.id}`, questionId: question.id, level: "warning", ar: `أضف الناتج النموذجي للمسألة ${index + 1}.`, en: `Add a model result for worked problem ${index + 1}.` });
+    }
+    if (question.type === "extended_response" && !question.answer?.trim()) {
+      issues.push({ id: `extended-answer-${question.id}`, questionId: question.id, level: "warning", ar: `أضف عناصر الإجابة المتوقعة للسؤال المطول ${index + 1}.`, en: `Add expected answer points for extended response ${index + 1}.` });
+    }
+    if (question.type === "error_correction" && (!question.incorrectText.trim() || !question.correction.trim())) {
+      issues.push({ id: `correction-fields-${question.id}`, questionId: question.id, level: "error", ar: `أكمل النص الخاطئ وتصحيحه في السؤال ${index + 1}.`, en: `Complete the incorrect text and correction for question ${index + 1}.` });
+    }
+    if (question.type === "word_bank" && (question.items.some(item => !item.trim()) || question.answers.some(answer => !answer.trim()))) {
+      issues.push({ id: `word-bank-fields-${question.id}`, questionId: question.id, level: "error", ar: `أكمل جمل وإجابات بنك الكلمات في السؤال ${index + 1}.`, en: `Complete word-bank items and answers for question ${index + 1}.` });
+    }
+    if (question.type === "compare" && (!question.leftLabel.trim() || !question.rightLabel.trim())) {
+      issues.push({ id: `compare-labels-${question.id}`, questionId: question.id, level: "error", ar: `حدّد طرفي المقارنة في السؤال ${index + 1}.`, en: `Set both comparison items for question ${index + 1}.` });
+    }
     if (question.type === "tic_tac_toe") {
       const tasks = question.cells.map(cell => normalizeComparableText(cell.text));
       if (new Set(tasks.filter(Boolean)).size < tasks.filter(Boolean).length) {
@@ -320,7 +362,12 @@ const typeLabel = (t: QType, ar: boolean) => {
     short_answer: "إجابة قصيرة",
     fill_blank: "إكمال الفراغ",
     matching: "توصيل",
-    tic_tac_toe: "تيك تاك توك",
+    worked_problem: "مسألة مع خطوات الحل",
+    extended_response: "إجابة مطولة",
+    error_correction: "اكتشف الخطأ وصححه",
+    word_bank: "بنك كلمات",
+    compare: "قارن",
+    tic_tac_toe: "لوحة الاختيار (Tic-Tac-Toe)",
   };
   const enMap: Record<QType, string> = {
     mcq: "Multiple Choice",
@@ -328,7 +375,12 @@ const typeLabel = (t: QType, ar: boolean) => {
     short_answer: "Short Answer",
     fill_blank: "Fill the Blank",
     matching: "Matching",
-    tic_tac_toe: "Tic-Tac-Toe Choice Board",
+    worked_problem: "Worked Problem",
+    extended_response: "Extended Response",
+    error_correction: "Find & Correct the Error",
+    word_bank: "Word Bank",
+    compare: "Compare",
+    tic_tac_toe: "Choice Board (Tic-Tac-Toe)",
   };
   return ar ? arMap[t] : enMap[t];
 };
@@ -340,6 +392,11 @@ const typeIcon = (t: QType) => {
     case "short_answer": return <Pencil className="w-4 h-4" />;
     case "fill_blank": return <Type className="w-4 h-4" />;
     case "matching": return <Shuffle className="w-4 h-4" />;
+    case "worked_problem": return <Calculator className="w-4 h-4" />;
+    case "extended_response": return <AlignLeft className="w-4 h-4" />;
+    case "error_correction": return <AlertTriangle className="w-4 h-4" />;
+    case "word_bank": return <Layers className="w-4 h-4" />;
+    case "compare": return <Columns2 className="w-4 h-4" />;
     case "tic_tac_toe": return <LayoutTemplate className="w-4 h-4" />;
   }
 };
@@ -357,6 +414,16 @@ function makeBlank(type: QType, ar: boolean): Question {
       return { id, type, prompt: ar ? "اكتب الجملة هنا واستخدم ____ مكان الفراغ" : "Type the sentence and use ____ for the blank", answer: "" };
     case "matching":
       return { id, type, prompt: "", pairs: [{ left: "", right: "" }, { left: "", right: "" }, { left: "", right: "" }] };
+    case "worked_problem":
+      return { id, type, prompt: "", steps: 3, answer: "" };
+    case "extended_response":
+      return { id, type, prompt: "", lines: 8, answer: "" };
+    case "error_correction":
+      return { id, type, prompt: ar ? "اكتشف الخطأ ثم صححه وعلّل إجابتك." : "Find the error, correct it, and explain.", incorrectText: "", correction: "", explanation: "" };
+    case "word_bank":
+      return { id, type, prompt: ar ? "أكمل باستخدام الكلمات المناسبة من البنك." : "Complete using the correct words from the bank.", items: ["", "", ""], answers: ["", "", ""] };
+    case "compare":
+      return { id, type, prompt: ar ? "قارن بين العنصرين الآتيين." : "Compare the following two items.", leftLabel: "", rightLabel: "", similarities: "", differences: "" };
     case "tic_tac_toe":
       return {
         id,
@@ -441,8 +508,8 @@ export default function WorksheetCreate() {
   const [sourceText, setSourceText] = useState("");
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
   const [aiPages, setAiPages] = useState<1 | 2 | 3>(_wsPrefs.aiPages ?? 1);
-  const [aiCounts, setAiCounts] = useState<{ mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number }>(
-    _wsPrefs.aiCounts ?? { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
+  const [aiCounts, setAiCounts] = useState<AiCounts>(
+    _wsPrefs.aiCounts ?? WS_DEFAULT_PREFS.aiCounts,
   );
   const [aiLearningObjective, setAiLearningObjective] = useState(_wsPrefs.aiLearningObjective ?? WS_DEFAULT_PREFS.aiLearningObjective);
   const [aiCognitiveSkill, setAiCognitiveSkill] = useState(_wsPrefs.aiCognitiveSkill ?? WS_DEFAULT_PREFS.aiCognitiveSkill);
@@ -632,7 +699,7 @@ export default function WorksheetCreate() {
   }, []);
 
   const totalQs = questions.length;
-  const aiTotal = aiCounts.mcq + aiCounts.true_false + aiCounts.short_answer + aiCounts.fill_blank + aiCounts.matching + aiCounts.tic_tac_toe;
+  const aiTotal = Object.values(aiCounts).reduce((sum, count) => sum + count, 0);
   const regularAiCount = aiTotal - aiCounts.tic_tac_toe;
   const aiMaxTotal = aiPages * 30;
   const canSave = title.trim().length >= 2 && totalQs >= 1;
@@ -1312,8 +1379,8 @@ export default function WorksheetCreate() {
         if (q.pairs.length < 2) return ar ? "كل سؤال توصيل يحتاج زوجين على الأقل" : "Matching needs at least 2 pairs";
         if (q.pairs.some(p => !p.left.trim() || !p.right.trim())) return ar ? "اكتمل أزواج التوصيل" : "Fill all matching pairs";
       } else if (q.type === "tic_tac_toe") {
-        if (q.cells.length !== 9) return ar ? "لوحة تيك تاك توك تحتاج ٩ مربعات" : "The Tic-Tac-Toe board needs 9 cells";
-        if (q.cells.some(cell => !cell.text.trim() || !cell.category.trim())) return ar ? "أكمل مهام وتصنيفات مربعات تيك تاك توك" : "Complete every Tic-Tac-Toe task and category";
+        if (q.cells.length !== 9) return ar ? "لوحة الاختيار تحتاج ٩ مربعات" : "The choice board needs 9 cells";
+        if (q.cells.some(cell => !cell.text.trim() || !cell.category.trim())) return ar ? "أكمل مهام وتصنيفات مربعات لوحة الاختيار" : "Complete every choice-board task and category";
         const repeatedLine = TIC_TAC_TOE_LINES.some(line =>
           new Set(line.map(index => q.cells[index].category.trim().toLocaleLowerCase())).size < 3
         );
@@ -1328,6 +1395,19 @@ export default function WorksheetCreate() {
       }
       if (q.type === "fill_blank" && !q.answer.trim()) {
         return ar ? "اكتب الإجابة لسؤال الفراغ" : "Provide the answer for fill-blank";
+      }
+      if (q.type === "worked_problem" && !q.answer.trim()) {
+        return ar ? "اكتب الإجابة النهائية للمسألة" : "Provide the final answer for the worked problem";
+      }
+      if (q.type === "error_correction" && (!q.incorrectText.trim() || !q.correction.trim())) {
+        return ar ? "أكمل النص الخاطئ والتصحيح النموذجي" : "Complete the incorrect text and model correction";
+      }
+      if (q.type === "word_bank") {
+        if (q.items.length < 2 || q.items.length !== q.answers.length) return ar ? "بنك الكلمات يحتاج فراغين متطابقين مع الإجابات على الأقل" : "Word bank needs at least two items aligned with answers";
+        if (q.items.some(item => !item.trim()) || q.answers.some(answer => !answer.trim())) return ar ? "أكمل عناصر وإجابات بنك الكلمات" : "Complete all word-bank items and answers";
+      }
+      if (q.type === "compare" && (!q.leftLabel.trim() || !q.rightLabel.trim())) {
+        return ar ? "حدّد العنصرين المطلوب مقارنتهما" : "Set both items to compare";
       }
     }
     return null;
@@ -1870,10 +1950,28 @@ export default function WorksheetCreate() {
                       key={k}
                       label={typeLabel(k, ar)}
                       value={aiCounts[k]}
-                      max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                      max={["matching", "word_bank", "compare"].includes(k) ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
                       onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
                     />
                   ))}
+                  <Collapsible className="w-full">
+                    <CollapsibleTrigger className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-[11px] font-bold text-primary hover:bg-primary/5">
+                      <Plus className="w-3.5 h-3.5" />
+                      {ar ? "أنواع إضافية" : "More question types"}
+                      <ChevronDown className="w-3.5 h-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/50 bg-background/70 p-3">
+                      {(["worked_problem", "extended_response", "error_correction", "word_bank", "compare"] as const).map(k => (
+                        <CompactStepper
+                          key={k}
+                          label={typeLabel(k, ar)}
+                          value={aiCounts[k]}
+                          max={["word_bank", "compare"].includes(k) ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                          onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
+                        />
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -2239,8 +2337,8 @@ export default function WorksheetCreate() {
                   <ChevronDown className="w-3.5 h-3.5 opacity-70" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
+              <DropdownMenuContent align="start" className="w-64 max-h-[70vh] overflow-y-auto">
+                {(["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"] as const).map(t => (
                   <DropdownMenuItem
                     key={t}
                     onClick={() => addQuestion(t)}
@@ -2819,6 +2917,11 @@ function QuestionEditor({
               <option value="short_answer">{typeLabel("short_answer", ar)}</option>
               <option value="fill_blank">{typeLabel("fill_blank", ar)}</option>
               <option value="matching">{typeLabel("matching", ar)}</option>
+              <option value="worked_problem">{typeLabel("worked_problem", ar)}</option>
+              <option value="extended_response">{typeLabel("extended_response", ar)}</option>
+              <option value="error_correction">{typeLabel("error_correction", ar)}</option>
+              <option value="word_bank">{typeLabel("word_bank", ar)}</option>
+              <option value="compare">{typeLabel("compare", ar)}</option>
               <option value="tic_tac_toe">{typeLabel("tic_tac_toe", ar)}</option>
             </select>
           </label>
@@ -2863,7 +2966,7 @@ function QuestionEditor({
                 className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
               />
             </Field>
-            {(question.type === "short_answer" || question.type === "tic_tac_toe") && (
+            {(["short_answer", "extended_response", "worked_problem", "error_correction", "compare", "tic_tac_toe"] as QType[]).includes(question.type) && (
               <Field label={ar ? "معيار النجاح / سلم التقدير" : "Success criterion / rubric"}>
                 <input
                   value={rubric}
@@ -3041,6 +3144,72 @@ function QuestionEditor({
               <Plus className="w-3.5 h-3.5" /> {ar ? "إضافة زوج" : "Add pair"}
             </button>
           )}
+        </div>
+      )}
+
+      {question.type === "worked_problem" && (
+        <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-3 mt-2">
+          <Field label={ar ? "عدد مساحات الخطوات" : "Work steps"}>
+            <input type="number" min={1} max={8} value={question.steps ?? 3} onChange={e => onUpdate({ steps: Math.max(1, Math.min(8, Number(e.target.value) || 3)) } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none" />
+          </Field>
+          <Field label={ar ? "الإجابة النهائية النموذجية" : "Final model answer"}>
+            <input value={question.answer} onChange={e => onUpdate({ answer: e.target.value } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none" />
+          </Field>
+        </div>
+      )}
+
+      {question.type === "extended_response" && (
+        <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-3 mt-2">
+          <Field label={ar ? "عدد أسطر الإجابة" : "Answer lines"}>
+            <input type="number" min={4} max={30} value={question.lines ?? 8} onChange={e => onUpdate({ lines: Math.max(4, Math.min(30, Number(e.target.value) || 8)) } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none" />
+          </Field>
+          <Field label={ar ? "إجابة نموذجية / عناصر متوقعة" : "Model answer / expected points"}>
+            <textarea value={question.answer ?? ""} onChange={e => onUpdate({ answer: e.target.value } as any)} rows={2} className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:border-primary outline-none resize-y" />
+          </Field>
+        </div>
+      )}
+
+      {question.type === "error_correction" && (
+        <div className="space-y-3 mt-2">
+          <Field label={ar ? "النص أو الحل الذي يحتوي الخطأ" : "Incorrect statement or solution"}>
+            <textarea value={question.incorrectText} onChange={e => onUpdate({ incorrectText: e.target.value } as any)} rows={2} className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:border-primary outline-none resize-y" />
+          </Field>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label={ar ? "التصحيح النموذجي" : "Model correction"}>
+              <input value={question.correction} onChange={e => onUpdate({ correction: e.target.value } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none" />
+            </Field>
+            <Field label={ar ? "التعليل النموذجي (اختياري)" : "Model explanation (optional)"}>
+              <input value={question.explanation ?? ""} onChange={e => onUpdate({ explanation: e.target.value } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none" />
+            </Field>
+          </div>
+        </div>
+      )}
+
+      {question.type === "word_bank" && (
+        <div className="space-y-3 mt-2">
+          <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+            {question.items.map((item, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                <input value={item} onChange={e => { const items = question.items.slice(); items[i] = e.target.value; onUpdate({ items } as any); }} placeholder={`${ar ? "الجملة أو الفراغ" : "Sentence or blank"} ${i + 1}`} className="h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" />
+                <input value={question.answers[i] ?? ""} onChange={e => { const answers = question.answers.slice(); answers[i] = e.target.value; onUpdate({ answers } as any); }} placeholder={ar ? "الكلمة الصحيحة" : "Correct word"} className="h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" />
+                <button type="button" disabled={question.items.length <= 2} onClick={() => onUpdate({ items: question.items.filter((_, j) => j !== i), answers: question.answers.filter((_, j) => j !== i) } as any)} className="w-8 h-8 grid place-items-center rounded-lg text-destructive disabled:opacity-30"><X className="w-4 h-4" /></button>
+              </div>
+            ))}
+          </div>
+          {question.items.length < 10 && <button type="button" onClick={() => onUpdate({ items: [...question.items, ""], answers: [...question.answers, ""] } as any)} className="text-xs font-bold text-primary flex items-center gap-1"><Plus className="w-3.5 h-3.5" />{ar ? "إضافة فراغ" : "Add blank"}</button>}
+        </div>
+      )}
+
+      {question.type === "compare" && (
+        <div className="space-y-3 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label={ar ? "العنصر الأول" : "First item"}><input value={question.leftLabel} onChange={e => onUpdate({ leftLabel: e.target.value } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" /></Field>
+            <Field label={ar ? "العنصر الثاني" : "Second item"}><input value={question.rightLabel} onChange={e => onUpdate({ rightLabel: e.target.value } as any)} className="w-full h-10 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" /></Field>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label={ar ? "أوجه الشبه النموذجية" : "Model similarities"}><textarea value={question.similarities ?? ""} onChange={e => onUpdate({ similarities: e.target.value } as any)} rows={2} className="w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary" /></Field>
+            <Field label={ar ? "أوجه الاختلاف النموذجية" : "Model differences"}><textarea value={question.differences ?? ""} onChange={e => onUpdate({ differences: e.target.value } as any)} rows={2} className="w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary" /></Field>
+          </div>
         </div>
       )}
 

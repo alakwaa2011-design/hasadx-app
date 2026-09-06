@@ -15,6 +15,7 @@ import {
   findTicTacToeDiversityViolations,
   normalizeTicTacToeCategoryDiversity,
   sanitizeGeneratedQuestions,
+  worksheetQuestionsSchema,
 } from "../routes/worksheets";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -114,6 +115,79 @@ describe("equivalent-format normalization", () => {
   it("rejects optionA..D shape when one option is empty (never invents options)", () => {
     const raw = [{ type: "mcq", prompt: "Q?", optionA: "Alpha", optionB: "", optionC: "Gamma", optionD: "Delta", correctAnswer: "A" }];
     expect(sanitizeGeneratedQuestions(raw, DEFAULT_EXTRACT_COUNTS)).toHaveLength(0);
+  });
+});
+
+describe("new worksheet question types", () => {
+  const NEW_TYPE_COUNTS = {
+    ...DEFAULT_EXTRACT_COUNTS,
+    mcq: 0,
+    worked_problem: 1,
+    extended_response: 1,
+    error_correction: 1,
+    word_bank: 1,
+    compare: 1,
+  };
+
+  it("sanitizes all five shapes without inventing answer content", () => {
+    const raw = [
+      { type: "worked_problem", prompt: "Solve 12 ÷ 3.", steps: 2, answer: "12 ÷ 3 = 4", points: 3 },
+      { type: "extended_response", prompt: "Explain the water cycle.", lines: 8 },
+      {
+        type: "error_correction",
+        prompt: "Correct the claim.",
+        incorrectText: "Plants get food from soil.",
+        correction: "Plants make glucose by photosynthesis.",
+        explanation: "Soil supplies water and minerals.",
+      },
+      {
+        type: "word_bank",
+        prompt: "1. Water changes to vapor by ____.",
+        items: ["evaporation"],
+        answers: ["evaporation"],
+      },
+      {
+        type: "compare",
+        prompt: "Compare the processes.",
+        leftLabel: "Photosynthesis",
+        rightLabel: "Respiration",
+        similarities: "Both transform energy.",
+        differences: "They store versus release energy.",
+      },
+    ];
+
+    const result = sanitizeGeneratedQuestions(raw, NEW_TYPE_COUNTS);
+    expect(result).toHaveLength(5);
+    expect(result[0]).toMatchObject({ type: "worked_problem", answer: "12 ÷ 3 = 4", steps: 2, points: 3 });
+    expect(result[1]).toEqual(expect.objectContaining({ type: "extended_response", lines: 8 }));
+    expect(result[1]).not.toHaveProperty("answer");
+    expect(result[2]).toMatchObject({ type: "error_correction", correction: "Plants make glucose by photosynthesis." });
+    expect(result[3]).toMatchObject({ type: "word_bank", items: ["evaporation"], answers: ["evaporation"] });
+    expect(result[4]).toMatchObject({ type: "compare", leftLabel: "Photosynthesis", rightLabel: "Respiration" });
+  });
+
+  it("rejects required missing answers and misaligned word-bank arrays", () => {
+    const result = sanitizeGeneratedQuestions([
+      { type: "worked_problem", prompt: "Solve it." },
+      { type: "error_correction", prompt: "Fix it.", incorrectText: "Wrong" },
+      { type: "word_bank", prompt: "1. ____ 2. ____", items: ["one", "two"], answers: ["one"] },
+    ], NEW_TYPE_COUNTS);
+    expect(result).toEqual([]);
+  });
+
+  it("strictly validates persisted word-bank alignment and required fields", () => {
+    const base = { id: "q1", type: "word_bank" as const, prompt: "1. ____", points: 2 };
+    expect(worksheetQuestionsSchema.safeParse([
+      { ...base, items: ["energy"], answers: ["energy"] },
+    ]).success).toBe(true);
+    const invalid = worksheetQuestionsSchema.safeParse([
+      { ...base, items: ["energy", "matter"], answers: ["energy"] },
+    ]);
+    expect(invalid.success).toBe(false);
+    if (!invalid.success) expect(invalid.error.issues[0].message).toContain("same length");
+    expect(worksheetQuestionsSchema.safeParse([
+      { ...base, items: ["energy"], answers: ["energy"], unexpected: "not persisted" },
+    ]).success).toBe(false);
   });
 });
 
