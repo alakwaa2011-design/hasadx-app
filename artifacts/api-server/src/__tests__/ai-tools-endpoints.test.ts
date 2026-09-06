@@ -422,6 +422,49 @@ describe("POST /api/worksheets/ai/regenerate-tic-tac-toe-cell", () => {
   });
 });
 
+describe("POST /api/worksheets/ai/generate-tic-tac-toe-image", () => {
+  it("generates and stores an image for one square using its task context", async () => {
+    mockState.openaiImagesGenerate.mockResolvedValueOnce({
+      data: [{ b64_json: Buffer.from("image-bytes").toString("base64") }],
+    });
+    const res = await request(makeApp(worksheetsRouter))
+      .post("/api/worksheets/ai/generate-tic-tac-toe-image")
+      .send({
+        cellText: "Draw and label the parts of a flowering plant",
+        subject: "Science",
+        gradeLevel: "Grade 4",
+        topic: "Plant growth",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.imageUrl).toBe("https://storage.example.com/img.png");
+    expect(mockState.checkedCreditToolKeys).toContain("ai-image");
+    const prompt = mockState.openaiImagesGenerate.mock.calls[0][0].prompt as string;
+    expect(prompt).toContain("Draw and label the parts of a flowering plant");
+    expect(prompt).toContain("Subject: Science");
+    expect(prompt).toContain("Do not include text");
+  });
+
+  it("rejects image generation until the square has a clear task", async () => {
+    const res = await request(makeApp(worksheetsRouter))
+      .post("/api/worksheets/ai/generate-tic-tac-toe-image")
+      .send({ cellText: " " });
+
+    expect(res.status).toBe(400);
+    expect(mockState.openaiImagesGenerate).not.toHaveBeenCalled();
+  });
+
+  it("fails explicitly when the image provider returns no image", async () => {
+    mockState.openaiImagesGenerate.mockResolvedValueOnce({ data: [] });
+    const res = await request(makeApp(worksheetsRouter))
+      .post("/api/worksheets/ai/generate-tic-tac-toe-image")
+      .send({ cellText: "Compare the two plant root systems" });
+
+    expect(res.status).toBe(500);
+    expect(res.body.message).toContain("لم يتم خصم النقاط");
+  });
+});
+
 describe("POST /api/worksheets/ai/extract", () => {
   it("accepts pasted source text without an uploaded file", async () => {
     openaiReturns(JSON.stringify({ questions: [{

@@ -146,7 +146,7 @@ afterEach(async () => {
 });
 
 describe("توليد لوحة تيك تاك توك من منشئ ورقة العمل", () => {
-  it("يرسل لوحة واحدة ويعرض تسع مهام واقتراح الصورة دون اختيارها أو رفعها تلقائيًا", async () => {
+  it("يعرض زر توليد مستقل لكل مربع دون إنشاء أي صورة تلقائيًا", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/api/worksheets/ai/generate")) {
         return response({ questions: [BOARD], language: "ar" });
@@ -155,6 +155,9 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
         return response({ id: 1094 }, 201);
       }
       if (url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell")) {
+        return response(TOOL_PRICE);
+      }
+      if (url.includes("/api/credits/tool-price/ai-image")) {
         return response(TOOL_PRICE);
       }
       if (url.includes("/api/teacher/grade-levels")) return response([]);
@@ -201,8 +204,10 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     expect(Array.from(container.querySelectorAll('input[type="file"]'))
       .filter((input) => input.getAttribute("accept")?.includes("image/jpeg"))).toHaveLength(9);
     expect(container.querySelectorAll("img")).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll("button"))
+      .filter(button => button.textContent?.includes("توليد صورة مناسبة"))).toHaveLength(9);
     expect(fetchMock.mock.calls.some(([url]) =>
-      /upload|image/i.test(String(url)) && !String(url).includes("/ai/generate"))).toBe(false);
+      String(url).includes("/api/worksheets/ai/generate-tic-tac-toe-image"))).toBe(false);
   });
 
   it("يحدّث المربع المطلوب فقط ويحفظ تعديلات المعلم وترتيبه أثناء انتظار الذكاء", async () => {

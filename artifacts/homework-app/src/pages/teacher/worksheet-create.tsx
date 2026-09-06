@@ -314,6 +314,7 @@ export default function WorksheetCreate() {
   const goBack = useSmartBack("/teacher");
   const [clientRequestId] = useState(createClientRequestId);
   const [ticTacToeCellCredit, setTicTacToeCellCredit] = useState<ToolCreditPrice | null>(null);
+  const [ticTacToeImageCredit, setTicTacToeImageCredit] = useState<ToolCreditPrice | null>(null);
   const ticTacToePriceRequestRef = useRef(0);
 
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
@@ -345,6 +346,7 @@ export default function WorksheetCreate() {
   );
   const [generating, setGenerating] = useState(false);
   const [regeneratingCell, setRegeneratingCell] = useState<{ questionId: string; cellIndex: number } | null>(null);
+  const [generatingCellImage, setGeneratingCellImage] = useState<{ questionId: string; cellIndex: number } | null>(null);
   const [activeAiTab, setActiveAiTab] = useState("topic");
 
   const wsDidMountRef = useRef(false);
@@ -545,6 +547,27 @@ export default function WorksheetCreate() {
       if (requestId === ticTacToePriceRequestRef.current) {
         setTicTacToeCellCredit(data);
       }
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const refreshTicTacToeImageCredit = useCallback(async (): Promise<ToolCreditPrice | null> => {
+    try {
+      const response = await fetch(`${API_BASE}/api/credits/tool-price/ai-image`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (
+        typeof data?.effectiveCost !== "number"
+        || typeof data?.baseCost !== "number"
+        || typeof data?.isPro !== "boolean"
+        || typeof data?.creditsEnabled !== "boolean"
+      ) return null;
+      setTicTacToeImageCredit(data);
       return data;
     } catch {
       return null;
@@ -821,17 +844,79 @@ export default function WorksheetCreate() {
     }
   };
 
+  const generateTicTacToeCellImage = async (questionId: string, cellIndex: number) => {
+    if (contentOperationInFlightRef.current) return;
+    const current = latestWorksheetRef.current;
+    const board = current.questions.find(q => q.id === questionId);
+    if (!board || board.type !== "tic_tac_toe") return;
+    const cell = board.cells[cellIndex];
+    if (!cell?.text.trim()) {
+      toast.error(ar ? "اكتب مهمة المربع أولًا" : "Write the square task first");
+      return;
+    }
+
+    contentOperationInFlightRef.current = true;
+    setGeneratingCellImage({ questionId, cellIndex });
+    try {
+      const price = await refreshTicTacToeImageCredit();
+      if (!price) {
+        toast.error(ar ? "تعذّر التحقق من تكلفة الصورة" : "Could not verify image cost");
+        return;
+      }
+      const response = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/generate-tic-tac-toe-image`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": createClientRequestId(),
+        },
+        body: JSON.stringify({
+          cellText: cell.text,
+          subject: current.subject.trim() || undefined,
+          gradeLevel: current.gradeLevel.trim() || undefined,
+          topic: aiTopic.trim() || current.title.trim() || undefined,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (isInsufficientCreditsResponse(response)) return;
+        toast.error(data.message || (ar ? "تعذّر توليد الصورة" : "Could not generate image"));
+        return;
+      }
+      const latest = latestWorksheetRef.current;
+      const nextQuestions = latest.questions.map(question => {
+        if (question.id !== questionId || question.type !== "tic_tac_toe") return question;
+        return {
+          ...question,
+          cells: question.cells.map((item, index) => index === cellIndex ? { ...item, imageUrl: data.imageUrl } : item),
+        };
+      });
+      latestWorksheetRef.current = { ...latest, questions: nextQuestions };
+      setQuestions(nextQuestions);
+      toast.success(ar ? "تم توليد صورة المربع" : "Square image generated");
+    } catch {
+      toast.error(ar ? "حدث خطأ في الاتصال أثناء توليد الصورة" : "Network error while generating the image");
+    } finally {
+      contentOperationInFlightRef.current = false;
+      setGeneratingCellImage(null);
+      refreshCreditsBalance();
+    }
+  };
+
   useEffect(() => {
     if (!questions.some(question => question.type === "tic_tac_toe")) return;
     void refreshTicTacToeCellCredit();
+    void refreshTicTacToeImageCredit();
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === "visible") {
         void refreshTicTacToeCellCredit();
+        void refreshTicTacToeImageCredit();
       }
     }, TIC_TAC_TOE_PRICE_REFRESH_MS);
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") {
         void refreshTicTacToeCellCredit();
+        void refreshTicTacToeImageCredit();
       }
     };
     document.addEventListener("visibilitychange", refreshWhenVisible);
@@ -839,7 +924,11 @@ export default function WorksheetCreate() {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [questions.some(question => question.type === "tic_tac_toe"), refreshTicTacToeCellCredit]);
+  }, [
+    questions.some(question => question.type === "tic_tac_toe"),
+    refreshTicTacToeCellCredit,
+    refreshTicTacToeImageCredit,
+  ]);
 
   const extractFromFile = async () => {
     if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
@@ -1645,6 +1734,9 @@ export default function WorksheetCreate() {
                   onRegenerateCell={cellIndex => regenerateTicTacToeCell(q.id, cellIndex)}
                   regeneratingCellIndex={regeneratingCell?.questionId === q.id ? regeneratingCell.cellIndex : null}
                   regenerateCreditPrice={ticTacToeCellCredit}
+                  onGenerateCellImage={cellIndex => generateTicTacToeCellImage(q.id, cellIndex)}
+                  generatingCellImageIndex={generatingCellImage?.questionId === q.id ? generatingCellImage.cellIndex : null}
+                  imageCreditPrice={ticTacToeImageCredit}
                 />
               ))}
             </div>
@@ -2005,7 +2097,7 @@ function CollapsibleCard({ title, icon: Icon, isOpen, onToggle, summary, childre
 }
 
 function QuestionEditor({
-  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex, regenerateCreditPrice,
+  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex, regenerateCreditPrice, onGenerateCellImage, generatingCellImageIndex, imageCreditPrice,
 }: {
   index: number; total: number; question: Question; ar: boolean;
   onUpdate: (patch: Partial<Question>) => void;
@@ -2015,6 +2107,9 @@ function QuestionEditor({
   onRegenerateCell: (cellIndex: number) => void;
   regeneratingCellIndex: number | null;
   regenerateCreditPrice: ToolCreditPrice | null;
+  onGenerateCellImage: (cellIndex: number) => void;
+  generatingCellImageIndex: number | null;
+  imageCreditPrice: ToolCreditPrice | null;
 }) {
   const [uploadingCell, setUploadingCell] = useState<number | null>(null);
   return (
@@ -2329,6 +2424,24 @@ function QuestionEditor({
                       }}
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => onGenerateCellImage(i)}
+                    disabled={generatingCellImageIndex !== null || regeneratingCellIndex !== null || !cell.text.trim()}
+                    className="w-full h-9 px-3 rounded-lg border bg-primary/5 hover:bg-primary/10 text-xs font-bold text-primary flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {generatingCellImageIndex === i
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Sparkles className="w-4 h-4" />}
+                    {cell.imageUrl
+                      ? (ar ? "توليد صورة بديلة" : "Generate replacement image")
+                      : (ar ? "توليد صورة مناسبة" : "Generate suitable image")}
+                    {imageCreditPrice?.creditsEnabled && imageCreditPrice.effectiveCost > 0 && (
+                      <span className="font-normal opacity-80">
+                        ({imageCreditPrice.effectiveCost} {ar ? "نقطة" : "credits"})
+                      </span>
+                    )}
+                  </button>
                 </div>
               ))}
             </div>

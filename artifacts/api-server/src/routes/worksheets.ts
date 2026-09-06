@@ -18,6 +18,7 @@ import {
 } from "../lib/file-upload";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { trackAiUsageCall } from "../lib/ai-usage-ledger";
+import { ObjectStorageService } from "../lib/objectStorage";
 import type { Request } from "express";
 
 const router: IRouter = Router();
@@ -1158,6 +1159,66 @@ router.post("/worksheets/ai/regenerate-tic-tac-toe-cell", requireTeacher, checkC
     }
     req.log.error({ err }, "Tic-Tac-Toe cell regeneration failed");
     res.status(500).json({ message: language === "ar" ? "تعذّرت إعادة التوليد" : "Regeneration failed" });
+  }
+});
+
+const generateTicTacToeImageBody = z.object({
+  cellText: z.string().trim().min(3).max(500),
+  subject: z.string().trim().max(100).optional(),
+  gradeLevel: z.string().trim().max(100).optional(),
+  topic: z.string().trim().max(200).optional(),
+});
+
+router.post("/worksheets/ai/generate-tic-tac-toe-image", requireTeacher, checkCredits("ai-image"), async (req, res) => {
+  const parsed = generateTicTacToeImageBody.safeParse(req.body);
+  if (!parsed.success) {
+    await refundCredits(req, "بيانات صورة مربع غير صالحة");
+    res.status(400).json({ message: "اكتب مهمة واضحة في المربع أولًا" });
+    return;
+  }
+  const { cellText, subject, gradeLevel, topic } = parsed.data;
+  const imagePrompt = [
+    "Create one clean, accurate educational illustration for a printed student worksheet.",
+    `Student task: ${cellText}`,
+    subject ? `Subject: ${subject}` : "",
+    gradeLevel ? `Grade level: ${gradeLevel}` : "",
+    topic ? `Lesson topic: ${topic}` : "",
+    "Use a simple uncluttered composition, white background, age-appropriate detail, and strong visual clarity when printed small.",
+    "Do not include text, letters, numbers, labels, logos, watermarks, borders, answer clues, or decorative worksheet elements.",
+  ].filter(Boolean).join("\n");
+
+  try {
+    const image = await trackAiUsageCall(req, {
+      toolKey: "ai-image",
+      callKey: "worksheet-tic-tac-toe-cell-image",
+      provider: "openai",
+      model: "gpt-image-1",
+      modality: "image",
+    }, () => openai.images.generate({
+      model: "gpt-image-1",
+      prompt: imagePrompt,
+      n: 1,
+      size: "1024x1024",
+    }), (result: any) => ({
+      tokensIn: result.usage?.input_tokens ?? result.usage?.prompt_tokens,
+      tokensOut: result.usage?.output_tokens ?? result.usage?.completion_tokens,
+      usageQuantity: result.usage ? null : 1,
+      usageUnit: result.usage ? null : "image",
+    }));
+    const b64 = image?.data?.[0]?.b64_json;
+    if (!b64) throw new Error("image generation returned no data");
+    const imageUrl = await new ObjectStorageService().uploadBufferAsPublic({
+      buffer: Buffer.from(b64, "base64"),
+      contentType: "image/png",
+      extension: ".png",
+    });
+    const result = { imageUrl };
+    await captureCredits(req, result);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "worksheet choice-board cell image generation failed");
+    await refundCredits(req, "فشل توليد صورة مربع لوحة الاختيار");
+    res.status(500).json({ message: "تعذّر توليد الصورة. لم يتم خصم النقاط، ويمكنك المحاولة مرة أخرى." });
   }
 });
 
