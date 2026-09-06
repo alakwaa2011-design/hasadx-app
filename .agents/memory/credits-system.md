@@ -30,6 +30,13 @@ Without this, the api-server tsc will report "Module '@workspace/db' has no expo
 ## Handler contract (post-hold)
 Every response after `checkCredits` must either `captureCredits(req)` (content delivered — including lenient/fallback success paths) or `refundCredits(req, reason)` (400/403/404/5xx early exits), otherwise held credits sit until the 60s auto-refund cron. `checkCredits` honors an `X-Idempotency-Key` UUID header (requestId = `teacherId:toolKey:key`) so browser retries can't double-charge; frontend does not send it yet.
 
+## Paid-result delivery invariant
+For paid outputs, a resolved capture call is not enough: the capture result must explicitly confirm `captured: true` before the output is returned as a success.
+
+**Why:** a stale-hold refund can race a slow provider. In that case capture resolves with `captured: false` rather than throwing, and ignoring the flag gives away the generated result without a completed debit.
+
+**How to apply:** paid routes that gate result delivery on accounting must use a strict capture path that throws on both database errors and `captured: false`; the route's failure path should then attempt a refund and avoid returning the asset.
+
 ## Test DB gotcha
 TEST_DATABASE_URL DB lacks the boot-time `credit_tool_prices` seed (it runs in api-server startup). Integration tests must seed/normalize the tool rows they assert costs for.
 

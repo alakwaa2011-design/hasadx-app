@@ -210,6 +210,126 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       String(url).includes("/api/worksheets/ai/generate-tic-tac-toe-image"))).toBe(false);
   });
 
+  it("يولد صورة للمربع المطلوب فقط ويحفظها مع الورقة", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/api/worksheets/ai/generate-tic-tac-toe-image")) {
+        return response({ imageUrl: "/objects/uploads/generated-cell.png" });
+      }
+      if (url.includes("/api/worksheets/ai/generate")) {
+        return response({ questions: [BOARD], language: "ar" });
+      }
+      if (url.endsWith("/api/worksheets") && init?.method === "POST") {
+        return response({ id: 1110 }, 201);
+      }
+      if (url.endsWith("/api/worksheets/1110") && init?.method === "PUT") {
+        return response({ id: 1110 });
+      }
+      if (url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell")) {
+        return response(TOOL_PRICE);
+      }
+      if (url.includes("/api/credits/tool-price/ai-image")) {
+        return response(TOOL_PRICE);
+      }
+      if (url.includes("/api/teacher/grade-levels")) return response([]);
+      if (url.includes("/api/auth/me")) return response({ isAdmin: false });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(<WorksheetCreate />));
+    setTextValue(
+      container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
+      "دورة الماء",
+    );
+    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
+    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
+      .find((span) => span.textContent === "تيك تاك توك")!;
+    await act(async () => {
+      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
+        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
+    });
+    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await settle();
+
+    const imageButtons = Array.from(container.querySelectorAll("button"))
+      .filter((button) => button.textContent?.includes("توليد صورة مناسبة"));
+    expect(imageButtons).toHaveLength(9);
+    expect(imageButtons[0].textContent).toContain("2 نقطة");
+    await act(async () => imageButtons[0].click());
+    await settle();
+
+    const imageCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/api/worksheets/ai/generate-tic-tac-toe-image"));
+    expect(imageCall).toBeTruthy();
+    expect(JSON.parse(String((imageCall![1] as RequestInit).body))).toMatchObject({
+      cellText: CELLS[0].text,
+      topic: "دورة الماء",
+    });
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+
+    const imageSave = fetchMock.mock.calls.find(([url, init]) =>
+      String(url).endsWith("/api/worksheets/1110") && (init as RequestInit)?.method === "PUT"
+      && String((init as RequestInit).body).includes("generated-cell.png"));
+    expect(imageSave).toBeTruthy();
+    const savedQuestions = JSON.parse(String((imageSave![1] as RequestInit).body)).questions;
+    expect(savedQuestions[0].cells[0].imageUrl).toBe("/objects/uploads/generated-cell.png");
+    expect(savedQuestions[0].cells.slice(1).every((cell: { imageUrl?: string }) => !cell.imageUrl)).toBe(true);
+  });
+
+  it("يعرض السعر المحدّث قبل أن يسمح بإرسال طلب الصورة", async () => {
+    let imagePriceRequestCount = 0;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/api/worksheets/ai/generate-tic-tac-toe-image")) {
+        return response({ imageUrl: "/objects/uploads/should-not-run.png" });
+      }
+      if (url.includes("/api/worksheets/ai/generate")) {
+        return response({ questions: [BOARD], language: "ar" });
+      }
+      if (url.endsWith("/api/worksheets") && init?.method === "POST") {
+        return response({ id: 1111 }, 201);
+      }
+      if (url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell")) {
+        return response(TOOL_PRICE);
+      }
+      if (url.includes("/api/credits/tool-price/ai-image")) {
+        imagePriceRequestCount += 1;
+        return response({
+          ...TOOL_PRICE,
+          effectiveCost: imagePriceRequestCount === 1 ? 2 : 4,
+          baseCost: imagePriceRequestCount === 1 ? 2 : 4,
+        });
+      }
+      if (url.includes("/api/teacher/grade-levels")) return response([]);
+      if (url.includes("/api/auth/me")) return response({ isAdmin: false });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(<WorksheetCreate />));
+    setTextValue(
+      container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
+      "دورة الماء",
+    );
+    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
+    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
+      .find((span) => span.textContent === "تيك تاك توك")!;
+    await act(async () => {
+      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
+        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
+    });
+    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await settle();
+
+    const imageButton = buttonContaining(container, "توليد صورة مناسبة");
+    expect(imageButton.textContent).toContain("2 نقطة");
+    await act(async () => imageButton.click());
+    await settle();
+
+    expect(fetchMock.mock.calls.some(([url]) =>
+      String(url).includes("/api/worksheets/ai/generate-tic-tac-toe-image"))).toBe(false);
+    expect(buttonContaining(container, "توليد صورة مناسبة").textContent).toContain("4 نقطة");
+  });
+
   it("يحدّث المربع المطلوب فقط ويحفظ تعديلات المعلم وترتيبه أثناء انتظار الذكاء", async () => {
     let resolveRegeneration!: (value: Response) => void;
     const regenerationResponse = new Promise<Response>((resolve) => {

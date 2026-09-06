@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable, studentsTable } from "@workspace/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
-import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { checkCredits, captureCredits, captureCreditsOrThrow, refundCredits } from "../lib/check-credits";
 import { featureAccess } from "@workspace/billing";
 import { z } from "zod";
 import { worksheetSettingsSchema } from "@workspace/api-zod";
@@ -1213,7 +1213,7 @@ router.post("/worksheets/ai/generate-tic-tac-toe-image", requireTeacher, checkCr
       extension: ".png",
     });
     const result = { imageUrl };
-    await captureCredits(req, result);
+    await captureCreditsOrThrow(req, result);
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "worksheet choice-board cell image generation failed");

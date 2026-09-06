@@ -9,6 +9,8 @@ const mockState = vi.hoisted(() => {
   const openaiCreate = vi.fn();
   const openaiImagesGenerate = vi.fn();
   const anthropicCreate = vi.fn();
+  const captureCreditsOrThrow = vi.fn();
+  const refundCredits = vi.fn();
   const checkedCreditToolKeys: string[] = [];
   function makeChain(result: unknown): unknown {
     const p: Promise<unknown> = Promise.resolve(result);
@@ -25,7 +27,15 @@ const mockState = vi.hoisted(() => {
     };
     return new Proxy(p, handler);
   }
-  return { openaiCreate, openaiImagesGenerate, anthropicCreate, checkedCreditToolKeys, makeChain };
+  return {
+    openaiCreate,
+    openaiImagesGenerate,
+    anthropicCreate,
+    captureCreditsOrThrow,
+    refundCredits,
+    checkedCreditToolKeys,
+    makeChain,
+  };
 });
 
 vi.mock("@workspace/db", () => {
@@ -55,7 +65,8 @@ vi.mock("../lib/check-credits", () => ({
     next();
   },
   captureCredits: async () => {},
-  refundCredits: async () => {},
+  captureCreditsOrThrow: (...args: unknown[]) => mockState.captureCreditsOrThrow(...args),
+  refundCredits: (...args: unknown[]) => mockState.refundCredits(...args),
   invalidateCreditsSettingsCache: () => {},
 }));
 
@@ -173,6 +184,9 @@ beforeEach(() => {
   mockState.openaiCreate.mockReset();
   mockState.openaiImagesGenerate.mockReset();
   mockState.anthropicCreate.mockReset();
+  mockState.captureCreditsOrThrow.mockReset();
+  mockState.captureCreditsOrThrow.mockResolvedValue({ captured: true });
+  mockState.refundCredits.mockReset();
   mockState.checkedCreditToolKeys.length = 0;
 });
 
@@ -443,6 +457,21 @@ describe("POST /api/worksheets/ai/generate-tic-tac-toe-image", () => {
     expect(prompt).toContain("Draw and label the parts of a flowering plant");
     expect(prompt).toContain("Subject: Science");
     expect(prompt).toContain("Do not include text");
+  });
+
+  it("does not report success when capturing the held credits fails", async () => {
+    mockState.openaiImagesGenerate.mockResolvedValueOnce({
+      data: [{ b64_json: Buffer.from("image-bytes").toString("base64") }],
+    });
+    mockState.captureCreditsOrThrow.mockRejectedValueOnce(new Error("capture unavailable"));
+
+    const res = await request(makeApp(worksheetsRouter))
+      .post("/api/worksheets/ai/generate-tic-tac-toe-image")
+      .send({ cellText: "Compare the two plant root systems" });
+
+    expect(res.status).toBe(500);
+    expect(res.body.message).toContain("لم يتم خصم النقاط");
+    expect(mockState.refundCredits).toHaveBeenCalled();
   });
 
   it("rejects image generation until the square has a clear task", async () => {

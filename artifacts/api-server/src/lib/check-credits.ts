@@ -294,6 +294,23 @@ export async function captureCredits(req: Request, result?: unknown): Promise<vo
   }
 }
 
+/** Capture a successful paid operation and surface accounting failures.
+    Use this when the caller must not return a successful paid result until the
+    hold and replay snapshot are durably completed. */
+export async function captureCreditsOrThrow(req: Request, result?: unknown): Promise<void> {
+  const requestId = (req as any).__creditRequestId;
+  if (!requestId) return;
+
+  let resultJson: string | undefined;
+  if (result !== undefined) {
+    resultJson = JSON.stringify(result);
+  }
+  const { captured } = await CreditService.capture(requestId, resultJson);
+  if (!captured) {
+    throw new Error("Credit hold was not captured");
+  }
+}
+
 /** Call on error to restore the held credits. */
 export async function refundCredits(req: Request, reason?: string): Promise<void> {
   const requestId = (req as any).__creditRequestId;

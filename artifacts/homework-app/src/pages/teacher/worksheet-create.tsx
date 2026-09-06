@@ -316,6 +316,7 @@ export default function WorksheetCreate() {
   const [ticTacToeCellCredit, setTicTacToeCellCredit] = useState<ToolCreditPrice | null>(null);
   const [ticTacToeImageCredit, setTicTacToeImageCredit] = useState<ToolCreditPrice | null>(null);
   const ticTacToePriceRequestRef = useRef(0);
+  const ticTacToeImagePriceRequestRef = useRef(0);
 
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
   const _teacherProfile = useMemo(() => loadTeacherProfile(), []);
@@ -554,6 +555,8 @@ export default function WorksheetCreate() {
   }, []);
 
   const refreshTicTacToeImageCredit = useCallback(async (): Promise<ToolCreditPrice | null> => {
+    const requestId = ++ticTacToeImagePriceRequestRef.current;
+    setTicTacToeImageCredit(null);
     try {
       const response = await fetch(`${API_BASE}/api/credits/tool-price/ai-image`, {
         credentials: "include",
@@ -567,7 +570,9 @@ export default function WorksheetCreate() {
         || typeof data?.isPro !== "boolean"
         || typeof data?.creditsEnabled !== "boolean"
       ) return null;
-      setTicTacToeImageCredit(data);
+      if (requestId === ticTacToeImagePriceRequestRef.current) {
+        setTicTacToeImageCredit(data);
+      }
       return data;
     } catch {
       return null;
@@ -845,7 +850,10 @@ export default function WorksheetCreate() {
   };
 
   const generateTicTacToeCellImage = async (questionId: string, cellIndex: number) => {
-    if (contentOperationInFlightRef.current) return;
+    if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
+      toast.error(ar ? "أعد محاولة حفظ التغييرات الحالية أولاً" : "Retry saving the current changes first");
+      return;
+    }
     const current = latestWorksheetRef.current;
     const board = current.questions.find(q => q.id === questionId);
     if (!board || board.type !== "tic_tac_toe") return;
@@ -858,9 +866,20 @@ export default function WorksheetCreate() {
     contentOperationInFlightRef.current = true;
     setGeneratingCellImage({ questionId, cellIndex });
     try {
+      const displayedPrice = ticTacToeImageCredit;
       const price = await refreshTicTacToeImageCredit();
       if (!price) {
         toast.error(ar ? "تعذّر التحقق من تكلفة الصورة" : "Could not verify image cost");
+        return;
+      }
+      if (
+        !displayedPrice
+        || displayedPrice.creditsEnabled !== price.creditsEnabled
+        || displayedPrice.effectiveCost !== price.effectiveCost
+      ) {
+        toast.info(ar
+          ? "تم تحديث تكلفة الصورة. راجع التكلفة الظاهرة ثم اضغط التوليد مرة أخرى."
+          : "The image cost was updated. Review the displayed cost, then generate again.");
         return;
       }
       const response = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/generate-tic-tac-toe-image`, {
@@ -894,6 +913,15 @@ export default function WorksheetCreate() {
       latestWorksheetRef.current = { ...latest, questions: nextQuestions };
       setQuestions(nextQuestions);
       toast.success(ar ? "تم توليد صورة المربع" : "Square image generated");
+      await persistWorksheetPayload({
+        title: latest.title,
+        language: latest.contentLang,
+        gradeLevel: latest.gradeLevel.trim() || null,
+        subject: latest.subject.trim() || null,
+        questions: nextQuestions,
+        settings: latest.settings,
+        smartGrading: latest.smartGrading,
+      }, true);
     } catch {
       toast.error(ar ? "حدث خطأ في الاتصال أثناء توليد الصورة" : "Network error while generating the image");
     } finally {
@@ -2427,7 +2455,7 @@ function QuestionEditor({
                   <button
                     type="button"
                     onClick={() => onGenerateCellImage(i)}
-                    disabled={generatingCellImageIndex !== null || regeneratingCellIndex !== null || !cell.text.trim()}
+                    disabled={generatingCellImageIndex !== null || regeneratingCellIndex !== null || !cell.text.trim() || !imageCreditPrice}
                     className="w-full h-9 px-3 rounded-lg border bg-primary/5 hover:bg-primary/10 text-xs font-bold text-primary flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {generatingCellImageIndex === i

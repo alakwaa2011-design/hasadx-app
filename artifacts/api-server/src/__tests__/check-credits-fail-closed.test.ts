@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   settingsThrow: false,
   teacherRows: [{ unlimitedCredits: false }] as any[],
   holdImpl: null as null | (() => Promise<any>),
+  captureImpl: null as null | ((requestId: string, resultJson?: string) => Promise<any>),
 }));
 
 vi.mock("@workspace/db", () => {
@@ -67,6 +68,10 @@ vi.mock("../lib/credit-service", () => ({
       if (state.holdImpl) return state.holdImpl();
       return Promise.resolve({ creditsHeld: 5, existingStatus: null });
     },
+    capture: (requestId: string, resultJson?: string) => {
+      if (state.captureImpl) return state.captureImpl(requestId, resultJson);
+      return Promise.resolve({ captured: true });
+    },
   },
 }));
 
@@ -87,11 +92,15 @@ function makeReqRes(teacherId: number | undefined = 7) {
 }
 
 async function freshMiddleware() {
+  const mod = await freshCheckCreditsModule();
+  return mod.checkCredits("tts");
+}
+
+async function freshCheckCreditsModule() {
   vi.resetModules();
   const dbMod: any = await import("@workspace/db");
   dbMod.db.__resetSelectCount();
-  const mod = await import("../lib/check-credits");
-  return mod.checkCredits("tts");
+  return import("../lib/check-credits");
 }
 
 beforeEach(() => {
@@ -99,6 +108,18 @@ beforeEach(() => {
   state.settingsThrow = false;
   state.teacherRows = [{ unlimitedCredits: false }];
   state.holdImpl = null;
+  state.captureImpl = null;
+});
+
+describe("captureCreditsOrThrow", () => {
+  it("يرفض النجاح عندما لم يعد حجز النقاط قابلاً للالتقاط", async () => {
+    state.captureImpl = async () => ({ captured: false });
+    const { captureCreditsOrThrow } = await freshCheckCreditsModule();
+    const req = { __creditRequestId: "teacher:ai-image:request" } as any;
+
+    await expect(captureCreditsOrThrow(req, { imageUrl: "/objects/generated.png" }))
+      .rejects.toThrow("Credit hold was not captured");
+  });
 });
 
 describe("checkCredits fail-closed", () => {
