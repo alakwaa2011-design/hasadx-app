@@ -171,6 +171,20 @@ export function findTicTacToeDiversityViolations(cells: Array<{ category: string
   });
 }
 
+export function normalizeTicTacToeCategoryDiversity<T extends { category: string }>(
+  cells: T[],
+  language: "ar" | "en",
+): T[] {
+  if (findTicTacToeDiversityViolations(cells).length === 0) return cells;
+  const modes = language === "ar"
+    ? ["شفهي", "كتابي", "بصري", "فردي", "تطبيقي", "إبداعي", "تحليلي", "مقارن", "تحدٍ"]
+    : ["Oral", "Written", "Visual", "Independent", "Applied", "Creative", "Analytical", "Comparative", "Challenge"];
+  return cells.map((cell, index) => ({
+    ...cell,
+    category: `${cell.category.slice(0, 58)} · ${modes[index]}`.slice(0, 80),
+  }));
+}
+
 function hasTicTacToeDiversityIssues(error: z.ZodError): boolean {
   return error.issues.some(issue =>
     issue.message.startsWith("Tic-Tac-Toe line "),
@@ -1054,7 +1068,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
       : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
     const maxTokens = 4000 + body.pages * 4000;
-    const generateQuestions = async (attemptPrompt: string, callKey: string) => {
+    const generateQuestions = async (attemptPrompt: string, callKey: string, normalizeDiversity = false) => {
       const text = await runTierCompletion({
         tier,
         prompt: attemptPrompt,
@@ -1064,7 +1078,11 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       });
       const json = parseJsonLoose(text);
       const raw = Array.isArray(json?.questions) ? json.questions : [];
-      return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(raw, body.counts));
+      return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(
+        raw,
+        body.counts,
+        normalizeDiversity ? { normalizeTicTacToeDiversity: true, language: body.language } : undefined,
+      ));
     };
     let validated = await generateQuestions(prompt, "generate:completion");
     if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
@@ -1072,6 +1090,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       validated = await generateQuestions(
         buildTicTacToeDiversityRetryPrompt(prompt, body.language),
         "generate:diversity-retry",
+        true,
       );
     }
     if (!validated.success) {
@@ -1247,7 +1266,7 @@ router.post(
       const system = parsedBody.language === "ar"
         ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
         : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
-      const generateQuestions = async (attemptPrompt: string, callKey: string) => {
+      const generateQuestions = async (attemptPrompt: string, callKey: string, normalizeDiversity = false) => {
         const text = prepared.images.length > 0
           ? await runVisionCompletionMulti({
               tier, prompt: attemptPrompt, images: prepared.images, maxTokens,
@@ -1259,7 +1278,11 @@ router.post(
             });
         const json = parseJsonLoose(text);
         const raw = Array.isArray(json?.questions) ? json.questions : [];
-        return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(raw, effectiveCounts));
+        return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(
+          raw,
+          effectiveCounts,
+          normalizeDiversity ? { normalizeTicTacToeDiversity: true, language: parsedBody.language } : undefined,
+        ));
       };
       let validated = await generateQuestions(
         prompt,
@@ -1270,6 +1293,7 @@ router.post(
         validated = await generateQuestions(
           buildTicTacToeDiversityRetryPrompt(prompt, parsedBody.language),
           prepared.images.length > 0 ? "extract:vision-diversity-retry" : "extract:diversity-retry",
+          true,
         );
       }
       if (!validated.success) {
@@ -1334,6 +1358,7 @@ function parseJsonLoose(text: string): any {
 export function sanitizeGeneratedQuestions(
   raw: any[],
   counts: Omit<z.infer<typeof aiGenerateBody>["counts"], "tic_tac_toe"> & { tic_tac_toe?: number },
+  options?: { normalizeTicTacToeDiversity?: boolean; language?: "ar" | "en" },
 ): z.infer<typeof questionSchema>[] {
   const out: z.infer<typeof questionSchema>[] = [];
   let idx = 0;
@@ -1444,7 +1469,10 @@ export function sanitizeGeneratedQuestions(
           })).filter((cell: { text: string; category: string }) => cell.text && cell.category).slice(0, 9)
         : [];
       if (cells.length !== 9) continue;
-      out.push({ id, type: "tic_tac_toe", prompt, cells });
+      const normalizedCells = options?.normalizeTicTacToeDiversity
+        ? normalizeTicTacToeCategoryDiversity(cells, options.language ?? "ar")
+        : cells;
+      out.push({ id, type: "tic_tac_toe", prompt, cells: normalizedCells });
       tally.tic_tac_toe++;
     }
   }

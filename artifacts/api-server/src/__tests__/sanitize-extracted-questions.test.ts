@@ -13,6 +13,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildTicTacToeDiversityRetryPrompt,
   findTicTacToeDiversityViolations,
+  normalizeTicTacToeCategoryDiversity,
   sanitizeGeneratedQuestions,
 } from "../routes/worksheets";
 
@@ -170,6 +171,35 @@ describe("Tic-Tac-Toe AI board normalization", () => {
     expect(retryPrompt).toContain("original");
     expect(retryPrompt).toContain("all eight board lines");
     expect(retryPrompt).toContain("Regenerate the complete response once");
+  });
+
+  it("repairs repeated categories after the retry without discarding the generated tasks", () => {
+    const cells = Array.from({ length: 9 }, (_, index) => ({
+      category: index % 2 === 0 ? "تطبيق" : "تحليل",
+      text: `مهمة ${index + 1}`,
+    }));
+    const normalized = normalizeTicTacToeCategoryDiversity(cells, "ar");
+    expect(findTicTacToeDiversityViolations(normalized)).toEqual([]);
+    expect(normalized.map(cell => cell.text)).toEqual(cells.map(cell => cell.text));
+    expect(normalized[0].category).toContain("تطبيق");
+  });
+
+  it("normalizes an invalid AI board when the final retry fallback is enabled", () => {
+    const raw = [{
+      type: "tic_tac_toe",
+      prompt: "اختر ثلاثة مربعات متصلة",
+      cells: Array.from({ length: 9 }, (_, index) => ({
+        category: index % 2 === 0 ? "تطبيق" : "تحليل",
+        text: `مهمة تعليمية ${index + 1}`,
+      })),
+    }];
+    const result = sanitizeGeneratedQuestions(
+      raw,
+      { ...DEFAULT_EXTRACT_COUNTS, mcq: 0, tic_tac_toe: 1 },
+      { normalizeTicTacToeDiversity: true, language: "ar" },
+    );
+    expect(result).toHaveLength(1);
+    expect(findTicTacToeDiversityViolations((result[0] as any).cells)).toEqual([]);
   });
 });
 
