@@ -488,7 +488,10 @@ export default function WorksheetCreate() {
   };
 
   const removeQuestion = (id: string) => {
-    setQuestions(prev => prev.filter(q => q.id !== id));
+    const latest = latestWorksheetRef.current;
+    const nextQuestions = latest.questions.filter(q => q.id !== id);
+    latestWorksheetRef.current = { ...latest, questions: nextQuestions };
+    setQuestions(nextQuestions);
   };
 
   const addQuestion = (type: QType) => {
@@ -745,6 +748,7 @@ export default function WorksheetCreate() {
       }
 
       const latest = latestWorksheetRef.current;
+      if (!latest.questions.some(q => q.id === questionId && q.type === "tic_tac_toe")) return;
       const nextQuestions = latest.questions.map(q => {
         if (q.id !== questionId || q.type !== "tic_tac_toe") return q;
         return {

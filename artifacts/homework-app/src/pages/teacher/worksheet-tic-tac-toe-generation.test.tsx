@@ -263,4 +263,68 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       ...CELLS.slice(2).map((cell) => cell.text),
     ]);
   });
+
+  it("يتجاهل رد إعادة التوليد إذا حذف المعلم اللوحة أثناء الانتظار", async () => {
+    let resolveRegeneration!: (value: Response) => void;
+    const regenerationResponse = new Promise<Response>((resolve) => {
+      resolveRegeneration = resolve;
+    });
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/api/worksheets/ai/generate")) {
+        return response({ questions: [BOARD], language: "ar" });
+      }
+      if (url.includes("/api/worksheets/ai/regenerate-tic-tac-toe-cell")) {
+        return regenerationResponse;
+      }
+      if (url.endsWith("/api/worksheets") && init?.method === "POST") {
+        return response({ id: 1099 }, 201);
+      }
+      if (url.endsWith("/api/worksheets/1099") && init?.method === "PUT") {
+        return response({ id: 1099 });
+      }
+      if (url.includes("/api/teacher/grade-levels")) return response([]);
+      if (url.includes("/api/auth/me")) return response({ isAdmin: false });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(<WorksheetCreate />));
+    setTextValue(
+      container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
+      "دورة الماء",
+    );
+    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
+    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
+      .find((span) => span.textContent === "تيك تاك توك")!;
+    await act(async () => {
+      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
+        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
+    });
+    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await settle();
+
+    const regenerateButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("إعادة توليد"))!;
+    await act(async () => regenerateButton.click());
+
+    const deleteBoardButton = Array.from(container.querySelectorAll('button[title="حذف"]'))
+      .find((button) => button.closest(".border-border\\/60")) as HTMLButtonElement;
+    expect(deleteBoardButton).toBeTruthy();
+    await act(async () => deleteBoardButton.click());
+    expect(container.textContent).not.toContain(BOARD.prompt);
+
+    await act(async () => {
+      resolveRegeneration(response({
+        cell: { text: "مهمة متأخرة من الذكاء", category: "حلل" },
+      }));
+      await regenerationResponse;
+    });
+    await settle();
+
+    expect(container.textContent).not.toContain(BOARD.prompt);
+    expect(container.textContent).not.toContain("مهمة متأخرة من الذكاء");
+    const regenerationSaves = fetchMock.mock.calls.filter(([url, init]) =>
+      String(url).endsWith("/api/worksheets/1099") && (init as RequestInit)?.method === "PUT");
+    expect(regenerationSaves).toHaveLength(0);
+  });
 });
