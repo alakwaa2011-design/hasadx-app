@@ -9,7 +9,8 @@ import {
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
-  ArrowLeft, Printer, Download, RotateCcw, LayoutTemplate, ChevronDown, Layers, ArrowUp, ArrowDown
+  ArrowLeft, Printer, Download, RotateCcw, LayoutTemplate, ChevronDown, Layers, ArrowUp, ArrowDown,
+  AlertTriangle, Clock3, Coins, Target, ClipboardCheck
 } from "lucide-react";
 import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
@@ -61,6 +62,11 @@ interface WsPrefs {
   aiDifficulty?: "easy" | "medium" | "hard" | "mixed";
   aiPages?: 1 | 2 | 3;
   aiCounts?: { mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number };
+  aiLearningObjective?: string;
+  aiCognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create";
+  aiActivityDuration?: number;
+  aiDifferentiation?: "none" | "support" | "enrichment" | "scaffolded";
+  aiAssessment?: "diagnostic" | "formative" | "summative";
 }
 
 interface ToolCreditPrice {
@@ -76,6 +82,11 @@ const WS_DEFAULT_PREFS: Required<WsPrefs> = {
   aiDifficulty: "medium",
   aiPages: 1,
   aiCounts: { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
+  aiLearningObjective: "",
+  aiCognitiveSkill: "mixed",
+  aiActivityDuration: 15,
+  aiDifferentiation: "none",
+  aiAssessment: "formative",
 };
 
 const WS_VALID_DIFFICULTIES = new Set(["easy", "medium", "hard", "mixed"]);
@@ -100,6 +111,19 @@ function validateWsPrefs(raw: unknown): WsPrefs {
     if (mcq !== undefined && tf !== undefined && sa !== undefined && fb !== undefined && ma !== undefined && ttt <= 1) {
       result.aiCounts = { mcq, true_false: tf, short_answer: sa, fill_blank: fb, matching: ma, tic_tac_toe: ttt };
     }
+  }
+  if (typeof p.aiLearningObjective === "string") result.aiLearningObjective = p.aiLearningObjective;
+  if (["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"].includes(String(p.aiCognitiveSkill))) {
+    result.aiCognitiveSkill = p.aiCognitiveSkill as WsPrefs["aiCognitiveSkill"];
+  }
+  if (typeof p.aiActivityDuration === "number" && p.aiActivityDuration >= 5 && p.aiActivityDuration <= 90) {
+    result.aiActivityDuration = Math.round(p.aiActivityDuration);
+  }
+  if (["none", "support", "enrichment", "scaffolded"].includes(String(p.aiDifferentiation))) {
+    result.aiDifferentiation = p.aiDifferentiation as WsPrefs["aiDifferentiation"];
+  }
+  if (["diagnostic", "formative", "summative"].includes(String(p.aiAssessment))) {
+    result.aiAssessment = p.aiAssessment as WsPrefs["aiAssessment"];
   }
   return result;
 }
@@ -177,6 +201,79 @@ const TIC_TAC_TOE_LINES = [
   [0, 3, 6], [1, 4, 7], [2, 5, 8],
   [0, 4, 8], [2, 4, 6],
 ] as const;
+
+interface WorksheetQualityIssue {
+  id: string;
+  questionId?: string;
+  level: "error" | "warning";
+  ar: string;
+  en: string;
+}
+
+function normalizeComparableText(value: string | undefined): string {
+  return (value ?? "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+
+function inspectWorksheetQuality(
+  title: string,
+  questions: Question[],
+  learningObjective: string,
+): WorksheetQualityIssue[] {
+  const issues: WorksheetQualityIssue[] = [];
+  if (title.trim().length < 2) {
+    issues.push({ id: "title", level: "error", ar: "أضف عنوانًا واضحًا للورقة.", en: "Add a clear worksheet title." });
+  }
+  if (!learningObjective.trim()) {
+    issues.push({ id: "objective", level: "warning", ar: "أضف هدفًا تعليميًا لتحسين دقة التوليد.", en: "Add a learning objective to improve generation." });
+  }
+
+  const seenPrompts = new Map<string, string>();
+  questions.forEach((question, index) => {
+    const prompt = normalizeComparableText(question.prompt);
+    if (!prompt) {
+      issues.push({
+        id: `empty-${question.id}`,
+        questionId: question.id,
+        level: "error",
+        ar: `العنصر ${index + 1} يحتاج نصًا.`,
+        en: `Item ${index + 1} needs text.`,
+      });
+    } else if (seenPrompts.has(prompt)) {
+      issues.push({
+        id: `duplicate-${question.id}`,
+        questionId: question.id,
+        level: "warning",
+        ar: `العنصر ${index + 1} مكرر أو شديد التشابه.`,
+        en: `Item ${index + 1} is duplicated or highly similar.`,
+      });
+    } else {
+      seenPrompts.set(prompt, question.id);
+    }
+
+    if (question.type === "mcq") {
+      const options = question.options.map(normalizeComparableText);
+      if (options.some(option => !option)) {
+        issues.push({ id: `mcq-empty-${question.id}`, questionId: question.id, level: "error", ar: `أكمل خيارات السؤال ${index + 1}.`, en: `Complete the options for question ${index + 1}.` });
+      }
+      if (new Set(options.filter(Boolean)).size < options.filter(Boolean).length) {
+        issues.push({ id: `mcq-duplicate-${question.id}`, questionId: question.id, level: "warning", ar: `السؤال ${index + 1} يحتوي خيارات مكررة.`, en: `Question ${index + 1} has duplicate options.` });
+      }
+    }
+    if (question.type === "fill_blank" && !question.prompt.includes("____")) {
+      issues.push({ id: `blank-marker-${question.id}`, questionId: question.id, level: "warning", ar: `أضف علامة ____ داخل سؤال الفراغ ${index + 1}.`, en: `Add ____ inside fill-in-the-blank question ${index + 1}.` });
+    }
+    if (question.type === "short_answer" && !question.answer?.trim()) {
+      issues.push({ id: `model-answer-${question.id}`, questionId: question.id, level: "warning", ar: `أضف إجابة نموذجية للسؤال ${index + 1}.`, en: `Add a model answer for question ${index + 1}.` });
+    }
+    if (question.type === "tic_tac_toe") {
+      const tasks = question.cells.map(cell => normalizeComparableText(cell.text));
+      if (new Set(tasks.filter(Boolean)).size < tasks.filter(Boolean).length) {
+        issues.push({ id: `board-duplicate-${question.id}`, questionId: question.id, level: "warning", ar: "لوحة الاختيار تحتوي مهام مكررة.", en: "The choice board contains duplicate tasks." });
+      }
+    }
+  });
+  return issues;
+}
 
 type FontFamily = "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia";
 
@@ -315,6 +412,8 @@ export default function WorksheetCreate() {
   const [clientRequestId] = useState(createClientRequestId);
   const [ticTacToeCellCredit, setTicTacToeCellCredit] = useState<ToolCreditPrice | null>(null);
   const [ticTacToeImageCredit, setTicTacToeImageCredit] = useState<ToolCreditPrice | null>(null);
+  const [worksheetCredit, setWorksheetCredit] = useState<ToolCreditPrice | null>(null);
+  const [extractCredit, setExtractCredit] = useState<ToolCreditPrice | null>(null);
   const ticTacToePriceRequestRef = useRef(0);
   const ticTacToeImagePriceRequestRef = useRef(0);
 
@@ -345,6 +444,19 @@ export default function WorksheetCreate() {
   const [aiCounts, setAiCounts] = useState<{ mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number }>(
     _wsPrefs.aiCounts ?? { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
   );
+  const [aiLearningObjective, setAiLearningObjective] = useState(_wsPrefs.aiLearningObjective ?? WS_DEFAULT_PREFS.aiLearningObjective);
+  const [aiCognitiveSkill, setAiCognitiveSkill] = useState(_wsPrefs.aiCognitiveSkill ?? WS_DEFAULT_PREFS.aiCognitiveSkill);
+  const [aiActivityDuration, setAiActivityDuration] = useState(_wsPrefs.aiActivityDuration ?? WS_DEFAULT_PREFS.aiActivityDuration);
+  const [aiDifferentiation, setAiDifferentiation] = useState(_wsPrefs.aiDifferentiation ?? WS_DEFAULT_PREFS.aiDifferentiation);
+  const [aiAssessment, setAiAssessment] = useState(_wsPrefs.aiAssessment ?? WS_DEFAULT_PREFS.aiAssessment);
+  const [showQualityReview, setShowQualityReview] = useState(false);
+  const [allQuestionsExpanded, setAllQuestionsExpanded] = useState(true);
+  const [lastCellRegeneration, setLastCellRegeneration] = useState<{
+    questionId: string;
+    cellIndex: number;
+    previousCell: QTicTacToeCell;
+  } | null>(null);
+
   const [generating, setGenerating] = useState(false);
   const [regeneratingCell, setRegeneratingCell] = useState<{ questionId: string; cellIndex: number } | null>(null);
   const [generatingCellImage, setGeneratingCellImage] = useState<{ questionId: string; cellIndex: number } | null>(null);
@@ -355,8 +467,20 @@ export default function WorksheetCreate() {
   useEffect(() => {
     if (!wsDidMountRef.current) { wsDidMountRef.current = true; return; }
     if (wsSkipNextSaveRef.current) { wsSkipNextSaveRef.current = false; return; }
-    saveWsPrefs({ contentLang, aiDifficulty, aiPages, aiCounts });
-  }, [contentLang, aiDifficulty, aiPages, aiCounts]);
+    saveWsPrefs({ contentLang, aiDifficulty, aiPages, aiCounts, aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment });
+  }, [contentLang, aiDifficulty, aiPages, aiCounts, aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment]);
+
+  useEffect(() => {
+    setSettings(current => ({
+      ...current,
+      learningObjective: aiLearningObjective.trim() || undefined,
+      cognitiveSkill: aiCognitiveSkill,
+      activityDuration: aiActivityDuration,
+      differentiation: aiDifferentiation,
+      assessmentMode: aiAssessment,
+      includeAnswerKey: aiAssessment === "summative" ? true : current.includeAnswerKey,
+    }));
+  }, [aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment]);
 
   const profileDidMountRef = useRef(false);
   useEffect(() => {
@@ -378,6 +502,11 @@ export default function WorksheetCreate() {
     setAiDifficulty(WS_DEFAULT_PREFS.aiDifficulty);
     setAiPages(WS_DEFAULT_PREFS.aiPages);
     setAiCounts({ ...WS_DEFAULT_PREFS.aiCounts });
+    setAiLearningObjective(WS_DEFAULT_PREFS.aiLearningObjective);
+    setAiCognitiveSkill(WS_DEFAULT_PREFS.aiCognitiveSkill);
+    setAiActivityDuration(WS_DEFAULT_PREFS.aiActivityDuration);
+    setAiDifferentiation(WS_DEFAULT_PREFS.aiDifferentiation);
+    setAiAssessment(WS_DEFAULT_PREFS.aiAssessment);
   }, [lang]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -458,6 +587,11 @@ export default function WorksheetCreate() {
         setGradeLevel(row.gradeLevel ?? "");
         setQuestions(row.questions);
         setSettings({ ...DEFAULT_SETTINGS, ...row.settings, customFields: row.settings?.customFields ?? [] });
+        setAiLearningObjective(row.settings?.learningObjective ?? "");
+        setAiCognitiveSkill(row.settings?.cognitiveSkill ?? WS_DEFAULT_PREFS.aiCognitiveSkill);
+        setAiActivityDuration(row.settings?.activityDuration ?? WS_DEFAULT_PREFS.aiActivityDuration);
+        setAiDifferentiation(row.settings?.differentiation ?? WS_DEFAULT_PREFS.aiDifferentiation);
+        setAiAssessment(row.settings?.assessmentMode ?? WS_DEFAULT_PREFS.aiAssessment);
         setSmartGrading(!!row.linkedAssignmentId);
         setEditingId(row.id);
         toast.success(lang === "ar" ? "تم تحميل الورقة للتعديل" : "Worksheet loaded for editing");
@@ -473,13 +607,58 @@ export default function WorksheetCreate() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadPrice = async (toolKey: string, setter: (value: ToolCreditPrice | null) => void) => {
+      try {
+        const response = await fetch(`${API_BASE}/api/credits/tool-price/${toolKey}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        const data = response.ok ? await response.json() : null;
+        if (!cancelled && data && typeof data.effectiveCost === "number" && typeof data.creditsEnabled === "boolean") {
+          setter(data);
+        }
+      } catch {
+        if (!cancelled) setter(null);
+      }
+    };
+    void Promise.all([
+      loadPrice("worksheet", setWorksheetCredit),
+      loadPrice("extract_questions_from_source", setExtractCredit),
+    ]);
+    return () => { cancelled = true; };
+  }, []);
+
   const totalQs = questions.length;
   const aiTotal = aiCounts.mcq + aiCounts.true_false + aiCounts.short_answer + aiCounts.fill_blank + aiCounts.matching + aiCounts.tic_tac_toe;
+  const regularAiCount = aiTotal - aiCounts.tic_tac_toe;
   const aiMaxTotal = aiPages * 30;
   const canSave = title.trim().length >= 2 && totalQs >= 1;
+  const qualityIssues = useMemo(
+    () => inspectWorksheetQuality(title, questions, aiLearningObjective),
+    [title, questions, aiLearningObjective],
+  );
+  const errorCount = qualityIssues.filter(issue => issue.level === "error").length;
+  const totalPoints = questions.reduce((sum, question) => sum + (question.points ?? 0), 0);
+  const activeGenerationCredit = activeAiTab === "source" ? extractCredit : worksheetCredit;
 
   const updateQuestion = (id: string, patch: Partial<Question>) => {
     setQuestions(prev => prev.map(q => (q.id === id ? ({ ...q, ...patch } as Question) : q)));
+  };
+
+  const updateQuestionRubric = (questionId: string, rubric: string) => {
+    setSettings(current => {
+      const styles = current.questionStyles ?? [];
+      const existing = styles.find(style => style.questionId === questionId);
+      const nextStyle = { ...existing, questionId, rubric: rubric.trim() || undefined };
+      return {
+        ...current,
+        questionStyles: existing
+          ? styles.map(style => style.questionId === questionId ? nextStyle : style)
+          : [...styles, nextStyle],
+      };
+    });
   };
 
   const changeQuestionType = (id: string, newType: QType) => {
@@ -713,6 +892,11 @@ export default function WorksheetCreate() {
           difficulty: aiDifficulty,
           pages: aiPages,
           counts: aiCounts,
+          learningObjective: aiLearningObjective.trim() || undefined,
+          cognitiveSkill: aiCognitiveSkill,
+          activityDuration: aiActivityDuration,
+          differentiation: aiDifferentiation,
+          assessmentMode: aiAssessment,
         }),
       });
       if (!res.ok) {
@@ -739,7 +923,15 @@ export default function WorksheetCreate() {
         generated.length,
         lastTheme,
       );
-      const nextSettings = { ...current.settings, template: chosenTheme };
+      const nextSettings = {
+        ...current.settings,
+        template: chosenTheme,
+        learningObjective: aiLearningObjective.trim() || undefined,
+        cognitiveSkill: aiCognitiveSkill,
+        activityDuration: aiActivityDuration,
+        differentiation: aiDifferentiation,
+        assessmentMode: aiAssessment,
+      };
 
       setQuestions(nextQuestions);
       setContentLang(resolvedLanguage);
@@ -820,7 +1012,9 @@ export default function WorksheetCreate() {
       }
 
       const latest = latestWorksheetRef.current;
-      if (!latest.questions.some(q => q.id === questionId && q.type === "tic_tac_toe")) return;
+      const latestBoard = latest.questions.find(q => q.id === questionId);
+      if (!latestBoard || latestBoard.type !== "tic_tac_toe") return;
+      const previousCell = latestBoard.cells[cellIndex];
       const nextQuestions = latest.questions.map(q => {
         if (q.id !== questionId || q.type !== "tic_tac_toe") return q;
         return {
@@ -830,6 +1024,7 @@ export default function WorksheetCreate() {
       });
       setQuestions(nextQuestions);
       latestWorksheetRef.current = { ...latest, questions: nextQuestions };
+      setLastCellRegeneration({ questionId, cellIndex, previousCell });
       toast.success(ar ? `تم تحديث المربع ${cellIndex + 1}` : `Square ${cellIndex + 1} updated`);
       await persistWorksheetPayload({
         title: latest.title,
@@ -847,6 +1042,37 @@ export default function WorksheetCreate() {
       setRegeneratingCell(null);
       refreshCreditsBalance();
     }
+  };
+
+  const undoLastCellRegeneration = async () => {
+    const snapshot = lastCellRegeneration;
+    if (!snapshot || saveInFlightRef.current || contentOperationInFlightRef.current) return;
+    const latest = latestWorksheetRef.current;
+    const board = latest.questions.find(question => question.id === snapshot.questionId);
+    if (!board || board.type !== "tic_tac_toe") {
+      setLastCellRegeneration(null);
+      return;
+    }
+    const nextQuestions = latest.questions.map(question => {
+      if (question.id !== snapshot.questionId || question.type !== "tic_tac_toe") return question;
+      return {
+        ...question,
+        cells: question.cells.map((cell, index) => index === snapshot.cellIndex ? snapshot.previousCell : cell),
+      };
+    });
+    setQuestions(nextQuestions);
+    latestWorksheetRef.current = { ...latest, questions: nextQuestions };
+    setLastCellRegeneration(null);
+    toast.success(ar ? "تم استرجاع المربع السابق" : "Previous square restored");
+    await persistWorksheetPayload({
+      title: latest.title,
+      language: latest.contentLang,
+      gradeLevel: latest.gradeLevel.trim() || null,
+      subject: latest.subject.trim() || null,
+      questions: nextQuestions,
+      settings: latest.settings,
+      smartGrading: latest.smartGrading,
+    }, true);
   };
 
   const generateTicTacToeCellImage = async (questionId: string, cellIndex: number) => {
@@ -987,6 +1213,11 @@ export default function WorksheetCreate() {
       fd.append("difficulty", aiDifficulty);
       fd.append("pages", String(aiPages));
       if (aiTopic.trim()) fd.append("topicHint", aiTopic.trim());
+      if (aiLearningObjective.trim()) fd.append("learningObjective", aiLearningObjective.trim());
+      fd.append("cognitiveSkill", aiCognitiveSkill);
+      fd.append("activityDuration", String(aiActivityDuration));
+      fd.append("differentiation", aiDifferentiation);
+      fd.append("assessmentMode", aiAssessment);
       fd.append("counts", JSON.stringify(aiCounts));
 
       const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/extract`, {
@@ -1020,7 +1251,15 @@ export default function WorksheetCreate() {
         generated.length,
         lastThemeF,
       );
-      const nextSettings = { ...current.settings, template: chosenThemeF };
+      const nextSettings = {
+        ...current.settings,
+        template: chosenThemeF,
+        learningObjective: aiLearningObjective.trim() || undefined,
+        cognitiveSkill: aiCognitiveSkill,
+        activityDuration: aiActivityDuration,
+        differentiation: aiDifferentiation,
+        assessmentMode: aiAssessment,
+      };
 
       setQuestions(nextQuestions);
       setContentLang(resolvedLanguage);
@@ -1141,6 +1380,11 @@ export default function WorksheetCreate() {
         : row.questions,
     );
     setSettings({ ...DEFAULT_SETTINGS, ...row.settings, customFields: row.settings?.customFields ?? [] });
+    setAiLearningObjective(row.settings?.learningObjective ?? "");
+    setAiCognitiveSkill(row.settings?.cognitiveSkill ?? WS_DEFAULT_PREFS.aiCognitiveSkill);
+    setAiActivityDuration(row.settings?.activityDuration ?? WS_DEFAULT_PREFS.aiActivityDuration);
+    setAiDifferentiation(row.settings?.differentiation ?? WS_DEFAULT_PREFS.aiDifferentiation);
+    setAiAssessment(row.settings?.assessmentMode ?? WS_DEFAULT_PREFS.aiAssessment);
     setEditingId(asNew ? null : row.id);
     setSavedOpen(false);
     toast.success(ar ? (asNew ? "تم إنشاء نسخة" : "تم تحميل الورقة") : (asNew ? "Copy created" : "Worksheet loaded"));
@@ -1165,7 +1409,7 @@ export default function WorksheetCreate() {
     <Layout>
       <div
         dir={dir}
-        className="max-w-4xl mx-auto px-4 py-8 pb-56 space-y-6"
+        className={cn("max-w-4xl mx-auto px-4 py-8 space-y-6", questions.length > 0 ? "pb-56" : "pb-8")}
         onInput={markEditDirty}
         onChange={markEditDirty}
       >
@@ -1198,8 +1442,127 @@ export default function WorksheetCreate() {
           </button>
         </div>
 
+        <aside className={cn(
+          "hidden xl:block fixed top-24 z-30 w-44 2xl:w-56",
+          ar ? "left-2 2xl:left-8" : "right-2 2xl:right-8",
+        )}>
+          <Card className="overflow-hidden border-border/70 shadow-xl">
+            <div className="flex items-center justify-between border-b bg-card px-3 py-2.5">
+              <span className="flex items-center gap-1.5 text-xs font-black">
+                <Eye className="w-3.5 h-3.5 text-primary" />
+                {ar ? "معاينة حية" : "Live preview"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewing(true)}
+                disabled={questions.length === 0}
+                className="text-[10px] font-bold text-primary disabled:opacity-40"
+              >
+                {ar ? "تكبير" : "Enlarge"}
+              </button>
+            </div>
+            <div className="bg-muted/50 p-3">
+              <div className="mx-auto aspect-[210/297] w-full overflow-hidden rounded-sm border bg-white p-3 text-neutral-800 shadow-sm" dir={contentLang === "ar" ? "rtl" : "ltr"}>
+                <div className="border-b-2 border-primary/40 pb-2 text-center">
+                  <div className="truncate text-[10px] font-black">{title.trim() || (ar ? "عنوان ورقة العمل" : "Worksheet title")}</div>
+                  <div className="mt-0.5 truncate text-[6px] text-neutral-500">{[subject, gradeLevel].filter(Boolean).join(" · ") || (ar ? "المادة · الصف" : "Subject · Grade")}</div>
+                </div>
+                {aiLearningObjective.trim() && (
+                  <div className="mt-2 rounded-sm bg-primary/5 px-1.5 py-1 text-[5.5px] leading-relaxed text-primary">
+                    <strong>{ar ? "الهدف: " : "Objective: "}</strong>{aiLearningObjective.trim()}
+                  </div>
+                )}
+                <div className="mt-2 space-y-2">
+                  {questions.length === 0 ? (
+                    <div className="grid h-28 place-items-center rounded border border-dashed text-center text-[7px] leading-relaxed text-neutral-400">
+                      {ar ? "ستظهر الأسئلة هنا فور إضافتها أو توليدها" : "Questions will appear here as you add or generate them"}
+                    </div>
+                  ) : questions.slice(0, 5).map((question, index) => (
+                    <div key={question.id} className="flex gap-1.5">
+                      <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-primary text-[5px] font-black text-white">{index + 1}</span>
+                      {question.type === "tic_tac_toe" ? (
+                        <div className="grid flex-1 grid-cols-3 gap-0.5">
+                          {question.cells.map((cell, cellIndex) => (
+                            <div key={cellIndex} className="aspect-square overflow-hidden rounded-[1px] border bg-primary/[0.02] p-0.5 text-[3.5px] leading-tight">
+                              {cell.text}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="min-w-0 flex-1">
+                          <div className="line-clamp-2 text-[6px] font-bold leading-relaxed">{question.prompt || (ar ? "نص السؤال" : "Question prompt")}</div>
+                          <div className="mt-1 space-y-0.5">
+                            <div className="h-px bg-neutral-200" />
+                            {(question.type === "short_answer" || question.type === "fill_blank") && <div className="h-px bg-neutral-200" />}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {questions.length > 5 && (
+                  <div className="mt-2 text-center text-[5px] font-bold text-neutral-400">
+                    {ar ? `+ ${questions.length - 5} أسئلة أخرى` : `+ ${questions.length - 5} more questions`}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between border-t bg-card px-3 py-2 text-[10px] font-bold text-muted-foreground">
+              <span>{questions.length} {ar ? "عنصر" : "items"}</span>
+              <span>{totalPoints} {ar ? "درجة" : "pts"}</span>
+            </div>
+          </Card>
+        </aside>
+
+        <nav className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-2xl border border-border/60 bg-card p-2 shadow-sm" aria-label={ar ? "مراحل بناء الورقة" : "Worksheet building steps"}>
+          {[
+            {
+              id: "worksheet-details",
+              arLabel: "بيانات الورقة",
+              enLabel: "Worksheet details",
+              done: title.trim().length >= 2 && !!subject.trim() && !!gradeLevel.trim(),
+            },
+            {
+              id: "worksheet-generator",
+              arLabel: "المحتوى والتوليد",
+              enLabel: "Content & generation",
+              done: questions.length > 0,
+            },
+            {
+              id: "worksheet-questions",
+              arLabel: "المراجعة والتنسيق",
+              enLabel: "Review & format",
+              done: questions.length > 0 && errorCount === 0,
+            },
+            {
+              id: "worksheet-finish",
+              arLabel: "المعاينة والطباعة",
+              enLabel: "Preview & print",
+              done: canSave && errorCount === 0,
+            },
+          ].map((step, index) => (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => document.getElementById(step.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className={cn(
+                "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-start transition-colors",
+                step.done ? "border-primary/25 bg-primary/5 text-primary" : "border-transparent hover:bg-muted text-muted-foreground",
+              )}
+            >
+              <span className={cn(
+                "grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-black",
+                step.done ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+              )}>
+                {step.done ? <Check className="w-3.5 h-3.5" /> : index + 1}
+              </span>
+              <span className="text-xs font-bold">{ar ? step.arLabel : step.enLabel}</span>
+            </button>
+          ))}
+        </nav>
+
         {/* 1. Worksheet Details Prominent Near Top */}
-        <Card className="p-5 border border-border/60 shadow-sm">
+        <Card id="worksheet-details" className="scroll-mt-24 p-5 border border-border/60 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Field label={ar ? "عنوان الورقة" : "Worksheet Title"} className="md:col-span-1">
               <input
@@ -1233,7 +1596,7 @@ export default function WorksheetCreate() {
         </Card>
 
         {/* 2. Smart Generator Block */}
-        <Card className="border-2 border-primary/20 shadow-lg relative overflow-hidden bg-gradient-to-b from-primary/5 to-transparent">
+        <Card id="worksheet-generator" className="scroll-mt-24 border-2 border-primary/20 shadow-lg relative overflow-hidden bg-gradient-to-b from-primary/5 to-transparent">
           <div className="absolute top-0 left-0 p-8 opacity-5 pointer-events-none transform -scale-x-100">
             <Wand2 className="w-64 h-64" />
           </div>
@@ -1404,11 +1767,11 @@ export default function WorksheetCreate() {
               </div>
             </div>
 
-            <Collapsible>
+            <Collapsible defaultOpen>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-2 mb-2 rounded-lg hover:bg-muted text-sm font-bold text-foreground transition-colors group text-start">
                 <span className="flex items-center gap-2">
                   <SettingsIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  {ar ? "إعدادات التوليد المتقدمة" : "Advanced Generation Settings"}
+                  {ar ? "ضبط المحتوى والتقييم" : "Content & Assessment Setup"}
                 </span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
@@ -1446,6 +1809,51 @@ export default function WorksheetCreate() {
                    </Field>
                 </div>
 
+                {/* Learning Objective & Cognitive Skill */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Field label={ar ? "الهدف التعليمي (اختياري)" : "Learning Objective (Optional)"}>
+                    <input data-testid="worksheet-learning-objective" value={aiLearningObjective} onChange={e => setAiLearningObjective(e.target.value)} placeholder={ar ? "مثال: أن يميز الطالب بين..." : "e.g. Students will distinguish..."} className="w-full h-11 px-3 rounded-xl border bg-background text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm" />
+                  </Field>
+                  <Field label={ar ? "المهارة المعرفية" : "Cognitive Skill"}>
+                     <select value={aiCognitiveSkill} onChange={e => setAiCognitiveSkill(e.target.value as typeof aiCognitiveSkill)} className="w-full h-11 px-3 rounded-xl border bg-background text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm">
+                       <option value="mixed">{ar ? "متنوعة" : "Mixed"}</option>
+                       <option value="remember">{ar ? "تذكر (استرجاع)" : "Remember"}</option>
+                       <option value="understand">{ar ? "فهم (تفسير)" : "Understand"}</option>
+                       <option value="apply">{ar ? "تطبيق (استخدام)" : "Apply"}</option>
+                       <option value="analyze">{ar ? "تحليل (تفكيك)" : "Analyze"}</option>
+                       <option value="evaluate">{ar ? "تقييم (نقد)" : "Evaluate"}</option>
+                       <option value="create">{ar ? "إبداع (تركيب)" : "Create"}</option>
+                     </select>
+                  </Field>
+                  <Field label={ar ? "مدة النشاط" : "Activity Duration"}>
+                     <select value={aiActivityDuration} onChange={e => setAiActivityDuration(Number(e.target.value))} className="w-full h-11 px-3 rounded-xl border bg-background text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm">
+                       <option value={5}>{ar ? "5 دقائق (سريع)" : "5 minutes (Quick)"}</option>
+                       <option value={15}>{ar ? "15 دقيقة (متوسط)" : "15 minutes (Medium)"}</option>
+                       <option value={30}>{ar ? "30 دقيقة (طويل)" : "30 minutes (Long)"}</option>
+                       <option value={45}>{ar ? "45 دقيقة (حصة كاملة)" : "45 minutes (Full class)"}</option>
+                     </select>
+                  </Field>
+                </div>
+
+                {/* Differentiation & Assessment */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label={ar ? "مراعاة الفروق الفردية (التمايز)" : "Differentiation"}>
+                     <select value={aiDifferentiation} onChange={e => setAiDifferentiation(e.target.value as typeof aiDifferentiation)} className="w-full h-11 px-3 rounded-xl border bg-background text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm">
+                       <option value="none">{ar ? "بدون تحديد" : "None"}</option>
+                       <option value="support">{ar ? "دعم إضافي (مبسط)" : "Extra Support (Simplified)"}</option>
+                       <option value="enrichment">{ar ? "إثراء وتحدٍ (متقدم)" : "Enrichment (Advanced)"}</option>
+                       <option value="scaffolded">{ar ? "متدرج (يشمل كل المستويات)" : "Scaffolded (All levels)"}</option>
+                     </select>
+                  </Field>
+                  <Field label={ar ? "نوع التقييم" : "Assessment Type"}>
+                     <select value={aiAssessment} onChange={e => setAiAssessment(e.target.value as typeof aiAssessment)} className="w-full h-11 px-3 rounded-xl border bg-background text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm">
+                       <option value="formative">{ar ? "تكويني (أثناء الدرس)" : "Formative (During lesson)"}</option>
+                       <option value="summative">{ar ? "ختامي (نهاية الدرس)" : "Summative (End of lesson)"}</option>
+                       <option value="diagnostic">{ar ? "قبلي (قياس المعرفة السابقة)" : "Diagnostic (Prior knowledge)"}</option>
+                     </select>
+                  </Field>
+                </div>
+
                 {/* Counts row - compact */}
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
                   <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
@@ -1464,13 +1872,73 @@ export default function WorksheetCreate() {
               </CollapsibleContent>
             </Collapsible>
 
+            {(() => {
+              if (aiTotal === 0) return null;
+              if (activeAiTab === "topic" && !aiTopic.trim()) return null;
+              if (activeAiTab === "source" && !sourceText.trim() && pickedFiles.length === 0) return null;
+              const difText = aiDifficulty === "easy" ? (ar ? "بسيط" : "easy") : aiDifficulty === "hard" ? (ar ? "متقدم" : "hard") : aiDifficulty === "mixed" ? (ar ? "متنوع" : "mixed") : (ar ? "متوسط" : "medium");
+              const boardText = aiCounts.tic_tac_toe === 1
+                ? (ar ? " ولوحة اختيار من 9 مهام" : " and one 9-task choice board")
+                : "";
+              const cost = activeGenerationCredit?.creditsEnabled ? activeGenerationCredit.effectiveCost : null;
+              return (
+                <div className="bg-primary/5 text-primary text-sm p-4 rounded-xl border border-primary/20 flex flex-col gap-2 mt-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 font-bold">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 shrink-0" />
+                      {ar ? "ملخص التوليد" : "Generation Summary"}
+                    </span>
+                    {cost !== null && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-background px-2.5 py-1 text-xs">
+                        <Coins className="w-3.5 h-3.5" />
+                        {cost === 0
+                          ? (ar ? "دون نقاط" : "No credits")
+                          : (ar ? `${cost} نقاط حصاد` : `${cost} Hasad credits`)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="opacity-90 leading-relaxed">
+                    {ar
+                      ? `سيتم بناء ${regularAiCount > 0 ? `${regularAiCount} سؤالًا` : "لوحة اختيار فقط"}${regularAiCount > 0 ? boardText : ""}، بمستوى ${difText}، لمدة ${aiActivityDuration} دقيقة، وفي نحو ${aiPages} صفحة.`
+                      : `Will build ${regularAiCount > 0 ? `${regularAiCount} questions` : "a choice board only"}${regularAiCount > 0 ? boardText : ""}, at ${difText} difficulty, for ${aiActivityDuration} minutes, in about ${aiPages} page(s).`}
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-[11px] font-bold">
+                    <span className="rounded-full bg-background border border-primary/15 px-2.5 py-1">
+                      {ar ? `الهدف: ${aiLearningObjective.trim() || "لم يُحدد بعد"}` : `Objective: ${aiLearningObjective.trim() || "Not set"}`}
+                    </span>
+                    <span className="rounded-full bg-background border border-primary/15 px-2.5 py-1">
+                      {ar ? `التقييم: ${aiAssessment === "diagnostic" ? "قبلي" : aiAssessment === "summative" ? "ختامي" : "تكويني"}` : `Assessment: ${aiAssessment}`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="flex flex-col sm:flex-row gap-3 mt-4">
               <button
                  onClick={activeAiTab === "topic" ? generateWithAI : extractFromFile}
                  disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"}
                  className="flex-1 h-14 text-lg font-black rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
               >
-                 {(generating || extracting) ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar?"جارٍ التوليد...":"Generating..."}</> : <><Sparkles className="w-5 h-5"/> {activeAiTab === "topic" ? (ar?"توليد الأسئلة":"Generate Questions") : (ar?"استخراج الأسئلة":"Extract Questions")}</>}
+                 {(generating || extracting)
+                   ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar ? "جارٍ التوليد..." : "Generating..."}</>
+                   : <><Sparkles className="w-5 h-5"/> {
+                     activeAiTab === "source"
+                       ? (ar ? "استخراج وبناء الورقة" : "Extract & Build Worksheet")
+                       : aiCounts.tic_tac_toe === 1 && regularAiCount === 0
+                         ? (ar ? "توليد لوحة الاختيار" : "Generate Choice Board")
+                         : aiCounts.tic_tac_toe === 1
+                           ? (ar ? "توليد الورقة" : "Generate Worksheet")
+                           : (ar ? "توليد الأسئلة" : "Generate Questions")
+                   }
+                   {activeGenerationCredit?.creditsEnabled && (
+                     <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs">
+                       {activeGenerationCredit.effectiveCost === 0
+                         ? (ar ? "دون نقاط" : "No credits")
+                         : (ar ? `${activeGenerationCredit.effectiveCost} نقاط` : `${activeGenerationCredit.effectiveCost} credits`)}
+                     </span>
+                   )}
+                   </>}
               </button>
               <button
                 onClick={handleWsRestoreDefaults}
@@ -1484,7 +1952,7 @@ export default function WorksheetCreate() {
         </Card>
 
         {/* 3. Settings Area (Header Info & Design/Format) */}
-        <Card className="border border-border/60 shadow-sm overflow-hidden">
+        <Card id="worksheet-formatting" className="scroll-mt-24 border border-border/60 shadow-sm overflow-hidden">
           <Tabs defaultValue="header" className="w-full text-start" dir={dir}>
             <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <div className="flex items-center gap-3">
@@ -1755,7 +2223,7 @@ export default function WorksheetCreate() {
         </Card>
 
         {/* 4. Questions List */}
-        <div className="space-y-4">
+        <div id="worksheet-questions" className="scroll-mt-24 space-y-4">
           <div className="flex items-center justify-between gap-3 bg-muted/40 p-4 rounded-2xl border border-border/50 shadow-sm">
             <DropdownMenu dir={dir}>
               <DropdownMenuTrigger asChild>
@@ -1780,6 +2248,37 @@ export default function WorksheetCreate() {
             </DropdownMenu>
 
             <div className="flex items-center gap-2">
+              {questions.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAllQuestionsExpanded(value => !value)}
+                    className="px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-muted-foreground transition-all text-xs font-bold h-9"
+                  >
+                    {allQuestionsExpanded
+                      ? (ar ? "طي الكل" : "Collapse all")
+                      : (ar ? "توسيع الكل" : "Expand all")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowQualityReview(value => !value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg border transition-all text-xs font-bold flex items-center gap-1.5 h-9",
+                      qualityIssues.length === 0
+                        ? "border-primary/30 bg-primary/5 text-primary"
+                        : errorCount > 0
+                          ? "border-destructive/30 bg-destructive/5 text-destructive"
+                          : "border-amber-400/40 bg-amber-50 text-amber-800",
+                    )}
+                  >
+                    <ClipboardCheck className="w-3.5 h-3.5" />
+                    {ar ? "مراجعة الجودة" : "Quality review"}
+                    <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[10px]">
+                      {qualityIssues.length}
+                    </span>
+                  </button>
+                </>
+              )}
               <span className="px-2.5 py-1.5 rounded-lg bg-background border border-border text-[11px] font-bold text-muted-foreground whitespace-nowrap">
                 {ar ? `${totalQs} مضافة` : `${totalQs} added`}
               </span>
@@ -1800,6 +2299,66 @@ export default function WorksheetCreate() {
               )}
             </div>
           </div>
+
+          <AnimatePresence>
+            {showQualityReview && questions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className={cn(
+                  "rounded-2xl border p-4",
+                  qualityIssues.length === 0
+                    ? "border-primary/25 bg-primary/5"
+                    : "border-amber-400/35 bg-amber-50/80 dark:bg-amber-950/20",
+                )}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-black text-sm flex items-center gap-2">
+                        <ClipboardCheck className="w-4 h-4 text-primary" />
+                        {qualityIssues.length === 0
+                          ? (ar ? "الورقة جاهزة للمراجعة النهائية" : "Worksheet is ready for final review")
+                          : (ar ? `${qualityIssues.length} ملاحظات قبل الطباعة` : `${qualityIssues.length} notes before printing`)}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {ar
+                          ? `الزمن المستهدف ${aiActivityDuration} دقيقة · ${totalPoints > 0 ? `${totalPoints} درجة` : "نشاط دون درجات"} · ${aiPages} صفحة مستهدفة`
+                          : `${aiActivityDuration} target minutes · ${totalPoints > 0 ? `${totalPoints} points` : "ungraded activity"} · ${aiPages} target page(s)`}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setPreviewing(true)} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-bold text-primary hover:bg-primary/5">
+                      {ar ? "فتح المعاينة" : "Open preview"}
+                    </button>
+                  </div>
+                  {qualityIssues.length > 0 && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {qualityIssues.map(issue => (
+                        <button
+                          key={issue.id}
+                          type="button"
+                          onClick={() => {
+                            if (issue.id === "objective") {
+                              document.querySelector<HTMLInputElement>('[data-testid="worksheet-learning-objective"]')?.focus();
+                              return;
+                            }
+                            if (issue.questionId) {
+                              document.getElementById(`worksheet-question-${issue.questionId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }
+                          }}
+                          className="flex items-start gap-2 rounded-xl border bg-background/80 p-2.5 text-start hover:border-primary/30"
+                        >
+                          <AlertTriangle className={cn("mt-0.5 w-4 h-4 shrink-0", issue.level === "error" ? "text-destructive" : "text-amber-600")} />
+                          <span className="text-xs font-medium">{ar ? issue.ar : issue.en}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {questions.length === 0 ? (
             <div className="text-center py-16 px-4 bg-muted/10 border-2 border-dashed border-border rounded-2xl">
@@ -1832,6 +2391,13 @@ export default function WorksheetCreate() {
                   onGenerateCellImage={cellIndex => generateTicTacToeCellImage(q.id, cellIndex)}
                   generatingCellImageIndex={generatingCellImage?.questionId === q.id ? generatingCellImage.cellIndex : null}
                   imageCreditPrice={ticTacToeImageCredit}
+                  forceExpanded={allQuestionsExpanded}
+                  difficulty={aiDifficulty}
+                  assessmentMode={aiAssessment}
+                  rubric={settings.questionStyles?.find(style => style.questionId === q.id)?.rubric ?? ""}
+                  onRubricChange={rubric => updateQuestionRubric(q.id, rubric)}
+                  canUndoRegeneration={lastCellRegeneration?.questionId === q.id}
+                  onUndoRegeneration={undoLastCellRegeneration}
                 />
               ))}
             </div>
@@ -1841,7 +2407,8 @@ export default function WorksheetCreate() {
       </div>
 
       {/* Sticky Bottom Bar - PRIMARY ACTION */}
-      <div className="fixed bottom-0 inset-x-0 z-50 p-4 bg-background/80 backdrop-blur-xl border-t border-border shadow-[0_-10px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
+      {questions.length > 0 && (
+      <div id="worksheet-finish" className="fixed bottom-0 inset-x-0 z-50 p-3 sm:p-4 bg-background/90 backdrop-blur-xl border-t border-border shadow-[0_-10px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
         <div className="max-w-5xl mx-auto flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-2">
             <label className="flex items-center gap-2.5 cursor-pointer select-none rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-2">
@@ -1956,11 +2523,12 @@ export default function WorksheetCreate() {
             className="w-full sm:w-auto flex-shrink-0 h-14 px-8 md:px-14 text-lg font-black rounded-2xl bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 text-primary-foreground transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Printer className="w-6 h-6" />}
-            {ar ? "توليد الورقة" : "Generate Worksheet"}
+            {ar ? "المعاينة والطباعة" : "Preview & Print"}
           </button>
           </div>
         </div>
       </div>
+      )}
 
       <AnimatePresence>
         {canvasEditorOpen && (
@@ -2192,7 +2760,7 @@ function CollapsibleCard({ title, icon: Icon, isOpen, onToggle, summary, childre
 }
 
 function QuestionEditor({
-  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex, regenerateCreditPrice, onGenerateCellImage, generatingCellImageIndex, imageCreditPrice,
+  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex, regenerateCreditPrice, onGenerateCellImage, generatingCellImageIndex, imageCreditPrice, forceExpanded, difficulty, assessmentMode, rubric, onRubricChange, canUndoRegeneration, onUndoRegeneration,
 }: {
   index: number; total: number; question: Question; ar: boolean;
   onUpdate: (patch: Partial<Question>) => void;
@@ -2205,11 +2773,29 @@ function QuestionEditor({
   onGenerateCellImage: (cellIndex: number) => void;
   generatingCellImageIndex: number | null;
   imageCreditPrice: ToolCreditPrice | null;
+  forceExpanded: boolean;
+  difficulty: "easy" | "medium" | "hard" | "mixed";
+  assessmentMode: "diagnostic" | "formative" | "summative";
+  rubric: string;
+  onRubricChange: (rubric: string) => void;
+  canUndoRegeneration: boolean;
+  onUndoRegeneration: () => void;
 }) {
   const [uploadingCell, setUploadingCell] = useState<number | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
+  useEffect(() => setIsExpanded(forceExpanded), [forceExpanded]);
+
+  const difficultyLabel = difficulty === "easy"
+    ? (ar ? "سهل" : "Easy")
+    : difficulty === "hard"
+      ? (ar ? "صعب" : "Hard")
+      : difficulty === "mixed"
+        ? (ar ? "متنوع" : "Mixed")
+        : (ar ? "متوسط" : "Medium");
+
   return (
-    <div className="border border-border/60 rounded-2xl p-4 space-y-4 bg-card shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between gap-2 flex-wrap pb-3 border-b border-border/40">
+    <div id={`worksheet-question-${question.id}`} className={cn("scroll-mt-24 border border-border/60 rounded-2xl p-4 bg-card shadow-sm hover:shadow-md transition-shadow", isExpanded ? "space-y-4" : "space-y-0")}>
+      <div className={cn("flex items-center justify-between gap-2 flex-wrap", isExpanded ? "pb-3 border-b border-border/40" : "")}>
         <div className="flex items-center gap-3 flex-wrap">
           <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground flex-shrink-0 shadow-sm">
             {index + 1}
@@ -2230,8 +2816,25 @@ function QuestionEditor({
               <option value="tic_tac_toe">{typeLabel("tic_tac_toe", ar)}</option>
             </select>
           </label>
+          <span className="rounded-full border border-border bg-muted/40 px-2 py-1 text-[10px] font-bold text-muted-foreground">
+            {difficultyLabel}
+          </span>
+          {typeof question.points === "number" && question.points > 0 && (
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] font-bold text-primary">
+              {question.points} {ar ? "درجة" : "pts"}
+            </span>
+          )}
+          {!isExpanded && (
+            <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px] sm:max-w-[300px]">
+              {question.type === "tic_tac_toe" ? question.prompt : (question as any).prompt || (ar ? "سؤال فارغ" : "Empty question")}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 border border-border/50">
+          <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-background text-muted-foreground transition-colors" title={ar ? "طي/توسيع" : "Collapse/Expand"}>
+            <ChevronDown className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />
+          </button>
+          <div className="w-px h-4 bg-border mx-1"></div>
           <button onClick={() => onMove(-1)} disabled={index === 0} className="w-7 h-7 flex items-center justify-center rounded hover:bg-background disabled:opacity-30 transition-colors" title={ar ? "أعلى" : "Up"}><ArrowUp className="w-3.5 h-3.5"/></button>
           <button onClick={() => onMove(1)} disabled={index === total - 1} className="w-7 h-7 flex items-center justify-center rounded hover:bg-background disabled:opacity-30 transition-colors" title={ar ? "أسفل" : "Down"}><ArrowDown className="w-3.5 h-3.5"/></button>
           <div className="w-px h-4 bg-border mx-1"></div>
@@ -2241,13 +2844,38 @@ function QuestionEditor({
         </div>
       </div>
 
-      {question.type !== "matching" && question.type !== "tic_tac_toe" && (
-        <textarea
-          value={question.prompt}
-          onChange={e => onUpdate({ prompt: e.target.value } as any)}
-          placeholder={ar ? "نص السؤال" : "Question text"}
-          rows={2}
-          className="w-full px-4 py-3 rounded-xl border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all resize-y min-h-[80px]"
+      {isExpanded && (
+        <div className="space-y-4 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3 rounded-xl border border-border/50 bg-muted/20 p-3">
+            <Field label={assessmentMode === "formative" ? (ar ? "درجة اختيارية" : "Optional points") : (ar ? "درجة السؤال" : "Question points")}>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={question.points ?? 0}
+                onChange={event => onUpdate({ points: Math.max(0, Math.min(100, Number(event.target.value) || 0)) } as Partial<Question>)}
+                className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
+              />
+            </Field>
+            {(question.type === "short_answer" || question.type === "tic_tac_toe") && (
+              <Field label={ar ? "معيار النجاح / سلم التقدير" : "Success criterion / rubric"}>
+                <input
+                  value={rubric}
+                  onChange={event => onRubricChange(event.target.value)}
+                  placeholder={ar ? "مثال: إجابة دقيقة مدعومة بمثال" : "e.g. Accurate answer supported by an example"}
+                  maxLength={500}
+                  className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
+                />
+              </Field>
+            )}
+          </div>
+          {question.type !== "matching" && question.type !== "tic_tac_toe" && (
+            <textarea
+              value={question.prompt}
+              onChange={e => onUpdate({ prompt: e.target.value } as any)}
+              placeholder={ar ? "نص السؤال" : "Question text"}
+              rows={2}
+              className="w-full px-4 py-3 rounded-xl border bg-background text-sm focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all resize-y min-h-[80px]"
         />
       )}
 
@@ -2412,6 +3040,16 @@ function QuestionEditor({
 
       {question.type === "tic_tac_toe" && (
         <div className="space-y-3 mt-2">
+          {canUndoRegeneration && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+              <span className="text-xs font-bold text-primary">
+                {ar ? "يمكن استرجاع المربع قبل إعادة التوليد." : "You can restore the square from before regeneration."}
+              </span>
+              <button type="button" onClick={onUndoRegeneration} className="shrink-0 rounded-lg border border-primary/25 bg-background px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5">
+                {ar ? "تراجع" : "Undo"}
+              </button>
+            </div>
+          )}
           <textarea
             value={question.prompt}
             onChange={e => onUpdate({ prompt: e.target.value } as any)}
@@ -2544,6 +3182,9 @@ function QuestionEditor({
               {ar ? "استخدم ٣ أنواع مهام مختلفة على الأقل. ارفع صورة تعليمية إلى أي مربع يحتاج ملاحظة أو تفسيرًا بصريًا." : "Use at least 3 task types. Upload an educational image for any visual observation or interpretation task."}
             </p>
           </div>
+        </div>
+      )}
+
         </div>
       )}
     </div>

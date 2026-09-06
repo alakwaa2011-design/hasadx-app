@@ -175,7 +175,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     expect(container.textContent).toContain("لوحة الاختيار — ثلاثة على خط");
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
 
-    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
 
     const generationCall = fetchMock.mock.calls.find(([url]) =>
@@ -235,7 +235,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       "دورة الماء",
     );
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
-    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
 
     const imageButtons = Array.from(container.querySelectorAll("button"))
@@ -298,7 +298,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       "دورة الماء",
     );
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
-    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
 
     const imageButton = buttonContaining(container, "توليد صورة مناسبة");
@@ -344,7 +344,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       "دورة الماء",
     );
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
-    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
 
     const regenerateButtons = Array.from(container.querySelectorAll("button"))
@@ -441,7 +441,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       "دورة الماء",
     );
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
-    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
 
     const regenerateButton = Array.from(container.querySelectorAll("button"))

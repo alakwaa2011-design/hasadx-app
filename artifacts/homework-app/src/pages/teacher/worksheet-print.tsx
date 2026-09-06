@@ -636,6 +636,15 @@ export function WorksheetPrintView({
         </div>
       )}
       {data.settings.headerNote && <p className="ws-subtitle">{data.settings.headerNote}</p>}
+      {data.settings.learningObjective && (
+        <div className="ws-learning-objective">
+          <strong>{ar ? "هدف الورقة:" : "Learning objective:"}</strong>
+          <span>{data.settings.learningObjective}</span>
+          {data.settings.activityDuration && (
+            <small>{ar ? `${data.settings.activityDuration} دقيقة` : `${data.settings.activityDuration} min`}</small>
+          )}
+        </div>
+      )}
       {data.settings.instructions && (
         <div className="ws-instructions">
           <IconLightbulb />
@@ -1516,7 +1525,11 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
       short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
       fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
       matching:     "صل كل عبارة بما يناسبها من العمود الثاني:",
-      tic_tac_toe:  "اختر ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا:",
+      tic_tac_toe:  (questionStyle?.ticTacToeStrategy ?? "any_three") === "corners"
+        ? "اختر الأركان الأربعة ونفّذ مهامها:"
+        : (questionStyle?.ticTacToeStrategy === "full_board")
+          ? "نفّذ جميع المهام في اللوحة التالية:"
+          : "اختر ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا:",
     } as Record<Question["type"], string>)[type];
   }
   return ({
@@ -1527,7 +1540,11 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
     short_answer: "Answer the following questions briefly:",
     fill_blank:   "Fill in the blanks with the appropriate word:",
     matching:     "Match each item with its corresponding choice in the second column:",
-    tic_tac_toe:  "Choose three connected squares horizontally, vertically, or diagonally:",
+    tic_tac_toe:  (questionStyle?.ticTacToeStrategy ?? "any_three") === "corners"
+      ? "Choose the four corners and complete the tasks:"
+      : (questionStyle?.ticTacToeStrategy === "full_board")
+        ? "Complete all tasks in the board:"
+        : "Choose three connected squares horizontally, vertically, or diagonally:",
   } as Record<Question["type"], string>)[type];
 }
 
@@ -1658,6 +1675,40 @@ export function QuestionFormattingToolbar({
             </label>
           </>
         )}
+
+        {question.type === "tic_tac_toe" && (
+          <>
+            <div className="ws-format-control ws-format-radio" data-testid="select-tic-strategy">
+              <span className="ws-format-label">{ar ? "الاستراتيجية" : "Strategy"}</span>
+              {(["any_three", "corners", "full_board"] as const).map(value => (
+                <button
+                  type="button"
+                  key={value}
+                  className={(questionStyle?.ticTacToeStrategy ?? "any_three") === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+                  onClick={() => onQuestionChange({ ticTacToeStrategy: value })}
+                >
+                  {ar
+                    ? (value === "any_three" ? "3 متصلة" : value === "corners" ? "الأركان" : "كامل اللوحة")
+                    : (value === "any_three" ? "Any 3" : value === "corners" ? "Corners" : "Full board")}
+                </button>
+              ))}
+            </div>
+            <div className="ws-format-control ws-format-radio" data-testid="select-tic-response">
+              <span className="ws-format-label">{ar ? "أسطر الإجابة" : "Response Lines"}</span>
+              {([0, 3, 5, 8, 12] as const).map(value => (
+                <button
+                  type="button"
+                  key={value}
+                  className={(questionStyle?.ticTacToeResponseLines ?? 0) === value ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+                  onClick={() => onQuestionChange({ ticTacToeResponseLines: value })}
+                >
+                  {value === 0 ? (ar ? "بدون" : "None") : value}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         {question.type === "mcq" && (
           <label className="ws-format-type">
             <span>{ar ? "الإجابة الصحيحة" : "Correct answer"}</span>
@@ -1981,6 +2032,19 @@ function QuestionView({
           ))}
         </div>
       )}
+      {q.type === "tic_tac_toe" && (questionStyle?.ticTacToeResponseLines ?? 0) > 0 && (
+        <div className="ws-short-lines mt-4" aria-hidden="true">
+          {Array.from({ length: questionStyle?.ticTacToeResponseLines ?? 0 }).map((_, idx) => (
+            <div key={idx} className="ws-short-line" />
+          ))}
+        </div>
+      )}
+      {(q.type === "short_answer" || q.type === "tic_tac_toe") && questionStyle?.rubric && (
+        <div className="ws-rubric">
+          <strong>{ar ? "معيار النجاح:" : "Success criterion:"}</strong>
+          <span>{questionStyle.rubric}</span>
+        </div>
+      )}
     </div>
     </div>
   );
@@ -2293,6 +2357,35 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         line-height: 1.6;
       }
       .ws-instructions strong { color: ${TC}; margin-${endSide}: 4px; }
+      .ws-learning-objective {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 3mm;
+        padding: 2.2mm 3mm;
+        border: 0.35mm solid ${TC}33;
+        border-radius: 2.2mm;
+        background: ${TC}0D;
+        font-size: 9.5pt;
+      }
+      .ws-learning-objective strong { color: ${TC}; white-space: nowrap; }
+      .ws-learning-objective small {
+        margin-${startSide}: auto;
+        white-space: nowrap;
+        color: #566;
+        font-weight: 700;
+      }
+      .ws-rubric {
+        display: flex;
+        gap: 1.5mm;
+        margin-top: 2mm;
+        padding: 1.5mm 2mm;
+        border-${startSide}: 0.9mm solid ${TC};
+        background: ${TC}0D;
+        font-size: 8.5pt;
+        line-height: 1.45;
+      }
+      .ws-rubric strong { color: ${TC}; white-space: nowrap; }
 
       /* Questions */
       .ws-questions {

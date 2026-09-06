@@ -155,4 +155,13 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('className="ws-tic-cell"');
     expect(source).toContain("resolveImageUrl(cell.imageUrl)");
   });
+
+  it("offers customizable Tic-Tac-Toe strategy and response space", () => {
+    expect(source).toContain('data-testid="select-tic-strategy"');
+    expect(source).toContain('data-testid="select-tic-response"');
+    expect(source).toContain('questionStyle?.ticTacToeStrategy');
+    expect(source).toContain('questionStyle?.ticTacToeResponseLines');
+    expect(source).toContain('className="ws-short-lines mt-4"');
+    expect(source).toContain('className="ws-short-line"');
+  });
 });

@@ -34,7 +34,7 @@ export const worksheetCanvasElementSchema = z.object({
 });
 
 const worksheetTextStyleSchema = z.object({
-  key: z.string().regex(/^(prompt|option:\d+|match-left:\d+|match-right:\d+)$/).max(30),
+  key: z.string().regex(/^(prompt|option:\d+|match-left:\d+|match-right:\d+|tic-cell:\d+)$/).max(30),
   fontSizePt: z.number().int().min(8).max(24).optional(),
   bold: z.boolean().optional(),
   align: z.enum(["start", "center", "end"]).optional(),
@@ -42,15 +42,23 @@ const worksheetTextStyleSchema = z.object({
 
 const worksheetQuestionStyleSchema = z.object({
   questionId: z.string().min(1).max(100),
-  fields: z.array(worksheetTextStyleSchema).max(25).optional(),
+  fields: z.array(worksheetTextStyleSchema).max(35).optional(),
   spacing: z.enum(["compact", "normal", "relaxed"]).optional(),
   choiceColumns: z.union([z.literal(1), z.literal(2)]).optional(),
   trueFalseLayout: z.enum(["mark", "choices"]).optional(),
   matchingLeftWidth: z.number().int().min(35).max(65).optional(),
+  ticTacToeStrategy: z.enum(["any_three", "corners", "full_board"]).optional(),
+  ticTacToeResponseLines: z.number().int().min(0).max(20).optional(),
+  rubric: z.string().trim().max(500).optional(),
 });
 
 export const worksheetSettingsSchema = z.object({
   instructions: z.string().max(2000).optional(),
+  learningObjective: z.string().trim().max(500).optional(),
+  cognitiveSkill: z.enum(["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"]).optional(),
+  activityDuration: z.number().int().min(5).max(90).optional(),
+  differentiation: z.enum(["none", "support", "enrichment", "scaffolded"]).optional(),
+  assessmentMode: z.enum(["diagnostic", "formative", "summative"]).optional(),
   includeName: z.boolean().default(true),
   includeDate: z.boolean().default(true),
   includeClass: z.boolean().default(true),

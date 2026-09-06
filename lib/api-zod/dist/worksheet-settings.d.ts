@@ -60,6 +60,11 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
 }>;
 export declare const worksheetSettingsSchema: z.ZodObject<{
     instructions: z.ZodOptional<z.ZodString>;
+    learningObjective: z.ZodOptional<z.ZodString>;
+    cognitiveSkill: z.ZodOptional<z.ZodEnum<["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"]>>;
+    activityDuration: z.ZodOptional<z.ZodNumber>;
+    differentiation: z.ZodOptional<z.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+    assessmentMode: z.ZodOptional<z.ZodEnum<["diagnostic", "formative", "summative"]>>;
     includeName: z.ZodDefault<z.ZodBoolean>;
     includeDate: z.ZodDefault<z.ZodBoolean>;
     includeClass: z.ZodDefault<z.ZodBoolean>;
@@ -212,6 +217,9 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         choiceColumns: z.ZodOptional<z.ZodUnion<[z.ZodLiteral<1>, z.ZodLiteral<2>]>>;
         trueFalseLayout: z.ZodOptional<z.ZodEnum<["mark", "choices"]>>;
         matchingLeftWidth: z.ZodOptional<z.ZodNumber>;
+        ticTacToeStrategy: z.ZodOptional<z.ZodEnum<["any_three", "corners", "full_board"]>>;
+        ticTacToeResponseLines: z.ZodOptional<z.ZodNumber>;
+        rubric: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         questionId: string;
         fields?: {
@@ -224,6 +232,9 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         choiceColumns?: 1 | 2 | undefined;
         trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
+        ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
+        ticTacToeResponseLines?: number | undefined;
+        rubric?: string | undefined;
     }, {
         questionId: string;
         fields?: {
@@ -236,6 +247,9 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         choiceColumns?: 1 | 2 | undefined;
         trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
+        ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
+        ticTacToeResponseLines?: number | undefined;
+        rubric?: string | undefined;
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
     includeName: boolean;
@@ -247,6 +261,11 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
     fontSizePt: number;
     showWatermark: boolean;
     instructions?: string | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
     headerNote?: string | undefined;
     footerNote?: string | undefined;
     goodLuck?: string | undefined;
@@ -295,9 +314,17 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         choiceColumns?: 1 | 2 | undefined;
         trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
+        ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
+        ticTacToeResponseLines?: number | undefined;
+        rubric?: string | undefined;
     }[] | undefined;
 }, {
     instructions?: string | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
     includeName?: boolean | undefined;
     includeDate?: boolean | undefined;
     includeClass?: boolean | undefined;
@@ -354,6 +381,9 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         choiceColumns?: 1 | 2 | undefined;
         trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
+        ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
+        ticTacToeResponseLines?: number | undefined;
+        rubric?: string | undefined;
     }[] | undefined;
 }>;
 export type WorksheetThemeId = z.infer<typeof worksheetThemeIdSchema>;

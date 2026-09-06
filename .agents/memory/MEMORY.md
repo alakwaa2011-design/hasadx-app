@@ -67,3 +67,4 @@
 - [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — current generator rewrites Zod output with APIs incompatible with the installed Zod version; verify generated diffs and library typecheck.
 - [Worksheet PDF pagination](worksheet-pdf-pagination.md) — hidden estimates miss theme/font/footer height; preserve the rendered A4 overflow guard or PDF pages split and repeat.
 - [Hasaad Guide human handoff](hasaad-guide-human-handoff.md) — support continues inside the original guide conversation; AI must pause and ignore human-support messages as future model context.
+- [Worksheet pedagogy metadata](worksheet-pedagogy-metadata.md) — learning intent belongs in settings JSON and travels to AI routes as a structured contract, not topic prose.

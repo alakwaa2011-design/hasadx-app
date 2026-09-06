@@ -953,6 +953,11 @@ const aiGenerateBody = z.object({
   subject: z.string().max(100).nullish(),
   gradeLevel: z.string().max(50).nullish(),
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("medium"),
+  learningObjective: z.string().trim().max(500).optional(),
+  cognitiveSkill: z.enum(["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"]).default("mixed"),
+  activityDuration: z.number().int().min(5).max(90).default(15),
+  differentiation: z.enum(["none", "support", "enrichment", "scaffolded"]).default("none"),
+  assessmentMode: z.enum(["diagnostic", "formative", "summative"]).default("formative"),
   pages: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
   counts: countsSchema,
 }).superRefine((value, ctx) => {
@@ -1258,6 +1263,11 @@ router.post(
         subject: req.body.subject || undefined,
         gradeLevel: req.body.gradeLevel || undefined,
         difficulty: req.body.difficulty,
+        learningObjective: req.body.learningObjective,
+        cognitiveSkill: req.body.cognitiveSkill,
+        activityDuration: req.body.activityDuration ? Number(req.body.activityDuration) : undefined,
+        differentiation: req.body.differentiation,
+        assessmentMode: req.body.assessmentMode,
         pages: req.body.pages ? Number(req.body.pages) : 1,
         topicHint: req.body.topicHint || undefined,
         sourceText: req.body.sourceText || undefined,
@@ -1314,6 +1324,11 @@ router.post(
         subject: parsedBody.subject || null,
         gradeLevel: parsedBody.gradeLevel || null,
         difficulty: parsedBody.difficulty,
+        learningObjective: parsedBody.learningObjective || null,
+        cognitiveSkill: parsedBody.cognitiveSkill,
+        activityDuration: parsedBody.activityDuration,
+        differentiation: parsedBody.differentiation,
+        assessmentMode: parsedBody.assessmentMode,
         pages: parsedBody.pages,
         counts: effectiveCounts,
         topicHint: parsedBody.topicHint || null,
@@ -1394,6 +1409,11 @@ const aiExtractFields = z.object({
   subject: z.string().max(100).optional(),
   gradeLevel: z.string().max(50).optional(),
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("medium"),
+  learningObjective: z.string().trim().max(500).optional(),
+  cognitiveSkill: z.enum(["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"]).default("mixed"),
+  activityDuration: z.number().int().min(5).max(90).default(15),
+  differentiation: z.enum(["none", "support", "enrichment", "scaffolded"]).default("none"),
+  assessmentMode: z.enum(["diagnostic", "formative", "summative"]).default("formative"),
   pages: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
   topicHint: z.string().max(300).optional(),
   sourceText: z.string().trim().max(MAX_SOURCE_TEXT_LENGTH).optional(),
@@ -1541,8 +1561,44 @@ export function sanitizeGeneratedQuestions(
   return out;
 }
 
+function pedagogicalGuidanceLines(opts: {
+  language: "ar" | "en";
+  learningObjective?: string | null;
+  cognitiveSkill: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create";
+  activityDuration: number;
+  differentiation: "none" | "support" | "enrichment" | "scaffolded";
+  assessmentMode: "diagnostic" | "formative" | "summative";
+}): string[] {
+  const ar = opts.language === "ar";
+  const cognitiveLabel = ar
+    ? ({ mixed: "متنوع عبر مستويات بلوم", remember: "التذكر", understand: "الفهم", apply: "التطبيق", analyze: "التحليل", evaluate: "التقويم", create: "الإبداع" } as const)[opts.cognitiveSkill]
+    : opts.cognitiveSkill;
+  const differentiationLabel = ar
+    ? ({ none: "دون تكييف", support: "دعم", enrichment: "إثراء", scaffolded: "تدرّج داعم" } as const)[opts.differentiation]
+    : opts.differentiation;
+  const assessmentLabel = ar
+    ? ({ diagnostic: "تشخيصي", formative: "تكويني", summative: "ختامي" } as const)[opts.assessmentMode]
+    : opts.assessmentMode;
+
+  return [
+    opts.learningObjective
+      ? (ar ? `هدف التعلّم: ${opts.learningObjective}` : `Learning objective: ${opts.learningObjective}`)
+      : "",
+    ar ? `المهارة المعرفية (بلوم): ${cognitiveLabel}.` : `Cognitive skill (Bloom): ${cognitiveLabel}.`,
+    ar ? `مدة النشاط المتاحة: ${opts.activityDuration} دقيقة.` : `Available activity duration: ${opts.activityDuration} minutes.`,
+    ar ? `التكييف: ${differentiationLabel}.` : `Differentiation: ${differentiationLabel}.`,
+    ar ? `غرض التقويم: ${assessmentLabel}.` : `Assessment purpose: ${assessmentLabel}.`,
+    ar
+      ? "صمّم كل الأسئلة لتخدم هدف التعلّم والمهارة المعرفية والتكييف والغرض التقويمي، واضبط عدد الخطوات وطول الإجابات لتناسب الوقت المتاح."
+      : "Design every question around the learning objective, cognitive skill, differentiation, and assessment purpose; scale its steps and response length to fit the available time.",
+  ].filter(Boolean);
+}
+
 function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
-  const { language, topic, sourceText, subject, gradeLevel, difficulty, counts, pages } = body;
+  const {
+    language, topic, sourceText, subject, gradeLevel, difficulty, learningObjective,
+    cognitiveSkill, activityDuration, differentiation, assessmentMode, counts, pages,
+  } = body;
   const ar = language === "ar";
   const langName = ar ? "العربية" : "English";
   const subj = subject ? (ar ? `المادة: ${subject}` : `Subject: ${subject}`) : "";
@@ -1608,6 +1664,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
     sourceBlock,
     pagesLine,
     ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`,
+    ...pedagogicalGuidanceLines({ language, learningObjective, cognitiveSkill, activityDuration, differentiation, assessmentMode }),
     ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
     "",
     rules.join("\n"),
@@ -1622,6 +1679,11 @@ function buildExtractionPrompt(opts: {
   subject: string | null;
   gradeLevel: string | null;
   difficulty: "easy" | "medium" | "hard" | "mixed";
+  learningObjective: string | null;
+  cognitiveSkill: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create";
+  activityDuration: number;
+  differentiation: "none" | "support" | "enrichment" | "scaffolded";
+  assessmentMode: "diagnostic" | "formative" | "summative";
   pages: 1 | 2 | 3;
   counts: z.infer<typeof countsSchema>;
   topicHint: string | null;
@@ -1686,6 +1748,7 @@ function buildExtractionPrompt(opts: {
     grade,
     pagesLine,
     ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`,
+    ...pedagogicalGuidanceLines(opts),
     ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
     hint,
     sourceBlock,
