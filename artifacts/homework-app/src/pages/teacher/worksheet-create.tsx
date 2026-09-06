@@ -334,6 +334,7 @@ export default function WorksheetCreate() {
     _wsPrefs.aiCounts ?? { mcq: 4, true_false: 2, short_answer: 2, fill_blank: 2, matching: 0, tic_tac_toe: 0 },
   );
   const [generating, setGenerating] = useState(false);
+  const [regeneratingCell, setRegeneratingCell] = useState<{ questionId: string; cellIndex: number } | null>(null);
   const [activeAiTab, setActiveAiTab] = useState("topic");
 
   const wsDidMountRef = useRef(false);
@@ -699,6 +700,75 @@ export default function WorksheetCreate() {
     } finally {
       contentOperationInFlightRef.current = false;
       setGenerating(false);
+      refreshCreditsBalance();
+    }
+  };
+
+  const regenerateTicTacToeCell = async (questionId: string, cellIndex: number) => {
+    if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
+      toast.error(ar ? "أعد محاولة حفظ التغييرات الحالية أولاً" : "Retry saving the current changes first");
+      return;
+    }
+    const current = latestWorksheetRef.current;
+    const board = current.questions.find(q => q.id === questionId);
+    if (!board || board.type !== "tic_tac_toe") return;
+
+    contentOperationInFlightRef.current = true;
+    setRegeneratingCell({ questionId, cellIndex });
+    try {
+      const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/regenerate-tic-tac-toe-cell`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: current.contentLang,
+          topic: aiTopic.trim() || current.title.trim() || (ar ? "لوحة تعليمية" : "Educational board"),
+          sourceText: sourceText.trim() || undefined,
+          subject: current.subject.trim() || undefined,
+          gradeLevel: current.gradeLevel.trim() || undefined,
+          difficulty: aiDifficulty,
+          prompt: board.prompt,
+          cells: board.cells,
+          cellIndex,
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        if (isInsufficientCreditsResponse(res)) return;
+        toast.error(error.message || (ar ? "تعذّرت إعادة توليد المربع" : "Could not regenerate the square"));
+        return;
+      }
+      const data = await res.json();
+      if (!data.cell?.text || !data.cell?.category) {
+        toast.error(ar ? "لم يُرجع المولّد مربعًا صالحًا" : "Generator returned an invalid square");
+        return;
+      }
+
+      const latest = latestWorksheetRef.current;
+      const nextQuestions = latest.questions.map(q => {
+        if (q.id !== questionId || q.type !== "tic_tac_toe") return q;
+        return {
+          ...q,
+          cells: q.cells.map((cell, index) => index === cellIndex ? data.cell : cell),
+        };
+      });
+      setQuestions(nextQuestions);
+      latestWorksheetRef.current = { ...latest, questions: nextQuestions };
+      toast.success(ar ? `تم تحديث المربع ${cellIndex + 1}` : `Square ${cellIndex + 1} updated`);
+      await persistWorksheetPayload({
+        title: latest.title,
+        language: latest.contentLang,
+        gradeLevel: latest.gradeLevel.trim() || null,
+        subject: latest.subject.trim() || null,
+        questions: nextQuestions,
+        settings: latest.settings,
+        smartGrading: latest.smartGrading,
+      }, true);
+    } catch {
+      toast.error(ar ? "حدث خطأ في الاتصال" : "Network error");
+    } finally {
+      contentOperationInFlightRef.current = false;
+      setRegeneratingCell(null);
       refreshCreditsBalance();
     }
   };
@@ -1504,6 +1574,8 @@ export default function WorksheetCreate() {
                   onRemove={() => removeQuestion(q.id)}
                   onMove={d => moveQuestion(q.id, d)}
                   onChangeType={t => changeQuestionType(q.id, t)}
+                  onRegenerateCell={cellIndex => regenerateTicTacToeCell(q.id, cellIndex)}
+                  regeneratingCellIndex={regeneratingCell?.questionId === q.id ? regeneratingCell.cellIndex : null}
                 />
               ))}
             </div>
@@ -1864,13 +1936,15 @@ function CollapsibleCard({ title, icon: Icon, isOpen, onToggle, summary, childre
 }
 
 function QuestionEditor({
-  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType,
+  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex,
 }: {
   index: number; total: number; question: Question; ar: boolean;
   onUpdate: (patch: Partial<Question>) => void;
   onRemove: () => void;
   onMove: (d: -1 | 1) => void;
   onChangeType: (newType: QType) => void;
+  onRegenerateCell: (cellIndex: number) => void;
+  regeneratingCellIndex: number | null;
 }) {
   const [uploadingCell, setUploadingCell] = useState<number | null>(null);
   return (
@@ -2098,6 +2172,18 @@ function QuestionEditor({
                         </span>
                       )}
                       <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                      <button
+                        type="button"
+                        onClick={() => onRegenerateCell(i)}
+                        disabled={regeneratingCellIndex !== null}
+                        className="h-7 px-2 rounded-lg border bg-primary/5 text-primary hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1 text-[10px] font-bold"
+                        title={ar ? "إعادة توليد هذا المربع فقط" : "Regenerate only this square"}
+                      >
+                        {regeneratingCellIndex === i
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <RotateCcw className="w-3.5 h-3.5" />}
+                        {ar ? "إعادة توليد" : "Regenerate"}
+                      </button>
                     </div>
                   </div>
                   <input

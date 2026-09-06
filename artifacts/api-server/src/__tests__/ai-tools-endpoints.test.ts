@@ -359,6 +359,63 @@ describe("POST /api/worksheets/ai/generate", () => {
   });
 });
 
+describe("POST /api/worksheets/ai/regenerate-tic-tac-toe-cell", () => {
+  const cells = Array.from({ length: 9 }, (_, index) => ({
+    text: `Task ${index + 1}`,
+    category: `Category ${index + 1}`,
+    imageSuggested: false,
+  }));
+
+  it("returns one context-aware replacement while the server keeps the board diverse", async () => {
+    openaiReturns(JSON.stringify({
+      cell: { text: "Draw a new plant diagram", category: "Diagram", imageSuggested: true },
+    }));
+
+    const res = await request(makeApp(worksheetsRouter))
+      .post("/api/worksheets/ai/regenerate-tic-tac-toe-cell")
+      .send({
+        language: "en",
+        topic: "Plant growth",
+        subject: "Science",
+        gradeLevel: "Grade 4",
+        difficulty: "hard",
+        prompt: "Choose three connected squares.",
+        cells,
+        cellIndex: 4,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      cell: { text: "Draw a new plant diagram", category: "Diagram", imageSuggested: true },
+    });
+    const prompt = mockState.openaiCreate.mock.calls[0][0].messages[1].content as string;
+    expect(prompt).toContain("Topic: Plant growth");
+    expect(prompt).toContain("Subject: Science");
+    expect(prompt).toContain("Grade: Grade 4");
+    expect(prompt).toContain("Difficulty: hard");
+    expect(prompt).toContain("Replace square 5");
+  });
+
+  it("rejects a replacement that repeats a category in any row, column, or diagonal", async () => {
+    openaiReturns(JSON.stringify({
+      cell: { text: "A different task", category: "Category 2", imageSuggested: false },
+    }));
+
+    const res = await request(makeApp(worksheetsRouter))
+      .post("/api/worksheets/ai/regenerate-tic-tac-toe-cell")
+      .send({
+        language: "en",
+        topic: "Plant growth",
+        prompt: "Choose three connected squares.",
+        cells,
+        cellIndex: 0,
+      });
+
+    expect(res.status).toBe(500);
+    expect(res.body.message).toContain("preserve board variety");
+  });
+});
+
 describe("POST /api/worksheets/ai/extract", () => {
   it("accepts pasted source text without an uploaded file", async () => {
     openaiReturns(JSON.stringify({ questions: [{
