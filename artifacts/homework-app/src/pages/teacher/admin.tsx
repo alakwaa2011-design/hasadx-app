@@ -22,6 +22,7 @@ import { Card, Button, Input } from "@/components/ui-elements";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { getSocket } from "@/lib/socket";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -4657,6 +4658,7 @@ function AdminAiChatTab({ lang }: { lang: string }) {
   const [savingInstructions, setSavingInstructions] = useState(false);
   const [supportReply, setSupportReply] = useState("");
   const [sendingSupportReply, setSendingSupportReply] = useState(false);
+  const [supportLive, setSupportLive] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -4676,6 +4678,26 @@ function AdminAiChatTab({ lang }: { lang: string }) {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const syncConnection = () => setSupportLive(socket.connected);
+    const handleSupportUpdate = (event: { conversationId?: number }) => {
+      void refreshConversations();
+      if (event.conversationId && event.conversationId === selectedId) {
+        void loadConvo(event.conversationId);
+      }
+    };
+    syncConnection();
+    socket.on("connect", syncConnection);
+    socket.on("disconnect", syncConnection);
+    socket.on("ai-support:update", handleSupportUpdate);
+    return () => {
+      socket.off("connect", syncConnection);
+      socket.off("disconnect", syncConnection);
+      socket.off("ai-support:update", handleSupportUpdate);
+    };
+  }, [selectedId]);
 
   async function saveInstructions() {
     setSavingInstructions(true);
@@ -4863,7 +4885,15 @@ function AdminAiChatTab({ lang }: { lang: string }) {
 
         <div className="border border-border rounded-xl overflow-hidden">
           <div className="px-3 py-2 bg-muted/50 font-bold text-sm border-b border-border">
-            {lang === "ar" ? "الرسائل" : "Messages"}
+            <div className="flex items-center justify-between gap-2">
+              <span>{lang === "ar" ? "الرسائل" : "Messages"}</span>
+              {supportLive && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  {lang === "ar" ? "مباشر" : "Live"}
+                </span>
+              )}
+            </div>
           </div>
           <div className="max-h-[60vh] overflow-y-auto p-3 space-y-2">
             {!selectedId && (
@@ -4910,6 +4940,12 @@ function AdminAiChatTab({ lang }: { lang: string }) {
               <textarea
                 value={supportReply}
                 onChange={(e) => setSupportReply(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendSupportReply();
+                  }
+                }}
                 rows={3}
                 maxLength={24_000}
                 placeholder={lang === "ar" ? "اكتب ردك للمعلم…" : "Write your reply to the teacher…"}

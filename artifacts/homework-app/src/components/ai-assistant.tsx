@@ -18,6 +18,7 @@ import {
   creditAwareFetch,
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
+import { getSocket } from "@/lib/socket";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const STORAGE_MINIMIZED = "hasad-guide-launcher-minimized";
@@ -89,6 +90,7 @@ function copy(lang: string) {
     supportActive: isAr ? "أنت الآن تتحدث مع دعم حصاد" : "You are now chatting with Hasaad Support",
     supportPlaceholder: isAr ? "اكتب رسالتك لفريق الدعم…" : "Write to the support team…",
     supportAgent: isAr ? "دعم حصاد" : "Hasaad Support",
+    liveSupport: isAr ? "اتصال مباشر" : "Live connection",
   };
 }
 
@@ -117,6 +119,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
   const [error, setError] = useState<string | null>(null);
   const [supportStatus, setSupportStatus] = useState<SupportStatus>("ai");
   const [requestingSupport, setRequestingSupport] = useState(false);
+  const [supportLive, setSupportLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const openedDeepLinkRef = useRef<number | null>(null);
 
@@ -155,10 +158,30 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
   }, [enabled, search]);
 
   useEffect(() => {
-    if (!open || !conversationId || supportStatus === "ai") return;
-    const timer = window.setInterval(() => loadConversation(conversationId, true), 10_000);
-    return () => window.clearInterval(timer);
-  }, [open, conversationId, supportStatus]);
+    if (!enabled) return;
+    const socket = getSocket();
+    const syncConnection = () => {
+      setSupportLive(socket.connected);
+      if (socket.connected && open && conversationId && supportStatus !== "ai") {
+        void loadConversation(conversationId, true);
+      }
+    };
+    const handleSupportUpdate = (event: { conversationId?: number }) => {
+      if (event.conversationId === conversationId) {
+        void loadConversation(conversationId, true);
+      }
+      void fetchConversations();
+    };
+    syncConnection();
+    socket.on("connect", syncConnection);
+    socket.on("disconnect", syncConnection);
+    socket.on("ai-support:update", handleSupportUpdate);
+    return () => {
+      socket.off("connect", syncConnection);
+      socket.off("disconnect", syncConnection);
+      socket.off("ai-support:update", handleSupportUpdate);
+    };
+  }, [enabled, open, conversationId, supportStatus]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -556,7 +579,15 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                 {supportStatus !== "ai" && (
                   <div className="mb-2 flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                     <Headphones className="h-4 w-4 shrink-0" />
-                    {supportStatus === "requested" ? t.supportWaiting : t.supportActive}
+                    <span className="min-w-0 flex-1">
+                      {supportStatus === "requested" ? t.supportWaiting : t.supportActive}
+                    </span>
+                    {supportLive && (
+                      <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        {t.liveSupport}
+                      </span>
+                    )}
                   </div>
                 )}
                 <div className="flex items-end gap-2">

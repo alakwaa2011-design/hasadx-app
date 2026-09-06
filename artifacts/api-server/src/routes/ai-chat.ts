@@ -19,6 +19,10 @@ import { buildSystemPrompt, HASAD_SYSTEM_PROMPT } from "../lib/ai-system-prompt"
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
+import { sendEmail, getAppBaseUrl } from "../lib/email";
+import { esc } from "../lib/html-escape";
+import { logger } from "../lib/logger";
+import { emitToTeacher } from "../lib/realtime";
 
 const router: Router = Router();
 
@@ -201,11 +205,11 @@ async function notifyAdminsOfSupportRequest(
   input: { teacherId: number; teacherName: string; conversationId: number; title: string; preview: string },
 ) {
   const admins = await tx
-    .select({ id: teachersTable.id })
+    .select({ id: teachersTable.id, email: teachersTable.email })
     .from(teachersTable)
     .where(eq(teachersTable.isAdmin, true));
   const recipients = admins.filter((admin) => admin.id !== input.teacherId);
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) return [];
   await tx.insert(notificationsTable).values(
     recipients.map((admin) => ({
       teacherId: admin.id,
@@ -215,6 +219,36 @@ async function notifyAdminsOfSupportRequest(
       actionUrl: `/teacher/admin?tab=ai-chat&conversation=${input.conversationId}`,
     })),
   );
+  return recipients;
+}
+
+async function emailAdminsOfSupportRequest(
+  recipients: Array<{ id: number; email: string | null }>,
+  input: { teacherName: string; conversationId: number; title: string },
+): Promise<void> {
+  const emails = [...new Set(recipients.map((admin) => admin.email?.trim()).filter(Boolean))] as string[];
+  if (emails.length === 0) return;
+  const actionUrl = `${getAppBaseUrl()}/teacher/admin?tab=ai-chat&conversation=${input.conversationId}`;
+  const subject = `طلب دعم جديد من ${input.teacherName} — مرشد حصاد`;
+  const text = [
+    `طلب ${input.teacherName} دعمًا فنيًا عبر مرشد حصاد.`,
+    `المحادثة: ${input.title}`,
+    `فتح المحادثة والرد مباشرة: ${actionUrl}`,
+  ].join("\n");
+  const html = `
+    <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#163028">
+      <h2 style="margin:0 0 12px">طلب دعم جديد عبر مرشد حصاد</h2>
+      <p>طلب <strong>${esc(input.teacherName)}</strong> دعمًا فنيًا.</p>
+      <p style="padding:12px;background:#f3f7f5;border-radius:10px">${esc(input.title)}</p>
+      <p><a href="${actionUrl}" style="display:inline-block;background:#225739;color:#fff;text-decoration:none;padding:10px 18px;border-radius:9px;font-weight:bold">فتح المحادثة والرد</a></p>
+      <p style="font-size:12px;color:#65756d">سيبقى ردك داخل محادثة مرشد حصاد نفسها.</p>
+    </div>`;
+  const results = await Promise.all(emails.map((to) => sendEmail({ to, subject, html, text })));
+  results.forEach((result, index) => {
+    if (!result.delivered) {
+      logger.warn({ reason: result.reason, recipientIndex: index }, "Hasaad Guide support email was not delivered");
+    }
+  });
 }
 
 // POST /api/ai-chat/conversations/:id/request-support
@@ -267,18 +301,43 @@ router.post("/conversations/:id/request-support", async (req, res) => {
       role: "support_system",
       content: "تم تحويل هذه المحادثة إلى الدعم الفني. يمكنك متابعة الكتابة هنا، وسيظهر رد فريق حصاد داخل المحادثة نفسها.",
     });
-    await notifyAdminsOfSupportRequest(tx, {
+    const recipients = await notifyAdminsOfSupportRequest(tx, {
       teacherId,
       teacherName: conversation.teacherName,
       conversationId: id,
       title: conversation.title,
       preview: conversation.title,
     });
-    return { supportStatus: "requested" as const, alreadyRequested: false };
+    return {
+      supportStatus: "requested" as const,
+      alreadyRequested: false as const,
+      recipients,
+      teacherName: conversation.teacherName,
+      title: conversation.title,
+    };
   });
 
   if (!result) return res.status(404).json({ error: "not_found" });
-  res.json(result);
+  if (
+    "recipients" in result &&
+    Array.isArray(result.recipients) &&
+    typeof result.teacherName === "string" &&
+    typeof result.title === "string"
+  ) {
+    await emailAdminsOfSupportRequest(result.recipients, {
+      teacherName: result.teacherName,
+      conversationId: id,
+      title: result.title,
+    });
+    result.recipients.forEach((admin) => emitToTeacher(admin.id, "ai-support:update", {
+      conversationId: id,
+      type: "requested",
+    }));
+  }
+  res.json({
+    supportStatus: result.supportStatus,
+    alreadyRequested: result.alreadyRequested,
+  });
 });
 
 // POST /api/ai-chat/conversations/:id/support-messages
@@ -313,17 +372,21 @@ router.post("/conversations/:id/support-messages", async (req, res) => {
       content: parsed.data.message,
     }).returning({ id: messages.id, createdAt: messages.createdAt });
     await tx.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id));
-    await notifyAdminsOfSupportRequest(tx, {
+    const recipients = await notifyAdminsOfSupportRequest(tx, {
       teacherId,
       teacherName: conversation.teacherName,
       conversationId: id,
       title: conversation.title,
       preview: parsed.data.message,
     });
-    return { kind: "ok" as const, message: created };
+    return { kind: "ok" as const, message: created, recipients };
   });
   if (result.kind === "not_found") return res.status(404).json({ error: "not_found" });
   if (result.kind === "not_support") return res.status(409).json({ error: "not_in_support" });
+  result.recipients.forEach((admin) => emitToTeacher(admin.id, "ai-support:update", {
+    conversationId: id,
+    type: "teacher_message",
+  }));
   res.status(201).json({ ok: true, message: result.message });
 });
 
@@ -739,10 +802,14 @@ router.post("/admin/conversations/:id/reply", async (req, res) => {
         : parsed.data.message,
       actionUrl: `/teacher/dashboard?guideConversation=${id}`,
     });
-    return { kind: "ok" as const, message: created };
+    return { kind: "ok" as const, message: created, teacherId: conversation.teacherId };
   });
   if (result.kind === "not_found") return res.status(404).json({ error: "not_found" });
   if (result.kind === "not_support") return res.status(409).json({ error: "not_in_support" });
+  emitToTeacher(result.teacherId, "ai-support:update", {
+    conversationId: id,
+    type: "admin_reply",
+  });
   res.status(201).json({ ok: true, supportStatus: "human", message: result.message });
 });
 
@@ -781,10 +848,14 @@ router.post("/admin/conversations/:id/close-support", async (req, res) => {
         actionUrl: `/teacher/dashboard?guideConversation=${id}`,
       });
     }
-    return { supportStatus: "ai" as const };
+    return { supportStatus: "ai" as const, teacherId: conversation.teacherId };
   });
   if (!result) return res.status(404).json({ error: "not_found" });
-  res.json(result);
+  emitToTeacher(result.teacherId, "ai-support:update", {
+    conversationId: id,
+    type: "closed",
+  });
+  res.json({ supportStatus: result.supportStatus });
 });
 
 // GET /api/ai-chat/admin/stats — admin: usage stats

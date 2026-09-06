@@ -1,6 +1,7 @@
 import "./instrument";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { setRealtimeServer } from "./lib/realtime";
 import app, { sessionMiddleware, ensureSessionTable, corsOriginFn } from "./app";
 import { logger } from "./lib/logger";
 import { setupGameSocket } from "./game/socket-handlers";
@@ -1541,6 +1542,7 @@ const io = new Server(httpServer, {
   },
   path: "/api/socket.io",
 });
+setRealtimeServer(io);
 
 // The root namespace intentionally combines the independent realtime game
 // modules below. It currently has 14 static connection handlers, while each

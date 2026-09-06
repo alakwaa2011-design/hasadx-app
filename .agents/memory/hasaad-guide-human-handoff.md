@@ -7,4 +7,4 @@ When a teacher requests human support, continue inside the original Hasaad Guide
 
 **Why:** Splitting the discussion into a separate inbox loses context and confuses the teacher, while allowing both AI and an administrator to answer creates contradictory replies and can charge credits for a message intended for support.
 
-**How to apply:** Keep ownership checks server-side, make transfer idempotent, notify administrators with a deep link, identify administrator messages distinctly, and exclude support-system and administrator roles from later AI model history after the conversation returns to the guide.
+**How to apply:** Keep ownership checks server-side, make transfer idempotent, notify administrators in-app and by email on the initial request, and deliver later messages through the authenticated teacher Socket.IO room. Identify administrator messages distinctly and exclude support-system and administrator roles from later AI model history after the conversation returns to the guide.

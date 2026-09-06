@@ -1,9 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import aiChatRouter from "../routes/ai-chat";
+import { sendEmail } from "../lib/email";
+
+vi.mock("../lib/email", () => ({
+  sendEmail: vi.fn().mockResolvedValue({ delivered: true }),
+  getAppBaseUrl: () => "https://hasaadx.com",
+}));
 
 const RUN_INTEGRATION =
   !!process.env.TEST_DATABASE_URL &&
@@ -18,6 +24,7 @@ let teacherId = 0;
 let otherTeacherId = 0;
 let adminId = 0;
 let conversationId = 0;
+const sendEmailMock = vi.mocked(sendEmail);
 
 async function createTeacher(name: string, isAdmin = false): Promise<number> {
   const result = await db.execute(sql`
@@ -87,6 +94,13 @@ describe.skipIf(!RUN_INTEGRATION)("Hasaad Guide human support handoff", () => {
       .post(`/api/ai-chat/conversations/${conversationId}/request-support`)
       .expect(200);
     expect(response.body.supportStatus).toBe("requested");
+    expect(response.body).not.toHaveProperty("recipients");
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({
+      to: `${RUN_ID}-admin@example.test`,
+      subject: expect.stringContaining("طلب دعم جديد"),
+      html: expect.stringContaining(`conversation=${conversationId}`),
+    }));
 
     const state = await db.execute(sql`
       SELECT support_status, support_requested_at
@@ -111,6 +125,7 @@ describe.skipIf(!RUN_INTEGRATION)("Hasaad Guide human support handoff", () => {
     await request(app)
       .post(`/api/ai-chat/conversations/${conversationId}/request-support`)
       .expect(200);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const duplicates = await db.execute(sql`
       SELECT
         (SELECT count(*)::int FROM messages
