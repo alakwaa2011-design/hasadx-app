@@ -1,0 +1,186 @@
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
+vi.mock("wouter", () => ({
+  useLocation: () => ["/teacher/worksheets/new", vi.fn()],
+}));
+
+vi.mock("framer-motion", () => ({
+  motion: new Proxy({}, {
+    get: (_target, element: string) => {
+      const MotionElement = ({ children, ...props }: any) => {
+        const Tag = element as keyof React.JSX.IntrinsicElements;
+        return <Tag {...props}>{children}</Tag>;
+      };
+      return MotionElement;
+    },
+  }),
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/components/layout", () => ({
+  Layout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock("@/lib/i18n", () => ({
+  useI18n: () => ({ lang: "ar" }),
+}));
+
+vi.mock("@/components/credits-chip", () => ({
+  useRefreshCreditsBalance: () => vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock("@/pages/teacher/worksheet-print", () => ({
+  WorksheetPrintView: () => null,
+}));
+
+vi.mock("@/pages/teacher/worksheet-canvas-editor", () => ({
+  default: () => null,
+}));
+
+vi.mock("@/lib/print-export", () => ({
+  downloadAsWord: vi.fn(),
+  printToPdf: vi.fn(),
+}));
+
+import WorksheetCreate from "./worksheet-create";
+
+const CELLS = Array.from({ length: 9 }, (_, index) => ({
+  text: `مهمة تعليمية ${index + 1}`,
+  category: ["ارسم", "فسر", "قارن"][index % 3],
+  ...(index === 0 ? { imageSuggested: true } : {}),
+}));
+
+const BOARD = {
+  id: "tic-tac-toe-1",
+  type: "tic_tac_toe",
+  prompt: "اختر ثلاثة مربعات متصلة",
+  cells: CELLS,
+};
+
+function response(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as Response;
+}
+
+function buttonContaining(container: HTMLElement, label: string) {
+  const button = Array.from(container.querySelectorAll("button"))
+    .find((candidate) => candidate.textContent?.includes(label));
+  expect(button, `Expected button containing "${label}"`).toBeTruthy();
+  return button!;
+}
+
+function setTextValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+  act(() => {
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+let container: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  localStorage.clear();
+  localStorage.setItem("hasad:worksheet:prefs", JSON.stringify({
+    contentLang: "ar",
+    aiDifficulty: "medium",
+    aiPages: 1,
+    aiCounts: {
+      mcq: 0,
+      true_false: 0,
+      short_answer: 0,
+      fill_blank: 0,
+      matching: 0,
+      tic_tac_toe: 0,
+    },
+  }));
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("توليد لوحة تيك تاك توك من منشئ ورقة العمل", () => {
+  it("يرسل لوحة واحدة ويعرض تسع مهام واقتراح الصورة دون اختيارها أو رفعها تلقائيًا", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/api/worksheets/ai/generate")) {
+        return response({ questions: [BOARD], language: "ar" });
+      }
+      if (url.endsWith("/api/worksheets") && init?.method === "POST") {
+        return response({ id: 1094 }, 201);
+      }
+      if (url.includes("/api/teacher/grade-levels")) return response([]);
+      if (url.includes("/api/auth/me")) return response({ isAdmin: false });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(<WorksheetCreate />));
+    setTextValue(
+      container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
+      "دورة الماء",
+    );
+
+    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
+    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
+      .find((span) => span.textContent === "تيك تاك توك");
+    expect(ticTacToeLabel).toBeTruthy();
+    const stepper = ticTacToeLabel!.parentElement!;
+    await act(async () => {
+      (Array.from(stepper.querySelectorAll("button"))
+        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
+    });
+
+    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await settle();
+
+    const generationCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/api/worksheets/ai/generate"));
+    expect(generationCall).toBeTruthy();
+    const generationBody = JSON.parse(String((generationCall![1] as RequestInit).body));
+    expect(generationBody.counts).toEqual({
+      mcq: 0,
+      true_false: 0,
+      short_answer: 0,
+      fill_blank: 0,
+      matching: 0,
+      tic_tac_toe: 1,
+    });
+
+    expect(container.textContent).toContain("تُفيدها صورة");
+    expect(Array.from(container.querySelectorAll("span"))
+      .filter((span) => /^المربع \d+$/.test(span.textContent ?? ""))).toHaveLength(9);
+    expect(Array.from(container.querySelectorAll('input[type="file"]'))
+      .filter((input) => input.getAttribute("accept")?.includes("image/jpeg"))).toHaveLength(9);
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+    expect(fetchMock.mock.calls.some(([url]) =>
+      /upload|image/i.test(String(url)) && !String(url).includes("/ai/generate"))).toBe(false);
+  });
+});
