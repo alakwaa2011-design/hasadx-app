@@ -147,4 +147,12 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('aria-label={ar ? "اختيار الإجابة الصحيحة"');
     expect(source).toContain('aria-label={ar ? "الإجابة النموذجية"');
   });
+
+  it("prints the Tic-Tac-Toe strategy as an indivisible 3 by 3 board", () => {
+    const boardRule = source.match(/\.ws-tic-board\s*\{[\s\S]*?\}/)?.[0] ?? "";
+    expect(boardRule).toContain("grid-template-columns: repeat(3");
+    expect(source).toMatch(/\.ws-tic-board\s*\{[\s\S]*?break-inside:\s*avoid/);
+    expect(source).toContain('className="ws-tic-cell"');
+    expect(source).toContain("resolveImageUrl(cell.imageUrl)");
+  });
 });

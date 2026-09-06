@@ -130,13 +130,37 @@ const matchingSchema = z.object({
   points: z.number().int().min(0).max(100).optional(),
 });
 
+const worksheetImagePathSchema = z.string().max(2000).refine(
+  value => value.startsWith("/objects/") || value.startsWith("/public-objects/") || /^data:image\/(?:png|jpeg|webp);base64,/i.test(value),
+  "imageUrl must reference an uploaded worksheet image",
+);
+
+const ticTacToeSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("tic_tac_toe"),
+  prompt: z.string().min(1).max(1000),
+  cells: z.array(z.object({
+    text: z.string().min(1).max(500),
+    category: z.string().min(1).max(80),
+    imageUrl: worksheetImagePathSchema.optional(),
+  })).length(9),
+  points: z.number().int().min(0).max(100).optional(),
+});
+
 const questionSchema = z.discriminatedUnion("type", [
   mcqSchema,
   trueFalseSchema,
   shortAnswerSchema,
   fillBlankSchema,
   matchingSchema,
+  ticTacToeSchema,
 ]);
+
+const TIC_TAC_TOE_LINES = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6],
+] as const;
 
 const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine((arr, ctx) => {
   arr.forEach((q, i) => {
@@ -145,6 +169,18 @@ const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine(
         code: z.ZodIssueCode.custom,
         path: [i, "correctIndex"],
         message: "correctIndex must be within options",
+      });
+    }
+    if (q.type === "tic_tac_toe") {
+      TIC_TAC_TOE_LINES.forEach((line, lineIndex) => {
+        const categories = line.map(index => q.cells[index].category.trim().toLocaleLowerCase());
+        if (new Set(categories).size < 3) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [i, "cells"],
+            message: `Tic-Tac-Toe line ${lineIndex + 1} must contain three different task categories`,
+          });
+        }
       });
     }
   });
@@ -201,7 +237,7 @@ function worksheetToGradingData(questions: WorksheetQuestion[], language: "ar" |
     } else if (q.type === "fill_blank") {
       rows.push({ text: q.prompt, points });
       keyLines.push(`${n}: ${q.answer}`);
-    } else {
+    } else if (q.type === "matching") {
       // matching
       const pairsText = q.pairs.map((p, j) => `${j + 1}. ${p.left}`).join(" / ");
       const rightCol = q.pairs.map((p) => p.right).join(" / ");
@@ -210,6 +246,12 @@ function worksheetToGradingData(questions: WorksheetQuestion[], language: "ar" |
         points,
       });
       keyLines.push(`${n}: ${q.pairs.map((p) => `${p.left} → ${p.right}`).join("، ")}`);
+    } else {
+      rows.push({
+        text: `${q.prompt}\n${q.cells.map((cell, j) => `${j + 1}. [${cell.category}] ${cell.text}`).join("\n")}`,
+        points,
+      });
+      keyLines.push(`${n}: ${ar ? "نشاط اختياري — قيّم المهام الثلاث المتصلة التي اختارها الطالب" : "Choice activity — grade the three connected tasks selected by the student"}`);
     }
   });
 

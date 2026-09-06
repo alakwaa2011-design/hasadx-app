@@ -13,6 +13,7 @@ import {
 } from "./worksheet-themes";
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
+import { resolveImageUrl } from "@/lib/image-url";
 import QRCode from "react-qr-code";
 import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon, Minus, Plus, RotateCcw, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 
@@ -25,7 +26,8 @@ interface QTF { id: string; type: "true_false"; prompt: string; correct: boolean
 interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number }
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
-export type Question = QMcq | QTF | QShort | QFill | QMatch;
+interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: Array<{ text: string; category: string; imageUrl?: string }>; points?: number }
+export type Question = QMcq | QTF | QShort | QFill | QMatch | QTicTacToe;
 type QuestionType = Question["type"];
 
 interface AnswerItem {
@@ -105,6 +107,7 @@ function paginateByEstimate(
       case "short_answer": return base + (q.lines ?? 2) * 9;
       case "fill_blank": return base + 3;
       case "matching": return base + q.pairs.length * lineH * 1.3;
+      case "tic_tac_toe": return Math.max(150, base + 135);
     }
   };
   const pages: Question[][] = [];
@@ -1190,7 +1193,7 @@ function PageLayoutPanel({
   onDropOnPage: (pi: number) => void;
 }) {
   const qTypeIcon: Record<Question["type"], string> = {
-    mcq: "⊙", true_false: "✓✗", short_answer: "✎", fill_blank: "░", matching: "⇔",
+    mcq: "⊙", true_false: "✓✗", short_answer: "✎", fill_blank: "░", matching: "⇔", tic_tac_toe: "▦",
   };
 
   return (
@@ -1491,14 +1494,15 @@ function questionIcon(type: Question["type"]) {
     case "short_answer": return <IconShort />;
     case "fill_blank": return <IconFill />;
     case "matching": return <IconMatch />;
+    case "tic_tac_toe": return <IconLightbulb />;
   }
 }
 
 function questionTypeLabel(type: Question["type"], ar: boolean) {
   if (ar) {
-    return { mcq: "اختيار من متعدد", true_false: "صح / خطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين" }[type];
+    return { mcq: "اختيار من متعدد", true_false: "صح / خطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين", tic_tac_toe: "تيك تاك توك" }[type];
   }
-  return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching" }[type];
+  return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching", tic_tac_toe: "Tic-Tac-Toe" }[type];
 }
 
 /** Instruction shown once before the first question of each type group. */
@@ -1512,6 +1516,7 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
       short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
       fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
       matching:     "صل كل عبارة بما يناسبها من العمود الثاني:",
+      tic_tac_toe:  "اختر ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا:",
     } as Record<Question["type"], string>)[type];
   }
   return ({
@@ -1522,6 +1527,7 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
     short_answer: "Answer the following questions briefly:",
     fill_blank:   "Fill in the blanks with the appropriate word:",
     matching:     "Match each item with its corresponding choice in the second column:",
+    tic_tac_toe:  "Choose three connected squares horizontally, vertically, or diagonally:",
   } as Record<Question["type"], string>)[type];
 }
 
@@ -1950,6 +1956,18 @@ function QuestionView({
           </ul>
         </div>
       )}
+      {q.type === "tic_tac_toe" && (
+        <div className="ws-tic-board" role="group" aria-label={ar ? "لوحة اختيار تيك تاك توك" : "Tic-Tac-Toe choice board"}>
+          {q.cells.map((cell, i) => (
+            <div className="ws-tic-cell" key={i}>
+              <span className="ws-tic-check" aria-hidden="true" />
+              <span className="ws-tic-category">{cell.category}</span>
+              {cell.imageUrl && <img className="ws-tic-image" src={resolveImageUrl(cell.imageUrl) ?? ""} alt="" />}
+              <span className="ws-tic-text">{cell.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
     </div>
   );
@@ -1995,7 +2013,7 @@ export function convertQuestionType(question: Question, type: QuestionType, ar: 
   const existingAnswer =
     question.type === "mcq" ? (question.options[question.correctIndex] ?? "") :
     question.type === "true_false" ? (question.correct ? (ar ? "صح" : "True") : (ar ? "خطأ" : "False")) :
-    question.type === "matching" ? "" :
+    question.type === "matching" || question.type === "tic_tac_toe" ? "" :
     (question.answer ?? "");
 
   if (type === "true_false") return { ...base, type, correct: true };
@@ -2007,6 +2025,19 @@ export function convertQuestionType(question: Question, type: QuestionType, ar: 
       : [];
     while (options.length < 4) options.push(ar ? `الخيار ${options.length + 1}` : `Option ${options.length + 1}`);
     return { ...base, type, options, correctIndex: 0 };
+  }
+  if (type === "tic_tac_toe") {
+    const categories = ar
+      ? ["تذكّر", "فسّر", "طبّق", "قارن", "ارسم", "اكتب", "حلّل", "أنشئ", "تحدَّ"]
+      : ["Recall", "Explain", "Apply", "Compare", "Draw", "Write", "Analyze", "Create", "Challenge"];
+    return {
+      ...base,
+      type,
+      prompt: ar
+        ? "اختر ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا، ونفّذ المهام."
+        : "Choose three connected squares horizontally, vertically, or diagonally, and complete the tasks.",
+      cells: categories.map(category => ({ category, text: "" })),
+    };
   }
   const sourceOptions = question.type === "mcq" ? question.options : [];
   const pairs = Array.from({ length: Math.max(3, Math.min(4, sourceOptions.length)) }, (_, index) => ({
@@ -2453,6 +2484,51 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-match-num { background: transparent; color: ${TC}; }
       .ws-match-letter { background: transparent; color: ${TC}; }
       .ws-match-text { flex: 1; }
+      .ws-tic-board {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        border: 0.5mm solid ${TC};
+        border-radius: 3mm;
+        overflow: hidden;
+        margin-top: 3mm;
+        break-inside: avoid;
+      }
+      .ws-tic-cell {
+        position: relative;
+        min-height: 43mm;
+        padding: 4mm 3mm 3mm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2mm;
+        text-align: center;
+        border-inline-end: 0.3mm solid color-mix(in srgb, ${TC} 45%, transparent);
+        border-bottom: 0.3mm solid color-mix(in srgb, ${TC} 45%, transparent);
+      }
+      .ws-tic-cell:nth-child(3n) { border-inline-end: 0; }
+      .ws-tic-cell:nth-child(n+7) { border-bottom: 0; }
+      .ws-tic-check {
+        position: absolute;
+        top: 2.5mm;
+        inset-inline-start: 2.5mm;
+        width: 4mm;
+        height: 4mm;
+        border: 0.35mm solid ${TC};
+        border-radius: 1mm;
+      }
+      .ws-tic-category {
+        color: ${TC};
+        font-size: 8pt;
+        font-weight: 800;
+      }
+      .ws-tic-image {
+        width: 100%;
+        max-height: 20mm;
+        object-fit: contain;
+        border-radius: 1.5mm;
+      }
+      .ws-tic-text { font-size: 9pt; line-height: 1.55; font-weight: 600; }
       .ws-match-tab { flex: 0 0 0; }
       .ws-match-divider {
         background: ${TC}22;
@@ -2964,6 +3040,9 @@ export function answerText(q: Question, ar: boolean, labels: { true: string; fal
   if (q.type === "true_false") return q.correct ? labels.true : labels.false;
   if (q.type === "short_answer") return q.answer?.trim() || "—";
   if (q.type === "fill_blank") return q.answer;
+  if (q.type === "tic_tac_toe") return ar
+    ? "تُقيّم المهام الثلاث المتصلة التي اختارها الطالب"
+    : "Grade the three connected tasks selected by the student";
   const order = matchingDisplayOrder(q.pairs.length);
   return q.pairs.map((_, i) => {
     const displayIdx = order.indexOf(i);

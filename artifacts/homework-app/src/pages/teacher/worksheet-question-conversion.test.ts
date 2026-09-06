@@ -41,4 +41,13 @@ describe("worksheet question type conversion", () => {
     expect(converted.options).toEqual(["الخيار 1", "الخيار 2", "الخيار 3", "الخيار 4"]);
     expect(converted.correctIndex).toBe(0);
   });
+
+  it("creates a nine-square varied Tic-Tac-Toe choice board", () => {
+    const converted = convertQuestionType(mcq, "tic_tac_toe", true);
+    expect(converted.type).toBe("tic_tac_toe");
+    if (converted.type !== "tic_tac_toe") return;
+    expect(converted.cells).toHaveLength(9);
+    expect(new Set(converted.cells.map(cell => cell.category)).size).toBe(9);
+    expect(converted.prompt).toContain("ثلاثة مربعات متصلة");
+  });
 });

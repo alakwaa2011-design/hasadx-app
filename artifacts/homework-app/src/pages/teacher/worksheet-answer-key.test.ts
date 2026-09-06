@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorksheetQuestion } from "@workspace/api-zod";
 import { answerText, buildAnswerItems, matchingColumnFractions, optionLabel } from "./worksheet-print";
+import type { Question } from "./worksheet-print";
 
 describe("worksheet answer labels", () => {
   it("uses the same Arabic labels in MCQ answers as the printed choices", () => {
@@ -43,6 +44,20 @@ describe("worksheet answer labels", () => {
     expect(buildAnswerItems(questions, true, { true: "صح", false: "خطأ" })
       .map(item => item.questionLabel))
       .toEqual(["1", "2", "3", "4"]);
+  });
+
+  it("describes Tic-Tac-Toe as a choice activity instead of inventing one answer", () => {
+    const question: Question = {
+      id: "tic-1",
+      type: "tic_tac_toe",
+      prompt: "اختر ثلاثة مربعات متصلة",
+      cells: Array.from({ length: 9 }, (_, index) => ({
+        category: `نوع ${index + 1}`,
+        text: `مهمة ${index + 1}`,
+      })),
+    };
+    expect(answerText(question, true, { true: "صح", false: "خطأ" }))
+      .toContain("المهام الثلاث المتصلة");
   });
 });
 

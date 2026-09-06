@@ -31,8 +31,27 @@ import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+async function uploadWorksheetCellImage(file: File): Promise<string> {
+  const request = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+  });
+  if (!request.ok) throw new Error("image-upload-request-failed");
+  const { uploadURL, objectPath } = await request.json();
+  const upload = await fetch(uploadURL, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!upload.ok) throw new Error("image-upload-failed");
+  return objectPath;
+}
 const MAX_SOURCE_TEXT_LENGTH = 12000;
 
 const WS_PREFS_KEY = "hasad:worksheet:prefs";
@@ -135,14 +154,21 @@ function clearTeacherProfile() {
   try { localStorage.removeItem(TEACHER_PROFILE_KEY); } catch { }
 }
 
-type QType = "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching";
+type QType = "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "tic_tac_toe";
 
 interface QMcq { id: string; type: "mcq"; prompt: string; options: string[]; correctIndex: number; points?: number }
 interface QTF { id: string; type: "true_false"; prompt: string; correct: boolean; points?: number }
 interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number }
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
-type Question = QMcq | QTF | QShort | QFill | QMatch;
+interface QTicTacToeCell { text: string; category: string; imageUrl?: string }
+interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: QTicTacToeCell[]; points?: number }
+type Question = QMcq | QTF | QShort | QFill | QMatch | QTicTacToe;
+const TIC_TAC_TOE_LINES = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6],
+] as const;
 
 type FontFamily = "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia";
 
@@ -189,6 +215,7 @@ const typeLabel = (t: QType, ar: boolean) => {
     short_answer: "إجابة قصيرة",
     fill_blank: "إكمال الفراغ",
     matching: "توصيل",
+    tic_tac_toe: "تيك تاك توك",
   };
   const enMap: Record<QType, string> = {
     mcq: "Multiple Choice",
@@ -196,6 +223,7 @@ const typeLabel = (t: QType, ar: boolean) => {
     short_answer: "Short Answer",
     fill_blank: "Fill the Blank",
     matching: "Matching",
+    tic_tac_toe: "Tic-Tac-Toe Choice Board",
   };
   return ar ? arMap[t] : enMap[t];
 };
@@ -207,6 +235,7 @@ const typeIcon = (t: QType) => {
     case "short_answer": return <Pencil className="w-4 h-4" />;
     case "fill_blank": return <Type className="w-4 h-4" />;
     case "matching": return <Shuffle className="w-4 h-4" />;
+    case "tic_tac_toe": return <LayoutTemplate className="w-4 h-4" />;
   }
 };
 
@@ -223,6 +252,18 @@ function makeBlank(type: QType, ar: boolean): Question {
       return { id, type, prompt: ar ? "اكتب الجملة هنا واستخدم ____ مكان الفراغ" : "Type the sentence and use ____ for the blank", answer: "" };
     case "matching":
       return { id, type, prompt: "", pairs: [{ left: "", right: "" }, { left: "", right: "" }, { left: "", right: "" }] };
+    case "tic_tac_toe":
+      return {
+        id,
+        type,
+        prompt: ar
+          ? "اختر ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا، ونفّذ المهام."
+          : "Choose three connected squares horizontally, vertically, or diagonally, and complete the tasks.",
+        cells: (ar
+          ? ["تذكّر", "فسّر", "طبّق", "قارن", "ارسم", "اكتب", "حلّل", "أنشئ", "تحدَّ"]
+          : ["Recall", "Explain", "Apply", "Compare", "Draw", "Write", "Analyze", "Create", "Challenge"]
+        ).map(category => ({ text: "", category })),
+      };
   }
 }
 
@@ -775,6 +816,13 @@ export default function WorksheetCreate() {
       if (q.type === "matching") {
         if (q.pairs.length < 2) return ar ? "كل سؤال توصيل يحتاج زوجين على الأقل" : "Matching needs at least 2 pairs";
         if (q.pairs.some(p => !p.left.trim() || !p.right.trim())) return ar ? "اكتمل أزواج التوصيل" : "Fill all matching pairs";
+      } else if (q.type === "tic_tac_toe") {
+        if (q.cells.length !== 9) return ar ? "لوحة تيك تاك توك تحتاج ٩ مربعات" : "The Tic-Tac-Toe board needs 9 cells";
+        if (q.cells.some(cell => !cell.text.trim() || !cell.category.trim())) return ar ? "أكمل مهام وتصنيفات مربعات تيك تاك توك" : "Complete every Tic-Tac-Toe task and category";
+        const repeatedLine = TIC_TAC_TOE_LINES.some(line =>
+          new Set(line.map(index => q.cells[index].category.trim().toLocaleLowerCase())).size < 3
+        );
+        if (repeatedLine) return ar ? "اجعل أنواع المهام الثلاثة مختلفة في كل خط أفقي أو عمودي أو قطري" : "Use three different task types in every horizontal, vertical, and diagonal line";
       } else {
         if (!q.prompt.trim()) return ar ? "كل سؤال يحتاج نصًا" : "Every question needs a prompt";
       }
@@ -1396,7 +1444,7 @@ export default function WorksheetCreate() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52">
-                {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
+                {(["mcq", "true_false", "short_answer", "fill_blank", "matching", "tic_tac_toe"] as const).map(t => (
                   <DropdownMenuItem
                     key={t}
                     onClick={() => addQuestion(t)}
@@ -1824,6 +1872,7 @@ function QuestionEditor({
   onMove: (d: -1 | 1) => void;
   onChangeType: (newType: QType) => void;
 }) {
+  const [uploadingCell, setUploadingCell] = useState<number | null>(null);
   return (
     <div className="border border-border/60 rounded-2xl p-4 space-y-4 bg-card shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between gap-2 flex-wrap pb-3 border-b border-border/40">
@@ -1844,6 +1893,7 @@ function QuestionEditor({
               <option value="short_answer">{typeLabel("short_answer", ar)}</option>
               <option value="fill_blank">{typeLabel("fill_blank", ar)}</option>
               <option value="matching">{typeLabel("matching", ar)}</option>
+              <option value="tic_tac_toe">{typeLabel("tic_tac_toe", ar)}</option>
             </select>
           </label>
         </div>
@@ -1857,7 +1907,7 @@ function QuestionEditor({
         </div>
       </div>
 
-      {question.type !== "matching" && (
+      {question.type !== "matching" && question.type !== "tic_tac_toe" && (
         <textarea
           value={question.prompt}
           onChange={e => onUpdate({ prompt: e.target.value } as any)}
@@ -2023,6 +2073,96 @@ function QuestionEditor({
               <Plus className="w-3.5 h-3.5" /> {ar ? "إضافة زوج" : "Add pair"}
             </button>
           )}
+        </div>
+      )}
+
+      {question.type === "tic_tac_toe" && (
+        <div className="space-y-3 mt-2">
+          <textarea
+            value={question.prompt}
+            onChange={e => onUpdate({ prompt: e.target.value } as any)}
+            rows={2}
+            className="w-full px-4 py-3 rounded-xl border bg-background text-sm focus:border-primary outline-none resize-y"
+            placeholder={ar ? "تعليمات اختيار ثلاثة مربعات متصلة" : "Instructions for choosing three connected squares"}
+          />
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {question.cells.map((cell, i) => (
+                <div key={i} className="rounded-xl border bg-background p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-primary">{ar ? `المربع ${i + 1}` : `Square ${i + 1}`}</span>
+                    <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+                  <input
+                    value={cell.category}
+                    onChange={e => {
+                      const cells = question.cells.map((item, j) => j === i ? { ...item, category: e.target.value } : item);
+                      onUpdate({ cells } as any);
+                    }}
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-xs font-bold"
+                    placeholder={ar ? "نوع المهمة: رسم، تفسير..." : "Task type: draw, explain..."}
+                  />
+                  <textarea
+                    value={cell.text}
+                    onChange={e => {
+                      const cells = question.cells.map((item, j) => j === i ? { ...item, text: e.target.value } : item);
+                      onUpdate({ cells } as any);
+                    }}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border bg-background text-sm resize-y"
+                    placeholder={ar ? "اكتب مهمة متنوعة للطالب" : "Write a varied student task"}
+                  />
+                  {cell.imageUrl && (
+                    <div className="relative rounded-lg border bg-muted/20 p-1">
+                      <img src={resolveImageUrl(cell.imageUrl) ?? ""} alt="" className="w-full h-24 object-contain rounded-md" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cells = question.cells.map((item, j) => j === i ? { ...item, imageUrl: undefined } : item);
+                          onUpdate({ cells } as any);
+                        }}
+                        className="absolute top-1 end-1 w-6 h-6 rounded-full bg-background/90 border flex items-center justify-center text-destructive"
+                        title={ar ? "إزالة الصورة" : "Remove image"}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <label className="h-9 px-3 rounded-lg border border-dashed bg-muted/20 hover:bg-muted/40 text-xs font-bold text-primary flex items-center justify-center gap-2 cursor-pointer">
+                    {uploadingCell === i ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                    {cell.imageUrl
+                      ? (ar ? "استبدال الصورة" : "Replace image")
+                      : (ar ? "إضافة صورة" : "Add image")}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                      className="sr-only"
+                      disabled={uploadingCell !== null}
+                      onChange={async event => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (!file) return;
+                        setUploadingCell(i);
+                        try {
+                          const imageUrl = await uploadWorksheetCellImage(file);
+                          const cells = question.cells.map((item, j) => j === i ? { ...item, imageUrl } : item);
+                          onUpdate({ cells } as any);
+                          toast.success(ar ? "تمت إضافة الصورة" : "Image added");
+                        } catch {
+                          toast.error(ar ? "تعذّر رفع الصورة" : "Could not upload image");
+                        } finally {
+                          setUploadingCell(null);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {ar ? "استخدم ٣ أنواع مهام مختلفة على الأقل. ارفع صورة تعليمية إلى أي مربع يحتاج ملاحظة أو تفسيرًا بصريًا." : "Use at least 3 task types. Upload an educational image for any visual observation or interpretation task."}
+            </p>
+          </div>
         </div>
       )}
     </div>
