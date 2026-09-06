@@ -80,8 +80,11 @@ function buttonContaining(container: HTMLElement, label: string) {
   return button!;
 }
 
-function setTextValue(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+function setTextValue(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const prototype = input instanceof HTMLTextAreaElement
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")!.set!;
   act(() => {
     setter.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -119,6 +122,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
 });
+
 
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -182,5 +186,81 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     expect(container.querySelectorAll("img")).toHaveLength(0);
     expect(fetchMock.mock.calls.some(([url]) =>
       /upload|image/i.test(String(url)) && !String(url).includes("/ai/generate"))).toBe(false);
+  });
+
+  it("يحدّث المربع المطلوب فقط ويحفظ تعديل المعلم المتزامن أثناء انتظار الذكاء", async () => {
+    let resolveRegeneration!: (value: Response) => void;
+    const regenerationResponse = new Promise<Response>((resolve) => {
+      resolveRegeneration = resolve;
+    });
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/api/worksheets/ai/generate")) {
+        return response({ questions: [BOARD], language: "ar" });
+      }
+      if (url.includes("/api/worksheets/ai/regenerate-tic-tac-toe-cell")) {
+        return regenerationResponse;
+      }
+      if (url.endsWith("/api/worksheets") && init?.method === "POST") {
+        return response({ id: 1097 }, 201);
+      }
+      if (url.endsWith("/api/worksheets/1097") && init?.method === "PUT") {
+        return response({ id: 1097 });
+      }
+      if (url.includes("/api/teacher/grade-levels")) return response([]);
+      if (url.includes("/api/auth/me")) return response({ isAdmin: false });
+      return response({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(<WorksheetCreate />));
+    setTextValue(
+      container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
+      "دورة الماء",
+    );
+    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
+    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
+      .find((span) => span.textContent === "تيك تاك توك")!;
+    await act(async () => {
+      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
+        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
+    });
+    await act(async () => buttonContaining(container, "توليد الأسئلة").click());
+    await settle();
+
+    const regenerateButtons = Array.from(container.querySelectorAll("button"))
+      .filter((button) => button.textContent?.includes("إعادة توليد"));
+    await act(async () => regenerateButtons[0].click());
+
+    const taskTextareas = Array.from(container.querySelectorAll("textarea"))
+      .filter((textarea) => textarea.placeholder.includes("مهمة متنوعة"));
+    setTextValue(taskTextareas[1], "تعديل المعلم أثناء الانتظار");
+    expect(taskTextareas[0].value).toBe(CELLS[0].text);
+    expect(taskTextareas[1].value).toBe("تعديل المعلم أثناء الانتظار");
+
+    await act(async () => {
+      resolveRegeneration(response({
+        cell: { text: "مهمة بديلة من الذكاء", category: "حلل" },
+      }));
+      await regenerationResponse;
+    });
+    await settle();
+
+    const updatedTaskTextareas = Array.from(container.querySelectorAll("textarea"))
+      .filter((textarea) => textarea.placeholder.includes("مهمة متنوعة"));
+    expect(updatedTaskTextareas.map((textarea) => textarea.value)).toEqual([
+      "مهمة بديلة من الذكاء",
+      "تعديل المعلم أثناء الانتظار",
+      ...CELLS.slice(2).map((cell) => cell.text),
+    ]);
+
+    const regenerationSave = fetchMock.mock.calls.find(([url, init]) =>
+      String(url).endsWith("/api/worksheets/1097") && (init as RequestInit)?.method === "PUT");
+    expect(regenerationSave).toBeTruthy();
+    const savedBoard = JSON.parse(String((regenerationSave![1] as RequestInit).body)).questions[0];
+    expect(savedBoard.cells.map((cell: { text: string }) => cell.text)).toEqual([
+      "مهمة بديلة من الذكاء",
+      "تعديل المعلم أثناء الانتظار",
+      ...CELLS.slice(2).map((cell) => cell.text),
+    ]);
   });
 });
