@@ -48,6 +48,7 @@ router.get("/credits/packages", requireTeacher as any, async (_req, res) => {
    يطبَّق مرة واحدة في CreditService)، فالواجهة تعرضه فقط ولا تحسبه. */
 router.get("/credits/tool-price/:toolKey", requireTeacher as any, async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store");
     const teacherId = req.session!.teacherId!;
     const toolKey = String(req.params.toolKey || "").slice(0, 64);
     const [settingsRow] = await db.execute(sql`SELECT credits_enabled FROM platform_settings LIMIT 1`).then(r => r.rows as any[]);

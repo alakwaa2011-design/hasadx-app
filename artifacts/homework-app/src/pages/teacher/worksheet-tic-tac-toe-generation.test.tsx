@@ -72,6 +72,13 @@ const OTHER_QUESTION = {
   answer: "التبخر ثم التكاثف ثم الهطول",
 };
 
+const TOOL_PRICE = {
+  effectiveCost: 2,
+  baseCost: 2,
+  isPro: false,
+  creditsEnabled: true,
+};
+
 function response(body: unknown, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -147,6 +154,9 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       if (url.endsWith("/api/worksheets") && init?.method === "POST") {
         return response({ id: 1094 }, 201);
       }
+      if (url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell")) {
+        return response(TOOL_PRICE);
+      }
       if (url.includes("/api/teacher/grade-levels")) return response([]);
       if (url.includes("/api/auth/me")) return response({ isAdmin: false });
       return response({});
@@ -213,6 +223,9 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       if (url.endsWith("/api/worksheets/1097") && init?.method === "PUT") {
         return response({ id: 1097 });
       }
+      if (url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell")) {
+        return response(TOOL_PRICE);
+      }
       if (url.includes("/api/teacher/grade-levels")) return response([]);
       if (url.includes("/api/auth/me")) return response({ isAdmin: false });
       return response({});
@@ -236,7 +249,18 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
 
     const regenerateButtons = Array.from(container.querySelectorAll("button"))
       .filter((button) => button.textContent?.includes("إعادة توليد"));
+    expect(regenerateButtons[0].textContent).toContain("2 نقطة");
     await act(async () => regenerateButtons[0].click());
+    await settle();
+
+    const priceCalls = fetchMock.mock.calls
+      .map(([url, init], index) => ({ url: String(url), init: init as RequestInit | undefined, index }))
+      .filter(({ url }) => url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell"));
+    const regenerationCallIndex = fetchMock.mock.calls.findIndex(([url]) =>
+      String(url).includes("/api/worksheets/ai/regenerate-tic-tac-toe-cell"));
+    expect(priceCalls).toHaveLength(2);
+    expect(priceCalls[1].index).toBeLessThan(regenerationCallIndex);
+    expect(priceCalls[1].init).toMatchObject({ credentials: "include", cache: "no-store" });
 
     const taskTextareas = Array.from(container.querySelectorAll("textarea"))
       .filter((textarea) => textarea.placeholder.includes("مهمة متنوعة"));
@@ -301,6 +325,9 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       }
       if (url.endsWith("/api/worksheets/1099") && init?.method === "PUT") {
         return response({ id: 1099 });
+      }
+      if (url.includes("/api/credits/tool-price/worksheet-tic-tac-toe-cell")) {
+        return response(TOOL_PRICE);
       }
       if (url.includes("/api/teacher/grade-levels")) return response([]);
       if (url.includes("/api/auth/me")) return response({ isAdmin: false });

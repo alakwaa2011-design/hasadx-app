@@ -70,6 +70,7 @@ interface ToolCreditPrice {
   creditsEnabled: boolean;
 }
 
+const TIC_TAC_TOE_PRICE_REFRESH_MS = 30_000;
 const WS_DEFAULT_PREFS: Required<WsPrefs> = {
   contentLang: "ar",
   aiDifficulty: "medium",
@@ -313,6 +314,7 @@ export default function WorksheetCreate() {
   const goBack = useSmartBack("/teacher");
   const [clientRequestId] = useState(createClientRequestId);
   const [ticTacToeCellCredit, setTicTacToeCellCredit] = useState<ToolCreditPrice | null>(null);
+  const ticTacToePriceRequestRef = useRef(0);
 
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
   const _teacherProfile = useMemo(() => loadTeacherProfile(), []);
@@ -522,6 +524,33 @@ export default function WorksheetCreate() {
      balance (header chip + credits page) after each attempt settles. */
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
+  const refreshTicTacToeCellCredit = useCallback(async (): Promise<ToolCreditPrice | null> => {
+    const requestId = ++ticTacToePriceRequestRef.current;
+    setTicTacToeCellCredit(null);
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/credits/tool-price/worksheet-tic-tac-toe-cell`,
+        { credentials: "include", cache: "no-store" },
+      );
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (
+        typeof data?.effectiveCost !== "number"
+        || typeof data?.baseCost !== "number"
+        || typeof data?.isPro !== "boolean"
+        || typeof data?.creditsEnabled !== "boolean"
+      ) {
+        return null;
+      }
+      if (requestId === ticTacToePriceRequestRef.current) {
+        setTicTacToeCellCredit(data);
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const persistWorksheetPayload = async (
     payload: WorksheetSavePayload,
     automatic: boolean,
@@ -727,6 +756,13 @@ export default function WorksheetCreate() {
     contentOperationInFlightRef.current = true;
     setRegeneratingCell({ questionId, cellIndex });
     try {
+      const currentPrice = await refreshTicTacToeCellCredit();
+      if (!currentPrice) {
+        toast.error(ar
+          ? "تعذّر التحقق من تكلفة إعادة التوليد. حاول مرة أخرى."
+          : "Could not verify the current regeneration cost. Please try again.");
+        return;
+      }
       const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/regenerate-tic-tac-toe-cell`, {
         method: "POST",
         credentials: "include",
@@ -787,17 +823,23 @@ export default function WorksheetCreate() {
 
   useEffect(() => {
     if (!questions.some(question => question.type === "tic_tac_toe")) return;
-    let cancelled = false;
-    fetch(`${API_BASE}/api/credits/tool-price/worksheet-tic-tac-toe-cell`, { credentials: "include" })
-      .then(response => response.ok ? response.json() : null)
-      .then(data => {
-        if (!cancelled && data && typeof data.effectiveCost === "number") {
-          setTicTacToeCellCredit(data);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [questions.some(question => question.type === "tic_tac_toe")]);
+    void refreshTicTacToeCellCredit();
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refreshTicTacToeCellCredit();
+      }
+    }, TIC_TAC_TOE_PRICE_REFRESH_MS);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshTicTacToeCellCredit();
+      }
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [questions.some(question => question.type === "tic_tac_toe"), refreshTicTacToeCellCredit]);
 
   const extractFromFile = async () => {
     if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
