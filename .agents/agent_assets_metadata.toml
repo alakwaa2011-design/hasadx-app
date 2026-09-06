@@ -780,10 +780,11 @@ logical_id = "c9812786-d0a8-485b-9c77-7a923ee97b11"
 [[outputs]]
 id = "wgIFERhqZKrkF7Ao_8zyH"
 uri = "file://brand/brand-guidelines.html"
-type = "unspecified"
+type = "text"
 title = "دليل الهوية البصرية — Brand Guidelines"
 description = "ألوان، خطوط، نسخ الشعار، قواعد الاستخدام"
 logical_id = "dbf6ad25-3436-4fc9-9d11-a8f5533ff5f2"
+content_type = "text/html"
 
 [[outputs]]
 id = "Tfft1-UEw91w7NnFMd8Wx"
@@ -926,3 +927,10 @@ mtime_ms = 1787604112995
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/88dfd611-572c-43f7-b221-4b30ce557442/8fe10f6c-fbca-4d78-8788-3dcf89a7024f"
 storage_version_token = "1787604362797272"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "XxqJW45bSeggD0sO6Qk-M"
+uri = "file://artifacts/hasaad-meta-video/public/audio/bg_music.mp3"
+type = "audio"
+title = "Hasaad ad background music"
+description = "Generated music: Cinematic uplifting electronic instrumental background music scoring a premium Arabic edtech Meta Reel. Warm plucked synth, elegant percussion, subtle oud-inspired tonal accents with…"

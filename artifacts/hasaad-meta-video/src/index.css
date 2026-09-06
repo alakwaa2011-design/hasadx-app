@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-brand-green: #225739;
+  --color-brand-green-light: #2f684d;
+  --color-brand-green-dark: #18251F;
+  --color-brand-gold: #D9A321;
+  --color-brand-gold-light: #F0C454;
+  --color-brand-cream: #FCFBF7;
+  --color-brand-white: #ffffff;
+  
+  --font-display: 'Tajawal', sans-serif;
+  --font-body: 'Cairo', sans-serif;
+}
+
+@layer base {
+  :root {
+    --brand-green: #225739;
+    --brand-green-light: #2f684d;
+    --brand-green-dark: #18251F;
+    --brand-gold: #D9A321;
+    --brand-gold-light: #F0C454;
+    --brand-cream: #FCFBF7;
+    --brand-white: #ffffff;
+  }
+  
+  body {
+    background-color: var(--brand-green-dark);
+    color: var(--brand-cream);
+    font-family: 'Cairo', sans-serif;
+    direction: rtl; /* Arabic support */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Tajawal', sans-serif;
+  }
+}
+
+/* Custom utilities for video */
+.text-shadow-gold {
+  text-shadow: 0 4px 24px rgba(217, 163, 33, 0.4);
+}
+
+.text-shadow-dark {
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(252, 251, 247, 0.95), rgba(252, 251, 247, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 24px 48px rgba(24, 37, 31, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #F0C454 0%, #D9A321 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

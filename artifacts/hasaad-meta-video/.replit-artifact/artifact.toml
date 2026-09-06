@@ -1,0 +1,29 @@
+kind = "video"
+videoAspectRatio = "9:16"
+previewPath = "/hasaad-meta-video/"
+title = "إعلان منصة حصاد"
+description = "فيديو إعلاني عمودي احترافي لمنصة حصاد، مبني على لقطات حقيقية من أدوات الذكاء الاصطناعي والألعاب والتقييم."
+version = "1.0.0"
+id = "artifacts/hasaad-meta-video"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/hasaad-meta-video/" ]
+localPort = 22582
+
+[services.development]
+run = "pnpm --filter @workspace/hasaad-meta-video run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hasaad-meta-video", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hasaad-meta-video/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22582"
+BASE_PATH = "/hasaad-meta-video/"
