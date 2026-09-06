@@ -1119,7 +1119,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
   }
 });
 
-router.post("/worksheets/ai/regenerate-tic-tac-toe-cell", requireTeacher, checkCredits("worksheet"), async (req, res) => {
+router.post("/worksheets/ai/regenerate-tic-tac-toe-cell", requireTeacher, checkCredits("worksheet-tic-tac-toe-cell"), async (req, res) => {
   let language: "ar" | "en" = "ar";
   try {
     const teacherId = req.session.teacherId as number;
@@ -1133,7 +1133,7 @@ router.post("/worksheets/ai/regenerate-tic-tac-toe-cell", requireTeacher, checkC
         ? "أنت مولّد مهام تعليمية. أعد JSON نقيًا فقط دون شرح أو ترميز."
         : "You generate educational tasks. Return pure JSON only with no prose or markdown.",
       maxTokens: 1200,
-      usage: { req, toolKey: "worksheet", callKey: "regenerate-tic-tac-toe-cell" },
+      usage: { req, toolKey: "worksheet-tic-tac-toe-cell", callKey: "regenerate-tic-tac-toe-cell" },
     });
     const json = parseJsonLoose(text);
     const cell = sanitizeGeneratedTicTacToeCell(json?.cell);

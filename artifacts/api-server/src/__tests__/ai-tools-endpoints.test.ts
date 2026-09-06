@@ -9,6 +9,7 @@ const mockState = vi.hoisted(() => {
   const openaiCreate = vi.fn();
   const openaiImagesGenerate = vi.fn();
   const anthropicCreate = vi.fn();
+  const checkedCreditToolKeys: string[] = [];
   function makeChain(result: unknown): unknown {
     const p: Promise<unknown> = Promise.resolve(result);
     const handler: ProxyHandler<Promise<unknown>> = {
@@ -24,7 +25,7 @@ const mockState = vi.hoisted(() => {
     };
     return new Proxy(p, handler);
   }
-  return { openaiCreate, openaiImagesGenerate, anthropicCreate, makeChain };
+  return { openaiCreate, openaiImagesGenerate, anthropicCreate, checkedCreditToolKeys, makeChain };
 });
 
 vi.mock("@workspace/db", () => {
@@ -49,7 +50,10 @@ vi.mock("@workspace/db", () => {
 });
 
 vi.mock("../lib/check-credits", () => ({
-  checkCredits: () => (_req: any, _res: any, next: any) => next(),
+  checkCredits: (toolKey: string) => (_req: any, _res: any, next: any) => {
+    mockState.checkedCreditToolKeys.push(toolKey);
+    next();
+  },
   captureCredits: async () => {},
   refundCredits: async () => {},
   invalidateCreditsSettingsCache: () => {},
@@ -169,6 +173,7 @@ beforeEach(() => {
   mockState.openaiCreate.mockReset();
   mockState.openaiImagesGenerate.mockReset();
   mockState.anthropicCreate.mockReset();
+  mockState.checkedCreditToolKeys.length = 0;
 });
 
 describe("POST /api/ai/generate-mindmap", () => {
@@ -385,6 +390,7 @@ describe("POST /api/worksheets/ai/regenerate-tic-tac-toe-cell", () => {
       });
 
     expect(res.status).toBe(200);
+    expect(mockState.checkedCreditToolKeys).toContain("worksheet-tic-tac-toe-cell");
     expect(res.body).toEqual({
       cell: { text: "Draw a new plant diagram", category: "Diagram", imageSuggested: true },
     });

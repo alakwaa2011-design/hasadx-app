@@ -63,6 +63,13 @@ interface WsPrefs {
   aiCounts?: { mcq: number; true_false: number; short_answer: number; fill_blank: number; matching: number; tic_tac_toe: number };
 }
 
+interface ToolCreditPrice {
+  effectiveCost: number;
+  baseCost: number;
+  isPro: boolean;
+  creditsEnabled: boolean;
+}
+
 const WS_DEFAULT_PREFS: Required<WsPrefs> = {
   contentLang: "ar",
   aiDifficulty: "medium",
@@ -305,6 +312,7 @@ export default function WorksheetCreate() {
   const [, setLocation] = useLocation();
   const goBack = useSmartBack("/teacher");
   const [clientRequestId] = useState(createClientRequestId);
+  const [ticTacToeCellCredit, setTicTacToeCellCredit] = useState<ToolCreditPrice | null>(null);
 
   const _wsPrefs = useMemo(() => loadWsPrefs(), []);
   const _teacherProfile = useMemo(() => loadTeacherProfile(), []);
@@ -776,6 +784,20 @@ export default function WorksheetCreate() {
       refreshCreditsBalance();
     }
   };
+
+  useEffect(() => {
+    if (!questions.some(question => question.type === "tic_tac_toe")) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/credits/tool-price/worksheet-tic-tac-toe-cell`, { credentials: "include" })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (!cancelled && data && typeof data.effectiveCost === "number") {
+          setTicTacToeCellCredit(data);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [questions.some(question => question.type === "tic_tac_toe")]);
 
   const extractFromFile = async () => {
     if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
@@ -1580,6 +1602,7 @@ export default function WorksheetCreate() {
                   onChangeType={t => changeQuestionType(q.id, t)}
                   onRegenerateCell={cellIndex => regenerateTicTacToeCell(q.id, cellIndex)}
                   regeneratingCellIndex={regeneratingCell?.questionId === q.id ? regeneratingCell.cellIndex : null}
+                  regenerateCreditPrice={ticTacToeCellCredit}
                 />
               ))}
             </div>
@@ -1940,7 +1963,7 @@ function CollapsibleCard({ title, icon: Icon, isOpen, onToggle, summary, childre
 }
 
 function QuestionEditor({
-  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex,
+  index, total, question, ar, onUpdate, onRemove, onMove, onChangeType, onRegenerateCell, regeneratingCellIndex, regenerateCreditPrice,
 }: {
   index: number; total: number; question: Question; ar: boolean;
   onUpdate: (patch: Partial<Question>) => void;
@@ -1949,6 +1972,7 @@ function QuestionEditor({
   onChangeType: (newType: QType) => void;
   onRegenerateCell: (cellIndex: number) => void;
   regeneratingCellIndex: number | null;
+  regenerateCreditPrice: ToolCreditPrice | null;
 }) {
   const [uploadingCell, setUploadingCell] = useState<number | null>(null);
   return (
@@ -2187,6 +2211,11 @@ function QuestionEditor({
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           : <RotateCcw className="w-3.5 h-3.5" />}
                         {ar ? "إعادة توليد" : "Regenerate"}
+                        {regenerateCreditPrice?.creditsEnabled && regenerateCreditPrice.effectiveCost > 0 && (
+                          <span className="font-normal opacity-80">
+                            ({regenerateCreditPrice.effectiveCost} {ar ? "نقطة" : "credits"})
+                          </span>
+                        )}
                       </button>
                     </div>
                   </div>

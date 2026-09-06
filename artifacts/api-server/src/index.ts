@@ -793,6 +793,7 @@ async function runSchemaMigrations() {
         ('ai-questions',     'توليد أسئلة AI',          'ai',    10, 10,  120),
         ('ai-image',         'توليد صورة AI',           'ai',    10, 10,   60),
         ('worksheet',        'ورقة العمل',              'ai',    15, 15,  120),
+        ('worksheet-tic-tac-toe-cell', 'إعادة توليد مربع تيك تاك توك', 'ai', 2, 2, 120),
         ('lesson-plan',      'خطة الدرس',               'ai',    15, 15,  120),
         ('pdf-to-questions', 'استخراج أسئلة من PDF',    'ai',    15, 15,  120),
         ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'ai', 10, 10, 180),

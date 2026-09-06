@@ -199,6 +199,12 @@ export function AiCostReportTab() {
 
   const formatCost = (microUsd: number) => `$${(microUsd / 1_000_000).toFixed(4)}`;
   const formatNum = (num: number) => num.toLocaleString(lang);
+  const formatToolName = (toolKey: string) => {
+    if (toolKey === "worksheet-tic-tac-toe-cell") {
+      return lang === "ar" ? "إعادة توليد مربع تيك تاك توك" : "Regenerate Tic-Tac-Toe square";
+    }
+    return toolKey;
+  };
 
   return (
     <div className="space-y-6" dir={dir}>
@@ -421,7 +427,10 @@ export function AiCostReportTab() {
                     {data.byTool.map((row) => (
                       <tr key={row.toolKey} className="hover:bg-muted/10 transition-colors">
                         <td className="py-2.5 px-4">
-                          <div className="font-medium">{row.toolKey}</div>
+                          <div className="font-medium">{formatToolName(row.toolKey)}</div>
+                          {formatToolName(row.toolKey) !== row.toolKey && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 font-mono" dir="ltr">{row.toolKey}</div>
+                          )}
                           {row.costUnavailableCount > 0 && (
                             <div className="text-[10px] text-amber-600 mt-0.5">+{row.costUnavailableCount} {t.missingPricing}</div>
                           )}
