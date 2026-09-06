@@ -1337,6 +1337,73 @@ export default function WorksheetCreate() {
           </div>
 
           <div className="px-5 py-4 sm:px-6 bg-background/60">
+            <div className={cn(
+              "mb-4 rounded-2xl border-2 p-4 transition-all",
+              aiCounts.tic_tac_toe === 1
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border/70 bg-background",
+            )}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="grid grid-cols-3 gap-1 w-16 h-16 shrink-0 rounded-xl border border-primary/25 bg-background p-2 shadow-sm" aria-hidden="true">
+                  {Array.from({ length: 9 }, (_, index) => (
+                    <span key={index} className={cn(
+                      "rounded-sm border border-primary/25",
+                      [0, 4, 8].includes(index) && "bg-primary/20",
+                    )} />
+                  ))}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-black tracking-wide text-primary bg-primary/10 rounded-full px-2 py-1">
+                      {ar ? "استراتيجية تعليمية" : "Teaching strategy"}
+                    </span>
+                    {aiCounts.tic_tac_toe === 1 && (
+                      <span className="text-[10px] font-bold text-primary">
+                        {ar ? "ستُنشأ مع الورقة" : "Will be generated"}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mt-1 text-base font-black text-foreground">
+                    {ar ? "لوحة الاختيار — ثلاثة على خط" : "Choice Board — Three in a Row"}
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground max-w-2xl">
+                    {ar
+                      ? "يختار الطالب ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا، ثم ينفّذ المهام ويكتب إجاباته داخل المربعات."
+                      : "Students choose three connected squares horizontally, vertically, or diagonally, then complete and answer the tasks inside them."}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:w-48 shrink-0">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={aiCounts.tic_tac_toe === 1}
+                    onClick={() => setAiCounts(prev => ({ ...prev, tic_tac_toe: prev.tic_tac_toe === 1 ? 0 : 1 }))}
+                    className={cn(
+                      "h-10 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all",
+                      aiCounts.tic_tac_toe === 1
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-primary/40 bg-background text-primary hover:bg-primary/5",
+                    )}
+                  >
+                    <LayoutTemplate className="w-4 h-4" />
+                    {aiCounts.tic_tac_toe === 1
+                      ? (ar ? "مفعّلة في التوليد" : "Enabled for generation")
+                      : (ar ? "تضمين في التوليد" : "Include in generation")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={questions.some(question => question.type === "tic_tac_toe")}
+                    onClick={() => addQuestion("tic_tac_toe")}
+                    className="h-9 rounded-xl border border-border bg-background text-foreground hover:bg-muted disabled:opacity-50 text-[11px] font-bold"
+                  >
+                    {questions.some(question => question.type === "tic_tac_toe")
+                      ? (ar ? "اللوحة مضافة بالفعل" : "Board already added")
+                      : (ar ? "إضافة لوحة فارغة يدويًا" : "Add an empty board manually")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <Collapsible>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-2 mb-2 rounded-lg hover:bg-muted text-sm font-bold text-foreground transition-colors group text-start">
                 <span className="flex items-center gap-2">
@@ -1384,12 +1451,12 @@ export default function WorksheetCreate() {
                   <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                     <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
                   </div>
-                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching", "tic_tac_toe"] as const).map(k => (
+                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
                     <CompactStepper
                       key={k}
                       label={typeLabel(k, ar)}
                       value={aiCounts[k]}
-                      max={k === "tic_tac_toe" ? 1 : k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                      max={k === "matching" ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
                       onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
                     />
                   ))}
@@ -1699,7 +1766,7 @@ export default function WorksheetCreate() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52">
-                {(["mcq", "true_false", "short_answer", "fill_blank", "matching", "tic_tac_toe"] as const).map(t => (
+                {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(t => (
                   <DropdownMenuItem
                     key={t}
                     onClick={() => addQuestion(t)}

@@ -172,15 +172,8 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       "دورة الماء",
     );
 
-    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
-    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
-      .find((span) => span.textContent === "تيك تاك توك");
-    expect(ticTacToeLabel).toBeTruthy();
-    const stepper = ticTacToeLabel!.parentElement!;
-    await act(async () => {
-      (Array.from(stepper.querySelectorAll("button"))
-        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
-    });
+    expect(container.textContent).toContain("لوحة الاختيار — ثلاثة على خط");
+    await act(async () => buttonContaining(container, "تضمين في التوليد").click());
 
     await act(async () => buttonContaining(container, "توليد الأسئلة").click());
     await settle();
@@ -241,13 +234,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
-    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
-    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
-      .find((span) => span.textContent === "تيك تاك توك")!;
-    await act(async () => {
-      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
-        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
-    });
+    await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد الأسئلة").click());
     await settle();
 
@@ -310,13 +297,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
-    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
-    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
-      .find((span) => span.textContent === "تيك تاك توك")!;
-    await act(async () => {
-      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
-        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
-    });
+    await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد الأسئلة").click());
     await settle();
 
@@ -362,13 +343,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
-    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
-    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
-      .find((span) => span.textContent === "تيك تاك توك")!;
-    await act(async () => {
-      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
-        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
-    });
+    await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد الأسئلة").click());
     await settle();
 
@@ -465,13 +440,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
-    await act(async () => buttonContaining(container, "إعدادات التوليد المتقدمة").click());
-    const ticTacToeLabel = Array.from(container.querySelectorAll("span"))
-      .find((span) => span.textContent === "تيك تاك توك")!;
-    await act(async () => {
-      (Array.from(ticTacToeLabel.parentElement!.querySelectorAll("button"))
-        .find((button) => button.textContent === "+") as HTMLButtonElement).click();
-    });
+    await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد الأسئلة").click());
     await settle();
 
