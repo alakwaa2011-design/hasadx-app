@@ -507,15 +507,15 @@ export default function WorksheetCreate() {
   };
 
   const moveQuestion = (id: string, dir: -1 | 1) => {
-    setQuestions(prev => {
-      const idx = prev.findIndex(q => q.id === id);
-      if (idx < 0) return prev;
-      const j = idx + dir;
-      if (j < 0 || j >= prev.length) return prev;
-      const copy = prev.slice();
-      [copy[idx], copy[j]] = [copy[j], copy[idx]];
-      return copy;
-    });
+    const current = latestWorksheetRef.current;
+    const idx = current.questions.findIndex(q => q.id === id);
+    if (idx < 0) return;
+    const j = idx + dir;
+    if (j < 0 || j >= current.questions.length) return;
+    const nextQuestions = current.questions.slice();
+    [nextQuestions[idx], nextQuestions[j]] = [nextQuestions[j], nextQuestions[idx]];
+    latestWorksheetRef.current = { ...current, questions: nextQuestions };
+    setQuestions(nextQuestions);
   };
 
   /* Server charges credits for AI generate/extract — refresh the shared
