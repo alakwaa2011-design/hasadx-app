@@ -172,7 +172,9 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       "دورة الماء",
     );
 
-    expect(container.textContent).toContain("لوحة الاختيار — ثلاثة على خط");
+    expect(container.textContent).not.toContain("يختار الطالب ثلاث مهام متصلة");
+    await act(async () => buttonContaining(container, "لوحة الاختيار").click());
+    expect(container.textContent).toContain("يختار الطالب ثلاث مهام متصلة");
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
 
     await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
@@ -234,6 +236,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
+    await act(async () => buttonContaining(container, "لوحة الاختيار").click());
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
@@ -297,6 +300,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
+    await act(async () => buttonContaining(container, "لوحة الاختيار").click());
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
@@ -343,6 +347,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
+    await act(async () => buttonContaining(container, "لوحة الاختيار").click());
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();
@@ -440,6 +445,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
     );
+    await act(async () => buttonContaining(container, "لوحة الاختيار").click());
     await act(async () => buttonContaining(container, "تضمين في التوليد").click());
     await act(async () => buttonContaining(container, "توليد لوحة الاختيار").click());
     await settle();

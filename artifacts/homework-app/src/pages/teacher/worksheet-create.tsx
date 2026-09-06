@@ -451,6 +451,7 @@ export default function WorksheetCreate() {
   const [aiAssessment, setAiAssessment] = useState(_wsPrefs.aiAssessment ?? WS_DEFAULT_PREFS.aiAssessment);
   const [showQualityReview, setShowQualityReview] = useState(false);
   const [allQuestionsExpanded, setAllQuestionsExpanded] = useState(true);
+  const [choiceBoardOpen, setChoiceBoardOpen] = useState(false);
   const [lastCellRegeneration, setLastCellRegeneration] = useState<{
     questionId: string;
     cellIndex: number;
@@ -1700,72 +1701,77 @@ export default function WorksheetCreate() {
           </div>
 
           <div className="px-5 py-4 sm:px-6 bg-background/60">
-            <div className={cn(
-              "mb-4 rounded-2xl border-2 p-4 transition-all",
-              aiCounts.tic_tac_toe === 1
-                ? "border-primary bg-primary/5 shadow-sm"
-                : "border-border/70 bg-background",
-            )}>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="grid grid-cols-3 gap-1 w-16 h-16 shrink-0 rounded-xl border border-primary/25 bg-background p-2 shadow-sm" aria-hidden="true">
-                  {Array.from({ length: 9 }, (_, index) => (
-                    <span key={index} className={cn(
-                      "rounded-sm border border-primary/25",
-                      [0, 4, 8].includes(index) && "bg-primary/20",
-                    )} />
-                  ))}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-black tracking-wide text-primary bg-primary/10 rounded-full px-2 py-1">
-                      {ar ? "استراتيجية تعليمية" : "Teaching strategy"}
-                    </span>
-                    {aiCounts.tic_tac_toe === 1 && (
-                      <span className="text-[10px] font-bold text-primary">
-                        {ar ? "ستُنشأ مع الورقة" : "Will be generated"}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="mt-1 text-base font-black text-foreground">
-                    {ar ? "لوحة الاختيار — ثلاثة على خط" : "Choice Board — Three in a Row"}
-                  </h3>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground max-w-2xl">
-                    {ar
-                      ? "يختار الطالب ثلاثة مربعات متصلة أفقيًا أو عموديًا أو قطريًا، ثم ينفّذ المهام ويكتب إجاباته داخل المربعات."
-                      : "Students choose three connected squares horizontally, vertically, or diagonally, then complete and answer the tasks inside them."}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 sm:w-48 shrink-0">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={aiCounts.tic_tac_toe === 1}
-                    onClick={() => setAiCounts(prev => ({ ...prev, tic_tac_toe: prev.tic_tac_toe === 1 ? 0 : 1 }))}
-                    className={cn(
-                      "h-10 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all",
-                      aiCounts.tic_tac_toe === 1
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-primary/40 bg-background text-primary hover:bg-primary/5",
-                    )}
-                  >
-                    <LayoutTemplate className="w-4 h-4" />
-                    {aiCounts.tic_tac_toe === 1
-                      ? (ar ? "مفعّلة في التوليد" : "Enabled for generation")
-                      : (ar ? "تضمين في التوليد" : "Include in generation")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={questions.some(question => question.type === "tic_tac_toe")}
-                    onClick={() => addQuestion("tic_tac_toe")}
-                    className="h-9 rounded-xl border border-border bg-background text-foreground hover:bg-muted disabled:opacity-50 text-[11px] font-bold"
-                  >
-                    {questions.some(question => question.type === "tic_tac_toe")
-                      ? (ar ? "اللوحة مضافة بالفعل" : "Board already added")
-                      : (ar ? "إضافة لوحة فارغة يدويًا" : "Add an empty board manually")}
-                  </button>
-                </div>
-              </div>
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                aria-expanded={choiceBoardOpen}
+                onClick={() => setChoiceBoardOpen(open => !open)}
+                className={cn(
+                  "inline-flex min-h-9 items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground",
+                  aiCounts.tic_tac_toe === 1 && "border-primary/30 text-primary",
+                )}
+              >
+                <span className="grid h-4 w-4 grid-cols-3 gap-px rounded-[3px] border border-current/30 p-0.5" aria-hidden="true">
+                  {Array.from({ length: 9 }, (_, index) => <span key={index} className={cn("rounded-[1px] bg-current/15", index === 4 && "bg-current/50")} />)}
+                </span>
+                <span>{ar ? "لوحة الاختيار" : "Choice Board"}</span>
+                <span dir="ltr" className="font-medium opacity-70">(Tic-Tac-Toe)</span>
+                {aiCounts.tic_tac_toe === 1 && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label={ar ? "مفعّلة" : "Enabled"} />}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", choiceBoardOpen && "rotate-180")} />
+              </button>
             </div>
+
+            <AnimatePresence initial={false}>
+              {choiceBoardOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-4 overflow-hidden"
+                >
+                  <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-black text-foreground">
+                        {ar ? "لوحة الاختيار (Tic-Tac-Toe)" : "Choice Board (Tic-Tac-Toe)"}
+                      </h3>
+                      <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                        {ar
+                          ? "استراتيجية اختيارية للمعلمين الذين يستخدمونها: يختار الطالب ثلاث مهام متصلة أفقيًا أو عموديًا أو قطريًا."
+                          : "An optional strategy: students choose three connected tasks horizontally, vertically, or diagonally."}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={aiCounts.tic_tac_toe === 1}
+                        onClick={() => setAiCounts(prev => ({ ...prev, tic_tac_toe: prev.tic_tac_toe === 1 ? 0 : 1 }))}
+                        className={cn(
+                          "h-9 rounded-lg border px-3 text-[11px] font-bold transition-colors",
+                          aiCounts.tic_tac_toe === 1
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-primary/30 bg-background text-primary hover:bg-primary/5",
+                        )}
+                      >
+                        {aiCounts.tic_tac_toe === 1
+                          ? (ar ? "مفعّلة في التوليد" : "Enabled")
+                          : (ar ? "تضمين في التوليد" : "Include in generation")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={questions.some(question => question.type === "tic_tac_toe")}
+                        onClick={() => addQuestion("tic_tac_toe")}
+                        className="h-9 rounded-lg border border-border bg-background px-3 text-[11px] font-bold text-foreground hover:bg-muted disabled:opacity-50"
+                      >
+                        {questions.some(question => question.type === "tic_tac_toe")
+                          ? (ar ? "مضافة بالفعل" : "Already added")
+                          : (ar ? "إضافة لوحة فارغة" : "Add empty board")}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <Collapsible defaultOpen>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-2 mb-2 rounded-lg hover:bg-muted text-sm font-bold text-foreground transition-colors group text-start">
