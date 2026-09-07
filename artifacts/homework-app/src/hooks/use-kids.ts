@@ -14,6 +14,8 @@ export type KidsActivity = {
   activity_type: "matching" | "tracing" | "media_choice" | "counting" | "ordering_puzzle";
   content: any; // Declarative payload
   asset_key: string;
+  skill_slug?: string;
+  world_slug?: "arabic-letters" | "english-phonics" | "numbers-0-20";
 };
 
 export type KidsAdventureState = {

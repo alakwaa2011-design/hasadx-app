@@ -506,6 +506,7 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
     activity.activity_type === "ordering_puzzle" ? OrderingPuzzleRenderer :
     () => <div>نشاط غير مدعوم</div>;
   const activityImage = resolveKidsAsset(activity.asset_key);
+  const teacherPlayMode = classroomMode && new URLSearchParams(window.location.search).get("mode") === "solo";
 
   return (
     <div className="fixed inset-0 bg-white dark:bg-slate-900 z-50 flex flex-col font-sans" dir="rtl">
@@ -522,7 +523,11 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
           {activityImage && <img src={activityImage} alt="" className="h-10 w-10 rounded-xl object-cover" />}
           <div className="text-center">
             <h1 className="font-bold text-slate-800 dark:text-white">{activity.title_ar}</h1>
-            {classroomMode && <p className="text-xs font-bold text-indigo-600">وضع السبورة الصفية</p>}
+            {classroomMode && (
+              <p className="text-xs font-bold text-indigo-600">
+                {teacherPlayMode ? "لعب فردي من حساب المعلم" : "وضع السبورة الصفية"}
+              </p>
+            )}
           </div>
         </div>
 

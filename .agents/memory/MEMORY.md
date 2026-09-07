@@ -72,3 +72,4 @@
 - [Kids adult controls](kids-adult-controls.md) — child-facing trivia is not an adult gate; sensitive settings and reports belong on the authenticated teacher surface.
 - [Kids media browser checks](kids-media-e2e.md) — validate rendered image dimensions and real audio playback through an isolated child daily-journey session.
 - [Kids experience priority](kids-experience-priority.md) — child-facing work must lead with a joyful illustrated adventure; technical safeguards stay invisible.
+- [Kids adult account model](kids-adult-account-model.md) — the teacher is also the parent/adult account; children can play individually from that same account or via classroom board mode.
