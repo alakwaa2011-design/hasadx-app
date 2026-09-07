@@ -153,7 +153,9 @@ function TracingRenderer({ content, onAttempt, onComplete }: any) {
   const [completedStrokes, setCompletedStrokes] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState<Array<{ x: number; y: number }>>([]);
   const [drawing, setDrawing] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState("مرّر إصبعك فوق الخط المنقّط");
+  const draftRef = useRef<Array<{ x: number; y: number }>>([]);
   const stroke = content.strokes.find((entry: any) => !completedStrokes.has(entry.id));
   const normalizedPoint = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -163,49 +165,68 @@ function TracingRenderer({ content, onAttempt, onComplete }: any) {
     };
   };
   const finish = async (event: React.PointerEvent<SVGSVGElement>) => {
-    if (!drawing || !stroke) return;
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    if (!drawing || !stroke || checking) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     setDrawing(false);
-    const points = [...draft, normalizedPoint(event)];
+    const points = [...draftRef.current, normalizedPoint(event)];
     if (points.length < 5) {
+      draftRef.current = [];
       setDraft([]);
       setMessage("ارسم الخط كاملًا، وليس نقرة واحدة");
       return;
     }
-    const response = await onAttempt(stroke.id, "trace", points);
-    if (response?.attempt?.is_correct) {
-      const next = new Set(completedStrokes).add(stroke.id);
-      setCompletedStrokes(next);
+    setChecking(true);
+    setMessage("لحظة... أراجع رسمك");
+    try {
+      const response = await onAttempt(stroke.id, "trace", points);
+      if (response?.attempt?.is_correct) {
+        const next = new Set(completedStrokes).add(stroke.id);
+        setCompletedStrokes(next);
+        setMessage(next.size === content.strokes.length ? "أحسنت!" : "رائع! انتقل إلى الخط التالي");
+        if (next.size === content.strokes.length) onComplete();
+      } else {
+        setMessage("قريب جدًا! حاول واتبع الخط المنقّط");
+      }
+    } catch {
+      setMessage("تعذّر فحص الرسم، حاول مرة أخرى");
+    } finally {
+      draftRef.current = [];
       setDraft([]);
-      setMessage(next.size === content.strokes.length ? "أحسنت!" : "انتقل إلى الخط التالي");
-      if (next.size === content.strokes.length) onComplete();
-    } else {
-      setDraft([]);
-      setMessage("حاول مرة أخرى واتبع الخط المنقّط");
+      setChecking(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center h-full w-full gap-8 p-4">
       <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{content.instructions}</h2>
-      <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-3xl border-4 border-slate-200 bg-white p-5">
+      <div className="relative aspect-square w-full max-w-[min(78vh,52rem)] overflow-hidden rounded-3xl border-4 border-slate-200 bg-white p-3 sm:p-5">
         <p className="mb-3 text-center text-sm font-bold text-slate-500">{message}</p>
         {stroke ? (
           <svg
             viewBox="0 0 100 100"
             className="h-[calc(100%-2rem)] w-full touch-none rounded-2xl bg-sky-50"
-            onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDrawing(true); setDraft([normalizedPoint(event)]); }}
+            aria-label="مساحة رسم الحرف"
+            onPointerDown={(event) => {
+              if (checking) return;
+              const point = normalizedPoint(event);
+              event.currentTarget.setPointerCapture(event.pointerId);
+              draftRef.current = [point];
+              setDrawing(true);
+              setDraft([point]);
+            }}
             onPointerMove={(event) => {
-              if (!drawing) return;
+              if (!drawing || checking) return;
               const point = normalizedPoint(event);
               setDraft((points) => {
                 const previous = points[points.length - 1];
                 if (points.length >= 300 || (previous && Math.hypot(point.x - previous.x, point.y - previous.y) < 0.008)) return points;
-                return [...points, point];
+                const next = [...points, point];
+                draftRef.current = next;
+                return next;
               });
             }}
             onPointerUp={finish}
-            onPointerCancel={() => { setDrawing(false); setDraft([]); }}
+            onPointerCancel={() => { setDrawing(false); draftRef.current = []; setDraft([]); }}
           >
             <polyline points={stroke.points.map((point: any) => `${point.x * 100},${point.y * 100}`).join(" ")} fill="none" stroke="#94a3b8" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 3" />
             <polyline points={draft.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")} fill="none" stroke="#0ea5e9" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />

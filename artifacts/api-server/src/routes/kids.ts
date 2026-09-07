@@ -66,10 +66,38 @@ export function evaluateKidsTrace(
   for (let index = 1; index < submitted.length; index++) {
     submittedLength += Math.hypot(submitted[index].x - submitted[index - 1].x, submitted[index].y - submitted[index - 1].y);
   }
+  const nearestGuideIndexes = submitted.map((point) => {
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    sampledGuide.forEach((guide, index) => {
+      const distance = Math.hypot(point.x - guide.x, point.y - guide.y);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    return { index: nearestIndex, distance: nearestDistance };
+  });
   const covered = sampledGuide.filter((guide) =>
     submitted.some((point) => Math.hypot(point.x - guide.x, point.y - guide.y) <= 0.12)
   ).length / sampledGuide.length;
-  return covered >= threshold && submittedLength >= guideLength * 0.65;
+  const onPathRatio = nearestGuideIndexes.filter(({ distance }) => distance <= 0.12).length / nearestGuideIndexes.length;
+  const startNearGuideStart = nearestGuideIndexes[0].index <= Math.max(2, sampledGuide.length * 0.18);
+  let meaningfulMoves = 0;
+  let backwardsMoves = 0;
+  for (let index = 1; index < nearestGuideIndexes.length; index++) {
+    const delta = nearestGuideIndexes[index].index - nearestGuideIndexes[index - 1].index;
+    if (Math.abs(delta) < 2) continue;
+    meaningfulMoves += 1;
+    if (delta < 0) backwardsMoves += 1;
+  }
+  const followsDirection = meaningfulMoves === 0 || backwardsMoves / meaningfulMoves <= 0.2;
+  return covered >= threshold
+    && onPathRatio >= 0.65
+    && startNearGuideStart
+    && followsDirection
+    && submittedLength >= guideLength * 0.65
+    && submittedLength <= guideLength * 2.5;
 }
 
 async function profileFor(req: any) {

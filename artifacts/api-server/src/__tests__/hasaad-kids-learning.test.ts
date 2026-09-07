@@ -174,8 +174,12 @@ describe("Hasaad Kids learning contracts", () => {
     const guide = [{ x: 0.5, y: 0.1 }, { x: 0.5, y: 0.9 }];
     const traced = Array.from({ length: 21 }, (_, index) => ({ x: 0.5, y: 0.1 + index * 0.04 }));
     const distant = Array.from({ length: 21 }, (_, index) => ({ x: 0.1, y: 0.1 + index * 0.04 }));
+    const backwards = [...traced].reverse();
+    const scribble = traced.flatMap((point) => [point, { x: 0.1, y: point.y }, point]);
     expect(evaluateKidsTrace(traced, guide, 0.8)).toBe(true);
     expect(evaluateKidsTrace([{ x: 0.5, y: 0.1 }, { x: 0.5, y: 0.9 }], guide, 0.8)).toBe(false);
     expect(evaluateKidsTrace(distant, guide, 0.8)).toBe(false);
+    expect(evaluateKidsTrace(backwards, guide, 0.8)).toBe(false);
+    expect(evaluateKidsTrace(scribble, guide, 0.8)).toBe(false);
   });
 });
