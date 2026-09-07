@@ -476,7 +476,11 @@ export default function NewPresentationPage() {
             (isAr ? "فشل توليد المخطط" : "Outline generation failed"),
         );
       }
-      const draft = await r1.json() as { id: number };
+      type DraftOutlineSlide = { title: string; kind: string; interactionHint?: string | null };
+      const draft = await r1.json() as {
+        id: number;
+        outline?: { slides?: DraftOutlineSlide[] };
+      };
       const draftId = draft.id;
 
       const r2 = await fetch(`${API_BASE}/api/presentations/drafts/${draftId}`, {
@@ -512,34 +516,42 @@ export default function NewPresentationPage() {
         );
       }
 
-      let presId: number | null = null;
-      type DraftOutlineSlide = { title: string; kind: string; interactionHint?: string | null };
+      const buildResult = await r3.json().catch(() => ({})) as {
+        presentationId?: number;
+      };
+      let presId = Number.isInteger(buildResult.presentationId) && (buildResult.presentationId ?? 0) > 0
+        ? buildResult.presentationId!
+        : null;
       type DraftPoll = { status: string; presentationId?: number; errorMessage?: string; outline?: { slides?: DraftOutlineSlide[] } };
-      for (let i = 0; i < 120; i++) {
-        await sleep(800);
-        const rp = await fetch(`${API_BASE}/api/presentations/drafts/${draftId}`, {
-          credentials: "include",
-        });
-        if (!rp.ok) continue;
-        const pd = await rp.json() as DraftPoll;
-        if (pd.status === "built" && pd.presentationId) {
-          presId = pd.presentationId;
-          /* Capture up to 6 outline slide cards for thumbnail preview. */
-          if (pd.outline?.slides?.length) {
-            setGeneratedSlides(
-              pd.outline.slides.slice(0, 6).map((s) => ({
-                title: s.title,
-                kind: s.kind,
-                interactionHint: s.interactionHint ?? null,
-              })),
+      if (!presId) {
+        /* Backward-compatible fallback for older API responses that finish
+           the build but omit presentationId. Current builds return the ID
+           directly, so the normal path does not perform a second wait. */
+        for (let i = 0; i < 120; i++) {
+          await sleep(800);
+          const rp = await fetch(`${API_BASE}/api/presentations/drafts/${draftId}`, {
+            credentials: "include",
+          });
+          if (!rp.ok) continue;
+          const pd = await rp.json() as DraftPoll;
+          if (pd.status === "built" && pd.presentationId) {
+            presId = pd.presentationId;
+            if (pd.outline?.slides?.length) {
+              setGeneratedSlides(
+                pd.outline.slides.slice(0, 6).map((s) => ({
+                  title: s.title,
+                  kind: s.kind,
+                  interactionHint: s.interactionHint ?? null,
+                })),
+              );
+            }
+            break;
+          }
+          if (pd.status === "failed") {
+            throw new Error(
+              pd.errorMessage || (isAr ? "فشل الإنشاء" : "Build failed"),
             );
           }
-          break;
-        }
-        if (pd.status === "failed") {
-          throw new Error(
-            pd.errorMessage || (isAr ? "فشل الإنشاء" : "Build failed"),
-          );
         }
       }
 
@@ -547,6 +559,16 @@ export default function NewPresentationPage() {
       if (!presId) {
         throw new Error(
           isAr ? "انتهت المهلة، حاول مجدداً" : "Timed out, please retry",
+        );
+      }
+
+      if (draft.outline?.slides?.length) {
+        setGeneratedSlides(
+          draft.outline.slides.slice(0, 6).map((s) => ({
+            title: s.title,
+            kind: s.kind,
+            interactionHint: s.interactionHint ?? null,
+          })),
         );
       }
 
