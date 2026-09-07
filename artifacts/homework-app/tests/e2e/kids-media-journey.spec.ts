@@ -302,11 +302,36 @@ test.afterAll(async () => {
 });
 
 test.describe("Kids daily media journey", () => {
+  test("shows a clear retry state and only completes after required media recovers", async ({ page }) => {
+    if (!fixture) throw new Error("Kids media fixture is unavailable");
+    const activity = fixture.activities.find((item) => item.slug === "english-sound-a");
+    if (!activity) throw new Error("The English sound activity is unavailable");
+
+    await openActivityFromDailyJourney(page, activity);
+    await page.locator("audio").first().evaluate((audio) => {
+      audio.dispatchEvent(new Event("error"));
+    });
+    const retryButton = page.getByRole("button", { name: "إعادة محاولة تشغيل الوسائط" }).first();
+    await expect(page.getByText("تعذر تشغيل الوسائط").first()).toBeVisible({ timeout: 15_000 });
+    await expect(retryButton).toBeVisible();
+
+    const correctChoice = page.getByText(activity.choice, { exact: true }).locator("xpath=ancestor::button");
+    await correctChoice.click();
+    await page.waitForTimeout(1_200);
+    await expect(page).toHaveURL(new RegExp(`/kids/activity/${activity.id}$`));
+
+    await retryButton.click();
+    await expect(page.getByText("تعذر تشغيل الوسائط")).toHaveCount(0, { timeout: 15_000 });
+    await assertLoadedImages(page, activity);
+    await assertPlayableAudio(page, activity);
+    await correctChoice.click();
+    await expect(page).toHaveURL(/\/kids\/activity\/\d+\/complete$/, { timeout: 15_000 });
+  });
+
   test("loads and decodes every published activity asset in the child's daily journey", async ({
     page,
   }) => {
     if (!fixture) throw new Error("Kids media fixture is unavailable");
-
     const mediaFailures: string[] = [];
     page.on("response", (response) => {
       const resourceType = response.request().resourceType();

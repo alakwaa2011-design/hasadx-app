@@ -7,4 +7,4 @@ Kids media regression checks should enter through a real child session and daily
 
 **Why:** Catalog/file checks can pass while the browser still cannot resolve, decode, or play an asset.
 
-**How to apply:** When adding or changing Kids catalog media, extend the isolated Playwright journey rather than relying only on registry or API tests.
+**How to apply:** When adding or changing Kids catalog media, extend the isolated Playwright journey rather than relying only on registry or API tests. To exercise recovery UI, dispatch a DOM `Event("error")` from `evaluate`; Playwright's own `dispatchEvent("error")` is surfaced as a page runtime error, and network interception can be bypassed by a preloaded media request.

@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { 
   useKidsActivity, 
@@ -6,73 +5,75 @@ import {
   useAttemptKidsSession, 
   useCompleteKidsSession 
 } from "@/hooks/use-kids";
-import { X, Check, Volume2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kidsNumberAudioKey, resolveKidsAsset } from "@/lib/kids-assets";
 
 // --- Utility: Media Renderer ---
-function AudioButton({ assetKey, className, label = "تشغيل النطق" }: { assetKey: string; className?: string; label?: string }) {
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const src = resolveKidsAsset(assetKey);
-  if (!src) return null;
+import React, { createContext, useContext, useId, useState, useEffect, useRef, useMemo } from "react";
+import { X, Check, RefreshCw, Volume2, Star } from "lucide-react";
 
-  const play = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (status === "error") {
-      setStatus("loading");
-      audio.load();
-      return;
-    }
-    void audio.play().then(() => setStatus("ready")).catch(() => setStatus("error"));
-  };
+type MediaStatus = "loading" | "ready" | "error";
 
-  return (
-    <div className={cn("relative flex shrink-0 items-center justify-center rounded-full bg-sky-100 p-2", className)}>
-      <audio
-        ref={audioRef}
-        src={src}
-        preload="auto"
-        onCanPlay={() => setStatus("ready")}
-        onError={() => setStatus("error")}
-      />
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          play();
-        }}
-        className="flex h-full w-full items-center justify-center rounded-full text-sky-700 transition hover:bg-sky-200 active:scale-95"
-        aria-label={status === "error" ? "إعادة تحميل الصوت" : label}
-        title={status === "error" ? "إعادة تحميل الصوت" : label}
-      >
-        {status === "error" ? <span className="text-xl font-black text-red-600">!</span> : <Volume2 className="h-6 w-6" />}
-      </button>
-      {status === "loading" && <span className="sr-only">جاري تجهيز النطق</span>}
-      {status === "error" && <span className="sr-only">تعذر تحميل النطق، اضغط للمحاولة مجددًا</span>}
-    </div>
-  );
-}
+const MediaStatusContext = createContext<((id: string, status: MediaStatus) => void) | null>(null);
 
 function MediaElement({ media, className }: { media?: { kind: string; assetKey: string; alt?: string }, className?: string }) {
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [status, setStatus] = useState<MediaStatus>("loading");
+  const [retryKey, setRetryKey] = useState(0);
+  const mediaId = useId();
+  const reportStatus = useContext(MediaStatusContext);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    if (!media) return;
+    reportStatus?.(mediaId, status);
+    return () => reportStatus?.(mediaId, "ready");
+  }, [media, mediaId, reportStatus, status]);
   if (!media) return null;
   const src = resolveKidsAsset(media.assetKey);
-  if (!src) return <div className={cn("flex items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600", className)}>الأصل غير معتمد</div>;
+  const retry = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setStatus("loading");
+    setRetryKey((value) => value + 1);
+  };
+  const errorState = (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg bg-amber-50 p-2 text-center text-amber-900" role="alert">
+      <span className="text-xs font-black">تعذر تشغيل الوسائط</span>
+      <button type="button" onClick={retry} className="flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-bold shadow-sm" aria-label="إعادة محاولة تشغيل الوسائط">
+        <RefreshCw className="h-3 w-3" />
+        حاول مرة أخرى
+      </button>
+    </div>
+  );
+  if (!src) return <div className={cn("flex items-center justify-center rounded-lg", className)}>{errorState}</div>;
   if (media.kind === "image") {
     return (
       <div className={cn("relative flex items-center justify-center overflow-hidden rounded-lg bg-slate-100", className)}>
         {status === "loading" && <span className="absolute text-xs text-slate-400">جاري تحميل الصورة...</span>}
-        {status === "error" ? <span className="text-xs font-bold text-red-600">تعذر تحميل الصورة</span> : (
-          <img src={src} alt={media.alt || "صورة تعليمية"} className="h-full w-full object-contain" onLoad={() => setStatus("ready")} onError={() => setStatus("error")} />
+        {status === "error" ? errorState : (
+          <img key={retryKey} src={src} alt={media.alt || "صورة تعليمية"} className="h-full w-full object-contain" onLoad={() => setStatus("ready")} onError={() => setStatus("error")} />
         )}
       </div>
     );
   }
   if (media.kind === "audio") {
-    return <AudioButton assetKey={media.assetKey} className={className} />;
+    return (
+      <div className={cn("relative flex items-center justify-center rounded-full bg-sky-100 p-2", className)}>
+        <audio key={retryKey} ref={audioRef} src={src} preload="auto" onCanPlayThrough={() => setStatus("ready")} onError={() => setStatus("error")} />
+        {status === "error" ? errorState : <button
+          type="button"
+          disabled={status === "loading"}
+          onClick={(event) => {
+            event.stopPropagation();
+            audioRef.current?.play().catch(() => setStatus("error"));
+          }}
+          className="flex h-full w-full items-center justify-center rounded-full text-sky-700 disabled:text-slate-400"
+          aria-label="تشغيل الصوت"
+        >
+          {status === "loading" ? <span className="text-sm font-black">•••</span> : <Volume2 className="h-8 w-8" />}
+        </button>}
+        {status === "loading" && <span className="sr-only">جاري تحميل الصوت</span>}
+      </div>
+    );
   }
   return null;
 }
@@ -418,8 +419,21 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const pendingAttempts = useRef(new Set<Promise<unknown>>());
+  const mediaStatuses = useRef(new Map<string, MediaStatus>());
+  const completionWaitingForMedia = useRef(false);
+  const completionCallback = useRef<() => void>(() => {});
+  const [hasUnavailableMedia, setHasUnavailableMedia] = useState(false);
   const completionStarted = useRef(false);
   const startRequested = useRef(false);
+  const reportMediaStatus = React.useCallback((id: string, status: MediaStatus) => {
+    if (status === "ready") mediaStatuses.current.delete(id);
+    else mediaStatuses.current.set(id, status);
+    const unavailable = mediaStatuses.current.size > 0;
+    setHasUnavailableMedia(unavailable);
+    if (!unavailable && completionWaitingForMedia.current) {
+      queueMicrotask(() => completionCallback.current());
+    }
+  }, []);
 
   useEffect(() => {
     if (!classroomMode && activity && !sessionId && !startRequested.current) {
@@ -460,6 +474,11 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
       return;
     }
     if (!sessionId || completionStarted.current) return;
+    if (hasUnavailableMedia) {
+      completionWaitingForMedia.current = true;
+      return;
+    }
+    completionWaitingForMedia.current = false;
     completionStarted.current = true;
     setIsSuccess(true);
     await Promise.allSettled([...pendingAttempts.current]);
@@ -474,6 +493,9 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
         setIsSuccess(false);
       },
     });
+  };
+  completionCallback.current = () => {
+    void handleComplete();
   };
 
   const Renderer = 
@@ -523,7 +545,9 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
             <Star className="h-12 w-12 text-amber-400 animate-spin" />
           </div>
         ) : (
-          <Renderer content={activity.content} onAttempt={handleAttempt} onComplete={handleComplete} />
+          <MediaStatusContext.Provider value={reportMediaStatus}>
+            <Renderer content={activity.content} onAttempt={handleAttempt} onComplete={handleComplete} />
+          </MediaStatusContext.Provider>
         )}
       </main>
     </div>
