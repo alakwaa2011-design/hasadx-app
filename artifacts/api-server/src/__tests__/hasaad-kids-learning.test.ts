@@ -99,6 +99,19 @@ describe("Hasaad Kids learning contracts", () => {
     }
   });
 
+  it("covers every letter and number with an individual local pronunciation", () => {
+    expect(KIDS_CATALOG_ASSET_KEYS.filter((key) => key.startsWith("kids/audio/letters-ar/"))).toHaveLength(28);
+    expect(KIDS_CATALOG_ASSET_KEYS.filter((key) => key.startsWith("kids/audio/letters-en/"))).toHaveLength(26);
+    expect(KIDS_CATALOG_ASSET_KEYS.filter((key) => key.startsWith("kids/audio/numbers/") && !key.includes("prompt"))).toHaveLength(21);
+    for (const seed of KIDS_CATALOG_V2_ACTIVITIES) {
+      const serialized = JSON.stringify(seed.content);
+      if (seed.content.type === "matching" || seed.content.type === "ordering_puzzle") {
+        expect(serialized).toContain("kids/audio/");
+      }
+      if (seed.skillSlug === "numbers-0-20") expect(serialized).toContain("kids/audio/numbers/");
+    }
+  });
+
   it("requires every mastery threshold, including weighted accuracy", () => {
     const attempts = [0, 1, 2, 3, 4].map((index) => attempt({
       activityId: `activity-${index}`, activityType: index % 2 ? "counting" : "matching",

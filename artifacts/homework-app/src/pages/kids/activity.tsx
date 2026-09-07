@@ -9,12 +9,55 @@ import {
 import { X, Check, Volume2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { resolveKidsAsset } from "@/lib/kids-assets";
+import { kidsNumberAudioKey, resolveKidsAsset } from "@/lib/kids-assets";
 
 // --- Utility: Media Renderer ---
-function MediaElement({ media, className }: { media?: { kind: string; assetKey: string; alt?: string }, className?: string }) {
+function AudioButton({ assetKey, className, label = "تشغيل النطق" }: { assetKey: string; className?: string; label?: string }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const audioRef = useRef<HTMLAudioElement>(null);
+  const src = resolveKidsAsset(assetKey);
+  if (!src) return null;
+
+  const play = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (status === "error") {
+      setStatus("loading");
+      audio.load();
+      return;
+    }
+    void audio.play().then(() => setStatus("ready")).catch(() => setStatus("error"));
+  };
+
+  return (
+    <div className={cn("relative flex shrink-0 items-center justify-center rounded-full bg-sky-100 p-2", className)}>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="auto"
+        onCanPlay={() => setStatus("ready")}
+        onError={() => setStatus("error")}
+      />
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          play();
+        }}
+        className="flex h-full w-full items-center justify-center rounded-full text-sky-700 transition hover:bg-sky-200 active:scale-95"
+        aria-label={status === "error" ? "إعادة تحميل الصوت" : label}
+        title={status === "error" ? "إعادة تحميل الصوت" : label}
+      >
+        {status === "error" ? <span className="text-xl font-black text-red-600">!</span> : <Volume2 className="h-6 w-6" />}
+      </button>
+      {status === "loading" && <span className="sr-only">جاري تجهيز النطق</span>}
+      {status === "error" && <span className="sr-only">تعذر تحميل النطق، اضغط للمحاولة مجددًا</span>}
+    </div>
+  );
+}
+
+function MediaElement({ media, className }: { media?: { kind: string; assetKey: string; alt?: string }, className?: string }) {
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   if (!media) return null;
   const src = resolveKidsAsset(media.assetKey);
   if (!src) return <div className={cn("flex items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600", className)}>الأصل غير معتمد</div>;
@@ -29,30 +72,7 @@ function MediaElement({ media, className }: { media?: { kind: string; assetKey: 
     );
   }
   if (media.kind === "audio") {
-    return (
-      <div className={cn("relative flex items-center justify-center rounded-full bg-sky-100 p-2", className)}>
-        <audio ref={audioRef} src={src} preload="auto" onCanPlayThrough={() => setStatus("ready")} onError={() => setStatus("error")} />
-        <button
-          type="button"
-          disabled={status === "loading"}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (status === "error") {
-              setStatus("loading");
-              audioRef.current?.load();
-              return;
-            }
-            audioRef.current?.play().catch(() => setStatus("error"));
-          }}
-          className="flex h-full w-full items-center justify-center rounded-full text-sky-700 disabled:text-slate-400"
-          aria-label={status === "error" ? "إعادة تحميل الصوت" : "تشغيل الصوت"}
-        >
-          {status === "loading" ? <span className="text-sm font-black">•••</span> : status === "error" ? <span className="text-xl font-black text-red-600">!</span> : <Volume2 className="h-8 w-8" />}
-        </button>
-        {status === "loading" && <span className="sr-only">جاري تحميل الصوت</span>}
-        {status === "error" && <span className="sr-only">تعذر تحميل الصوت، اضغط للمحاولة مجددًا</span>}
-      </div>
-    );
+    return <AudioButton assetKey={media.assetKey} className={className} />;
   }
   return null;
 }
@@ -105,20 +125,26 @@ function MatchingRenderer({ content, onAttempt, onComplete }: any) {
             const isMatched = matchedPairs.has(pair.id);
             const isSelected = selectedLeft === pair.id;
             return (
-              <button
+              <div
                 key={`l-${pair.id}`}
-                disabled={isMatched}
-                onClick={() => setSelectedLeft(isSelected ? null : pair.id)}
                 className={cn(
-                  "p-6 rounded-2xl border-4 text-xl font-bold transition-all h-24 flex items-center justify-center gap-4",
+                  "flex h-24 items-center justify-center gap-2 rounded-2xl border-4 p-3 text-xl font-bold transition-all",
                   isMatched ? "bg-slate-100 border-slate-200 text-slate-400 opacity-50" :
                   isSelected ? "bg-amber-100 border-amber-400 text-amber-700 scale-105" :
                   "bg-white border-slate-200 text-slate-700 hover:border-amber-300"
                 )}
               >
-                <MediaElement media={pair.leftMedia} className="w-12 h-12" />
-                {pair.left}
-              </button>
+                <button
+                  type="button"
+                  disabled={isMatched}
+                  onClick={() => setSelectedLeft(isSelected ? null : pair.id)}
+                  className="flex h-full min-w-0 flex-1 items-center justify-center gap-2"
+                  aria-pressed={isSelected}
+                >
+                  <span>{pair.left}</span>
+                </button>
+                <MediaElement media={pair.leftMedia} className="h-12 w-12" />
+              </div>
             );
           })}
         </div>
@@ -128,19 +154,24 @@ function MatchingRenderer({ content, onAttempt, onComplete }: any) {
           {rightSide.map((pair: any) => {
             const isMatched = matchedPairs.has(pair.id);
             return (
-              <button
+              <div
                 key={`r-${pair.id}`}
-                disabled={isMatched}
-                onClick={() => handleRightClick(pair)}
                 className={cn(
-                  "p-6 rounded-2xl border-4 text-xl font-bold transition-all h-24 flex items-center justify-center gap-4",
+                  "flex h-24 items-center justify-center gap-2 rounded-2xl border-4 p-3 text-xl font-bold transition-all",
                   isMatched ? "bg-emerald-50 border-emerald-200 text-emerald-500 opacity-50" :
                   "bg-white border-slate-200 text-slate-700 hover:border-emerald-300"
                 )}
               >
-                <MediaElement media={pair.rightMedia} className="w-12 h-12" />
-                {pair.right}
-              </button>
+                <button
+                  type="button"
+                  disabled={isMatched}
+                  onClick={() => handleRightClick(pair)}
+                  className="flex h-full min-w-0 flex-1 items-center justify-center gap-2"
+                >
+                  <span>{pair.right}</span>
+                </button>
+                <MediaElement media={pair.rightMedia} className="h-12 w-12" />
+              </div>
             );
           })}
         </div>
@@ -282,6 +313,7 @@ function CountingRenderer({ content, onAttempt, onComplete }: any) {
       <div className="flex flex-wrap justify-center gap-4 mb-8 max-w-3xl">
         {content.items.map((item: any, i: number) => (
           <div key={item.id + i} className="w-20 h-20 bg-white border-4 border-slate-200 rounded-2xl flex flex-col items-center justify-center animate-in zoom-in" style={{ animationDelay: `${i * 100}ms` }}>
+            <span className="text-3xl text-amber-400">{item.label || "★"}</span>
             <MediaElement media={item.media} className="w-10 h-10" />
             {item.label && <span className="text-xs font-bold mt-1 text-slate-600">{item.label}</span>}
           </div>
@@ -290,13 +322,15 @@ function CountingRenderer({ content, onAttempt, onComplete }: any) {
       
       <div className="flex gap-4">
         {content.choices.map((num: number) => (
-          <button
+          <div
             key={num}
-            onClick={() => handleChoice(num)}
-            className="w-20 h-20 bg-amber-100 border-4 border-amber-400 text-amber-700 rounded-2xl text-3xl font-black hover:bg-amber-200 hover:scale-105 active:scale-95 transition-all"
+            className="flex h-24 w-24 items-center justify-center gap-1 rounded-2xl border-4 border-amber-400 bg-amber-100 text-3xl font-black text-amber-700 transition-all hover:bg-amber-200 hover:scale-105 active:scale-95"
           >
-            {num}
-          </button>
+            <button type="button" onClick={() => handleChoice(num)} className="flex h-full min-w-0 flex-1 items-center justify-center">
+              <span>{num}</span>
+            </button>
+            <MediaElement media={{ kind: "audio", assetKey: kidsNumberAudioKey(num) }} className="h-9 w-9" />
+          </div>
         ))}
       </div>
     </div>
@@ -339,8 +373,9 @@ function OrderingPuzzleRenderer({ content, onAttempt, onComplete }: any) {
       
       <div className="flex flex-wrap justify-center gap-2 min-h-24 p-4 bg-slate-100 rounded-3xl w-full max-w-4xl border-4 border-dashed border-slate-300">
         {order.map((piece: any, i: number) => (
-          <div key={piece.id} className="p-4 bg-emerald-100 border-4 border-emerald-400 text-emerald-800 font-bold rounded-2xl text-xl animate-in zoom-in">
-            {piece.label}
+          <div key={piece.id} className="flex items-center gap-2 rounded-2xl border-4 border-emerald-400 bg-emerald-100 p-2 text-xl font-bold text-emerald-800 animate-in zoom-in">
+            <span>{piece.label}</span>
+            <MediaElement media={piece.media} className="h-10 w-10" />
           </div>
         ))}
       </div>
@@ -351,13 +386,15 @@ function OrderingPuzzleRenderer({ content, onAttempt, onComplete }: any) {
       
       <div className="flex flex-wrap justify-center gap-4 max-w-4xl">
         {available.map((piece: any) => (
-          <button
+          <div
             key={piece.id}
-            onClick={() => placePiece(piece)}
-            className="p-4 bg-white border-4 border-slate-200 text-slate-700 font-bold rounded-2xl text-xl hover:border-amber-400 hover:scale-105 active:scale-95 transition-all"
+            className="flex items-center gap-2 rounded-2xl border-4 border-slate-200 bg-white p-2 text-xl font-bold text-slate-700 transition-all hover:border-amber-400 hover:scale-105 active:scale-95"
           >
-            {piece.label}
-          </button>
+            <button type="button" onClick={() => placePiece(piece)} className="flex min-h-14 min-w-16 items-center justify-center px-2">
+              {piece.label}
+            </button>
+            <MediaElement media={piece.media} className="h-10 w-10" />
+          </div>
         ))}
       </div>
     </div>

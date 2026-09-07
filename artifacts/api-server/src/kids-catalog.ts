@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { kidsActivitySchema, type KidsActivity, type KidsActivityType } from "@workspace/api-zod";
 import { sql } from "drizzle-orm";
 
-export const KIDS_CATALOG_VERSION = "kids-catalog-v3";
+export const KIDS_CATALOG_VERSION = "kids-catalog-v4";
 
 type KidsCatalogActivity = {
   skillSlug: "arabic-letter-recognition" | "english-basic-phonics" | "numbers-0-20";
@@ -15,15 +15,23 @@ type KidsCatalogActivity = {
 
 const arabicLetters = ["ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي"];
 const englishLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-const numberedPieces = (labels: readonly string[]) => labels.map((label, correctPosition) => ({
+const arabicLetterAudioNames = ["01-alif", "02-baa", "03-taa", "04-thaa", "05-jeem", "06-haa", "07-khaa", "08-daal", "09-thaal", "10-raa", "11-zaay", "12-seen", "13-sheen", "14-saad", "15-daad", "16-taa-emphatic", "17-zaa-emphatic", "18-ayn", "19-ghayn", "20-faa", "21-qaaf", "22-kaaf", "23-laam", "24-meem", "25-noon", "26-haa-final", "27-waaw", "28-yaa"] as const;
+const numberAudioNames = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"] as const;
+const audioMedia = (assetKey: string) => ({ kind: "audio" as const, assetKey });
+const arabicLetterAudioKey = (index: number) => `kids/audio/letters-ar/${arabicLetterAudioNames[index]}`;
+const englishLetterAudioKey = (letter: string) => `kids/audio/letters-en/${letter.toLowerCase()}`;
+const numberAudioKey = (number: number) => `kids/audio/numbers/${String(number).padStart(2, "0")}-${numberAudioNames[number]}`;
+const numberedPieces = (labels: readonly string[], mediaFor?: (label: string, index: number) => { kind: "audio"; assetKey: string }) => labels.map((label, correctPosition) => ({
   id: `piece-${correctPosition}`,
   label,
   correctPosition,
+  ...(mediaFor ? { media: mediaFor(label, correctPosition) } : {}),
 }));
-const letterPairs = (letters: readonly string[]) => letters.map((letter, index) => ({
+const letterPairs = (letters: readonly string[], audioKeyFor?: (letter: string, index: number) => string) => letters.map((letter, index) => ({
   id: `pair-${index}`,
   left: letter,
   right: letter,
+  ...(audioKeyFor ? { leftMedia: audioMedia(audioKeyFor(letter, index)), rightMedia: audioMedia(audioKeyFor(letter, index)) } : {}),
 }));
 const activity = (content: unknown): KidsActivity => kidsActivitySchema.parse(content);
 
@@ -34,11 +42,11 @@ const activity = (content: unknown): KidsActivity => kidsActivitySchema.parse(co
 export const KIDS_CATALOG_V2_ACTIVITIES: readonly KidsCatalogActivity[] = [
   {
     skillSlug: "arabic-letter-recognition", slug: "arabic-letter-match", titleAr: "رتّب الحروف", assetKey: "kids/activities/arabic-order-01-20", sortOrder: 1,
-    content: activity({ id: "arabic-order-01-20", type: "ordering_puzzle", skillId: "arabic-letter-recognition", title: "رتّب الحروف العربية", instructions: "رتّب الحروف بالترتيب.", exampleId: "arabic-order-first-20", prompt: "ما ترتيب الحروف؟", pieces: numberedPieces(arabicLetters.slice(0, 20)) }),
+    content: activity({ id: "arabic-order-01-20", type: "ordering_puzzle", skillId: "arabic-letter-recognition", title: "رتّب الحروف العربية", instructions: "رتّب الحروف بالترتيب.", exampleId: "arabic-order-first-20", prompt: "ما ترتيب الحروف؟", pieces: numberedPieces(arabicLetters.slice(0, 20), (_, index) => audioMedia(arabicLetterAudioKey(index))) }),
   },
   {
     skillSlug: "arabic-letter-recognition", slug: "arabic-match-21-28", titleAr: "طابق الحروف", assetKey: "kids/activities/arabic-match-21-28", sortOrder: 2,
-    content: activity({ id: "arabic-match-21-28", type: "matching", skillId: "arabic-letter-recognition", title: "طابق الحروف العربية", instructions: "صِل الحرف بمثله.", exampleId: "arabic-match-last-8", pairs: letterPairs(arabicLetters.slice(20)) }),
+    content: activity({ id: "arabic-match-21-28", type: "matching", skillId: "arabic-letter-recognition", title: "طابق الحروف العربية", instructions: "صِل الحرف بمثله.", exampleId: "arabic-match-last-8", pairs: letterPairs(arabicLetters.slice(20), (_, index) => arabicLetterAudioKey(index + 20)) }),
   },
   {
     skillSlug: "arabic-letter-recognition", slug: "arabic-trace-alif", titleAr: "تتبّع الألف", assetKey: "kids/activities/arabic-trace-alif", sortOrder: 3,
@@ -46,11 +54,11 @@ export const KIDS_CATALOG_V2_ACTIVITIES: readonly KidsCatalogActivity[] = [
   },
   {
     skillSlug: "english-basic-phonics", slug: "english-phonics-sounds", titleAr: "رتّب الحروف الإنجليزية", assetKey: "kids/activities/english-order-a-t", sortOrder: 1,
-    content: activity({ id: "english-order-a-t", type: "ordering_puzzle", skillId: "english-basic-phonics", title: "Order A to T", instructions: "Put the letters in order.", exampleId: "english-order-a-t", prompt: "What comes next?", pieces: numberedPieces(englishLetters.slice(0, 20)) }),
+    content: activity({ id: "english-order-a-t", type: "ordering_puzzle", skillId: "english-basic-phonics", title: "Order A to T", instructions: "Put the letters in order.", exampleId: "english-order-a-t", prompt: "What comes next?", pieces: numberedPieces(englishLetters.slice(0, 20), (label) => audioMedia(englishLetterAudioKey(label))) }),
   },
   {
     skillSlug: "english-basic-phonics", slug: "english-match-u-z", titleAr: "طابق الحروف والأصوات", assetKey: "kids/activities/english-match-u-z", sortOrder: 2,
-    content: activity({ id: "english-match-u-z", type: "matching", skillId: "english-basic-phonics", title: "Match U to Z", instructions: "Match each letter to itself.", exampleId: "english-match-u-z", pairs: letterPairs(englishLetters.slice(20)) }),
+    content: activity({ id: "english-match-u-z", type: "matching", skillId: "english-basic-phonics", title: "Match U to Z", instructions: "Match each letter to itself.", exampleId: "english-match-u-z", pairs: letterPairs(englishLetters.slice(20), (letter) => englishLetterAudioKey(letter)) }),
   },
   {
     skillSlug: "english-basic-phonics", slug: "english-sound-a", titleAr: "استمع واختر", assetKey: "kids/activities/english-sound-a", sortOrder: 3,
@@ -61,11 +69,11 @@ export const KIDS_CATALOG_V2_ACTIVITIES: readonly KidsCatalogActivity[] = [
   },
   {
     skillSlug: "numbers-0-20", slug: "numbers-count-0-20", titleAr: "رتّب الأرقام", assetKey: "kids/activities/numbers-order-0-19", sortOrder: 1,
-    content: activity({ id: "numbers-order-0-19", type: "ordering_puzzle", skillId: "numbers-0-20", title: "رتّب الأرقام", instructions: "رتّب الأرقام من صفر.", exampleId: "numbers-order-0-19", prompt: "ما ترتيب الأرقام؟", pieces: numberedPieces(Array.from({ length: 20 }, (_, number) => String(number))) }),
+    content: activity({ id: "numbers-order-0-19", type: "ordering_puzzle", skillId: "numbers-0-20", title: "رتّب الأرقام", instructions: "رتّب الأرقام من صفر.", exampleId: "numbers-order-0-19", prompt: "ما ترتيب الأرقام؟", pieces: numberedPieces(Array.from({ length: 20 }, (_, number) => String(number)), (_, number) => audioMedia(numberAudioKey(number))) }),
   },
   {
     skillSlug: "numbers-0-20", slug: "numbers-count-20", titleAr: "عدّ حتى عشرين", assetKey: "kids/activities/numbers-count-20", sortOrder: 2,
-    content: activity({ id: "numbers-count-20", type: "counting", skillId: "numbers-0-20", title: "Count to twenty", instructions: "Count the stars.", exampleId: "numbers-count-20", prompt: "How many stars?", items: Array.from({ length: 20 }, (_, number) => ({ id: `star-${number}`, label: "★" })), correctCount: 20, choices: [0, 10, 19, 20] }),
+    content: activity({ id: "numbers-count-20", type: "counting", skillId: "numbers-0-20", title: "Count to twenty", instructions: "Count the stars.", exampleId: "numbers-count-20", prompt: "How many stars?", items: Array.from({ length: 20 }, (_, number) => ({ id: `star-${number}`, label: "★", media: audioMedia(numberAudioKey(number + 1)) })), correctCount: 20, choices: [0, 10, 19, 20] }),
   },
   {
     skillSlug: "numbers-0-20", slug: "numbers-choose-zero", titleAr: "اختر الصفر", assetKey: "kids/activities/numbers-choose-zero", sortOrder: 3,
