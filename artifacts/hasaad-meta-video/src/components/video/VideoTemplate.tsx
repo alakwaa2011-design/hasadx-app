@@ -12,8 +12,8 @@ import { Scene0, Scene1, Scene2, Scene3 } from './video_scenes';
 export const SCENE_DURATIONS = {
   scene0: 3500, // Intro
   scene1: 4500, // AI tools
-  scene2: 4500, // Games
-  scene3: 4000, // Outro
+  scene2: 6500, // Live games
+  scene3: 4500, // Outro
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {

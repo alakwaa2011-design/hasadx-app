@@ -34,7 +34,7 @@ export function Scene3() {
             className="mb-[8vmin] bg-white/10 p-[6vmin] rounded-full backdrop-blur-md border border-white/20 shadow-[0_0_60px_rgba(255,255,255,0.1)]"
           >
             <img 
-              src={`${import.meta.env.BASE_URL}images/logo-hasaad.png`} 
+              src={`${import.meta.env.BASE_URL}images/logo-mark-transparent.png`} 
               alt="Hasaad Logo" 
               className="w-[40vmin] h-auto object-contain mx-auto"
             />
@@ -77,7 +77,7 @@ export function Scene3() {
           className="absolute bottom-[5vmin] w-3/4 max-w-md bg-white/10 backdrop-blur-md rounded-full py-[3vmin] px-[5vmin] flex items-center justify-center border border-white/20 shadow-2xl z-10"
         >
           <span className="text-[4vmin] font-body text-white/80 tracking-widest font-mono">
-            hasaad.com
+            Hasaadx.com
           </span>
         </motion.div>
       </SafeFrame>

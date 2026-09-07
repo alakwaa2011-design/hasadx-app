@@ -27,25 +27,52 @@ export function Scene2() {
             transition={{ delay: 0.9, duration: 0.8, ease: "easeOut" }}
             className="text-[5vmin] text-brand-cream/90 font-body max-w-[80vw] mx-auto leading-relaxed text-shadow-dark"
           >
-            تجعل التعلم تنافساً ممتعاً
+            على السبورة ومن أجهزة الطلاب
           </motion.p>
         </div>
 
-        <div className="flex-1 relative w-full perspective-1000 mt-[5vmin]">
+        <div className="flex-1 relative w-full perspective-1000 mt-[3vmin] flex flex-col gap-[3vmin]">
           <motion.div
             initial={{ rotateX: -20, rotateY: 15, y: 50, opacity: 0, scale: 0.8 }}
             animate={{ rotateX: 0, rotateY: 0, y: 0, opacity: 1, scale: 1 }}
             transition={{ delay: 0.4, duration: 1.2, type: "spring", stiffness: 80, damping: 20 }}
-            className="absolute inset-x-0 top-0 bottom-[10vmin] rounded-3xl overflow-hidden border-2 border-brand-gold/30 shadow-[0_40px_80px_rgba(217,163,33,0.2)]"
+            className="relative w-full h-[52%] rounded-3xl overflow-hidden border-2 border-brand-gold/30 shadow-[0_40px_80px_rgba(217,163,33,0.2)] bg-black"
           >
-            <img 
-              src={`${import.meta.env.BASE_URL}images/games-screenshot.jpg`} 
-              alt="Educational Games" 
-              className="w-full h-full object-cover object-top"
+            <video
+              src={`${import.meta.env.BASE_URL}video/hasaad-challenge.mp4`}
+              poster={`${import.meta.env.BASE_URL}images/games-screenshot.jpg`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-contain"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-brand-green-dark/40 via-transparent to-brand-green-dark/60" />
+            <div className="absolute top-3 right-3 bg-brand-gold text-brand-green-dark font-bold py-2 px-4 rounded-full text-[3.5vmin] shadow-xl">
+              على السبورة
+            </div>
           </motion.div>
-          
+          <motion.div
+            initial={{ y: 40, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{ delay: 1, duration: 0.9, type: "spring", stiffness: 80, damping: 20 }}
+            className="relative w-[82%] h-[38%] self-center rounded-3xl overflow-hidden border-2 border-brand-cream/30 shadow-[0_30px_60px_rgba(0,0,0,0.35)] bg-black"
+          >
+            <video
+              src={`${import.meta.env.BASE_URL}video/hasaad-xo.mp4`}
+              poster={`${import.meta.env.BASE_URL}images/games-screenshot.jpg`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-brand-green-dark/65 via-transparent to-transparent" />
+            <div className="absolute bottom-3 right-3 bg-brand-cream text-brand-green-dark font-bold py-2 px-4 rounded-full text-[3.2vmin] shadow-xl">
+              من جهاز الطالب
+            </div>
+          </motion.div>
+
           {/* Floating game icons/chips */}
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
@@ -53,7 +80,7 @@ export function Scene2() {
             transition={{ delay: 1.4, duration: 0.8, type: "spring", bounce: 0.6 }}
             className="absolute left-[-2vmin] top-[15vmin] bg-brand-green-light text-white font-bold py-3 px-6 rounded-2xl text-[4vmin] shadow-xl transform -rotate-12 border border-brand-cream/20"
           >
-            🎮 +10 ألعاب
+            وميض • شد الحبل • XO
           </motion.div>
           
           <motion.div
@@ -62,7 +89,7 @@ export function Scene2() {
             transition={{ delay: 1.8, duration: 0.8, type: "spring", bounce: 0.5 }}
             className="absolute right-[-2vmin] bottom-[15vmin] bg-brand-gold text-brand-green-dark font-bold py-3 px-6 rounded-2xl text-[4vmin] shadow-xl transform rotate-6"
           >
-            🏆 حماس ومنافسة
+            عجلة التحدي • حماس ومنافسة
           </motion.div>
         </div>
       </SafeFrame>
