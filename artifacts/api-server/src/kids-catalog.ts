@@ -168,7 +168,6 @@ export async function migrateKidsSchema(): Promise<void> {
     );
     CREATE TABLE IF NOT EXISTS kids_board_sessions (
       id SERIAL PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE RESTRICT,
-      activity_id INTEGER REFERENCES kids_activities(id) ON DELETE RESTRICT,
       join_code TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at TIMESTAMP NOT NULL DEFAULT NOW(), closed_at TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS kids_board_events (
@@ -197,7 +196,6 @@ export async function migrateKidsSchema(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS kids_sessions_one_active_activity_uq
       ON kids_activity_sessions(profile_id,activity_id) WHERE status='started';
     ALTER TABLE kids_board_sessions ADD COLUMN IF NOT EXISTS join_code TEXT;
-    ALTER TABLE kids_board_sessions ADD COLUMN IF NOT EXISTS activity_id INTEGER REFERENCES kids_activities(id) ON DELETE RESTRICT;
     CREATE UNIQUE INDEX IF NOT EXISTS kids_board_sessions_join_code_uq ON kids_board_sessions(join_code) WHERE join_code IS NOT NULL;
     CREATE INDEX IF NOT EXISTS kids_sessions_profile_idx ON kids_activity_sessions(profile_id, started_at DESC);
     CREATE INDEX IF NOT EXISTS kids_assignments_teacher_idx ON kids_teacher_assignments(teacher_id, created_at DESC);

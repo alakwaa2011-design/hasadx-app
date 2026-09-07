@@ -404,10 +404,12 @@ function OrderingPuzzleRenderer({ content, onAttempt, onComplete }: any) {
 
 // --- Main Component ---
 
-export default function KidsActivityPage() {
-  const [, params] = useRoute("/kids/activity/:id");
+export default function KidsActivityPage({ classroomMode = false }: { classroomMode?: boolean }) {
+  const [, childParams] = useRoute("/kids/activity/:id");
+  const [, teacherParams] = useRoute("/teacher/kids/board/activity/:id");
   const [, setLocation] = useLocation();
-  const { data: activity } = useKidsActivity(params?.id || "");
+  const activityId = teacherParams?.id || childParams?.id || "";
+  const { data: activity } = useKidsActivity(activityId);
   const startSession = useStartKidsSession();
   const attemptSession = useAttemptKidsSession();
   const completeSession = useCompleteKidsSession();
@@ -420,13 +422,13 @@ export default function KidsActivityPage() {
   const startRequested = useRef(false);
 
   useEffect(() => {
-    if (activity && !sessionId && !startRequested.current) {
+    if (!classroomMode && activity && !sessionId && !startRequested.current) {
       startRequested.current = true;
       startSession.mutate({ activityId: activity.id, idempotencyKey }, {
         onSuccess: (data) => setSessionId(data.session.id)
       });
     }
-  }, [activity, sessionId, idempotencyKey, startSession]);
+  }, [activity, classroomMode, sessionId, idempotencyKey, startSession]);
 
   if (!activity) {
     return (
@@ -437,6 +439,7 @@ export default function KidsActivityPage() {
   }
 
   const handleAttempt = (itemKey: string, answer: string, tracePoints?: Array<{ x: number; y: number }>) => {
+    if (classroomMode) return Promise.resolve({ attempt: { is_correct: true } });
     if (!sessionId) return Promise.resolve();
     const request = attemptSession.mutateAsync({
       sessionId, 
@@ -452,6 +455,10 @@ export default function KidsActivityPage() {
   };
 
   const handleComplete = async () => {
+    if (classroomMode) {
+      setIsSuccess(true);
+      return;
+    }
     if (!sessionId || completionStarted.current) return;
     completionStarted.current = true;
     setIsSuccess(true);
@@ -483,7 +490,7 @@ export default function KidsActivityPage() {
       {/* Activity Header */}
       <header className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
         <button 
-          onClick={() => setLocation("/kids/adventure")}
+          onClick={() => setLocation(classroomMode ? "/teacher/kids/board" : "/kids/adventure")}
           className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200"
         >
           <X className="w-6 h-6" />
@@ -491,7 +498,10 @@ export default function KidsActivityPage() {
         
         <div className="flex items-center gap-3">
           {activityImage && <img src={activityImage} alt="" className="h-10 w-10 rounded-xl object-cover" />}
-          <h1 className="font-bold text-slate-800 dark:text-white">{activity.title_ar}</h1>
+          <div className="text-center">
+            <h1 className="font-bold text-slate-800 dark:text-white">{activity.title_ar}</h1>
+            {classroomMode && <p className="text-xs font-bold text-indigo-600">وضع السبورة الصفية</p>}
+          </div>
         </div>
 
         <div className="w-12 h-12"></div> {/* Spacer */}
@@ -508,7 +518,7 @@ export default function KidsActivityPage() {
           </div>
         ) : null}
 
-        {!sessionId ? (
+        {!classroomMode && !sessionId ? (
           <div className="flex h-full items-center justify-center">
             <Star className="h-12 w-12 text-amber-400 animate-spin" />
           </div>

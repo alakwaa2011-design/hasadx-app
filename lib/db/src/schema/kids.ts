@@ -124,7 +124,6 @@ export const kidsAdultGatesTable = pgTable("kids_adult_gates", {
 export const kidsBoardSessionsTable = pgTable("kids_board_sessions", {
   id: serial("id").primaryKey(),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "restrict" }),
-  activityId: integer("activity_id").references(() => kidsActivitiesTable.id, { onDelete: "restrict" }),
   joinCode: text("join_code").unique(),
   title: text("title").notNull(),
   status: text("status").notNull().default("open"),

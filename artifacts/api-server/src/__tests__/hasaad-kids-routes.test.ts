@@ -101,7 +101,7 @@ describe("Hasaad Kids guarded routes", () => {
   it("lets a rostered student join by code and submit a board event", async () => {
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
-      .mockResolvedValueOnce({ rows: [{ id: 45, title: "لوحة الصف", join_code: "123456", activity_id: 8, activity_title: "تتبع حرف أ" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 45, title: "لوحة الصف", join_code: "123456" }] })
       .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
       .mockResolvedValueOnce({ rows: [{ id: 81, board_session_id: 45, profile_id: 9, event_type: "ready" }] });
     const student = request.agent(makeStudentApp());
@@ -111,7 +111,6 @@ describe("Hasaad Kids guarded routes", () => {
 
     expect(joined.status).toBe(200);
     expect(joined.body.board.id).toBe(45);
-    expect(joined.body.board).toEqual(expect.objectContaining({ activity_id: 8, activity_title: "تتبع حرف أ" }));
     expect(event.status).toBe(201);
     expect(event.body.event.event_type).toBe("ready");
   });

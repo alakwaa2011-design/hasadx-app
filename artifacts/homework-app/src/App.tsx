@@ -533,6 +533,9 @@ function Router() {
         <Route path="/teacher/kids/board">
           <Suspense fallback={<LoadingFallback />}><TeacherKidsBoard /></Suspense>
         </Route>
+        <Route path="/teacher/kids/board/activity/:id">
+          <Suspense fallback={<LoadingFallback />}><KidsActivity classroomMode /></Suspense>
+        </Route>
         <Route path="/teacher/kids/profile/:id">
           <Suspense fallback={<LoadingFallback />}><TeacherKidsProfile /></Suspense>
         </Route>
