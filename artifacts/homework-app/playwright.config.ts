@@ -1,4 +1,5 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, webkit } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const applicationDatabaseUrl = process.env.DATABASE_URL;
@@ -42,6 +43,21 @@ const chromiumExecutablePath =
     : undefined);
 const chromiumLaunchOptions = chromiumExecutablePath
   ? { launchOptions: { executablePath: chromiumExecutablePath } }
+  : {};
+const runsOnReplitNix =
+  process.platform === "linux" && Boolean(process.env.REPL_ID);
+const webkitLaunchOptions = runsOnReplitNix
+  ? {
+      launchOptions: {
+        executablePath: fileURLToPath(
+          new URL("./tests/e2e/webkit-nixos-launcher.sh", import.meta.url),
+        ),
+        env: {
+          ...process.env,
+          PLAYWRIGHT_WEBKIT_EXECUTABLE_PATH: webkit.executablePath(),
+        },
+      },
+    }
   : {};
 
 /**
@@ -88,6 +104,10 @@ export default defineConfig({
       grep: /independent answers commit only after a completed activation/,
       use: {
         ...devices["iPhone 13"],
+        // Playwright's Linux WebKit bundle replaces LD_LIBRARY_PATH in its
+        // launcher. Replit's launcher preserves the bundle paths and appends
+        // the Nix-provided runtime libraries.
+        ...webkitLaunchOptions,
       },
     },
     // Escape setup owns database-backed fixtures, so its two viewports run in
@@ -145,6 +165,7 @@ export default defineConfig({
       env: {
         ...process.env,
         API_PROXY_TARGET: apiBaseUrl,
+        E2E_TEST: "1",
         PORT: String(appPort),
       },
     },

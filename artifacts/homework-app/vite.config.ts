@@ -8,13 +8,14 @@ const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
 
 const basePath = process.env.BASE_PATH || "/";
+const includeRuntimeErrorOverlay = process.env.E2E_TEST !== "1";
 
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
+    ...(includeRuntimeErrorOverlay ? [runtimeErrorOverlay()] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
