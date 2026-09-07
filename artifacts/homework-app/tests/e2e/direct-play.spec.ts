@@ -13,6 +13,7 @@ type DirectPlayFixture = {
   teacherId: number;
   classToken: string;
   soloToken: string;
+  touchToken: string;
 };
 
 let fixture: DirectPlayFixture | undefined;
@@ -96,8 +97,49 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
     points: 1,
   });
 
+  const [touchAssignment] = await db.insert(assignmentsTable).values({
+    teacherId: teacher.id,
+    title: `E2E Wameeth Touch ${suffix}`,
+    subject: "اختبار تلقائي",
+    submissionMode: "electronic",
+    accessMode: "private",
+    accessCode: "E2E959",
+    isShared: false,
+    totalPoints: 3,
+  }).returning({ id: assignmentsTable.id });
+  await db.insert(questionsTable).values([
+    {
+      assignmentId: touchAssignment.id,
+      text: `سؤال لمس وميض الأول ${suffix}`,
+      questionType: "mcq",
+      optionA: "إجابة لمس أولى",
+      optionB: "بديل لمس أول",
+      correctAnswer: "A",
+      points: 1,
+    },
+    {
+      assignmentId: touchAssignment.id,
+      text: `سؤال لمس وميض الثاني ${suffix}`,
+      questionType: "mcq",
+      optionA: "إجابة فأرة",
+      optionB: "بديل فأرة",
+      correctAnswer: "A",
+      points: 1,
+    },
+    {
+      assignmentId: touchAssignment.id,
+      text: `سؤال لمس وميض الثالث ${suffix}`,
+      questionType: "mcq",
+      optionA: "إجابة لوحة مفاتيح",
+      optionB: "بديل لوحة مفاتيح",
+      correctAnswer: "A",
+      points: 1,
+    },
+  ]);
+
   const classToken = randomBytes(16).toString("hex");
   const soloToken = randomBytes(16).toString("hex");
+  const touchToken = randomBytes(16).toString("hex");
   await db.insert(directPlayLinksTable).values([
     {
       token: classToken,
@@ -111,12 +153,19 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
       teacherId: teacher.id,
       gameType: "wameeth",
     },
+    {
+      token: touchToken,
+      assignmentId: touchAssignment.id,
+      teacherId: teacher.id,
+      gameType: "wameeth",
+    },
   ]);
 
   return {
     teacherId: teacher.id,
     classToken,
     soloToken,
+    touchToken,
   };
 }
 
@@ -130,6 +179,7 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
 test.beforeAll(async () => {
   fixture = await createDirectPlayFixture();
 });
+
 
 test.afterAll(async () => {
   try {
@@ -210,5 +260,72 @@ test.describe("Public Wameeth direct links", () => {
     await expect(page.getByText(/ترتيب المشاركين|Final Rankings/i)).toHaveCount(0);
     await expect(page.getByText(/انتظار المعلم|Waiting for teacher/i)).toHaveCount(0);
     await expect(page.getByText(/كود اللعبة|PIN/i)).toHaveCount(0);
+  });
+
+  test("independent answers commit only after a completed activation", async ({
+    page,
+    context,
+  }) => {
+    if (!fixture) throw new Error("direct-play fixture is unavailable");
+
+    let submittedAnswers = 0;
+    page.on("websocket", (socket) => {
+      socket.on("framesent", ({ payload }) => {
+        if (
+          typeof payload === "string" &&
+          payload.includes("student:submit-answer")
+        ) {
+          submittedAnswers += 1;
+        }
+      });
+    });
+
+    await page.goto(`/play/${fixture.touchToken}`);
+    await expect(page.getByText(/سؤال لمس وميض الأول/, { exact: false }))
+      .toBeVisible({ timeout: 20_000 });
+
+    const firstAnswer = page.getByRole("button", { name: /إجابة لمس أولى/ });
+    const box = await firstAnswer.boundingBox();
+    expect(box).not.toBeNull();
+
+    const startX = box!.x + box!.width / 2;
+    const startY = box!.y + box!.height / 2;
+    const endX = Math.max(1, box!.x - 20);
+    const endY = Math.max(1, box!.y - 20);
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: startX, y: startY, id: 1 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: endX, y: endY, id: 1 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+
+    await page.waitForTimeout(300);
+    expect(submittedAnswers).toBe(0);
+    await expect(page.getByText(/سؤال لمس وميض الأول/, { exact: false })).toBeVisible();
+
+    await page.touchscreen.tap(startX, startY);
+    await expect.poll(() => submittedAnswers).toBe(1);
+    await expect(page.getByText(/سؤال لمس وميض الثاني/, { exact: false }))
+      .toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("button", { name: /إجابة فأرة/ }).click();
+    await expect.poll(() => submittedAnswers).toBe(2);
+    await expect(page.getByText(/سؤال لمس وميض الثالث/, { exact: false }))
+      .toBeVisible({ timeout: 15_000 });
+
+    const keyboardAnswer = page.getByRole("button", { name: /إجابة لوحة مفاتيح/ });
+    await keyboardAnswer.focus();
+    await keyboardAnswer.press("Enter");
+    await expect.poll(() => submittedAnswers).toBe(3);
+    await expect(page.getByTestId("text-independent-result-title"))
+      .toBeVisible({ timeout: 30_000 });
+    expect(submittedAnswers).toBe(3);
   });
 });
