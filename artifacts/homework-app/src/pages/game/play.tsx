@@ -4420,18 +4420,11 @@ export default function GamePlay() {
                       ? { duration: 0.38, delay: 0.08 + i * 0.07, ease: [0.22, 1, 0.36, 1] }
                       : undefined
                   }
-                  onPointerDown={(e) => {
-                    // Fire on pointer-down — the tap is registered the instant
-                    // the player's finger touches the screen, eliminating the
-                    // delay between touch and visual feedback. Also prevents
-                    // a stray onClick from re-firing.
-                    if (selectedAnswerRef.current) return;
-                    e.preventDefault();
-                    submitAnswer(opt.key);
-                  }}
                   onClick={() => {
-                    // Fallback for mouse / keyboard / older browsers where
-                    // PointerEvent is not delivered first.
+                    // Commit the answer only after a completed click/tap.
+                    // Pointer-down was too sensitive on touch screens: merely
+                    // brushing an option submitted it before the student could
+                    // lift or slide their finger away.
                     if (selectedAnswerRef.current) return;
                     submitAnswer(opt.key);
                   }}
