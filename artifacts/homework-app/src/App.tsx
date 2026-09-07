@@ -1,6 +1,7 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useI18n } from "@/lib/i18n";
@@ -19,6 +20,22 @@ import {
 } from "@/lib/wameeth-entry";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+function AdminOnly({ children }: { children: ReactNode }) {
+  const [, setLocation] = useLocation();
+  const { data: user, isLoading } = useGetCurrentTeacher({
+    query: { retry: false } as any,
+  });
+  const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
+
+  useEffect(() => {
+    if (!isLoading && !isAdmin) setLocation("/teacher");
+  }, [isAdmin, isLoading, setLocation]);
+
+  if (isLoading) return <LoadingFallback />;
+  if (!isAdmin) return null;
+  return <>{children}</>;
+}
 
 const Home = lazy(() => import("@/pages/home"));
 const Auth = lazy(() => import("@/pages/auth"));
@@ -528,51 +545,51 @@ function Router() {
 
         {/* Hasaad Kids (Teacher) */}
         <Route path="/teacher/kids">
-          <Suspense fallback={<LoadingFallback />}><TeacherKidsDashboard /></Suspense>
+          <AdminOnly><Suspense fallback={<LoadingFallback />}><TeacherKidsDashboard /></Suspense></AdminOnly>
         </Route>
         <Route path="/teacher/kids/board">
-          <Suspense fallback={<LoadingFallback />}><TeacherKidsBoard /></Suspense>
+          <AdminOnly><Suspense fallback={<LoadingFallback />}><TeacherKidsBoard /></Suspense></AdminOnly>
         </Route>
         <Route path="/teacher/kids/board/activity/:id">
-          <Suspense fallback={<LoadingFallback />}><KidsActivity classroomMode /></Suspense>
+          <AdminOnly><Suspense fallback={<LoadingFallback />}><KidsActivity classroomMode /></Suspense></AdminOnly>
         </Route>
         <Route path="/teacher/kids/profile/:id">
-          <Suspense fallback={<LoadingFallback />}><TeacherKidsProfile /></Suspense>
+          <AdminOnly><Suspense fallback={<LoadingFallback />}><TeacherKidsProfile /></Suspense></AdminOnly>
         </Route>
         <Route path="/teacher/kids/assign">
-          <Suspense fallback={<LoadingFallback />}><TeacherKidsAssign /></Suspense>
+          <AdminOnly><Suspense fallback={<LoadingFallback />}><TeacherKidsAssign /></Suspense></AdminOnly>
         </Route>
 
         {/* Hasaad Kids (Student) */}
         <Route path="/kids">
-          <KidsLayout>
+          <AdminOnly><KidsLayout>
             <Suspense fallback={<LoadingFallback />}><KidsHome /></Suspense>
-          </KidsLayout>
+          </KidsLayout></AdminOnly>
         </Route>
         <Route path="/kids/adventure">
-          <KidsLayout>
+          <AdminOnly><KidsLayout>
             <Suspense fallback={<LoadingFallback />}><KidsAdventure /></Suspense>
-          </KidsLayout>
+          </KidsLayout></AdminOnly>
         </Route>
         <Route path="/kids/activity/:id">
-          <KidsLayout>
+          <AdminOnly><KidsLayout>
             <Suspense fallback={<LoadingFallback />}><KidsActivity /></Suspense>
-          </KidsLayout>
+          </KidsLayout></AdminOnly>
         </Route>
         <Route path="/kids/activity/:id/complete">
-          <KidsLayout>
+          <AdminOnly><KidsLayout>
             <Suspense fallback={<LoadingFallback />}><KidsActivityComplete /></Suspense>
-          </KidsLayout>
+          </KidsLayout></AdminOnly>
         </Route>
         <Route path="/kids/stickers">
-          <KidsLayout>
+          <AdminOnly><KidsLayout>
             <Suspense fallback={<LoadingFallback />}><KidsStickers /></Suspense>
-          </KidsLayout>
+          </KidsLayout></AdminOnly>
         </Route>
         <Route path="/kids/board">
-          <KidsLayout>
+          <AdminOnly><KidsLayout>
             <Suspense fallback={<LoadingFallback />}><KidsBoard /></Suspense>
-          </KidsLayout>
+          </KidsLayout></AdminOnly>
         </Route>
 
         {/* Flag Quiz Routes */}

@@ -448,6 +448,7 @@ export default function TeacherDashboard() {
     isLoading: isUserLoading,
     error: userError,
   } = useGetCurrentTeacher({ query: { retry: false } as any });
+  const isAdminUser = Boolean(user?.isAdmin) || user?.role === "admin";
 
   const { data: assignmentsRaw, isLoading: isAssignmentsLoading } =
     useListAssignments(user ? { teacherId: user.id } : undefined, {
@@ -974,7 +975,7 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {t.dashboard.overview}
             </p>
-            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
+            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats", ...(isAdminUser ? ["kids_board"] : [])].includes(t.id)).sort((a, b) => {
                 const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","parent_messages","stats"];
                 return order.indexOf(a.id) - order.indexOf(b.id);
               }).map((tab) => {
@@ -3005,13 +3006,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           accent: BRAND.gold,
           href: "/teacher/student-wheel",
         },
-        {
+        ...((Boolean(user?.isAdmin) || user?.role === "admin") ? [{
           icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>,
           title: isAr ? "منصة الصغار" : "Kids Platform",
           desc: isAr ? "إدارة طلاب رياض الأطفال وإرسال المهام التفاعلية" : "Manage kindergarten students and send interactive tasks",
           accent: BRAND.green,
           href: "/teacher/kids",
-        },
+        }] : []),
         ...(classroomEnabled ? [{
           icon: <GraduationCap className="w-6 h-6" />,
           title: "Google Classroom",
