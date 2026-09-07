@@ -56,9 +56,21 @@ function rotate<T>(items: T[], amount: number): T[] {
   return [...items.slice(offset), ...items.slice(0, offset)];
 }
 
+function shuffleQuestions(questions: XoClassQuestion[]): XoClassQuestion[] {
+  const shuffled = [...questions];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  if (shuffled.length > 1 && shuffled.every((question, index) => question === questions[index])) {
+    return rotate(shuffled, 1);
+  }
+  return shuffled;
+}
+
 export function createXoClassState(questions: XoClassQuestion[], duration: number): XoClassState {
   return {
-    status: "idle", countdown: 3, questions, duration: Math.max(1, duration || 20),
+    status: "idle", countdown: 3, questions: shuffleQuestions(questions), duration: Math.max(1, duration || 20),
     board: Array(9).fill(null), activeTeam: "x", answeredTeams: [], phase: "question", questionIndex: 0,
     timeLeft: Math.max(1, duration || 20), winner: null, lastResult: null,
   };
@@ -76,10 +88,11 @@ export function currentXoClassQuestionForTeam(state: XoClassState, team: XoTeam)
   );
   const sourceIndex = questionOrder[state.questionIndex % questionOrder.length];
   const sourceQuestion = state.questions[sourceIndex];
-  const optionOrder = rotate(
-    shuffledIndexes(sourceQuestion.options.length, `xo-class-options:${sourceIndex}`),
-    team === "x" ? 0 : 1,
-  );
+  if (sourceQuestion.type === "true_false") return { ...sourceQuestion, options: [...sourceQuestion.options] };
+  const targetCorrectSlot = (state.questionIndex + (team === "x" ? 0 : 1)) % sourceQuestion.options.length;
+  const optionOrder = shuffledIndexes(sourceQuestion.options.length, `xo-class-options:${sourceIndex}`)
+    .filter((index) => index !== sourceQuestion.correct);
+  optionOrder.splice(targetCorrectSlot, 0, sourceQuestion.correct);
   const correct = optionOrder.indexOf(sourceQuestion.correct);
   return {
     ...sourceQuestion,

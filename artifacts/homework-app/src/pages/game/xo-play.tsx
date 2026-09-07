@@ -63,8 +63,11 @@ export default function XoPlay() {
 
   const merge = useCallback((data: Snapshot) => {
     setSnapshot(p => {
-      // If question changed, reset answer state
-      if (data.question && p.question && data.question.text !== p.question.text) {
+      // Reset when either the question or its freshly shuffled answer order changes.
+      if (data.question && p.question && (
+        data.question.text !== p.question.text
+        || data.question.options.join("\u0000") !== p.question.options.join("\u0000")
+      )) {
         setSelected(null);
         setAnswerResult(null);
       }

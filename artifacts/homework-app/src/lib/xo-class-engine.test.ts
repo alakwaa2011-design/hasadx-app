@@ -26,6 +26,27 @@ describe("XO classroom engine", () => {
     );
   });
 
+  it("moves the correct answer to a new position on every question", () => {
+    const first = playing();
+    const second = { ...first, questionIndex: 1 };
+    const third = { ...first, questionIndex: 2 };
+    expect(currentXoClassQuestionForTeam(first, "x")!.correct).toBe(0);
+    expect(currentXoClassQuestionForTeam(second, "x")!.correct).toBe(1);
+    expect(currentXoClassQuestionForTeam(third, "x")!.correct).toBe(2);
+  });
+
+  it("keeps true/false labels in their semantic order", () => {
+    const state = {
+      ...playing(),
+      questions: [{ text: "True?", options: ["True", "False"], correct: 0, type: "true_false" as const }],
+      questionIndex: 3,
+    };
+    expect(currentXoClassQuestionForTeam(state, "x")).toMatchObject({
+      options: ["True", "False"],
+      correct: 0,
+    });
+  });
+
   it("lets both teams answer and grants placement to the first correct team", () => {
     const state = playing();
     const oQuestion = currentXoClassQuestionForTeam(state, "o")!;

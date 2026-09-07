@@ -3,7 +3,7 @@ import { Server } from "socket.io";
 import { logger } from "../lib/logger";
 import {
   answerXoQuestion, clientQuestion, createXoState, type XoQuestion, type XoState, type XoTeam,
-  placeXoMark, timeoutXoQuestion, validateXoQuestions,
+  placeXoMark, shuffleXoQuestion, timeoutXoQuestion, validateXoQuestions,
 } from "./xo-engine";
 
 interface XoPlayer { id: string; socketId: string; name: string; avatar: string; team: XoTeam; rejoinToken: string; }
@@ -11,24 +11,36 @@ interface XoGame {
   pin: string; teacherId: number; hostSocketId: string; questions: XoQuestion[]; state: XoState;
   players: Record<string, XoPlayer>; started: boolean; timer?: ReturnType<typeof setTimeout>;
   questionStartedAt?: number; placementStartedAt?: number;
+  activeQuestion: XoQuestion; lastCorrectSlot: number;
   teamNames: Record<XoTeam, string>;
 }
 const games = new Map<string, XoGame>();
 const room = (pin: string) => `xo:${pin}`;
 const makePin = () => { let pin: string; do pin = String(Math.floor(100000 + Math.random() * 900000)); while (games.has(pin)); return pin; };
+function shuffledQuestions(questions: XoQuestion[]): XoQuestion[] {
+  const shuffled = [...questions];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  if (shuffled.length > 1 && shuffled.every((question, index) => question === questions[index])) {
+    shuffled.push(shuffled.shift()!);
+  }
+  return shuffled;
+}
 const players = (game: XoGame) => Object.values(game.players).map(({ id, name, avatar, team }) => ({ id, name, avatar, team }));
 const publicState = (game: XoGame) => ({
   ...game.state,
   board: [...game.state.board],
   started: game.started,
   timerRemainingSecs: game.state.phase === "question"
-    ? Math.max(0, Math.ceil((game.questions[game.state.questionIndex].duration * 1000 - (Date.now() - (game.questionStartedAt ?? Date.now()))) / 1000))
+    ? Math.max(0, Math.ceil((game.activeQuestion.duration * 1000 - (Date.now() - (game.questionStartedAt ?? Date.now()))) / 1000))
     : game.state.phase === "placement"
       ? Math.max(0, Math.ceil((20_000 - (Date.now() - (game.placementStartedAt ?? Date.now()))) / 1000))
       : 0,
   question: game.started && game.state.phase === "question" ? {
-    ...clientQuestion(game.questions[game.state.questionIndex]),
-    remainingSecs: Math.max(0, Math.ceil((game.questions[game.state.questionIndex].duration * 1000 - (Date.now() - (game.questionStartedAt ?? Date.now()))) / 1000)),
+    ...clientQuestion(game.activeQuestion),
+    remainingSecs: Math.max(0, Math.ceil((game.activeQuestion.duration * 1000 - (Date.now() - (game.questionStartedAt ?? Date.now()))) / 1000)),
   } : null,
   players: players(game),
   teamNames: game.teamNames,
@@ -48,8 +60,8 @@ function scheduleQuestion(ns: ReturnType<Server["of"]>, game: XoGame) {
     if (!result.ok) return;
     game.state = result.state;
     ns.to(room(game.pin)).emit("xo:answer-result", { correct: false, timeout: true, turn: game.state.turn });
-    emitState(ns, game); scheduleQuestion(ns, game);
-  }, game.questions[game.state.questionIndex].duration * 1000);
+    setState(ns, game);
+  }, game.activeQuestion.duration * 1000);
 }
 function schedulePlacement(ns: ReturnType<Server["of"]>, game: XoGame) {
   clearTimer(game);
@@ -71,6 +83,12 @@ function schedulePlacement(ns: ReturnType<Server["of"]>, game: XoGame) {
 function setState(ns: ReturnType<Server["of"]>, game: XoGame) {
   clearTimer(game);
   if (game.state.phase === "question") {
+    const sourceQuestion = game.questions[game.state.questionIndex];
+    const nextCorrectSlot = sourceQuestion.type === "true_false"
+      ? sourceQuestion.correct
+      : (game.lastCorrectSlot + 1) % sourceQuestion.options.length;
+    game.activeQuestion = shuffleXoQuestion(sourceQuestion, nextCorrectSlot);
+    if (sourceQuestion.type !== "true_false") game.lastCorrectSlot = game.activeQuestion.correct;
     game.questionStartedAt = Date.now();
     game.placementStartedAt = undefined;
   } else if (game.state.phase === "placement") {
@@ -91,11 +109,13 @@ export function setupXoSocket(io: Server) {
     socket.on("xo:create", (data: { questions: unknown; duration?: number; teamX?: string; teamO?: string }, cb: (result: object) => void = () => {}) => {
       const teacherId = (socket.request as any).session?.teacherId as number | undefined;
       if (!teacherId) return cb({ error: "يجب تسجيل دخول المعلم لإنشاء لعبة." });
-      const questions = validateXoQuestions(data?.questions, data?.duration);
-      if (!questions) return cb({ error: "الأسئلة يجب أن تحتوي نصاً وخيارين إلى أربعة خيارات صالحة." });
+      const validatedQuestions = validateXoQuestions(data?.questions, data?.duration);
+      if (!validatedQuestions) return cb({ error: "الأسئلة يجب أن تحتوي نصاً وخيارين إلى أربعة خيارات صالحة." });
+      const questions = shuffledQuestions(validatedQuestions);
       const pin = makePin();
       const game: XoGame = {
         pin, teacherId, hostSocketId: socket.id, questions, state: createXoState(), players: {}, started: false,
+        activeQuestion: questions[0], lastCorrectSlot: -1,
         teamNames: {
           x: typeof data.teamX === "string" && data.teamX.trim() ? data.teamX.trim().slice(0, 40) : "X",
           o: typeof data.teamO === "string" && data.teamO.trim() ? data.teamO.trim().slice(0, 40) : "O",
@@ -153,7 +173,9 @@ export function setupXoSocket(io: Server) {
       const game = games.get(data?.pin); const player = game && Object.values(game.players).find((p) => p.socketId === socket.id && (!data.playerId || p.id === data.playerId));
       if (!game || !player) return cb({ error: "أنت لست في هذه اللعبة." });
       if (!game.started) return cb({ error: "لم تبدأ اللعبة بعد." });
-      const result = answerXoQuestion(game.state, game.questions, player.id, player.team, data.answerIndex);
+      const activeQuestions = [...game.questions];
+      activeQuestions[game.state.questionIndex] = game.activeQuestion;
+      const result = answerXoQuestion(game.state, activeQuestions, player.id, player.team, data.answerIndex);
       if (!result.ok) return cb({ error: result.error });
       game.state = result.state; ns.to(room(game.pin)).emit("xo:answer-result", { playerId: player.id, correct: result.correct, turn: game.state.turn });
       setState(ns, game); cb({ success: true, correct: result.correct });
@@ -192,7 +214,7 @@ export function setupXoSocket(io: Server) {
     socket.on("xo:replay", (data: { pin: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
       if (!game || !isHost(socket, game)) return cb({ error: "فقط المعلم يمكنه إعادة اللعب." });
-      clearTimer(game); game.state = createXoState(); game.questionStartedAt = undefined; game.placementStartedAt = undefined; game.started = true; setState(ns, game); cb({ success: true });
+      clearTimer(game); game.questions = shuffledQuestions(game.questions); game.state = createXoState(); game.questionStartedAt = undefined; game.placementStartedAt = undefined; game.started = true; setState(ns, game); cb({ success: true });
     });
     socket.on("disconnect", () => logger.debug({ socketId: socket.id }, "XO socket disconnected"));
   });

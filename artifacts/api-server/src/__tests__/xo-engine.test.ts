@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   answerXoQuestion, clientQuestion, createXoState, getWinner, placeXoMark,
-  timeoutXoQuestion, validateXoQuestions, type XoState,
+  shuffleXoQuestion, timeoutXoQuestion, validateXoQuestions, type XoState,
 } from "../game/xo-engine";
 
 const questions = [{ text: "2 + 2", options: ["3", "4"], correct: 1, duration: 20 }];
@@ -54,5 +54,23 @@ describe("XO engine", () => {
   it("accepts only complete two-to-four option questions", () => {
     expect(validateXoQuestions([{ text: "True?", options: ["", "False"], correct: 0 }])).toBeNull();
     expect(validateXoQuestions([{ text: "True?", options: ["True", "False"], correct: 0 }])).toHaveLength(1);
+  });
+
+  it("moves the correct option to the requested slot without changing its meaning", () => {
+    const shuffled = shuffleXoQuestion(
+      { text: "Capital?", options: ["Kuwait", "Doha", "Manama", "Muscat"], correct: 0, duration: 20 },
+      2,
+      () => 0.5,
+    );
+    expect(shuffled.correct).toBe(2);
+    expect(shuffled.options[shuffled.correct]).toBe("Kuwait");
+    expect(shuffled.options).toEqual(expect.arrayContaining(["Kuwait", "Doha", "Manama", "Muscat"]));
+  });
+
+  it("does not shuffle true/false semantics", () => {
+    expect(shuffleXoQuestion(
+      { text: "True?", options: ["True", "False"], correct: 0, duration: 20, type: "true_false" },
+      1,
+    )).toMatchObject({ options: ["True", "False"], correct: 0 });
   });
 });

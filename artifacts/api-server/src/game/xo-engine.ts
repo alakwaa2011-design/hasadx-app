@@ -60,6 +60,27 @@ export function clientQuestion(question: XoQuestion): ClientXoQuestion {
   };
 }
 
+export function shuffleXoQuestion(
+  question: XoQuestion,
+  correctSlot: number,
+  random: () => number = Math.random,
+): XoQuestion {
+  if (question.type === "true_false" || question.options.length < 2) {
+    return { ...question, options: [...question.options] };
+  }
+  const distractors = question.options
+    .map((option, index) => ({ option, index }))
+    .filter(({ index }) => index !== question.correct);
+  for (let index = distractors.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [distractors[index], distractors[swapIndex]] = [distractors[swapIndex], distractors[index]];
+  }
+  const nextCorrect = Math.max(0, Math.min(question.options.length - 1, correctSlot));
+  const options = distractors.map(({ option }) => option);
+  options.splice(nextCorrect, 0, question.options[question.correct]);
+  return { ...question, options, correct: nextCorrect };
+}
+
 export function getWinner(board: readonly XoCell[]): XoTeam | "draw" | null {
   for (const [a, b, c] of LINES) {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
