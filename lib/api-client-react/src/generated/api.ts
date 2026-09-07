@@ -21,6 +21,9 @@ import type {
   AdminHideQuestionBankItemBody,
   AdminHideVideoLessonBody,
   AdminTeacherSummary,
+  AiVideoBrief,
+  AiVideoProject,
+  AiVideoRenderBody,
   Assignment,
   AssignmentWithQuestions,
   AuthResponse,
@@ -37,6 +40,7 @@ import type {
   HealthStatus,
   LinkPresentationActivity200,
   LinkPresentationActivityBody,
+  ListAiVideoProjects200,
   ListAssignmentsParams,
   LoginTeacherBody,
   Presentation,
@@ -62,12 +66,15 @@ import type {
   SuccessResponse,
   TeacherProfile,
   TeacherSession,
+  UpdateAiVideoProjectBody,
   UpdateAnswerBody,
   UpdatePresentationBody,
   UpdatePresentationDraftBody,
   UpdateProfileBody,
   UpdateRoleBody,
   UpdateSubmissionBody,
+  UploadAiVideoSourceImage201,
+  UploadAiVideoSourceImageBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -4859,3 +4866,151 @@ export const useDeletePresentationDraft = <
 > => {
   return useMutation(getDeletePresentationDraftMutationOptions(options));
 };
+
+// AI video operations. Kept as an additive compatibility block because the
+// current Orval version reformats every pre-existing generated operation.
+export const getListAiVideoProjectsUrl = () => "/api/ai-video/projects";
+export const listAiVideoProjects = (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ListAiVideoProjects200> =>
+  customFetch<ListAiVideoProjects200>(getListAiVideoProjectsUrl(), {
+    ...options,
+    method: "GET",
+  });
+export const getListAiVideoProjectsQueryKey = () =>
+  [getListAiVideoProjectsUrl()] as const;
+export const useListAiVideoProjects = (
+  options?: Omit<
+    UseQueryOptions<ListAiVideoProjects200>,
+    "queryKey" | "queryFn"
+  >,
+) =>
+  useQuery({
+    queryKey: getListAiVideoProjectsQueryKey(),
+    queryFn: ({ signal }) => listAiVideoProjects({ signal }),
+    ...options,
+  });
+
+const aiVideoJsonHeaders = (headers?: HeadersInit): Record<string, string> => {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    const result: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      result[key] = value;
+    });
+    return result;
+  }
+  if (Array.isArray(headers)) return Object.fromEntries(headers);
+  return headers as Record<string, string>;
+};
+
+export const getUploadAiVideoSourceImageUrl = () =>
+  "/api/ai-video/uploads/image";
+export const uploadAiVideoSourceImage = (
+  body: UploadAiVideoSourceImageBody,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<UploadAiVideoSourceImage201> => {
+  const formData = new FormData();
+  formData.append("file", body.file);
+  return customFetch<UploadAiVideoSourceImage201>(
+    getUploadAiVideoSourceImageUrl(),
+    {
+      ...options,
+      method: "POST",
+      body: formData,
+    },
+  );
+};
+export const useUploadAiVideoSourceImage = () =>
+  useMutation({
+    mutationFn: (body: UploadAiVideoSourceImageBody) =>
+      uploadAiVideoSourceImage(body),
+  });
+
+export const getCreateAiVideoStoryboardUrl = () =>
+  "/api/ai-video/projects/storyboard";
+export const createAiVideoStoryboard = (
+  body: AiVideoBrief,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<AiVideoProject> =>
+  customFetch<AiVideoProject>(getCreateAiVideoStoryboardUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...aiVideoJsonHeaders(options?.headers) },
+    body: JSON.stringify(body),
+  });
+export const useCreateAiVideoStoryboard = () =>
+  useMutation({ mutationFn: (body: AiVideoBrief) => createAiVideoStoryboard(body) });
+
+export const getGetAiVideoProjectUrl = (id: number) =>
+  `/api/ai-video/projects/${id}`;
+export const getAiVideoProject = (
+  id: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<AiVideoProject> =>
+  customFetch<AiVideoProject>(getGetAiVideoProjectUrl(id), {
+    ...options,
+    method: "GET",
+  });
+export const getGetAiVideoProjectQueryKey = (id: number) =>
+  [getGetAiVideoProjectUrl(id)] as const;
+export const useGetAiVideoProject = (id: number) =>
+  useQuery({
+    queryKey: getGetAiVideoProjectQueryKey(id),
+    queryFn: ({ signal }) => getAiVideoProject(id, { signal }),
+    enabled: id !== null && id !== undefined,
+  });
+
+export const updateAiVideoProject = (
+  id: number,
+  body: UpdateAiVideoProjectBody,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<AiVideoProject> =>
+  customFetch<AiVideoProject>(getGetAiVideoProjectUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...aiVideoJsonHeaders(options?.headers) },
+    body: JSON.stringify(body),
+  });
+export const useUpdateAiVideoProject = () =>
+  useMutation({
+    mutationFn: ({ id, body }: { id: number; body: UpdateAiVideoProjectBody }) =>
+      updateAiVideoProject(id, body),
+  });
+
+const postAiVideoRender = (
+  path: string,
+  body: AiVideoRenderBody,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<AiVideoProject> =>
+  customFetch<AiVideoProject>(path, {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...aiVideoJsonHeaders(options?.headers) },
+    body: JSON.stringify(body),
+  });
+export const getRenderAiVideoProjectUrl = (id: number) =>
+  `${getGetAiVideoProjectUrl(id)}/render`;
+export const renderAiVideoProject = (
+  id: number,
+  body: AiVideoRenderBody,
+  options?: Parameters<typeof customFetch>[1],
+) => postAiVideoRender(getRenderAiVideoProjectUrl(id), body, options);
+export const useRenderAiVideoProject = () =>
+  useMutation({
+    mutationFn: ({ id, body }: { id: number; body: AiVideoRenderBody }) =>
+      renderAiVideoProject(id, body),
+  });
+
+export const getRetryAiVideoProjectRenderUrl = (id: number) =>
+  `${getGetAiVideoProjectUrl(id)}/retry-render`;
+export const retryAiVideoProjectRender = (
+  id: number,
+  body: AiVideoRenderBody,
+  options?: Parameters<typeof customFetch>[1],
+) => postAiVideoRender(getRetryAiVideoProjectRenderUrl(id), body, options);
+export const useRetryAiVideoProjectRender = () =>
+  useMutation({
+    mutationFn: ({ id, body }: { id: number; body: AiVideoRenderBody }) =>
+      retryAiVideoProjectRender(id, body),
+  });

@@ -9,6 +9,139 @@ export interface HealthStatus {
   status: string;
 }
 
+export type AiVideoSceneTransition =
+  (typeof AiVideoSceneTransition)[keyof typeof AiVideoSceneTransition];
+
+export const AiVideoSceneTransition = {
+  cut: "cut",
+  dissolve: "dissolve",
+  push: "push",
+  zoom: "zoom",
+} as const;
+
+export interface AiVideoScene {
+  id: string;
+  objective: string;
+  narration: string;
+  onScreenText: string;
+  visualPrompt: string;
+  durationSeconds: number;
+  transition: AiVideoSceneTransition;
+  sourceImage?: string | null;
+}
+
+export interface AiVideoStoryboard {
+  title: string;
+  version: number;
+  scenes: AiVideoScene[];
+}
+
+export type AiVideoBriefLanguage =
+  (typeof AiVideoBriefLanguage)[keyof typeof AiVideoBriefLanguage];
+export const AiVideoBriefLanguage = { ar: "ar", en: "en" } as const;
+
+export type AiVideoBriefDurationSeconds =
+  (typeof AiVideoBriefDurationSeconds)[keyof typeof AiVideoBriefDurationSeconds];
+export const AiVideoBriefDurationSeconds = {
+  NUMBER_30: 30,
+  NUMBER_60: 60,
+  NUMBER_90: 90,
+} as const;
+
+export type AiVideoBriefAspectRatio =
+  (typeof AiVideoBriefAspectRatio)[keyof typeof AiVideoBriefAspectRatio];
+export const AiVideoBriefAspectRatio = {
+  "16:9": "16:9",
+  "9:16": "9:16",
+  "1:1": "1:1",
+} as const;
+
+export type AiVideoBriefVisualStyle =
+  (typeof AiVideoBriefVisualStyle)[keyof typeof AiVideoBriefVisualStyle];
+export const AiVideoBriefVisualStyle = {
+  educational: "educational",
+  cinematic: "cinematic",
+  playful: "playful",
+  minimal: "minimal",
+} as const;
+
+export interface AiVideoBrief {
+  title: string;
+  topic: string;
+  sourceText?: string;
+  sourceImages?: string[];
+  prompt?: string;
+  language: AiVideoBriefLanguage;
+  durationSeconds: AiVideoBriefDurationSeconds;
+  aspectRatio: AiVideoBriefAspectRatio;
+  visualStyle: AiVideoBriefVisualStyle;
+  voice: string;
+  music: boolean;
+  captions: boolean;
+  idempotencyKey: string;
+}
+
+export type AiVideoProjectStatus =
+  (typeof AiVideoProjectStatus)[keyof typeof AiVideoProjectStatus];
+export const AiVideoProjectStatus = {
+  draft: "draft",
+  storyboard_ready: "storyboard_ready",
+  rendering: "rendering",
+  ready: "ready",
+  failed: "failed",
+} as const;
+
+export interface AiVideoProject {
+  id: number;
+  teacherId: number;
+  title: string;
+  status: AiVideoProjectStatus;
+  brief: AiVideoBrief;
+  storyboard: AiVideoStoryboard | null;
+  outputUrl?: string | null;
+  errorMessage?: string | null;
+  storyboardIdempotencyKey: string;
+  renderIdempotencyKey?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateAiVideoProjectBody {
+  title?: string;
+  storyboard?: AiVideoStoryboard;
+}
+
+export interface AiVideoRenderBody {
+  idempotencyKey: string;
+}
+
+export type ListAiVideoProjects200 = { projects: AiVideoProject[] };
+
+export interface UploadAiVideoSourceImageBody {
+  file: Blob;
+}
+
+export type UploadAiVideoSourceImage201MetadataContentType =
+  (typeof UploadAiVideoSourceImage201MetadataContentType)[keyof typeof UploadAiVideoSourceImage201MetadataContentType];
+export const UploadAiVideoSourceImage201MetadataContentType = {
+  "image/jpeg": "image/jpeg",
+  "image/png": "image/png",
+  "image/webp": "image/webp",
+} as const;
+
+export interface UploadAiVideoSourceImage201Metadata {
+  name: string;
+  size: number;
+  contentType: UploadAiVideoSourceImage201MetadataContentType;
+  width: number;
+  height: number;
+}
+
+export interface UploadAiVideoSourceImage201 {
+  objectPath: string;
+  metadata: UploadAiVideoSourceImage201Metadata;
+}
+
 export interface ErrorResponse {
   message: string;
 }

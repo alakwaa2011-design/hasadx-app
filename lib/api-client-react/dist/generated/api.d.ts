@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAnswerBody, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody } from "./api.schemas";
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from "./api.schemas";
 import { customFetch } from "../custom-fetch";
 import type { ErrorType, BodyType } from "../custom-fetch";
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1476,5 +1476,36 @@ export declare const useDeletePresentationDraft: <TError = ErrorType<unknown>, T
 }) => UseMutationResult<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, {
     id: number;
 }, TContext>;
+export declare const getListAiVideoProjectsUrl: () => string;
+export declare const listAiVideoProjects: (options?: Parameters<typeof customFetch>[1]) => Promise<ListAiVideoProjects200>;
+export declare const getListAiVideoProjectsQueryKey: () => readonly [string];
+export declare const useListAiVideoProjects: (options?: Omit<UseQueryOptions<ListAiVideoProjects200>, "queryKey" | "queryFn">) => UseQueryResult<ListAiVideoProjects200, Error>;
+export declare const getUploadAiVideoSourceImageUrl: () => string;
+export declare const uploadAiVideoSourceImage: (body: UploadAiVideoSourceImageBody, options?: Parameters<typeof customFetch>[1]) => Promise<UploadAiVideoSourceImage201>;
+export declare const useUploadAiVideoSourceImage: () => UseMutationResult<UploadAiVideoSourceImage201, Error, UploadAiVideoSourceImageBody, unknown>;
+export declare const getCreateAiVideoStoryboardUrl: () => string;
+export declare const createAiVideoStoryboard: (body: AiVideoBrief, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const useCreateAiVideoStoryboard: () => UseMutationResult<AiVideoProject, Error, AiVideoBrief, unknown>;
+export declare const getGetAiVideoProjectUrl: (id: number) => string;
+export declare const getAiVideoProject: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const getGetAiVideoProjectQueryKey: (id: number) => readonly [string];
+export declare const useGetAiVideoProject: (id: number) => UseQueryResult<AiVideoProject, Error>;
+export declare const updateAiVideoProject: (id: number, body: UpdateAiVideoProjectBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const useUpdateAiVideoProject: () => UseMutationResult<AiVideoProject, Error, {
+    id: number;
+    body: UpdateAiVideoProjectBody;
+}, unknown>;
+export declare const getRenderAiVideoProjectUrl: (id: number) => string;
+export declare const renderAiVideoProject: (id: number, body: AiVideoRenderBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const useRenderAiVideoProject: () => UseMutationResult<AiVideoProject, Error, {
+    id: number;
+    body: AiVideoRenderBody;
+}, unknown>;
+export declare const getRetryAiVideoProjectRenderUrl: (id: number) => string;
+export declare const retryAiVideoProjectRender: (id: number, body: AiVideoRenderBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const useRetryAiVideoProjectRender: () => UseMutationResult<AiVideoProject, Error, {
+    id: number;
+    body: AiVideoRenderBody;
+}, unknown>;
 export {};
 //# sourceMappingURL=api.d.ts.map

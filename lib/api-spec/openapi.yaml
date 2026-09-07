@@ -15,6 +15,8 @@ tags:
     description: Assignment management
   - name: submissions
     description: Student submissions
+  - name: ai-video
+    description: Persisted AI educational video projects
 paths:
   /healthz:
     get:
@@ -1268,8 +1270,261 @@ paths:
         "204":
           description: Deleted
 
+  /ai-video/projects:
+    get:
+      operationId: listAiVideoProjects
+      tags: [ai-video]
+      summary: List the authenticated teacher's AI video projects
+      responses:
+        "200":
+          description: Project list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projects]
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/AiVideoProject" }
+        "401": { description: Not authenticated }
+
+  /ai-video/uploads/image:
+    post:
+      operationId: uploadAiVideoSourceImage
+      tags: [ai-video]
+      summary: Validate, normalize, and store a teacher-owned AI video source image
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Validated private image and owned object path
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [objectPath, metadata]
+                properties:
+                  objectPath: { type: string, pattern: "^/objects/uploads/ai-video/" }
+                  metadata:
+                    type: object
+                    required: [name, size, contentType, width, height]
+                    properties:
+                      name: { type: string }
+                      size: { type: integer }
+                      contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+                      width: { type: integer }
+                      height: { type: integer }
+        "400": { description: Missing or invalid image bytes }
+        "401": { description: Not authenticated }
+        "413": { description: Image exceeds 15MB }
+
+  /ai-video/projects/storyboard:
+    post:
+      operationId: createAiVideoStoryboard
+      tags: [ai-video]
+      summary: Generate and persist an idempotent educational storyboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiVideoBrief" }
+      responses:
+        "201":
+          description: Storyboard created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoProject" }
+        "200":
+          description: Existing idempotent project
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoProject" }
+        "400": { description: Invalid brief }
+        "401": { description: Not authenticated }
+        "402": { description: Insufficient credits }
+
+  /ai-video/projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      operationId: getAiVideoProject
+      tags: [ai-video]
+      summary: Get an owned AI video project
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoProject" }
+        "404": { description: Project not found }
+    patch:
+      operationId: updateAiVideoProject
+      tags: [ai-video]
+      summary: Edit title or storyboard while not rendering
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAiVideoProjectBody" }
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoProject" }
+        "404": { description: Project not found }
+        "409": { description: Project is rendering }
+
+  /ai-video/projects/{id}/render:
+    post:
+      operationId: renderAiVideoProject
+      tags: [ai-video]
+      summary: Start a persisted background MP4 render
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiVideoRenderBody" }
+      responses:
+        "202":
+          description: Rendering started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoProject" }
+        "404": { description: Project not found }
+        "409": { description: Project is not ready }
+
+  /ai-video/projects/{id}/retry-render:
+    post:
+      operationId: retryAiVideoProjectRender
+      tags: [ai-video]
+      summary: Retry a failed background render
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AiVideoRenderBody" }
+      responses:
+        "202":
+          description: Rendering restarted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoProject" }
+        "404": { description: Project not found }
+        "409": { description: Project has not failed }
+
 components:
   schemas:
+    AiVideoScene:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string, maxLength: 50 }
+        objective: { type: string, maxLength: 300 }
+        narration: { type: string, maxLength: 1500 }
+        onScreenText: { type: string, maxLength: 300 }
+        visualPrompt: { type: string, maxLength: 800 }
+        durationSeconds: { type: integer, minimum: 2, maximum: 30 }
+        transition: { type: string, enum: [cut, dissolve, push, zoom] }
+        sourceImage:
+          type: [string, "null"]
+          maxLength: 500
+          pattern: "^/objects/"
+      required: [id, objective, narration, onScreenText, visualPrompt, durationSeconds, transition]
+
+    AiVideoStoryboard:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 160 }
+        version: { type: integer, minimum: 1, default: 1 }
+        scenes:
+          type: array
+          minItems: 5
+          maxItems: 10
+          items: { $ref: "#/components/schemas/AiVideoScene" }
+      required: [title, version, scenes]
+
+    AiVideoBrief:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 160 }
+        topic: { type: string, maxLength: 300 }
+        sourceText: { type: string, maxLength: 12000 }
+        sourceImages:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 500, pattern: "^/objects/" }
+        prompt: { type: string, maxLength: 1500 }
+        language: { type: string, enum: [ar, en] }
+        durationSeconds: { type: integer, enum: [30, 60, 90] }
+        aspectRatio: { type: string, enum: ["16:9", "9:16", "1:1"] }
+        visualStyle: { type: string, enum: [educational, cinematic, playful, minimal] }
+        voice: { type: string, minLength: 1, maxLength: 40 }
+        music: { type: boolean }
+        captions: { type: boolean }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 100 }
+      required: [title, topic, language, durationSeconds, aspectRatio, visualStyle, voice, music, captions, idempotencyKey]
+
+    AiVideoProject:
+      type: object
+      properties:
+        id: { type: integer }
+        teacherId: { type: integer }
+        title: { type: string }
+        status: { type: string, enum: [draft, storyboard_ready, rendering, ready, failed] }
+        brief: { $ref: "#/components/schemas/AiVideoBrief" }
+        storyboard:
+          oneOf:
+            - { $ref: "#/components/schemas/AiVideoStoryboard" }
+            - { type: "null" }
+        outputUrl: { type: [string, "null"] }
+        errorMessage: { type: [string, "null"] }
+        storyboardIdempotencyKey: { type: string }
+        renderIdempotencyKey: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, teacherId, title, status, brief, storyboard, storyboardIdempotencyKey, createdAt, updatedAt]
+
+    UpdateAiVideoProjectBody:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 160 }
+        storyboard: { $ref: "#/components/schemas/AiVideoStoryboard" }
+
+    AiVideoRenderBody:
+      type: object
+      additionalProperties: false
+      properties:
+        idempotencyKey: { type: string, minLength: 8, maxLength: 100 }
+      required: [idempotencyKey]
+
     HealthStatus:
       type: object
       properties:

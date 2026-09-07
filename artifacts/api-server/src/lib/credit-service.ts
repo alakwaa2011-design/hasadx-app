@@ -1235,6 +1235,21 @@ export const CreditService = {
 
   // ── Auto-refund stale holds ──────────────────────────────────────────────────
 
+  async heartbeatHold(requestId: string, leaseSeconds = 900): Promise<void> {
+    if (!requestId || !Number.isInteger(leaseSeconds) || leaseSeconds < 60 || leaseSeconds > 7_200) {
+      throw new Error("Invalid credit hold heartbeat");
+    }
+    await db.execute(sql`
+      UPDATE credit_holds
+         SET timeout_seconds = GREATEST(
+           timeout_seconds,
+           CEIL(EXTRACT(EPOCH FROM (NOW() - created_at)))::int + ${leaseSeconds}
+         )
+       WHERE request_id = ${requestId}
+         AND status = 'pending'
+    `);
+  },
+
   async autoRefundStaleHolds(): Promise<void> {
     const stale = await db
       .select()

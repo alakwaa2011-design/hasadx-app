@@ -75,6 +75,7 @@ import mindMapsRouter from "./mind-maps";
 import personalAssistantRouter from "./personal-assistant";
 import savedGameActivitiesRouter from "./saved-game-activities";
 import kidsRouter from "./kids";
+import aiVideoProjectsRouter from "./ai-video-projects";
 
 const router: IRouter = Router();
 
@@ -156,5 +157,6 @@ router.use(mindMapsRouter);
 router.use(personalAssistantRouter);
 router.use(savedGameActivitiesRouter);
 router.use(kidsRouter);
+router.use(aiVideoProjectsRouter);
 router.use(shortenRouter);
 export default router;

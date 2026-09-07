@@ -281,6 +281,9 @@ importers:
       resend:
         specifier: ^6.10.0
         version: 6.10.0
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       slugify:
         specifier: ^1.6.9
         version: 1.6.9

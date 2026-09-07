@@ -114,6 +114,8 @@ const PresentationSessionsHistory = lazy(() => import("@/pages/teacher/presentat
 const PresentationCompare = lazy(() => import("@/pages/teacher/presentations/compare"));
 const PresentationActivityRunner = lazy(() => import("@/pages/teacher/presentations/activity-runner"));
 const CreateVideoLesson = lazy(() => import("@/pages/teacher/create-video-lesson"));
+const AiVideoIndex = lazy(() => import("@/pages/teacher/ai-video/index"));
+const AiVideoNew = lazy(() => import("@/pages/teacher/ai-video/new"));
 const VideoLessonDetail = lazy(() => import("@/pages/teacher/video-lesson-detail"));
 const StudentVideoLesson = lazy(() => import("@/pages/student/video-lesson"));
 const AdaptiveSolve = lazy(() => import("@/pages/student/adaptive-solve"));
@@ -462,6 +464,8 @@ function Router() {
         </Route>
         <Route path="/teacher/video-lesson/new" component={CreateVideoLesson} />
         <Route path="/teacher/create-video-lesson" component={CreateVideoLesson} />
+        <Route path="/teacher/ai-video" component={AiVideoIndex} />
+        <Route path="/teacher/ai-video/new" component={AiVideoNew} />
         <Route path="/teacher/video-lesson/:id/live" component={VideoLive} />
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
         <Route path="/teacher/parent-messages" component={ParentMessagesPage} />

@@ -174,7 +174,8 @@ export async function voiceChatStream(
 export async function textToSpeech(
   text: string,
   voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy",
-  format: "wav" | "mp3" | "flac" | "opus" | "pcm16" = "wav"
+  format: "wav" | "mp3" | "flac" | "opus" | "pcm16" = "wav",
+  timeoutMs?: number,
 ): Promise<Buffer> {
   const response = await openai.chat.completions.create({
     model: "gpt-audio",
@@ -184,7 +185,7 @@ export async function textToSpeech(
       { role: "system", content: "You are an assistant that performs text-to-speech." },
       { role: "user", content: `Repeat the following text verbatim: ${text}` },
     ],
-  });
+  }, timeoutMs ? { timeout: timeoutMs } : undefined);
   const audioData = (response.choices[0]?.message as any)?.audio?.data ?? "";
   return Buffer.from(audioData, "base64");
 }

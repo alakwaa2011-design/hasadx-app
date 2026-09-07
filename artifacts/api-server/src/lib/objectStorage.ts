@@ -135,7 +135,40 @@ export class ObjectStorageService {
     });
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
+  /* Server-side upload for teacher-owned generated artifacts. Unlike
+     uploadBufferAsPublic, this never assigns a public ACL; callers must serve
+     the normalized path through an authenticated route. */
+  async uploadBufferAsPrivate(opts: {
+    buffer: Buffer;
+    contentType: string;
+    ownerPrefix: string;
+    extension?: string;
+    customMetadata?: Record<string, string>;
+  }): Promise<string> {
+    const normalizedPrefix = opts.ownerPrefix.replace(/^\/+|\/+$/g, "");
+    if (!normalizedPrefix || !/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(normalizedPrefix)) {
+      throw new Error("Invalid object owner prefix");
+    }
+    const privateObjectDir = this.getPrivateObjectDir();
+    const objectId = randomUUID();
+    const ext = opts.extension ? (opts.extension.startsWith(".") ? opts.extension : `.${opts.extension}`) : "";
+    const fullPath = `${privateObjectDir}/uploads/${normalizedPrefix}/${objectId}${ext}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const file = objectStorageClient.bucket(bucketName).file(objectName);
+    await file.save(opts.buffer, {
+      contentType: opts.contentType,
+      resumable: false,
+      metadata: {
+        cacheControl: "private, no-store",
+        metadata: opts.customMetadata,
+      },
+    });
+    return this.normalizeObjectEntityPath(
+      `https://storage.googleapis.com/${bucketName}/${objectName}`,
+    );
+  }
+
+  async getObjectEntityUploadURL(ownerPrefix?: string): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -144,8 +177,12 @@ export class ObjectStorageService {
       );
     }
 
+    const normalizedPrefix = ownerPrefix?.replace(/^\/+|\/+$/g, "");
+    if (normalizedPrefix && !/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(normalizedPrefix)) {
+      throw new Error("Invalid object owner prefix");
+    }
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const fullPath = `${privateObjectDir}/uploads/${normalizedPrefix ? `${normalizedPrefix}/` : ""}${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
@@ -183,10 +220,14 @@ export class ObjectStorageService {
     return objectFile;
   }
 
-  async listUploadObjects(): Promise<File[]> {
+  async listUploadObjects(ownerPrefix?: string): Promise<File[]> {
     let dir = this.getPrivateObjectDir();
     if (!dir.endsWith("/")) dir = `${dir}/`;
-    const prefixPath = `${dir}uploads/`;
+    const normalizedPrefix = ownerPrefix?.replace(/^\/+|\/+$/g, "");
+    if (normalizedPrefix && !/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(normalizedPrefix)) {
+      throw new Error("Invalid object owner prefix");
+    }
+    const prefixPath = `${dir}uploads/${normalizedPrefix ? `${normalizedPrefix}/` : ""}`;
     const { bucketName, objectName } = parseObjectPath(prefixPath);
     const bucket = objectStorageClient.bucket(bucketName);
     const [files] = await bucket.getFiles({ prefix: objectName });

@@ -6344,4 +6344,823 @@ export declare const DeletePresentationDraftParams: zod.ZodObject<{
 }, {
     id: number;
 }>;
+export declare const AiVideoSceneSchema: zod.ZodObject<{
+    id: zod.ZodString;
+    objective: zod.ZodString;
+    narration: zod.ZodString;
+    onScreenText: zod.ZodString;
+    visualPrompt: zod.ZodString;
+    durationSeconds: zod.ZodNumber;
+    transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+    sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    id: string;
+    durationSeconds: number;
+    objective: string;
+    narration: string;
+    onScreenText: string;
+    visualPrompt: string;
+    transition: "push" | "cut" | "dissolve" | "zoom";
+    sourceImage?: string | null | undefined;
+}, {
+    id: string;
+    durationSeconds: number;
+    objective: string;
+    narration: string;
+    onScreenText: string;
+    visualPrompt: string;
+    transition: "push" | "cut" | "dissolve" | "zoom";
+    sourceImage?: string | null | undefined;
+}>;
+export declare const AiVideoStoryboardSchema: zod.ZodObject<{
+    title: zod.ZodString;
+    version: zod.ZodDefault<zod.ZodNumber>;
+    scenes: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        objective: zod.ZodString;
+        narration: zod.ZodString;
+        onScreenText: zod.ZodString;
+        visualPrompt: zod.ZodString;
+        durationSeconds: zod.ZodNumber;
+        transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+        sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        id: string;
+        durationSeconds: number;
+        objective: string;
+        narration: string;
+        onScreenText: string;
+        visualPrompt: string;
+        transition: "push" | "cut" | "dissolve" | "zoom";
+        sourceImage?: string | null | undefined;
+    }, {
+        id: string;
+        durationSeconds: number;
+        objective: string;
+        narration: string;
+        onScreenText: string;
+        visualPrompt: string;
+        transition: "push" | "cut" | "dissolve" | "zoom";
+        sourceImage?: string | null | undefined;
+    }>, "many">;
+}, "strip", zod.ZodTypeAny, {
+    title: string;
+    version: number;
+    scenes: {
+        id: string;
+        durationSeconds: number;
+        objective: string;
+        narration: string;
+        onScreenText: string;
+        visualPrompt: string;
+        transition: "push" | "cut" | "dissolve" | "zoom";
+        sourceImage?: string | null | undefined;
+    }[];
+}, {
+    title: string;
+    scenes: {
+        id: string;
+        durationSeconds: number;
+        objective: string;
+        narration: string;
+        onScreenText: string;
+        visualPrompt: string;
+        transition: "push" | "cut" | "dissolve" | "zoom";
+        sourceImage?: string | null | undefined;
+    }[];
+    version?: number | undefined;
+}>;
+export declare const AiVideoBriefSchema: zod.ZodObject<{
+    title: zod.ZodString;
+    topic: zod.ZodString;
+    sourceText: zod.ZodOptional<zod.ZodString>;
+    sourceImages: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+    prompt: zod.ZodOptional<zod.ZodString>;
+    language: zod.ZodEnum<["ar", "en"]>;
+    durationSeconds: zod.ZodUnion<[zod.ZodLiteral<30>, zod.ZodLiteral<60>, zod.ZodLiteral<90>]>;
+    aspectRatio: zod.ZodEnum<["16:9", "9:16", "1:1"]>;
+    visualStyle: zod.ZodEnum<["educational", "cinematic", "playful", "minimal"]>;
+    voice: zod.ZodString;
+    music: zod.ZodBoolean;
+    captions: zod.ZodBoolean;
+    idempotencyKey: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    language: "ar" | "en";
+    title: string;
+    durationSeconds: 30 | 60 | 90;
+    topic: string;
+    aspectRatio: "16:9" | "9:16" | "1:1";
+    visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+    voice: string;
+    music: boolean;
+    captions: boolean;
+    idempotencyKey: string;
+    prompt?: string | undefined;
+    sourceText?: string | undefined;
+    sourceImages?: string[] | undefined;
+}, {
+    language: "ar" | "en";
+    title: string;
+    durationSeconds: 30 | 60 | 90;
+    topic: string;
+    aspectRatio: "16:9" | "9:16" | "1:1";
+    visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+    voice: string;
+    music: boolean;
+    captions: boolean;
+    idempotencyKey: string;
+    prompt?: string | undefined;
+    sourceText?: string | undefined;
+    sourceImages?: string[] | undefined;
+}>;
+export declare const AiVideoProjectResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    status: zod.ZodEnum<["draft", "storyboard_ready", "rendering", "ready", "failed"]>;
+    brief: zod.ZodObject<{
+        title: zod.ZodString;
+        topic: zod.ZodString;
+        sourceText: zod.ZodOptional<zod.ZodString>;
+        sourceImages: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        prompt: zod.ZodOptional<zod.ZodString>;
+        language: zod.ZodEnum<["ar", "en"]>;
+        durationSeconds: zod.ZodUnion<[zod.ZodLiteral<30>, zod.ZodLiteral<60>, zod.ZodLiteral<90>]>;
+        aspectRatio: zod.ZodEnum<["16:9", "9:16", "1:1"]>;
+        visualStyle: zod.ZodEnum<["educational", "cinematic", "playful", "minimal"]>;
+        voice: zod.ZodString;
+        music: zod.ZodBoolean;
+        captions: zod.ZodBoolean;
+        idempotencyKey: zod.ZodString;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        title: string;
+        durationSeconds: 30 | 60 | 90;
+        topic: string;
+        aspectRatio: "16:9" | "9:16" | "1:1";
+        visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+        voice: string;
+        music: boolean;
+        captions: boolean;
+        idempotencyKey: string;
+        prompt?: string | undefined;
+        sourceText?: string | undefined;
+        sourceImages?: string[] | undefined;
+    }, {
+        language: "ar" | "en";
+        title: string;
+        durationSeconds: 30 | 60 | 90;
+        topic: string;
+        aspectRatio: "16:9" | "9:16" | "1:1";
+        visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+        voice: string;
+        music: boolean;
+        captions: boolean;
+        idempotencyKey: string;
+        prompt?: string | undefined;
+        sourceText?: string | undefined;
+        sourceImages?: string[] | undefined;
+    }>;
+    storyboard: zod.ZodNullable<zod.ZodObject<{
+        title: zod.ZodString;
+        version: zod.ZodDefault<zod.ZodNumber>;
+        scenes: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            objective: zod.ZodString;
+            narration: zod.ZodString;
+            onScreenText: zod.ZodString;
+            visualPrompt: zod.ZodString;
+            durationSeconds: zod.ZodNumber;
+            transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+            sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }, {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        title: string;
+        version: number;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+    }, {
+        title: string;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+        version?: number | undefined;
+    }>>;
+    outputUrl: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    storyboardIdempotencyKey: zod.ZodString;
+    renderIdempotencyKey: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        title: string;
+        durationSeconds: 30 | 60 | 90;
+        topic: string;
+        aspectRatio: "16:9" | "9:16" | "1:1";
+        visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+        voice: string;
+        music: boolean;
+        captions: boolean;
+        idempotencyKey: string;
+        prompt?: string | undefined;
+        sourceText?: string | undefined;
+        sourceImages?: string[] | undefined;
+    };
+    storyboard: {
+        title: string;
+        version: number;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+    } | null;
+    storyboardIdempotencyKey: string;
+    errorMessage?: string | null | undefined;
+    outputUrl?: string | null | undefined;
+    renderIdempotencyKey?: string | null | undefined;
+}, {
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        title: string;
+        durationSeconds: 30 | 60 | 90;
+        topic: string;
+        aspectRatio: "16:9" | "9:16" | "1:1";
+        visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+        voice: string;
+        music: boolean;
+        captions: boolean;
+        idempotencyKey: string;
+        prompt?: string | undefined;
+        sourceText?: string | undefined;
+        sourceImages?: string[] | undefined;
+    };
+    storyboard: {
+        title: string;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+        version?: number | undefined;
+    } | null;
+    storyboardIdempotencyKey: string;
+    errorMessage?: string | null | undefined;
+    outputUrl?: string | null | undefined;
+    renderIdempotencyKey?: string | null | undefined;
+}>;
+export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
+    projects: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodNumber;
+        teacherId: zod.ZodNumber;
+        title: zod.ZodString;
+        status: zod.ZodEnum<["draft", "storyboard_ready", "rendering", "ready", "failed"]>;
+        brief: zod.ZodObject<{
+            title: zod.ZodString;
+            topic: zod.ZodString;
+            sourceText: zod.ZodOptional<zod.ZodString>;
+            sourceImages: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+            prompt: zod.ZodOptional<zod.ZodString>;
+            language: zod.ZodEnum<["ar", "en"]>;
+            durationSeconds: zod.ZodUnion<[zod.ZodLiteral<30>, zod.ZodLiteral<60>, zod.ZodLiteral<90>]>;
+            aspectRatio: zod.ZodEnum<["16:9", "9:16", "1:1"]>;
+            visualStyle: zod.ZodEnum<["educational", "cinematic", "playful", "minimal"]>;
+            voice: zod.ZodString;
+            music: zod.ZodBoolean;
+            captions: zod.ZodBoolean;
+            idempotencyKey: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            language: "ar" | "en";
+            title: string;
+            durationSeconds: 30 | 60 | 90;
+            topic: string;
+            aspectRatio: "16:9" | "9:16" | "1:1";
+            visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+            voice: string;
+            music: boolean;
+            captions: boolean;
+            idempotencyKey: string;
+            prompt?: string | undefined;
+            sourceText?: string | undefined;
+            sourceImages?: string[] | undefined;
+        }, {
+            language: "ar" | "en";
+            title: string;
+            durationSeconds: 30 | 60 | 90;
+            topic: string;
+            aspectRatio: "16:9" | "9:16" | "1:1";
+            visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+            voice: string;
+            music: boolean;
+            captions: boolean;
+            idempotencyKey: string;
+            prompt?: string | undefined;
+            sourceText?: string | undefined;
+            sourceImages?: string[] | undefined;
+        }>;
+        storyboard: zod.ZodNullable<zod.ZodObject<{
+            title: zod.ZodString;
+            version: zod.ZodDefault<zod.ZodNumber>;
+            scenes: zod.ZodArray<zod.ZodObject<{
+                id: zod.ZodString;
+                objective: zod.ZodString;
+                narration: zod.ZodString;
+                onScreenText: zod.ZodString;
+                visualPrompt: zod.ZodString;
+                durationSeconds: zod.ZodNumber;
+                transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+                sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            }, "strip", zod.ZodTypeAny, {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }, {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }>, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            title: string;
+            version: number;
+            scenes: {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }[];
+        }, {
+            title: string;
+            scenes: {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }[];
+            version?: number | undefined;
+        }>>;
+        outputUrl: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        storyboardIdempotencyKey: zod.ZodString;
+        renderIdempotencyKey: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        createdAt: zod.ZodDate;
+        updatedAt: zod.ZodDate;
+    }, "strip", zod.ZodTypeAny, {
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
+        id: number;
+        createdAt: Date;
+        teacherId: number;
+        title: string;
+        updatedAt: Date;
+        brief: {
+            language: "ar" | "en";
+            title: string;
+            durationSeconds: 30 | 60 | 90;
+            topic: string;
+            aspectRatio: "16:9" | "9:16" | "1:1";
+            visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+            voice: string;
+            music: boolean;
+            captions: boolean;
+            idempotencyKey: string;
+            prompt?: string | undefined;
+            sourceText?: string | undefined;
+            sourceImages?: string[] | undefined;
+        };
+        storyboard: {
+            title: string;
+            version: number;
+            scenes: {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }[];
+        } | null;
+        storyboardIdempotencyKey: string;
+        errorMessage?: string | null | undefined;
+        outputUrl?: string | null | undefined;
+        renderIdempotencyKey?: string | null | undefined;
+    }, {
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
+        id: number;
+        createdAt: Date;
+        teacherId: number;
+        title: string;
+        updatedAt: Date;
+        brief: {
+            language: "ar" | "en";
+            title: string;
+            durationSeconds: 30 | 60 | 90;
+            topic: string;
+            aspectRatio: "16:9" | "9:16" | "1:1";
+            visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+            voice: string;
+            music: boolean;
+            captions: boolean;
+            idempotencyKey: string;
+            prompt?: string | undefined;
+            sourceText?: string | undefined;
+            sourceImages?: string[] | undefined;
+        };
+        storyboard: {
+            title: string;
+            scenes: {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }[];
+            version?: number | undefined;
+        } | null;
+        storyboardIdempotencyKey: string;
+        errorMessage?: string | null | undefined;
+        outputUrl?: string | null | undefined;
+        renderIdempotencyKey?: string | null | undefined;
+    }>, "many">;
+}, "strip", zod.ZodTypeAny, {
+    projects: {
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
+        id: number;
+        createdAt: Date;
+        teacherId: number;
+        title: string;
+        updatedAt: Date;
+        brief: {
+            language: "ar" | "en";
+            title: string;
+            durationSeconds: 30 | 60 | 90;
+            topic: string;
+            aspectRatio: "16:9" | "9:16" | "1:1";
+            visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+            voice: string;
+            music: boolean;
+            captions: boolean;
+            idempotencyKey: string;
+            prompt?: string | undefined;
+            sourceText?: string | undefined;
+            sourceImages?: string[] | undefined;
+        };
+        storyboard: {
+            title: string;
+            version: number;
+            scenes: {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }[];
+        } | null;
+        storyboardIdempotencyKey: string;
+        errorMessage?: string | null | undefined;
+        outputUrl?: string | null | undefined;
+        renderIdempotencyKey?: string | null | undefined;
+    }[];
+}, {
+    projects: {
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
+        id: number;
+        createdAt: Date;
+        teacherId: number;
+        title: string;
+        updatedAt: Date;
+        brief: {
+            language: "ar" | "en";
+            title: string;
+            durationSeconds: 30 | 60 | 90;
+            topic: string;
+            aspectRatio: "16:9" | "9:16" | "1:1";
+            visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+            voice: string;
+            music: boolean;
+            captions: boolean;
+            idempotencyKey: string;
+            prompt?: string | undefined;
+            sourceText?: string | undefined;
+            sourceImages?: string[] | undefined;
+        };
+        storyboard: {
+            title: string;
+            scenes: {
+                id: string;
+                durationSeconds: number;
+                objective: string;
+                narration: string;
+                onScreenText: string;
+                visualPrompt: string;
+                transition: "push" | "cut" | "dissolve" | "zoom";
+                sourceImage?: string | null | undefined;
+            }[];
+            version?: number | undefined;
+        } | null;
+        storyboardIdempotencyKey: string;
+        errorMessage?: string | null | undefined;
+        outputUrl?: string | null | undefined;
+        renderIdempotencyKey?: string | null | undefined;
+    }[];
+}>;
+export declare const UploadAiVideoSourceImageBody: zod.ZodObject<{
+    file: zod.ZodUnknown;
+}, "strip", zod.ZodTypeAny, {
+    file?: unknown;
+}, {
+    file?: unknown;
+}>;
+export declare const UploadAiVideoSourceImageResponse: zod.ZodObject<{
+    objectPath: zod.ZodString;
+    metadata: zod.ZodObject<{
+        name: zod.ZodString;
+        size: zod.ZodNumber;
+        contentType: zod.ZodEnum<["image/jpeg", "image/png", "image/webp"]>;
+        width: zod.ZodNumber;
+        height: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        name: string;
+        size: number;
+        contentType: "image/jpeg" | "image/png" | "image/webp";
+        width: number;
+        height: number;
+    }, {
+        name: string;
+        size: number;
+        contentType: "image/jpeg" | "image/png" | "image/webp";
+        width: number;
+        height: number;
+    }>;
+}, "strip", zod.ZodTypeAny, {
+    objectPath: string;
+    metadata: {
+        name: string;
+        size: number;
+        contentType: "image/jpeg" | "image/png" | "image/webp";
+        width: number;
+        height: number;
+    };
+}, {
+    objectPath: string;
+    metadata: {
+        name: string;
+        size: number;
+        contentType: "image/jpeg" | "image/png" | "image/webp";
+        width: number;
+        height: number;
+    };
+}>;
+export declare const CreateAiVideoStoryboardBody: zod.ZodObject<{
+    title: zod.ZodString;
+    topic: zod.ZodString;
+    sourceText: zod.ZodOptional<zod.ZodString>;
+    sourceImages: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+    prompt: zod.ZodOptional<zod.ZodString>;
+    language: zod.ZodEnum<["ar", "en"]>;
+    durationSeconds: zod.ZodUnion<[zod.ZodLiteral<30>, zod.ZodLiteral<60>, zod.ZodLiteral<90>]>;
+    aspectRatio: zod.ZodEnum<["16:9", "9:16", "1:1"]>;
+    visualStyle: zod.ZodEnum<["educational", "cinematic", "playful", "minimal"]>;
+    voice: zod.ZodString;
+    music: zod.ZodBoolean;
+    captions: zod.ZodBoolean;
+    idempotencyKey: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    language: "ar" | "en";
+    title: string;
+    durationSeconds: 30 | 60 | 90;
+    topic: string;
+    aspectRatio: "16:9" | "9:16" | "1:1";
+    visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+    voice: string;
+    music: boolean;
+    captions: boolean;
+    idempotencyKey: string;
+    prompt?: string | undefined;
+    sourceText?: string | undefined;
+    sourceImages?: string[] | undefined;
+}, {
+    language: "ar" | "en";
+    title: string;
+    durationSeconds: 30 | 60 | 90;
+    topic: string;
+    aspectRatio: "16:9" | "9:16" | "1:1";
+    visualStyle: "minimal" | "educational" | "cinematic" | "playful";
+    voice: string;
+    music: boolean;
+    captions: boolean;
+    idempotencyKey: string;
+    prompt?: string | undefined;
+    sourceText?: string | undefined;
+    sourceImages?: string[] | undefined;
+}>;
+export declare const GetAiVideoProjectParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
+    title: zod.ZodOptional<zod.ZodString>;
+    storyboard: zod.ZodOptional<zod.ZodObject<{
+        title: zod.ZodString;
+        version: zod.ZodDefault<zod.ZodNumber>;
+        scenes: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            objective: zod.ZodString;
+            narration: zod.ZodString;
+            onScreenText: zod.ZodString;
+            visualPrompt: zod.ZodString;
+            durationSeconds: zod.ZodNumber;
+            transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+            sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }, {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        title: string;
+        version: number;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+    }, {
+        title: string;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+        version?: number | undefined;
+    }>>;
+}, "strip", zod.ZodTypeAny, {
+    title?: string | undefined;
+    storyboard?: {
+        title: string;
+        version: number;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+    } | undefined;
+}, {
+    title?: string | undefined;
+    storyboard?: {
+        title: string;
+        scenes: {
+            id: string;
+            durationSeconds: number;
+            objective: string;
+            narration: string;
+            onScreenText: string;
+            visualPrompt: string;
+            transition: "push" | "cut" | "dissolve" | "zoom";
+            sourceImage?: string | null | undefined;
+        }[];
+        version?: number | undefined;
+    } | undefined;
+}>;
+export declare const RenderAiVideoProjectBody: zod.ZodObject<{
+    idempotencyKey: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    idempotencyKey: string;
+}, {
+    idempotencyKey: string;
+}>;
+export declare const RenderAiVideoProjectParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const RetryAiVideoProjectRenderBody: zod.ZodObject<{
+    idempotencyKey: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    idempotencyKey: string;
+}, {
+    idempotencyKey: string;
+}>;
+export declare const RetryAiVideoProjectRenderParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
 //# sourceMappingURL=api.d.ts.map

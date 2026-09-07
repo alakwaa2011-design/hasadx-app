@@ -534,6 +534,62 @@ async function runSchemaMigrations() {
     logger.error(err, "Schema migration failed");
   }
 
+  // ── Persisted AI educational videos (metadata only; media stays in Object Storage) ──
+  // Isolated so unrelated legacy migrations cannot prevent this feature table
+  // from being provisioned on an existing deployment.
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_video_projects (
+        id                         SERIAL PRIMARY KEY,
+        teacher_id                 INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        title                      TEXT NOT NULL,
+        status                     TEXT NOT NULL DEFAULT 'draft'
+          CHECK (status IN ('draft', 'storyboard_ready', 'rendering', 'ready', 'failed')),
+        brief                      JSONB NOT NULL,
+        storyboard                 JSONB,
+        output_url                 TEXT,
+        error_message              TEXT,
+        storyboard_idempotency_key TEXT NOT NULL,
+        storyboard_lease_id         TEXT,
+        storyboard_lease_expires_at TIMESTAMPTZ,
+        render_idempotency_key     TEXT,
+        render_lease_id             TEXT,
+        render_lease_expires_at     TIMESTAMPTZ,
+        created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS ai_video_projects_storyboard_idempotency_uq
+        ON ai_video_projects(storyboard_idempotency_key)
+    `);
+    await db.execute(sql`
+      UPDATE ai_video_projects
+         SET storyboard = NULL
+       WHERE status = 'draft'
+         AND COALESCE(jsonb_array_length(storyboard->'scenes'), 0) = 0
+    `);
+    await db.execute(sql`
+      ALTER TABLE ai_video_projects
+        ALTER COLUMN storyboard DROP NOT NULL,
+        ALTER COLUMN storyboard DROP DEFAULT
+    `);
+    await db.execute(sql`
+      ALTER TABLE ai_video_projects
+        ADD COLUMN IF NOT EXISTS storyboard_lease_id TEXT,
+        ADD COLUMN IF NOT EXISTS storyboard_lease_expires_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS render_lease_id TEXT,
+        ADD COLUMN IF NOT EXISTS render_lease_expires_at TIMESTAMPTZ
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS ai_video_projects_teacher_updated_idx
+        ON ai_video_projects(teacher_id, updated_at DESC)
+    `);
+    logger.info("AI video projects table ready");
+  } catch (err) {
+    logger.error(err, "AI video projects migration failed");
+  }
+
   // Kept separate from the legacy migration bundle so this new table is still
   // provisioned if an unrelated historical migration above fails.
   try {
@@ -807,6 +863,8 @@ async function runSchemaMigrations() {
         ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'Extract Questions from Source', 'ai', 10, 10, 180),
         ('presentation',     'العرض التقديمي',           'Presentation',                     'ai',    20, 20,  300),
         ('presentation-slide','توليد شريحة واحدة',       'Generate One Slide',               'ai',     5,  5,  120),
+        ('ai-video',         'لوحة قصة فيديو تعليمي',   'Educational Video Storyboard',     'ai',    15, 15,  180),
+        ('ai-video-render',  'إخراج فيديو تعليمي',      'Educational Video Render',         'ai',    25, 25,  600),
         ('video-interactive','الفيديو التفاعلي',         'Interactive Video',                'ai',    20, 20,  180),
         ('adaptive-test',    'الاختبار التكيّفي',        'Adaptive Test',                    'ai',    20, 20,  120),
         ('tts',              'تحويل النص إلى صوت',      'Text to Speech',                   'ai',     2,  2,  120),
@@ -1631,6 +1689,49 @@ httpServer.listen(port, () => {
       startEmailOutboxWorker();
       startMissingWelcomeCreditsAlertJob();
       startAnnualCreditReleaseJob();
+
+      import("./lib/ai-video-renderer").then(({
+        failStaleAiVideoRenders,
+        failStaleAiVideoStoryboards,
+      }) => {
+        const recoverExpiredRenders = () => {
+          Promise.all([
+            failStaleAiVideoStoryboards(),
+            failStaleAiVideoRenders(),
+          ]).then(([storyboards, renders]) => {
+            if (storyboards > 0) {
+              logger.warn({ count: storyboards }, "Recovered expired AI video storyboard leases");
+            }
+            if (renders > 0) {
+              logger.warn({ count: renders }, "Recovered expired AI video render leases");
+            }
+          }).catch((err) => {
+            logger.warn({ err }, "AI video stale-work recovery failed");
+          });
+        };
+        recoverExpiredRenders();
+        setInterval(recoverExpiredRenders, 60_000).unref();
+      }).catch((err) => {
+        logger.warn({ err }, "Failed to start AI video render recovery");
+      });
+
+      import("./lib/ai-video-source-images").then(({
+        deleteStaleUnclaimedAiVideoSourceImages,
+      }) => {
+        const cleanupSourceImages = () => {
+          deleteStaleUnclaimedAiVideoSourceImages().then((deleted) => {
+            if (deleted > 0) {
+              logger.info({ deleted }, "Deleted stale unclaimed AI video source images");
+            }
+          }).catch((err) => {
+            logger.warn({ err }, "AI video source image cleanup failed");
+          });
+        };
+        cleanupSourceImages();
+        setInterval(cleanupSourceImages, 60 * 60 * 1000).unref();
+      }).catch((err) => {
+        logger.warn({ err }, "Failed to start AI video source image cleanup");
+      });
 
       // ── Credits: auto-refund stale holds every 60s ─────────────────────────
       import("./lib/credit-service").then(({ CreditService }) => {

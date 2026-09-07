@@ -2998,3 +2998,85 @@ export const UpdatePresentationDraftResponse = zod.object({
 export const DeletePresentationDraftParams = zod.object({
   id: zod.coerce.number(),
 });
+
+// AI video operation schemas. These use the repository's Zod 3-compatible
+// namespace API; current Orval emits Zod 4-only `zod.int()` calls.
+export const AiVideoSceneSchema = zod.object({
+  id: zod.string().max(50),
+  objective: zod.string().max(300),
+  narration: zod.string().max(1500),
+  onScreenText: zod.string().max(300),
+  visualPrompt: zod.string().max(800),
+  durationSeconds: zod.number().int().min(2).max(30),
+  transition: zod.enum(["cut", "dissolve", "push", "zoom"]),
+  sourceImage: zod.string().max(500).regex(/^\/objects\//).nullish(),
+});
+
+export const AiVideoStoryboardSchema = zod.object({
+  title: zod.string().min(1).max(160),
+  version: zod.number().int().min(1).default(1),
+  scenes: zod.array(AiVideoSceneSchema).min(5).max(10),
+});
+
+export const AiVideoBriefSchema = zod.object({
+  title: zod.string().min(1).max(160),
+  topic: zod.string().max(300),
+  sourceText: zod.string().max(12000).optional(),
+  sourceImages: zod
+    .array(zod.string().max(500).regex(/^\/objects\//))
+    .max(8)
+    .optional(),
+  prompt: zod.string().max(1500).optional(),
+  language: zod.enum(["ar", "en"]),
+  durationSeconds: zod.union([zod.literal(30), zod.literal(60), zod.literal(90)]),
+  aspectRatio: zod.enum(["16:9", "9:16", "1:1"]),
+  visualStyle: zod.enum(["educational", "cinematic", "playful", "minimal"]),
+  voice: zod.string().min(1).max(40),
+  music: zod.boolean(),
+  captions: zod.boolean(),
+  idempotencyKey: zod.string().min(8).max(100),
+});
+
+export const AiVideoProjectResponse = zod.object({
+  id: zod.number().int(),
+  teacherId: zod.number().int(),
+  title: zod.string(),
+  status: zod.enum(["draft", "storyboard_ready", "rendering", "ready", "failed"]),
+  brief: AiVideoBriefSchema,
+  storyboard: AiVideoStoryboardSchema.nullable(),
+  outputUrl: zod.string().nullish(),
+  errorMessage: zod.string().nullish(),
+  storyboardIdempotencyKey: zod.string(),
+  renderIdempotencyKey: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+export const ListAiVideoProjectsResponse = zod.object({
+  projects: zod.array(AiVideoProjectResponse),
+});
+export const UploadAiVideoSourceImageBody = zod.object({
+  file: zod.unknown(),
+});
+export const UploadAiVideoSourceImageResponse = zod.object({
+  objectPath: zod.string().regex(/^\/objects\/uploads\/ai-video\//),
+  metadata: zod.object({
+    name: zod.string(),
+    size: zod.number().int(),
+  contentType: zod.enum(["image/jpeg", "image/png", "image/webp"]),
+    width: zod.number().int(),
+    height: zod.number().int(),
+  }),
+});
+export const CreateAiVideoStoryboardBody = AiVideoBriefSchema;
+export const GetAiVideoProjectParams = zod.object({ id: zod.coerce.number() });
+export const UpdateAiVideoProjectBodySchema = zod.object({
+  title: zod.string().min(1).max(160).optional(),
+  storyboard: AiVideoStoryboardSchema.optional(),
+});
+export const RenderAiVideoProjectBody = zod.object({
+  idempotencyKey: zod.string().min(8).max(100),
+});
+export const RenderAiVideoProjectParams = GetAiVideoProjectParams;
+export const RetryAiVideoProjectRenderBody = RenderAiVideoProjectBody;
+export const RetryAiVideoProjectRenderParams = GetAiVideoProjectParams;

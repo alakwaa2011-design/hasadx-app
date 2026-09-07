@@ -201,6 +201,11 @@ async function serveObject(req: Request, res: Response) {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+    const aiVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
+    if (aiVideoOwner && Number(aiVideoOwner) !== req.session?.teacherId) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 

@@ -232,7 +232,11 @@ export async function holdCreditsForToolRequest(
   teacherId: number,
   toolKey: string,
   requestId: string,
-): Promise<{ mode: "none" | "held"; creditsHeld: number }> {
+): Promise<{
+  mode: "none" | "held";
+  creditsHeld: number;
+  existingStatus?: "pending" | "completed" | "refunded" | "expired";
+}> {
   const settings = await getSettings();
   const isAdminTestMode = settings.adminCreditTestMode && settings.adminId === teacherId;
   if (!settings.creditsEnabled && !isAdminTestMode) return { mode: "none", creditsHeld: 0 };
@@ -260,8 +264,8 @@ export async function holdCreditsForToolRequest(
   }
 
   try {
-    const { creditsHeld } = await CreditService.hold(teacherId, toolKey, requestId);
-    return { mode: "held", creditsHeld };
+    const { creditsHeld, existingStatus } = await CreditService.hold(teacherId, toolKey, requestId);
+    return { mode: "held", creditsHeld, existingStatus };
   } catch (err: any) {
     if (err?.message?.includes("رصيد غير كافٍ")) {
       throw new InsufficientCreditsError(

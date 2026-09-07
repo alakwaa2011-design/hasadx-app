@@ -1,11 +1,15 @@
 ---
-name: Credit hold idempotency races
-description: Lessons from making CreditService.hold safe under concurrent/replayed idempotency keys
+name: Credit hold idempotency and artifact delivery races
+description: Rules for concurrent holds, replay safety, and crash-safe paid artifact completion
 ---
-Rule: idempotency for credit holds needs THREE layers — (1) fast-path SELECT by requestId, (2) re-check under the account row lock inside the transaction (loser of a race at exactly-one-price balance otherwise sees "insufficient" after the winner deducts), (3) catch 23505 on the UNIQUE(request_id) insert (pg error code may be nested at err.cause.code with drizzle).
+Idempotent paid work needs one serialized claim boundary: only one duplicate may execute, while every replay follows the stored operation outcome.
 
-Terminal replays: hold() returns `existingStatus`; checkCredits handles replays by status — `completed` with a stored `credit_holds.result_json` snapshot (written atomically by capture(requestId, resultJson)) replays 200 with the exact stored body (no re-generation, no charge); `completed` without snapshot and `refunded` → 409 DUPLICATE_REQUEST; `pending` → 409 REQUEST_IN_PROGRESS (letting it through re-runs the generator unbilled since the hold is shared).
+**Why:** checking a key and claiming work in separate, uncoordinated steps lets one duplicate refund or reuse another request's hold, causing failed work, double charges, or unbilled execution.
 
-**Why:** architect review caught both races after a naive select-then-insert implementation passed happy-path tests; the concurrency test only exposes the lock-order race when the seeded balance covers exactly one operation.
+**How to apply:** claim before execution, re-check inside the debit boundary, and test simultaneous duplicates with balance for exactly one operation.
 
-**How to apply:** any new idempotent charge path should reuse CreditService.hold + checkCredits middleware; integration tests must include a concurrent-duplicate case at exactly-one-price balance and a replay-after-refund case.
+Long paid jobs need a renewable worker lease. Persisting the final result and completing its charge are atomic; recovery claims expired leases only and stays fail-closed until credit reconciliation succeeds.
+
+**Why:** unfenced workers, split completion writes, or early retries can turn one crash into lost work or a double charge.
+
+**How to apply:** fence terminal writes by lease identity and make artifact completion, charge completion, and retry eligibility agree after any interruption.

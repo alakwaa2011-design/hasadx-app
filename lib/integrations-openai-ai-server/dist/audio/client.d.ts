@@ -29,7 +29,7 @@ export declare function voiceChatStream(audioBuffer: Buffer, voice?: "alloy" | "
     data: string;
 }>>;
 /** Text-to-Speech using gpt-audio. */
-export declare function textToSpeech(text: string, voice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer", format?: "wav" | "mp3" | "flac" | "opus" | "pcm16"): Promise<Buffer>;
+export declare function textToSpeech(text: string, voice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer", format?: "wav" | "mp3" | "flac" | "opus" | "pcm16", timeoutMs?: number): Promise<Buffer>;
 /** Streaming Text-to-Speech. */
 export declare function textToSpeechStream(text: string, voice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"): Promise<AsyncIterable<string>>;
 /** Speech-to-Text using gpt-4o-mini-transcribe. */

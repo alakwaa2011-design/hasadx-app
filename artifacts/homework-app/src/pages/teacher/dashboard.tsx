@@ -2932,6 +2932,15 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           href: "/teacher/video-lesson/new",
         },
         {
+          icon: <Video className="w-6 h-6" />,
+          title: isAr ? "إنتاج فيديو بالذكاء الاصطناعي" : "AI Video Production",
+          desc: isAr
+            ? "حوّل محتواك إلى فيديوهات احترافية شاملة للتعليق الصوتي والصور"
+            : "Turn your content into professional videos with voiceover and images",
+          accent: BRAND.gold,
+          href: "/teacher/ai-video",
+        },
+        {
           icon: <Monitor className="w-6 h-6" />,
           title: isAr ? "العروض التفاعلية" : "Interactive Presentations",
           desc: isAr
