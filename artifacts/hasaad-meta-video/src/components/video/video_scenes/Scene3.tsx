@@ -34,7 +34,7 @@ export function Scene3() {
             className="mb-[8vmin] bg-white/10 p-[6vmin] rounded-full backdrop-blur-md border border-white/20 shadow-[0_0_60px_rgba(255,255,255,0.1)]"
           >
             <img 
-              src={`${import.meta.env.BASE_URL}images/logo-mark-transparent.png`} 
+              src={`${import.meta.env.BASE_URL}images/logo-mark-transparent.png`}
               alt="Hasaad Logo" 
               className="w-[40vmin] h-auto object-contain mx-auto"
             />
