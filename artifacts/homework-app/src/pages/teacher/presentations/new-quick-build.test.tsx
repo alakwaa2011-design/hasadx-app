@@ -144,4 +144,72 @@ describe("الإنشاء السريع للعروض", () => {
       "/teacher/presentations/87?draftId=41",
     );
   });
+
+  it("ينتظر حالة المسودة ويفتح المحرر عندما يتأخر presentationId", async () => {
+    vi.useFakeTimers();
+    creditAwareFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 41,
+          outline: { slides: [{ title: "المقدمة", kind: "content" }] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+    let draftPollCount = 0;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      draftPollCount += 1;
+      return {
+        ok: true,
+        json: async () => ({
+          status: draftPollCount === 1 ? "building" : "built",
+          presentationId: draftPollCount === 1 ? undefined : 93,
+        }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => {
+      root.render(<NewPresentationPage />);
+    });
+    await act(async () => clickButton("إنشاء سريع"));
+
+    const topic = container.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(topic).toBeTruthy();
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(topic, "دورة الماء");
+      topic.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await act(async () => {
+      clickButton("أنشئ الحصة الآن");
+      await vi.advanceTimersByTimeAsync(1_600);
+    });
+
+    expect(creditAwareFetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/presentations/ai/build/41",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "/api/presentations/drafts/41",
+      expect.objectContaining({ credentials: "include" }),
+    );
+    expect(setLocation).toHaveBeenCalledWith(
+      "/teacher/presentations/93?draftId=41",
+    );
+    vi.useRealTimers();
+  });
 });
