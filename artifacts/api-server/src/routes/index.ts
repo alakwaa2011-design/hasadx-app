@@ -74,6 +74,7 @@ import directPlayRouter from "./direct-play";
 import mindMapsRouter from "./mind-maps";
 import personalAssistantRouter from "./personal-assistant";
 import savedGameActivitiesRouter from "./saved-game-activities";
+import kidsRouter from "./kids";
 
 const router: IRouter = Router();
 
@@ -154,5 +155,6 @@ router.use(whiteboardRouter);
 router.use(mindMapsRouter);
 router.use(personalAssistantRouter);
 router.use(savedGameActivitiesRouter);
+router.use(kidsRouter);
 router.use(shortenRouter);
 export default router;

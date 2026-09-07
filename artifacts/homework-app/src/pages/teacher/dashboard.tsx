@@ -2997,6 +2997,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           accent: BRAND.gold,
           href: "/teacher/student-wheel",
         },
+        {
+          icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>,
+          title: isAr ? "منصة الصغار" : "Kids Platform",
+          desc: isAr ? "إدارة طلاب رياض الأطفال وإرسال المهام التفاعلية" : "Manage kindergarten students and send interactive tasks",
+          accent: BRAND.green,
+          href: "/teacher/kids",
+        },
         ...(classroomEnabled ? [{
           icon: <GraduationCap className="w-6 h-6" />,
           title: "Google Classroom",

@@ -106,6 +106,22 @@ const SmartBoardNew     = lazy(() => import("@/pages/teacher/smart-board-new"));
 const SmartBoardEdit    = lazy(() => import("@/pages/teacher/smart-board-edit"));
 const SmartBoardPresent = lazy(() => import("@/pages/teacher/smart-board-present"));
 const SmartBoardHistory = lazy(() => import("@/pages/teacher/smart-board-history"));
+
+// Hasaad Kids (Student)
+const KidsLayout = lazy(() => import("@/pages/kids/layout"));
+const KidsHome = lazy(() => import("@/pages/kids/home"));
+const KidsAdventure = lazy(() => import("@/pages/kids/adventure"));
+const KidsActivity = lazy(() => import("@/pages/kids/activity"));
+const KidsActivityComplete = lazy(() => import("@/pages/kids/activity-complete"));
+const KidsStickers = lazy(() => import("@/pages/kids/stickers"));
+const KidsBoard = lazy(() => import("@/pages/kids/board"));
+
+// Hasaad Kids (Teacher)
+const TeacherKidsDashboard = lazy(() => import("@/pages/teacher/kids/overview"));
+const TeacherKidsProfile = lazy(() => import("@/pages/teacher/kids/profile"));
+const TeacherKidsBoard = lazy(() => import("@/pages/teacher/kids/board"));
+const TeacherKidsAssign = lazy(() => import("@/pages/teacher/kids/assign"));
+
 const PublicGamesPage = lazy(() => import("@/pages/public-games"));
 const GuestCreatePage = lazy(() => import("@/pages/guest-create"));
 const SoloPlayPage = lazy(() => import("@/pages/solo-play"));
@@ -509,6 +525,53 @@ function Router() {
         <Route path="/teacher/mindmap/create" component={MindMapCreate} />
         <Route path="/teacher/lesson-plans/create" component={LessonPlanCreate} />
         <Route path="/teacher/lesson-plans/:id/print" component={LessonPlanPrint} />
+
+        {/* Hasaad Kids (Teacher) */}
+        <Route path="/teacher/kids">
+          <Suspense fallback={<LoadingFallback />}><TeacherKidsDashboard /></Suspense>
+        </Route>
+        <Route path="/teacher/kids/board">
+          <Suspense fallback={<LoadingFallback />}><TeacherKidsBoard /></Suspense>
+        </Route>
+        <Route path="/teacher/kids/profile/:id">
+          <Suspense fallback={<LoadingFallback />}><TeacherKidsProfile /></Suspense>
+        </Route>
+        <Route path="/teacher/kids/assign">
+          <Suspense fallback={<LoadingFallback />}><TeacherKidsAssign /></Suspense>
+        </Route>
+
+        {/* Hasaad Kids (Student) */}
+        <Route path="/kids">
+          <KidsLayout>
+            <Suspense fallback={<LoadingFallback />}><KidsHome /></Suspense>
+          </KidsLayout>
+        </Route>
+        <Route path="/kids/adventure">
+          <KidsLayout>
+            <Suspense fallback={<LoadingFallback />}><KidsAdventure /></Suspense>
+          </KidsLayout>
+        </Route>
+        <Route path="/kids/activity/:id">
+          <KidsLayout>
+            <Suspense fallback={<LoadingFallback />}><KidsActivity /></Suspense>
+          </KidsLayout>
+        </Route>
+        <Route path="/kids/activity/:id/complete">
+          <KidsLayout>
+            <Suspense fallback={<LoadingFallback />}><KidsActivityComplete /></Suspense>
+          </KidsLayout>
+        </Route>
+        <Route path="/kids/stickers">
+          <KidsLayout>
+            <Suspense fallback={<LoadingFallback />}><KidsStickers /></Suspense>
+          </KidsLayout>
+        </Route>
+        <Route path="/kids/board">
+          <KidsLayout>
+            <Suspense fallback={<LoadingFallback />}><KidsBoard /></Suspense>
+          </KidsLayout>
+        </Route>
+
         {/* Flag Quiz Routes */}
         <Route path="/game/flags" component={FlagsSetup} />
         <Route path="/game/flags/play" component={FlagsPlay} />

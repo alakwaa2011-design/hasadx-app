@@ -934,3 +934,10 @@ uri = "file://artifacts/hasaad-meta-video/public/audio/bg_music.mp3"
 type = "audio"
 title = "Hasaad ad background music"
 description = "Generated music: Cinematic uplifting electronic instrumental background music scoring a premium Arabic edtech Meta Reel. Warm plucked synth, elegant percussion, subtle oud-inspired tonal accents with…"
+
+[[outputs]]
+id = "_lpX7iRrIBPeKrf4WZT4T"
+uri = "file://artifacts/homework-app/public/kids/audio/phonics/a-prompt.mp3"
+type = "audio"
+title = "phonics a prompt"
+description = "Text-to-speech audio: A says ah, as in apple. Ah."

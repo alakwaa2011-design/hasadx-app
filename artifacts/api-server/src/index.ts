@@ -45,9 +45,12 @@ import { startEmailOutboxWorker } from "./lib/xp/email-worker";
 import { startMissingWelcomeCreditsAlertJob } from "./lib/welcome-credits-alert";
 import { startAnnualCreditReleaseJob } from "./lib/annual-credit-release";
 import { CONFIGURED_ADMIN_EMAILS } from "./lib/admin-identity";
+import { migrateKidsSchema, seedKidsCatalogV1 } from "./kids-catalog";
+import { setKidsReady } from "./routes/kids";
 
 async function runSchemaMigrations() {
   try {
+    await migrateKidsSchema();
     await db.execute(sql`
       ALTER TABLE adaptive_sessions
         ADD COLUMN IF NOT EXISTS completion_reason TEXT,
@@ -1619,6 +1622,8 @@ httpServer.listen(port, () => {
       seedStaticArenaIfNeeded();
       seedSecretGameIfNeeded();
       seedXpDefaultsIfNeeded();
+      await seedKidsCatalogV1();
+      setKidsReady(true);
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
       startActivityLogsCleanupJob();
