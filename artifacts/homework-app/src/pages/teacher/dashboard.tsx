@@ -302,6 +302,7 @@ type TabId =
   | "islamic"
   | "videos"
   | "stats"
+  | "kids_board"
   | "students"
   | "parent_messages";
 
@@ -803,6 +804,13 @@ export default function TeacherDashboard() {
       icon: <BarChart3 className="w-4 h-4" />,
     },
     {
+      id: "kids_board",
+      label: lang === "ar" ? "سبورة الصغار" : "Kids Board",
+      shortLabel: lang === "ar" ? "سبورة الصغار" : "Kids Board",
+      icon: <School className="w-4 h-4" />,
+      href: "/teacher/kids/board",
+    },
+    {
       id: "students",
       label: t.dashboard.classesStudents,
       shortLabel: t.dashboard.studentsShort,
@@ -966,8 +974,8 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {t.dashboard.overview}
             </p>
-            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
-                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats"];
+            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","parent_messages","stats"].includes(t.id)).sort((a, b) => {
+                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","parent_messages","stats"];
                 return order.indexOf(a.id) - order.indexOf(b.id);
               }).map((tab) => {
               const active = activeTab === tab.id;

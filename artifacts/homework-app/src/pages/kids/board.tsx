@@ -1,16 +1,18 @@
 import React, { useState } from "react";
-import { Radio, CheckCircle2 } from "lucide-react";
+import { Radio, CheckCircle2, Play } from "lucide-react";
+import { useLocation } from "wouter";
 import { useKidsBoardEvent, useKidsBoardJoin } from "@/hooks/use-kids";
 
 export default function KidsBoard() {
+  const [, setLocation] = useLocation();
   const [code, setCode] = useState("");
-  const [board, setBoard] = useState<{ id: string; title: string } | null>(null);
+  const [board, setBoard] = useState<{ id: string; title: string; activityId: string; activityTitle: string } | null>(null);
   const join = useKidsBoardJoin();
   const sendEvent = useKidsBoardEvent();
 
   const joinBoard = () => join.mutate(code, {
     onSuccess: ({ board: joined }) => {
-      const active = { id: String(joined.id), title: joined.title };
+      const active = { id: String(joined.id), title: joined.title, activityId: String(joined.activity_id), activityTitle: joined.activity_title };
       setBoard(active);
       sendEvent.mutate({ boardId: active.id, eventType: "joined" });
     },
@@ -20,11 +22,16 @@ export default function KidsBoard() {
     <div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-sm">
       <Radio className="mx-auto h-14 w-14 text-sky-600" />
       <h2 className="mt-4 text-2xl font-bold">{board.title}</h2>
-      <p className="mt-2 text-slate-500">أنت الآن متصل بلوحة المعلمة.</p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <button onClick={() => sendEvent.mutate({ boardId: board.id, eventType: "ready" })} className="rounded-2xl bg-sky-600 p-5 text-xl font-bold text-white">أنا جاهز</button>
-        <button onClick={() => sendEvent.mutate({ boardId: board.id, eventType: "completed" })} className="rounded-2xl bg-emerald-600 p-5 text-xl font-bold text-white">أنجزت النشاط</button>
-      </div>
+      <p className="mt-2 text-slate-500">نشاط اليوم: <strong className="text-slate-800">{board.activityTitle}</strong></p>
+      <button
+        onClick={() => {
+          sendEvent.mutate({ boardId: board.id, eventType: "ready" });
+          setLocation(`/kids/activity/${board.activityId}`);
+        }}
+        className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-600 p-5 text-xl font-bold text-white"
+      >
+        <Play className="h-6 w-6 fill-current" /> ابدأ النشاط
+      </button>
       {sendEvent.isSuccess && <p className="mt-5 flex items-center justify-center gap-2 font-bold text-emerald-700"><CheckCircle2 /> وصل ردك للمعلمة</p>}
     </div>
   );

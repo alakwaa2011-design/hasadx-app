@@ -1515,6 +1515,23 @@ export declare const kidsBoardSessionsTable: import("drizzle-orm/pg-core").PgTab
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        activityId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "activity_id";
+            tableName: "kids_board_sessions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         joinCode: import("drizzle-orm/pg-core").PgColumn<{
             name: "join_code";
             tableName: "kids_board_sessions";

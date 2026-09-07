@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
 import { useTeacherKidsOverview } from "@/hooks/use-kids";
-import { Users, Plus, Star, Clock, LayoutDashboard, Send, Map } from "lucide-react";
+import { Users, Plus, Star, LayoutDashboard, Map, School } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -23,7 +23,10 @@ export default function TeacherKidsDashboard() {
             <h1 className="text-3xl font-bold tracking-tight">منصة الصغار</h1>
             <p className="text-muted-foreground mt-1">إدارة طلاب رياض الأطفال والصفوف الأولى</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setLocation("/teacher/kids/board")} className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+              <School className="w-4 h-4" /> تشغيل نشاط على السبورة
+            </Button>
             <Button onClick={() => setLocation("/teacher/kids/assign")} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
               <Plus className="w-4 h-4" /> إرسال مهمة للصغار
             </Button>

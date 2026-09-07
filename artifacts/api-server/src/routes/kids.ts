@@ -124,7 +124,17 @@ async function teacherOwnsProfile(teacherId: number, profileId: number) {
   return (r as any).rows.length > 0;
 }
 
-async function canStartKidsActivity(profileId: number, activityId: number) {
+async function canStartKidsActivity(profileId: number, activityId: number, boardId?: number | null) {
+  if (boardId) {
+    const board = await db.execute(sql`
+      SELECT 1 FROM kids_board_sessions b
+      JOIN students s ON s.teacher_id=b.teacher_id
+      JOIN kids_profiles kp ON kp.student_account_id=s.student_account_id
+      WHERE b.id=${boardId} AND b.activity_id=${activityId} AND b.status='open' AND kp.id=${profileId}
+      LIMIT 1
+    `);
+    if ((board as any).rows[0]) return true;
+  }
   const assignment = await db.execute(sql`
     SELECT 1 FROM kids_teacher_assignments
     WHERE profile_id=${profileId} AND activity_id=${activityId} AND completed_at IS NULL
@@ -198,7 +208,9 @@ router.post("/kids/board/join", async (req: any, res) => {
   const joinCode = String(req.body?.joinCode ?? "").trim();
   if (!/^\d{6}$/.test(joinCode)) return res.status(400).json({ message: "رمز اللوحة غير صالح" });
   const r = await db.execute(sql`
-    SELECT b.id,b.title,b.join_code FROM kids_board_sessions b
+    SELECT b.id,b.title,b.join_code,b.activity_id,a.title_ar activity_title
+    FROM kids_board_sessions b
+    LEFT JOIN kids_activities a ON a.id=b.activity_id
     JOIN students s ON s.teacher_id=b.teacher_id
     WHERE b.join_code=${joinCode} AND b.status='open' AND s.student_account_id=${profile.student_account_id}
     LIMIT 1
@@ -273,7 +285,7 @@ router.get("/kids/activities/:id", async (req, res) => {
 router.post("/kids/sessions", async (req: any, res) => {
   const profile = await requireProfile(req, res); const activityId = id(req.body?.activityId); const requestKey = key(req);
   if (!profile) return; if (!activityId || !requestKey) return res.status(400).json({ message: "النشاط ومفتاح التكرار مطلوبان" });
-  if (!(await canStartKidsActivity(profile.id, activityId))) return res.status(403).json({ message: "أكمل النشاط الحالي أولاً" });
+  if (!(await canStartKidsActivity(profile.id, activityId, Number(req.session?.kidsBoardId) || null))) return res.status(403).json({ message: "أكمل النشاط الحالي أولاً" });
   try {
     const r = await db.execute(sql`INSERT INTO kids_activity_sessions (profile_id,activity_id,idempotency_key) SELECT ${profile.id},id,${requestKey} FROM kids_activities WHERE id=${activityId} AND is_published=TRUE ON CONFLICT (profile_id,idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key RETURNING *`);
     const session = (r as any).rows[0]; if (!session) return res.status(404).json({ message: "النشاط غير موجود" }); res.status(201).json({ session });
@@ -428,7 +440,36 @@ router.get("/teacher/kids/board", async (req: any, res) => { const t=teacher(req
 router.get("/teacher/kids/assignments", async (req: any,res)=>{const t=teacher(req,res);if(!t)return;const r=await db.execute(sql`SELECT ka.*,kp.display_name,a.title_ar FROM kids_teacher_assignments ka JOIN kids_profiles kp ON kp.id=ka.profile_id JOIN kids_activities a ON a.id=ka.activity_id WHERE ka.teacher_id=${t} ORDER BY ka.created_at DESC`);res.json({assignments:(r as any).rows});});
 router.post("/teacher/kids/assignments", async (req: any,res)=>{const t=teacher(req,res);const profileId=id(req.body?.profileId),activityId=id(req.body?.activityId);if(!t)return;if(!profileId||!activityId||!(await teacherOwnsProfile(t,profileId)))return res.status(403).json({message:"غير مصرح"});const r=await db.execute(sql`INSERT INTO kids_teacher_assignments(teacher_id,profile_id,activity_id,due_at) SELECT ${t},${profileId},id,${req.body?.dueAt?new Date(req.body.dueAt):null} FROM kids_activities WHERE id=${activityId} AND is_published=TRUE ON CONFLICT(teacher_id,profile_id,activity_id) DO UPDATE SET due_at=EXCLUDED.due_at,completed_at=NULL,created_at=NOW() RETURNING *`);const assignment=(r as any).rows[0];if(!assignment)return res.status(404).json({message:"النشاط غير موجود"});res.status(201).json({assignment});});
 router.get("/teacher/kids/progress/:profileId", async (req:any,res)=>{const t=teacher(req,res),p=id(req.params.profileId);if(!t)return;if(!p||!(await teacherOwnsProfile(t,p)))return res.status(403).json({message:"غير مصرح"});const r=await db.execute(sql`SELECT km.*,ks.title_ar,kw.title_ar world_title FROM kids_mastery km JOIN kids_skills ks ON ks.id=km.skill_id JOIN kids_worlds kw ON kw.id=ks.world_id WHERE km.profile_id=${p}`);res.json({progress:(r as any).rows});});
-router.post("/teacher/kids/board", async (req:any,res)=>{const t=teacher(req,res);const title=String(req.body?.title??"لوحة حصاد للأطفال").trim().slice(0,100);if(!t)return;if(!title)return res.status(400).json({message:"العنوان مطلوب"});for(let attempt=0;attempt<5;attempt++){const joinCode=String(randomInt(100000,1000000));try{const r=await db.execute(sql`INSERT INTO kids_board_sessions(teacher_id,title,join_code) VALUES(${t},${title},${joinCode}) RETURNING *`);return res.status(201).json({board:(r as any).rows[0]});}catch(error:any){if(error?.cause?.code!=="23505"&&error?.code!=="23505")throw error;}}return res.status(503).json({message:"تعذر إنشاء رمز لوحة فريد"});});
+router.post("/teacher/kids/board", async (req:any,res)=>{
+  const t=teacher(req,res),activityId=id(req.body?.activityId);
+  const title=String(req.body?.title??"لوحة حصاد للأطفال").trim().slice(0,100);
+  if(!t)return;
+  if(!title||!activityId)return res.status(400).json({message:"اختر نشاطاً للسبورة"});
+  const activityResult=await db.execute(sql`SELECT id,title_ar FROM kids_activities WHERE id=${activityId} AND is_published=TRUE`);
+  const activity=(activityResult as any).rows[0];
+  if(!activity)return res.status(404).json({message:"النشاط غير موجود"});
+  for(let attempt=0;attempt<5;attempt++){
+    const joinCode=String(randomInt(100000,1000000));
+    try{
+      const board=await db.transaction(async(tx)=>{
+        const inserted=await tx.execute(sql`INSERT INTO kids_board_sessions(teacher_id,activity_id,title,join_code) VALUES(${t},${activityId},${title},${joinCode}) RETURNING *`);
+        await tx.execute(sql`
+          INSERT INTO kids_teacher_assignments(teacher_id,profile_id,activity_id,created_at)
+          SELECT ${t},kp.id,${activityId},NOW()
+          FROM kids_profiles kp JOIN students s ON s.student_account_id=kp.student_account_id
+          WHERE s.teacher_id=${t}
+          ON CONFLICT(teacher_id,profile_id,activity_id)
+          DO UPDATE SET completed_at=NULL,created_at=NOW()
+        `);
+        return (inserted as any).rows[0];
+      });
+      return res.status(201).json({board:{...board,activity_title:activity.title_ar}});
+    }catch(error:any){
+      if(error?.cause?.code!=="23505"&&error?.code!=="23505")throw error;
+    }
+  }
+  return res.status(503).json({message:"تعذر إنشاء رمز لوحة فريد"});
+});
 router.post("/teacher/kids/board/:id/events", async (req:any,res)=>{const t=teacher(req,res),boardId=id(req.params.id),profileId=req.body?.profileId===undefined?null:id(req.body.profileId),eventType=String(req.body?.eventType??"").trim().slice(0,50);if(!t)return;if(!boardId||!eventType)return res.status(400).json({message:"حدث غير صالح"});if(profileId&&!(await teacherOwnsProfile(t,profileId)))return res.status(403).json({message:"غير مصرح"});const r=await db.execute(sql`INSERT INTO kids_board_events(board_session_id,profile_id,event_type,payload) SELECT id,${profileId},${eventType},${JSON.stringify(req.body?.payload??{})}::jsonb FROM kids_board_sessions WHERE id=${boardId} AND teacher_id=${t} AND status='open' RETURNING *`);if(!(r as any).rows[0])return res.status(404).json({message:"اللوحة غير موجودة"});res.status(201).json({event:(r as any).rows[0]});});
 router.get("/teacher/kids/board/:id/results", async (req:any,res)=>{const t=teacher(req,res),boardId=id(req.params.id);if(!t)return;if(!boardId)return res.status(400).json({message:"لوحة غير صالحة"});const r=await db.execute(sql`SELECT e.*,kp.display_name FROM kids_board_events e JOIN kids_board_sessions b ON b.id=e.board_session_id LEFT JOIN kids_profiles kp ON kp.id=e.profile_id WHERE e.board_session_id=${boardId} AND b.teacher_id=${t} ORDER BY e.created_at`);res.json({events:(r as any).rows});});
 

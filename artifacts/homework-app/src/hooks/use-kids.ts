@@ -128,7 +128,7 @@ export function useKidsHome() {
 
 export function useKidsBoardJoin() {
   return useMutation({
-    mutationFn: (joinCode: string) => fetchKidsApi<{ board: { id: number; title: string; join_code: string } }>("/board/join", {
+    mutationFn: (joinCode: string) => fetchKidsApi<{ board: { id: number; title: string; join_code: string; activity_id: number; activity_title: string } }>("/board/join", {
       method: "POST",
       body: JSON.stringify({ joinCode }),
     }),
@@ -218,7 +218,7 @@ export function useTeacherKidsOverview() {
 export function useTeacherKidsBoardCreate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { title: string }) => fetchTeacherKidsApi<{ board: any }>("/board", { method: "POST", body: JSON.stringify(data) }),
+    mutationFn: (data: { title: string; activityId: string }) => fetchTeacherKidsApi<{ board: any }>("/board", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teacher", "kids", "board"] });
     }
