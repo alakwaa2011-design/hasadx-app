@@ -212,4 +212,68 @@ describe("الإنشاء السريع للعروض", () => {
     );
     vi.useRealTimers();
   });
+
+  it.each([
+    ["الصفري", 0],
+    ["غير الرقمي", "not-a-presentation-id"],
+  ])("يعامل presentationId %s كاستجابة ناقصة ويفحص حالة المسودة", async (_, presentationId) => {
+    vi.useFakeTimers();
+    creditAwareFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 41,
+          outline: { slides: [{ title: "المقدمة", kind: "content" }] },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ presentationId }),
+      });
+
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      expect(url).toBe("/api/presentations/drafts/41");
+      return {
+        ok: true,
+        json: async () => ({ status: "built", presentationId: 92 }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => {
+      root.render(<NewPresentationPage />);
+    });
+    await act(async () => clickButton("إنشاء سريع"));
+
+    const topic = container.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(topic).toBeTruthy();
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(topic, "دورة الماء");
+      topic.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await act(async () => {
+      clickButton("أنشئ الحصة الآن");
+      await vi.advanceTimersByTimeAsync(800);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/presentations/drafts/41",
+      { credentials: "include" },
+    );
+    expect(setLocation).not.toHaveBeenCalledWith(
+      expect.stringMatching(`/teacher/presentations/${String(presentationId)}`),
+    );
+    expect(setLocation).toHaveBeenCalledWith(
+      "/teacher/presentations/92?draftId=41",
+    );
+    vi.useRealTimers();
+  });
 });

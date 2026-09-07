@@ -116,6 +116,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function validPresentationId(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) > 0;
+}
+
 /* ── MCQ Review Panel ────────────────────────────────────────────────── */
 
 interface McqReviewPanelProps {
@@ -517,12 +521,12 @@ export default function NewPresentationPage() {
       }
 
       const buildResult = await r3.json().catch(() => ({})) as {
-        presentationId?: number;
+        presentationId?: unknown;
       };
-      let presId = Number.isInteger(buildResult.presentationId) && (buildResult.presentationId ?? 0) > 0
-        ? buildResult.presentationId!
+      let presId = validPresentationId(buildResult.presentationId)
+        ? buildResult.presentationId
         : null;
-      type DraftPoll = { status: string; presentationId?: number; errorMessage?: string; outline?: { slides?: DraftOutlineSlide[] } };
+      type DraftPoll = { status: string; presentationId?: unknown; errorMessage?: string; outline?: { slides?: DraftOutlineSlide[] } };
       if (!presId) {
         /* Backward-compatible fallback for older API responses that finish
            the build but omit presentationId. Current builds return the ID
@@ -534,7 +538,7 @@ export default function NewPresentationPage() {
           });
           if (!rp.ok) continue;
           const pd = await rp.json() as DraftPoll;
-          if (pd.status === "built" && pd.presentationId) {
+          if (pd.status === "built" && validPresentationId(pd.presentationId)) {
             presId = pd.presentationId;
             if (pd.outline?.slides?.length) {
               setGeneratedSlides(
