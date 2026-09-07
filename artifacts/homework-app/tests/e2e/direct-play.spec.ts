@@ -331,8 +331,32 @@ test.describe("Public Wameeth direct links", () => {
       clientY: startY,
       buttons: 1,
     });
-    await firstAnswer.dispatchEvent("pointerup", {
+    await firstAnswer.dispatchEvent("pointercancel", {
       pointerId: 2,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: startX,
+      clientY: startY,
+      buttons: 0,
+    });
+    // iOS Safari may still emit a compatibility click after the system
+    // interrupts a touch. A cancelled pointer must never submit an answer.
+    await firstAnswer.dispatchEvent("click", { detail: 1 });
+
+    await page.waitForTimeout(300);
+    expect(submittedAnswers).toBe(0);
+    await expect(primaryAnswer).toBeEnabled();
+
+    await firstAnswer.dispatchEvent("pointerdown", {
+      pointerId: 3,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: startX,
+      clientY: startY,
+      buttons: 1,
+    });
+    await firstAnswer.dispatchEvent("pointerup", {
+      pointerId: 3,
       pointerType: "touch",
       isPrimary: true,
       clientX: startX,
