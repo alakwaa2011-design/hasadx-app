@@ -40,6 +40,9 @@ const chromiumExecutablePath =
   (!process.env.CI
     ? process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE
     : undefined);
+const chromiumLaunchOptions = chromiumExecutablePath
+  ? { launchOptions: { executablePath: chromiumExecutablePath } }
+  : {};
 
 /**
  * Playwright configuration for the mobile-shell regression suite.
@@ -66,11 +69,6 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "off",
     ignoreHTTPSErrors: true,
-    // CI normally uses Playwright's downloaded browser. Local recovery falls
-    // back to Replit's managed Chromium binary when that cache is gone.
-    ...(chromiumExecutablePath
-      ? { launchOptions: { executablePath: chromiumExecutablePath } }
-      : {}),
   },
   projects: [
     {
@@ -79,6 +77,17 @@ export default defineConfig({
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
+        // CI normally uses Playwright's downloaded browser. Local recovery
+        // falls back to Replit's managed Chromium only for Chromium projects.
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "iphone-webkit-direct-play",
+      testMatch: /direct-play\.spec\.ts/,
+      grep: /independent answers commit only after a completed activation/,
+      use: {
+        ...devices["iPhone 13"],
       },
     },
     // Escape setup owns database-backed fixtures, so its two viewports run in
@@ -90,6 +99,7 @@ export default defineConfig({
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
+        ...chromiumLaunchOptions,
       },
     },
     {
@@ -100,6 +110,7 @@ export default defineConfig({
         deviceScaleFactor: 1,
         isMobile: false,
         hasTouch: false,
+        ...chromiumLaunchOptions,
       },
     },
     {
@@ -110,6 +121,7 @@ export default defineConfig({
         deviceScaleFactor: 1,
         isMobile: false,
         hasTouch: false,
+        ...chromiumLaunchOptions,
       },
     },
   ],

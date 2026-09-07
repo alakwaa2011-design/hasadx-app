@@ -2245,6 +2245,91 @@ export default function GamePlay() {
     [pin, answerResult, isPaused],
   );
 
+  const answerTouchPointerIdRef = useRef<number | null>(null);
+  const answerTouchMovedOutsideRef = useRef(false);
+  const suppressAnswerTouchClickUntilRef = useRef(0);
+
+  const handleAnswerPointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (event.pointerType !== "touch") return;
+    answerTouchPointerIdRef.current = event.pointerId;
+    answerTouchMovedOutsideRef.current = false;
+    suppressAnswerTouchClickUntilRef.current = 0;
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic pointer events used by cross-browser regression tests are
+      // not active platform pointers and therefore cannot be captured.
+    }
+  };
+
+  const handleAnswerPointerMove = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (answerTouchPointerIdRef.current !== event.pointerId) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (
+      event.clientX < bounds.left ||
+      event.clientX > bounds.right ||
+      event.clientY < bounds.top ||
+      event.clientY > bounds.bottom
+    ) {
+      answerTouchMovedOutsideRef.current = true;
+    }
+  };
+
+  const handleAnswerPointerCancel = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (answerTouchPointerIdRef.current !== event.pointerId) return;
+    answerTouchPointerIdRef.current = null;
+    answerTouchMovedOutsideRef.current = false;
+    suppressAnswerTouchClickUntilRef.current = performance.now() + 750;
+  };
+
+  const handleAnswerPointerUp = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    answer: string,
+  ) => {
+    if (answerTouchPointerIdRef.current !== event.pointerId) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const endedInside =
+      event.clientX >= bounds.left &&
+      event.clientX <= bounds.right &&
+      event.clientY >= bounds.top &&
+      event.clientY <= bounds.bottom;
+    const shouldSubmit = endedInside && !answerTouchMovedOutsideRef.current;
+
+    answerTouchPointerIdRef.current = null;
+    answerTouchMovedOutsideRef.current = false;
+    // iOS Safari follows a completed touch pointer sequence with a compatibility
+    // click. The pointer-up owns touch submission, so consume that click.
+    suppressAnswerTouchClickUntilRef.current = performance.now() + 750;
+
+    if (shouldSubmit && !selectedAnswerRef.current) {
+      submitAnswer(answer);
+    }
+  };
+
+  const handleAnswerClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    answer: string,
+  ) => {
+    if (
+      event.detail !== 0 &&
+      performance.now() <= suppressAnswerTouchClickUntilRef.current
+    ) {
+      suppressAnswerTouchClickUntilRef.current = 0;
+      return;
+    }
+    suppressAnswerTouchClickUntilRef.current = 0;
+    if (!selectedAnswerRef.current) {
+      submitAnswer(answer);
+    }
+  };
+
   const NOTIF_SOUND_OPTIONS: {
     value: NotificationSoundType;
     labelAr: string;
@@ -4420,14 +4505,11 @@ export default function GamePlay() {
                       ? { duration: 0.38, delay: 0.08 + i * 0.07, ease: [0.22, 1, 0.36, 1] }
                       : undefined
                   }
-                  onClick={() => {
-                    // Commit the answer only after a completed click/tap.
-                    // Pointer-down was too sensitive on touch screens: merely
-                    // brushing an option submitted it before the student could
-                    // lift or slide their finger away.
-                    if (selectedAnswerRef.current) return;
-                    submitAnswer(opt.key);
-                  }}
+                  onPointerDown={handleAnswerPointerDown}
+                  onPointerMove={handleAnswerPointerMove}
+                  onPointerCancel={handleAnswerPointerCancel}
+                  onPointerUp={(event) => handleAnswerPointerUp(event, opt.key)}
+                  onClick={(event) => handleAnswerClick(event, opt.key)}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
                   className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-[18px] font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[70px] sm:min-h-[80px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 lg:py-1.5 font-bold text-lg sm:text-xl lg:text-2xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px] lg:min-h-[52px]" : "min-h-[54px] sm:min-h-[64px] lg:min-h-[50px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}

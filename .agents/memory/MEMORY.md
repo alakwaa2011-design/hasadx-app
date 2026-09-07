@@ -48,6 +48,7 @@
 - [Question source selection state](question-source-selection-state.md) — async assignment pickers must bind loaded questions to the currently selected ID.
 - [Replit Build session recovery](replit-build-session.md) — a crossed Wi‑Fi icon and missing Agent usually indicate an editor WebSocket/session issue, not app code.
 - [Playwright cache fallback](playwright-cache-fallback.md) — after clearing Playwright’s browser cache, use the managed Chromium binary for local browser checks.
+- [Playwright WebKit on NixOS](playwright-webkit-nixos.md) — scope managed Chromium fallbacks by project; downloaded WebKit needs a compatible host library set on Replit.
 - [Mobile viewport geometry](playwright-mobile-viewport-geometry.md) — mobile emulation can report a CSS viewport different from a requested size; compare element bounds with window.innerWidth/innerHeight.
 - [AI content language precedence](ai-content-language-precedence.md) — new AI content uses explicit request, then clear English input, then UI fallback; persist the resolved language with multi-step artifacts.
 - [UI locale startup ordering](ui-locale-startup-ordering.md) — root boundaries need the locale provider outside them, and first API requests need locale decoration before descendant effects.

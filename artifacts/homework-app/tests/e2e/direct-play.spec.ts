@@ -112,8 +112,8 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
       assignmentId: touchAssignment.id,
       text: `سؤال لمس وميض الأول ${suffix}`,
       questionType: "mcq",
-      optionA: "إجابة لمس أولى",
-      optionB: "بديل لمس أول",
+      optionA: "إجابة اختبار أساسية",
+      optionB: "بديل اختبار",
       correctAnswer: "A",
       points: 1,
     },
@@ -121,8 +121,8 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
       assignmentId: touchAssignment.id,
       text: `سؤال لمس وميض الثاني ${suffix}`,
       questionType: "mcq",
-      optionA: "إجابة فأرة",
-      optionB: "بديل فأرة",
+      optionA: "إجابة اختبار أساسية",
+      optionB: "بديل اختبار",
       correctAnswer: "A",
       points: 1,
     },
@@ -130,8 +130,8 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
       assignmentId: touchAssignment.id,
       text: `سؤال لمس وميض الثالث ${suffix}`,
       questionType: "mcq",
-      optionA: "إجابة لوحة مفاتيح",
-      optionB: "بديل لوحة مفاتيح",
+      optionA: "إجابة اختبار أساسية",
+      optionB: "بديل اختبار",
       correctAnswer: "A",
       points: 1,
     },
@@ -264,7 +264,6 @@ test.describe("Public Wameeth direct links", () => {
 
   test("independent answers commit only after a completed activation", async ({
     page,
-    context,
   }) => {
     if (!fixture) throw new Error("direct-play fixture is unavailable");
 
@@ -281,10 +280,10 @@ test.describe("Public Wameeth direct links", () => {
     });
 
     await page.goto(`/play/${fixture.touchToken}`);
-    await expect(page.getByText(/سؤال لمس وميض الأول/, { exact: false }))
-      .toBeVisible({ timeout: 20_000 });
+    const primaryAnswer = page.getByRole("button", { name: /إجابة اختبار أساسية/ });
+    await expect(primaryAnswer).toBeVisible({ timeout: 20_000 });
 
-    const firstAnswer = page.getByRole("button", { name: /إجابة لمس أولى/ });
+    const firstAnswer = primaryAnswer;
     const box = await firstAnswer.boundingBox();
     expect(box).not.toBeNull();
 
@@ -292,37 +291,64 @@ test.describe("Public Wameeth direct links", () => {
     const startY = box!.y + box!.height / 2;
     const endX = Math.max(1, box!.x - 20);
     const endY = Math.max(1, box!.y - 20);
-    const cdp = await context.newCDPSession(page);
-    await cdp.send("Input.dispatchTouchEvent", {
-      type: "touchStart",
-      touchPoints: [{ x: startX, y: startY, id: 1 }],
+    await firstAnswer.dispatchEvent("pointerdown", {
+      pointerId: 1,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: startX,
+      clientY: startY,
+      buttons: 1,
     });
-    await cdp.send("Input.dispatchTouchEvent", {
-      type: "touchMove",
-      touchPoints: [{ x: endX, y: endY, id: 1 }],
+    await firstAnswer.dispatchEvent("pointermove", {
+      pointerId: 1,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: endX,
+      clientY: endY,
+      buttons: 1,
     });
-    await cdp.send("Input.dispatchTouchEvent", {
-      type: "touchEnd",
-      touchPoints: [],
+    await firstAnswer.dispatchEvent("pointerup", {
+      pointerId: 1,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: endX,
+      clientY: endY,
+      buttons: 0,
     });
+    // Safari emits a compatibility click after a touch sequence. It must not
+    // turn a cancelled drag into an answer.
+    await firstAnswer.dispatchEvent("click", { detail: 1 });
 
     await page.waitForTimeout(300);
     expect(submittedAnswers).toBe(0);
-    await expect(page.getByText(/سؤال لمس وميض الأول/, { exact: false })).toBeVisible();
+    await expect(primaryAnswer).toBeEnabled();
 
-    await page.touchscreen.tap(startX, startY);
+    await firstAnswer.dispatchEvent("pointerdown", {
+      pointerId: 2,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: startX,
+      clientY: startY,
+      buttons: 1,
+    });
+    await firstAnswer.dispatchEvent("pointerup", {
+      pointerId: 2,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: startX,
+      clientY: startY,
+      buttons: 0,
+    });
+    await firstAnswer.dispatchEvent("click", { detail: 1 });
     await expect.poll(() => submittedAnswers).toBe(1);
-    await expect(page.getByText(/سؤال لمس وميض الثاني/, { exact: false }))
-      .toBeVisible({ timeout: 15_000 });
+    await expect(primaryAnswer).toBeEnabled({ timeout: 15_000 });
 
-    await page.getByRole("button", { name: /إجابة فأرة/ }).click();
+    await primaryAnswer.click();
     await expect.poll(() => submittedAnswers).toBe(2);
-    await expect(page.getByText(/سؤال لمس وميض الثالث/, { exact: false }))
-      .toBeVisible({ timeout: 15_000 });
+    await expect(primaryAnswer).toBeEnabled({ timeout: 15_000 });
 
-    const keyboardAnswer = page.getByRole("button", { name: /إجابة لوحة مفاتيح/ });
-    await keyboardAnswer.focus();
-    await keyboardAnswer.press("Enter");
+    await primaryAnswer.focus();
+    await primaryAnswer.press("Enter");
     await expect.poll(() => submittedAnswers).toBe(3);
     await expect(page.getByTestId("text-independent-result-title"))
       .toBeVisible({ timeout: 30_000 });
