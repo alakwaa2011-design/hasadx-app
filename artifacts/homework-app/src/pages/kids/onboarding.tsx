@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import { useCreateKidsProfile } from "@/hooks/use-kids";
 import { Star, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { resolveKidsAsset } from "@/lib/kids-assets";
 
 const AVATARS = [
-  { key: "kids/avatars/star", label: "نجمة", symbol: "⭐" },
-  { key: "kids/avatars/moon", label: "قمر", symbol: "🌙" },
-  { key: "kids/avatars/rainbow", label: "قوس قزح", symbol: "🌈" },
+  { key: "kids/avatars/star", label: "نجمة" },
+  { key: "kids/avatars/moon", label: "قمر" },
+  { key: "kids/avatars/rainbow", label: "قوس قزح" },
 ];
 
 const AGE_BANDS = [
@@ -83,7 +84,7 @@ export default function KidsOnboarding() {
                       : "border-slate-200 bg-slate-50 hover:border-primary/40"
                   }`}
                 >
-                  <span className="block text-3xl" aria-hidden="true">{option.symbol}</span>
+                  <img src={resolveKidsAsset(option.key) ?? undefined} alt="" className="mx-auto h-12 w-12" />
                   <span className="mt-1 block text-xs font-bold text-slate-700">{option.label}</span>
                 </button>
               ))}

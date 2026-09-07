@@ -9,21 +9,9 @@ import {
 import { X, Check, Volume2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { resolveKidsAsset } from "@/lib/kids-assets";
 
 // --- Utility: Media Renderer ---
-const kidsAssetPaths: Record<string, string> = {
-  "kids/audio/phonics/a-prompt": "kids/audio/phonics/a-prompt.mp3",
-  "kids/images/letters/a": "kids/images/letters/a.svg",
-  "kids/images/letters/e": "kids/images/letters/e.svg",
-  "kids/images/numbers/zero": "kids/images/numbers/zero.svg",
-  "kids/images/numbers/one": "kids/images/numbers/one.svg",
-};
-
-function resolveKidsAsset(assetKey: string): string | null {
-  const path = kidsAssetPaths[assetKey];
-  return path ? `${import.meta.env.BASE_URL}${path}` : null;
-}
-
 function MediaElement({ media, className }: { media?: { kind: string; assetKey: string; alt?: string }, className?: string }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -430,6 +418,7 @@ export default function KidsActivityPage() {
     activity.activity_type === "counting" ? CountingRenderer :
     activity.activity_type === "ordering_puzzle" ? OrderingPuzzleRenderer :
     () => <div>نشاط غير مدعوم</div>;
+  const activityImage = resolveKidsAsset(activity.asset_key);
 
   return (
     <div className="fixed inset-0 bg-white dark:bg-slate-900 z-50 flex flex-col font-sans" dir="rtl">
@@ -442,7 +431,8 @@ export default function KidsActivityPage() {
           <X className="w-6 h-6" />
         </button>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {activityImage && <img src={activityImage} alt="" className="h-10 w-10 rounded-xl object-cover" />}
           <h1 className="font-bold text-slate-800 dark:text-white">{activity.title_ar}</h1>
         </div>
 

@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { useKidsTodayAdventure, useStartKidsTodayAdventure } from "@/hooks/use-kids";
 import { Star, Lock, CheckCircle2, Play } from "lucide-react";
+import { resolveKidsAsset } from "@/lib/kids-assets";
 
 export default function KidsAdventure() {
   const { data: todayAdventure, isLoading } = useKidsTodayAdventure();
@@ -55,7 +56,10 @@ export default function KidsAdventure() {
                 <div className="w-1/2 flex justify-end px-4">
                   {!isLeft && (
                     <div className={`p-4 rounded-3xl w-full max-w-xs shadow-sm border-b-4 ${isCompleted ? "bg-white border-emerald-100 dark:bg-slate-800 dark:border-slate-700" : isAvailable ? "bg-white border-amber-200 dark:bg-slate-800 dark:border-amber-900/50" : "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 opacity-70"}`}>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2">{activity.title_ar}</h3>
+                      <div className="mb-2 flex items-center gap-2">
+                        <img src={resolveKidsAsset(activity.asset_key) ?? undefined} alt="" className="h-12 w-12 rounded-xl" />
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white">{activity.title_ar}</h3>
+                      </div>
                       <div className="flex items-center gap-1">
                         {[...Array(3)].map((_, i) => (
                           <Star key={i} className={`w-4 h-4 ${isCompleted ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600"}`} />
@@ -89,7 +93,10 @@ export default function KidsAdventure() {
                 <div className="w-1/2 flex justify-start px-4">
                   {isLeft && (
                     <div className={`p-4 rounded-3xl w-full max-w-xs shadow-sm border-b-4 ${isCompleted ? "bg-white border-emerald-100 dark:bg-slate-800 dark:border-slate-700" : isAvailable ? "bg-white border-amber-200 dark:bg-slate-800 dark:border-amber-900/50" : "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 opacity-70"}`}>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2">{activity.title_ar}</h3>
+                      <div className="mb-2 flex items-center gap-2">
+                        <img src={resolveKidsAsset(activity.asset_key) ?? undefined} alt="" className="h-12 w-12 rounded-xl" />
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white">{activity.title_ar}</h3>
+                      </div>
                       <div className="flex items-center gap-1">
                         {[...Array(3)].map((_, i) => (
                           <Star key={i} className={`w-4 h-4 ${isCompleted ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600"}`} />

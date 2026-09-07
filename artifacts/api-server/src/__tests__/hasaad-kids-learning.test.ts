@@ -6,7 +6,9 @@ import {
   type KidsAttempt,
 } from "@workspace/api-zod";
 import { describe, expect, it } from "vitest";
-import { KIDS_CATALOG_V2_ACTIVITIES } from "../kids-catalog";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { resolve } from "node:path";
+import { KIDS_CATALOG_ASSET_KEYS, KIDS_CATALOG_V2_ACTIVITIES } from "../kids-catalog";
 import { evaluateKidsTrace, isKidsCompletionEligible, kidsAdventureAttemptFromRow } from "../routes/kids";
 
 const attempt = (overrides: Partial<KidsAttempt> = {}): KidsAttempt => ({
@@ -83,6 +85,18 @@ describe("Hasaad Kids learning contracts", () => {
     expect(countActivity.type).toBe("counting");
     if (countActivity.type === "counting") numericLabels.add(countActivity.correctCount);
     expect([...Array(21).keys()].every((number) => numericLabels.has(number))).toBe(true);
+  });
+
+  it("ships a non-empty local file for every catalog asset key", () => {
+    const publicDirectory = resolve(process.cwd(), "../homework-app/public");
+    const clientRegistry = readFileSync(resolve(process.cwd(), "../homework-app/src/lib/kids-assets.ts"), "utf8");
+    for (const assetKey of KIDS_CATALOG_ASSET_KEYS) {
+      const extension = assetKey.startsWith("kids/audio/") ? ".mp3" : ".svg";
+      const file = resolve(publicDirectory, `${assetKey}${extension}`);
+      expect(existsSync(file), assetKey).toBe(true);
+      expect(statSync(file).size, assetKey).toBeGreaterThan(100);
+      expect(clientRegistry, `${assetKey} is missing from the client registry`).toContain(`"${assetKey}"`);
+    }
   });
 
   it("requires every mastery threshold, including weighted accuracy", () => {

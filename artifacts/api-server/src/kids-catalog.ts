@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { kidsActivitySchema, type KidsActivity, type KidsActivityType } from "@workspace/api-zod";
 import { sql } from "drizzle-orm";
 
-export const KIDS_CATALOG_VERSION = "kids-catalog-v2";
+export const KIDS_CATALOG_VERSION = "kids-catalog-v3";
 
 type KidsCatalogActivity = {
   skillSlug: "arabic-letter-recognition" | "english-basic-phonics" | "numbers-0-20";
@@ -69,12 +69,30 @@ export const KIDS_CATALOG_V2_ACTIVITIES: readonly KidsCatalogActivity[] = [
   },
   {
     skillSlug: "numbers-0-20", slug: "numbers-choose-zero", titleAr: "اختر الصفر", assetKey: "kids/activities/numbers-choose-zero", sortOrder: 3,
-    content: activity({ id: "numbers-choose-zero", type: "media_choice", skillId: "numbers-0-20", title: "Find zero", instructions: "Choose the zero.", exampleId: "numbers-choose-zero", prompt: "Which number is zero?", choices: [
+    content: activity({ id: "numbers-choose-zero", type: "media_choice", skillId: "numbers-0-20", title: "اختر الصفر", instructions: "استمع، ثم اختر الصفر.", exampleId: "numbers-choose-zero", prompt: "أين الرقم صفر؟", promptMedia: { kind: "audio", assetKey: "kids/audio/numbers/zero-prompt-ar" }, choices: [
       { id: "zero", label: "0", media: { kind: "image", assetKey: "kids/images/numbers/zero" }, isCorrect: true },
       { id: "one", label: "1", media: { kind: "image", assetKey: "kids/images/numbers/one" }, isCorrect: false },
     ] }),
   },
 ];
+
+const collectAssetKeys = (value: unknown, keys = new Set<string>()): Set<string> => {
+  if (typeof value === "string" && value.startsWith("kids/")) keys.add(value);
+  else if (Array.isArray(value)) value.forEach((entry) => collectAssetKeys(entry, keys));
+  else if (value && typeof value === "object") Object.values(value).forEach((entry) => collectAssetKeys(entry, keys));
+  return keys;
+};
+
+/** Complete first-party bundle contract shared by catalog validation and asset checks. */
+export const KIDS_CATALOG_ASSET_KEYS = Object.freeze([
+  "kids/avatars/star",
+  "kids/avatars/moon",
+  "kids/avatars/rainbow",
+  "kids/worlds/arabic-letters",
+  "kids/worlds/english-phonics",
+  "kids/worlds/numbers",
+  ...collectAssetKeys(KIDS_CATALOG_V2_ACTIVITIES),
+].sort());
 
 export async function migrateKidsSchema(): Promise<void> {
   await db.execute(sql`
