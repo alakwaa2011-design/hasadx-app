@@ -70,3 +70,4 @@
 - [Worksheet pedagogy metadata](worksheet-pedagogy-metadata.md) — learning intent belongs in settings JSON and travels to AI routes as a structured contract, not topic prose.
 - [Kids reward eligibility](kids-reward-eligibility.md) — completion must atomically consume an assignment or current daily slot; only one active session may exist per child/activity.
 - [Kids adult controls](kids-adult-controls.md) — child-facing trivia is not an adult gate; sensitive settings and reports belong on the authenticated teacher surface.
+- [Kids media browser checks](kids-media-e2e.md) — validate rendered image dimensions and real audio playback through an isolated child daily-journey session.
