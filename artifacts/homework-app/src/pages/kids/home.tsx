@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { Play, Star, Radio, Sparkles, Cloud } from "lucide-react";
 import { useKidsProfile, useKidsAdventureState, useKidsTodayAdventure, useKidsHome } from "@/hooks/use-kids";
+import { KidsIllustration } from "@/lib/kids-assets";
 
 const playfulStyles = `
   @keyframes float-cloud {
@@ -79,13 +80,7 @@ export default function KidsHome() {
           </div>
 
           <div className="relative z-10 w-48 h-48 md:w-64 md:h-64 shrink-0 flex justify-center items-center">
-            <img
-              src="/kids/world/hasaad-guide.webp"
-              alt="المرشد حصاد"
-              loading="eager"
-              className="w-full h-full drop-shadow-xl animate-float-cloud object-contain"
-              style={{ backgroundColor: 'transparent' }}
-            />
+            <KidsIllustration assetKey="kids/illustrations/mascot-wave" alt="مرشد حصاد الصغير يلوّح لك" eager className="w-full h-full drop-shadow-xl animate-float-cloud object-contain" fallback={<Star className="h-32 w-32 fill-amber-300 text-amber-400" />} />
           </div>
         </div>
 
@@ -94,19 +89,19 @@ export default function KidsHome() {
           <h2 className="text-2xl md:text-3xl font-black text-slate-700 px-4 drop-shadow-sm">عوالم نكتشفها</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
             <div className="rounded-[2rem] overflow-hidden relative aspect-video border-4 border-white shadow-sm bg-sky-200 group">
-              <img src="/kids/world/arabic-letter-city.jpg" alt="مدينة الحروف العربية" loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" style={{ backgroundColor: '#bae6fd' }} />
+              <KidsIllustration assetKey="kids/illustrations/world-arabic" alt="مدينة الحروف العربية" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5">
                 <span className="text-white font-bold text-xl drop-shadow-md">مدينة الحروف</span>
               </div>
             </div>
             <div className="rounded-[2rem] overflow-hidden relative aspect-video border-4 border-white shadow-sm bg-indigo-200 group">
-              <img src="/kids/world/english-island.jpg" alt="جزيرة الإنجليزية" loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" style={{ backgroundColor: '#c7d2fe' }} />
+              <KidsIllustration assetKey="kids/illustrations/world-english" alt="جزيرة الإنجليزية" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5">
                 <span className="text-white font-bold text-xl drop-shadow-md">جزيرة الإنجليزية</span>
               </div>
             </div>
             <div className="rounded-[2rem] overflow-hidden relative aspect-video border-4 border-white shadow-sm bg-amber-200 group">
-              <img src="/kids/world/numbers-valley.jpg" alt="وادي الأرقام" loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" style={{ backgroundColor: '#fde68a' }} />
+              <KidsIllustration assetKey="kids/illustrations/world-numbers" alt="وادي الأرقام" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5">
                 <span className="text-white font-bold text-xl drop-shadow-md">وادي الأرقام</span>
               </div>
@@ -164,7 +159,7 @@ export default function KidsHome() {
               <div className="absolute inset-0 bg-pink-700 rounded-[3rem] translate-y-3 group-active:translate-y-0 transition-transform"></div>
               <div className="relative h-full bg-gradient-to-br from-pink-400 to-pink-500 border-4 border-pink-200 p-8 md:p-12 rounded-[3rem] flex flex-col items-center justify-center gap-6 shadow-inner">
                 <div className="w-32 h-32 flex items-center justify-center">
-                  <img src="/kids/world/reward-chest.webp" alt="صندوق المكافآت" loading="lazy" className="w-full h-full object-contain drop-shadow-lg" style={{ backgroundColor: 'transparent' }} />
+                  <KidsIllustration assetKey="kids/illustrations/reward-chest" alt="صندوق المكافآت" className="w-full h-full object-contain drop-shadow-lg" fallback={<Star className="h-20 w-20 fill-amber-300 text-white" />} />
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-3xl md:text-4xl font-black text-white drop-shadow-md">صندوق الكنوز</h3>

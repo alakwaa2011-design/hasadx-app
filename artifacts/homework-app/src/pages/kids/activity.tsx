@@ -7,7 +7,7 @@ import {
 } from "@/hooks/use-kids";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kidsNumberAudioKey, resolveKidsAsset } from "@/lib/kids-assets";
+import { KidsIllustration, kidsNumberAudioKey, resolveKidsAsset } from "@/lib/kids-assets";
 
 // --- Utility: Media Renderer ---
 import React, { createContext, useContext, useId, useState, useEffect, useRef, useMemo } from "react";
@@ -526,16 +526,14 @@ export default function KidsActivityPage({ classroomMode = false }: { classroomM
           </div>
         </div>
 
-        <div className="w-12 h-12"></div> {/* Spacer */}
+        <KidsIllustration assetKey="kids/illustrations/mascot-point" alt="مرشد حصاد الصغير" eager className="h-12 w-12 object-contain" fallback={<Star className="h-8 w-8 fill-amber-300 text-amber-400" />} />
       </header>
 
       {/* Activity Content */}
       <main className="flex-1 overflow-y-auto relative">
         {isSuccess ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/10 backdrop-blur-sm z-10 animate-in fade-in">
-            <div className="w-32 h-32 bg-emerald-400 rounded-full flex items-center justify-center shadow-xl animate-bounce">
-              <Check className="w-16 h-16 text-white" />
-            </div>
+            <KidsIllustration assetKey="kids/illustrations/mascot-cheer" alt="مرشد حصاد يحتفل بإجابتك" eager className="h-40 w-40 object-contain drop-shadow-xl animate-bounce" fallback={<div className="w-32 h-32 bg-emerald-400 rounded-full flex items-center justify-center shadow-xl"><Check className="w-16 h-16 text-white" /></div>} />
             <h2 className="text-3xl font-black text-emerald-600 mt-8">أحسنت!</h2>
           </div>
         ) : null}

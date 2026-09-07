@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { useKidsTodayAdventure, useStartKidsTodayAdventure } from "@/hooks/use-kids";
 import { Star, Lock, CheckCircle2, Play, Cloud } from "lucide-react";
-import { resolveKidsAsset } from "@/lib/kids-assets";
+import { KidsAssetKey, KidsIllustration, resolveKidsAsset } from "@/lib/kids-assets";
 
 const playfulStyles = `
   .trail-line {
@@ -102,16 +102,16 @@ export default function KidsAdventure() {
   const { adventure, activities } = todayAdventure;
 
   const combinedText = activities.map(a => `${a.title_ar} ${a.slug} ${a.activity_type}`).join(" ").toLowerCase();
-  let bgImage = '/kids/world/arabic-letter-city.jpg';
+  let bgAsset: KidsAssetKey = "kids/illustrations/world-arabic";
   let bgColorClass = 'bg-sky-200';
   let bgAlt = 'مدينة الحروف العربية';
 
   if (combinedText.includes('english') || combinedText.includes('انجليزي') || /[a-z]/.test(combinedText)) {
-    bgImage = '/kids/world/english-island.jpg';
+    bgAsset = "kids/illustrations/world-english";
     bgColorClass = 'bg-indigo-200';
     bgAlt = 'جزيرة الإنجليزية';
   } else if (combinedText.includes('number') || combinedText.includes('رقم') || combinedText.includes('ارقام') || combinedText.includes('عد') || /[0-9]/.test(combinedText)) {
-    bgImage = '/kids/world/numbers-valley.jpg';
+    bgAsset = "kids/illustrations/world-numbers";
     bgColorClass = 'bg-amber-200';
     bgAlt = 'وادي الأرقام';
   }
@@ -123,7 +123,7 @@ export default function KidsAdventure() {
 
         {/* Dynamic Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
-          <img src={bgImage} alt={bgAlt} loading="eager" className="w-full h-full object-cover object-center" />
+          <KidsIllustration assetKey={bgAsset} alt={bgAlt} eager className="w-full h-full object-cover object-center" />
           <div className="absolute inset-0 bg-white/75 backdrop-blur-[2px]"></div>
         </div>
 
@@ -132,7 +132,8 @@ export default function KidsAdventure() {
         <Cloud className="absolute top-32 left-8 text-white/70 w-32 h-32 animate-float-cloud z-0" style={{ animationDelay: '1.5s' }} />
         <Cloud className="absolute bottom-20 right-20 text-white/60 w-40 h-40 animate-float-cloud z-0" style={{ animationDelay: '3s' }} />
 
-        <div className="flex justify-center mb-16 relative z-20">
+        <div className="flex justify-center items-center mb-16 relative z-20">
+          <KidsIllustration assetKey="kids/illustrations/mascot-point" alt="مرشد حصاد يشير إلى طريق المغامرة" eager className="h-32 w-32 object-contain drop-shadow-lg -ml-5" fallback={<Star className="h-20 w-20 fill-amber-300 text-amber-400" />} />
           <div className="text-center space-y-4 bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 px-12 border-4 border-white shadow-xl">
             <h1 className="text-4xl md:text-5xl font-black text-emerald-700 drop-shadow-sm" data-testid="text-adventure-title">خريطة المغامرة</h1>
             <p className="text-xl text-emerald-600 font-bold">انطلق في محطتك القادمة!</p>
@@ -176,7 +177,7 @@ export default function KidsAdventure() {
                     ) : isAvailable ? (
                       <Link href={`/kids/activity/${activityId}`} data-testid={`link-play-${activityId}`}>
                         <button className="kids-btn w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-amber-400 hover:bg-amber-500 flex items-center justify-center relative z-10 border-4 border-white node-shadow node-active" style={{ '--shadow-color': '#d97706' } as any} data-testid={`button-play-${activityId}`}>
-                          <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-white text-white translate-x-1" />
+                          <KidsIllustration assetKey="kids/illustrations/play-station" alt="محطة اللعب التالية" className="h-20 w-20 object-contain" fallback={<Play className="w-10 h-10 sm:w-12 sm:h-12 fill-white text-white translate-x-1" />} />
                         </button>
                       </Link>
                     ) : (

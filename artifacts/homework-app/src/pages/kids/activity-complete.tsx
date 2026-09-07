@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useParams } from "wouter";
 import { Star, Trophy, Home, Rocket, Sparkles } from "lucide-react";
 import { useKidsAdventureState } from "@/hooks/use-kids";
+import { KidsIllustration } from "@/lib/kids-assets";
 
 const celebrateStyles = `
   @keyframes spin-slow {
@@ -76,11 +77,12 @@ export default function KidsActivityComplete() {
         {/* Main Content */}
         <div className="relative z-10 max-w-lg w-full flex flex-col items-center">
 
-          {/* Giant Trophy */}
+          {/* Original celebration character and reward */}
           <div className="relative -mb-10 group z-20">
             <div className="absolute inset-0 bg-amber-200 rounded-full blur-[40px] opacity-70 animate-pulse"></div>
-            <div className="w-40 h-40 sm:w-48 sm:h-48 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full border-[8px] border-white flex items-center justify-center shadow-[0_16px_0_rgba(180,83,9,0.5)] transform transition-transform group-hover:scale-105">
-              <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-white drop-shadow-xl" />
+            <div className="w-56 h-44 sm:w-64 sm:h-52 flex items-end justify-center transform transition-transform group-hover:scale-105">
+              <KidsIllustration assetKey="kids/illustrations/mascot-cheer" alt="مرشد حصاد يحتفل بإنجازك" eager className="relative z-10 h-full w-40 object-contain drop-shadow-xl" fallback={<Trophy className="h-24 w-24 text-amber-300" />} />
+              <KidsIllustration assetKey="kids/illustrations/reward-chest" alt="صندوق المكافأة" eager className="relative z-20 -mr-8 h-24 w-24 object-contain drop-shadow-xl" fallback={<Star className="h-16 w-16 fill-amber-300 text-amber-400" />} />
             </div>
           </div>
 
@@ -89,13 +91,6 @@ export default function KidsActivityComplete() {
             <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 pt-16 rounded-[3.5rem] shadow-2xl border-[6px] border-white w-full space-y-8 relative">
 
               <div className="flex flex-col items-center gap-4">
-                <img
-                  src="/kids/world/hasaad-guide.webp"
-                  alt="المرشد حصاد يهنئك"
-                  loading="eager"
-                  className="w-32 h-32 object-contain drop-shadow-md animate-bounce-jelly"
-                  style={{ backgroundColor: 'transparent' }}
-                />
                 <h2 className="text-4xl sm:text-5xl font-black text-emerald-600 drop-shadow-sm text-center" data-testid="text-success-title">عمل رائع يا بطل!</h2>
               </div>
 

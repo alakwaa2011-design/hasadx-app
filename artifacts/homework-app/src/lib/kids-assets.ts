@@ -1,3 +1,5 @@
+import React from "react";
+
 const kidsAssetFiles = {
   "kids/activities/arabic-order-01-20": "kids/activities/arabic-order-01-20.svg",
   "kids/activities/arabic-match-21-28": "kids/activities/arabic-match-21-28.svg",
@@ -95,6 +97,14 @@ const kidsAssetFiles = {
   "kids/worlds/arabic-letters": "kids/worlds/arabic-letters.svg",
   "kids/worlds/english-phonics": "kids/worlds/english-phonics.svg",
   "kids/worlds/numbers": "kids/worlds/numbers.svg",
+  "kids/illustrations/mascot-wave": "kids/illustrations/mascot-wave.svg",
+  "kids/illustrations/mascot-cheer": "kids/illustrations/mascot-cheer.svg",
+  "kids/illustrations/mascot-point": "kids/illustrations/mascot-point.svg",
+  "kids/illustrations/world-arabic": "kids/illustrations/world-arabic.svg",
+  "kids/illustrations/world-english": "kids/illustrations/world-english.svg",
+  "kids/illustrations/world-numbers": "kids/illustrations/world-numbers.svg",
+  "kids/illustrations/reward-chest": "kids/illustrations/reward-chest.svg",
+  "kids/illustrations/play-station": "kids/illustrations/play-station.svg",
 } as const;
 
 export type KidsAssetKey = keyof typeof kidsAssetFiles;
@@ -112,3 +122,38 @@ export function resolveKidsAsset(assetKey: string): string | null {
 }
 
 export const kidsAssetKeys = Object.freeze(Object.keys(kidsAssetFiles) as KidsAssetKey[]);
+
+export function KidsIllustration({
+  assetKey,
+  alt,
+  className,
+  fallback,
+  eager = false,
+}: {
+  assetKey: KidsAssetKey;
+  alt: string;
+  className?: string;
+  fallback?: React.ReactNode;
+  eager?: boolean;
+}) {
+  const [failed, setFailed] = React.useState(false);
+  const src = resolveKidsAsset(assetKey);
+
+  if (failed || !src) {
+    return React.createElement(
+      "div",
+      { className, role: "img", "aria-label": alt },
+      fallback ?? React.createElement("span", { "aria-hidden": true }, "★"),
+    );
+  }
+
+  return React.createElement("img", {
+    src,
+    alt,
+    className,
+    loading: eager ? "eager" : "lazy",
+    decoding: "async",
+    fetchPriority: eager ? "high" : "auto",
+    onError: () => setFailed(true),
+  });
+}
