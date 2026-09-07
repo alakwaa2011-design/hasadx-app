@@ -941,3 +941,528 @@ uri = "file://artifacts/homework-app/public/kids/audio/phonics/a-prompt.mp3"
 type = "audio"
 title = "phonics a prompt"
 description = "Text-to-speech audio: A says ah, as in apple. Ah."
+
+[[outputs]]
+id = "20EfjU5-NddL1VPUdU_Er"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/02-baa_2.mp3"
+type = "audio"
+title = "Arabic letter باء"
+description = "Text-to-speech audio: باء"
+
+[[outputs]]
+id = "KXXbWXjYjY4SAjo8HaoCV"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/01-alif_2.mp3"
+type = "audio"
+title = "Arabic letter ألف"
+description = "Text-to-speech audio: ألف"
+
+[[outputs]]
+id = "MZ-DHMeS1RhC_PhAOC5zT"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/04-thaa_2.mp3"
+type = "audio"
+title = "Arabic letter ثاء"
+description = "Text-to-speech audio: ثاء"
+
+[[outputs]]
+id = "jYRFLwdRZ-SfdQq5juHD_"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/03-taa_2.mp3"
+type = "audio"
+title = "Arabic letter تاء"
+description = "Text-to-speech audio: تاء"
+
+[[outputs]]
+id = "L-ldYFlDffIJLv8pxIEh2"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/05-jeem_2.mp3"
+type = "audio"
+title = "Arabic letter جيم"
+description = "Text-to-speech audio: جيم"
+
+[[outputs]]
+id = "OvLsOKr3X5fx7k3xp3fP9"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/06-haa_2.mp3"
+type = "audio"
+title = "Arabic letter حاء"
+description = "Text-to-speech audio: حاء"
+
+[[outputs]]
+id = "VJjaqWax4DVAbuDy0q6aV"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/08-daal_2.mp3"
+type = "audio"
+title = "Arabic letter دال"
+description = "Text-to-speech audio: دال"
+
+[[outputs]]
+id = "W3Pu72P6b8rhypZ2JzQ-9"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/07-khaa_2.mp3"
+type = "audio"
+title = "Arabic letter خاء"
+description = "Text-to-speech audio: خاء"
+
+[[outputs]]
+id = "TqJxNdv8d2dHnDmWIPcMW"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/09-thaal_2.mp3"
+type = "audio"
+title = "Arabic letter ذال"
+description = "Text-to-speech audio: ذال"
+
+[[outputs]]
+id = "WZATIeMSWWYM4I5hEYWK7"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/14-saad_2.mp3"
+type = "audio"
+title = "Arabic letter صاد"
+description = "Text-to-speech audio: صاد"
+
+[[outputs]]
+id = "RbUAvicBJQyCwyHGAZt05"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/15-daad_2.mp3"
+type = "audio"
+title = "Arabic letter ضاد"
+description = "Text-to-speech audio: ضاد"
+
+[[outputs]]
+id = "lgl9mY6AUSkz2INJbz-TT"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/11-zaay_2.mp3"
+type = "audio"
+title = "Arabic letter زاي"
+description = "Text-to-speech audio: زاي"
+
+[[outputs]]
+id = "_qCicmYGgqc2BORVi-L_y"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/10-raa_2.mp3"
+type = "audio"
+title = "Arabic letter راء"
+description = "Text-to-speech audio: راء"
+
+[[outputs]]
+id = "qm7meJhE55jPrRQvt2m8q"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/13-sheen_2.mp3"
+type = "audio"
+title = "Arabic letter شين"
+description = "Text-to-speech audio: شين"
+
+[[outputs]]
+id = "GHApmE23268CkkzXPk-VB"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/16-taa-emphatic_2.mp3"
+type = "audio"
+title = "Arabic letter طاء"
+description = "Text-to-speech audio: طاء"
+
+[[outputs]]
+id = "ocRE9qjI2h7Yew4Dog5AL"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/12-seen_2.mp3"
+type = "audio"
+title = "Arabic letter سين"
+description = "Text-to-speech audio: سين"
+
+[[outputs]]
+id = "oUOx9AwZ2lfV6rTrSJA-v"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/18-ayn_2.mp3"
+type = "audio"
+title = "Arabic letter عين"
+description = "Text-to-speech audio: عين"
+
+[[outputs]]
+id = "mKRrqDK7HZcXoTwjSGDBp"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/17-zaa-emphatic_2.mp3"
+type = "audio"
+title = "Arabic letter ظاء"
+description = "Text-to-speech audio: ظاء"
+
+[[outputs]]
+id = "VFeb-zND47my-V7nvWCs4"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/19-ghayn_2.mp3"
+type = "audio"
+title = "Arabic letter غين"
+description = "Text-to-speech audio: غين"
+
+[[outputs]]
+id = "9-1lPdZTOk9p1FX3Atl32"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/20-faa_2.mp3"
+type = "audio"
+title = "Arabic letter فاء"
+description = "Text-to-speech audio: فاء"
+
+[[outputs]]
+id = "jb5MbfFWobdFrF-cArjtq"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/22-kaaf_2.mp3"
+type = "audio"
+title = "Arabic letter كاف"
+description = "Text-to-speech audio: كاف"
+
+[[outputs]]
+id = "PyD304DVe9jRualpXnNlX"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/23-laam_2.mp3"
+type = "audio"
+title = "Arabic letter لام"
+description = "Text-to-speech audio: لام"
+
+[[outputs]]
+id = "4r62G11Ya7AVIKi4dyNng"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/21-qaaf_2.mp3"
+type = "audio"
+title = "Arabic letter قاف"
+description = "Text-to-speech audio: قاف"
+
+[[outputs]]
+id = "8AArRTWLWOVjnAn9rESx_"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/24-meem_2.mp3"
+type = "audio"
+title = "Arabic letter ميم"
+description = "Text-to-speech audio: ميم"
+
+[[outputs]]
+id = "1wA_lXDmGMKMjEhGGcQqV"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/26-haa-final_2.mp3"
+type = "audio"
+title = "Arabic letter هاء"
+description = "Text-to-speech audio: هاء"
+
+[[outputs]]
+id = "4UJclUj7egQedw-OszHPi"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/25-noon_2.mp3"
+type = "audio"
+title = "Arabic letter نون"
+description = "Text-to-speech audio: نون"
+
+[[outputs]]
+id = "MsS3D9z7OfLUFdJRtV4nU"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/27-waaw_2.mp3"
+type = "audio"
+title = "Arabic letter واو"
+description = "Text-to-speech audio: واو"
+
+[[outputs]]
+id = "vdve7lTXMv94MEYgCQ6Q6"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/b_2.mp3"
+type = "audio"
+title = "English letter B"
+description = "Text-to-speech audio: B"
+
+[[outputs]]
+id = "ZdRYK09euOD434qAfMCyJ"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/a_2.mp3"
+type = "audio"
+title = "English letter A"
+description = "Text-to-speech audio: A"
+
+[[outputs]]
+id = "9jLvNjXNh9rbbQyMr4LRL"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/d_2.mp3"
+type = "audio"
+title = "English letter D"
+description = "Text-to-speech audio: D"
+
+[[outputs]]
+id = "HiX82SSvGK2xHru1RI2u0"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/c_2.mp3"
+type = "audio"
+title = "English letter C"
+description = "Text-to-speech audio: C"
+
+[[outputs]]
+id = "2TJVrYdyDQrC6CAQi328c"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-ar/28-yaa_2.mp3"
+type = "audio"
+title = "Arabic letter ياء"
+description = "Text-to-speech audio: ياء"
+
+[[outputs]]
+id = "FcWkVOMVUG0zBSOWDtFwl"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/e_2.mp3"
+type = "audio"
+title = "English letter E"
+description = "Text-to-speech audio: E"
+
+[[outputs]]
+id = "Hs80zWcQGcBZDKMMNCSIr"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/f_2.mp3"
+type = "audio"
+title = "English letter F"
+description = "Text-to-speech audio: F"
+
+[[outputs]]
+id = "TotcaqNc5gUa_q-NlSbxP"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/h_2.mp3"
+type = "audio"
+title = "English letter H"
+description = "Text-to-speech audio: H"
+
+[[outputs]]
+id = "1GSjBVXce7DWHkSwl0FH1"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/g_2.mp3"
+type = "audio"
+title = "English letter G"
+description = "Text-to-speech audio: G"
+
+[[outputs]]
+id = "pZw0nWumwPCBp6KZRBZ6K"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/i_2.mp3"
+type = "audio"
+title = "English letter I"
+description = "Text-to-speech audio: I"
+
+[[outputs]]
+id = "G8L2boAg-v2rtr4xINxyW"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/j_2.mp3"
+type = "audio"
+title = "English letter J"
+description = "Text-to-speech audio: J"
+
+[[outputs]]
+id = "-Sm-5zMT_u_3aU8Arl2Ua"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/l_2.mp3"
+type = "audio"
+title = "English letter L"
+description = "Text-to-speech audio: L"
+
+[[outputs]]
+id = "TGteWMyQBWvbxu92RzoJp"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/k_2.mp3"
+type = "audio"
+title = "English letter K"
+description = "Text-to-speech audio: K"
+
+[[outputs]]
+id = "riLo1CJ1JJuxalZ5qLIlo"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/m_2.mp3"
+type = "audio"
+title = "English letter M"
+description = "Text-to-speech audio: M"
+
+[[outputs]]
+id = "2TLOKjwB3deIhhx54BHVb"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/o_2.mp3"
+type = "audio"
+title = "English letter O"
+description = "Text-to-speech audio: O"
+
+[[outputs]]
+id = "FPeoyoqCWUzXTxp5SyIyd"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/n_2.mp3"
+type = "audio"
+title = "English letter N"
+description = "Text-to-speech audio: N"
+
+[[outputs]]
+id = "Ki5jgGjHLYdHX6PjkVgfy"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/p_2.mp3"
+type = "audio"
+title = "English letter P"
+description = "Text-to-speech audio: P"
+
+[[outputs]]
+id = "WwhYPk3fKqjw3ZcWyLDQZ"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/q_2.mp3"
+type = "audio"
+title = "English letter Q"
+description = "Text-to-speech audio: Q"
+
+[[outputs]]
+id = "BKLIqHcvDZs4vT2kkANLU"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/r_2.mp3"
+type = "audio"
+title = "English letter R"
+description = "Text-to-speech audio: R"
+
+[[outputs]]
+id = "YK2_ULQ-AkUH-BLGIskbZ"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/s_2.mp3"
+type = "audio"
+title = "English letter S"
+description = "Text-to-speech audio: S"
+
+[[outputs]]
+id = "O-Uzy2VpdFceXnpPy6u_c"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/t_2.mp3"
+type = "audio"
+title = "English letter T"
+description = "Text-to-speech audio: T"
+
+[[outputs]]
+id = "RetV_JVy8BFiUdJ56U-rA"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/v_2.mp3"
+type = "audio"
+title = "English letter V"
+description = "Text-to-speech audio: V"
+
+[[outputs]]
+id = "wpy6dWmZJAjlfQG0s41jL"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/u_2.mp3"
+type = "audio"
+title = "English letter U"
+description = "Text-to-speech audio: U"
+
+[[outputs]]
+id = "bYmOYp7j3owSEqQVZM_e4"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/x_2.mp3"
+type = "audio"
+title = "English letter X"
+description = "Text-to-speech audio: X"
+
+[[outputs]]
+id = "E7TPv7n-tMAY464i3k9Fr"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/z_2.mp3"
+type = "audio"
+title = "English letter Z"
+description = "Text-to-speech audio: Z"
+
+[[outputs]]
+id = "TolReD6Gc13EsYnmbd3tN"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/00-zero_2.mp3"
+type = "audio"
+title = "Arabic number صفر"
+description = "Text-to-speech audio: صفر"
+
+[[outputs]]
+id = "Y6vjrFoqT176o6dP-ogNC"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/01-one_2.mp3"
+type = "audio"
+title = "Arabic number واحد"
+description = "Text-to-speech audio: واحد"
+
+[[outputs]]
+id = "c7Sg8JocHselA_lYwtANn"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/y_2.mp3"
+type = "audio"
+title = "English letter Y"
+description = "Text-to-speech audio: Y"
+
+[[outputs]]
+id = "RHR69MPNvXWj09Vv9bWpC"
+uri = "file://artifacts/homework-app/public/kids/audio/letters-en/w_2.mp3"
+type = "audio"
+title = "English letter W"
+description = "Text-to-speech audio: W"
+
+[[outputs]]
+id = "JZ6LCr3JbmPepM49gmX3i"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/02-two_2.mp3"
+type = "audio"
+title = "Arabic number اثنان"
+description = "Text-to-speech audio: اثنان"
+
+[[outputs]]
+id = "exblZuy9wvquaV2YDRXVe"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/03-three_2.mp3"
+type = "audio"
+title = "Arabic number ثلاثة"
+description = "Text-to-speech audio: ثلاثة"
+
+[[outputs]]
+id = "c3axOUGKdJXO4w9VnApJb"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/05-five_2.mp3"
+type = "audio"
+title = "Arabic number خمسة"
+description = "Text-to-speech audio: خمسة"
+
+[[outputs]]
+id = "dYse4JzEh2iAmF61q_0bd"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/04-four_2.mp3"
+type = "audio"
+title = "Arabic number أربعة"
+description = "Text-to-speech audio: أربعة"
+
+[[outputs]]
+id = "qEw2GKE7wkPkJyr32RuGt"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/06-six_2.mp3"
+type = "audio"
+title = "Arabic number ستة"
+description = "Text-to-speech audio: ستة"
+
+[[outputs]]
+id = "a4_0g2Kqnixgp1hyO6Q91"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/09-nine_2.mp3"
+type = "audio"
+title = "Arabic number تسعة"
+description = "Text-to-speech audio: تسعة"
+
+[[outputs]]
+id = "OiqCpaULRAL5mxlZIFff9"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/07-seven_2.mp3"
+type = "audio"
+title = "Arabic number سبعة"
+description = "Text-to-speech audio: سبعة"
+
+[[outputs]]
+id = "g3nn_9QTR9Nk77XILxD7Q"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/08-eight_2.mp3"
+type = "audio"
+title = "Arabic number ثمانية"
+description = "Text-to-speech audio: ثمانية"
+
+[[outputs]]
+id = "N4AVfhzJvjdf1JmIPKm5T"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/10-ten_2.mp3"
+type = "audio"
+title = "Arabic number عشرة"
+description = "Text-to-speech audio: عشرة"
+
+[[outputs]]
+id = "96slqta_HugIaVcpGC7LF"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/11-eleven_2.mp3"
+type = "audio"
+title = "Arabic number أحد عشر"
+description = "Text-to-speech audio: أحد عشر"
+
+[[outputs]]
+id = "KO0oB9icr2rqwFsZzSU57"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/13-thirteen_2.mp3"
+type = "audio"
+title = "Arabic number ثلاثة عشر"
+description = "Text-to-speech audio: ثلاثة عشر"
+
+[[outputs]]
+id = "Llt4g9RpzP1Xsh3ejpawg"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/14-fourteen_2.mp3"
+type = "audio"
+title = "Arabic number أربعة عشر"
+description = "Text-to-speech audio: أربعة عشر"
+
+[[outputs]]
+id = "21jHH6d4N7OdQHanFNMGo"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/12-twelve_2.mp3"
+type = "audio"
+title = "Arabic number اثنا عشر"
+description = "Text-to-speech audio: اثنا عشر"
+
+[[outputs]]
+id = "zDz03Xv6pe4Vrb_8pIO3C"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/16-sixteen_2.mp3"
+type = "audio"
+title = "Arabic number ستة عشر"
+description = "Text-to-speech audio: ستة عشر"
+
+[[outputs]]
+id = "NCcSeGgckwJzbgpTVHxYH"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/17-seventeen_2.mp3"
+type = "audio"
+title = "Arabic number سبعة عشر"
+description = "Text-to-speech audio: سبعة عشر"
+
+[[outputs]]
+id = "qNzUJpHFqSDyPvecwYrJe"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/15-fifteen_2.mp3"
+type = "audio"
+title = "Arabic number خمسة عشر"
+description = "Text-to-speech audio: خمسة عشر"
+
+[[outputs]]
+id = "qO27K7eLutel3AfX3MLtq"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/19-nineteen_2.mp3"
+type = "audio"
+title = "Arabic number تسعة عشر"
+description = "Text-to-speech audio: تسعة عشر"
+
+[[outputs]]
+id = "7u42U9-37cUVGfO7Bk6fT"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/18-eighteen_2.mp3"
+type = "audio"
+title = "Arabic number ثمانية عشر"
+description = "Text-to-speech audio: ثمانية عشر"
+
+[[outputs]]
+id = "J5yh05qj2UMIGRy4jFA33"
+uri = "file://artifacts/homework-app/public/kids/audio/numbers/20-twenty_2.mp3"
+type = "audio"
+title = "Arabic number عشرون"
+description = "Text-to-speech audio: عشرون"
