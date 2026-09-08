@@ -60,6 +60,40 @@ describe("AI video narration plan contract", () => {
     expect(item.properties.sourceSceneIds.items.enum).toEqual(ids);
   });
 
+  it("creates per-ID measured word limits with exact safe-cache exceptions", () => {
+    const ids = storyboard().scenes.map((scene) => scene.id);
+    const schema = createNarrationPlanJsonSchema(ids, {
+      wordLimits: Object.fromEntries(ids.map((id, index) => [id, index + 2])),
+      allowedUnchangedNarration: { "scene-1": "This exact cached narration remains safe." },
+    }) as any;
+    const variants = schema.properties.scenes.items.anyOf;
+
+    expect(variants).toHaveLength(5);
+    expect(variants[0].properties.id.enum).toEqual(["scene-1"]);
+    expect(variants[0].properties.narration.anyOf[0].pattern).toContain("{0,1}");
+    expect(variants[0].properties.narration.anyOf[1].enum)
+      .toEqual(["This exact cached narration remains safe."]);
+    expect(variants[1].properties.id.enum).toEqual(["scene-2"]);
+    expect(variants[1].properties.narration.anyOf).toHaveLength(1);
+  });
+
+  it("uses character caps for new text and exact-only schemas for frozen scenes", () => {
+    const ids = storyboard().scenes.map((scene) => scene.id);
+    const schema = createNarrationPlanJsonSchema(ids, {
+      wordLimits: Object.fromEntries(ids.map((id) => [id, 3])),
+      characterLimits: Object.fromEntries(ids.map((id) => [id, 18])),
+      allowedUnchangedNarration: {},
+      frozenNarration: { "scene-2": "Keep this exact." },
+    }) as any;
+    const variants = schema.properties.scenes.items.anyOf;
+
+    expect(variants[0].properties.narration.anyOf[0].maxLength).toBe(18);
+    expect(variants[1].properties.narration).toEqual({
+      type: "string",
+      enum: ["Keep this exact."],
+    });
+  });
+
   it("strips harmless extra keys and returns scenes in current storyboard order", () => {
     const original = storyboard();
     const current = storyboard();

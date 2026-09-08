@@ -38,13 +38,73 @@ type JsonSchema = Record<string, unknown>;
  * providers must not add prose/metadata, while harmless extra response keys
  * from older callers can still be ignored by validateNarrationPlan.
  */
-export function createNarrationPlanJsonSchema(ids: string[]): JsonSchema {
+export type NarrationPlanJsonSchemaOptions = {
+  wordLimits?: Record<string, number>;
+  characterLimits?: Record<string, number>;
+  allowedUnchangedNarration?: Record<string, string>;
+  frozenNarration?: Record<string, string>;
+};
+
+export function createNarrationPlanJsonSchema(
+  ids: string[],
+  options: NarrationPlanJsonSchemaOptions = {},
+): JsonSchema {
   const stringProperty = (minLength: number, maxLength: number): JsonSchema => ({
     type: "string",
     minLength,
     maxLength,
   });
 
+  const sceneSchema = (id?: string): JsonSchema => {
+    const wordLimit = id === undefined ? undefined : options.wordLimits?.[id];
+    const characterLimit = id === undefined ? undefined : options.characterLimits?.[id];
+    const unchanged = id === undefined ? undefined : options.allowedUnchangedNarration?.[id];
+    const frozen = id === undefined ? undefined : options.frozenNarration?.[id];
+    const constrainedNarration: JsonSchema = frozen !== undefined
+      ? { type: "string", enum: [frozen] }
+      : wordLimit === undefined
+      ? stringProperty(1, 1_500)
+      : {
+          anyOf: [
+            {
+              ...stringProperty(1, characterLimit ?? 1_500),
+              pattern: `^\\s*\\S+(?:\\s+\\S+){0,${Math.max(0, wordLimit - 1)}}\\s*$`,
+            },
+            ...(unchanged === undefined ? [] : [{ type: "string", enum: [unchanged] }]),
+          ],
+        };
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "id",
+        "narration",
+        "objective",
+        "onScreenText",
+        "visualPrompt",
+        "sourceSceneIds",
+      ],
+      properties: {
+        id: {
+          ...stringProperty(1, 50),
+          pattern: "^[A-Za-z0-9_-]+$",
+          enum: id === undefined ? [...ids] : [id],
+        },
+        narration: constrainedNarration,
+        objective: stringProperty(1, 300),
+        onScreenText: stringProperty(0, 60),
+        visualPrompt: stringProperty(1, 800),
+        sourceSceneIds: {
+          type: "array",
+          minItems: 1,
+          maxItems: 18,
+          items: { type: "string", enum: [...ids] },
+        },
+      },
+    };
+  };
+
+  const constrained = options.wordLimits !== undefined;
   return {
     type: "object",
     additionalProperties: false,
@@ -54,35 +114,7 @@ export function createNarrationPlanJsonSchema(ids: string[]): JsonSchema {
         type: "array",
         minItems: ids.length,
         maxItems: ids.length,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: [
-            "id",
-            "narration",
-            "objective",
-            "onScreenText",
-            "visualPrompt",
-            "sourceSceneIds",
-          ],
-          properties: {
-            id: {
-              ...stringProperty(1, 50),
-              pattern: "^[A-Za-z0-9_-]+$",
-              enum: [...ids],
-            },
-            narration: stringProperty(1, 1_500),
-            objective: stringProperty(1, 300),
-            onScreenText: stringProperty(0, 60),
-            visualPrompt: stringProperty(1, 800),
-            sourceSceneIds: {
-              type: "array",
-              minItems: 1,
-              maxItems: 18,
-              items: { type: "string", enum: [...ids] },
-            },
-          },
-        },
+        items: constrained ? { anyOf: ids.map((id) => sceneSchema(id)) } : sceneSchema(),
       },
     },
   };

@@ -25,13 +25,13 @@ Treat narration timing as a whole-lesson allocation problem, not an isolated ret
 
 **Why:** per-scene word-rate estimates and a few isolated rewrites still caused reported failures on short lessons. Repeated shortening can also lose meaning when an overloaded scene could share its content with neighbouring scenes.
 
-**How to apply:** preserve the original lesson as the semantic source during redistribution, align visual prompts with moved content, learn capacity from measured speech, and validate every final recording before any paid motion request.
+**How to apply:** preserve the original lesson as the factual source, align visual prompts with moved content, learn capacity from measured speech, and validate every final recording before any paid motion request. The selected duration takes priority over optional detail: the owner explicitly wants automatic selection of explanation depth, not manual script shortening. Keep essential ideas and accurate quotations, not every source sentence.
 
-Estimated words-per-second are planning guidance, never a hard narration-plan validity rule. Use structured model output for metadata, and actual WAV duration for timing.
+Estimated words-per-second are initial planning guidance, not grounds to reject an unmeasured script. After a measured overrun, enforce meaningful compression before paying to speak a replacement; actual WAV duration remains the final authority.
 
-**Why:** treating conservative word estimates as hard limits sent short Arabic sentences through repeated plan rejection before their audio could be measured. Generic rejection feedback hid whether the problem was metadata or just one extra word.
+**Why:** strict initial estimates rejected plausible Arabic sentences before measurement, while purely advisory rewrites later expanded already-recorded narration. Live checks also showed a minimally reasoning model gaming word-count patterns by welding Arabic words together; passing a JSON schema is not evidence of natural or shorter speech.
 
-**How to apply:** allow plausibly short sentences to reach measurement, normalize harmless ordering/extra metadata, keep identity and semantic-coverage checks, and report specific invalid fields without logging lesson content.
+**How to apply:** measure first, then derive compression from observed speech. Constrain genuinely new wording by meaningful length as well as word count, preserve normal Arabic spacing and complete thoughts, and use sufficient model reasoning. Reuse unchanged measured audio and freeze fitting scenes when only another scene is too long; do not reject a partial repair merely because cached narration exceeded its old slot. Report specific failures without logging private lesson content.
 
 Keep AI video production administrator-only unless the owner explicitly asks to reopen it to teachers; this does not restrict the separate interactive-video lesson tool.
 

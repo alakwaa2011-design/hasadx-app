@@ -5,7 +5,11 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 const exec = promisify(execFile);
-const state = vi.hoisted(() => ({ scene: 0, preflightVerified: false, failSpeech: false }));
+const state = vi.hoisted(() => ({
+  scene: 0, preflightVerified: false, failSpeech: false,
+  // First narration borrows a second from the shorter second scene.
+  speechSeconds: [5.8, 3.8, 4.95, 4.95, 4.4],
+}));
 vi.mock("../lib/ai-video-motion", () => ({
   generateAiVideoMotion: vi.fn(async ({ outputPath, durationSeconds }: { outputPath: string; durationSeconds: number }) => {
     const { promisify } = await import("node:util");
@@ -13,7 +17,7 @@ vi.mock("../lib/ai-video-motion", () => ({
     const { dirname, join } = await import("node:path");
     const { stat } = await import("node:fs/promises");
     if (state.scene === 0) {
-      const expected = [5.15, 4.95, 4.95, 4.95, 4.4];
+      const expected = state.speechSeconds;
       for (let index = 0; index < 5; index += 1) {
         const audioPath = join(dirname(outputPath), `audio-${index}.wav`);
         if ((await stat(audioPath)).size <= 44) throw new Error(`Missing bounded narration WAV ${index}`);
@@ -39,7 +43,7 @@ vi.mock("@workspace/integrations-openai-ai-server/audio", () => ({
   textToSpeech: vi.fn(async (text: string) => {
     if (state.failSpeech) throw new Error("fatal local speech fixture failure");
     const index = Number(text.match(/(\d+)$/)?.[1] ?? 1) - 1;
-    const duration = [5.15, 4.95, 4.95, 4.95, 4.4][index]!;
+    const duration = state.speechSeconds[index]!;
     const sampleRate = 8_000;
     const samples = Math.round(duration * sampleRate);
     const wav = Buffer.alloc(44 + samples * 2);
@@ -117,7 +121,7 @@ describe.runIf(process.env.RUN_AI_VIDEO_MEDIA_TESTS === "1")("Real educational v
     expect(generateAiVideoMotion).not.toHaveBeenCalled();
     expect(state.scene).toBe(0);
   });
-  it("assembles 30 seconds, five moving scenes, shaped Arabic terms and a silent tail", async () => {
+  it("assembles exactly 30 seconds with nonuniform measured scenes, Arabic terms and a silent tail", async () => {
     const brief: AiVideoBrief = {
       title: "اختبار تقني محلي", topic: "تركيب مشاهد اختبار", prompt: "", language: "ar",
       sourceImages: [], durationSeconds: 30, aspectRatio: "16:9", visualStyle: "educational",
@@ -142,8 +146,10 @@ describe.runIf(process.env.RUN_AI_VIDEO_MEDIA_TESTS === "1")("Real educational v
     expect(state.scene).toBe(5);
     expect(state.preflightVerified).toBe(true);
     const saved = persist.mock.calls[0]![0];
+    expect(saved.scenes.map(scene => scene.durationSeconds)).toEqual([7, 5, 6, 6, 6]);
+    expect(saved.scenes.map(scene => scene.audioDurationSeconds)).toEqual(state.speechSeconds);
     expect(saved.scenes[4]!.narrationEndTime).toBeLessThanOrEqual(29.1);
-    expect(saved.scenes[1]!.narrationStartTime).toBe(6.5);
+    expect(saved.scenes[1]!.narrationStartTime).toBe(7.5);
     const { stderr } = await exec("ffmpeg", [
       "-hide_banner", "-ss", "29.3", "-i", path, "-vn", "-af", "volumedetect", "-f", "null", "-",
     ]);

@@ -452,6 +452,11 @@ export default function AiVideoStudio() {
                           </button>
                         ))}
                       </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                        {isAr
+                          ? "يختار الذكاء الاصطناعي مقدار الشرح المناسب، ويحافظ على الفكرة الأساسية ويضبط تلقائياً مدد المشاهد والتعليق الصوتي. لا حاجة لتحديد عدد كلمات."
+                          : "AI chooses the right amount of explanation, keeps the essential idea, and automatically adjusts scene durations and voice narration. No word limit is needed."}
+                      </p>
                     </div>
 
                     {/* Aspect Ratio */}
@@ -641,8 +646,8 @@ export default function AiVideoStudio() {
                           />
                           <p className="mt-1 text-[10px] font-medium text-slate-400">
                             {isAr
-                              ? "إذا كان التعليق أطول من زمن المشهد فسيُختصر تلقائياً مع الحفاظ على المعنى."
-                              : "Narration that exceeds the scene window is shortened automatically while preserving meaning."}
+                              ? "يُقاس توقيت التعليق ويُضبط تلقائياً مع زمن المشهد مع الحفاظ على الفكرة الأساسية. إذا تعذّر ضبط التوقيت، سيظهر فشل الإنتاج ويمكنك إعادة المحاولة."
+                              : "Narration timing is measured and adjusted automatically to the scene while preserving the essential idea. If timing cannot be completed, rendering will show as failed and you can retry."}
                           </p>
                         </div>
                         <div>
@@ -719,8 +724,8 @@ export default function AiVideoStudio() {
                   </h2>
                   <p className="text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
                     {isAr
-                      ? "هذه العملية قد تستغرق بضع دقائق. يتم الآن إنشاء الصور وتوليد الصوت ودمج المشاهد. يمكنك مغادرة هذه الصفحة والعودة لاحقاً."
-                      : "This may take a few minutes. Generating visuals, voiceover, and assembling scenes. You can leave and check back later."}
+                      ? "قد تستغرق هذه العملية بضع دقائق. يُنشأ التعليق الصوتي ويُقاس توقيته تلقائياً أولاً، ثم تُضبط مدد المشاهد قبل إنشاء الحركة ودمج الفيديو. يمكنك مغادرة الصفحة والعودة لاحقاً."
+                      : "This may take a few minutes. Voice narration is generated and timed automatically first; scene durations are adjusted before motion is created and the video is assembled. You can leave and check back later."}
                   </p>
 
                   <div className="mt-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 w-full max-w-sm text-sm font-bold text-slate-600 dark:text-slate-400 flex items-center justify-center gap-2">

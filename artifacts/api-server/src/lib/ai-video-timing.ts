@@ -12,7 +12,9 @@ export function narrationWindow(duration: number, index: number, count: number) 
   const lead = index === 0 ? 0.3 : 0.5;
   const tail = index === count - 1 ? 0.9 : 0.35;
   const budget = duration - lead - tail;
-  if (!Number.isFinite(budget) || budget < 0.7) throw new Error("Scene is too short for complete narration");
+  // A two-second final scene has 0.6s after its lead and safe tail. That still
+  // permits valid >=0.15s speech plus the coordinator's 0.15s safety margin.
+  if (!Number.isFinite(budget) || budget < 0.3) throw new Error("Scene is too short for complete narration");
   return { lead, tail, budget };
 }
 
