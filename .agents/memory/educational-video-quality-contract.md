@@ -15,11 +15,11 @@ Phase-one acceptance is the user's manual judgment of a new video, not successfu
 
 **How to apply:** require time-budgeted scenes, complete uncut narration with a safe tail, scene-aligned visuals and short terms, and licensed consistent Arabic typography; leave the result ready for user review without starting phase two.
 
-Narrated illustrations do not satisfy a requested classroom dialogue with an on-screen teacher and students.
+The accepted classroom-dialogue quality target is photorealistic teachers and students with native, synchronized Arabic character speech. Narrated illustrations do not satisfy it.
 
-**Why:** the owner rejected an expensive completed video because it only had voiceover, not a speaking teacher and responding students. Successful timing and encoding did not address that mismatch.
+**Why:** the owner rejected an expensive completed video because it only had voiceover, not a speaking teacher and responding students, then explicitly confirmed that the realistic native-audio dialogue sample achieved the desired style. Successful timing and encoding alone did not address that mismatch.
 
-**How to apply:** distinguish narration from character dialogue before choosing the production pipeline. When dialogue is requested, require visible speakers, distinct role-appropriate voices and speech aligned to the speaking character. Disclose the cost and validate a short representative exchange before proposing a full-length production.
+**How to apply:** distinguish narration from character dialogue before choosing the production pipeline. Require visible speakers, distinct role-appropriate voices and speech aligned to the speaking character. Preserve this approved quality target when adapting the generator. Sample approval validates the style only: it does not authorize another paid generation, approve the full-length pipeline, or extend a trial budget. Disclose and obtain approval for the next production's cost separately.
 
 For fal queue tracking, trust the attached connector contract over generic API assumptions: submit to the full model identifier, but track results/status/cancellation under its base application identifier (the first two path segments).
 
