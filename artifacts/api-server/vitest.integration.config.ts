@@ -37,6 +37,7 @@ export default defineConfig({
       "src/__tests__/annual-credit-release.integration.test.ts",
       "src/__tests__/worksheet-cell-regeneration-credits.integration.test.ts",
       "src/__tests__/hasaad-kids-learning.integration.test.ts",
+      "src/__tests__/welcome-credits-auth-routes.integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل

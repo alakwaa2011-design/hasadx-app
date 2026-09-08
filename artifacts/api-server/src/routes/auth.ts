@@ -534,10 +534,10 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    // Block login for new unverified accounts (have a pending OTP).
-    // Legacy accounts (verificationOtp=NULL) pass through — they see the nudge banner instead.
-    // Google accounts are always pre-verified.
-    if (!teacher.googleId && teacher.verificationOtp) {
+    // Only initial activation can require an OTP. Verified accounts can retain a
+    // stale code from an old resend; that must never become a new-device gate.
+    // Legacy accounts without a pending registration code still pass through.
+    if (!teacher.emailVerified && !teacher.verifiedAt && !teacher.googleId && teacher.verificationOtp) {
       res.status(403).json({
         message: "NEEDS_VERIFICATION",
         identifier,
@@ -1702,6 +1702,13 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
       return;
     }
 
+    // Activation is one-time, not a second factor for an existing account.
+    // Never issue new login-capable verification credentials for verified users.
+    if (teacher.emailVerified || teacher.verifiedAt || teacher.googleId) {
+      res.json({ ok: true });
+      return;
+    }
+
     // Rate limit: must wait OTP_RESEND_COOLDOWN_MS between resends
     if (teacher.otpExpiresAt) {
       const sendTime = teacher.otpExpiresAt.getTime() - OTP_TTL_MS;
@@ -1715,7 +1722,7 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
     const rawVerifyToken = teacher.email ? crypto.randomBytes(32).toString("hex") : null;
 
-    await db
+    const updated = await db
       .update(teachersTable)
       .set({
         verificationOtp: otp,
@@ -1723,7 +1730,19 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
         emailVerifyToken: rawVerifyToken,
         emailVerifyTokenExpiresAt: rawVerifyToken ? otpExpiresAt : null,
       })
-      .where(eq(teachersTable.id, teacher.id));
+      .where(and(
+        eq(teachersTable.id, teacher.id),
+        eq(teachersTable.emailVerified, false),
+        isNull(teachersTable.verifiedAt),
+        isNull(teachersTable.googleId),
+      ))
+      .returning({ id: teachersTable.id });
+
+    // Verification may have completed after the initial read.
+    if (!updated.length) {
+      res.json({ ok: true });
+      return;
+    }
 
     const channel = teacher.email ? "email" : "sms";
     if (channel === "email") {

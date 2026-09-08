@@ -13,8 +13,16 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 
 // Google route coverage: mock the ID-token verifier so /auth/google can run without real OAuth.
 const googleProfile = { sub: "", email: "", emailVerified: true, name: "Google Test" };
+const { sendEmailMock } = vi.hoisted(() => ({
+  // Auth route coverage must never send mail to a real provider.
+  sendEmailMock: vi.fn().mockResolvedValue({ delivered: true }),
+}));
 vi.mock("../lib/google-verify", () => ({
   verifyGoogleIdToken: vi.fn(async () => ({ ...googleProfile })),
+}));
+vi.mock("../lib/email", () => ({
+  sendEmail: sendEmailMock,
+  getAppBaseUrl: () => "http://test.local",
 }));
 import express from "express";
 import request from "supertest";
@@ -33,14 +41,23 @@ let mostRecentSession: { save: ReturnType<typeof vi.fn> } | null = null;
 
 function makeApp() {
   const app = express();
+  const sessions = new Map<string, any>();
+  let nextSessionId = 0;
   app.use(express.json());
-  app.use((req: any, _res, next) => {
-    const session = {
-      cookie: {},
-      save: vi.fn((callback: (error?: unknown) => void) => callback()),
-    };
+  app.use((req: any, res, next) => {
+    const sid = req.headers.cookie?.match(/(?:^|;\s*)test_sid=([^;]+)/)?.[1] ?? `s${++nextSessionId}`;
+    let session = sessions.get(sid);
+    if (!session) {
+      session = {
+        cookie: {},
+        save: vi.fn((callback: (error?: unknown) => void) => callback()),
+      };
+      sessions.set(sid, session);
+      res.cookie("test_sid", sid);
+    }
     mostRecentSession = session;
     req.session = session;
+    req.sessionID = sid;
     req.log = { info: () => {}, warn: () => {}, error: () => {} };
     next();
   });
@@ -63,12 +80,21 @@ async function createUnverifiedTeacher(suffix: string, opts: { otp?: string; tok
   return { id: Number((r.rows[0] as any).id), email };
 }
 
+async function getVerificationCredentials(tid: number) {
+  const result = await db.execute(sql`
+    SELECT verification_otp, otp_expires_at, email_verify_token, email_verify_token_expires_at
+    FROM teachers WHERE id = ${tid}
+  `);
+  return result.rows[0] as Record<string, unknown>;
+}
+
 async function cleanTeacher(tid: number) {
   await db.execute(sql`DELETE FROM credit_transactions WHERE teacher_id = ${tid}`);
   await db.execute(sql`DELETE FROM credit_batches   WHERE teacher_id = ${tid}`);
   await db.execute(sql`DELETE FROM credit_accounts  WHERE teacher_id = ${tid}`);
   await db.execute(sql`DELETE FROM xp_events        WHERE teacher_id = ${tid}`).catch(() => {});
   await db.execute(sql`DELETE FROM login_devices    WHERE teacher_id = ${tid}`).catch(() => {});
+  await db.execute(sql`DELETE FROM trusted_devices  WHERE teacher_id = ${tid}`).catch(() => {});
   await db.execute(sql`DELETE FROM teachers         WHERE id = ${tid}`);
 }
 
@@ -200,5 +226,89 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
     expect(res2.status).toBe(200);
     await settle();
     expect(await getWelcomeBatches(tid)).toHaveLength(1);
+  });
+
+  it("AUTH1 — معلم موثّق مع OTP قديم يستطيع الدخول من عملاء جدد ويحفظ جلساتهم", async () => {
+    const t = await createUnverifiedTeacher("verified_stale", { otp: "111111", token: "old-token" });
+    tids.push(t.id);
+    await db.execute(sql`
+      UPDATE teachers
+      SET email_verified = true, verified_at = NOW() - INTERVAL '1 day'
+      WHERE id = ${t.id}
+    `);
+
+    const firstDevice = request.agent(app);
+    const secondDevice = request.agent(app);
+    const [firstLogin, secondLogin] = await Promise.all([
+      firstDevice.post("/api/auth/login").set("User-Agent", "auth-test-device-one").send({ email: t.email, password: PASSWORD }),
+      secondDevice.post("/api/auth/login").set("User-Agent", "auth-test-device-two").send({ email: t.email, password: PASSWORD }),
+    ]);
+    expect(firstLogin.status).toBe(200);
+    expect(secondLogin.status).toBe(200);
+    expect(firstLogin.body.teacher.id).toBe(t.id);
+    expect(secondLogin.body.teacher.id).toBe(t.id);
+    expect((await firstDevice.get("/api/auth/me")).status).toBe(200);
+    expect((await secondDevice.get("/api/auth/me")).status).toBe(200);
+
+    const wrongPassword = await request(app)
+      .post("/api/auth/login")
+      .send({ email: t.email, password: "not-the-password" });
+    expect(wrongPassword.status).toBe(401);
+  });
+
+  it("AUTH2 — التسجيل المعلّق فعلاً يبقى محجوباً قبل إنشاء جلسة", async () => {
+    const t = await createUnverifiedTeacher("pending_login", { otp: "222222", token: "pending-token" });
+    tids.push(t.id);
+    const agent = request.agent(app);
+
+    const login = await agent.post("/api/auth/login").send({ email: t.email, password: PASSWORD });
+    expect(login.status).toBe(403);
+    expect(login.body).toMatchObject({ message: "NEEDS_VERIFICATION", identifier: t.email });
+    expect((await agent.get("/api/auth/me")).status).toBe(401);
+  });
+
+  it.each([
+    ["email_verified", "email_verified = true"],
+    ["verified_at", "verified_at = NOW()"],
+    ["google_id", "google_id = 'google-auth-marker'"],
+  ])("AUTH3 — resend-otp لا يغيّر الاعتمادات ولا يرسل بريداً عندما يكون %s موجوداً", async (_marker, verificationUpdate) => {
+    const t = await createUnverifiedTeacher(`resend_verified_${_marker}`, { otp: "333333", token: "stale-token" });
+    tids.push(t.id);
+    await db.execute(sql.raw(`UPDATE teachers SET ${verificationUpdate} WHERE id = ${t.id}`));
+    const before = await getVerificationCredentials(t.id);
+    sendEmailMock.mockClear();
+    const agent = request.agent(app);
+
+    const resend = await agent.post("/api/auth/resend-otp").send({ identifier: t.email });
+    expect(resend.status).toBe(200);
+    expect(resend.body).toEqual({ ok: true });
+    expect(await getVerificationCredentials(t.id)).toEqual(before);
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect((await agent.get("/api/auth/me")).status).toBe(401);
+  });
+
+  it("AUTH4 — resend-otp للحساب غير الموثّق يحدّث الاعتمادات ويرسل عبر البريد المقلّد", async () => {
+    const t = await createUnverifiedTeacher("resend_pending", { otp: "444444", token: "old-pending-token" });
+    tids.push(t.id);
+    // Make this pending registration eligible now rather than exercising the cooldown.
+    await db.execute(sql`
+      UPDATE teachers
+      SET otp_expires_at = NOW() - INTERVAL '31 minutes',
+          email_verify_token_expires_at = NOW() - INTERVAL '31 minutes'
+      WHERE id = ${t.id}
+    `);
+    const before = await getVerificationCredentials(t.id);
+    sendEmailMock.mockClear();
+
+    const resend = await request(app).post("/api/auth/resend-otp").send({ identifier: t.email });
+    expect(resend.status).toBe(200);
+    expect(resend.body).toEqual({ ok: true, channel: "email" });
+    const after = await getVerificationCredentials(t.id);
+    expect(after.verification_otp).not.toBe(before.verification_otp);
+    expect(after.email_verify_token).not.toBe(before.email_verify_token);
+    expect(after.otp_expires_at).not.toEqual(before.otp_expires_at);
+    expect(after.email_verify_token_expires_at).not.toEqual(before.email_verify_token_expires_at);
+    expect(sendEmailMock).toHaveBeenCalledOnce();
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ to: t.email }));
   });
 });
