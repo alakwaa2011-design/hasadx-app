@@ -72,6 +72,19 @@ describe("AI video speech timing", () => {
     expect(deps.rewrite).toHaveBeenCalledOnce();
     expect(deps.speak.mock.calls[0]?.[0]).toBe("Cooling vapor forms clouds.");
   });
+  it("measureFirst sends over-target narration to TTS before any rewrite", async () => {
+    const narration = "This complete explanation is above the conservative word target but its actual recording fits.";
+    const deps = dependencies([3]);
+    const result = await fitAiVideoNarration({
+      ...options,
+      narration,
+      initialMaxWords: 4,
+      measureFirst: true,
+    }, deps);
+    expect(result.narration).toBe(narration);
+    expect(deps.speak).toHaveBeenCalledWith(narration, "nova", expect.any(Number));
+    expect(deps.rewrite).not.toHaveBeenCalled();
+  });
   it("does not send oversized or no-progress rewrites to speech", async () => {
     const deps = dependencies([9]);
     deps.rewrite.mockResolvedValue("This rewrite remains much too long for target.");

@@ -4,6 +4,30 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+const provider = vi.hoisted(() => ({ create: vi.fn() }));
+vi.mock("@workspace/integrations-openai-ai-server", () => ({
+  openai: { chat: { completions: { create: provider.create } } },
+}));
+vi.mock("@workspace/integrations-openai-ai-server/audio", () => ({
+  textToSpeech: vi.fn(async () => {
+    const sampleRate = 8_000;
+    const samples = Math.round(0.4 * sampleRate);
+    const wav = Buffer.alloc(44 + samples * 2);
+    wav.write("RIFF", 0);
+    wav.writeUInt32LE(wav.length - 8, 4);
+    wav.write("WAVEfmt ", 8);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(sampleRate, 24);
+    wav.writeUInt32LE(sampleRate * 2, 28);
+    wav.writeUInt16LE(2, 32);
+    wav.writeUInt16LE(16, 34);
+    wav.write("data", 36);
+    wav.writeUInt32LE(samples * 2, 40);
+    return wav;
+  }),
+}));
 import {
   prepareAiVideoNarration,
   type NarrationPreflightDependencies,
@@ -89,6 +113,7 @@ function validReflow(storyboard: AiVideoStoryboard) {
 }
 
 afterEach(async () => {
+  provider.create.mockReset();
   await Promise.all(temporaryDirectories.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
@@ -186,6 +211,52 @@ describe("AI video whole-lesson narration preflight", () => {
     );
   }, 30_000);
 
+  it("accepts an eight-word Arabic final scene when its measured WAV fits", async () => {
+    const input = options(fixture("ar"));
+    input.storyboard.scenes[4]!.narration = "تتجمع قطرات الماء أخيراً لتبدأ دورة جديدة متكاملة";
+    const reflow = vi.fn();
+    const fit = vi.fn(async (request: Parameters<NarrationPreflightDependencies["fit"]>[0]) => {
+      expect(request.measureFirst).toBe(true);
+      return { narration: request.narration, durationSeconds: 2.2, attempts: 1 };
+    });
+
+    const result = await prepareAiVideoNarration(input, {
+      fit,
+      reflow,
+      probe: vi.fn(async () => 2.2),
+    });
+
+    expect(reflow).not.toHaveBeenCalled();
+    expect(result.storyboard.scenes[4]!.narration)
+      .toBe("تتجمع قطرات الماء أخيراً لتبدأ دورة جديدة متكاملة");
+    expect(result.storyboard.scenes[4]!.audioDurationSeconds).toBe(2.2);
+  });
+
+  it("accepts reflow narration above advisory targets when real measurements fit", async () => {
+    const input = options();
+    input.storyboard.scenes[0]!.narration = Array(20).fill("overloaded").join(" ");
+    const reflow = vi.fn(async (request: NarrationReflowRequest) => {
+      expect(request.maximumWords[0]).toBe(9);
+      const result = validReflow(request.current);
+      result.scenes[0]!.narration = "These ten spoken words remain complete and naturally fit here.";
+      return result;
+    });
+    const fit = vi.fn(async (request: Parameters<NarrationPreflightDependencies["fit"]>[0]) => ({
+      narration: request.narration,
+      durationSeconds: 2,
+      attempts: 1,
+    }));
+    const probe = vi.fn(async () => 2);
+
+    const result = await prepareAiVideoNarration(input, { fit, reflow, probe });
+
+    expect(reflow).toHaveBeenCalledOnce();
+    expect(fit).toHaveBeenCalledTimes(5);
+    expect(probe).toHaveBeenCalledTimes(5);
+    expect(result.storyboard.scenes[0]!.narration)
+      .toBe("These ten spoken words remain complete and naturally fit here.");
+  });
+
   it("preserves the exact 30-second timeline, leads, tails, and safety margins", async () => {
     const input = options();
     // Stay one hundredth inside each safety boundary so floating-point
@@ -229,8 +300,8 @@ describe("AI video whole-lesson narration preflight", () => {
   });
 
   it("rejects reflow plans that omit any original source coverage before fitting audio", async () => {
-    const input = options();
-    input.storyboard.scenes[0]!.narration = Array(20).fill("overloaded").join(" ");
+    const input = options(fixture("ar"));
+    input.storyboard.scenes[0]!.narration = Array(20).fill("معلومة").join(" ");
     const invalid = validReflow(input.storyboard);
     invalid.scenes.forEach((scene) => { scene.sourceSceneIds = ["scene-1"]; });
     invalid.scenes[0]!.narration = "Short.";
@@ -241,7 +312,7 @@ describe("AI video whole-lesson narration preflight", () => {
       fit,
       reflow,
       probe: vi.fn(),
-    })).rejects.toThrow("invalid timing/content plans");
+    })).rejects.toThrow("لم تُرجع خدمة كتابة التعليق خطة مكتملة للمشاهد");
     expect(reflow).toHaveBeenCalledTimes(3);
     expect(fit).not.toHaveBeenCalled();
   });
@@ -252,9 +323,7 @@ describe("AI video whole-lesson narration preflight", () => {
       data.storyboard.scenes[0]!.narration = Array(20).fill("word").join(" ");
       const reflow = vi.fn(async (request: NarrationReflowRequest) => {
         expect(request.maximumWords).toEqual(expected);
-        request.budgets.forEach((budget, index) => {
-          expect(budget).toBeCloseTo([5.2, 5, 5, 5, 4.45][index]!);
-        });
+        expect(request.budgets).toEqual([5.2, 5, 5, 5, 4.45]);
         const result = validReflow(request.current);
         result.scenes.forEach((scene) => { scene.narration = "Brief."; });
         return result;
@@ -350,6 +419,42 @@ describe("AI video whole-lesson narration preflight", () => {
     expect(feedback[2]).toContain("malformed");
     expect(fit).toHaveBeenCalledTimes(5);
   });
+
+  it("uses strict structured output for the default narration provider", async () => {
+    const { brief, storyboard } = fixture();
+    storyboard.scenes[0]!.narration = Array(20).fill("overloaded").join(" ");
+    const plan = validReflow(storyboard);
+    plan.scenes.forEach((scene) => { scene.narration = "Brief."; });
+    provider.create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(plan) } }],
+    });
+    const dir = await mkdtemp(join(tmpdir(), "narration-provider-contract-"));
+    temporaryDirectories.push(dir);
+
+    await prepareAiVideoNarration({
+      brief,
+      storyboard,
+      dir,
+      deadline: Date.now() + 300_000,
+      voice: "nova",
+      assertActive: async () => {},
+    });
+
+    expect(provider.create).toHaveBeenCalledOnce();
+    const request = provider.create.mock.calls[0]![0];
+    expect(request.response_format).toMatchObject({
+      type: "json_schema",
+      json_schema: { name: "educational_narration_plan", strict: true },
+    });
+    expect(request.response_format.json_schema.schema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+    });
+    expect(JSON.parse(request.messages[1].content).scenes[0]).toMatchObject({
+      targetWords: 9,
+      availableSpeechSeconds: 5.2,
+    });
+  }, 30_000);
 
   it("does not start TTS after lease or deadline loss during a reflow", async () => {
     for (const loss of ["lease", "deadline"] as const) {

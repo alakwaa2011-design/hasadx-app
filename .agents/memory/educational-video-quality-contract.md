@@ -26,3 +26,9 @@ Treat narration timing as a whole-lesson allocation problem, not an isolated ret
 **Why:** per-scene word-rate estimates and a few isolated rewrites still caused reported failures on short lessons. Repeated shortening can also lose meaning when an overloaded scene could share its content with neighbouring scenes.
 
 **How to apply:** preserve the original lesson as the semantic source during redistribution, align visual prompts with moved content, learn capacity from measured speech, and validate every final recording before any paid motion request.
+
+Estimated words-per-second are planning guidance, never a hard narration-plan validity rule. Use structured model output for metadata, and actual WAV duration for timing.
+
+**Why:** treating conservative word estimates as hard limits sent short Arabic sentences through repeated plan rejection before their audio could be measured. Generic rejection feedback hid whether the problem was metadata or just one extra word.
+
+**How to apply:** allow plausibly short sentences to reach measurement, normalize harmless ordering/extra metadata, keep identity and semantic-coverage checks, and report specific invalid fields without logging lesson content.

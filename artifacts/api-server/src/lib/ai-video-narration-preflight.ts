@@ -1,7 +1,9 @@
 import { join } from "node:path";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
-import { aiVideoSceneSchema, type AiVideoBrief, type AiVideoStoryboard } from "./ai-video-schemas";
+import { type AiVideoBrief, type AiVideoStoryboard } from "./ai-video-schemas";
+import { logger } from "./logger";
+import { createNarrationPlanJsonSchema, validateNarrationPlan } from "./ai-video-narration-plan";
 import {
   fitAiVideoNarration, NarrationNeedsReflowError, narrationWindow,
   narrationWords, probeAudioSeconds, type VideoVoice,
@@ -9,11 +11,6 @@ import {
 
 const SAFETY_SECONDS = 0.15;
 const MAX_REFLOW_ROUNDS = 8;
-const reflowSceneSchema = aiVideoSceneSchema.pick({
-  id: true, narration: true, objective: true, onScreenText: true, visualPrompt: true,
-}).extend({ sourceSceneIds: z.array(z.string()).min(1).max(18) });
-const reflowSchema = z.object({ scenes: z.array(reflowSceneSchema).min(5).max(18) }).strict();
-type ReflowResult = z.infer<typeof reflowSchema>;
 export type NarrationReflowRequest = {
   original: AiVideoStoryboard;
   current: AiVideoStoryboard;
@@ -34,20 +31,28 @@ type Options = {
 };
 export type NarrationPreflightDependencies = {
   fit: typeof fitAiVideoNarration;
-  reflow: (request: NarrationReflowRequest) => Promise<ReflowResult>;
+  reflow: (request: NarrationReflowRequest) => Promise<unknown>;
   probe: typeof probeAudioSeconds;
 };
 
-async function reflowNarration(request: NarrationReflowRequest): Promise<ReflowResult> {
+async function reflowNarration(request: NarrationReflowRequest): Promise<unknown> {
   const response = await openai.chat.completions.create({
     model: "gpt-5-mini", reasoning_effort: "minimal",
     max_completion_tokens: Math.min(16_384, 1024 * request.current.scenes.length),
-    response_format: { type: "json_object" },
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "educational_narration_plan", strict: true,
+        schema: createNarrationPlanJsonSchema(request.current.scenes.map((scene) => scene.id)),
+      },
+    },
     messages: [
       { role: "system", content: [
         "You are an educational narration timing editor, not a new lesson generator.",
         "Return JSON {scenes:[{id,narration,objective,onScreenText,visualPrompt,sourceSceneIds}]}.",
-        "Keep exactly the same scene IDs and order. Each narration must be a complete natural sentence within its HARD maximumWords.",
+        "Keep exactly the same scene IDs and order. Each narration must be a complete natural sentence.",
+        "targetWords is a conservative planning guide, not a reason to break a sentence or lose meaning. Actual speech duration is authoritative.",
+        "For measured overruns, shorten the spoken text towards targetWords and move remaining meaning to other slots. Never repeat the same overlong plan.",
         "Fit the WHOLE original lesson across all scenes. Move facts or clauses from overloaded scenes into neighbouring scenes with room.",
         "Preserve essential meaning, relationships, sequence, names and numbers across the lesson. Remove repetition and filler, not teaching facts.",
         "sourceSceneIds must identify the original scenes whose meaning this scene retains; cover every original scene at least once.",
@@ -64,13 +69,13 @@ async function reflowNarration(request: NarrationReflowRequest): Promise<ReflowR
         originalLesson: request.original.scenes.map(({ id, narration, objective }) => ({ id, narration, objective })),
         scenes: request.current.scenes.map((scene, i) => ({
           ...scene, availableSpeechSeconds: request.budgets[i],
-          maximumWords: request.maximumWords[i], measuredSpeechSeconds: request.measuredSeconds[i],
+          targetWords: request.maximumWords[i], measuredSpeechSeconds: request.measuredSeconds[i],
         })),
         correction: request.feedback,
       }) },
     ],
   }, { timeout: request.timeoutMs, maxRetries: 0 });
-  return reflowSchema.parse(JSON.parse(response.choices[0]?.message?.content ?? ""));
+  return JSON.parse(response.choices[0]?.message?.content ?? "");
 }
 
 const dependencies: NarrationPreflightDependencies = {
@@ -89,9 +94,9 @@ export async function prepareAiVideoNarration(
   const original = structuredClone(options.storyboard);
   const storyboard = structuredClone(original);
   const windows = storyboard.scenes.map((scene, i) => narrationWindow(scene.durationSeconds, i, storyboard.scenes.length));
-  const budgets = windows.map((window) => window.budget - SAFETY_SECONDS);
+  const budgets = windows.map((window) => Number((window.budget - SAFETY_SECONDS).toFixed(3)));
   // A starting estimate only. Actual recordings drive every subsequent correction.
-  const maximumWords = budgets.map((seconds) => Math.max(1, Math.floor(seconds * (options.brief.language === "ar" ? 1.6 : 1.9))));
+  const maximumWords = budgets.map((seconds) => Math.max(1, Math.floor(seconds * (options.brief.language === "ar" ? 1.6 : 1.9) + 1e-9)));
   const measuredSeconds: Array<number | null> = storyboard.scenes.map(() => null);
   const recordings: Array<{ narration: string; duration: number } | null> = storyboard.scenes.map(() => null);
   const timeout = (cap: number) => {
@@ -100,12 +105,15 @@ export async function prepareAiVideoNarration(
     return Math.min(cap, remaining);
   };
   let feedback = "";
-  let needsReflow = storyboard.scenes.some((scene, i) => narrationWords(scene.narration) > maximumWords[i]!);
+  // Only clearly long text needs pre-writing. A short sentence a word or two over
+  // the estimate must reach real TTS measurement, never be rejected as an invalid plan.
+  let needsReflow = storyboard.scenes.some((scene, i) =>
+    narrationWords(scene.narration) > Math.max(maximumWords[i]! + 4, Math.ceil(maximumWords[i]! * 1.5)));
   for (let round = 0; round <= MAX_REFLOW_ROUNDS; round++) {
     await options.assertActive();
     timeout(1000);
     if (needsReflow) {
-      // Validate semantic coverage, IDs and hard length limits before paying for TTS.
+      // Validate the content contract, not advisory word counts, before TTS.
       let accepted = false;
       for (let repair = 0; repair < 3; repair++) {
         await options.assertActive();
@@ -114,29 +122,23 @@ export async function prepareAiVideoNarration(
           maximumWords: [...maximumWords], budgets: [...budgets],
           measuredSeconds: [...measuredSeconds], feedback, timeoutMs: timeout(100_000),
         };
-        let raw: ReflowResult;
+        let raw: unknown;
         try {
           raw = await deps.reflow(request);
         } catch (error) {
           // Retry malformed model content, but never hide transport/auth/lease errors.
           if (!(error instanceof SyntaxError) && !(error instanceof z.ZodError)) throw error;
+          logger.warn({ round, repair, reason: "malformed_json" }, "AI video narration plan correction");
           feedback = "Your response was malformed. Return only the exact JSON scene contract, with all required fields and no prose.";
           continue;
         }
         await options.assertActive();
         timeout(1000);
-        const result = reflowSchema.safeParse(raw);
-        const covered = new Set(result.success ? result.data.scenes.flatMap((scene) => scene.sourceSceneIds) : []);
-        const ids = new Set(original.scenes.map((scene) => scene.id));
-        const valid = result.success
-          && result.data.scenes.length === storyboard.scenes.length
-          && result.data.scenes.every((scene, i) =>
-            scene.id === storyboard.scenes[i]!.id
-            && narrationWords(scene.narration) <= maximumWords[i]!
-            && scene.sourceSceneIds.every((id) => ids.has(id)))
-          && original.scenes.every((scene) => covered.has(scene.id));
-        if (!valid || !result.success) {
-          feedback = "Invalid plan: return all original IDs in order, retain ALL source-scene meanings through sourceSceneIds, and obey every hard word/label limit. No audio was generated for this invalid plan.";
+        const result = validateNarrationPlan(raw, original, storyboard);
+        if (!result.success) {
+          // Reasons and contract paths only: never log the teacher's source or narration.
+          logger.warn({ round, repair, issues: result.issues }, "AI video narration plan correction");
+          feedback = result.feedback;
           continue;
         }
         for (const [i, updated] of result.data.scenes.entries()) {
@@ -146,7 +148,9 @@ export async function prepareAiVideoNarration(
         accepted = true;
         break;
       }
-      if (!accepted) throw new Error("Narration planner returned invalid timing/content plans repeatedly; no motion generation was started.");
+      if (!accepted) throw new Error(options.brief.language === "ar"
+        ? "لم تُرجع خدمة كتابة التعليق خطة مكتملة للمشاهد. لم يبدأ توليد الفيديو أو خصم تكلفته لدى fal.ai."
+        : "The narration service did not return a complete scene plan. No fal.ai video generation was started.");
     }
 
     needsReflow = false;
@@ -162,7 +166,7 @@ export async function prepareAiVideoNarration(
           voice: options.voice, outputPath: join(options.dir, `audio-${i}.wav`),
           timeoutMs: timeout(330_000), assertActive: options.assertActive,
           // Overloaded facts go to the coordinator, not an isolated shortening loop.
-          maxAttempts: 1, initialMaxWords: maximumWords[i],
+          maxAttempts: 1, initialMaxWords: maximumWords[i], measureFirst: true,
         });
         await options.assertActive();
         if (!Number.isFinite(fitted.durationSeconds) || fitted.durationSeconds < 0.15) {
@@ -211,7 +215,7 @@ export async function prepareAiVideoNarration(
       timeout(1000);
       return { storyboard, timing };
     }
-    feedback = "Measured speech exceeded capacity. Redistribute original facts into shorter complete sentences across all slots, using each reduced maximumWords. Reuse unchanged, already-fitting narration where possible. Do not return the same overlong wording.";
+    feedback = "Measured speech exceeded capacity. Redistribute original facts into shorter complete sentences across all slots, using each reduced targetWords as guidance. Reuse unchanged, already-fitting narration where possible. Do not return the same overlong wording.";
   }
   throw new Error("The speech provider could not produce usable timed narration after automatic whole-lesson redistribution; no motion generation was started.");
 }

@@ -49,6 +49,8 @@ export type FitOptions = {
   maxAttempts?: number;
   initialMaxWords?: number;
   safetySeconds?: number;
+  /** The whole-lesson coordinator uses actual audio, not estimated word counts. */
+  measureFirst?: boolean;
 };
 export type FitDependencies = {
   speak: (text: string, voice: VideoVoice, timeoutMs: number) => Promise<Buffer>;
@@ -150,7 +152,7 @@ export async function fitAiVideoNarration(
     return undefined;
   };
 
-  if (narrationWords(narration) > maxWords) {
+  if (!options.measureFirst && narrationWords(narration) > maxWords) {
     const rewritten = await rewriteToTarget(narration, maxWords);
     if (!rewritten) throw new Error("Narration fitting returned no valid shorter text");
     narration = rewritten;
