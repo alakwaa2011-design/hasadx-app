@@ -3005,17 +3005,23 @@ export const AiVideoSceneSchema = zod.object({
   id: zod.string().max(50),
   objective: zod.string().max(300),
   narration: zod.string().max(1500),
-  onScreenText: zod.string().max(300),
+  onScreenText: zod.string().max(60),
   visualPrompt: zod.string().max(800),
   durationSeconds: zod.number().int().min(2).max(30),
-  transition: zod.enum(["cut", "dissolve", "push", "zoom"]),
+  startTime: zod.number().min(0).optional(),
+  endTime: zod.number().min(0).optional(),
+  duration: zod.number().min(0).optional(),
+  narrationStartTime: zod.number().min(0).optional(),
+  narrationEndTime: zod.number().min(0).optional(),
+  audioDurationSeconds: zod.number().min(0).optional(),
+  transition: zod.enum(["cut", "dissolve", "push", "zoom"]).default("dissolve"),
   sourceImage: zod.string().max(500).regex(/^\/objects\//).nullish(),
 });
 
 export const AiVideoStoryboardSchema = zod.object({
   title: zod.string().min(1).max(160),
   version: zod.number().int().min(1).default(1),
-  scenes: zod.array(AiVideoSceneSchema).min(5).max(10),
+  scenes: zod.array(AiVideoSceneSchema).min(5).max(18),
 });
 
 export const AiVideoBriefSchema = zod.object({

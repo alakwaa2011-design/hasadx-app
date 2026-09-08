@@ -13,7 +13,7 @@ export interface AiVideoScene {
     objective: string;
     /** @maxLength 1500 */
     narration: string;
-    /** @maxLength 300 */
+    /** @maxLength 60 */
     onScreenText: string;
     /** @maxLength 800 */
     visualPrompt: string;
@@ -22,6 +22,18 @@ export interface AiVideoScene {
        * @maximum 30
        */
     durationSeconds: number;
+    /** @minimum 0 */
+    startTime?: number;
+    /** @minimum 0 */
+    endTime?: number;
+    /** @minimum 0 */
+    duration?: number;
+    /** @minimum 0 */
+    narrationStartTime?: number;
+    /** @minimum 0 */
+    narrationEndTime?: number;
+    /** @minimum 0 */
+    audioDurationSeconds?: number;
     transition: AiVideoSceneTransition;
     /**
        * @maxLength 500

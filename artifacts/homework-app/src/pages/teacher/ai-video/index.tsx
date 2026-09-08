@@ -76,8 +76,8 @@ export default function AiVideoIndexPage() {
                 </div>
                 <p className="text-emerald-100/90 max-w-xl text-sm lg:text-base font-medium leading-relaxed">
                   {isAr
-                    ? "حوّل محتواك التعليمي إلى فيديوهات احترافية جذابة في دقائق. الذكاء الاصطناعي يتولى كتابة السيناريو، توليد المشاهد، والتعليق الصوتي."
-                    : "Transform your educational content into engaging professional videos in minutes. AI handles the script, scenes, and voiceover."}
+                    ? "حوّل محتواك التعليمي إلى فيديو مولّد بالذكاء الاصطناعي بحركة فعلية ودقة 720p. قد يستغرق الإنشاء عدة دقائق."
+                    : "Turn educational content into an AI-generated true-motion video at 720p. Generation may take several minutes."}
                 </p>
               </div>
               <button

@@ -22,6 +22,8 @@ import {
   aiVideoPatchSchema,
   aiVideoStoryboardSchema,
   aiVideoSourceImageContentTypes,
+  AI_VIDEO_TARGET_SCENE_COUNTS,
+  InvalidStoryboardTimingError,
   isOwnedAiVideoSourcePath,
   idempotencyKeySchema,
   sanitizeStoryboard,
@@ -78,18 +80,25 @@ function publicProject(project: AiVideoProject) {
 }
 
 function storyboardPrompt(brief: AiVideoBrief): string {
+  const sceneCount = AI_VIDEO_TARGET_SCENE_COUNTS[brief.durationSeconds];
+  const speechRate = brief.language === "ar" ? 2.0 : 2.3;
   return [
     `Create a ${brief.language === "ar" ? "Modern Standard Arabic" : "English"} educational video storyboard.`,
-    `Exact target duration: ${brief.durationSeconds} seconds. Style: ${brief.visualStyle}.`,
-    "Return strict JSON only with title and 5-10 scenes.",
+    `Exact target duration: ${brief.durationSeconds} seconds, using exactly ${sceneCount} scenes of about 6 seconds each. Style: ${brief.visualStyle}.`,
+    `Return strict JSON only with title and exactly ${sceneCount} scenes.`,
     "Return version: 1. Each scene must have: id (stable scene-1 format), objective, narration, onScreenText, visualPrompt, integer durationSeconds, transition (cut/dissolve/push/zoom), and sourceImage.",
-    "Use sourceImage only when selecting one of the exact supplied paths; otherwise null.",
-    "Narration must be teachable, factual, age-neutral, and fit the scene duration.",
-    "Visual prompts must request educational illustrations without people, faces, letters, text, typography, logos, or watermarks. On-screen text is added separately as captions.",
+    "Phase 1 is text-to-video only. Set sourceImage to null in every scene; do not claim that reference images influence generated motion.",
+    `Write natural narration at no more than ${speechRate.toFixed(1)} words per second (${brief.language === "ar" ? "Arabic" : "English"}).`,
+    "Reserve a 0.3-second intro before narration in scene 1 and a 0.5-second lead in every later scene. Reserve a 0.35-second ending pause in intermediate scenes and a 0.9-second safe tail in the final scene.",
+    `For every scene, narration word count must be at most floor((scene duration - lead - tail) * ${speechRate.toFixed(1)}), using the lead and tail rules above.`,
+    "Narration must be teachable, factual, age-neutral, and preserve the meaning and source context for every subject, not only selected examples.",
+    "onScreenText must be a short keyword label of at most 7 words and 60 characters. Never copy or fall back to the full narration.",
+    "Default transition to dissolve unless another transition is semantically necessary.",
+    "Every visualPrompt must directly depict the semantic action described by that scene's narration and request true subject/object motion within the scene, not simulated motion from camera zooming or panning.",
+    "Visual prompts must request educational illustrations without people, faces, letters, text, typography, logos, or watermarks. On-screen text is added separately.",
     `Title: ${brief.title}`,
     `Topic: ${brief.topic || "(derive from source)"}`,
     `Teacher direction: ${brief.prompt || "(none)"}`,
-    `Available source images: ${JSON.stringify(brief.sourceImages)}`,
     `Source material:\n${brief.sourceText || "(none)"}`,
   ].join("\n");
 }
@@ -300,7 +309,13 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
         ],
       }, { timeout: 100_000 });
       const raw = parseJson(completion.choices[0]?.message?.content ?? "");
-      const storyboard = sanitizeStoryboard(raw, brief);
+      const sanitizedStoryboard = sanitizeStoryboard(raw, brief, {
+        expectedSceneCount: AI_VIDEO_TARGET_SCENE_COUNTS[brief.durationSeconds],
+      });
+      const storyboard = {
+        ...sanitizedStoryboard,
+        scenes: sanitizedStoryboard.scenes.map((scene) => ({ ...scene, sourceImage: null })),
+      };
       if (leaseLost) throw new Error("AI video storyboard worker lease was lost");
       const project = await db.transaction(async (tx) => {
         const [updated] = await tx.update(aiVideoProjectsTable).set({
@@ -373,7 +388,11 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
         return;
       }
       req.log.error({ err, projectId: pending.id }, "AI video storyboard generation failed");
-      res.status(502).json({ message: "Could not generate a valid storyboard" });
+      res.status(502).json({
+        message: err instanceof InvalidStoryboardTimingError
+          ? err.message
+          : "Could not generate a valid storyboard",
+      });
     } finally {
       if (heartbeat) clearInterval(heartbeat);
     }

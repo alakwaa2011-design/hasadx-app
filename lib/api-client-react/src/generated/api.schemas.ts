@@ -26,6 +26,12 @@ export interface AiVideoScene {
   onScreenText: string;
   visualPrompt: string;
   durationSeconds: number;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  narrationStartTime?: number;
+  narrationEndTime?: number;
+  audioDurationSeconds?: number;
   transition: AiVideoSceneTransition;
   sourceImage?: string | null;
 }

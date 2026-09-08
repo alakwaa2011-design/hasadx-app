@@ -9,7 +9,10 @@ import {
   useRenderAiVideoProject,
   useRetryAiVideoProject,
   AiVideoScene,
-  getStorageUrl
+  AiVideoProject,
+  getAiVideoStoryboardContentKey,
+  getStorageUrl,
+  shouldHydrateAiVideoEditor,
 } from "@/hooks/use-ai-video";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { Card } from "@/components/ui-elements";
@@ -18,10 +21,25 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import {
   ArrowRight, ArrowLeft, Image as ImageIcon, Music, Type,
   Clock, Monitor, Sparkles, Loader2, Play,
-  Download, AlertCircle, RefreshCw, Trash2, ChevronUp, ChevronDown, Plus
+  Download, AlertCircle, RefreshCw, Trash2, ChevronUp, ChevronDown
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const MOTION_COST_PER_GENERATED_SECOND = 0.10;
+const DEFAULT_MOTION_COSTS: Record<30 | 60 | 90, number> = {
+  30: 3.80,
+  60: 7.80,
+  90: 11.80,
+};
+
+function estimateMotionCost(scenes: AiVideoScene[]): number {
+  const generatedSeconds = scenes.reduce((total, scene, index) => {
+    const hasOutgoingTransition = index < scenes.length - 1 && scene.transition !== "cut";
+    const requestedSeconds = scene.durationSeconds + (hasOutgoingTransition ? 0.4 : 0);
+    const billedSeconds = requestedSeconds <= 4 ? 4 : requestedSeconds <= 6 ? 6 : 8;
+    return total + billedSeconds;
+  }, 0);
+  return generatedSeconds * MOTION_COST_PER_GENERATED_SECOND;
+}
 
 function useQueryId() {
   const search = window.location.search;
@@ -54,8 +72,6 @@ export default function AiVideoStudio() {
   const [topic, setTopic] = useState("");
   const [sourceText, setSourceText] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Settings
   const [language, setLanguage] = useState<"ar"|"en">("ar");
@@ -70,66 +86,45 @@ export default function AiVideoStudio() {
   const [editTitle, setEditTitle] = useState("");
   const [editScenes, setEditScenes] = useState<AiVideoScene[]>([]);
   const initializedForId = useRef<number | null>(null);
+  const editsDirty = useRef(false);
+  const hydratedContentKey = useRef<string | null>(null);
 
-  // Update local state when project loads
+  const hydrateEditor = (nextProject: AiVideoProject) => {
+    setEditTitle(nextProject.storyboard?.title || nextProject.title);
+    setEditScenes(nextProject.storyboard?.scenes || []);
+    initializedForId.current = nextProject.id;
+    hydratedContentKey.current = getAiVideoStoryboardContentKey(nextProject.storyboard);
+    editsDirty.current = false;
+  };
+
+  // Hydrate backend updates without overwriting an active unsaved storyboard edit.
   useEffect(() => {
-    if (project && initializedForId.current !== project.id) {
-      if (project.status === "storyboard_ready") {
-        setEditTitle(project.storyboard?.title || project.title);
-        setEditScenes(project.storyboard?.scenes || []);
-        initializedForId.current = project.id;
-      }
+    if (!project) return;
+    const projectChanged = initializedForId.current !== project.id;
+    if (projectChanged && !project.storyboard) {
+      setEditTitle(project.title);
+      setEditScenes([]);
+      initializedForId.current = project.id;
+      hydratedContentKey.current = null;
+      editsDirty.current = false;
+      return;
+    }
+    const nextContentKey = getAiVideoStoryboardContentKey(project.storyboard);
+    if (shouldHydrateAiVideoEditor({
+      currentProjectId: initializedForId.current,
+      nextProjectId: project.id,
+      status: project.status,
+      isDirty: editsDirty.current,
+      currentContentKey: hydratedContentKey.current,
+      nextContentKey,
+    })) {
+      hydrateEditor(project);
     }
   }, [project]);
 
   const handleLanguageChange = (lang: "ar"|"en") => {
     setLanguage(lang);
     setVoice(lang === "ar" ? "nova" : "alloy");
-  };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/i)) {
-      toast.error(isAr ? "صيغة الصورة غير مدعومة (فقط JPG/PNG/WebP)" : "Unsupported image format (JPG/PNG/WebP only)");
-      return;
-    }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error(isAr ? "حجم الصورة يجب أن لا يتجاوز 15MB" : "Image size must not exceed 15MB");
-      return;
-    }
-    if (images.length >= 8) {
-      toast.error(isAr ? "الحد الأقصى 8 صور" : "Maximum 8 images allowed");
-      return;
-    }
-    setUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const uploadRes = await fetch(`${API_BASE}/api/ai-video/uploads/image`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      if (!uploadRes.ok) {
-        const error = await uploadRes.json().catch(() => ({}));
-        throw new Error(error.message || "Upload failed");
-      }
-      const { objectPath } = await uploadRes.json();
-
-      setImages(prev => [...prev, objectPath]);
-    } catch (err) {
-      toast.error(isAr ? "فشل رفع الصورة" : "Image upload failed");
-    } finally {
-      setUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const removeImage = (idx: number) => {
-    setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleError = (error: Error) => {
@@ -151,13 +146,18 @@ export default function AiVideoStudio() {
       toast.error(isAr ? "التوجيهات طويلة جداً (الحد الأقصى 1500 حرف)" : "Prompt too long (max 1500 chars)");
       return;
     }
+    if (!window.confirm(isAr
+      ? `سيستخدم إنشاء القصة المصوّرة رصيد أدوات الذكاء الاصطناعي. تكلفة الحركة المتوقعة عند الإنتاج بهذه المدة هي $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}، ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
+      : `Creating the storyboard uses AI-tool credits. The planned motion render for this duration is estimated at $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}, excluding OpenAI costs. Continue?`)) {
+      return;
+    }
 
     createMutation.mutate({
       title: topic || (isAr ? "فيديو بدون عنوان" : "Untitled Video"),
       topic,
       sourceText,
       prompt,
-      sourceImages: images,
+      sourceImages: [],
       language,
       durationSeconds: duration,
       aspectRatio,
@@ -179,14 +179,24 @@ export default function AiVideoStudio() {
   const totalDuration = editScenes.reduce((acc, s) => acc + (s.durationSeconds || 0), 0);
   const requestedDuration = project?.brief.durationSeconds || 0;
   const durationMismatch = editScenes.length > 0 && totalDuration !== requestedDuration;
+  const minimumSceneCount = requestedDuration ? Math.ceil(requestedDuration / 7) : 5;
 
   const validateStoryboard = () => {
     if (!editTitle.trim()) {
       toast.error(isAr ? "عنوان الفيديو مطلوب" : "Video title is required");
       return false;
     }
-    if (editScenes.length < 5) {
-      toast.error(isAr ? "الحد الأدنى 5 مشاهد" : "Minimum 5 scenes required");
+    if (editScenes.length < minimumSceneCount) {
+      toast.error(isAr
+        ? `عدد المشاهد غير كافٍ لمدة ${requestedDuration} ثانية. يلزم ${minimumSceneCount} مشهداً على الأقل حتى لا يتجاوز أي مشهد 7 ثوانٍ.`
+        : `Not enough scenes for ${requestedDuration} seconds. At least ${minimumSceneCount} scenes are required so no scene exceeds 7 seconds.`);
+      return false;
+    }
+    const maximumSceneCount = Math.min(18, Math.floor(requestedDuration / 2));
+    if (editScenes.length > maximumSceneCount) {
+      toast.error(isAr
+        ? `الحد الأقصى لهذه المدة ${maximumSceneCount} مشهداً لأن مدة المشهد لا تقل عن ثانيتين`
+        : `This duration allows at most ${maximumSceneCount} scenes because every scene is at least 2 seconds`);
       return false;
     }
     for (let i = 0; i < editScenes.length; i++) {
@@ -195,8 +205,12 @@ export default function AiVideoStudio() {
         toast.error(isAr ? `المشهد ${i+1} غير مكتمل` : `Scene ${i+1} is incomplete`);
         return false;
       }
-      if (s.durationSeconds < 2 || s.durationSeconds > 30) {
-        toast.error(isAr ? `مدة المشهد ${i+1} يجب أن تكون بين 2 و 30 ثانية` : `Scene ${i+1} duration must be 2-30 seconds`);
+      if (s.durationSeconds < 2 || s.durationSeconds > 7) {
+        toast.error(isAr ? `مدة المشهد ${i+1} يجب أن تكون بين ثانيتين و7 ثوانٍ` : `Scene ${i+1} duration must be 2-7 seconds`);
+        return false;
+      }
+      if ((s.onScreenText?.trim().split(/\s+/).filter(Boolean).length || 0) > 7 || (s.onScreenText?.trim().length || 0) > 60) {
+        toast.error(isAr ? `النص المختصر للمشهد ${i+1} يجب ألا يتجاوز 7 كلمات أو 60 حرفاً` : `Scene ${i+1} label must be no more than 7 words or 60 characters`);
         return false;
       }
     }
@@ -220,13 +234,20 @@ export default function AiVideoStudio() {
         }
       }
     }, {
-      onSuccess: () => toast.success(isAr ? "تم الحفظ" : "Saved"),
+      onSuccess: (savedProject) => {
+        hydrateEditor(savedProject);
+        toast.success(isAr ? "تم الحفظ" : "Saved");
+      },
       onError: handleError
     });
   };
 
-  const handleApprove = () => {
+  const handleRender = () => {
     if (!project || !validateStoryboard()) return;
+    const motionCost = estimateMotionCost(editScenes);
+    if (!window.confirm(isAr
+      ? `تكلفة توليد الحركة المقدّرة لهذا الفيديو هي $${motionCost.toFixed(2)} بسعر $0.10 لكل ثانية مولّدة، ولا تشمل تكلفة OpenAI. هل تريد بدء الإنتاج؟`
+      : `Estimated motion generation cost is $${motionCost.toFixed(2)} at $0.10 per generated second, excluding OpenAI costs. Start rendering?`)) return;
     // Save first just in case
     updateMutation.mutate({
       id: project.id,
@@ -239,7 +260,8 @@ export default function AiVideoStudio() {
         }
       }
     }, {
-      onSuccess: () => {
+      onSuccess: (savedProject) => {
+        hydrateEditor(savedProject);
         renderMutation.mutate({ id: project.id, idempotencyKey: crypto.randomUUID() }, {
           onError: handleError,
           onSettled: () => refreshCredits()
@@ -251,6 +273,10 @@ export default function AiVideoStudio() {
 
   const handleRetry = () => {
     if (!project) return;
+    const motionCost = estimateMotionCost(project.storyboard?.scenes || []);
+    if (!window.confirm(isAr
+      ? `إعادة المحاولة تضيف تكلفة جديدة. تكلفة الحركة المقدّرة للمحاولة هي $${motionCost.toFixed(2)} ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
+      : `A retry adds a new charge. Estimated motion cost for this attempt is $${motionCost.toFixed(2)}, excluding OpenAI costs. Continue?`)) return;
     retryMutation.mutate({ id: project.id, idempotencyKey: crypto.randomUUID() }, {
       onError: handleError,
       onSettled: () => refreshCredits()
@@ -263,18 +289,23 @@ export default function AiVideoStudio() {
     const temp = newScenes[idx];
     newScenes[idx] = newScenes[idx + dir];
     newScenes[idx + dir] = temp;
+    editsDirty.current = true;
     setEditScenes(newScenes);
   };
 
   const deleteScene = (idx: number) => {
-    if (editScenes.length <= 5) {
-      toast.error(isAr ? "الحد الأدنى 5 مشاهد" : "Minimum 5 scenes required");
+    if (editScenes.length <= minimumSceneCount) {
+      toast.error(isAr
+        ? `لا يمكن تقليل العدد عن ${minimumSceneCount} مشهداً لهذه المدة`
+        : `This duration requires at least ${minimumSceneCount} scenes`);
       return;
     }
+    editsDirty.current = true;
     setEditScenes(prev => prev.filter((_, i) => i !== idx));
   };
 
   const updateScene = (idx: number, updates: Partial<AiVideoScene>) => {
+    editsDirty.current = true;
     setEditScenes(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
   };
 
@@ -372,41 +403,11 @@ export default function AiVideoStudio() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex justify-between">
-                        <span>{isAr ? "صور مرجعية (اختياري)" : "Reference Images (Optional)"}</span>
-                        <span className="text-slate-400 text-xs">{images.length}/8</span>
-                      </label>
-                      <div className="flex flex-wrap gap-3">
-                        {images.map((img, i) => (
-                          <div key={i} className="relative w-20 h-20 rounded-xl border border-slate-200 overflow-hidden group">
-                            <img src={getStorageUrl(img)} alt="" className="w-full h-full object-cover" />
-                            <button
-                              onClick={() => removeImage(i)}
-                              className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 className="w-5 h-5 text-white" />
-                            </button>
-                          </div>
-                        ))}
-                        {images.length < 8 && (
-                          <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadingImage}
-                            className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors disabled:opacity-50"
-                          >
-                            {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin text-emerald-500" /> : <Plus className="w-5 h-5 text-slate-400" />}
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/png,image/jpeg,image/webp"
-                        className="hidden"
-                      />
-                    </div>
+                    <p className="rounded-xl bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-xs font-medium text-slate-500">
+                      {isAr
+                        ? "المرحلة الأولى تدعم إنشاء الفيديو من النص فقط؛ الصور المرجعية لا تؤثر في الحركة المولّدة."
+                        : "Phase 1 creates video from text only; reference images do not influence generated motion."}
+                    </p>
                   </div>
                 </Card>
               </div>
@@ -521,6 +522,11 @@ export default function AiVideoStudio() {
                   {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                   {isAr ? "توليد السيناريو" : "Generate Storyboard"}
                 </button>
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 p-4 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-400">
+                  {isAr
+                    ? `تُنشأ الحركة الفعلية بدقة 720p عبر fal-ai/veo3.1/fast (نموذج حركة بلا صوت) بسعر $0.10 لكل ثانية مولّدة بعد التقريب إلى 4 أو 6 أو 8 ثوانٍ لكل مشهد. التقدير الافتراضي لهذه المدة $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} للحركة فقط، ولا يشمل OpenAI، وتضيف كل إعادة محاولة تكلفة جديدة. قد يستغرق التوليد عدة دقائق.`
+                    : `True motion is generated at 720p with fal-ai/veo3.1/fast (no-audio motion model) at $0.10 per generated second, rounded to 4, 6, or 8 seconds per scene. The default estimate for this duration is $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} for motion only, excluding OpenAI; each retry adds a new cost. Generation may take several minutes.`}
+                </div>
               </div>
             </div>
           )}
@@ -560,7 +566,10 @@ export default function AiVideoStudio() {
                   <input
                     type="text"
                     value={editTitle}
-                    onChange={e => setEditTitle(e.target.value)}
+                    onChange={e => {
+                      editsDirty.current = true;
+                      setEditTitle(e.target.value);
+                    }}
                     className="w-full bg-transparent text-lg font-black text-slate-800 dark:text-slate-100 outline-none border-b-2 border-transparent focus:border-emerald-500 transition-colors"
                   />
                 </div>
@@ -573,12 +582,12 @@ export default function AiVideoStudio() {
                     {isAr ? "حفظ التعديلات" : "Save Changes"}
                   </button>
                   <button
-                    onClick={handleApprove}
+                    onClick={handleRender}
                     disabled={renderMutation.isPending}
                     className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50"
                   >
                     {renderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                    {isAr ? "اعتماد وإنتاج الفيديو" : "Approve & Render"}
+                    {isAr ? "حفظ وإنتاج الفيديو" : "Save & Render"}
                   </button>
                 </div>
               </div>
@@ -591,13 +600,17 @@ export default function AiVideoStudio() {
                       <span className="w-8 h-8 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-xs font-black text-emerald-600 shadow-sm border border-slate-100 dark:border-slate-700">
                         {idx + 1}
                       </span>
+                      <span className="whitespace-nowrap text-[10px] font-black text-slate-500 tabular-nums">
+                        {editScenes.slice(0, idx).reduce((sum, item) => sum + (item.durationSeconds || 0), 0)}–
+                        {editScenes.slice(0, idx + 1).reduce((sum, item) => sum + (item.durationSeconds || 0), 0)}s
+                      </span>
                       <div className="flex md:flex-col gap-1">
                         <button onClick={() => moveScene(idx, -1)} disabled={idx===0} className="p-1.5 text-slate-400 hover:text-emerald-600 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
                         <button onClick={() => moveScene(idx, 1)} disabled={idx===editScenes.length-1} className="p-1.5 text-slate-400 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
                       </div>
                       <button
                         onClick={() => deleteScene(idx)}
-                        disabled={editScenes.length <= 5}
+                        disabled={editScenes.length <= minimumSceneCount}
                         className="p-1.5 text-slate-400 hover:text-red-500 mt-auto disabled:opacity-30"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -607,6 +620,9 @@ export default function AiVideoStudio() {
                     {/* Scene Content */}
                     <div className="flex-1 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="space-y-4">
+                        <div className="inline-flex max-w-full items-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                          <span className="truncate">{scene.onScreenText || (isAr ? "بدون تسمية مختصرة" : "No short label")}</span>
+                        </div>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-500 mb-1">{isAr ? "التعليق الصوتي" : "Narration"}</label>
                           <textarea
@@ -614,6 +630,11 @@ export default function AiVideoStudio() {
                             onChange={e => updateScene(idx, { narration: e.target.value })}
                             className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 min-h-[80px] resize-y leading-relaxed"
                           />
+                          <p className="mt-1 text-[10px] font-medium text-slate-400">
+                            {isAr
+                              ? "إذا كان التعليق أطول من زمن المشهد فسيُختصر تلقائياً مع الحفاظ على المعنى."
+                              : "Narration that exceeds the scene window is shortened automatically while preserving meaning."}
+                          </p>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-slate-500 mb-1">{isAr ? "النص على الشاشة" : "On-Screen Text"}</label>
@@ -621,6 +642,7 @@ export default function AiVideoStudio() {
                             type="text"
                             value={scene.onScreenText}
                             onChange={e => updateScene(idx, { onScreenText: e.target.value })}
+                             maxLength={60}
                             className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500"
                           />
                         </div>

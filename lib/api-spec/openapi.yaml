@@ -1446,10 +1446,19 @@ components:
         id: { type: string, maxLength: 50 }
         objective: { type: string, maxLength: 300 }
         narration: { type: string, maxLength: 1500 }
-        onScreenText: { type: string, maxLength: 300 }
+        onScreenText:
+          type: string
+          maxLength: 60
+          description: Short keyword label of no more than 7 words; never a narration fallback.
         visualPrompt: { type: string, maxLength: 800 }
         durationSeconds: { type: integer, minimum: 2, maximum: 30 }
-        transition: { type: string, enum: [cut, dissolve, push, zoom] }
+        startTime: { type: number, minimum: 0 }
+        endTime: { type: number, minimum: 0 }
+        duration: { type: number, minimum: 0 }
+        narrationStartTime: { type: number, minimum: 0 }
+        narrationEndTime: { type: number, minimum: 0 }
+        audioDurationSeconds: { type: number, minimum: 0 }
+        transition: { type: string, enum: [cut, dissolve, push, zoom], default: dissolve }
         sourceImage:
           type: [string, "null"]
           maxLength: 500
@@ -1465,7 +1474,7 @@ components:
         scenes:
           type: array
           minItems: 5
-          maxItems: 10
+          maxItems: 18
           items: { $ref: "#/components/schemas/AiVideoScene" }
       required: [title, version, scenes]
 

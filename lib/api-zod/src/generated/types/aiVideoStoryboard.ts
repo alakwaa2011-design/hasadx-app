@@ -17,7 +17,7 @@ export interface AiVideoStoryboard {
   version: number;
   /**
      * @minItems 5
-     * @maxItems 10
+     * @maxItems 18
      */
   scenes: AiVideoScene[];
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  AI_VIDEO_TARGET_SCENE_COUNTS,
   aiVideoBriefSchema,
   aiVideoPatchSchema,
+  InvalidStoryboardTimingError,
   isOwnedAiVideoSourcePath,
   sanitizeStoryboard,
 } from "../lib/ai-video-schemas";
@@ -89,6 +91,108 @@ describe("AI video schemas", () => {
     expect(storyboard.version).toBe(1);
     expect(storyboard.scenes[0]?.sourceImage).toBe(brief.sourceImages[0]);
     expect(storyboard.scenes[1]?.sourceImage).toBeNull();
+    expect(storyboard.scenes.map(({ startTime, endTime, duration }) => ({ startTime, endTime, duration }))).toEqual([
+      { startTime: 0, endTime: 5, duration: 5 },
+      { startTime: 5, endTime: 10, duration: 5 },
+      { startTime: 10, endTime: 15, duration: 5 },
+      { startTime: 15, endTime: 20, duration: 5 },
+      { startTime: 20, endTime: 25, duration: 5 },
+      { startTime: 25, endTime: 30, duration: 5 },
+    ]);
+  });
+
+  it("enforces generated scene plans and rejects legacy long-scene storyboards", () => {
+    expect(AI_VIDEO_TARGET_SCENE_COUNTS).toEqual({ 30: 5, 60: 10, 90: 15 });
+    expect(() => sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: 6 }, (_, index) => scene(index + 1)),
+    }, brief, { expectedSceneCount: 5 })).toThrow(/exactly 5 scenes/);
+
+    const longBrief = { ...brief, durationSeconds: 90 as const };
+    expect(() => sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: 10 }, (_, index) => scene(index + 1, 9)),
+    }, longBrief)).toThrow(InvalidStoryboardTimingError);
+    expect(() => sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: 10 }, (_, index) => scene(index + 1, 9)),
+    }, longBrief)).toThrow(/At least 13 scenes/);
+  });
+
+  it.each([
+    { durationSeconds: 30 as const, sceneCount: 5 },
+    { durationSeconds: 60 as const, sceneCount: 10 },
+    { durationSeconds: 90 as const, sceneCount: 15 },
+  ])("builds the $durationSeconds-second default plan with contiguous six-second scenes", ({ durationSeconds, sceneCount }) => {
+    const result = sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: sceneCount }, (_, index) => scene(index + 1, 6)),
+    }, { ...brief, durationSeconds }, { expectedSceneCount: sceneCount });
+
+    expect(result.scenes).toHaveLength(sceneCount);
+    expect(result.scenes.every((item) => item.durationSeconds === 6)).toBe(true);
+    expect(result.scenes.at(-1)?.endTime).toBe(durationSeconds);
+    expect(result.scenes.every((item, index) => (
+      item.startTime === index * 6 && item.endTime === (index + 1) * 6
+    ))).toBe(true);
+  });
+
+  it("accepts compatibility timing metadata but derives scene timing and drops stale audio timing", () => {
+    const result = sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: 5 }, (_, index) => ({
+        ...scene(index + 1, 6),
+        startTime: 99,
+        endTime: 100,
+        duration: 1,
+        narrationStartTime: 99.1,
+        narrationEndTime: 99.8,
+        audioDurationSeconds: 0.7,
+      })),
+    }, brief);
+
+    expect(result.scenes[0]).toMatchObject({
+      startTime: 0,
+      endTime: 6,
+      duration: 6,
+      durationSeconds: 6,
+    });
+    expect(result.scenes[0]).not.toHaveProperty("narrationStartTime");
+    expect(result.scenes[0]).not.toHaveProperty("narrationEndTime");
+    expect(result.scenes[0]).not.toHaveProperty("audioDurationSeconds");
+    expect(result.scenes.at(-1)?.endTime).toBe(30);
+  });
+
+  it("rejects normalized scenes over seven seconds with an actionable error", () => {
+    expect(() => sanitizeStoryboard({
+      title: brief.title,
+      scenes: [
+        scene(1, 20),
+        scene(2, 2),
+        scene(3, 2),
+        scene(4, 2),
+        scene(5, 2),
+      ],
+    }, brief)).toThrow(/Scenes may not exceed 7 seconds/);
+  });
+
+  it("keeps overlong narration available for the compose-time fitter", () => {
+    const narration = "one two three four five six seven eight nine ten eleven twelve thirteen";
+    const result = sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: 5 }, (_, index) => ({
+        ...scene(index + 1, 6),
+        narration: index === 0 ? narration : "short narration",
+      })),
+    }, brief);
+    expect(result.scenes[0]?.narration).toBe(narration);
+  });
+
+  it("rejects scene counts that cannot fit the two-second minimum", () => {
+    expect(() => sanitizeStoryboard({
+      title: brief.title,
+      scenes: Array.from({ length: 16 }, (_, index) => scene(index + 1, 2)),
+    }, brief)).toThrow(/at most 15 scenes/);
   });
 
   it("preserves a teacher-incremented storyboard version and only accepts contracted transitions", () => {

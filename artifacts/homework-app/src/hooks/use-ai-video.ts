@@ -42,9 +42,37 @@ export type AiVideoScene = {
   onScreenText: string;
   visualPrompt: string;
   durationSeconds: number;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  narrationStartTime?: number;
+  narrationEndTime?: number;
+  audioDurationSeconds?: number;
   transition: "cut" | "dissolve" | "push" | "zoom";
   sourceImage?: string | null;
 };
+
+export function getAiVideoStoryboardContentKey(
+  storyboard: AiVideoProject["storyboard"],
+): string | null {
+  return storyboard ? JSON.stringify(storyboard) : null;
+}
+
+export function shouldHydrateAiVideoEditor(input: {
+  currentProjectId: number | null;
+  nextProjectId: number;
+  status: AiVideoProject["status"];
+  isDirty: boolean;
+  currentContentKey: string | null;
+  nextContentKey: string | null;
+}): boolean {
+  if (input.nextContentKey === null) return false;
+  if (input.currentProjectId !== input.nextProjectId) return true;
+  if (input.status !== "storyboard_ready") {
+    return input.isDirty || input.currentContentKey !== input.nextContentKey;
+  }
+  return !input.isDirty && input.currentContentKey !== input.nextContentKey;
+}
 
 export function useAiVideoProjects() {
   return useQuery({

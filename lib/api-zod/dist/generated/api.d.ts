@@ -6351,7 +6351,13 @@ export declare const AiVideoSceneSchema: zod.ZodObject<{
     onScreenText: zod.ZodString;
     visualPrompt: zod.ZodString;
     durationSeconds: zod.ZodNumber;
-    transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+    startTime: zod.ZodOptional<zod.ZodNumber>;
+    endTime: zod.ZodOptional<zod.ZodNumber>;
+    duration: zod.ZodOptional<zod.ZodNumber>;
+    narrationStartTime: zod.ZodOptional<zod.ZodNumber>;
+    narrationEndTime: zod.ZodOptional<zod.ZodNumber>;
+    audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
+    transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
     sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     id: string;
@@ -6361,6 +6367,12 @@ export declare const AiVideoSceneSchema: zod.ZodObject<{
     onScreenText: string;
     visualPrompt: string;
     transition: "push" | "cut" | "dissolve" | "zoom";
+    startTime?: number | undefined;
+    endTime?: number | undefined;
+    duration?: number | undefined;
+    narrationStartTime?: number | undefined;
+    narrationEndTime?: number | undefined;
+    audioDurationSeconds?: number | undefined;
     sourceImage?: string | null | undefined;
 }, {
     id: string;
@@ -6369,7 +6381,13 @@ export declare const AiVideoSceneSchema: zod.ZodObject<{
     narration: string;
     onScreenText: string;
     visualPrompt: string;
-    transition: "push" | "cut" | "dissolve" | "zoom";
+    startTime?: number | undefined;
+    endTime?: number | undefined;
+    duration?: number | undefined;
+    narrationStartTime?: number | undefined;
+    narrationEndTime?: number | undefined;
+    audioDurationSeconds?: number | undefined;
+    transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
     sourceImage?: string | null | undefined;
 }>;
 export declare const AiVideoStoryboardSchema: zod.ZodObject<{
@@ -6382,7 +6400,13 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         onScreenText: zod.ZodString;
         visualPrompt: zod.ZodString;
         durationSeconds: zod.ZodNumber;
-        transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+        startTime: zod.ZodOptional<zod.ZodNumber>;
+        endTime: zod.ZodOptional<zod.ZodNumber>;
+        duration: zod.ZodOptional<zod.ZodNumber>;
+        narrationStartTime: zod.ZodOptional<zod.ZodNumber>;
+        narrationEndTime: zod.ZodOptional<zod.ZodNumber>;
+        audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
+        transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
         sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     }, "strip", zod.ZodTypeAny, {
         id: string;
@@ -6392,6 +6416,12 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         onScreenText: string;
         visualPrompt: string;
         transition: "push" | "cut" | "dissolve" | "zoom";
+        startTime?: number | undefined;
+        endTime?: number | undefined;
+        duration?: number | undefined;
+        narrationStartTime?: number | undefined;
+        narrationEndTime?: number | undefined;
+        audioDurationSeconds?: number | undefined;
         sourceImage?: string | null | undefined;
     }, {
         id: string;
@@ -6400,7 +6430,13 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         narration: string;
         onScreenText: string;
         visualPrompt: string;
-        transition: "push" | "cut" | "dissolve" | "zoom";
+        startTime?: number | undefined;
+        endTime?: number | undefined;
+        duration?: number | undefined;
+        narrationStartTime?: number | undefined;
+        narrationEndTime?: number | undefined;
+        audioDurationSeconds?: number | undefined;
+        transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
         sourceImage?: string | null | undefined;
     }>, "many">;
 }, "strip", zod.ZodTypeAny, {
@@ -6414,6 +6450,12 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         onScreenText: string;
         visualPrompt: string;
         transition: "push" | "cut" | "dissolve" | "zoom";
+        startTime?: number | undefined;
+        endTime?: number | undefined;
+        duration?: number | undefined;
+        narrationStartTime?: number | undefined;
+        narrationEndTime?: number | undefined;
+        audioDurationSeconds?: number | undefined;
         sourceImage?: string | null | undefined;
     }[];
 }, {
@@ -6425,7 +6467,13 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         narration: string;
         onScreenText: string;
         visualPrompt: string;
-        transition: "push" | "cut" | "dissolve" | "zoom";
+        startTime?: number | undefined;
+        endTime?: number | undefined;
+        duration?: number | undefined;
+        narrationStartTime?: number | undefined;
+        narrationEndTime?: number | undefined;
+        audioDurationSeconds?: number | undefined;
+        transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
         sourceImage?: string | null | undefined;
     }[];
     version?: number | undefined;
@@ -6531,7 +6579,13 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             onScreenText: zod.ZodString;
             visualPrompt: zod.ZodString;
             durationSeconds: zod.ZodNumber;
-            transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+            startTime: zod.ZodOptional<zod.ZodNumber>;
+            endTime: zod.ZodOptional<zod.ZodNumber>;
+            duration: zod.ZodOptional<zod.ZodNumber>;
+            narrationStartTime: zod.ZodOptional<zod.ZodNumber>;
+            narrationEndTime: zod.ZodOptional<zod.ZodNumber>;
+            audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
+            transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
             sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
@@ -6541,6 +6595,12 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             onScreenText: string;
             visualPrompt: string;
             transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
         }, {
             id: string;
@@ -6549,7 +6609,13 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             narration: string;
             onScreenText: string;
             visualPrompt: string;
-            transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
+            transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
@@ -6563,6 +6629,12 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             onScreenText: string;
             visualPrompt: string;
             transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
         }[];
     }, {
@@ -6574,7 +6646,13 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             narration: string;
             onScreenText: string;
             visualPrompt: string;
-            transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
+            transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
         }[];
         version?: number | undefined;
@@ -6618,6 +6696,12 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             onScreenText: string;
             visualPrompt: string;
             transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
         }[];
     } | null;
@@ -6656,7 +6740,13 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             narration: string;
             onScreenText: string;
             visualPrompt: string;
-            transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
+            transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
         }[];
         version?: number | undefined;
@@ -6725,7 +6815,13 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 onScreenText: zod.ZodString;
                 visualPrompt: zod.ZodString;
                 durationSeconds: zod.ZodNumber;
-                transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+                startTime: zod.ZodOptional<zod.ZodNumber>;
+                endTime: zod.ZodOptional<zod.ZodNumber>;
+                duration: zod.ZodOptional<zod.ZodNumber>;
+                narrationStartTime: zod.ZodOptional<zod.ZodNumber>;
+                narrationEndTime: zod.ZodOptional<zod.ZodNumber>;
+                audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
+                transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
                 sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
             }, "strip", zod.ZodTypeAny, {
                 id: string;
@@ -6735,6 +6831,12 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 onScreenText: string;
                 visualPrompt: string;
                 transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
             }, {
                 id: string;
@@ -6743,7 +6845,13 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narration: string;
                 onScreenText: string;
                 visualPrompt: string;
-                transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
+                transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
             }>, "many">;
         }, "strip", zod.ZodTypeAny, {
@@ -6757,6 +6865,12 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 onScreenText: string;
                 visualPrompt: string;
                 transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
             }[];
         }, {
@@ -6768,7 +6882,13 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narration: string;
                 onScreenText: string;
                 visualPrompt: string;
-                transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
+                transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
             }[];
             version?: number | undefined;
@@ -6812,6 +6932,12 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 onScreenText: string;
                 visualPrompt: string;
                 transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
             }[];
         } | null;
@@ -6850,7 +6976,13 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narration: string;
                 onScreenText: string;
                 visualPrompt: string;
-                transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
+                transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
             }[];
             version?: number | undefined;
@@ -6894,6 +7026,12 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 onScreenText: string;
                 visualPrompt: string;
                 transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
             }[];
         } | null;
@@ -6934,7 +7072,13 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narration: string;
                 onScreenText: string;
                 visualPrompt: string;
-                transition: "push" | "cut" | "dissolve" | "zoom";
+                startTime?: number | undefined;
+                endTime?: number | undefined;
+                duration?: number | undefined;
+                narrationStartTime?: number | undefined;
+                narrationEndTime?: number | undefined;
+                audioDurationSeconds?: number | undefined;
+                transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
             }[];
             version?: number | undefined;
@@ -7054,7 +7198,13 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             onScreenText: zod.ZodString;
             visualPrompt: zod.ZodString;
             durationSeconds: zod.ZodNumber;
-            transition: zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>;
+            startTime: zod.ZodOptional<zod.ZodNumber>;
+            endTime: zod.ZodOptional<zod.ZodNumber>;
+            duration: zod.ZodOptional<zod.ZodNumber>;
+            narrationStartTime: zod.ZodOptional<zod.ZodNumber>;
+            narrationEndTime: zod.ZodOptional<zod.ZodNumber>;
+            audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
+            transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
             sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
@@ -7064,6 +7214,12 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             onScreenText: string;
             visualPrompt: string;
             transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
         }, {
             id: string;
@@ -7072,7 +7228,13 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             narration: string;
             onScreenText: string;
             visualPrompt: string;
-            transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
+            transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
@@ -7086,6 +7248,12 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             onScreenText: string;
             visualPrompt: string;
             transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
         }[];
     }, {
@@ -7097,7 +7265,13 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             narration: string;
             onScreenText: string;
             visualPrompt: string;
-            transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
+            transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
         }[];
         version?: number | undefined;
@@ -7115,6 +7289,12 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             onScreenText: string;
             visualPrompt: string;
             transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
         }[];
     } | undefined;
@@ -7129,7 +7309,13 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             narration: string;
             onScreenText: string;
             visualPrompt: string;
-            transition: "push" | "cut" | "dissolve" | "zoom";
+            startTime?: number | undefined;
+            endTime?: number | undefined;
+            duration?: number | undefined;
+            narrationStartTime?: number | undefined;
+            narrationEndTime?: number | undefined;
+            audioDurationSeconds?: number | undefined;
+            transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
         }[];
         version?: number | undefined;
