@@ -27,6 +27,12 @@ For fal queue tracking, trust the attached connector contract over generic API a
 
 **How to apply:** verify against the provider/connector contract before changing queue path normalization, and never use a paid render merely to probe endpoint shapes.
 
+Single-attempt paid dialogue trials must disable provider retries as well as client resubmission, and must not silently rewrite the approved scene.
+
+**Why:** the fal queue can retry failed runners internally even when our caller submits only once; the model also offers automatic prompt rewriting. Both weaken the user's control over a tightly approved trial.
+
+**How to apply:** use the documented `X-Fal-No-Retry: 1` header and `auto_fix: false` for such trials, persist the submission identifier, and only poll or retrieve that same request. A lost submission response is not permission to submit again. Report published-price estimates separately from a verified invoice.
+
 Treat narration timing as a whole-lesson allocation problem, not an isolated retry count. Never lengthen an already-complete short narration merely to fill a scene.
 
 **Why:** per-scene word-rate estimates and a few isolated rewrites still caused reported failures on short lessons. Repeated shortening can also lose meaning when an overloaded scene could share its content with neighbouring scenes.

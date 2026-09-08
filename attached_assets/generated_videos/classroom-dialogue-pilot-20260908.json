@@ -1,0 +1,21 @@
+{
+  "approvedTotalTrialCapUsd": 9,
+  "expectedProviderCostUsd": 3.2,
+  "maxSubmissions": 1,
+  "model": "fal-ai/veo3.1",
+  "request": {
+    "aspect_ratio": "9:16",
+    "auto_fix": false,
+    "duration": "8s",
+    "generate_audio": true,
+    "prompt": "Create an 8-second premium photorealistic live-action educational classroom scene, vertical 9:16, with NATIVE SYNCHRONIZED ARABIC CHARACTER DIALOGUE. Modern welcoming Arab elementary-school classroom, soft natural daylight, cinematic but realistic skin and facial movement. Entirely fictional people: a friendly adult Arab male teacher and a primary-school boy, around ten years old, in a neat school uniform. A few classmates sit quietly in the softly blurred background. The teacher is seated beside the boy at the same eye level. Compose a clear waist-up two-shot: teacher on the left and boy on the right, with BOTH faces and mouths plainly visible throughout, faces angled slightly toward the camera and toward each other. One continuous steady shot with subtle natural movement, not a still image. Both remain the same people for the entire shot. Audio and action timeline: 0.0-0.7 seconds quiet classroom room tone. At 0.7-3.4 seconds the TEACHER alone asks in clear natural Modern Standard Arabic, in a warm adult male voice: \"مَن أنزل الكتب السماوية؟\" His lips articulate his own words. The boy listens silently, mouth closed. Brief natural pause. At 4.0-6.6 seconds the BOY alone answers in a distinct natural young male Arabic voice: \"الله سبحانه وتعالى.\" His lips articulate his own words while the teacher listens silently, mouth closed. End with a small approving smile and room tone, no extra speech, with the response complete before the end. The speech must originate from the visible speaking characters, not an off-screen narrator. Accurate Arabic pronunciation, two clearly different voices, turn-taking with no overlap, no other dialogue. No background music, no narration, no captions or readable board text, no logos, no religious figures or supernatural imagery. A respectful ordinary educational discussion.",
+    "resolution": "1080p"
+  },
+  "state": "downloaded",
+  "startedAt": "2026-09-08T15:30:14.636Z",
+  "requestId": "01a081a4-2a58-7d51-b72d-a7d686ae4e3e",
+  "submittedAt": "2026-09-08T15:30:14.794Z",
+  "outputPath": "attached_assets/generated_videos/classroom-dialogue-pilot-20260908.mp4",
+  "completedAt": "2026-09-08T15:32:22.750Z",
+  "outputBytes": 6279505
+}
