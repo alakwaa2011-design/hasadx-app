@@ -17,7 +17,7 @@ import {
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
-  Layers, UserCheck, TrendingUp, Mail, User,
+  Layers, UserCheck, TrendingUp, Mail, User, Star,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -343,6 +343,15 @@ function ClassBlock({
             <div className="mt-3.5 pt-3.5 border-t border-border/60 flex flex-wrap items-center gap-2">
 
               {/* Primary actions */}
+              <Link
+                href={`/teacher/rewards/${encodeURIComponent(folderName)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                title="لوحة التحفيز"
+              >
+                <Star size={13} />
+                تحفيز
+              </Link>
+
               <Link
                 href={`/teacher/class-grades/${encodeURIComponent(folderName)}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"

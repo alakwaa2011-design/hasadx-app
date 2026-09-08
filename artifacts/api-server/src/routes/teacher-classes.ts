@@ -86,20 +86,22 @@ router.patch("/teacher/classes/rename", requireAuth, async (req: any, res) => {
     const newName = (req.body?.newName || "").toString().trim();
     if (!oldName || !newName) return res.status(400).json({ message: "الاسم مطلوب" });
 
-    // Insert/ensure new exists
-    await db
-      .insert(teacherClassesTable)
-      .values({ teacherId, name: newName })
-      .onConflictDoNothing();
-    // Remove old
-    await db
-      .delete(teacherClassesTable)
-      .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.name, oldName)));
-    // Rename gradeLevel on students
-    await db
-      .update(studentsTable)
-      .set({ gradeLevel: newName, studentClass: newName })
-      .where(and(eq(studentsTable.teacherId, teacherId), eq(studentsTable.gradeLevel, oldName)));
+    try {
+      await db.transaction(async (tx) => {
+        const renamed = await tx.update(teacherClassesTable)
+          .set({ name: newName })
+          .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.name, oldName)))
+          .returning({ id: teacherClassesTable.id });
+        if (!renamed[0]) throw new Error("class_not_found");
+        await tx.update(studentsTable)
+          .set({ gradeLevel: newName, studentClass: newName })
+          .where(and(eq(studentsTable.teacherId, teacherId), eq(studentsTable.gradeLevel, oldName)));
+      });
+    } catch (error: any) {
+      if (error?.message === "class_not_found") return res.status(404).json({ message: "الصف غير موجود" });
+      if (error?.code === "23505" || error?.cause?.code === "23505") return res.status(409).json({ message: "اسم الصف مستخدم بالفعل" });
+      throw error;
+    }
     res.json({ ok: true });
   } catch (err) {
     req.log?.error(err, "Rename teacher class error");

@@ -97,3 +97,4 @@ export * from "./saved-game-activities";
 export * from "./kids";
 export * from "./ai-video-projects";
 export * from "./ai-video-provider-requests";
+export * from "./classroom-rewards";

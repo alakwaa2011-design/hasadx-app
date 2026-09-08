@@ -263,6 +263,7 @@ const SecretPlay = lazy(() => import("@/pages/game/secret-play"));
 const SecretReveal = lazy(() => import("@/pages/game/secret-reveal"));
 const PlaySecret = lazy(() => import("@/pages/game/play-secret"));
 const PublicArenaSetup = lazy(() => import("@/pages/play/arena"));
+const RewardsPage = lazy(() => import("@/pages/teacher/rewards"));
 const ClassroomPage = lazy(() => import("@/pages/teacher/classroom"));
 const TeamsPage = lazy(() => import("@/pages/teacher/teams"));
 const InstallTutorial = lazy(() => import("@/pages/install-tutorial"));
@@ -368,6 +369,8 @@ function Router() {
         <Route path="/islamic/challenge/play/:pin" component={IslamicChallengePlay} />
         <Route path="/islamic/tournament/play/:pin" component={IslamicTournamentPlay} />
         <Route path="/islamic/tournament/host/:pin" component={IslamicTournamentHost} />
+        <Route path="/teacher/rewards" component={RewardsPage} />
+        <Route path="/teacher/rewards/:className" component={RewardsPage} />
         <Route path="/teacher/classroom" component={ClassroomPage} />
         <Route path="/teacher/teams" component={TeamsPage} />
         <Route path="/teacher/students" component={StudentsPage} />
