@@ -75,3 +75,4 @@
 - [Kids experience priority](kids-experience-priority.md) — child-facing work must lead with a joyful illustrated adventure; technical safeguards stay invisible.
 - [Kids adult account model](kids-adult-account-model.md) — the teacher is also the parent/adult account; children can play individually from that same account or via classroom board mode.
 - [Private teacher-generated media](teacher-generated-media-privacy.md) — generated teacher media stays private; authorize ownership before issuing short-lived signed URLs.
+- [Educational video quality](educational-video-quality-contract.md) — true generated motion, no silent still-image fallback; phase-one acceptance requires the user's manual review.
