@@ -148,3 +148,74 @@ export const kidsTeacherAssignmentsTable = pgTable("kids_teacher_assignments", {
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({ assignmentUnique: uniqueIndex("kids_teacher_assignment_uq").on(t.teacherId, t.profileId, t.activityId) }));
+
+/** A separate, teacher-supervised motivation currency. It is never game score, XP, or AI credit. */
+export const studentMotivationProfilesTable = pgTable("student_motivation_profiles", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull().unique().references(() => kidsProfilesTable.id, { onDelete: "cascade" }),
+  balance: integer("balance").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const studentMotivationLedgerTable = pgTable("student_motivation_ledger", {
+  id: serial("id").primaryKey(),
+  motivationProfileId: integer("motivation_profile_id").notNull().references(() => studentMotivationProfilesTable.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  category: text("category").notNull(),
+  referenceType: text("reference_type").notNull(),
+  referenceId: integer("reference_id"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  createdByTeacherId: integer("created_by_teacher_id").references(() => teachersTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const motivationBadgeDefinitionsTable = pgTable("motivation_badge_definitions", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  iconKey: text("icon_key").notNull().default("motivation/badges/star"),
+  ruleCategory: text("rule_category").notNull(),
+  threshold: integer("threshold").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export const motivationBadgeGrantsTable = pgTable("motivation_badge_grants", {
+  id: serial("id").primaryKey(),
+  badgeDefinitionId: integer("badge_definition_id").notNull().references(() => motivationBadgeDefinitionsTable.id, { onDelete: "restrict" }),
+  profileId: integer("profile_id").notNull().references(() => kidsProfilesTable.id, { onDelete: "cascade" }),
+  grantedByTeacherId: integer("granted_by_teacher_id").notNull().references(() => teachersTable.id, { onDelete: "restrict" }),
+  grantedAt: timestamp("granted_at").notNull().defaultNow(),
+}, (t) => ({ uniqueBadgeGrant: uniqueIndex("motivation_badge_grant_uq").on(t.badgeDefinitionId, t.profileId) }));
+
+export const motivationRewardsTable = pgTable("motivation_rewards", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  cost: integer("cost").notNull(),
+  availability: integer("availability"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export const motivationRedemptionsTable = pgTable("motivation_redemptions", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull().references(() => kidsProfilesTable.id, { onDelete: "cascade" }),
+  rewardId: integer("reward_id").notNull().references(() => motivationRewardsTable.id, { onDelete: "restrict" }),
+  status: text("status").notNull().default("requested"),
+  requestKey: text("request_key").notNull(),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  decidedAt: timestamp("decided_at"),
+  decidedByTeacherId: integer("decided_by_teacher_id").references(() => teachersTable.id, { onDelete: "set null" }),
+  deliveredAt: timestamp("delivered_at"),
+  cancelledAt: timestamp("cancelled_at"),
+}, (t) => ({ uniqueRedemptionRequest: uniqueIndex("motivation_redemption_request_uq").on(t.profileId, t.requestKey) }));
+
+export type StudentMotivationProfile = typeof studentMotivationProfilesTable.$inferSelect;
+export type StudentMotivationLedgerEntry = typeof studentMotivationLedgerTable.$inferSelect;
+export type MotivationBadgeDefinition = typeof motivationBadgeDefinitionsTable.$inferSelect;
+export type MotivationBadgeGrant = typeof motivationBadgeGrantsTable.$inferSelect;
+export type MotivationReward = typeof motivationRewardsTable.$inferSelect;
+export type MotivationRedemption = typeof motivationRedemptionsTable.$inferSelect;

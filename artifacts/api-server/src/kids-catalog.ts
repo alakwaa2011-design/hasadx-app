@@ -199,6 +199,55 @@ export async function migrateKidsSchema(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS kids_board_sessions_join_code_uq ON kids_board_sessions(join_code) WHERE join_code IS NOT NULL;
     CREATE INDEX IF NOT EXISTS kids_sessions_profile_idx ON kids_activity_sessions(profile_id, started_at DESC);
     CREATE INDEX IF NOT EXISTS kids_assignments_teacher_idx ON kids_teacher_assignments(teacher_id, created_at DESC);
+     ALTER TABLE kids_profiles DROP CONSTRAINT IF EXISTS kids_profiles_age_band_check;
+     ALTER TABLE kids_profiles DROP CONSTRAINT IF EXISTS kids_profiles_age_band_check1;
+     ALTER TABLE kids_profiles ADD CONSTRAINT kids_profiles_age_band_check
+       CHECK (age_band IN ('3-4','4-5','5-6','young','middle','secondary'));
+     CREATE TABLE IF NOT EXISTS student_motivation_profiles (
+       id SERIAL PRIMARY KEY, profile_id INTEGER NOT NULL UNIQUE REFERENCES kids_profiles(id) ON DELETE CASCADE,
+       balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+       created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+     );
+     CREATE TABLE IF NOT EXISTS student_motivation_ledger (
+       id SERIAL PRIMARY KEY, motivation_profile_id INTEGER NOT NULL REFERENCES student_motivation_profiles(id) ON DELETE CASCADE,
+       amount INTEGER NOT NULL CHECK (amount <> 0), category TEXT NOT NULL CHECK (category IN ('teacher_award','redemption_spend','redemption_reversal')),
+       reference_type TEXT NOT NULL, reference_id INTEGER, idempotency_key TEXT NOT NULL UNIQUE,
+       created_by_teacher_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW()
+     );
+     CREATE TABLE IF NOT EXISTS motivation_badge_definitions (
+       id SERIAL PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+       title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', icon_key TEXT NOT NULL DEFAULT 'motivation/badges/star',
+       rule_category TEXT NOT NULL CHECK (rule_category IN ('motivation_balance','teacher_awards','badge_count')),
+       threshold INTEGER NOT NULL CHECK (threshold > 0), is_active BOOLEAN NOT NULL DEFAULT TRUE,
+       created_at TIMESTAMP NOT NULL DEFAULT NOW()
+     );
+     CREATE TABLE IF NOT EXISTS motivation_badge_grants (
+       id SERIAL PRIMARY KEY, badge_definition_id INTEGER NOT NULL REFERENCES motivation_badge_definitions(id) ON DELETE RESTRICT,
+       profile_id INTEGER NOT NULL REFERENCES kids_profiles(id) ON DELETE CASCADE,
+       granted_by_teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE RESTRICT,
+       granted_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE(badge_definition_id, profile_id)
+     );
+     CREATE TABLE IF NOT EXISTS motivation_rewards (
+       id SERIAL PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+       title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', cost INTEGER NOT NULL CHECK (cost > 0),
+       availability INTEGER CHECK (availability IS NULL OR availability >= 0),
+       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','archived')),
+       created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+     );
+     CREATE TABLE IF NOT EXISTS motivation_redemptions (
+       id SERIAL PRIMARY KEY, profile_id INTEGER NOT NULL REFERENCES kids_profiles(id) ON DELETE CASCADE,
+       reward_id INTEGER NOT NULL REFERENCES motivation_rewards(id) ON DELETE RESTRICT,
+       status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','approved','rejected','delivered','cancelled')),
+       request_key TEXT NOT NULL, requested_at TIMESTAMP NOT NULL DEFAULT NOW(), decided_at TIMESTAMP,
+       decided_by_teacher_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL, delivered_at TIMESTAMP, cancelled_at TIMESTAMP,
+       UNIQUE(profile_id, request_key)
+     );
+     CREATE INDEX IF NOT EXISTS motivation_ledger_profile_idx ON student_motivation_ledger(motivation_profile_id, created_at DESC);
+     CREATE INDEX IF NOT EXISTS motivation_redemptions_profile_idx ON motivation_redemptions(profile_id, requested_at DESC);
+     DO $$ BEGIN
+       ALTER TABLE motivation_redemptions ADD CONSTRAINT motivation_redemptions_status_check
+         CHECK (status IN ('requested','approved','rejected','delivered','cancelled'));
+     EXCEPTION WHEN duplicate_object THEN NULL; END $$;
   `);
 }
 

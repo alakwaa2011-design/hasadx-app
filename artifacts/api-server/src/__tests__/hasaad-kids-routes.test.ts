@@ -14,6 +14,7 @@ vi.mock("@workspace/db", () => ({
 
 import express from "express";
 import request from "supertest";
+import { defaultKidsAvatarByAgeBand, kidsAvatarKeysByAgeBand } from "@workspace/api-zod";
 import router, { setKidsReady } from "../routes/kids";
 
 function makeStudentApp() {
@@ -211,5 +212,120 @@ describe("Hasaad Kids guarded routes", () => {
       attempt_count: 7,
       mastery_percent: 86,
     })]);
+  });
+
+  it("returns only the authenticated student's motivation ledger and badges", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 4, profile_id: 9, balance: 13 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 12, amount: 13, category: "teacher_award" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 3, title: "شارة خاصة" }] });
+    const response = await request(makeStudentApp()).get("/api/kids/motivation");
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ balance: 13, history: [{ id: 12 }], badges: [{ id: 3 }] });
+  });
+
+  it("replays a matching redemption request but rejects the same key for another reward", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 31, profile_id: 9, reward_id: 8, request_key: "redemption-key-123" }] });
+    const replay = await request(makeStudentApp()).post("/api/kids/motivation/redemptions")
+      .set("Idempotency-Key", "redemption-key-123").send({ rewardId: 8 });
+    expect(replay.status).toBe(200);
+    expect(replay.body.replayed).toBe(true);
+
+    mocks.execute.mockReset()
+      .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 31, profile_id: 9, reward_id: 8 }] });
+    const conflict = await request(makeStudentApp()).post("/api/kids/motivation/redemptions")
+      .set("Idempotency-Key", "redemption-key-123").send({ rewardId: 99 });
+    expect(conflict.status).toBe(409);
+  });
+
+  it("rejects an avatar from another age band", async () => {
+    const response = await request(makeStudentApp()).post("/api/kids/profile").send({
+      displayName: "طالب", ageBand: "secondary", avatarKey: "icon:rocket",
+    });
+    expect(response.status).toBe(400);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("accepts every avatar and default from the shared age-band catalog", async () => {
+    mocks.execute.mockImplementation(async () => ({ rows: [{ id: 9, student_account_id: 77 }] }));
+    for (const [ageBand, avatars] of Object.entries(kidsAvatarKeysByAgeBand)) {
+      for (const avatarKey of avatars) {
+        const response = await request(makeStudentApp()).post("/api/kids/profile").send({
+          displayName: "طالب", ageBand, avatarKey,
+        });
+        expect(response.status).toBe(201);
+      }
+      const defaultResponse = await request(makeStudentApp()).post("/api/kids/profile").send({
+        displayName: "طالب", ageBand, avatarKey: defaultKidsAvatarByAgeBand[ageBand as keyof typeof defaultKidsAvatarByAgeBand],
+      });
+      expect(defaultResponse.status).toBe(201);
+    }
+  });
+
+  it("accepts snake_case badge fields at the API boundary", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ id: 7, rule_category: "motivation_balance", icon_key: "icon:award" }] });
+    const response = await request(makeTeacherApp()).post("/api/teacher/kids/motivation/badges").send({
+      title: "مثابرة", icon_key: "icon:award", rule_category: "motivation_balance", threshold: 5,
+    });
+    expect(response.status).toBe(201);
+    expect(response.body.badge.rule_category).toBe("motivation_balance");
+  });
+
+  it("returns active reward contract status and permits its redemption", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 8, title: "وقت إضافي", cost: 5, availability: 2, status: "active" }] });
+    const rewards = await request(makeStudentApp()).get("/api/kids/motivation/rewards");
+    expect(rewards.status).toBe(200);
+    expect(rewards.body.rewards).toEqual([expect.objectContaining({ id: 8, status: "active" })]);
+
+    mocks.execute.mockReset()
+      .mockResolvedValueOnce({ rows: [{ id: 9, student_account_id: 77 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 41, profile_id: 9, reward_id: 8, status: "requested" }] });
+    const redemption = await request(makeStudentApp()).post("/api/kids/motivation/redemptions")
+      .set("Idempotency-Key", "reward-redemption-123").send({ rewardId: 8 });
+    expect(redemption.status).toBe(201);
+    expect(redemption.body.redemption.reward_id).toBe(8);
+  });
+
+  it("includes age_band in teacher board aggregates", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ id: 9, display_name: "طالب", age_band: "secondary", stars: 2 }] });
+    const response = await request(makeTeacherApp()).get("/api/teacher/kids/board");
+    expect(response.status).toBe(200);
+    expect(response.body.board).toEqual([expect.objectContaining({ age_band: "secondary" })]);
+  });
+
+  it("makes duplicate eligible badge grants idempotent", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ "?column?": 1 }] });
+    const txExecute = vi.fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 7, rule_category: "motivation_balance", threshold: 5 }] })
+      .mockResolvedValueOnce({ rows: [{ balance: 10 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    mocks.transaction.mockImplementation(async (callback: any) => callback({ execute: txExecute }));
+    const response = await request(makeTeacherApp()).post("/api/teacher/kids/motivation/badges/7/grants").send({ profileId: 9 });
+    expect(response.status).toBe(200);
+    expect(response.body.duplicate).toBe(true);
+    expect(txExecute).toHaveBeenCalledTimes(4);
+  });
+
+  it("replays approved and cancelled redemption actions without another ledger mutation", async () => {
+    for (const [action, status] of [["approve", "approved"], ["cancel", "cancelled"]] as const) {
+      const txExecute = vi.fn()
+        .mockResolvedValueOnce({ rows: [{ id: 20, profile_id: 9, status, cost: 5, availability: 1, reward_status: "active" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ id: 2, balance: status === "approved" ? 5 : 10 }] });
+      mocks.transaction.mockImplementation(async (callback: any) => callback({ execute: txExecute }));
+      const response = await request(makeTeacherApp()).post(`/api/teacher/kids/motivation/redemptions/20/${action}`);
+      expect(response.status).toBe(200);
+      expect(response.body.replayed).toBe(true);
+      expect(txExecute).toHaveBeenCalledTimes(3);
+    }
   });
 });

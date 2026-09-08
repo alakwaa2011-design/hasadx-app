@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
@@ -36,10 +36,22 @@ import {
   Flame,
   BadgeCheck,
   ExternalLink,
+  Gift,
+  Award,
+  History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import {
+  useKidsMotivationAggregate,
+  useKidsRewards,
+  useKidsRedeemReward,
+  useKidsRedemptions,
+  useKidsProfile
+} from "@/hooks/use-kids";
+import { Button } from "@/components/ui/button";
+import { ConfettiBurst } from "@/components/confetti-burst";
 
 interface PublicAssignment {
   id: number;
@@ -103,6 +115,118 @@ export default function StudentDashboard() {
   const [botCount, setBotCount] = useState(4);
   // Live "what's available right now" — open rooms count.
   const [liveCount, setLiveCount] = useState<number | null>(null);
+
+  // Celebration state
+  const [celebration, setCelebration] = useState<{ active: boolean; title: string; subtitle: string; icon: "badge" | "reward" } | null>(null);
+  const initialFetchDone = useRef(false);
+
+  // Motivation Data
+  const { data: motivation, isLoading: motivationLoading, isError: motivationError, error: motivationErr } = useKidsMotivationAggregate({ refetchInterval: 15000 });
+  const { data: rewards = [], isLoading: rewardsLoading } = useKidsRewards();
+  const { data: redemptions = [], isLoading: redemptionsLoading } = useKidsRedemptions({ refetchInterval: 15000 });
+  const redeemReward = useKidsRedeemReward();
+
+  // Watch for new badges or rewards
+  useEffect(() => {
+    if (!student || !motivation || motivationLoading || redemptionsLoading) return;
+
+    // Set initial fetch done after first successful render with data
+    if (!initialFetchDone.current) {
+      // Initialize localStorage if needed without triggering celebration
+      try {
+        const storageKey = `student_motivation_seen_${student.id}`;
+        const seenRaw = localStorage.getItem(storageKey);
+        const seen = seenRaw ? JSON.parse(seenRaw) : { badges: [], redemptions: [] };
+        let changed = false;
+
+        if (motivation.badges) {
+          for (const badge of motivation.badges) {
+            const badgeKey = badge.id || `${badge.title}-${badge.granted_at}`;
+            if (!seen.badges.includes(badgeKey)) {
+              seen.badges.push(badgeKey);
+              changed = true;
+            }
+          }
+        }
+
+        if (redemptions) {
+          for (const req of redemptions) {
+            if (req.status === 'approved' || req.status === 'delivered') {
+              const reqKey = `${req.id}-${req.status}`;
+              if (!seen.redemptions.includes(reqKey)) {
+                seen.redemptions.push(reqKey);
+                changed = true;
+              }
+            }
+          }
+        }
+
+        if (changed) {
+          localStorage.setItem(storageKey, JSON.stringify(seen));
+        }
+      } catch(e) {}
+
+      initialFetchDone.current = true;
+      return;
+    }
+
+    if (!initialFetchDone.current || celebration?.active) return;
+
+    try {
+      const storageKey = `student_motivation_seen_${student.id}`;
+      const seenRaw = localStorage.getItem(storageKey);
+      const seen = seenRaw ? JSON.parse(seenRaw) : { badges: [], redemptions: [] };
+      let newlySeenBadge = null;
+      let newlySeenRedemption = null;
+      let changed = false;
+
+      // Check badges
+      if (motivation?.badges) {
+        for (const badge of motivation.badges) {
+          const badgeKey = badge.id || `${badge.title}-${badge.granted_at}`;
+          if (!seen.badges.includes(badgeKey)) {
+            seen.badges.push(badgeKey);
+            changed = true;
+            newlySeenBadge = badge;
+          }
+        }
+      }
+
+      // Check redemptions
+      if (redemptions) {
+        for (const req of redemptions) {
+          if (req.status === 'approved' || req.status === 'delivered') {
+            const reqKey = `${req.id}-${req.status}`;
+            if (!seen.redemptions.includes(reqKey)) {
+              seen.redemptions.push(reqKey);
+              changed = true;
+              newlySeenRedemption = req;
+            }
+          }
+        }
+      }
+
+      if (changed) {
+        localStorage.setItem(storageKey, JSON.stringify(seen));
+
+        if (newlySeenBadge) {
+          setCelebration({
+            active: true,
+            title: "عمل رائع!",
+            subtitle: `حصلت على وسام جديد: ${newlySeenBadge.title}`,
+            icon: "badge"
+          });
+        } else if (newlySeenRedemption) {
+          setCelebration({
+            active: true,
+            title: newlySeenRedemption.status === 'delivered' ? "تم تسليم جائزتك!" : "تمت الموافقة!",
+            subtitle: `جائزتك: ${newlySeenRedemption.reward_title}`,
+            icon: "reward"
+          });
+        }
+      }
+    } catch(e) {}
+  }, [student, motivation, redemptions, celebration?.active]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/assignments`)
@@ -313,6 +437,50 @@ export default function StudentDashboard() {
 
   return (
     <Layout>
+      {celebration?.active && !window.matchMedia("(prefers-reduced-motion: reduce)").matches && (
+        <ConfettiBurst active={celebration.active} />
+      )}
+      <AnimatePresence>
+        {celebration?.active && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
+            dir="rtl"
+          >
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-4 border-emerald-100 dark:border-emerald-900/50 p-6 flex flex-col items-center text-center relative overflow-hidden">
+              <button
+                onClick={() => setCelebration(null)}
+                className="absolute top-3 left-3 p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                aria-label="إغلاق"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
+                {celebration.icon === "badge" ? <Award className="w-8 h-8" /> : <Gift className="w-8 h-8" />}
+              </div>
+
+              <h2 className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mb-2">
+                {celebration.title}
+              </h2>
+              <p className="text-slate-600 dark:text-slate-300 font-bold">
+                {celebration.subtitle}
+              </p>
+
+              <Button
+                onClick={() => setCelebration(null)}
+                className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold"
+              >
+                متابعة
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-b from-emerald-50/40 to-background dark:from-emerald-950/20 dark:to-background">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="mb-8 animate-in fade-in duration-300">
@@ -446,6 +614,120 @@ export default function StudentDashboard() {
                 {copy.rank}
               </p>
             </Card>
+          </div>
+
+          {/* Motivation & Rewards Section */}
+          <div className="mb-8 animate-in fade-in duration-300 delay-100">
+            {motivationError && motivationErr?.message.includes("404") ? (
+              <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-6 text-center">
+                <Gift className="w-10 h-10 text-emerald-500 mx-auto mb-3 opacity-50" />
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">نظام المكافآت</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-sm mx-auto">
+                  لم يتم ربط ملف الصغار الخاص بك. اطلب من معلمك تفعيل نظام المكافآت لتبدأ في جمع النجوم والأوسمة!
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-emerald-600" />
+                    المكافآت والأوسمة
+                  </h2>
+                  <div className="flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-3 py-1.5 rounded-full font-bold text-sm">
+                    <Star className="w-4 h-4 fill-emerald-500 text-emerald-500" />
+                    {motivationLoading ? "..." : motivation?.balance || 0} نقطة
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Badges */}
+                  <Card className="p-5 flex flex-col h-full border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                        <Award className="w-5 h-5 text-amber-500" />
+                        أوسمتي
+                      </h3>
+                      <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md text-slate-500">{motivation?.badges?.length || 0} وسام</span>
+                    </div>
+                    {motivationLoading ? (
+                      <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                    ) : (motivation?.badges?.length || 0) > 0 ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {motivation!.badges.map(grant => (
+                          <div key={grant.id || grant.title} className="flex flex-col items-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-center border border-slate-100 dark:border-slate-800">
+                            <div className="w-10 h-10 mb-2 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">
+                               <Award className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-tight">{grant.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400 dark:text-slate-500 flex-1">
+                        <Award className="w-8 h-8 mb-2 opacity-50" />
+                        <p className="text-sm">لم تحصل على أوسمة بعد، استمر في التقدم!</p>
+                      </div>
+                    )}
+                  </Card>
+
+                  {/* Rewards */}
+                  <Card className="p-5 flex flex-col h-full border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                        <Gift className="w-5 h-5 text-indigo-500" />
+                        متجر الجوائز
+                      </h3>
+                    </div>
+                    {rewardsLoading ? (
+                      <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                    ) : rewards.length > 0 ? (
+                      <div className="space-y-3">
+                        {rewards.map(reward => {
+                          const activeRequest = redemptions.find(r => r.reward_title === reward.title && (r.status === 'requested' || r.status === 'approved'));
+                          return (
+                          <div key={reward.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <Gift className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="font-bold text-sm text-slate-800 dark:text-slate-200">{reward.title}</div>
+                                <div className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                                  {reward.cost} نقطة
+                                </div>
+                              </div>
+                            </div>
+                            {activeRequest ? (
+                              <span className="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 text-amber-700">قيد التنفيذ</span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                disabled={(motivation?.balance || 0) < reward.cost || redeemReward.isPending || reward.status !== 'active'}
+                                onClick={() => {
+                                  const idempotencyKey = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+                                  redeemReward.mutate({ rewardId: reward.id, idempotencyKey }, {
+                                    onSuccess: () => toast.success("تم طلب الجائزة بنجاح! بانتظار موافقة المعلم."),
+                                    onError: () => toast.error("حدث خطأ أثناء طلب الجائزة.")
+                                  });
+                                }}
+                                className={`text-xs font-bold rounded-lg ${reward.status !== 'active' ? 'bg-slate-200 text-slate-400' : (motivation?.balance || 0) >= reward.cost ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-500'}`}
+                              >
+                                استبدال
+                              </Button>
+                            )}
+                          </div>
+                        )})}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400 dark:text-slate-500 flex-1">
+                        <Gift className="w-8 h-8 mb-2 opacity-50" />
+                        <p className="text-sm">لا توجد جوائز متاحة حالياً.</p>
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              </>
+            )}
           </div>
 
           {recentScores.length > 0 && (
