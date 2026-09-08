@@ -578,12 +578,48 @@ async function runSchemaMigrations() {
       ALTER TABLE ai_video_projects
         ADD COLUMN IF NOT EXISTS storyboard_lease_id TEXT,
         ADD COLUMN IF NOT EXISTS storyboard_lease_expires_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS render_quote JSONB,
+        ADD COLUMN IF NOT EXISTS render_approval JSONB,
         ADD COLUMN IF NOT EXISTS render_lease_id TEXT,
         ADD COLUMN IF NOT EXISTS render_lease_expires_at TIMESTAMPTZ
     `);
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS ai_video_projects_teacher_updated_idx
         ON ai_video_projects(teacher_id, updated_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_video_provider_requests (
+        id                SERIAL PRIMARY KEY,
+        project_id        INTEGER NOT NULL REFERENCES ai_video_projects(id) ON DELETE CASCADE,
+        scene_index       INTEGER NOT NULL CHECK (scene_index >= 0),
+        storyboard_hash   TEXT NOT NULL,
+        provider_model    TEXT NOT NULL,
+        tracking_model    TEXT NOT NULL,
+        request_id        TEXT,
+        state             TEXT NOT NULL DEFAULT 'intent'
+          CHECK (state IN ('intent', 'submitting', 'submitted', 'submission_unknown', 'completed', 'failed', 'unusable')),
+        render_lease_id   TEXT NOT NULL,
+        error_message     TEXT,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS ai_video_provider_requests_identity_uq
+        ON ai_video_provider_requests(project_id, scene_index, storyboard_hash)
+    `);
+    await db.execute(sql`
+      ALTER TABLE ai_video_provider_requests
+        DROP CONSTRAINT IF EXISTS ai_video_provider_requests_state_check
+    `);
+    await db.execute(sql`
+      ALTER TABLE ai_video_provider_requests
+        ADD CONSTRAINT ai_video_provider_requests_state_check
+        CHECK (state IN ('intent', 'submitting', 'submitted', 'submission_unknown', 'completed', 'failed', 'unusable'))
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS ai_video_provider_requests_project_idx
+        ON ai_video_provider_requests(project_id, created_at)
     `);
     logger.info("AI video projects table ready");
   } catch (err) {

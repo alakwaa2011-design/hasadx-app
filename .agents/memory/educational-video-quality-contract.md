@@ -21,6 +21,12 @@ The accepted classroom-dialogue quality target is photorealistic teachers and st
 
 **How to apply:** distinguish narration from character dialogue before choosing the production pipeline. Require visible speakers, distinct role-appropriate voices and speech aligned to the speaking character. Preserve this approved quality target when adapting the generator. Sample approval validates the style only: it does not authorize another paid generation, approve the full-length pipeline, or extend a trial budget. Disclose and obtain approval for the next production's cost separately.
 
+Repeated character and voice descriptions are continuity guidance, not proof of matching faces, voices or lip synchronization across independent generated clips.
+
+**Why:** the approved sample demonstrates one short exchange, not a full multi-scene lesson. A native audio stream and a valid MP4 cannot establish intelligible, complete dialogue or consistent identity.
+
+**How to apply:** keep full lessons explicitly pending human review. Never describe local media checks, prompt constraints or successful encoding as acceptance of the sample's quality across the full lesson, and never spend on a replacement merely to resolve that uncertainty.
+
 For fal queue tracking, trust the attached connector contract over generic API assumptions: submit to the full model identifier, but track results/status/cancellation under its base application identifier (the first two path segments).
 
 **Why:** a review incorrectly recommended retaining the model subpath in tracking URLs. The connector documents that this produces empty 405 responses; following that recommendation would break work after a paid submission.
@@ -32,6 +38,10 @@ Single-attempt paid dialogue trials must disable provider retries as well as cli
 **Why:** the fal queue can retry failed runners internally even when our caller submits only once; the model also offers automatic prompt rewriting. Both weaken the user's control over a tightly approved trial.
 
 **How to apply:** use the documented `X-Fal-No-Retry: 1` header and `auto_fix: false` for such trials, persist the submission identifier, and only poll or retrieve that same request. A lost submission response is not permission to submit again. Report published-price estimates separately from a verified invoice.
+
+### Legacy narration experiments (not the native-dialogue production path)
+
+The following measured-WAV lessons concern the earlier separate-narration pipeline. Do not reintroduce TTS preflight or external narration into native-character dialogue.
 
 Treat narration timing as a whole-lesson allocation problem, not an isolated retry count. Never lengthen an already-complete short narration merely to fill a scene.
 
@@ -45,8 +55,11 @@ Estimated words-per-second are initial planning guidance, not grounds to reject 
 
 **How to apply:** measure first, then derive compression from observed speech. Constrain genuinely new wording by meaningful length as well as word count, preserve normal Arabic spacing and complete thoughts, and use sufficient model reasoning. Reuse unchanged measured audio and freeze fitting scenes when only another scene is too long; do not reject a partial repair merely because cached narration exceeded its old slot. Report specific failures without logging private lesson content.
 
-Keep photorealistic dialogue video production administrator-only. Teachers may use the explicitly separate economical narrated-image mode; this does not affect the separate interactive-video lesson tool.
 
-**Why:** the owner explicitly chose the costly realistic system as an administrator-only premium capability and asked to reopen the economical image-and-voiceover system for teachers.
+### Access scope
 
-**How to apply:** enforce the split on the server as well as in navigation, production routes, credit pricing, and generated-media serving. Never describe image motion as realistic generated video, and never let a client-provided mode bypass the administrator check.
+Keep AI video production administrator-only unless the owner explicitly asks to reopen it to teachers; this does not restrict the separate interactive-video lesson tool.
+
+**Why:** the owner explicitly restricted this generator. Fixing its generation quality or completing a phase is not permission to expand access again.
+
+**How to apply:** preserve the access restriction when changing discovery, navigation, production routes, or generated-media serving.

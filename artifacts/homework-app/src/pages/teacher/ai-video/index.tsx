@@ -25,10 +25,12 @@ export default function AiVideoIndexPage() {
     if (authLoading) return;
     if (authError || !currentUser) {
       setLocation("/login?redirect=" + encodeURIComponent("/teacher/ai-video"));
+    } else if (!isAdmin) {
+      setLocation("/teacher");
     }
-  }, [authLoading, authError, currentUser, setLocation]);
+  }, [authLoading, authError, currentUser, isAdmin, setLocation]);
 
-  const { data: projects = [], isLoading } = useAiVideoProjects(!authLoading && !authError);
+  const { data: projects = [], isLoading } = useAiVideoProjects(!authLoading && !authError && isAdmin);
 
   const filteredProjects = useMemo(() => {
     if (!search.trim()) return projects;
@@ -49,7 +51,7 @@ export default function AiVideoIndexPage() {
       case "rendering":
         return { label: isAr ? "جاري الإنتاج" : "Rendering", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/30", icon: Loader2, spin: true };
       case "ready":
-        return { label: isAr ? "جاهز" : "Ready", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30", icon: CheckCircle2 };
+        return { label: isAr ? "بانتظار مراجعة الجودة" : "Awaiting Quality Review", color: "text-amber-700 bg-amber-50 dark:bg-amber-900/30", icon: CheckCircle2 };
       case "failed":
         return { label: isAr ? "فشل الإنتاج" : "Failed", color: "text-red-600 bg-red-50 dark:bg-red-900/30", icon: AlertCircle };
       default:
@@ -58,7 +60,7 @@ export default function AiVideoIndexPage() {
   };
 
   if (authLoading) return <Layout><div className="min-h-[100dvh]" /></Layout>;
-  if (authError || !currentUser) return null;
+  if (authError || !currentUser || !isAdmin) return null;
 
   return (
     <Layout>
@@ -81,8 +83,8 @@ export default function AiVideoIndexPage() {
                 </div>
                 <p className="text-emerald-100/90 max-w-xl text-sm lg:text-base font-medium leading-relaxed">
                   {isAr
-                    ? (isAdmin ? "حوّل محتواك التعليمي إلى فيديو بحركة فعلية أو صور ثابتة مع تعليق صوتي." : "حوّل محتواك التعليمي إلى فيديو مع صور توضيحية وتعليق صوتي عربي.")
-                    : (isAdmin ? "Turn educational content into a true-motion or narrated-image video." : "Turn educational content into an AI-generated narrated image video.")}
+                    ? "حوّل محتواك التعليمي إلى حوار واقعي بين أستاذ وطالب ظاهرين، بصوت أصلي متزامن ودقة 1080p. يتطلب كل إنتاج مدفوع عرض سعر وموافقة صريحة."
+                    : "Turn educational content into realistic visible teacher/student dialogue with synchronized native audio at 1080p. Every paid render requires a quote and explicit approval."}
                 </p>
               </div>
               <button
@@ -184,10 +186,6 @@ export default function AiVideoIndexPage() {
                               <span className="flex items-center gap-1">
                                 <LayoutTemplate className="w-3.5 h-3.5" />
                                 {project.brief.aspectRatio}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Video className="w-3.5 h-3.5" />
-                                {project.brief.mode === "realistic_motion" ? (isAr ? "حركة" : "Motion") : (isAr ? "صور" : "Images")}
                               </span>
                             </div>
                             <span>

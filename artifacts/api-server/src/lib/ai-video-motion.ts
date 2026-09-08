@@ -1,9 +1,14 @@
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { ReplitConnectors } from "@replit/connectors-sdk";
+import {
+  AI_VIDEO_PROVIDER_MODEL,
+  AI_VIDEO_TRACKING_MODEL,
+  type AiVideoMotionRequestJournal,
+} from "./ai-video-request-journal";
 
-const MODEL = "fal-ai/veo3.1/fast";
-const TRACKING_MODEL = MODEL.split("/").slice(0, 2).join("/");
+const MODEL = AI_VIDEO_PROVIDER_MODEL;
+const TRACKING_MODEL = AI_VIDEO_TRACKING_MODEL;
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 const MAX_PROXY_JSON_BYTES = 1024 * 1024;
 const POLL_INTERVAL_MS = 2_000;
@@ -120,6 +125,36 @@ async function sleep(ms: number, deadline: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, Math.min(ms, remaining)));
 }
 
+async function persistSubmittedRequestId(
+  journal: AiVideoMotionRequestJournal,
+  requestId: string,
+): Promise<void> {
+  let lastError: unknown;
+  const delays = [50, 150, 400, 1_000];
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      await journal.recordRequestId(requestId);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < delays.length) {
+        // Intentionally independent of the render deadline: this exact ID is
+        // already paid and is safer to retain than abandoning it.
+        await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+      }
+    }
+  }
+  throw new Error(
+    `fal request ${requestId} was received but its journal write failed after bounded retries: `
+    + `${lastError instanceof Error ? lastError.message : "database unavailable"}`,
+  );
+}
+
+function isUnusableMediaError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /did not contain a video URL|metadata did not describe|metadata contained an invalid|invalid video URL|approved HTTPS fal media host|download redirect was rejected|download was not an MP4|exceeds the 100MB|empty or truncated|valid MP4 signature/.test(message);
+}
+
 async function trackingGet(path: string, deadline: number, label: string): Promise<unknown> {
   let lastStatus = 0;
   let lastError: unknown;
@@ -184,18 +219,6 @@ function providerDuration(requested: number): 4 | 6 | 8 {
   if (requested <= 4) return 4;
   if (requested <= 6) return 6;
   return 8;
-}
-
-async function bestEffortCancel(requestId: string): Promise<void> {
-  const path = `/${TRACKING_MODEL}/requests/${encodeURIComponent(requestId)}/cancel`;
-  try {
-    await Promise.race([
-      proxyCall()("falai", path, { method: "PUT" }),
-      new Promise((resolve) => setTimeout(resolve, 5_000)),
-    ]);
-  } catch {
-    // Cancellation cannot mask the original timeout, provider failure, or lease loss.
-  }
 }
 
 function videoUrlFrom(payload: unknown): URL {
@@ -294,6 +317,7 @@ export async function generateAiVideoMotion({
   outputPath,
   timeoutMs,
   assertActive,
+  requestJournal,
 }: {
   prompt: string;
   aspectRatio: "16:9" | "9:16" | "1:1";
@@ -301,10 +325,14 @@ export async function generateAiVideoMotion({
   outputPath: string;
   timeoutMs: number;
   assertActive: () => Promise<void>;
+  requestJournal?: AiVideoMotionRequestJournal;
 }): Promise<{ requestId: string; model: string; generatedDurationSeconds: number }> {
   if (!prompt.trim()) throw new Error("AI video prompt is required");
   if (!outputPath) throw new Error("AI video outputPath is required");
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("AI video timeoutMs must be positive");
+  if (!requestJournal) {
+    throw new Error("AI video paid submission is blocked without a persistent provider request journal");
+  }
 
   const generatedDurationSeconds = providerDuration(durationSeconds);
   const deadline = Date.now() + timeoutMs;
@@ -317,27 +345,56 @@ export async function generateAiVideoMotion({
 
   try {
     await bounded(assertActive(), deadline, "active-job check");
-    // Deliberately submit once only: retrying an ambiguous POST can duplicate paid work.
-    const submission = await bounded(
-      proxyCall()("falai", `/${MODEL}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Fal-No-Retry": "1" },
-        body: {
-          prompt: providerPrompt,
-          aspect_ratio: aspectRatio === "1:1" ? "16:9" : aspectRatio,
-          duration: `${generatedDurationSeconds}s`,
-          resolution: "720p",
-          generate_audio: false,
-        },
-      }),
-      deadline,
-      "fal queue submission",
-    );
-    const submissionPayload = await jsonResponse(submission, "fal queue submission", deadline);
-    if (!submission.ok) {
-      throw new Error(`fal queue submission failed (${submission.status}): ${errorMessage(submissionPayload) || "provider rejected the request"}`);
+    const prepared = await bounded(requestJournal.prepare(), deadline, "provider request journal");
+    if (prepared.action === "resume") {
+      requestId = prepared.requestId;
+    } else {
+      // Deliberately submit once only: retrying an ambiguous POST can duplicate paid work.
+      try {
+        const submissionAndPersistence = (async () => {
+          const submission = await proxyCall()("falai", `/${MODEL}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Fal-No-Retry": "1" },
+            body: {
+              prompt: providerPrompt,
+              aspect_ratio: aspectRatio === "1:1" ? "16:9" : aspectRatio,
+              duration: `${generatedDurationSeconds}s`,
+              resolution: "1080p",
+              generate_audio: true,
+              auto_fix: false,
+            },
+          });
+          // This continuation deliberately outlives the caller's render
+          // deadline. A late successful POST response is still valuable paid
+          // identity and must be journaled for the next worker to resume.
+          const submissionPayload = await jsonResponse(
+            submission,
+            "fal queue submission",
+            Date.now() + TRACKING_CALL_TIMEOUT_MS,
+          );
+          if (!submission.ok) {
+            throw new Error(`fal queue submission failed (${submission.status}): ${errorMessage(submissionPayload) || "provider rejected the request"}`);
+          }
+          const submittedRequestId = requestIdFrom(submissionPayload);
+          await persistSubmittedRequestId(requestJournal, submittedRequestId);
+          return submittedRequestId;
+        })();
+        // Prevent a late rejection from becoming unhandled after bounded()
+        // has already returned its deadline error.
+        void submissionAndPersistence.catch(() => undefined);
+        requestId = await bounded(
+          submissionAndPersistence,
+          deadline,
+          "fal queue submission and request ID journal",
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown submission response";
+        await requestJournal.recordSubmissionUnknown(message).catch(() => undefined);
+        throw new Error(
+          `The fal submission outcome is unknown and automatic resubmission is blocked: ${message}`,
+        );
+      }
     }
-    requestId = requestIdFrom(submissionPayload);
 
     const encodedId = encodeURIComponent(requestId);
     const statusPath = `/${TRACKING_MODEL}/requests/${encodedId}/status`;
@@ -354,11 +411,14 @@ export async function generateAiVideoMotion({
           ? completed.error_type.trim()
           : "";
         if (completedError || errorType) {
+          await requestJournal.recordFailed(completedError || errorType).catch(() => undefined);
           throw new Error(`fal queue completed with an error: ${completedError || errorType}`);
         }
+        await bounded(requestJournal.recordCompleted(), deadline, "provider completion journal");
         break;
       }
       if (status === "FAILED" || status === "CANCELLED") {
+        await requestJournal.recordFailed(`Provider request ${status.toLowerCase()}`).catch(() => undefined);
         throw new Error(`fal queue ${status.toLowerCase()}: ${errorMessage(statusPayload) || "video generation did not complete"}`);
       }
       if (status !== "IN_QUEUE" && status !== "IN_PROGRESS") {
@@ -370,14 +430,24 @@ export async function generateAiVideoMotion({
     await bounded(assertActive(), deadline, "active-job check");
     const resultPath = `/${TRACKING_MODEL}/requests/${encodedId}`;
     const result = await trackingGet(resultPath, deadline, "fal queue result");
-    const mediaUrl = videoUrlFrom(result);
-    await downloadVideo(mediaUrl, outputPath, deadline);
+    try {
+      const mediaUrl = videoUrlFrom(result);
+      await downloadVideo(mediaUrl, outputPath, deadline);
+    } catch (error) {
+      if (isUnusableMediaError(error)) {
+        await requestJournal.recordUnusableResult?.(
+          error instanceof Error ? error.message : "Provider returned unusable media",
+        ).catch(() => undefined);
+      }
+      throw error;
+    }
     outputWritten = true;
     await bounded(assertActive(), deadline, "active-job check");
     succeeded = true;
     return { requestId, model: MODEL, generatedDurationSeconds };
   } finally {
-    if (requestId && !succeeded) await bestEffortCancel(requestId);
+    // Known provider IDs intentionally remain active on local timeout or
+    // lease loss. A replacement worker resumes them instead of paying again.
     if (outputWritten && !succeeded) await rm(outputPath, { force: true }).catch(() => undefined);
   }
 }

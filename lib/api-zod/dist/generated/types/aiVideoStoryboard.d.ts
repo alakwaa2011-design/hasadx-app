@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AiVideoScene } from './aiVideoScene';
+import type { AiVideoCharacter } from "./aiVideoCharacter";
 export interface AiVideoStoryboard {
     /**
        * @minLength 1
@@ -19,5 +20,6 @@ export interface AiVideoStoryboard {
        * @maxItems 18
        */
     scenes: AiVideoScene[];
+    characters?: AiVideoCharacter[];
 }
 //# sourceMappingURL=aiVideoStoryboard.d.ts.map

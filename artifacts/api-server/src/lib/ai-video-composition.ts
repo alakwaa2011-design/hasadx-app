@@ -2,10 +2,19 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
 import { generateAiVideoMotion } from "./ai-video-motion";
+import {
+  hashAiVideoStoryboard,
+  type AiVideoMotionJournalFactory,
+} from "./ai-video-request-journal";
 import { renderAiVideoTerm } from "./ai-video-typography";
 import { VIDEO_TRANSITION_SECONDS, type VideoVoice } from "./ai-video-timing";
-import { prepareAiVideoNarration } from "./ai-video-narration-preflight";
-import { sanitizeStoryboard, type AiVideoBrief, type AiVideoStoryboard } from "./ai-video-schemas";
+import {
+  requireRenderableDialogueStoryboard,
+  sanitizeStoryboard,
+  type AiVideoBrief,
+  type AiVideoDialogueStoryboard,
+  type AiVideoStoryboard,
+} from "./ai-video-schemas";
 
 const execFileAsync = promisify(execFile);
 type Transition = "cut" | "dissolve" | "push" | "zoom";
@@ -13,8 +22,16 @@ export function transitionSeconds(transition: Transition) {
   return transition === "cut" ? 0 : VIDEO_TRANSITION_SECONDS;
 }
 export function videoDimensions(ratio: string) {
-  return ratio === "9:16" ? { width: 720, height: 1280 }
-    : ratio === "1:1" ? { width: 720, height: 720 } : { width: 1280, height: 720 };
+  return ratio === "9:16" ? { width: 1080, height: 1920 }
+    : ratio === "1:1" ? { width: 1080, height: 1080 } : { width: 1920, height: 1080 };
+}
+
+/** A paid provider result is structurally unusable, rather than locally unprobeable. */
+export class AiVideoMediaValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AiVideoMediaValidationError";
+  }
 }
 
 /**
@@ -52,7 +69,7 @@ export function buildAiVideoTransitionFilter(
 
 export async function probeVideo(path: string) {
   const { stdout } = await execFileAsync("ffprobe", [
-    "-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,duration,nb_frames:format=duration",
+    "-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,duration,nb_frames,sample_rate,time_base:format=duration",
     "-of", "json", path,
   ], { timeout: 30_000, maxBuffer: 256 * 1024 });
   const data = JSON.parse(stdout);
@@ -61,7 +78,7 @@ export async function probeVideo(path: string) {
   const audio = streams?.find((s) => s.codec_type === "audio");
   const duration = Number(video?.duration ?? data.format?.duration);
   if (!video?.codec_name || Number(video.width) < 320 || Number(video.height) < 320 || !Number.isFinite(duration) || duration <= 0) {
-    throw new Error("Generated scene has no valid video stream");
+    throw new AiVideoMediaValidationError("Generated scene has no valid video stream");
   }
   return { duration, video, audio };
 }
@@ -69,7 +86,9 @@ export async function probeVideo(path: string) {
 /** Catch a provider returning a long frozen frame, never mask it by looping. */
 export async function verifyMotionClip(path: string, requiredSeconds: number) {
   const media = await probeVideo(path);
-  if (media.duration + 0.04 < requiredSeconds) throw new Error("Generated scene is shorter than its required duration");
+  if (media.duration + 0.04 < requiredSeconds) {
+    throw new AiVideoMediaValidationError("Generated scene is shorter than its required duration");
+  }
   const { stderr } = await execFileAsync("ffmpeg", [
     "-hide_banner", "-loglevel", "info", "-i", path, "-t", String(requiredSeconds),
     "-vf", "scale=160:90,freezedetect=n=-50dB:d=1", "-an", "-f", "null", "-",
@@ -77,23 +96,87 @@ export async function verifyMotionClip(path: string, requiredSeconds: number) {
   const starts = Array.from(stderr.matchAll(/freeze_start:\s*([\d.]+)/g), (m) => Number(m[1]));
   const ends = Array.from(stderr.matchAll(/freeze_end:\s*([\d.]+)/g), (m) => Number(m[1]));
   const frozen = starts.reduce((sum, start, index) => sum + Math.max(0, (ends[index] ?? requiredSeconds) - start), 0);
-  if (frozen >= requiredSeconds * 0.7) throw new Error("Generated scene is mostly frozen; regenerate the scene rather than using a still-image fallback");
+  if (frozen >= requiredSeconds * 0.7) {
+    throw new AiVideoMediaValidationError("Generated scene is mostly frozen; regenerate the scene rather than using a still-image fallback");
+  }
 }
 
-type CompositionOptions = {
+export function buildNativeDialogueScenePrompt(
+  brief: AiVideoBrief,
+  storyboard: AiVideoDialogueStoryboard,
+  sceneIndex: number,
+): string {
+  const scene = storyboard.scenes[sceneIndex];
+  if (!scene) throw new Error(`Dialogue scene ${sceneIndex + 1} does not exist`);
+  const characters = storyboard.characters.map((character) => [
+    `${character.id} (${character.role}, called ${character.displayName})`,
+    `FIXED APPEARANCE: ${character.appearance}`,
+    `FIXED VOICE: ${character.voice}`,
+  ].join("\n")).join("\n\n");
+  const turns = scene.dialogue.map(
+    (turn, index) => `${index + 1}. ${turn.speakerId}: "${turn.text}" Delivery: ${turn.delivery}`,
+  ).join("\n");
+  return [
+    "Generate one continuous photorealistic live-action classroom shot with native synchronized character audio.",
+    "Exact duration: 6 seconds. Native output: 1080p. Perform all dialogue naturally within the shot; never cut, omit, rewrite, or speed up speech.",
+    `Lesson: ${brief.title}. Topic: ${brief.topic}. Scene objective: ${scene.objective}.`,
+    "CHARACTER AND VOICE BIBLE — reproduce these exact identities unchanged:",
+    characters,
+    `Visible throughout the required speaking action: ${scene.visibleCharacterIds.join(", ")}.`,
+    "EXACT ORDERED DIALOGUE:",
+    turns,
+    `Shot and physical action: ${scene.visualPrompt}`,
+    "The current speaker is visibly speaking with accurate lip synchronization. Every listener stays visibly attentive with a closed mouth; switch visible lip movement exactly when the turn changes.",
+    "Use the fixed distinct voice assigned to each speaker. Natural classroom room tone only. No unseen narrator, voice-over, dubbing, extra speech, music, subtitles, text, logos, or watermark.",
+    "Keep faces unobstructed and identities, clothing, room layout, lighting, camera direction, voice timbre and accent continuous with every other scene.",
+  ].join("\n");
+}
+
+export async function verifyNativeDialogueClip(
+  path: string,
+  expected: { durationSeconds: number; width: number; height: number },
+) {
+  const media = await probeVideo(path);
+  const audioDuration = Number(media.audio?.duration);
+  const sampleRate = Number(media.audio?.sample_rate);
+  if (!media.audio?.codec_name || !Number.isFinite(audioDuration) || audioDuration <= 0
+    || !Number.isFinite(sampleRate) || sampleRate <= 0) {
+    throw new AiVideoMediaValidationError("Native dialogue scene has no valid audio stream; silent motion plus TTS is not allowed");
+  }
+  // Audio must declare the exact six-second presentation endpoint. The wider
+  // video tolerance cannot be applied to speech: otherwise a real 6.08-second
+  // utterance could pass here and be cut later as though it were codec padding.
+  if (Math.abs(media.duration - expected.durationSeconds) > 0.12
+    || Math.abs(audioDuration - expected.durationSeconds) > (1 / sampleRate)) {
+    throw new AiVideoMediaValidationError("Native dialogue scene failed exact audio/video duration validation; speech will not be cut or sped up");
+  }
+  if (Number(media.video.width) < expected.width || Number(media.video.height) < expected.height) {
+    throw new AiVideoMediaValidationError("Native dialogue scene is below the required 1080p dimensions");
+  }
+  await verifyMotionClip(path, expected.durationSeconds);
+  return media;
+}
+
+export type CompositionOptions = {
   brief: AiVideoBrief;
   storyboard: AiVideoStoryboard;
   dir: string;
   deadline: number;
-  voice: VideoVoice;
+  /** Kept temporarily so legacy workers can compile; native dialogue ignores TTS voices. */
+  voice?: VideoVoice;
   assertActive: () => Promise<void>;
   persistStoryboard: (storyboard: AiVideoStoryboard) => Promise<void>;
+  requestJournal?: AiVideoMotionJournalFactory;
 };
 
 export async function composeAiVideo(options: CompositionOptions): Promise<string> {
   const { brief, dir, assertActive } = options;
   // Recompute the timeline for old drafts and never trust timestamps from clients.
   const sanitized = sanitizeStoryboard(options.storyboard, brief);
+  const storyboard = requireRenderableDialogueStoryboard(sanitized, brief);
+  if (!options.requestJournal) {
+    throw new Error("Native dialogue rendering requires durable provider request journaling before paid generation");
+  }
   if (sanitized.scenes.some((scene) => scene.sourceImage)) {
     throw new Error("هذه المرحلة تنتج الحركة من النص فقط. أنشئ مخططاً نصياً دون صور مرجعية. / Create a text-only storyboard for generated motion.");
   }
@@ -103,10 +186,8 @@ export async function composeAiVideo(options: CompositionOptions): Promise<strin
     return Math.min(cap, remaining);
   };
   const { width, height } = videoDimensions(brief.aspectRatio);
-  // Whole-lesson redistribution + real WAV checks are a barrier before ANY motion.
-  const { storyboard, timing } = await prepareAiVideoNarration({ ...options, storyboard: sanitized });
   for (const [index, scene] of storyboard.scenes.entries()) {
-    // Verify font availability and render all labels before paid motion requests.
+    // Verify font availability and render all labels before any paid request.
     if (brief.captions && scene.onScreenText.trim()) {
       await renderAiVideoTerm({
         text: scene.onScreenText, language: brief.language, width, height,
@@ -116,79 +197,74 @@ export async function composeAiVideo(options: CompositionOptions): Promise<strin
   }
   await assertActive();
   await options.persistStoryboard(storyboard);
+  const storyboardHash = hashAiVideoStoryboard(storyboard);
   const segments: string[] = [];
   for (const [index, scene] of storyboard.scenes.entries()) {
     await assertActive();
     const movementPath = join(dir, `motion-${index}.mp4`);
     const termPath = join(dir, `term-${index}.png`);
-    const audioPath = join(dir, `audio-${index}.wav`);
-    const segmentPath = join(dir, `segment-${index}.mp4`);
-    const renderDuration = scene.durationSeconds
-      + (index < storyboard.scenes.length - 1 ? transitionSeconds(scene.transition) : 0);
-    if (renderDuration > 8) throw new Error("Scene is too long; regenerate a time-aware storyboard");
+    // Keep decoded native speech lossless between scene processing and the
+    // final join. Encoding AAC per scene adds encoder delay to every segment;
+    // concatenating those delayed streams can push a 60/90 second production
+    // outside its duration contract. AAC is encoded exactly once below.
+    const segmentPath = join(dir, `segment-${index}.mkv`);
+    const renderDuration = 6;
+    const sceneJournal = options.requestJournal(index, storyboardHash);
     await generateAiVideoMotion({
-      prompt: [
-        "One continuous educational shot with genuine subject motion, not a still image or a camera zoom over a picture.",
-        `Subject of the whole lesson: ${brief.title}. Topic: ${brief.topic}. Visual style: ${brief.visualStyle}.`,
-        `This scene's single teaching objective: ${scene.objective}.`,
-        `Exact spoken explanation (do not add any voice or speech): ${scene.narration}`,
-        `Visual action: ${scene.visualPrompt}`,
-        "Show exactly this concept throughout the shot. Start the relevant action immediately; do not introduce unrelated stages or facts.",
-        "No text, letters, captions, logos, watermark, music or audio. All typography is added separately. Keep essential action away from the bottom 22% title-safe area.",
-        "Do not invent written mathematical notation or depict religious figures. Explain abstract ideas through clear objects and motion where appropriate.",
-      ].join("\n"),
-      aspectRatio: brief.aspectRatio, durationSeconds: renderDuration,
+      prompt: buildNativeDialogueScenePrompt(brief, storyboard, index),
+      aspectRatio: brief.aspectRatio,
+      durationSeconds: renderDuration,
+      requestJournal: sceneJournal,
       outputPath: movementPath, timeoutMs: timeout(12 * 60_000), assertActive,
     });
-    await verifyMotionClip(movementPath, renderDuration);
-    const { lead, speech } = timing[index]!;
-    // This is a hard precondition for bounded audio padding below, not a truncation policy.
-    if (lead + speech > scene.durationSeconds - (index === storyboard.scenes.length - 1 ? 0.9 : 0.35) + 0.001) {
-      throw new Error("Complete narration exceeds its reserved window");
+    try {
+      await verifyNativeDialogueClip(movementPath, { durationSeconds: 6, width, height });
+    } catch (err) {
+      // ffprobe/ffmpeg execution failures remain retryable infrastructure
+      // errors. Only deterministic media-content rejection poisons a paid
+      // provider result so it cannot authorize another hold on retry.
+      if (err instanceof AiVideoMediaValidationError) {
+        await sceneJournal.recordUnusableResult?.(err.message);
+      }
+      throw err;
     }
     const showTerm = brief.captions && Boolean(scene.onScreenText.trim());
     const filters = [
       `[0:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=25,setsar=1,setpts=PTS-STARTPTS,format=yuv420p[visual]`,
-      `[1:a]aresample=44100,asetpts=PTS-STARTPTS,adelay=${Math.round(lead * 1000)}:all=1,apad,atrim=duration=${scene.durationSeconds}[speech]`,
+      // The provider stream is contractually six seconds. AAC decoders may
+      // expose encoder tail padding after that declared endpoint; discard only
+      // that codec padding before storing lossless PCM, never speech samples.
+      `[0:a]aresample=44100,atrim=duration=${renderDuration},asetpts=PTS-STARTPTS[speech]`,
     ];
     if (showTerm) {
-      filters.push(`[2:v]format=rgba,fade=t=in:st=${lead}:d=0.15:alpha=1,fade=t=out:st=${(lead + speech - 0.15).toFixed(3)}:d=0.15:alpha=1[term]`);
-      filters.push("[visual][term]overlay=0:0:format=auto,format=yuv420p[v]");
+      filters.push("[1:v]format=rgba,fade=t=in:st=0.25:d=0.15:alpha=1,fade=t=out:st=5.60:d=0.15:alpha=1[term]");
+      filters.push("[visual][term]overlay=0:0:format=auto:shortest=1,format=yuv420p[v]");
     }
     await assertActive();
     await execFileAsync("ffmpeg", [
       "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "1",
-      "-i", movementPath, "-i", audioPath,
+      "-i", movementPath,
       ...(showTerm ? ["-loop", "1", "-framerate", "25", "-i", termPath] : []),
       "-filter_complex", filters.join(";"), "-map", showTerm ? "[v]" : "[visual]", "-map", "[speech]",
-      "-t", renderDuration.toFixed(3), "-c:v", "libx264", "-threads", "2", "-preset", "veryfast", "-crf", "21",
-      "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-movflags", "+faststart", segmentPath,
+      "-c:v", "libx264", "-threads", "2", "-preset", "veryfast", "-crf", "21",
+      "-c:a", "pcm_s16le", "-ar", "44100", segmentPath,
     ], { timeout: timeout(180_000), maxBuffer: 1024 * 1024 });
     segments.push(segmentPath);
   }
   if (segments.length !== storyboard.scenes.length) throw new Error("One or more scenes are missing");
-  const transition = buildAiVideoTransitionFilter(storyboard.scenes);
   const joinedPath = join(dir, "joined.mp4");
+  const concatInputs = segments.map((_, index) => `[${index}:v][${index}:a]`).join("");
   await assertActive();
   await execFileAsync("ffmpeg", [
     "-hide_banner", "-loglevel", "error", "-y", "-filter_complex_threads", "1",
     ...segments.flatMap((path) => ["-i", path]),
-    "-filter_complex", transition.filter, "-map", transition.videoLabel, "-map", transition.audioLabel,
+    "-filter_complex", `${concatInputs}concat=n=${segments.length}:v=1:a=1[v][a]`, "-map", "[v]", "-map", "[a]",
     "-c:v", "libx264", "-threads", "2", "-preset", "veryfast", "-crf", "21",
     "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-movflags", "+faststart", joinedPath,
   ], { timeout: timeout(300_000), maxBuffer: 1024 * 1024 });
-  let finalPath = joinedPath;
-  if (brief.music) {
-    finalPath = join(dir, "final.mp4");
-    const ambient = `aevalsrc=0.02*(sin(2*PI*220*t)+sin(2*PI*277.18*t)+sin(2*PI*329.63*t)):s=44100:d=${brief.durationSeconds}`;
-    await execFileAsync("ffmpeg", [
-      "-hide_banner", "-loglevel", "error", "-y", "-i", joinedPath, "-f", "lavfi", "-i", ambient,
-      "-filter_complex", `[1:a]afade=t=in:d=1.2,afade=t=out:st=${brief.durationSeconds - 1.2}:d=1.2[music];[0:a][music]amix=inputs=2:duration=first:weights='1 0.16':normalize=0[a]`,
-      "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", finalPath,
-    ], { timeout: timeout(120_000), maxBuffer: 1024 * 1024 });
-  }
+  const finalPath = joinedPath;
   const final = await probeVideo(finalPath);
-  const audioDuration = Number(final.audio?.duration);
+  const audioDuration = Number(final.audio?.duration ?? final.duration);
   if (Math.abs(final.duration - brief.durationSeconds) > 0.12 || !final.audio || !Number.isFinite(audioDuration)
     || Math.abs(audioDuration - brief.durationSeconds) > 0.12
     || Number(final.video.width) !== width || Number(final.video.height) !== height) {

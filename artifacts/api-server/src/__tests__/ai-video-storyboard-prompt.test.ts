@@ -16,17 +16,20 @@ describe("duration-first storyboard direction", () => {
     const prompt = storyboardPrompt(brief(seconds));
     expect(prompt).toContain(`${seconds} seconds, is the non-negotiable whole-video limit`);
     expect(prompt).toContain(`exactly ${count} scenes`);
+    expect(prompt).toContain("exactly 6 seconds each");
     expect(prompt).toContain("Automatically summarize dense sources");
-    expect(prompt).toContain("measure actual narration");
-    expect(prompt).toContain("Never ask the user to shorten");
-    expect(prompt).toContain("between 2 and 7 seconds");
+    expect(prompt).toContain("Never cut, abbreviate after recording, time-stretch, speed up speech");
     expect(prompt).toContain("never present a paraphrase as a literal quotation");
-    expect(prompt).toContain("Set sourceImage to null");
+    expect(prompt).toContain("sourceImage: null");
   });
 
-  it("uses a more conservative Arabic starting script without making words the timing authority", () => {
-    expect(storyboardPrompt(brief(60))).toContain("approximately 59 spoken words");
-    expect(storyboardPrompt(brief(60, "en"))).toContain("approximately 79 spoken words");
-    expect(storyboardPrompt(brief(60))).toContain("actual recorded speech determines final timing");
+  it("requires visible speakers, native audio and a stable identity bible", () => {
+    const prompt = storyboardPrompt(brief(60));
+    expect(prompt).toContain("stable character/voice bible");
+    expect(prompt).toContain("appearance must be a detailed fixed physical description");
+    expect(prompt).toContain("visibly move their lips");
+    expect(prompt).toContain("native synchronized character audio");
+    expect(prompt).toContain("no voice-over");
+    expect(prompt).toContain("pending manual quality review");
   });
 });

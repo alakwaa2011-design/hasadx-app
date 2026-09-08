@@ -8,6 +8,23 @@
 export interface HealthStatus {
     status: string;
 }
+export type AiVideoCharacterRole = (typeof AiVideoCharacterRole)[keyof typeof AiVideoCharacterRole];
+export declare const AiVideoCharacterRole: {
+    readonly teacher: "teacher";
+    readonly student: "student";
+};
+export interface AiVideoCharacter {
+    id: string;
+    role: AiVideoCharacterRole;
+    displayName: string;
+    appearance: string;
+    voice: string;
+}
+export interface AiVideoDialogueTurn {
+    speakerId: string;
+    text: string;
+    delivery: string;
+}
 export type AiVideoSceneTransition = (typeof AiVideoSceneTransition)[keyof typeof AiVideoSceneTransition];
 export declare const AiVideoSceneTransition: {
     readonly cut: "cut";
@@ -30,11 +47,14 @@ export interface AiVideoScene {
     audioDurationSeconds?: number;
     transition: AiVideoSceneTransition;
     sourceImage?: string | null;
+    visibleCharacterIds?: string[];
+    dialogue?: AiVideoDialogueTurn[];
 }
 export interface AiVideoStoryboard {
     title: string;
     version: number;
     scenes: AiVideoScene[];
+    characters?: AiVideoCharacter[];
 }
 export type AiVideoBriefLanguage = (typeof AiVideoBriefLanguage)[keyof typeof AiVideoBriefLanguage];
 export declare const AiVideoBriefLanguage: {
@@ -94,6 +114,8 @@ export interface AiVideoProject {
     errorMessage?: string | null;
     storyboardIdempotencyKey: string;
     renderIdempotencyKey?: string | null;
+    renderApproval?: Record<string, unknown> | null;
+    renderQuote?: Record<string, unknown> | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -103,6 +125,33 @@ export interface UpdateAiVideoProjectBody {
 }
 export interface AiVideoRenderBody {
     idempotencyKey: string;
+    approval: AiVideoRenderApproval;
+}
+export interface AiVideoRenderApproval {
+    quoteId: string;
+    accepted: true;
+    maxProviderCostUsd: number;
+}
+export type AiVideoRenderQuoteCurrency = (typeof AiVideoRenderQuoteCurrency)[keyof typeof AiVideoRenderQuoteCurrency];
+export declare const AiVideoRenderQuoteCurrency: {
+    readonly USD: "USD";
+};
+export interface AiVideoRenderQuote {
+    id: string;
+    projectId: number;
+    contentHash: string;
+    expiresAt: string;
+    model: string;
+    currency: AiVideoRenderQuoteCurrency;
+    generatedSeconds: number;
+    sceneCount: number;
+    providerCostUsd: number;
+    totalEstimatedUsd: number;
+    additionalProviderCostUsd: number;
+    platformCredits: number;
+    pricingVersion: string;
+    priceSource: string;
+    requiresManualReview: boolean;
 }
 export type ListAiVideoProjects200 = {
     projects: AiVideoProject[];

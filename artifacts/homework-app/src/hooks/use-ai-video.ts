@@ -17,7 +17,7 @@ export type AiVideoProject = {
     prompt: string;
     language: "ar" | "en";
     durationSeconds: 30 | 60 | 90;
-    aspectRatio: "16:9" | "9:16" | "1:1";
+    aspectRatio: "16:9" | "9:16";
     visualStyle: "educational" | "cinematic" | "playful" | "minimal";
     voice: string;
     music: boolean;
@@ -28,6 +28,7 @@ export type AiVideoProject = {
   storyboard: {
     title: string;
     version: number;
+    characters?: AiVideoCharacter[];
     scenes: AiVideoScene[];
   } | null;
   outputUrl: string | null;
@@ -36,6 +37,13 @@ export type AiVideoProject = {
   updatedAt: string;
 };
 
+export type AiVideoCharacter = {
+  id: string;
+  role: "teacher" | "student";
+  displayName: string;
+  appearance: string;
+  voice: string;
+};
 export type AiVideoScene = {
   id: string;
   objective: string;
@@ -51,8 +59,21 @@ export type AiVideoScene = {
   audioDurationSeconds?: number;
   transition: "cut" | "dissolve" | "push" | "zoom";
   sourceImage?: string | null;
+  visibleCharacterIds?: string[];
+  dialogue?: AiVideoDialogueTurn[];
 };
 
+export type AiVideoNativeDialogueStoryboard = {
+  title: string;
+  version: number;
+  characters: AiVideoCharacter[];
+  scenes: Array<AiVideoScene & {
+    durationSeconds: 6;
+    transition: "cut";
+    visibleCharacterIds: string[];
+    dialogue: AiVideoDialogueTurn[];
+  }>;
+};
 export function getAiVideoStoryboardContentKey(
   storyboard: AiVideoProject["storyboard"],
 ): string | null {
@@ -125,7 +146,7 @@ export function useCreateAiVideoStoryboard() {
       prompt: string;
       language: "ar" | "en";
       durationSeconds: 30 | 60 | 90;
-      aspectRatio: "16:9" | "9:16" | "1:1";
+      aspectRatio: "16:9" | "9:16";
       visualStyle: "educational" | "cinematic" | "playful" | "minimal";
       voice: string;
       music: boolean;
@@ -156,7 +177,7 @@ export function useCreateAiVideoStoryboard() {
 export function useUpdateAiVideoProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: { title?: string; storyboard?: { title: string; version: number; scenes: AiVideoScene[] } | null } }): Promise<AiVideoProject> => {
+    mutationFn: async ({ id, data }: { id: number; data: { title?: string; storyboard?: { title: string; version: number; characters?: AiVideoCharacter[]; scenes: AiVideoScene[] } | null } }): Promise<AiVideoProject> => {
       const res = await fetch(`${API_BASE}/api/ai-video/projects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -176,15 +197,30 @@ export function useUpdateAiVideoProject() {
   });
 }
 
+export function useAiVideoRenderQuote() {
+  return useMutation({
+    mutationFn: async (id: number): Promise<AiVideoRenderQuote> => {
+      const res = await fetch(`${API_BASE}/api/ai-video/projects/${id}/render-quote`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to get render quote");
+      }
+      return res.json();
+    },
+  });
+}
 export function useRenderAiVideoProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, idempotencyKey }: { id: number; idempotencyKey: string }): Promise<AiVideoProject> => {
+    mutationFn: async ({ id, idempotencyKey, approval }: { id: number; idempotencyKey: string; approval: AiVideoRenderApproval }): Promise<AiVideoProject> => {
       const res = await creditAwareFetch(`${API_BASE}/api/ai-video/projects/${id}/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ idempotencyKey }),
+        body: JSON.stringify({ idempotencyKey, approval }),
       });
       if (!res.ok) {
         if (res.status === 402) return Promise.reject(new Error("INSUFFICIENT_CREDITS"));
@@ -197,18 +233,24 @@ export function useRenderAiVideoProject() {
       queryClient.setQueryData(["ai-video-project", data.id], data);
       queryClient.invalidateQueries({ queryKey: ["ai-video-projects"] });
     },
+    onError: (_error, variables) => {
+      // A lost response may follow a successful paid submission. Reconcile the
+      // existing project instead of ever creating a replacement request.
+      queryClient.invalidateQueries({ queryKey: ["ai-video-project", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["ai-video-projects"] });
+    },
   });
 }
 
 export function useRetryAiVideoProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, idempotencyKey }: { id: number; idempotencyKey: string }): Promise<AiVideoProject> => {
+    mutationFn: async ({ id, idempotencyKey, approval }: { id: number; idempotencyKey: string; approval: AiVideoRenderApproval }): Promise<AiVideoProject> => {
       const res = await creditAwareFetch(`${API_BASE}/api/ai-video/projects/${id}/retry-render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ idempotencyKey }),
+        body: JSON.stringify({ idempotencyKey, approval }),
       });
       if (!res.ok) {
         if (res.status === 402) return Promise.reject(new Error("INSUFFICIENT_CREDITS"));
@@ -221,5 +263,39 @@ export function useRetryAiVideoProject() {
       queryClient.setQueryData(["ai-video-project", data.id], data);
       queryClient.invalidateQueries({ queryKey: ["ai-video-projects"] });
     },
+    onError: (_error, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["ai-video-project", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["ai-video-projects"] });
+    },
   });
 }
+
+export type AiVideoDialogueTurn = {
+  speakerId: string;
+  text: string;
+  delivery: string;
+};
+
+export type AiVideoRenderQuote = {
+  id: string;
+  projectId: number;
+  contentHash: string;
+  expiresAt: string;
+  model: string;
+  currency: "USD";
+  generatedSeconds: number;
+  sceneCount: number;
+  providerCostUsd: number;
+  totalEstimatedUsd: number;
+  additionalProviderCostUsd: 0;
+  platformCredits: number;
+  pricingVersion: string;
+  priceSource: string;
+  requiresManualReview: true;
+};
+
+export type AiVideoRenderApproval = {
+  quoteId: string;
+  accepted: true;
+  maxProviderCostUsd: number;
+};

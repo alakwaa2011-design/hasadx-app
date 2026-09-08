@@ -278,6 +278,17 @@ export async function holdCreditsForToolRequest(
   }
 }
 
+/** Read-only estimate using the same bypass policy as the eventual hold. */
+export async function estimateCreditsForToolRequest(teacherId: number, toolKey: string): Promise<number> {
+  const settings = await getSettings();
+  const isAdminTestMode = settings.adminCreditTestMode && settings.adminId === teacherId;
+  if (!settings.creditsEnabled && !isAdminTestMode) return 0;
+  const [teacher] = await db.select({ unlimitedCredits: teachersTable.unlimitedCredits })
+    .from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+  if (teacher?.unlimitedCredits) return 0;
+  return (await CreditService.getEffectiveCost(teacherId, toolKey)).effectiveCost;
+}
+
 // ─── Route helpers ────────────────────────────────────────────────────────────
 
 /** Call after successful AI response to confirm the hold. Pass the response

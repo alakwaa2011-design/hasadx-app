@@ -6344,6 +6344,38 @@ export declare const DeletePresentationDraftParams: zod.ZodObject<{
 }, {
     id: number;
 }>;
+export declare const AiVideoCharacterSchema: zod.ZodObject<{
+    id: zod.ZodString;
+    role: zod.ZodEnum<["teacher", "student"]>;
+    displayName: zod.ZodString;
+    appearance: zod.ZodString;
+    voice: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    role: "teacher" | "student";
+    id: string;
+    displayName: string;
+    appearance: string;
+    voice: string;
+}, {
+    role: "teacher" | "student";
+    id: string;
+    displayName: string;
+    appearance: string;
+    voice: string;
+}>;
+export declare const AiVideoDialogueTurnSchema: zod.ZodObject<{
+    speakerId: zod.ZodString;
+    text: zod.ZodString;
+    delivery: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    text: string;
+    speakerId: string;
+    delivery: string;
+}, {
+    text: string;
+    speakerId: string;
+    delivery: string;
+}>;
 export declare const AiVideoSceneSchema: zod.ZodObject<{
     id: zod.ZodString;
     objective: zod.ZodString;
@@ -6359,6 +6391,20 @@ export declare const AiVideoSceneSchema: zod.ZodObject<{
     audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
     transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
     sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    visibleCharacterIds: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+    dialogue: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+        speakerId: zod.ZodString;
+        text: zod.ZodString;
+        delivery: zod.ZodString;
+    }, "strip", zod.ZodTypeAny, {
+        text: string;
+        speakerId: string;
+        delivery: string;
+    }, {
+        text: string;
+        speakerId: string;
+        delivery: string;
+    }>, "many">>;
 }, "strip", zod.ZodTypeAny, {
     id: string;
     durationSeconds: number;
@@ -6374,6 +6420,12 @@ export declare const AiVideoSceneSchema: zod.ZodObject<{
     narrationEndTime?: number | undefined;
     audioDurationSeconds?: number | undefined;
     sourceImage?: string | null | undefined;
+    visibleCharacterIds?: string[] | undefined;
+    dialogue?: {
+        text: string;
+        speakerId: string;
+        delivery: string;
+    }[] | undefined;
 }, {
     id: string;
     durationSeconds: number;
@@ -6389,6 +6441,12 @@ export declare const AiVideoSceneSchema: zod.ZodObject<{
     audioDurationSeconds?: number | undefined;
     transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
     sourceImage?: string | null | undefined;
+    visibleCharacterIds?: string[] | undefined;
+    dialogue?: {
+        text: string;
+        speakerId: string;
+        delivery: string;
+    }[] | undefined;
 }>;
 export declare const AiVideoStoryboardSchema: zod.ZodObject<{
     title: zod.ZodString;
@@ -6408,6 +6466,20 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
         transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
         sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        visibleCharacterIds: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        dialogue: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            speakerId: zod.ZodString;
+            text: zod.ZodString;
+            delivery: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            speakerId: string;
+            delivery: string;
+        }, {
+            text: string;
+            speakerId: string;
+            delivery: string;
+        }>, "many">>;
     }, "strip", zod.ZodTypeAny, {
         id: string;
         durationSeconds: number;
@@ -6423,6 +6495,12 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         narrationEndTime?: number | undefined;
         audioDurationSeconds?: number | undefined;
         sourceImage?: string | null | undefined;
+        visibleCharacterIds?: string[] | undefined;
+        dialogue?: {
+            text: string;
+            speakerId: string;
+            delivery: string;
+        }[] | undefined;
     }, {
         id: string;
         durationSeconds: number;
@@ -6438,7 +6516,32 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         audioDurationSeconds?: number | undefined;
         transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
         sourceImage?: string | null | undefined;
+        visibleCharacterIds?: string[] | undefined;
+        dialogue?: {
+            text: string;
+            speakerId: string;
+            delivery: string;
+        }[] | undefined;
     }>, "many">;
+    characters: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        role: zod.ZodEnum<["teacher", "student"]>;
+        displayName: zod.ZodString;
+        appearance: zod.ZodString;
+        voice: zod.ZodString;
+    }, "strip", zod.ZodTypeAny, {
+        role: "teacher" | "student";
+        id: string;
+        displayName: string;
+        appearance: string;
+        voice: string;
+    }, {
+        role: "teacher" | "student";
+        id: string;
+        displayName: string;
+        appearance: string;
+        voice: string;
+    }>, "many">>;
 }, "strip", zod.ZodTypeAny, {
     title: string;
     version: number;
@@ -6457,7 +6560,20 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         narrationEndTime?: number | undefined;
         audioDurationSeconds?: number | undefined;
         sourceImage?: string | null | undefined;
+        visibleCharacterIds?: string[] | undefined;
+        dialogue?: {
+            text: string;
+            speakerId: string;
+            delivery: string;
+        }[] | undefined;
     }[];
+    characters?: {
+        role: "teacher" | "student";
+        id: string;
+        displayName: string;
+        appearance: string;
+        voice: string;
+    }[] | undefined;
 }, {
     title: string;
     scenes: {
@@ -6475,8 +6591,21 @@ export declare const AiVideoStoryboardSchema: zod.ZodObject<{
         audioDurationSeconds?: number | undefined;
         transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
         sourceImage?: string | null | undefined;
+        visibleCharacterIds?: string[] | undefined;
+        dialogue?: {
+            text: string;
+            speakerId: string;
+            delivery: string;
+        }[] | undefined;
     }[];
     version?: number | undefined;
+    characters?: {
+        role: "teacher" | "student";
+        id: string;
+        displayName: string;
+        appearance: string;
+        voice: string;
+    }[] | undefined;
 }>;
 export declare const AiVideoBriefSchema: zod.ZodObject<{
     title: zod.ZodString;
@@ -6497,9 +6626,9 @@ export declare const AiVideoBriefSchema: zod.ZodObject<{
     title: string;
     durationSeconds: 30 | 60 | 90;
     topic: string;
+    voice: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
     visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-    voice: string;
     music: boolean;
     captions: boolean;
     idempotencyKey: string;
@@ -6511,9 +6640,9 @@ export declare const AiVideoBriefSchema: zod.ZodObject<{
     title: string;
     durationSeconds: 30 | 60 | 90;
     topic: string;
+    voice: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
     visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-    voice: string;
     music: boolean;
     captions: boolean;
     idempotencyKey: string;
@@ -6545,9 +6674,9 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
         title: string;
         durationSeconds: 30 | 60 | 90;
         topic: string;
+        voice: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-        voice: string;
         music: boolean;
         captions: boolean;
         idempotencyKey: string;
@@ -6559,9 +6688,9 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
         title: string;
         durationSeconds: 30 | 60 | 90;
         topic: string;
+        voice: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-        voice: string;
         music: boolean;
         captions: boolean;
         idempotencyKey: string;
@@ -6587,6 +6716,20 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
             transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
             sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            visibleCharacterIds: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+            dialogue: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                speakerId: zod.ZodString;
+                text: zod.ZodString;
+                delivery: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }, {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
             durationSeconds: number;
@@ -6602,6 +6745,12 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             narrationEndTime?: number | undefined;
             audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }, {
             id: string;
             durationSeconds: number;
@@ -6617,7 +6766,32 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             audioDurationSeconds?: number | undefined;
             transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }>, "many">;
+        characters: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            role: zod.ZodEnum<["teacher", "student"]>;
+            displayName: zod.ZodString;
+            appearance: zod.ZodString;
+            voice: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }, {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }>, "many">>;
     }, "strip", zod.ZodTypeAny, {
         title: string;
         version: number;
@@ -6636,7 +6810,20 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             narrationEndTime?: number | undefined;
             audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     }, {
         title: string;
         scenes: {
@@ -6654,13 +6841,28 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             audioDurationSeconds?: number | undefined;
             transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
         version?: number | undefined;
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     }>>;
     outputUrl: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     storyboardIdempotencyKey: zod.ZodString;
     renderIdempotencyKey: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    renderApproval: zod.ZodOptional<zod.ZodNullable<zod.ZodRecord<zod.ZodString, zod.ZodUnknown>>>;
+    renderQuote: zod.ZodOptional<zod.ZodNullable<zod.ZodRecord<zod.ZodString, zod.ZodUnknown>>>;
     createdAt: zod.ZodDate;
     updatedAt: zod.ZodDate;
 }, "strip", zod.ZodTypeAny, {
@@ -6675,9 +6877,9 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
         title: string;
         durationSeconds: 30 | 60 | 90;
         topic: string;
+        voice: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-        voice: string;
         music: boolean;
         captions: boolean;
         idempotencyKey: string;
@@ -6703,12 +6905,27 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             narrationEndTime?: number | undefined;
             audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     } | null;
     storyboardIdempotencyKey: string;
     errorMessage?: string | null | undefined;
     outputUrl?: string | null | undefined;
     renderIdempotencyKey?: string | null | undefined;
+    renderApproval?: Record<string, unknown> | null | undefined;
+    renderQuote?: Record<string, unknown> | null | undefined;
 }, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
@@ -6721,9 +6938,9 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
         title: string;
         durationSeconds: 30 | 60 | 90;
         topic: string;
+        voice: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-        voice: string;
         music: boolean;
         captions: boolean;
         idempotencyKey: string;
@@ -6748,13 +6965,28 @@ export declare const AiVideoProjectResponse: zod.ZodObject<{
             audioDurationSeconds?: number | undefined;
             transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
         version?: number | undefined;
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     } | null;
     storyboardIdempotencyKey: string;
     errorMessage?: string | null | undefined;
     outputUrl?: string | null | undefined;
     renderIdempotencyKey?: string | null | undefined;
+    renderApproval?: Record<string, unknown> | null | undefined;
+    renderQuote?: Record<string, unknown> | null | undefined;
 }>;
 export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
     projects: zod.ZodArray<zod.ZodObject<{
@@ -6781,9 +7013,9 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
             title: string;
             durationSeconds: 30 | 60 | 90;
             topic: string;
+            voice: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-            voice: string;
             music: boolean;
             captions: boolean;
             idempotencyKey: string;
@@ -6795,9 +7027,9 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
             title: string;
             durationSeconds: 30 | 60 | 90;
             topic: string;
+            voice: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-            voice: string;
             music: boolean;
             captions: boolean;
             idempotencyKey: string;
@@ -6823,6 +7055,20 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
                 transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
                 sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+                visibleCharacterIds: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+                dialogue: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                    speakerId: zod.ZodString;
+                    text: zod.ZodString;
+                    delivery: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }, {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }>, "many">>;
             }, "strip", zod.ZodTypeAny, {
                 id: string;
                 durationSeconds: number;
@@ -6838,6 +7084,12 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narrationEndTime?: number | undefined;
                 audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }, {
                 id: string;
                 durationSeconds: number;
@@ -6853,7 +7105,32 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 audioDurationSeconds?: number | undefined;
                 transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }>, "many">;
+            characters: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                id: zod.ZodString;
+                role: zod.ZodEnum<["teacher", "student"]>;
+                displayName: zod.ZodString;
+                appearance: zod.ZodString;
+                voice: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }, {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
             title: string;
             version: number;
@@ -6872,7 +7149,20 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narrationEndTime?: number | undefined;
                 audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }[];
+            characters?: {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }[] | undefined;
         }, {
             title: string;
             scenes: {
@@ -6890,13 +7180,28 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 audioDurationSeconds?: number | undefined;
                 transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }[];
             version?: number | undefined;
+            characters?: {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }[] | undefined;
         }>>;
         outputUrl: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         storyboardIdempotencyKey: zod.ZodString;
         renderIdempotencyKey: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        renderApproval: zod.ZodOptional<zod.ZodNullable<zod.ZodRecord<zod.ZodString, zod.ZodUnknown>>>;
+        renderQuote: zod.ZodOptional<zod.ZodNullable<zod.ZodRecord<zod.ZodString, zod.ZodUnknown>>>;
         createdAt: zod.ZodDate;
         updatedAt: zod.ZodDate;
     }, "strip", zod.ZodTypeAny, {
@@ -6911,9 +7216,9 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
             title: string;
             durationSeconds: 30 | 60 | 90;
             topic: string;
+            voice: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-            voice: string;
             music: boolean;
             captions: boolean;
             idempotencyKey: string;
@@ -6939,12 +7244,27 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narrationEndTime?: number | undefined;
                 audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }[];
+            characters?: {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }[] | undefined;
         } | null;
         storyboardIdempotencyKey: string;
         errorMessage?: string | null | undefined;
         outputUrl?: string | null | undefined;
         renderIdempotencyKey?: string | null | undefined;
+        renderApproval?: Record<string, unknown> | null | undefined;
+        renderQuote?: Record<string, unknown> | null | undefined;
     }, {
         status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
@@ -6957,9 +7277,9 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
             title: string;
             durationSeconds: 30 | 60 | 90;
             topic: string;
+            voice: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-            voice: string;
             music: boolean;
             captions: boolean;
             idempotencyKey: string;
@@ -6984,13 +7304,28 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 audioDurationSeconds?: number | undefined;
                 transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }[];
             version?: number | undefined;
+            characters?: {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }[] | undefined;
         } | null;
         storyboardIdempotencyKey: string;
         errorMessage?: string | null | undefined;
         outputUrl?: string | null | undefined;
         renderIdempotencyKey?: string | null | undefined;
+        renderApproval?: Record<string, unknown> | null | undefined;
+        renderQuote?: Record<string, unknown> | null | undefined;
     }>, "many">;
 }, "strip", zod.ZodTypeAny, {
     projects: {
@@ -7005,9 +7340,9 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
             title: string;
             durationSeconds: 30 | 60 | 90;
             topic: string;
+            voice: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-            voice: string;
             music: boolean;
             captions: boolean;
             idempotencyKey: string;
@@ -7033,12 +7368,27 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 narrationEndTime?: number | undefined;
                 audioDurationSeconds?: number | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }[];
+            characters?: {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }[] | undefined;
         } | null;
         storyboardIdempotencyKey: string;
         errorMessage?: string | null | undefined;
         outputUrl?: string | null | undefined;
         renderIdempotencyKey?: string | null | undefined;
+        renderApproval?: Record<string, unknown> | null | undefined;
+        renderQuote?: Record<string, unknown> | null | undefined;
     }[];
 }, {
     projects: {
@@ -7053,9 +7403,9 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
             title: string;
             durationSeconds: 30 | 60 | 90;
             topic: string;
+            voice: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-            voice: string;
             music: boolean;
             captions: boolean;
             idempotencyKey: string;
@@ -7080,13 +7430,28 @@ export declare const ListAiVideoProjectsResponse: zod.ZodObject<{
                 audioDurationSeconds?: number | undefined;
                 transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
                 sourceImage?: string | null | undefined;
+                visibleCharacterIds?: string[] | undefined;
+                dialogue?: {
+                    text: string;
+                    speakerId: string;
+                    delivery: string;
+                }[] | undefined;
             }[];
             version?: number | undefined;
+            characters?: {
+                role: "teacher" | "student";
+                id: string;
+                displayName: string;
+                appearance: string;
+                voice: string;
+            }[] | undefined;
         } | null;
         storyboardIdempotencyKey: string;
         errorMessage?: string | null | undefined;
         outputUrl?: string | null | undefined;
         renderIdempotencyKey?: string | null | undefined;
+        renderApproval?: Record<string, unknown> | null | undefined;
+        renderQuote?: Record<string, unknown> | null | undefined;
     }[];
 }>;
 export declare const UploadAiVideoSourceImageBody: zod.ZodObject<{
@@ -7155,9 +7520,9 @@ export declare const CreateAiVideoStoryboardBody: zod.ZodObject<{
     title: string;
     durationSeconds: 30 | 60 | 90;
     topic: string;
+    voice: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
     visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-    voice: string;
     music: boolean;
     captions: boolean;
     idempotencyKey: string;
@@ -7169,9 +7534,9 @@ export declare const CreateAiVideoStoryboardBody: zod.ZodObject<{
     title: string;
     durationSeconds: 30 | 60 | 90;
     topic: string;
+    voice: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
     visualStyle: "minimal" | "educational" | "cinematic" | "playful";
-    voice: string;
     music: boolean;
     captions: boolean;
     idempotencyKey: string;
@@ -7206,6 +7571,20 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             audioDurationSeconds: zod.ZodOptional<zod.ZodNumber>;
             transition: zod.ZodDefault<zod.ZodEnum<["cut", "dissolve", "push", "zoom"]>>;
             sourceImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            visibleCharacterIds: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+            dialogue: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                speakerId: zod.ZodString;
+                text: zod.ZodString;
+                delivery: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }, {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
             durationSeconds: number;
@@ -7221,6 +7600,12 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             narrationEndTime?: number | undefined;
             audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }, {
             id: string;
             durationSeconds: number;
@@ -7236,7 +7621,32 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             audioDurationSeconds?: number | undefined;
             transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }>, "many">;
+        characters: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            role: zod.ZodEnum<["teacher", "student"]>;
+            displayName: zod.ZodString;
+            appearance: zod.ZodString;
+            voice: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }, {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }>, "many">>;
     }, "strip", zod.ZodTypeAny, {
         title: string;
         version: number;
@@ -7255,7 +7665,20 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             narrationEndTime?: number | undefined;
             audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     }, {
         title: string;
         scenes: {
@@ -7273,8 +7696,21 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             audioDurationSeconds?: number | undefined;
             transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
         version?: number | undefined;
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     }>>;
 }, "strip", zod.ZodTypeAny, {
     title?: string | undefined;
@@ -7296,7 +7732,20 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             narrationEndTime?: number | undefined;
             audioDurationSeconds?: number | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     } | undefined;
 }, {
     title?: string | undefined;
@@ -7317,16 +7766,52 @@ export declare const UpdateAiVideoProjectBodySchema: zod.ZodObject<{
             audioDurationSeconds?: number | undefined;
             transition?: "push" | "cut" | "dissolve" | "zoom" | undefined;
             sourceImage?: string | null | undefined;
+            visibleCharacterIds?: string[] | undefined;
+            dialogue?: {
+                text: string;
+                speakerId: string;
+                delivery: string;
+            }[] | undefined;
         }[];
         version?: number | undefined;
+        characters?: {
+            role: "teacher" | "student";
+            id: string;
+            displayName: string;
+            appearance: string;
+            voice: string;
+        }[] | undefined;
     } | undefined;
 }>;
 export declare const RenderAiVideoProjectBody: zod.ZodObject<{
     idempotencyKey: zod.ZodString;
+    approval: zod.ZodObject<{
+        quoteId: zod.ZodString;
+        accepted: zod.ZodLiteral<true>;
+        maxProviderCostUsd: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    }, {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    }>;
 }, "strip", zod.ZodTypeAny, {
     idempotencyKey: string;
+    approval: {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    };
 }, {
     idempotencyKey: string;
+    approval: {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    };
 }>;
 export declare const RenderAiVideoProjectParams: zod.ZodObject<{
     id: zod.ZodNumber;
@@ -7335,12 +7820,91 @@ export declare const RenderAiVideoProjectParams: zod.ZodObject<{
 }, {
     id: number;
 }>;
+export declare const QuoteAiVideoProjectRenderParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const QuoteAiVideoProjectRenderResponse: zod.ZodObject<{
+    id: zod.ZodString;
+    projectId: zod.ZodNumber;
+    contentHash: zod.ZodString;
+    expiresAt: zod.ZodDate;
+    model: zod.ZodString;
+    currency: zod.ZodLiteral<"USD">;
+    generatedSeconds: zod.ZodNumber;
+    sceneCount: zod.ZodNumber;
+    providerCostUsd: zod.ZodNumber;
+    totalEstimatedUsd: zod.ZodNumber;
+    additionalProviderCostUsd: zod.ZodNumber;
+    platformCredits: zod.ZodNumber;
+    pricingVersion: zod.ZodString;
+    priceSource: zod.ZodString;
+    requiresManualReview: zod.ZodBoolean;
+}, "strip", zod.ZodTypeAny, {
+    id: string;
+    expiresAt: Date;
+    projectId: number;
+    contentHash: string;
+    model: string;
+    currency: "USD";
+    generatedSeconds: number;
+    sceneCount: number;
+    providerCostUsd: number;
+    totalEstimatedUsd: number;
+    additionalProviderCostUsd: number;
+    platformCredits: number;
+    pricingVersion: string;
+    priceSource: string;
+    requiresManualReview: boolean;
+}, {
+    id: string;
+    expiresAt: Date;
+    projectId: number;
+    contentHash: string;
+    model: string;
+    currency: "USD";
+    generatedSeconds: number;
+    sceneCount: number;
+    providerCostUsd: number;
+    totalEstimatedUsd: number;
+    additionalProviderCostUsd: number;
+    platformCredits: number;
+    pricingVersion: string;
+    priceSource: string;
+    requiresManualReview: boolean;
+}>;
 export declare const RetryAiVideoProjectRenderBody: zod.ZodObject<{
     idempotencyKey: zod.ZodString;
+    approval: zod.ZodObject<{
+        quoteId: zod.ZodString;
+        accepted: zod.ZodLiteral<true>;
+        maxProviderCostUsd: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    }, {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    }>;
 }, "strip", zod.ZodTypeAny, {
     idempotencyKey: string;
+    approval: {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    };
 }, {
     idempotencyKey: string;
+    approval: {
+        quoteId: string;
+        accepted: true;
+        maxProviderCostUsd: number;
+    };
 }>;
 export declare const RetryAiVideoProjectRenderParams: zod.ZodObject<{
     id: zod.ZodNumber;

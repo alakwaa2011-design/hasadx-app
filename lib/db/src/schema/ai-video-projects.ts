@@ -16,6 +16,8 @@ export const aiVideoProjectsTable = pgTable("ai_video_projects", {
   storyboardLeaseId: text("storyboard_lease_id"),
   storyboardLeaseExpiresAt: timestamp("storyboard_lease_expires_at", { withTimezone: true }),
   renderIdempotencyKey: text("render_idempotency_key"),
+  renderQuote: jsonb("render_quote"),
+  renderApproval: jsonb("render_approval"),
   renderLeaseId: text("render_lease_id"),
   renderLeaseExpiresAt: timestamp("render_lease_expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

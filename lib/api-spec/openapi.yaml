@@ -1413,6 +1413,25 @@ paths:
         "404": { description: Project not found }
         "409": { description: Project is not ready }
 
+  /ai-video/projects/{id}/render-quote:
+    post:
+      operationId: quoteAiVideoProjectRender
+      tags: [ai-video]
+      summary: Quote native-audio video provider cost before render approval
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Expiring render quote requiring explicit approval
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AiVideoRenderQuote" }
+        "404": { description: Project not found }
+        "409": { description: Project is not ready or has no renderable native dialogue }
+
   /ai-video/projects/{id}/retry-render:
     post:
       operationId: retryAiVideoProjectRender
@@ -1439,6 +1458,34 @@ paths:
 
 components:
   schemas:
+    AiVideoCharacter:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string, minLength: 1, maxLength: 40, pattern: "^[A-Za-z0-9_-]+$" }
+        role: { type: string, enum: [teacher, student] }
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        appearance:
+          type: string
+          minLength: 30
+          maxLength: 800
+          description: Stable detailed physical description repeated unchanged for every scene.
+        voice:
+          type: string
+          minLength: 20
+          maxLength: 500
+          description: Stable detailed vocal description; teacher and student voices must be distinct.
+      required: [id, role, displayName, appearance, voice]
+
+    AiVideoDialogueTurn:
+      type: object
+      additionalProperties: false
+      properties:
+        speakerId: { type: string, minLength: 1, maxLength: 40, pattern: "^[A-Za-z0-9_-]+$" }
+        text: { type: string, minLength: 1, maxLength: 500 }
+        delivery: { type: string, minLength: 1, maxLength: 160 }
+      required: [speakerId, text, delivery]
+
     AiVideoScene:
       type: object
       additionalProperties: false
@@ -1463,6 +1510,18 @@ components:
           type: [string, "null"]
           maxLength: 500
           pattern: "^/objects/"
+        visibleCharacterIds:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: { type: string, minLength: 1, maxLength: 40, pattern: "^[A-Za-z0-9_-]+$" }
+          description: Stable character IDs visibly present in the shot, including every dialogue speaker.
+        dialogue:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: { $ref: "#/components/schemas/AiVideoDialogueTurn" }
+          description: Exact ordered native-audio character turns; production never replaces these with narration/TTS.
       required: [id, objective, narration, onScreenText, visualPrompt, durationSeconds, transition]
 
     AiVideoStoryboard:
@@ -1476,6 +1535,12 @@ components:
           minItems: 5
           maxItems: 18
           items: { $ref: "#/components/schemas/AiVideoScene" }
+        characters:
+          type: array
+          minItems: 2
+          maxItems: 4
+          items: { $ref: "#/components/schemas/AiVideoCharacter" }
+          description: Stable visible-character appearance and voice bible. Required by native dialogue rendering.
       required: [title, version, scenes]
 
     AiVideoBrief:
@@ -1516,6 +1581,14 @@ components:
         errorMessage: { type: [string, "null"] }
         storyboardIdempotencyKey: { type: string }
         renderIdempotencyKey: { type: [string, "null"] }
+        renderApproval:
+          type: [object, "null"]
+          additionalProperties: true
+          description: Persisted render approval snapshot, when one exists.
+        renderQuote:
+          type: [object, "null"]
+          additionalProperties: true
+          description: Persisted provider quote snapshot, when one exists.
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
       required: [id, teacherId, title, status, brief, storyboard, storyboardIdempotencyKey, createdAt, updatedAt]
@@ -1532,7 +1605,53 @@ components:
       additionalProperties: false
       properties:
         idempotencyKey: { type: string, minLength: 8, maxLength: 100 }
-      required: [idempotencyKey]
+        approval: { $ref: "#/components/schemas/AiVideoRenderApproval" }
+      required: [idempotencyKey, approval]
+
+    AiVideoRenderApproval:
+      type: object
+      additionalProperties: false
+      properties:
+        quoteId: { type: string, format: uuid }
+        accepted: { type: boolean, const: true }
+        maxProviderCostUsd: { type: number, minimum: 0 }
+      required: [quoteId, accepted, maxProviderCostUsd]
+
+    AiVideoRenderQuote:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        projectId: { type: number }
+        contentHash: { type: string }
+        expiresAt: { type: string, format: date-time }
+        model: { type: string }
+        currency: { type: string, enum: [USD] }
+        generatedSeconds: { type: number }
+        sceneCount: { type: number }
+        providerCostUsd: { type: number }
+        totalEstimatedUsd: { type: number }
+        additionalProviderCostUsd: { type: number }
+        platformCredits: { type: number }
+        pricingVersion: { type: string }
+        priceSource: { type: string }
+        requiresManualReview: { type: boolean }
+      required:
+        - id
+        - projectId
+        - contentHash
+        - expiresAt
+        - model
+        - currency
+        - generatedSeconds
+        - sceneCount
+        - providerCostUsd
+        - totalEstimatedUsd
+        - additionalProviderCostUsd
+        - platformCredits
+        - pricingVersion
+        - priceSource
+        - requiresManualReview
 
     HealthStatus:
       type: object

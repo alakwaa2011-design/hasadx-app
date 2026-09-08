@@ -16,6 +16,8 @@ import { CreditService } from "./credit-service";
 import { aiVideoBriefSchema, aiVideoStoryboardSchema } from "./ai-video-schemas";
 import { composeAiVideo } from "./ai-video-composition";
 import { composeEconomyAiVideo } from "./ai-video-economy-composition";
+import { createAiVideoMotionJournalFactory } from "./ai-video-request-journal";
+import { hashAiVideoGenerationIdentity } from "./ai-video-request-journal";
 export { buildAiVideoTransitionFilter } from "./ai-video-composition";
 
 const storage = new ObjectStorageService();
@@ -108,15 +110,7 @@ async function renderClaimedProject(project: AiVideoProject): Promise<void> {
     const brief = aiVideoBriefSchema.parse(project.brief);
     const storyboard = aiVideoStoryboardSchema.parse(project.storyboard);
     const voice: Voice = VOICES.has(brief.voice) ? brief.voice as Voice : "nova";
-    const compose = brief.mode === "narrated_images" ? composeEconomyAiVideo : composeAiVideo;
-    const finalPath = await compose({
-      brief,
-      storyboard,
-      dir,
-      deadline,
-      voice,
-      assertActive,
-      persistStoryboard: async (updatedStoryboard) => {
+    const persistStoryboard = async (updatedStoryboard: typeof storyboard) => {
         const persisted = await db.update(aiVideoProjectsTable).set({
           storyboard: updatedStoryboard,
           updatedAt: new Date(),
@@ -129,8 +123,43 @@ async function renderClaimedProject(project: AiVideoProject): Promise<void> {
           leaseLost = true;
           throw new Error("AI video render worker lease was lost");
         }
-      },
-    });
+    };
+    let finalPath: string;
+    if (brief.mode === "narrated_images") {
+      finalPath = await composeEconomyAiVideo({
+        brief,
+        storyboard,
+        dir,
+        deadline,
+        voice,
+        assertActive,
+        persistStoryboard,
+      });
+    } else {
+      if (!project.renderLeaseId) throw new Error("AI video render has no worker lease");
+      const motionJournalForScene = createAiVideoMotionJournalFactory({
+        projectId: project.id,
+        renderLeaseId: project.renderLeaseId,
+      });
+      const generationJournalForScene = (
+        sceneIndex: number,
+        canonicalStoryboardHash: string,
+      ) => motionJournalForScene(sceneIndex, hashAiVideoGenerationIdentity({
+        canonicalStoryboardHash,
+        aspectRatio: brief.aspectRatio,
+        language: brief.language,
+      }));
+      finalPath = await composeAiVideo({
+        brief,
+        storyboard,
+        dir,
+        deadline,
+        voice,
+        assertActive,
+        requestJournal: generationJournalForScene,
+        persistStoryboard,
+      });
+    }
 
     const uploadTimeout = remainingTimeout(deadline, 180_000, "video upload");
     const output = await readFile(finalPath);

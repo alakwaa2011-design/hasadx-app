@@ -6,10 +6,12 @@ import {
   useAiVideoProject,
   useCreateAiVideoStoryboard,
   useUpdateAiVideoProject,
+  useAiVideoRenderQuote,
   useRenderAiVideoProject,
   useRetryAiVideoProject,
   AiVideoScene,
   AiVideoProject,
+  AiVideoRenderQuote,
   getAiVideoStoryboardContentKey,
   getStorageUrl,
   shouldHydrateAiVideoEditor,
@@ -19,27 +21,16 @@ import { Card } from "@/components/ui-elements";
 import { toast } from "sonner";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import {
-  ArrowRight, ArrowLeft, Image as ImageIcon, Music, Type,
+  ArrowRight, ArrowLeft, Image as ImageIcon, Type,
   Clock, Monitor, Sparkles, Loader2, Play,
-  Download, AlertCircle, RefreshCw, Trash2, ChevronUp, ChevronDown
+  Download, AlertCircle, RefreshCw, ChevronUp, ChevronDown, Users
 } from "lucide-react";
 
-const MOTION_COST_PER_GENERATED_SECOND = 0.10;
-const DEFAULT_MOTION_COSTS: Record<30 | 60 | 90, number> = {
-  30: 3.80,
-  60: 7.80,
-  90: 11.80,
+const VERIFIED_PROVIDER_COSTS: Record<30 | 60 | 90, number> = {
+  30: 12,
+  60: 24,
+  90: 36,
 };
-
-function estimateMotionCost(scenes: AiVideoScene[]): number {
-  const generatedSeconds = scenes.reduce((total, scene, index) => {
-    const hasOutgoingTransition = index < scenes.length - 1 && scene.transition !== "cut";
-    const requestedSeconds = scene.durationSeconds + (hasOutgoingTransition ? 0.4 : 0);
-    const billedSeconds = requestedSeconds <= 4 ? 4 : requestedSeconds <= 6 ? 6 : 8;
-    return total + billedSeconds;
-  }, 0);
-  return generatedSeconds * MOTION_COST_PER_GENERATED_SECOND;
-}
 
 function useQueryId() {
   const search = window.location.search;
@@ -60,17 +51,20 @@ export default function AiVideoStudio() {
     if (authLoading) return;
     if (authError || !currentUser) {
       setLocation("/login?redirect=" + encodeURIComponent(window.location.pathname + window.location.search));
+    } else if (!isAdmin) {
+      setLocation("/teacher");
     }
-  }, [authLoading, authError, currentUser, setLocation]);
+  }, [authLoading, authError, currentUser, isAdmin, setLocation]);
 
   const { data: project, isLoading: loadingProject } = useAiVideoProject(
     id,
-    !authLoading && !authError,
+    !authLoading && !authError && isAdmin,
   );
   const createMutation = useCreateAiVideoStoryboard();
   const updateMutation = useUpdateAiVideoProject();
   const renderMutation = useRenderAiVideoProject();
   const retryMutation = useRetryAiVideoProject();
+  const quoteMutation = useAiVideoRenderQuote();
   const refreshCredits = useRefreshCreditsBalance();
 
   // Form State
@@ -81,12 +75,13 @@ export default function AiVideoStudio() {
   // Settings
   const [language, setLanguage] = useState<"ar"|"en">("ar");
   const [duration, setDuration] = useState<30|60|90>(60);
-  const [aspectRatio, setAspectRatio] = useState<"16:9"|"9:16"|"1:1">("16:9");
+  const [aspectRatio, setAspectRatio] = useState<"16:9"|"9:16">("16:9");
   const [visualStyle, setStyle] = useState<"educational"|"cinematic"|"playful"|"minimal">("educational");
-  const [voice, setVoice] = useState("nova");
-  const [music, setMusic] = useState(true);
   const [captions, setCaptions] = useState(true);
-  const [mode, setMode] = useState<"narrated_images" | "realistic_motion">("narrated_images");
+  const [renderQuote, setRenderQuote] = useState<AiVideoRenderQuote | null>(null);
+  const [quoteConsent, setQuoteConsent] = useState(false);
+  const [quoteAction, setQuoteAction] = useState<"render" | "retry">("render");
+  const projectSnapshotRef = useRef<{ id: number; status: AiVideoProject["status"]; contentKey: string | null } | null>(null);
 
   // Storyboard Edit State
   const [editTitle, setEditTitle] = useState("");
@@ -96,7 +91,6 @@ export default function AiVideoStudio() {
   const hydratedContentKey = useRef<string | null>(null);
 
   const hydrateEditor = (nextProject: AiVideoProject) => {
-    setMode(nextProject.brief.mode ?? "realistic_motion");
     setEditTitle(nextProject.storyboard?.title || nextProject.title);
     setEditScenes(nextProject.storyboard?.scenes || []);
     initializedForId.current = nextProject.id;
@@ -129,9 +123,25 @@ export default function AiVideoStudio() {
     }
   }, [project]);
 
+  useEffect(() => {
+    const nextSnapshot = project ? {
+      id: project.id,
+      status: project.status,
+      contentKey: getAiVideoStoryboardContentKey(project.storyboard),
+    } : null;
+    const previous = projectSnapshotRef.current;
+    if (renderQuote && (!nextSnapshot || !previous
+      || previous.id !== nextSnapshot.id
+      || previous.status !== nextSnapshot.status
+      || previous.contentKey !== nextSnapshot.contentKey)) {
+      setRenderQuote(null);
+      setQuoteConsent(false);
+    }
+    projectSnapshotRef.current = nextSnapshot;
+  }, [project?.id, project?.status, project?.storyboard, renderQuote]);
+
   const handleLanguageChange = (lang: "ar"|"en") => {
     setLanguage(lang);
-    setVoice(lang === "ar" ? "nova" : "alloy");
   };
 
   const handleError = (error: Error) => {
@@ -153,18 +163,10 @@ export default function AiVideoStudio() {
       toast.error(isAr ? "التوجيهات طويلة جداً (الحد الأقصى 1500 حرف)" : "Prompt too long (max 1500 chars)");
       return;
     }
-    if (mode === "realistic_motion") {
-      if (!window.confirm(isAr
-        ? `سيستخدم إنشاء القصة المصوّرة رصيد أدوات الذكاء الاصطناعي. تكلفة الحركة المتوقعة عند الإنتاج بهذه المدة هي $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}، ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
-        : `Creating the storyboard uses AI-tool credits. The planned motion render for this duration is estimated at $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}, excluding OpenAI costs. Continue?`)) {
-        return;
-      }
-    } else {
-      if (!window.confirm(isAr
-        ? `سيستخدم إنشاء القصة المصوّرة رصيد أدوات الذكاء الاصطناعي (بتكلفة مخفضة). هل تريد المتابعة؟`
-        : `Creating the storyboard uses AI-tool credits (at a low cost). Continue?`)) {
-        return;
-      }
+    if (!window.confirm(isAr
+      ? "سيستخدم إنشاء القصة المصوّرة نقاط أداة الذكاء الاصطناعي لتخطيط النص فقط. لن يبدأ إنتاج الفيديو المدفوع؛ يتطلب ذلك عرض سعر وموافقة منفصلة لاحقاً. هل تريد المتابعة؟"
+      : "Creating the storyboard uses AI-tool points for script planning only. It will not start paid video production; that requires a separate quote and approval later. Continue?")) {
+      return;
     }
 
     createMutation.mutate({
@@ -177,10 +179,9 @@ export default function AiVideoStudio() {
       durationSeconds: duration,
       aspectRatio,
       visualStyle,
-      voice,
-      music,
+      voice: "native-dialogue",
+      music: false,
       captions,
-      mode,
       idempotencyKey: crypto.randomUUID()
     }, {
       onSuccess: (data) => {
@@ -195,34 +196,41 @@ export default function AiVideoStudio() {
   const totalDuration = editScenes.reduce((acc, s) => acc + (s.durationSeconds || 0), 0);
   const requestedDuration = project?.brief.durationSeconds || 0;
   const durationMismatch = editScenes.length > 0 && totalDuration !== requestedDuration;
-  const minimumSceneCount = requestedDuration ? Math.ceil(requestedDuration / 7) : 5;
+  const expectedSceneCount = requestedDuration ? requestedDuration / 6 : 5;
 
   const validateStoryboard = () => {
     if (!editTitle.trim()) {
       toast.error(isAr ? "عنوان الفيديو مطلوب" : "Video title is required");
       return false;
     }
-    if (editScenes.length < minimumSceneCount) {
+    if (editScenes.length !== expectedSceneCount) {
       toast.error(isAr
-        ? `عدد المشاهد غير كافٍ لمدة ${requestedDuration} ثانية. يلزم ${minimumSceneCount} مشهداً على الأقل حتى لا يتجاوز أي مشهد 7 ثوانٍ.`
-        : `Not enough scenes for ${requestedDuration} seconds. At least ${minimumSceneCount} scenes are required so no scene exceeds 7 seconds.`);
+        ? `يتطلب فيديو ${requestedDuration} ثانية ${expectedSceneCount} مقاطع حوارية بالضبط، مدة كل منها 6 ثوانٍ.`
+        : `A ${requestedDuration}-second video requires exactly ${expectedSceneCount} six-second dialogue clips.`);
       return false;
     }
-    const maximumSceneCount = Math.min(18, Math.floor(requestedDuration / 2));
-    if (editScenes.length > maximumSceneCount) {
-      toast.error(isAr
-        ? `الحد الأقصى لهذه المدة ${maximumSceneCount} مشهداً لأن مدة المشهد لا تقل عن ثانيتين`
-        : `This duration allows at most ${maximumSceneCount} scenes because every scene is at least 2 seconds`);
+    const characters = project?.storyboard?.characters;
+    if (!characters || characters.length !== 2) {
+      toast.error(isAr ? "يلزم تعريف ثابت لشخصيتي الأستاذ والطالب" : "A stable teacher and student character bible is required");
       return false;
     }
+    const characterIds = new Set(characters.map(character => character.id));
     for (let i = 0; i < editScenes.length; i++) {
       const s = editScenes[i];
-      if (!s.narration?.trim() || !s.visualPrompt?.trim()) {
+      if (!s.visualPrompt?.trim() || !s.dialogue?.length) {
         toast.error(isAr ? `المشهد ${i+1} غير مكتمل` : `Scene ${i+1} is incomplete`);
         return false;
       }
-      if (s.durationSeconds < 2 || s.durationSeconds > 7) {
-        toast.error(isAr ? `مدة المشهد ${i+1} يجب أن تكون بين ثانيتين و7 ثوانٍ` : `Scene ${i+1} duration must be 2-7 seconds`);
+      if (s.durationSeconds !== 6 || s.transition !== "cut") {
+        toast.error(isAr ? `توقيت المشهد ${i+1} يجب أن يبقى مقفلاً على 6 ثوانٍ وقطع مباشر` : `Scene ${i+1} must remain locked to six seconds with a hard cut`);
+        return false;
+      }
+      if (!s.visibleCharacterIds || s.visibleCharacterIds.length < 2 || s.visibleCharacterIds.some(characterId => !characterIds.has(characterId))) {
+        toast.error(isAr ? `يجب أن يظهر الأستاذ والطالب في المشهد ${i+1}` : `Teacher and student must be visible in scene ${i+1}`);
+        return false;
+      }
+      if (s.dialogue.some(turn => !turn.text.trim() || !turn.delivery.trim() || !characterIds.has(turn.speakerId))) {
+        toast.error(isAr ? `حوار المشهد ${i+1} غير مكتمل` : `Scene ${i+1} dialogue is incomplete`);
         return false;
       }
       if ((s.onScreenText?.trim().split(/\s+/).filter(Boolean).length || 0) > 7 || (s.onScreenText?.trim().length || 0) > 60) {
@@ -246,6 +254,7 @@ export default function AiVideoStudio() {
         storyboard: {
           title: editTitle,
           version: (project.storyboard?.version || 1) + 1,
+          characters: project.storyboard?.characters,
           scenes: editScenes
         }
       }
@@ -258,19 +267,35 @@ export default function AiVideoStudio() {
     });
   };
 
+  const openQuote = (action: "render" | "retry", targetProject = project) => {
+    if (!targetProject || quoteMutation.isPending || renderMutation.isPending || retryMutation.isPending) return;
+    const requestedSnapshot = {
+      id: targetProject.id,
+      status: targetProject.status,
+      contentKey: getAiVideoStoryboardContentKey(targetProject.storyboard),
+    };
+    projectSnapshotRef.current = requestedSnapshot;
+    quoteMutation.mutate(targetProject.id, {
+      onSuccess: (quote) => {
+        const currentSnapshot = projectSnapshotRef.current;
+        if (quote.projectId !== requestedSnapshot.id
+          || !currentSnapshot
+          || currentSnapshot.id !== requestedSnapshot.id
+          || currentSnapshot.status !== requestedSnapshot.status
+          || currentSnapshot.contentKey !== requestedSnapshot.contentKey) {
+          toast.error(isAr ? "تم تجاهل عرض سعر لا يطابق المشروع الحالي" : "Ignored a quote that does not match the current project");
+          return;
+        }
+        setQuoteAction(action);
+        setRenderQuote(quote);
+        setQuoteConsent(false);
+      },
+      onError: handleError,
+    });
+  };
+
   const handleRender = () => {
     if (!project || !validateStoryboard()) return;
-    const motionCost = estimateMotionCost(editScenes);
-    if (project.brief.mode === "realistic_motion") {
-      if (!window.confirm(isAr
-        ? `تكلفة توليد الحركة المقدّرة لهذا الفيديو هي $${motionCost.toFixed(2)} بسعر $0.10 لكل ثانية مولّدة، ولا تشمل تكلفة OpenAI. هل تريد بدء الإنتاج؟`
-        : `Estimated motion generation cost is $${motionCost.toFixed(2)} at $0.10 per generated second, excluding OpenAI costs. Start rendering?`)) return;
-    } else {
-      if (!window.confirm(isAr
-        ? `سيبدأ الإنتاج الآن باستخدام شرح بالصور والتعليق الصوتي. سيتم خصم نقاط ذكاء اصطناعي بناءً على مدة الفيديو. هل أنت متأكد؟`
-        : `Rendering will start now using narrated images. AI points will be deducted based on the video duration. Are you sure?`)) return;
-    }
-    // Save first just in case
     updateMutation.mutate({
       id: project.id,
       data: {
@@ -278,16 +303,14 @@ export default function AiVideoStudio() {
         storyboard: {
           title: editTitle,
           version: (project.storyboard?.version || 1) + 1,
+          characters: project.storyboard?.characters,
           scenes: editScenes
         }
       }
     }, {
       onSuccess: (savedProject) => {
         hydrateEditor(savedProject);
-        renderMutation.mutate({ id: project.id, idempotencyKey: crypto.randomUUID() }, {
-          onError: handleError,
-          onSettled: () => refreshCredits()
-        });
+        openQuote("render", savedProject);
       },
       onError: handleError
     });
@@ -295,17 +318,30 @@ export default function AiVideoStudio() {
 
   const handleRetry = () => {
     if (!project) return;
-    const motionCost = estimateMotionCost(project.storyboard?.scenes || []);
-    if (project.brief.mode === "realistic_motion") {
-      if (!window.confirm(isAr
-        ? `إعادة المحاولة تضيف تكلفة جديدة. تكلفة الحركة المقدّرة للمحاولة هي $${motionCost.toFixed(2)} ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
-        : `A retry adds a new charge. Estimated motion cost for this attempt is $${motionCost.toFixed(2)}, excluding OpenAI costs. Continue?`)) return;
-    } else {
-      if (!window.confirm(isAr
-        ? `إعادة المحاولة ستخصم نقاط ذكاء اصطناعي إضافية. هل تريد المتابعة؟`
-        : `A retry will deduct additional AI points. Continue?`)) return;
+    openQuote("retry");
+  };
+
+  const submitApprovedRender = () => {
+    if (!project || !renderQuote || !quoteConsent || renderQuote.projectId !== project.id) {
+      if (renderQuote && project && renderQuote.projectId !== project.id) {
+        setRenderQuote(null);
+        setQuoteConsent(false);
+        toast.error(isAr ? "عرض السعر لا يخص المشروع الحالي" : "This quote does not belong to the current project");
+      }
+      return;
     }
-    retryMutation.mutate({ id: project.id, idempotencyKey: crypto.randomUUID() }, {
+    const payload = {
+      id: project.id,
+      idempotencyKey: `ai-video-${quoteAction}-${renderQuote.id}`,
+      approval: {
+        quoteId: renderQuote.id,
+        accepted: true as const,
+        maxProviderCostUsd: renderQuote.totalEstimatedUsd,
+      },
+    };
+    const mutation = quoteAction === "retry" ? retryMutation : renderMutation;
+    mutation.mutate(payload, {
+      onSuccess: () => setRenderQuote(null),
       onError: handleError,
       onSettled: () => refreshCredits()
     });
@@ -313,6 +349,8 @@ export default function AiVideoStudio() {
 
   const moveScene = (idx: number, dir: -1 | 1) => {
     if (idx + dir < 0 || idx + dir >= editScenes.length) return;
+    setRenderQuote(null);
+    setQuoteConsent(false);
     const newScenes = [...editScenes];
     const temp = newScenes[idx];
     newScenes[idx] = newScenes[idx + dir];
@@ -321,20 +359,21 @@ export default function AiVideoStudio() {
     setEditScenes(newScenes);
   };
 
-  const deleteScene = (idx: number) => {
-    if (editScenes.length <= minimumSceneCount) {
-      toast.error(isAr
-        ? `لا يمكن تقليل العدد عن ${minimumSceneCount} مشهداً لهذه المدة`
-        : `This duration requires at least ${minimumSceneCount} scenes`);
-      return;
-    }
-    editsDirty.current = true;
-    setEditScenes(prev => prev.filter((_, i) => i !== idx));
-  };
-
   const updateScene = (idx: number, updates: Partial<AiVideoScene>) => {
+    setRenderQuote(null);
+    setQuoteConsent(false);
     editsDirty.current = true;
     setEditScenes(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
+  };
+
+  const updateDialogueTurn = (sceneIndex: number, turnIndex: number, updates: Partial<NonNullable<AiVideoScene["dialogue"]>[number]>) => {
+    const scene = editScenes[sceneIndex];
+    if (!scene?.dialogue) return;
+    const dialogue = scene.dialogue.map((turn, index) => index === turnIndex ? { ...turn, ...updates } : turn);
+    updateScene(sceneIndex, {
+      dialogue,
+      narration: dialogue.map(turn => turn.text).join(" ").trim(),
+    });
   };
 
   if (authLoading || (isAdmin && loadingProject)) {
@@ -347,18 +386,11 @@ export default function AiVideoStudio() {
     );
   }
 
-  if (authError || !currentUser) return null;
+  if (authError || !currentUser || !isAdmin) return null;
 
   const currentStatus = project?.status || "draft";
-  const hasRenderableStoryboard = Boolean(project?.storyboard && project.storyboard.scenes.length >= 5);
-  const voices = [
-    { id: "alloy", labelEn: "Alloy (Neutral)", labelAr: "ألوي (محايد)" },
-    { id: "echo", labelEn: "Echo (Warm)", labelAr: "إيكو (دافئ)" },
-    { id: "fable", labelEn: "Fable (Expressive)", labelAr: "فيبل (معبر)" },
-    { id: "onyx", labelEn: "Onyx (Deep)", labelAr: "أونيكس (عميق)" },
-    { id: "nova", labelEn: "Nova (Energetic)", labelAr: "نوفا (حيوي)" },
-    { id: "shimmer", labelEn: "Shimmer (Clear)", labelAr: "شيمر (واضح)" },
-  ];
+  const hasRenderableStoryboard = Boolean(project?.storyboard?.characters?.length === 2 && project.storyboard.scenes.length >= 5);
+  const productionBusy = quoteMutation.isPending || updateMutation.isPending || renderMutation.isPending || retryMutation.isPending;
 
   return (
     <Layout>
@@ -435,8 +467,8 @@ export default function AiVideoStudio() {
 
                     <p className="rounded-xl bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-xs font-medium text-slate-500">
                       {isAr
-                        ? "يعتمد الذكاء الاصطناعي على النص الذي تدخله لبناء القصة المصورة والتعليق الصوتي."
-                        : "AI relies on your input text to build the storyboard and voiceover."}
+                        ? "المرحلة الأولى تدعم إنشاء الفيديو من النص فقط؛ الصور المرجعية لا تؤثر في الحركة المولّدة."
+                        : "Phase 1 creates video from text only; reference images do not influence generated motion."}
                     </p>
                   </div>
                 </Card>
@@ -475,19 +507,18 @@ export default function AiVideoStudio() {
                       </div>
                       <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
                         {isAr
-                          ? "يختار الذكاء الاصطناعي مقدار الشرح المناسب، ويحافظ على الفكرة الأساسية ويضبط تلقائياً مدد المشاهد والتعليق الصوتي. لا حاجة لتحديد عدد كلمات."
-                          : "AI chooses the right amount of explanation, keeps the essential idea, and automatically adjusts scene durations and voice narration. No word limit is needed."}
+                          ? "يختار الذكاء الاصطناعي مقدار الشرح المناسب، ويحافظ على الفكرة الأساسية ويوزّع حوار الأستاذ والطالب تلقائياً على المقاطع. لا حاجة لتحديد عدد كلمات."
+                          : "AI chooses the right amount of explanation, keeps the essential idea, and automatically distributes teacher/student dialogue across clips. No word limit is needed."}
                       </p>
                     </div>
 
                     {/* Aspect Ratio */}
                     <div>
                       <label className="block text-xs font-bold text-slate-500 mb-2">{isAr ? "الأبعاد" : "Aspect Ratio"}</label>
-                      <div className="grid grid-cols-3 gap-2">
+                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { val: "16:9", icon: <div className="w-6 h-3 border-2 border-current rounded-sm" /> },
                           { val: "9:16", icon: <div className="w-3 h-6 border-2 border-current rounded-sm" /> },
-                          { val: "1:1",  icon: <div className="w-5 h-5 border-2 border-current rounded-sm" /> }
                         ].map(a => (
                           <button
                             key={a.val}
@@ -516,28 +547,13 @@ export default function AiVideoStudio() {
                       </select>
                     </div>
 
-                    {/* Voice */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 mb-2">{isAr ? "التعليق الصوتي" : "Voice"}</label>
-                      <select
-                        value={voice}
-                        onChange={e => setVoice(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-                      >
-                        {voices.map(v => (
-                          <option key={v.id} value={v.id}>{isAr ? v.labelAr : v.labelEn}</option>
-                        ))}
-                      </select>
-                    </div>
-
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                      <label className="flex items-center justify-between cursor-pointer group">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                          <Music className="w-4 h-4 text-slate-400" />
-                          {isAr ? "موسيقى خلفية" : "Background Music"}
-                        </span>
-                        <input type="checkbox" checked={music} onChange={e => setMusic(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500" />
-                      </label>
+                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                        <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                        {isAr
+                          ? "حوار أصلي متزامن بين أستاذ وطالب ظاهرين، بأصوات مميزة مولّدة داخل الفيديو — دون تعليق صوتي خارجي."
+                          : "Native synchronized dialogue between a visible teacher and student, with distinct voices generated in the video—no external voice-over."}
+                      </p>
                       <label className="flex items-center justify-between cursor-pointer group">
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                           <Type className="w-4 h-4 text-slate-400" />
@@ -545,20 +561,6 @@ export default function AiVideoStudio() {
                         </span>
                         <input type="checkbox" checked={captions} onChange={e => setCaptions(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500" />
                       </label>
-
-                      {isAdmin && (
-                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-                          <label className="block text-xs font-bold text-slate-500 mb-2">{isAr ? "نمط الإنتاج (صلاحية إدارية)" : "Production Mode (Admin)"}</label>
-                          <select
-                            value={mode}
-                            onChange={e => setMode(e.target.value as "narrated_images" | "realistic_motion")}
-                            className="w-full bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-amber-500"
-                          >
-                            <option value="narrated_images">{isAr ? "شرح بالصور (نقاط ذكاء اصطناعي)" : "Narrated Images (AI Points)"}</option>
-                            <option value="realistic_motion">{isAr ? "حركة واقعية (تكلفة بالدولار)" : "Realistic Motion (Dollar Cost)"}</option>
-                          </select>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </Card>
@@ -572,13 +574,9 @@ export default function AiVideoStudio() {
                   {isAr ? "توليد السيناريو" : "Generate Storyboard"}
                 </button>
                 <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 p-4 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-400">
-                  {mode === "realistic_motion"
-                    ? (isAr
-                      ? `تُنشأ الحركة الفعلية بدقة 720p عبر fal-ai/veo3.1/fast بسعر $0.10 لكل ثانية مولّدة بعد التقريب. التقدير الافتراضي لهذه المدة $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} للحركة فقط، ولا يشمل OpenAI، وتضيف كل إعادة محاولة تكلفة جديدة. قد يستغرق التوليد عدة دقائق.`
-                      : `True motion is generated at 720p with fal-ai/veo3.1/fast at $0.10 per generated second. The default estimate for this duration is $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} for motion only, excluding OpenAI; each retry adds a new cost. Generation may take several minutes.`)
-                    : (isAr
-                      ? `يتم إنشاء فيديو بتعليق صوتي مع صور توضيحية. سيتم خصم نقاط ذكاء اصطناعي بحسب المدة المطلوبة. قد يستغرق الإنتاج دقيقة أو دقيقتين.`
-                      : `A narrated video with images will be generated. AI points will be deducted based on the requested duration. Generation may take a minute or two.`)}
+                  {isAr
+                    ? `تخطط هذه الخطوة ${duration / 6} مقاطع حوارية مدة كل منها 6 ثوانٍ. الإنتاج اللاحق يستخدم fal-ai/veo3.1 بدقة 1080p وصوت أصلي بسعر موثّق $0.40/ثانية (حد أقصى محافظ $${VERIFIED_PROVIDER_COSTS[duration].toFixed(2)}). التخطيط منفصل عن الإنتاج، ولن يبدأ أي إنفاق على الفيديو دون عرض سعر وموافقة جديدة.`
+                    : `This step plans ${duration / 6} six-second dialogue clips. Later production uses fal-ai/veo3.1 at 1080p with native audio at a verified $0.40/second (conservative maximum $${VERIFIED_PROVIDER_COSTS[duration].toFixed(2)}). Planning is separate from rendering, and no video spend begins without a fresh quote and approval.`}
                 </div>
               </div>
             </div>
@@ -609,7 +607,7 @@ export default function AiVideoStudio() {
               {durationMismatch && (
                 <div className="text-amber-600 bg-amber-50 dark:bg-amber-900/30 p-3 rounded-xl text-sm font-bold flex items-center gap-2 mb-4 border border-amber-200 dark:border-amber-900/50">
                   <AlertCircle className="w-5 h-5 shrink-0" />
-                  {isAr ? `تنبيه: إجمالي مدة المشاهد (${totalDuration}ث) يختلف عن المدة المطلوبة (${requestedDuration}ث). يرجى تعديل المشاهد.` : `Warning: Total duration of scenes (${totalDuration}s) differs from requested (${requestedDuration}s). Please adjust.`}
+                  {isAr ? `تنبيه: إجمالي مدة المشاهد (${totalDuration}ث) يختلف عن المدة المطلوبة (${requestedDuration}ث). أعد توليد التخطيط؛ مدد المقاطع مقفلة تلقائياً.` : `Warning: Total scene duration (${totalDuration}s) differs from the requested ${requestedDuration}s. Regenerate the plan; clip timings are automatically locked.`}
                 </div>
               )}
 
@@ -620,6 +618,8 @@ export default function AiVideoStudio() {
                     type="text"
                     value={editTitle}
                     onChange={e => {
+                      setRenderQuote(null);
+                      setQuoteConsent(false);
                       editsDirty.current = true;
                       setEditTitle(e.target.value);
                     }}
@@ -629,21 +629,37 @@ export default function AiVideoStudio() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={handleSaveStoryboard}
-                    disabled={updateMutation.isPending}
+                    disabled={productionBusy}
                     className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm transition-colors disabled:opacity-50"
                   >
                     {isAr ? "حفظ التعديلات" : "Save Changes"}
                   </button>
                   <button
                     onClick={handleRender}
-                    disabled={renderMutation.isPending}
+                    disabled={productionBusy}
                     className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50"
                   >
-                    {renderMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                    {isAr ? "حفظ وإنتاج الفيديو" : "Save & Render"}
+                    {productionBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                    {quoteMutation.isPending ? (isAr ? "جاري طلب عرض السعر..." : "Getting quote...") : (isAr ? "حفظ وطلب عرض سعر" : "Save & Get Quote")}
                   </button>
                 </div>
               </div>
+
+              <Card className="p-5 bg-white dark:bg-[#15201B] rounded-2xl border-emerald-100 dark:border-emerald-900/30">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-800 dark:text-slate-100">
+                  <Users className="h-4 w-4 text-emerald-600" />
+                  {isAr ? "مرجع الشخصيات والأصوات الثابت" : "Locked character and voice bible"}
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {project?.storyboard?.characters?.map(character => (
+                    <div key={character.id} className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-3">
+                      <p className="text-sm font-black">{character.displayName} · {character.role === "teacher" ? (isAr ? "الأستاذ" : "Teacher") : (isAr ? "الطالب" : "Student")}</p>
+                      <p className="mt-1 text-xs text-slate-500">{character.appearance}</p>
+                      <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">{character.voice}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
               <div className="space-y-4">
                 {editScenes.map((scene, idx) => (
@@ -661,13 +677,6 @@ export default function AiVideoStudio() {
                         <button onClick={() => moveScene(idx, -1)} disabled={idx===0} className="p-1.5 text-slate-400 hover:text-emerald-600 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
                         <button onClick={() => moveScene(idx, 1)} disabled={idx===editScenes.length-1} className="p-1.5 text-slate-400 hover:text-emerald-600 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
                       </div>
-                      <button
-                        onClick={() => deleteScene(idx)}
-                        disabled={editScenes.length <= minimumSceneCount}
-                        className="p-1.5 text-slate-400 hover:text-red-500 mt-auto disabled:opacity-30"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
 
                     {/* Scene Content */}
@@ -677,16 +686,36 @@ export default function AiVideoStudio() {
                           <span className="truncate">{scene.onScreenText || (isAr ? "بدون تسمية مختصرة" : "No short label")}</span>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-500 mb-1">{isAr ? "التعليق الصوتي" : "Narration"}</label>
-                          <textarea
-                            value={scene.narration}
-                            onChange={e => updateScene(idx, { narration: e.target.value })}
-                            className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 min-h-[80px] resize-y leading-relaxed"
-                          />
-                          <p className="mt-1 text-[10px] font-medium text-slate-400">
+                          <label className="block text-[11px] font-bold text-slate-500 mb-2">{isAr ? "حوار المتحدثين" : "Speaker dialogue"}</label>
+                          <div className="space-y-3">
+                            {scene.dialogue?.map((turn, turnIndex) => {
+                              const speaker = project?.storyboard?.characters?.find(character => character.id === turn.speakerId);
+                              return (
+                                <div key={`${turn.speakerId}-${turnIndex}`} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+                                  <p className="mb-2 text-xs font-black text-emerald-700 dark:text-emerald-300">
+                                    {speaker?.displayName || turn.speakerId}
+                                  </p>
+                                  <textarea
+                                    value={turn.text}
+                                    onChange={event => updateDialogueTurn(idx, turnIndex, { text: event.target.value })}
+                                    maxLength={500}
+                                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 min-h-[64px] resize-y leading-relaxed"
+                                  />
+                                  <input
+                                    value={turn.delivery}
+                                    onChange={event => updateDialogueTurn(idx, turnIndex, { delivery: event.target.value })}
+                                    maxLength={160}
+                                    aria-label={isAr ? "أسلوب الإلقاء" : "Delivery direction"}
+                                    className="mt-2 w-full bg-transparent border-b border-slate-200 dark:border-slate-700 px-1 py-1 text-xs text-slate-500 outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-2 text-[10px] font-medium text-slate-400">
                             {isAr
-                              ? "يُقاس توقيت التعليق ويُضبط تلقائياً مع زمن المشهد مع الحفاظ على الفكرة الأساسية. إذا تعذّر ضبط التوقيت، سيظهر فشل الإنتاج ويمكنك إعادة المحاولة."
-                              : "Narration timing is measured and adjusted automatically to the scene while preserving the essential idea. If timing cannot be completed, rendering will show as failed and you can retry."}
+                              ? "تُخطط سعة الحوار وتوقيته تلقائياً؛ لا تختصر الكلام يدوياً ولا يُسرّع أو يُقص أثناء الإنتاج."
+                              : "Dialogue capacity and timing are planned automatically; you are not asked to shorten it, and production never speeds up or cuts speech."}
                           </p>
                         </div>
                         <div>
@@ -712,32 +741,9 @@ export default function AiVideoStudio() {
                             className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 min-h-[80px] resize-y text-slate-600 dark:text-slate-400"
                           />
                         </div>
-                        <div className="flex gap-4">
-                          <div className="flex-1">
-                            <label className="block text-[11px] font-bold text-slate-500 mb-1">{isAr ? "المدة (ثواني)" : "Duration (s)"}</label>
-                            <input
-                              type="number"
-                              value={scene.durationSeconds || ""}
-                              onChange={e => {
-                                const val = parseInt(e.target.value);
-                                updateScene(idx, { durationSeconds: isNaN(val) ? 0 : val });
-                              }}
-                              className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="block text-[11px] font-bold text-slate-500 mb-1">{isAr ? "الانتقال" : "Transition"}</label>
-                            <select
-                              value={scene.transition}
-                              onChange={e => updateScene(idx, { transition: e.target.value as any })}
-                              className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500"
-                            >
-                              <option value="cut">{isAr ? "قطع (Cut)" : "Cut"}</option>
-                              <option value="dissolve">{isAr ? "تلاشي (Dissolve)" : "Dissolve"}</option>
-                              <option value="push">{isAr ? "دفع (Push)" : "Push"}</option>
-                              <option value="zoom">{isAr ? "تكبير (Zoom)" : "Zoom"}</option>
-                            </select>
-                          </div>
+                        <div className="rounded-xl bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <Clock className="me-1 inline h-3.5 w-3.5" />
+                          {isAr ? "6 ثوانٍ · توقيت تلقائي مقفل · قطع مباشر" : "6 seconds · locked automatic timing · hard cut"}
                         </div>
                       </div>
                     </div>
@@ -763,8 +769,8 @@ export default function AiVideoStudio() {
                   </h2>
                   <p className="text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
                     {isAr
-                      ? "قد تستغرق هذه العملية بضع دقائق. يُنشأ التعليق الصوتي ويُقاس توقيته تلقائياً أولاً، ثم تُضبط مدد المشاهد قبل إنتاج ودمج الفيديو. يمكنك مغادرة الصفحة والعودة لاحقاً."
-                      : "This may take a few minutes. Voice narration is generated and timed automatically first; scene durations are adjusted before the video is assembled. You can leave and check back later."}
+                      ? "يُنتج fal-ai/veo3.1 مقاطع 1080p بصوت الشخصيات الأصلي المتزامن، ثم تُجمع بقطع مباشر. يمكنك مغادرة الصفحة والعودة؛ سيتابع النظام الطلبات المحفوظة دون إرسال إنتاج جديد تلقائياً."
+                      : "fal-ai/veo3.1 is producing 1080p clips with synchronized native character voices, then joining them with hard cuts. You may leave and return; saved requests are tracked without automatically submitting new production."}
                   </p>
 
                   <div className="mt-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 w-full max-w-sm text-sm font-bold text-slate-600 dark:text-slate-400 flex items-center justify-center gap-2">
@@ -810,6 +816,16 @@ export default function AiVideoStudio() {
                   </a>
                 )}
               </div>
+              <Card className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border-amber-200 dark:border-amber-900/40">
+                <h3 className="font-black text-amber-900 dark:text-amber-100">
+                  {isAr ? "جاهز للمراجعة البشرية — لم تُقبل الجودة بعد" : "Awaiting human review — quality is not yet accepted"}
+                </h3>
+                <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+                  {isAr
+                    ? "شاهد الفيديو كاملاً وتحقق من: مزامنة الشفاه، صحة النطق، اتساق الشخصيات والأصوات بين المقاطع، واكتمال الحوار والمحتوى."
+                    : "Watch the complete video and check lip-sync, pronunciation, character and voice consistency across clips, and dialogue/content completeness."}
+                </p>
+              </Card>
             </div>
           )}
 
@@ -829,11 +845,11 @@ export default function AiVideoStudio() {
                 {hasRenderableStoryboard ? (
                   <button
                     onClick={handleRetry}
-                    disabled={retryMutation.isPending}
+                    disabled={productionBusy}
                     className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black rounded-xl transition-all"
                   >
-                    {retryMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-                    {isAr ? "إعادة محاولة الإنتاج" : "Retry Render"}
+                    {productionBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                    {quoteMutation.isPending ? (isAr ? "جاري طلب عرض سعر جديد..." : "Getting a fresh quote...") : (isAr ? "طلب عرض سعر لإعادة المحاولة" : "Get Retry Quote")}
                   </button>
                 ) : (
                   <button
@@ -844,6 +860,66 @@ export default function AiVideoStudio() {
                     {isAr ? "بدء مشروع جديد" : "Start a New Project"}
                   </button>
                 )}
+              </Card>
+            </div>
+          )}
+
+          {renderQuote && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+              <Card className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#15201B] p-6 shadow-2xl">
+                <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                  {quoteAction === "retry"
+                    ? (isAr ? "موافقة جديدة لإعادة الإنتاج" : "Fresh approval for retry")
+                    : (isAr ? "مراجعة تكلفة الإنتاج" : "Review production cost")}
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  {isAr
+                    ? `${renderQuote.sceneCount} مقاطع × 6 ثوانٍ، fal-ai/veo3.1، دقة 1080p وصوت أصلي. ينتهي العرض ${new Date(renderQuote.expiresAt).toLocaleString("ar-SA")}.`
+                    : `${renderQuote.sceneCount} × 6-second clips, fal-ai/veo3.1, 1080p with native audio. Quote expires ${new Date(renderQuote.expiresAt).toLocaleString("en-US")}.`}
+                </p>
+                <div className="mt-5 space-y-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 p-4">
+                  <div className="flex justify-between text-sm"><span>{isAr ? "تكلفة المزود المقدّرة" : "Estimated provider cost"}</span><strong>${renderQuote.providerCostUsd.toFixed(2)} USD</strong></div>
+                  <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-3 text-sm"><span>{isAr ? "الإجمالي المتوقع (الحد المعتمد)" : "Expected total (approval limit)"}</span><strong>${renderQuote.totalEstimatedUsd.toFixed(2)} USD</strong></div>
+                  <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-3 text-sm"><span>{isAr ? "نقاط المنصة (منفصلة)" : "Platform points (separate)"}</span><strong>{renderQuote.platformCredits}</strong></div>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  {isAr
+                    ? `السعر الموثّق $0.40/ثانية؛ ${renderQuote.generatedSeconds} ثانية مولّدة. هذا تقدير محافظ وليس فاتورة مزود نهائية. كل إعادة محاولة تحتاج عرضاً وموافقة جديدين.`
+                    : `Verified price: $0.40/second for ${renderQuote.generatedSeconds} generated seconds. This is a conservative estimate, not a final provider invoice. Every retry requires a fresh quote and approval.`}
+                </p>
+                <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-3">
+                  <input
+                    type="checkbox"
+                    checked={quoteConsent}
+                    onChange={event => setQuoteConsent(event.target.checked)}
+                    className="mt-1 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    {isAr
+                      ? `أوافق صراحة على بدء إنتاج مدفوع واحد حتى حد $${renderQuote.totalEstimatedUsd.toFixed(2)}. أفهم أن عرض السعر أو معاينة القصة لا يبدأ الإنتاج تلقائياً وأن النتيجة تتطلب مراجعة جودة بشرية.`
+                      : `I explicitly approve one paid production attempt up to $${renderQuote.totalEstimatedUsd.toFixed(2)}. I understand that quoting or previewing the storyboard never starts production automatically and the result requires human quality review.`}
+                  </span>
+                </label>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setRenderQuote(null);
+                      setQuoteConsent(false);
+                    }}
+                    disabled={renderMutation.isPending || retryMutation.isPending}
+                    className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    {isAr ? "إلغاء" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={submitApprovedRender}
+                    disabled={!quoteConsent || renderMutation.isPending || retryMutation.isPending}
+                    className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-50"
+                  >
+                    {(renderMutation.isPending || retryMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isAr ? "بدء المحاولة المعتمدة" : "Start Approved Attempt"}
+                  </button>
+                </div>
               </Card>
             </div>
           )}

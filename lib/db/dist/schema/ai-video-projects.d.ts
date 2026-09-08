@@ -206,6 +206,40 @@ export declare const aiVideoProjectsTable: import("drizzle-orm/pg-core").PgTable
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        renderQuote: import("drizzle-orm/pg-core").PgColumn<{
+            name: "render_quote";
+            tableName: "ai_video_projects";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        renderApproval: import("drizzle-orm/pg-core").PgColumn<{
+            name: "render_approval";
+            tableName: "ai_video_projects";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         renderLeaseId: import("drizzle-orm/pg-core").PgColumn<{
             name: "render_lease_id";
             tableName: "ai_video_projects";

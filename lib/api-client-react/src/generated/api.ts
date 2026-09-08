@@ -24,6 +24,7 @@ import type {
   AiVideoBrief,
   AiVideoProject,
   AiVideoRenderBody,
+  AiVideoRenderQuote,
   Assignment,
   AssignmentWithQuestions,
   AuthResponse,
@@ -5000,6 +5001,21 @@ export const useRenderAiVideoProject = () =>
   useMutation({
     mutationFn: ({ id, body }: { id: number; body: AiVideoRenderBody }) =>
       renderAiVideoProject(id, body),
+  });
+
+export const getQuoteAiVideoProjectRenderUrl = (id: number) =>
+  `${getGetAiVideoProjectUrl(id)}/render-quote`;
+export const quoteAiVideoProjectRender = (
+  id: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<AiVideoRenderQuote> =>
+  customFetch<AiVideoRenderQuote>(getQuoteAiVideoProjectRenderUrl(id), {
+    ...options,
+    method: "POST",
+  });
+export const useQuoteAiVideoProjectRender = () =>
+  useMutation({
+    mutationFn: ({ id }: { id: number }) => quoteAiVideoProjectRender(id),
   });
 
 export const getRetryAiVideoProjectRenderUrl = (id: number) =>

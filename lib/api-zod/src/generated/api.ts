@@ -3001,6 +3001,20 @@ export const DeletePresentationDraftParams = zod.object({
 
 // AI video operation schemas. These use the repository's Zod 3-compatible
 // namespace API; current Orval emits Zod 4-only `zod.int()` calls.
+export const AiVideoCharacterSchema = zod.object({
+  id: zod.string().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/),
+  role: zod.enum(["teacher", "student"]),
+  displayName: zod.string().min(1).max(80),
+  appearance: zod.string().min(30).max(800),
+  voice: zod.string().min(20).max(500),
+});
+
+export const AiVideoDialogueTurnSchema = zod.object({
+  speakerId: zod.string().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/),
+  text: zod.string().min(1).max(500),
+  delivery: zod.string().min(1).max(160),
+});
+
 export const AiVideoSceneSchema = zod.object({
   id: zod.string().max(50),
   objective: zod.string().max(300),
@@ -3016,12 +3030,17 @@ export const AiVideoSceneSchema = zod.object({
   audioDurationSeconds: zod.number().min(0).optional(),
   transition: zod.enum(["cut", "dissolve", "push", "zoom"]).default("dissolve"),
   sourceImage: zod.string().max(500).regex(/^\/objects\//).nullish(),
+  visibleCharacterIds: zod.array(
+    zod.string().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/),
+  ).min(1).max(4).optional(),
+  dialogue: zod.array(AiVideoDialogueTurnSchema).min(1).max(4).optional(),
 });
 
 export const AiVideoStoryboardSchema = zod.object({
   title: zod.string().min(1).max(160),
   version: zod.number().int().min(1).default(1),
   scenes: zod.array(AiVideoSceneSchema).min(5).max(18),
+  characters: zod.array(AiVideoCharacterSchema).min(2).max(4).optional(),
 });
 
 export const AiVideoBriefSchema = zod.object({
@@ -3054,6 +3073,8 @@ export const AiVideoProjectResponse = zod.object({
   errorMessage: zod.string().nullish(),
   storyboardIdempotencyKey: zod.string(),
   renderIdempotencyKey: zod.string().nullish(),
+  renderApproval: zod.record(zod.unknown()).nullish(),
+  renderQuote: zod.record(zod.unknown()).nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -3082,7 +3103,30 @@ export const UpdateAiVideoProjectBodySchema = zod.object({
 });
 export const RenderAiVideoProjectBody = zod.object({
   idempotencyKey: zod.string().min(8).max(100),
+  approval: zod.object({
+    quoteId: zod.string().uuid(),
+    accepted: zod.literal(true),
+    maxProviderCostUsd: zod.number().min(0),
+  }),
 });
 export const RenderAiVideoProjectParams = GetAiVideoProjectParams;
+export const QuoteAiVideoProjectRenderParams = GetAiVideoProjectParams;
+export const QuoteAiVideoProjectRenderResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.number(),
+  contentHash: zod.string(),
+  expiresAt: zod.coerce.date(),
+  model: zod.string(),
+  currency: zod.literal("USD"),
+  generatedSeconds: zod.number(),
+  sceneCount: zod.number(),
+  providerCostUsd: zod.number(),
+  totalEstimatedUsd: zod.number(),
+  additionalProviderCostUsd: zod.number(),
+  platformCredits: zod.number(),
+  pricingVersion: zod.string(),
+  priceSource: zod.string(),
+  requiresManualReview: zod.boolean(),
+});
 export const RetryAiVideoProjectRenderBody = RenderAiVideoProjectBody;
 export const RetryAiVideoProjectRenderParams = GetAiVideoProjectParams;

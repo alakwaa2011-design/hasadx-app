@@ -5,6 +5,7 @@ import {
   aiVideoPatchSchema,
   InvalidStoryboardTimingError,
   isOwnedAiVideoSourcePath,
+  requireRenderableDialogueStoryboard,
   sanitizeStoryboard,
 } from "../lib/ai-video-schemas";
 import { buildAiVideoTransitionFilter } from "../lib/ai-video-renderer";
@@ -218,5 +219,72 @@ describe("AI video schemas", () => {
     expect(aiVideoPatchSchema.safeParse({}).success).toBe(false);
     expect(aiVideoPatchSchema.safeParse({ status: "ready" }).success).toBe(false);
     expect(aiVideoPatchSchema.safeParse({ title: "Updated" }).success).toBe(true);
+  });
+
+  it("requires exact six-second visible teacher/student dialogue for rendering", () => {
+    const characters = [
+      {
+        id: "teacher", role: "teacher" as const, displayName: "Teacher",
+        appearance: "A teacher in their forties with short dark hair and a navy jacket.",
+        voice: "Warm low adult voice, measured pace, clear formal English accent.",
+      },
+      {
+        id: "student", role: "student" as const, displayName: "Student",
+        appearance: "A student aged eleven with curly brown hair and a green school sweater.",
+        voice: "Bright youthful voice, medium pitch, curious tone and brisk English pace.",
+      },
+    ];
+    const dialogueStoryboard = {
+      title: brief.title,
+      version: 1,
+      characters,
+      scenes: Array.from({ length: 5 }, (_, index) => {
+        const text = index % 2 ? "Water cools into droplets." : "What happens after evaporation?";
+        return {
+          ...scene(index + 1, 6),
+          narration: text,
+          transition: "cut" as const,
+          visibleCharacterIds: ["teacher", "student"],
+          dialogue: [{
+            speakerId: index % 2 ? "student" : "teacher",
+            text,
+            delivery: index % 2 ? "Answers clearly." : "Asks warmly.",
+          }],
+        };
+      }),
+    };
+    const sanitized = sanitizeStoryboard(dialogueStoryboard, brief, { expectedSceneCount: 5 });
+    expect(requireRenderableDialogueStoryboard(sanitized, brief).scenes).toHaveLength(5);
+    expect(() => requireRenderableDialogueStoryboard(
+      sanitized,
+      { ...brief, music: true },
+    )).toThrow(/room tone only/);
+
+    expect(() => requireRenderableDialogueStoryboard({
+      ...sanitized,
+      scenes: sanitized.scenes.map((item, index) => index === 0
+        ? { ...item, dialogue: undefined }
+        : item),
+    }, brief)).toThrow(/explicit dialogue turns/);
+    expect(() => requireRenderableDialogueStoryboard({
+      ...sanitized,
+      scenes: sanitized.scenes.map((item, index) => index === 0
+        ? { ...item, durationSeconds: 5 }
+        : item),
+    }, brief)).toThrow(/exactly 6 seconds/);
+    expect(() => requireRenderableDialogueStoryboard({
+      ...sanitized,
+      scenes: sanitized.scenes.map((item, index) => index === 0
+        ? {
+            ...item,
+            narration: "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen",
+            dialogue: [{
+              speakerId: "teacher",
+              text: "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen",
+              delivery: "Speaks much too quickly.",
+            }],
+          }
+        : item),
+    }, brief)).toThrow(/structurally too long/);
   });
 });

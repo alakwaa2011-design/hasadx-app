@@ -47,8 +47,22 @@ export const aiVideoSceneSchema = z.object({
   audioDurationSeconds: z.number().finite().nonnegative().optional(),
   transition: z.enum(["cut", "dissolve", "push", "zoom"]).default("dissolve"),
   sourceImage: objectPathSchema.nullable().optional(),
+  visibleCharacterIds: z.array(z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/))
+    .min(1).max(4).optional(),
+  dialogue: z.array(z.object({
+    speakerId: z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/),
+    text: z.string().trim().min(1).max(500),
+    delivery: z.string().trim().min(1).max(160),
+  }).strict()).min(1).max(4).optional(),
 }).strict();
 
+export const aiVideoCharacterSchema = z.object({
+  id: z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/),
+  role: z.enum(["teacher", "student"]),
+  displayName: z.string().trim().min(1).max(80),
+  appearance: z.string().trim().min(30).max(800),
+  voice: z.string().trim().min(20).max(500),
+}).strict();
 export const aiVideoSourceImageContentTypes = new Set([
   "image/jpeg",
   "image/png",
@@ -63,11 +77,13 @@ export const aiVideoStoryboardSchema = z.object({
   title: z.string().trim().min(1).max(160),
   version: z.number().int().min(1).default(1),
   scenes: z.array(aiVideoSceneSchema).min(5).max(18),
+  characters: z.array(aiVideoCharacterSchema).min(2).max(4).optional(),
 }).strict();
 
 export type AiVideoBrief = z.infer<typeof aiVideoBriefSchema>;
 export type AiVideoStoryboard = z.infer<typeof aiVideoStoryboardSchema>;
 
+export type AiVideoCharacter = z.infer<typeof aiVideoCharacterSchema>;
 export const AI_VIDEO_TARGET_SCENE_COUNTS = {
   30: 5,
   60: 10,
@@ -81,6 +97,12 @@ export class InvalidStoryboardTimingError extends Error {
   }
 }
 
+export class InvalidDialogueStoryboardError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidDialogueStoryboardError";
+  }
+}
 export function sanitizeStoryboard(
   raw: unknown,
   brief: AiVideoBrief,
@@ -173,7 +195,12 @@ export function sanitizeStoryboard(
     startTime = endTime;
     return timedScene;
   });
-  return aiVideoStoryboardSchema.parse({ title: parsed.title, version: parsed.version, scenes: timed });
+  return aiVideoStoryboardSchema.parse({
+    title: parsed.title,
+    version: parsed.version,
+    scenes: timed,
+    ...(parsed.characters ? { characters: parsed.characters } : {}),
+  });
 }
 
 export const aiVideoPatchSchema = z.object({
@@ -182,3 +209,117 @@ export const aiVideoPatchSchema = z.object({
 }).strict().refine((body) => body.title !== undefined || body.storyboard !== undefined, {
   message: "At least one editable field is required",
 });
+
+export type AiVideoDialogueStoryboard = AiVideoStoryboard & {
+  characters: AiVideoCharacter[];
+  scenes: Array<AiVideoStoryboard["scenes"][number] & {
+    durationSeconds: 6;
+    visibleCharacterIds: string[];
+    dialogue: AiVideoDialogueTurn[];
+  }>;
+};
+
+/**
+ * Legacy narrated storyboards remain readable/editable, but they are not a
+ * valid production input. Rendering requires the approved visible-speaker,
+ * native-audio contract and never silently falls back to narration/TTS.
+ */
+export function requireRenderableDialogueStoryboard(
+  storyboard: AiVideoStoryboard,
+  brief: AiVideoBrief,
+): AiVideoDialogueStoryboard {
+  if (brief.music) {
+    throw new InvalidDialogueStoryboardError(
+      "Native dialogue rendering supports native classroom room tone only; synthetic background music must be disabled.",
+    );
+  }
+  const expectedCount = AI_VIDEO_TARGET_SCENE_COUNTS[brief.durationSeconds];
+  if (storyboard.scenes.length !== expectedCount) {
+    throw new InvalidDialogueStoryboardError(
+      `Native dialogue rendering requires exactly ${expectedCount} six-second scenes for ${brief.durationSeconds} seconds.`,
+    );
+  }
+  if (storyboard.scenes.some((scene) => scene.durationSeconds !== 6)) {
+    throw new InvalidDialogueStoryboardError(
+      "Native dialogue rendering requires every scene to be exactly 6 seconds; speech is never cut or sped up.",
+    );
+  }
+  if (storyboard.scenes.some((scene) => scene.transition !== "cut")) {
+    throw new InvalidDialogueStoryboardError(
+      "Native dialogue scenes require cut transitions so six-second speech clips are never overlapped or shortened.",
+    );
+  }
+  if (!storyboard.characters || storyboard.characters.length !== 2) {
+    throw new InvalidDialogueStoryboardError(
+      "Native dialogue rendering requires a stable bible with exactly one teacher and one student.",
+    );
+  }
+  const ids = new Set<string>();
+  const roles = new Set<AiVideoCharacter["role"]>();
+  const voices = new Set<string>();
+  for (const character of storyboard.characters) {
+    if (ids.has(character.id)) {
+      throw new InvalidDialogueStoryboardError(`Duplicate character id: ${character.id}`);
+    }
+    ids.add(character.id);
+    roles.add(character.role);
+    const normalizedVoice = character.voice.toLocaleLowerCase("en").replace(/\s+/gu, " ").trim();
+    if (voices.has(normalizedVoice)) {
+      throw new InvalidDialogueStoryboardError("Teacher and student voice descriptions must be distinct.");
+    }
+    voices.add(normalizedVoice);
+  }
+  if (!roles.has("teacher") || !roles.has("student")) {
+    throw new InvalidDialogueStoryboardError("The character bible must include both teacher and student roles.");
+  }
+  const speakingIds = new Set<string>();
+  for (const [index, scene] of storyboard.scenes.entries()) {
+    if (!scene.dialogue?.length || !scene.visibleCharacterIds || scene.visibleCharacterIds.length < 2) {
+      throw new InvalidDialogueStoryboardError(
+        `Scene ${index + 1} requires explicit dialogue turns and at least two visible characters.`,
+      );
+    }
+    const visible = new Set(scene.visibleCharacterIds);
+    if (scene.dialogue.length > 2) {
+      throw new InvalidDialogueStoryboardError(
+        `Scene ${index + 1} has too many dialogue turns for a natural six-second exchange.`,
+      );
+    }
+    const dialogueText = scene.dialogue.map((turn) => turn.text).join(" ");
+    const spokenWords = dialogueText.split(/\s+/u).filter(Boolean).length;
+    const grossWordLimit = brief.language === "ar" ? 14 : 18;
+    if (spokenWords > grossWordLimit || dialogueText.length > 180) {
+      throw new InvalidDialogueStoryboardError(
+        `Scene ${index + 1} dialogue is structurally too long for six seconds (${spokenWords} words); regenerate a more concise storyboard before any provider request.`,
+      );
+    }
+    for (const characterId of visible) {
+      if (!ids.has(characterId)) {
+        throw new InvalidDialogueStoryboardError(`Scene ${index + 1} references an unknown visible character.`);
+      }
+    }
+    for (const turn of scene.dialogue) {
+      speakingIds.add(turn.speakerId);
+      if (!ids.has(turn.speakerId) || !visible.has(turn.speakerId)) {
+        throw new InvalidDialogueStoryboardError(
+          `Scene ${index + 1} dialogue speaker must exist and be visibly present.`,
+        );
+      }
+    }
+    const transcript = scene.dialogue.map((turn) => turn.text).join(" ").replace(/\s+/gu, " ").trim();
+    if (scene.narration.replace(/\s+/gu, " ").trim() !== transcript) {
+      throw new InvalidDialogueStoryboardError(
+        `Scene ${index + 1} narration must be only the exact dialogue transcript; external narration is not renderable.`,
+      );
+    }
+  }
+  const speakingRoles = new Set(storyboard.characters
+    .filter((character) => speakingIds.has(character.id))
+    .map((character) => character.role));
+  if (!speakingRoles.has("teacher") || !speakingRoles.has("student")) {
+    throw new InvalidDialogueStoryboardError("Both the teacher and student must have dialogue turns in the lesson.");
+  }
+  return storyboard as AiVideoDialogueStoryboard;
+}
+
+export type AiVideoDialogueTurn = NonNullable<AiVideoStoryboard["scenes"][number]["dialogue"]>[number];

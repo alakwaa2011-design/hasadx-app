@@ -96,4 +96,5 @@ export * from "./personal-assistant-actions";
 export * from "./saved-game-activities";
 export * from "./kids";
 export * from "./ai-video-projects";
+export * from "./ai-video-provider-requests";
 //# sourceMappingURL=index.d.ts.map

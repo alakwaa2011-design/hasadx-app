@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AiVideoSceneTransition } from './aiVideoSceneTransition';
+import type { AiVideoDialogueTurn } from "./aiVideoDialogueTurn";
 
 export interface AiVideoScene {
   /** @maxLength 50 */
@@ -42,4 +43,6 @@ export interface AiVideoScene {
      * @pattern ^/objects/
      */
   sourceImage?: string | null;
+  visibleCharacterIds?: string[];
+  dialogue?: AiVideoDialogueTurn[];
 }

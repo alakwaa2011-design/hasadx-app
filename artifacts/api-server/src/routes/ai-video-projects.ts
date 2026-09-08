@@ -1,6 +1,6 @@
 import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import multer from "multer";
 import { z } from "zod";
 import {
@@ -14,6 +14,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { storyboardPrompt } from "../lib/ai-video-storyboard-prompt";
 import {
   holdCreditsForToolRequest,
+  estimateCreditsForToolRequest,
   InsufficientCreditsError,
 } from "../lib/check-credits";
 import { CreditService } from "../lib/credit-service";
@@ -28,6 +29,7 @@ import {
   isOwnedAiVideoSourcePath,
   idempotencyKeySchema,
   sanitizeStoryboard,
+  requireRenderableDialogueStoryboard,
   type AiVideoBrief,
 } from "../lib/ai-video-schemas";
 import {
@@ -46,25 +48,32 @@ import {
   markAiVideoSourceImagesClaimed,
   normalizeAiVideoSourceImage,
 } from "../lib/ai-video-source-images";
+import {
+  aiVideoRenderConsentSchema, createAiVideoRenderQuote, validateAiVideoRenderApproval,
+} from "../lib/ai-video-render-approval";
+import {
+  assertAiVideoRequestsResumable, hashAiVideoGenerationIdentity, hashAiVideoStoryboard,
+} from "../lib/ai-video-request-journal";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
 
-function requireAiVideoTeacher(req: Request, res: Response, next: NextFunction): void {
+async function requireAiVideoAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.session?.teacherId) {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
+  try {
+    if (!(await hasAiVideoAdminAccess(req.session.teacherId))) {
+      res.status(403).json({ message: "أداة إنتاج الفيديو بالذكاء الاصطناعي متاحة للمسؤول فقط", code: "ADMIN_ONLY" });
+      return;
+    }
+  } catch (err) {
+    req.log.error({ err }, "AI video access verification failed");
+    res.status(503).json({ message: "تعذّر التحقق من صلاحية الوصول" });
+    return;
+  }
   next();
-}
-
-async function requireAdvancedAccess(teacherId: number, res: Response): Promise<boolean> {
-  if (await hasAiVideoAdminAccess(teacherId)) return true;
-  res.status(403).json({
-    message: "إنتاج الفيديو الواقعي المتقدم متاح للمسؤول فقط",
-    code: "ADMIN_ONLY",
-  });
-  return false;
 }
 
 function projectId(value: string | string[]): number | null {
@@ -88,6 +97,19 @@ function publicProject(project: AiVideoProject) {
     ...visible
   } = project;
   return visible;
+}
+
+async function assertProjectRequestsResumable(project: AiVideoProject): Promise<void> {
+  const brief = aiVideoBriefSchema.parse(project.brief);
+  const storyboard = sanitizeStoryboard(project.storyboard, brief);
+  await assertAiVideoRequestsResumable({
+    projectId: project.id,
+    storyboardHash: hashAiVideoGenerationIdentity({
+      canonicalStoryboardHash: hashAiVideoStoryboard(storyboard),
+      aspectRatio: brief.aspectRatio,
+      language: brief.language,
+    }),
+  });
 }
 
 function parseJson(text: string): unknown {
@@ -117,7 +139,7 @@ async function validateSourceImages(paths: string[], teacherId: number): Promise
   }));
 }
 
-router.use("/ai-video", requireAiVideoTeacher);
+router.use("/ai-video", requireAiVideoAdmin);
 
 const aiVideoImageUpload = multer({
   storage: multer.memoryStorage(),
@@ -183,20 +205,11 @@ router.post("/ai-video/uploads/image", sensitiveActionLimiter, receiveAiVideoIma
 
 router.get("/ai-video/projects", async (req, res) => {
   try {
-    const teacherId = req.session.teacherId as number;
-    const canSeeAdvanced = await hasAiVideoAdminAccess(teacherId);
     const projects = await db.select().from(aiVideoProjectsTable)
-      .where(eq(aiVideoProjectsTable.teacherId, teacherId))
+      .where(eq(aiVideoProjectsTable.teacherId, req.session.teacherId as number))
       .orderBy(desc(aiVideoProjectsTable.updatedAt))
       .limit(100);
-    res.json({
-      projects: projects
-        .filter((project) => {
-          const brief = aiVideoBriefSchema.safeParse(project.brief);
-          return brief.success && (brief.data.mode === "narrated_images" || canSeeAdvanced);
-        })
-        .map(publicProject),
-    });
+    res.json({ projects: projects.map(publicProject) });
   } catch (err) {
     req.log.error({ err }, "List AI video projects failed");
     res.status(500).json({ message: "Failed to list AI video projects" });
@@ -213,7 +226,6 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
   const brief = parsed.data;
 
   try {
-    if (brief.mode !== "narrated_images" && !(await requireAdvancedAccess(teacherId, res))) return;
     const [existing] = await db.select().from(aiVideoProjectsTable)
       .where(eq(aiVideoProjectsTable.storyboardIdempotencyKey, brief.idempotencyKey)).limit(1);
     if (existing) {
@@ -301,8 +313,8 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
       }, 60_000);
       const completion = await openai.chat.completions.create({
         model: "gpt-5-mini",
-        max_completion_tokens: 8192,
-        reasoning_effort: "minimal",
+        max_completion_tokens: 16384,
+        reasoning_effort: "low",
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: "You are an expert educational video director. Obey the requested JSON contract exactly." },
@@ -313,15 +325,20 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
       const sanitizedStoryboard = sanitizeStoryboard(raw, brief, {
         expectedSceneCount: AI_VIDEO_TARGET_SCENE_COUNTS[brief.durationSeconds],
       });
-      const storyboard = {
-        ...sanitizedStoryboard,
-        scenes: sanitizedStoryboard.scenes.map((scene, index) => ({
-          ...scene,
-          sourceImage: brief.mode === "narrated_images" && brief.sourceImages.length
-            ? brief.sourceImages[index % brief.sourceImages.length]!
-            : null,
-        })),
-      };
+      const storyboard = brief.mode === "narrated_images"
+        ? {
+            ...sanitizedStoryboard,
+            scenes: sanitizedStoryboard.scenes.map((scene, index) => ({
+              ...scene,
+              sourceImage: brief.sourceImages.length
+                ? brief.sourceImages[index % brief.sourceImages.length]!
+                : null,
+            })),
+          }
+        : {
+            ...requireRenderableDialogueStoryboard(sanitizedStoryboard, brief),
+            scenes: sanitizedStoryboard.scenes.map((scene) => ({ ...scene, sourceImage: null })),
+          };
       if (leaseLost) throw new Error("AI video storyboard worker lease was lost");
       const project = await db.transaction(async (tx) => {
         const [updated] = await tx.update(aiVideoProjectsTable).set({
@@ -420,9 +437,6 @@ router.get("/ai-video/projects/:id", async (req, res) => {
       res.status(404).json({ message: "Project not found" });
       return;
     }
-    const brief = aiVideoBriefSchema.parse(project.brief);
-    if (brief.mode !== "narrated_images"
-      && !(await requireAdvancedAccess(req.session.teacherId as number, res))) return;
     res.json(publicProject(project));
   } catch (err) {
     req.log.error({ err }, "Get AI video project failed");
@@ -444,9 +458,6 @@ router.patch("/ai-video/projects/:id", async (req, res) => {
       res.status(404).json({ message: "Project not found" });
       return;
     }
-    const existingBrief = aiVideoBriefSchema.parse(existing.brief);
-    if (existingBrief.mode !== "narrated_images"
-      && !(await requireAdvancedAccess(teacherId, res))) return;
     if (existing.status === "rendering") {
       res.status(409).json({ message: "A rendering project cannot be edited" });
       return;
@@ -458,9 +469,20 @@ router.patch("/ai-video/projects/:id", async (req, res) => {
     const [updated] = await db.update(aiVideoProjectsTable).set({
       ...(body.data.title !== undefined ? { title: body.data.title } : {}),
       ...(storyboard !== undefined ? { storyboard, status: "storyboard_ready", outputUrl: null } : {}),
+      renderQuote: null,
       errorMessage: null,
       updatedAt: new Date(),
-    }).where(and(eq(aiVideoProjectsTable.id, id), eq(aiVideoProjectsTable.teacherId, teacherId))).returning();
+    }).where(and(
+      eq(aiVideoProjectsTable.id, id), eq(aiVideoProjectsTable.teacherId, teacherId),
+      eq(aiVideoProjectsTable.status, existing.status),
+      // Use JSON equality, not millisecond JS timestamps: PostgreSQL retains microseconds.
+      sql`${aiVideoProjectsTable.storyboard} IS NOT DISTINCT FROM ${JSON.stringify(existing.storyboard)}::jsonb`,
+      sql`${aiVideoProjectsTable.renderLeaseId} IS NOT DISTINCT FROM ${existing.renderLeaseId}::text`,
+    )).returning();
+    if (!updated) {
+      res.status(409).json({ message: "تغيّر المشروع أثناء الحفظ. أعد تحميله قبل التعديل." });
+      return;
+    }
     res.json(publicProject(updated));
   } catch (err) {
     req.log.error({ err }, "Update AI video project failed");
@@ -468,7 +490,58 @@ router.patch("/ai-video/projects/:id", async (req, res) => {
   }
 });
 
-const renderBodySchema = z.object({ idempotencyKey: idempotencyKeySchema }).strict();
+router.post("/ai-video/projects/:id/render-quote", async (req, res) => {
+  try {
+    const id = projectId(req.params.id);
+    const teacherId = req.session.teacherId as number;
+    const project = id ? await ownedProject(id, teacherId) : null;
+    if (!project) {
+      res.status(404).json({ message: "Project not found" });
+      return;
+    }
+    if (!["storyboard_ready", "failed"].includes(project.status)) {
+      res.status(409).json({ message: "Project is not ready for a production quote" });
+      return;
+    }
+    const brief = aiVideoBriefSchema.parse(project.brief);
+    if (brief.mode === "narrated_images") {
+      res.status(409).json({
+        message: "عرض موافقة تكلفة المزود مخصص لمسار الحوار الواقعي؛ فيديو الصور يستخدم نقاط المنصة فقط.",
+      });
+      return;
+    }
+    const credits = await estimateCreditsForToolRequest(teacherId, "ai-video-render");
+    let quote;
+    try {
+      quote = createAiVideoRenderQuote(project, credits);
+      await assertProjectRequestsResumable(project);
+    } catch (err) {
+      res.status(409).json({ message: err instanceof Error ? err.message : "Invalid dialogue storyboard" });
+      return;
+    }
+    const [saved] = await db.update(aiVideoProjectsTable).set({ renderQuote: quote })
+      .where(and(
+        eq(aiVideoProjectsTable.id, project.id),
+        eq(aiVideoProjectsTable.teacherId, teacherId),
+        eq(aiVideoProjectsTable.status, project.status),
+        sql`${aiVideoProjectsTable.storyboard} IS NOT DISTINCT FROM ${JSON.stringify(project.storyboard)}::jsonb`,
+        sql`${aiVideoProjectsTable.renderLeaseId} IS NOT DISTINCT FROM ${project.renderLeaseId}::text`,
+      )).returning({ id: aiVideoProjectsTable.id });
+    if (!saved) {
+      res.status(409).json({ message: "Project changed; request a new quote" });
+      return;
+    }
+    res.json(quote);
+  } catch (err) {
+    req.log.error({ err }, "AI video cost quote failed");
+    res.status(503).json({ message: "تعذّر تقدير التكلفة. لم يبدأ أي إنتاج." });
+  }
+});
+
+const renderBodySchema = z.object({
+  idempotencyKey: idempotencyKeySchema,
+  approval: aiVideoRenderConsentSchema.optional(),
+}).strict();
 
 async function beginRender(req: Request, res: Response, retryOnly: boolean): Promise<void> {
   const id = projectId(req.params.id);
@@ -483,9 +556,6 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
     res.status(404).json({ message: "Project not found" });
     return;
   }
-  const brief = aiVideoBriefSchema.parse(existing.brief);
-  if (brief.mode !== "narrated_images"
-    && !(await requireAdvancedAccess(teacherId, res))) return;
   if (existing.status === "ready") {
     res.json(publicProject(existing));
     return;
@@ -507,6 +577,25 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
     res.status(409).json({ message: "Project does not have a valid storyboard to render" });
     return;
   }
+  const brief = aiVideoBriefSchema.parse(existing.brief);
+  let approvedQuote: ReturnType<typeof validateAiVideoRenderApproval> | null = null;
+  if (brief.mode !== "narrated_images") {
+    if (!body.data.approval) {
+      res.status(400).json({ code: "RENDER_APPROVAL_REQUIRED", message: "Explicit cost approval required" });
+      return;
+    }
+    try {
+      approvedQuote = validateAiVideoRenderApproval(
+        existing,
+        body.data.approval,
+        await estimateCreditsForToolRequest(teacherId, "ai-video-render"),
+      );
+      await assertProjectRequestsResumable(existing);
+    } catch (err) {
+      res.status(409).json({ code: "RENDER_APPROVAL_REQUIRED", message: err instanceof Error ? err.message : "Explicit cost approval required" });
+      return;
+    }
+  }
   const renderIdempotencyKey = body.data.idempotencyKey;
   const creditRequestId = aiVideoRenderCreditRequestId(teacherId, id, renderIdempotencyKey);
   const renderLeaseId = randomUUID();
@@ -514,6 +603,13 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
     status: "rendering",
     renderIdempotencyKey,
     renderLeaseId,
+    renderQuote: null,
+    renderApproval: approvedQuote
+      ? {
+          ...approvedQuote, accepted: true, acceptedAt: new Date().toISOString(),
+          acceptedBy: teacherId, renderIdempotencyKey,
+        }
+      : null,
     renderLeaseExpiresAt: new Date(Date.now() + AI_VIDEO_RENDER_LEASE_MS),
     errorMessage: null,
     outputUrl: null,
@@ -522,6 +618,10 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
     eq(aiVideoProjectsTable.id, id),
     eq(aiVideoProjectsTable.teacherId, teacherId),
     eq(aiVideoProjectsTable.status, existing.status),
+    ...(approvedQuote
+      ? [sql`${aiVideoProjectsTable.renderQuote}->>'id' = ${approvedQuote.id}`]
+      : []),
+    sql`${aiVideoProjectsTable.storyboard} IS NOT DISTINCT FROM ${JSON.stringify(existing.storyboard)}::jsonb`,
   )).returning();
   if (!claimed) {
     const current = await ownedProject(id, teacherId);
@@ -541,6 +641,9 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
       renderIdempotencyKey: existing.renderIdempotencyKey,
       renderLeaseId: existing.renderLeaseId,
       renderLeaseExpiresAt: existing.renderLeaseExpiresAt,
+      // A failed start cannot silently reuse consent for another operation.
+      renderQuote: null,
+      renderApproval: existing.renderApproval,
       errorMessage: existing.errorMessage,
       outputUrl: existing.outputUrl,
       updatedAt: new Date(),
@@ -565,6 +668,9 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
     );
     holdMode = hold.mode;
     holdWasCreated = hold.mode === "held" && !hold.existingStatus;
+    if (approvedQuote && hold.creditsHeld !== approvedQuote.platformCredits) {
+      throw new Error("تغيّرت نقاط الإنتاج أثناء البدء. اطلب تقديرًا جديدًا.");
+    }
     if (hold.existingStatus && hold.existingStatus !== "pending") {
       await rollbackClaim();
       res.status(409).json({ message: "This render idempotency key was already used; use a new key" });

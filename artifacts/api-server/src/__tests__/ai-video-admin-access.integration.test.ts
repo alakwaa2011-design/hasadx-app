@@ -126,7 +126,7 @@ function app(teacherId?: number) {
   return instance;
 }
 
-describe("AI video economy and advanced access", () => {
+describe("Administrator-only AI video access", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.access.mockResolvedValue(false);
@@ -141,20 +141,20 @@ describe("AI video economy and advanced access", () => {
     expect(mocks.select).not.toHaveBeenCalled();
   });
 
-  it("shows ordinary teachers only narrated-image projects", async () => {
+  it("blocks an ordinary teacher from listing narrated-image projects", async () => {
     const response = await request(app(42)).get("/ai-video/projects");
-    expect(response.status).toBe(200);
-    expect(response.body.projects).toEqual([
-      expect.objectContaining({ id: economyProject.id, title: economyProject.title }),
-    ]);
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("ADMIN_ONLY");
+    expect(mocks.select).not.toHaveBeenCalled();
   });
 
-  it("allows an ordinary teacher to reopen an owned narrated-image project", async () => {
+  it("blocks an ordinary teacher from reopening an owned narrated-image project", async () => {
     mocks.select.mockImplementation(() => chain(() => [economyProject]));
     const response = await request(app(42)).get("/ai-video/projects/9");
-    expect(response.status).toBe(200);
-    expect(response.body.id).toBe(economyProject.id);
-    expect(mocks.access).not.toHaveBeenCalled();
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("ADMIN_ONLY");
+    expect(mocks.select).not.toHaveBeenCalled();
+    expect(mocks.access).toHaveBeenCalledWith(42);
   });
 
   it("blocks an ordinary teacher from an owned advanced project", async () => {
