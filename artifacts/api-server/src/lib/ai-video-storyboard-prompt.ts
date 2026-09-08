@@ -16,7 +16,9 @@ export function storyboardPrompt(brief: AiVideoBrief): string {
     `Return strict JSON only with title, version: 1 and exactly ${sceneCount} scenes.`,
     "Each scene must have: id (stable scene-1 format), objective, narration, onScreenText, visualPrompt, integer durationSeconds, transition (cut/dissolve/push/zoom), and sourceImage.",
     "Use 6 seconds as the initial durationSeconds placeholder. The production engine will measure actual narration and automatically redistribute scene durations between 2 and 7 seconds while keeping the exact selected total.",
-    `Style: ${brief.visualStyle}. Phase 1 is text-to-video only. Set sourceImage to null in every scene; reference images do not influence generated motion.`,
+    brief.mode === "narrated_images"
+      ? `Style: ${brief.visualStyle}. This is an economical narrated-image video. Assign a matching uploaded source image when available; otherwise set sourceImage to null and write a precise visualPrompt for one clean educational illustration.`
+      : `Style: ${brief.visualStyle}. Advanced motion mode is text-to-video only. Set sourceImage to null in every scene; reference images do not influence generated motion.`,
     `Aim for approximately ${totalWords} spoken words across the WHOLE lesson. Per-scene writing guidance: ${JSON.stringify(targets)}.`,
     "Word counts are conservative guidance; actual recorded speech determines final timing. Use one short natural complete thought per scene, not multiple clauses crowded together.",
     "Prioritize the core learning objective and essential facts. Automatically summarize dense sources, omit secondary examples and repetition, and reduce scope to a coherent short explanation. Do not try to narrate every source sentence or every optional detail.",

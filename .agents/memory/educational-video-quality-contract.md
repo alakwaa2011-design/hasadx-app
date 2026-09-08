@@ -45,8 +45,8 @@ Estimated words-per-second are initial planning guidance, not grounds to reject 
 
 **How to apply:** measure first, then derive compression from observed speech. Constrain genuinely new wording by meaningful length as well as word count, preserve normal Arabic spacing and complete thoughts, and use sufficient model reasoning. Reuse unchanged measured audio and freeze fitting scenes when only another scene is too long; do not reject a partial repair merely because cached narration exceeded its old slot. Report specific failures without logging private lesson content.
 
-Keep AI video production administrator-only unless the owner explicitly asks to reopen it to teachers; this does not restrict the separate interactive-video lesson tool.
+Keep photorealistic dialogue video production administrator-only. Teachers may use the explicitly separate economical narrated-image mode; this does not affect the separate interactive-video lesson tool.
 
-**Why:** the owner explicitly restricted this generator. Fixing its generation quality or completing a phase is not permission to expand access again.
+**Why:** the owner explicitly chose the costly realistic system as an administrator-only premium capability and asked to reopen the economical image-and-voiceover system for teachers.
 
-**How to apply:** preserve the access restriction when changing discovery, navigation, production routes, or generated-media serving.
+**How to apply:** enforce the split on the server as well as in navigation, production routes, credit pricing, and generated-media serving. Never describe image motion as realistic generated video, and never let a client-provided mode bypass the administrator check.

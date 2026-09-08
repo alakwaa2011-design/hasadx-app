@@ -38,7 +38,17 @@ vi.mock("../lib/ai-video-motion", () => ({
     return { requestId: "local-fixture", model: "local-test", generatedDurationSeconds: durationSeconds };
   }),
 }));
-vi.mock("@workspace/integrations-openai-ai-server", () => ({ openai: {} }));
+vi.mock("@workspace/integrations-openai-ai-server", () => ({
+  openai: {
+    images: {
+      generate: vi.fn(async () => ({
+        data: [{
+          b64_json: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        }],
+      })),
+    },
+  },
+}));
 vi.mock("@workspace/integrations-openai-ai-server/audio", () => ({
   textToSpeech: vi.fn(async (text: string) => {
     if (state.failSpeech) throw new Error("fatal local speech fixture failure");
@@ -69,6 +79,7 @@ import { composeAiVideo, probeVideo, verifyMotionClip } from "../lib/ai-video-co
 import type { AiVideoBrief, AiVideoStoryboard } from "../lib/ai-video-schemas";
 import { buildAiVideoTransitionFilter } from "../lib/ai-video-composition";
 import { generateAiVideoMotion } from "../lib/ai-video-motion";
+import { composeEconomyAiVideo } from "../lib/ai-video-economy-composition";
 
 describe("Scene transition contract", () => {
   it("crossfades only visuals, never complete speech or scene audio", () => {
@@ -157,6 +168,30 @@ describe.runIf(process.env.RUN_AI_VIDEO_MEDIA_TESTS === "1")("Real educational v
     expect(peak).toBeLessThan(-60);
     // Keep only a technical frame for manual local inspection, not a claimed AI-generated sample.
     await exec("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-ss", "14", "-i", path, "-frames:v", "1", "/tmp/ai-video-composition-check.png"]);
+  }, 300_000);
+  it("assembles narrated images locally without invoking the motion provider", async () => {
+    const brief: AiVideoBrief = {
+      title: "دورة الماء", topic: "دورة الماء", prompt: "", language: "ar",
+      sourceImages: [], durationSeconds: 30, aspectRatio: "16:9", visualStyle: "educational",
+      voice: "nova", music: false, captions: true, mode: "narrated_images",
+      idempotencyKey: "local-economy-media-check",
+    };
+    const storyboard: AiVideoStoryboard = {
+      title: brief.title, version: 1,
+      scenes: ["التبخر", "صعود البخار", "التكاثف", "الهطول", "تجمع المياه"].map((term, i) => ({
+        id: `economy-${i + 1}`, objective: term, narration: `نص اختبار صوتي ${i + 1}`,
+        onScreenText: term, visualPrompt: `تعليم ${term}`, durationSeconds: 6,
+        transition: "dissolve", sourceImage: null,
+      })),
+    };
+    const path = await composeEconomyAiVideo({
+      brief, storyboard, dir, voice: "nova", deadline: Date.now() + 300_000,
+      assertActive: async () => {}, persistStoryboard: vi.fn(),
+    });
+    const result = await probeVideo(path);
+    expect(result.duration).toBeCloseTo(30, 1);
+    expect(result.audio?.codec_type).toBe("audio");
+    expect(generateAiVideoMotion).not.toHaveBeenCalled();
   }, 300_000);
   it("rejects short clips and a frozen-video substitute", async () => {
     const path = join(dir, "frozen.mp4");

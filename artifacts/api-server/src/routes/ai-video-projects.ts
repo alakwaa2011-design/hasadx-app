@@ -50,22 +50,21 @@ import {
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
 
-async function requireAiVideoAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+function requireAiVideoTeacher(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.teacherId) {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
-  try {
-    if (!(await hasAiVideoAdminAccess(req.session.teacherId))) {
-      res.status(403).json({ message: "أداة إنتاج الفيديو بالذكاء الاصطناعي متاحة للمسؤول فقط", code: "ADMIN_ONLY" });
-      return;
-    }
-  } catch (err) {
-    req.log.error({ err }, "AI video access verification failed");
-    res.status(503).json({ message: "تعذّر التحقق من صلاحية الوصول" });
-    return;
-  }
   next();
+}
+
+async function requireAdvancedAccess(teacherId: number, res: Response): Promise<boolean> {
+  if (await hasAiVideoAdminAccess(teacherId)) return true;
+  res.status(403).json({
+    message: "إنتاج الفيديو الواقعي المتقدم متاح للمسؤول فقط",
+    code: "ADMIN_ONLY",
+  });
+  return false;
 }
 
 function projectId(value: string | string[]): number | null {
@@ -118,7 +117,7 @@ async function validateSourceImages(paths: string[], teacherId: number): Promise
   }));
 }
 
-router.use("/ai-video", requireAiVideoAdmin);
+router.use("/ai-video", requireAiVideoTeacher);
 
 const aiVideoImageUpload = multer({
   storage: multer.memoryStorage(),
@@ -184,11 +183,20 @@ router.post("/ai-video/uploads/image", sensitiveActionLimiter, receiveAiVideoIma
 
 router.get("/ai-video/projects", async (req, res) => {
   try {
+    const teacherId = req.session.teacherId as number;
+    const canSeeAdvanced = await hasAiVideoAdminAccess(teacherId);
     const projects = await db.select().from(aiVideoProjectsTable)
-      .where(eq(aiVideoProjectsTable.teacherId, req.session.teacherId as number))
+      .where(eq(aiVideoProjectsTable.teacherId, teacherId))
       .orderBy(desc(aiVideoProjectsTable.updatedAt))
       .limit(100);
-    res.json({ projects: projects.map(publicProject) });
+    res.json({
+      projects: projects
+        .filter((project) => {
+          const brief = aiVideoBriefSchema.safeParse(project.brief);
+          return brief.success && (brief.data.mode === "narrated_images" || canSeeAdvanced);
+        })
+        .map(publicProject),
+    });
   } catch (err) {
     req.log.error({ err }, "List AI video projects failed");
     res.status(500).json({ message: "Failed to list AI video projects" });
@@ -205,6 +213,7 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
   const brief = parsed.data;
 
   try {
+    if (brief.mode !== "narrated_images" && !(await requireAdvancedAccess(teacherId, res))) return;
     const [existing] = await db.select().from(aiVideoProjectsTable)
       .where(eq(aiVideoProjectsTable.storyboardIdempotencyKey, brief.idempotencyKey)).limit(1);
     if (existing) {
@@ -277,7 +286,11 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
       if (holdMode === "held") await CreditService.heartbeatHold(creditRequestId);
     };
     try {
-      const hold = await holdCreditsForToolRequest(teacherId, "ai-video", creditRequestId);
+      const hold = await holdCreditsForToolRequest(
+        teacherId,
+        brief.mode === "narrated_images" ? "ai-video-economy" : "ai-video",
+        creditRequestId,
+      );
       holdMode = hold.mode;
       await renewStoryboardLease();
       heartbeat = setInterval(() => {
@@ -302,7 +315,12 @@ router.post("/ai-video/projects/storyboard", sensitiveActionLimiter, async (req,
       });
       const storyboard = {
         ...sanitizedStoryboard,
-        scenes: sanitizedStoryboard.scenes.map((scene) => ({ ...scene, sourceImage: null })),
+        scenes: sanitizedStoryboard.scenes.map((scene, index) => ({
+          ...scene,
+          sourceImage: brief.mode === "narrated_images" && brief.sourceImages.length
+            ? brief.sourceImages[index % brief.sourceImages.length]!
+            : null,
+        })),
       };
       if (leaseLost) throw new Error("AI video storyboard worker lease was lost");
       const project = await db.transaction(async (tx) => {
@@ -402,6 +420,9 @@ router.get("/ai-video/projects/:id", async (req, res) => {
       res.status(404).json({ message: "Project not found" });
       return;
     }
+    const brief = aiVideoBriefSchema.parse(project.brief);
+    if (brief.mode !== "narrated_images"
+      && !(await requireAdvancedAccess(req.session.teacherId as number, res))) return;
     res.json(publicProject(project));
   } catch (err) {
     req.log.error({ err }, "Get AI video project failed");
@@ -423,6 +444,9 @@ router.patch("/ai-video/projects/:id", async (req, res) => {
       res.status(404).json({ message: "Project not found" });
       return;
     }
+    const existingBrief = aiVideoBriefSchema.parse(existing.brief);
+    if (existingBrief.mode !== "narrated_images"
+      && !(await requireAdvancedAccess(teacherId, res))) return;
     if (existing.status === "rendering") {
       res.status(409).json({ message: "A rendering project cannot be edited" });
       return;
@@ -459,6 +483,9 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
     res.status(404).json({ message: "Project not found" });
     return;
   }
+  const brief = aiVideoBriefSchema.parse(existing.brief);
+  if (brief.mode !== "narrated_images"
+    && !(await requireAdvancedAccess(teacherId, res))) return;
   if (existing.status === "ready") {
     res.json(publicProject(existing));
     return;
@@ -529,7 +556,13 @@ async function beginRender(req: Request, res: Response, retryOnly: boolean): Pro
   let holdMode: "none" | "held" = "none";
   let holdWasCreated = false;
   try {
-    const hold = await holdCreditsForToolRequest(teacherId, "ai-video-render", creditRequestId);
+    const hold = await holdCreditsForToolRequest(
+      teacherId,
+      brief.mode === "narrated_images"
+        ? `ai-video-economy-render-${brief.durationSeconds}`
+        : "ai-video-render",
+      creditRequestId,
+    );
     holdMode = hold.mode;
     holdWasCreated = hold.mode === "held" && !hold.existingStatus;
     if (hold.existingStatus && hold.existingStatus !== "pending") {

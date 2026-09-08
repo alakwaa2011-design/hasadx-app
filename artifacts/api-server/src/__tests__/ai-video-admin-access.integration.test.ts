@@ -26,17 +26,39 @@ function chain(result: () => unknown): any {
   });
 }
 
-const ownedProject = {
+const briefBase = {
+  title: "Lesson",
+  topic: "Water",
+  sourceImages: [],
+  prompt: "",
+  language: "ar",
+  durationSeconds: 30,
+  aspectRatio: "16:9",
+  visualStyle: "educational",
+  voice: "nova",
+  music: false,
+  captions: true,
+  idempotencyKey: "project-key-123",
+};
+
+const economyProject = {
   id: 9,
   teacherId: 42,
-  title: "Owned project",
+  title: "Economy",
   status: "storyboard_ready",
-  brief: {},
+  brief: { ...briefBase, mode: "narrated_images" },
   storyboard: null,
   storyboardLeaseId: null,
   storyboardLeaseExpiresAt: null,
   renderLeaseId: null,
   renderLeaseExpiresAt: null,
+};
+
+const advancedProject = {
+  ...economyProject,
+  id: 10,
+  title: "Advanced",
+  brief: { ...briefBase, mode: "realistic_motion", idempotencyKey: "advanced-key-123" },
 };
 
 vi.mock("../lib/ai-video-access", () => ({
@@ -71,17 +93,10 @@ vi.mock("../lib/check-credits", () => ({
   InsufficientCreditsError: class extends Error {},
   holdCreditsForToolRequest: mocks.holdCredits,
 }));
-
-vi.mock("../lib/credit-service", () => ({
-  CreditService: {},
-}));
-
+vi.mock("../lib/credit-service", () => ({ CreditService: {} }));
 vi.mock("../lib/objectStorage", () => ({
-  ObjectStorageService: class {
-    uploadBufferAsPrivate = mocks.upload;
-  },
+  ObjectStorageService: class { uploadBufferAsPrivate = mocks.upload; },
 }));
-
 vi.mock("../lib/ai-video-renderer", () => ({
   AI_VIDEO_RENDER_LEASE_MS: 180_000,
   AI_VIDEO_STORYBOARD_LEASE_MS: 180_000,
@@ -90,24 +105,20 @@ vi.mock("../lib/ai-video-renderer", () => ({
   failStaleAiVideoStoryboards: vi.fn(),
   startAiVideoRender: mocks.startRender,
 }));
-
 vi.mock("../lib/rate-limiter", () => ({
   sensitiveActionLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
-
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: { chat: { completions: { create: mocks.provider } } },
 }));
 
 import aiVideoRouter from "../routes/ai-video-projects";
 
-type Session = { teacherId?: number; isAdmin?: boolean } | undefined;
-
-function app(session: Session = { teacherId: 42 }) {
+function app(teacherId?: number) {
   const instance = express();
   instance.use(express.json());
   instance.use((req, _res, next) => {
-    (req as any).session = session;
+    (req as any).session = teacherId ? { teacherId } : {};
     (req as any).log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     next();
   });
@@ -115,96 +126,59 @@ function app(session: Session = { teacherId: 42 }) {
   return instance;
 }
 
-const endpoints = [
-  ["post", "/ai-video/uploads/image", undefined],
-  ["get", "/ai-video/projects", undefined],
-  ["post", "/ai-video/projects/storyboard", { role: "admin" }],
-  ["get", "/ai-video/projects/9", undefined],
-  ["patch", "/ai-video/projects/9", { role: "admin" }],
-  ["post", "/ai-video/projects/9/render", { role: "admin" }],
-  ["post", "/ai-video/projects/9/retry-render", { role: "admin" }],
-] as const;
-
-describe("AI video admin route guard", () => {
+describe("AI video economy and advanced access", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.access.mockResolvedValue(true);
-    mocks.select.mockImplementation(() => chain(() => [ownedProject]));
+    mocks.access.mockResolvedValue(false);
+    mocks.select.mockImplementation(() => chain(() => [economyProject, advancedProject]));
     mocks.update.mockImplementation(() => chain(() => []));
     mocks.insert.mockImplementation(() => chain(() => []));
   });
 
-  it.each(endpoints)("denies non-admins before endpoint work: %s %s", async (method, path, body) => {
-    mocks.access.mockResolvedValue(false);
-    const pending = (request(app()) as any)[method](path);
-    const response = body === undefined ? await pending : await pending.send(body);
-
-    expect(response.status).toBe(403);
-    expect(mocks.access).toHaveBeenCalledWith(42);
+  it("requires an authenticated teacher", async () => {
+    const response = await request(app()).get("/ai-video/projects");
+    expect(response.status).toBe(401);
     expect(mocks.select).not.toHaveBeenCalled();
-    expect(mocks.update).not.toHaveBeenCalled();
-    expect(mocks.insert).not.toHaveBeenCalled();
-    expect(mocks.holdCredits).not.toHaveBeenCalled();
-    expect(mocks.provider).not.toHaveBeenCalled();
-    expect(mocks.upload).not.toHaveBeenCalled();
-    expect(mocks.startRender).not.toHaveBeenCalled();
   });
 
-  it("returns 401 without a teacher session before checking admin access", async () => {
-    const response = await request(app({})).get("/ai-video/projects");
+  it("shows ordinary teachers only narrated-image projects", async () => {
+    const response = await request(app(42)).get("/ai-video/projects");
+    expect(response.status).toBe(200);
+    expect(response.body.projects).toEqual([
+      expect.objectContaining({ id: economyProject.id, title: economyProject.title }),
+    ]);
+  });
 
-    expect(response.status).toBe(401);
+  it("allows an ordinary teacher to reopen an owned narrated-image project", async () => {
+    mocks.select.mockImplementation(() => chain(() => [economyProject]));
+    const response = await request(app(42)).get("/ai-video/projects/9");
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(economyProject.id);
     expect(mocks.access).not.toHaveBeenCalled();
   });
 
-  it("returns 503 when the admin lookup fails closed", async () => {
-    mocks.access.mockRejectedValue(new Error("database unavailable"));
-
-    const response = await request(app()).get("/ai-video/projects");
-
-    expect(response.status).toBe(503);
-    expect(mocks.select).not.toHaveBeenCalled();
-  });
-
-  it("does not trust session.isAdmin or an admin role in the request body", async () => {
-    mocks.access.mockResolvedValue(false);
-
-    const sessionSpoof = await request(app({ teacherId: 42, isAdmin: true }))
-      .get("/ai-video/projects");
-    const bodySpoof = await request(app())
-      .post("/ai-video/projects/storyboard")
-      .send({ role: "admin", isAdmin: true });
-
-    expect(sessionSpoof.status).toBe(403);
-    expect(bodySpoof.status).toBe(403);
-    expect(mocks.access).toHaveBeenNthCalledWith(1, 42);
-    expect(mocks.access).toHaveBeenNthCalledWith(2, 42);
-  });
-
-  it("allows a database-confirmed admin to list and get only owned projects", async () => {
-    const list = await request(app()).get("/ai-video/projects");
-    const get = await request(app()).get("/ai-video/projects/9");
-
-    expect(list.status).toBe(200);
-    expect(list.body.projects).toEqual([expect.objectContaining({ id: 9, teacherId: 42 })]);
-    expect(get.status).toBe(200);
-    expect(get.body).toEqual(expect.objectContaining({ id: 9, teacherId: 42 }));
-    expect(mocks.select).toHaveBeenCalledTimes(2);
-  });
-
-  it.each([
-    ["post", "/ai-video/uploads/image"],
-    ["post", "/ai-video/projects/storyboard"],
-    ["patch", "/ai-video/projects/9"],
-    ["post", "/ai-video/projects/9/render"],
-    ["post", "/ai-video/projects/9/retry-render"],
-  ] as const)("lets admins reach endpoint validation: %s %s", async (method, path) => {
-    const response = await (request(app()) as any)[method](path).send({});
-
-    expect(response.status).toBe(400);
+  it("blocks an ordinary teacher from an owned advanced project", async () => {
+    mocks.select.mockImplementation(() => chain(() => [advancedProject]));
+    const response = await request(app(42)).get("/ai-video/projects/10");
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("ADMIN_ONLY");
     expect(mocks.access).toHaveBeenCalledWith(42);
+  });
+
+  it("blocks a valid advanced storyboard request before provider or credits", async () => {
+    const response = await request(app(42))
+      .post("/ai-video/projects/storyboard")
+      .send({ ...briefBase, mode: "realistic_motion" });
+    expect(response.status).toBe(403);
+    expect(mocks.select).not.toHaveBeenCalled();
     expect(mocks.holdCredits).not.toHaveBeenCalled();
     expect(mocks.provider).not.toHaveBeenCalled();
-    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it("lets a database-confirmed admin list both modes", async () => {
+    mocks.access.mockResolvedValue(true);
+    const response = await request(app(42)).get("/ai-video/projects");
+    expect(response.status).toBe(200);
+    expect(response.body.projects.map((project: { id: number }) => project.id)).toEqual([9, 10]);
   });
 });

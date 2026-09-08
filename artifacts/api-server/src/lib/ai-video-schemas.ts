@@ -9,6 +9,7 @@ export const idempotencyKeySchema = z.string().trim().min(8).max(100)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, "Invalid idempotency key");
 
 export const aiVideoBriefSchema = z.object({
+  mode: z.enum(["narrated_images", "realistic_motion"]).optional(),
   title: z.string().trim().min(1).max(160),
   topic: z.string().trim().max(300).default(""),
   sourceText: z.string().trim().max(12_000).optional(),

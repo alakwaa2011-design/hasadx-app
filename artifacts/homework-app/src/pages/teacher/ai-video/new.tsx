@@ -60,14 +60,12 @@ export default function AiVideoStudio() {
     if (authLoading) return;
     if (authError || !currentUser) {
       setLocation("/login?redirect=" + encodeURIComponent(window.location.pathname + window.location.search));
-    } else if (!isAdmin) {
-      setLocation("/teacher");
     }
-  }, [authLoading, authError, currentUser, isAdmin, setLocation]);
+  }, [authLoading, authError, currentUser, setLocation]);
 
   const { data: project, isLoading: loadingProject } = useAiVideoProject(
     id,
-    !authLoading && !authError && isAdmin,
+    !authLoading && !authError,
   );
   const createMutation = useCreateAiVideoStoryboard();
   const updateMutation = useUpdateAiVideoProject();
@@ -88,6 +86,7 @@ export default function AiVideoStudio() {
   const [voice, setVoice] = useState("nova");
   const [music, setMusic] = useState(true);
   const [captions, setCaptions] = useState(true);
+  const [mode, setMode] = useState<"narrated_images" | "realistic_motion">("narrated_images");
 
   // Storyboard Edit State
   const [editTitle, setEditTitle] = useState("");
@@ -97,6 +96,7 @@ export default function AiVideoStudio() {
   const hydratedContentKey = useRef<string | null>(null);
 
   const hydrateEditor = (nextProject: AiVideoProject) => {
+    setMode(nextProject.brief.mode ?? "realistic_motion");
     setEditTitle(nextProject.storyboard?.title || nextProject.title);
     setEditScenes(nextProject.storyboard?.scenes || []);
     initializedForId.current = nextProject.id;
@@ -153,10 +153,18 @@ export default function AiVideoStudio() {
       toast.error(isAr ? "التوجيهات طويلة جداً (الحد الأقصى 1500 حرف)" : "Prompt too long (max 1500 chars)");
       return;
     }
-    if (!window.confirm(isAr
-      ? `سيستخدم إنشاء القصة المصوّرة رصيد أدوات الذكاء الاصطناعي. تكلفة الحركة المتوقعة عند الإنتاج بهذه المدة هي $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}، ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
-      : `Creating the storyboard uses AI-tool credits. The planned motion render for this duration is estimated at $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}, excluding OpenAI costs. Continue?`)) {
-      return;
+    if (mode === "realistic_motion") {
+      if (!window.confirm(isAr
+        ? `سيستخدم إنشاء القصة المصوّرة رصيد أدوات الذكاء الاصطناعي. تكلفة الحركة المتوقعة عند الإنتاج بهذه المدة هي $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}، ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
+        : `Creating the storyboard uses AI-tool credits. The planned motion render for this duration is estimated at $${DEFAULT_MOTION_COSTS[duration].toFixed(2)}, excluding OpenAI costs. Continue?`)) {
+        return;
+      }
+    } else {
+      if (!window.confirm(isAr
+        ? `سيستخدم إنشاء القصة المصوّرة رصيد أدوات الذكاء الاصطناعي (بتكلفة مخفضة). هل تريد المتابعة؟`
+        : `Creating the storyboard uses AI-tool credits (at a low cost). Continue?`)) {
+        return;
+      }
     }
 
     createMutation.mutate({
@@ -172,6 +180,7 @@ export default function AiVideoStudio() {
       voice,
       music,
       captions,
+      mode,
       idempotencyKey: crypto.randomUUID()
     }, {
       onSuccess: (data) => {
@@ -252,9 +261,15 @@ export default function AiVideoStudio() {
   const handleRender = () => {
     if (!project || !validateStoryboard()) return;
     const motionCost = estimateMotionCost(editScenes);
-    if (!window.confirm(isAr
-      ? `تكلفة توليد الحركة المقدّرة لهذا الفيديو هي $${motionCost.toFixed(2)} بسعر $0.10 لكل ثانية مولّدة، ولا تشمل تكلفة OpenAI. هل تريد بدء الإنتاج؟`
-      : `Estimated motion generation cost is $${motionCost.toFixed(2)} at $0.10 per generated second, excluding OpenAI costs. Start rendering?`)) return;
+    if (project.brief.mode === "realistic_motion") {
+      if (!window.confirm(isAr
+        ? `تكلفة توليد الحركة المقدّرة لهذا الفيديو هي $${motionCost.toFixed(2)} بسعر $0.10 لكل ثانية مولّدة، ولا تشمل تكلفة OpenAI. هل تريد بدء الإنتاج؟`
+        : `Estimated motion generation cost is $${motionCost.toFixed(2)} at $0.10 per generated second, excluding OpenAI costs. Start rendering?`)) return;
+    } else {
+      if (!window.confirm(isAr
+        ? `سيبدأ الإنتاج الآن باستخدام شرح بالصور والتعليق الصوتي. سيتم خصم نقاط ذكاء اصطناعي بناءً على مدة الفيديو. هل أنت متأكد؟`
+        : `Rendering will start now using narrated images. AI points will be deducted based on the video duration. Are you sure?`)) return;
+    }
     // Save first just in case
     updateMutation.mutate({
       id: project.id,
@@ -281,9 +296,15 @@ export default function AiVideoStudio() {
   const handleRetry = () => {
     if (!project) return;
     const motionCost = estimateMotionCost(project.storyboard?.scenes || []);
-    if (!window.confirm(isAr
-      ? `إعادة المحاولة تضيف تكلفة جديدة. تكلفة الحركة المقدّرة للمحاولة هي $${motionCost.toFixed(2)} ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
-      : `A retry adds a new charge. Estimated motion cost for this attempt is $${motionCost.toFixed(2)}, excluding OpenAI costs. Continue?`)) return;
+    if (project.brief.mode === "realistic_motion") {
+      if (!window.confirm(isAr
+        ? `إعادة المحاولة تضيف تكلفة جديدة. تكلفة الحركة المقدّرة للمحاولة هي $${motionCost.toFixed(2)} ولا تشمل تكلفة OpenAI. هل تريد المتابعة؟`
+        : `A retry adds a new charge. Estimated motion cost for this attempt is $${motionCost.toFixed(2)}, excluding OpenAI costs. Continue?`)) return;
+    } else {
+      if (!window.confirm(isAr
+        ? `إعادة المحاولة ستخصم نقاط ذكاء اصطناعي إضافية. هل تريد المتابعة؟`
+        : `A retry will deduct additional AI points. Continue?`)) return;
+    }
     retryMutation.mutate({ id: project.id, idempotencyKey: crypto.randomUUID() }, {
       onError: handleError,
       onSettled: () => refreshCredits()
@@ -326,7 +347,7 @@ export default function AiVideoStudio() {
     );
   }
 
-  if (authError || !currentUser || !isAdmin) return null;
+  if (authError || !currentUser) return null;
 
   const currentStatus = project?.status || "draft";
   const hasRenderableStoryboard = Boolean(project?.storyboard && project.storyboard.scenes.length >= 5);
@@ -414,8 +435,8 @@ export default function AiVideoStudio() {
 
                     <p className="rounded-xl bg-slate-50 dark:bg-slate-900/50 px-4 py-3 text-xs font-medium text-slate-500">
                       {isAr
-                        ? "المرحلة الأولى تدعم إنشاء الفيديو من النص فقط؛ الصور المرجعية لا تؤثر في الحركة المولّدة."
-                        : "Phase 1 creates video from text only; reference images do not influence generated motion."}
+                        ? "يعتمد الذكاء الاصطناعي على النص الذي تدخله لبناء القصة المصورة والتعليق الصوتي."
+                        : "AI relies on your input text to build the storyboard and voiceover."}
                     </p>
                   </div>
                 </Card>
@@ -524,6 +545,20 @@ export default function AiVideoStudio() {
                         </span>
                         <input type="checkbox" checked={captions} onChange={e => setCaptions(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500" />
                       </label>
+
+                      {isAdmin && (
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <label className="block text-xs font-bold text-slate-500 mb-2">{isAr ? "نمط الإنتاج (صلاحية إدارية)" : "Production Mode (Admin)"}</label>
+                          <select
+                            value={mode}
+                            onChange={e => setMode(e.target.value as "narrated_images" | "realistic_motion")}
+                            className="w-full bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-amber-500"
+                          >
+                            <option value="narrated_images">{isAr ? "شرح بالصور (نقاط ذكاء اصطناعي)" : "Narrated Images (AI Points)"}</option>
+                            <option value="realistic_motion">{isAr ? "حركة واقعية (تكلفة بالدولار)" : "Realistic Motion (Dollar Cost)"}</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -537,9 +572,13 @@ export default function AiVideoStudio() {
                   {isAr ? "توليد السيناريو" : "Generate Storyboard"}
                 </button>
                 <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 p-4 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-400">
-                  {isAr
-                    ? `تُنشأ الحركة الفعلية بدقة 720p عبر fal-ai/veo3.1/fast (نموذج حركة بلا صوت) بسعر $0.10 لكل ثانية مولّدة بعد التقريب إلى 4 أو 6 أو 8 ثوانٍ لكل مشهد. التقدير الافتراضي لهذه المدة $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} للحركة فقط، ولا يشمل OpenAI، وتضيف كل إعادة محاولة تكلفة جديدة. قد يستغرق التوليد عدة دقائق.`
-                    : `True motion is generated at 720p with fal-ai/veo3.1/fast (no-audio motion model) at $0.10 per generated second, rounded to 4, 6, or 8 seconds per scene. The default estimate for this duration is $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} for motion only, excluding OpenAI; each retry adds a new cost. Generation may take several minutes.`}
+                  {mode === "realistic_motion"
+                    ? (isAr
+                      ? `تُنشأ الحركة الفعلية بدقة 720p عبر fal-ai/veo3.1/fast بسعر $0.10 لكل ثانية مولّدة بعد التقريب. التقدير الافتراضي لهذه المدة $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} للحركة فقط، ولا يشمل OpenAI، وتضيف كل إعادة محاولة تكلفة جديدة. قد يستغرق التوليد عدة دقائق.`
+                      : `True motion is generated at 720p with fal-ai/veo3.1/fast at $0.10 per generated second. The default estimate for this duration is $${DEFAULT_MOTION_COSTS[duration].toFixed(2)} for motion only, excluding OpenAI; each retry adds a new cost. Generation may take several minutes.`)
+                    : (isAr
+                      ? `يتم إنشاء فيديو بتعليق صوتي مع صور توضيحية. سيتم خصم نقاط ذكاء اصطناعي بحسب المدة المطلوبة. قد يستغرق الإنتاج دقيقة أو دقيقتين.`
+                      : `A narrated video with images will be generated. AI points will be deducted based on the requested duration. Generation may take a minute or two.`)}
                 </div>
               </div>
             </div>
@@ -724,8 +763,8 @@ export default function AiVideoStudio() {
                   </h2>
                   <p className="text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
                     {isAr
-                      ? "قد تستغرق هذه العملية بضع دقائق. يُنشأ التعليق الصوتي ويُقاس توقيته تلقائياً أولاً، ثم تُضبط مدد المشاهد قبل إنشاء الحركة ودمج الفيديو. يمكنك مغادرة الصفحة والعودة لاحقاً."
-                      : "This may take a few minutes. Voice narration is generated and timed automatically first; scene durations are adjusted before motion is created and the video is assembled. You can leave and check back later."}
+                      ? "قد تستغرق هذه العملية بضع دقائق. يُنشأ التعليق الصوتي ويُقاس توقيته تلقائياً أولاً، ثم تُضبط مدد المشاهد قبل إنتاج ودمج الفيديو. يمكنك مغادرة الصفحة والعودة لاحقاً."
+                      : "This may take a few minutes. Voice narration is generated and timed automatically first; scene durations are adjusted before the video is assembled. You can leave and check back later."}
                   </p>
 
                   <div className="mt-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 w-full max-w-sm text-sm font-bold text-slate-600 dark:text-slate-400 flex items-center justify-center gap-2">

@@ -15,6 +15,7 @@ import { logger } from "./logger";
 import { CreditService } from "./credit-service";
 import { aiVideoBriefSchema, aiVideoStoryboardSchema } from "./ai-video-schemas";
 import { composeAiVideo } from "./ai-video-composition";
+import { composeEconomyAiVideo } from "./ai-video-economy-composition";
 export { buildAiVideoTransitionFilter } from "./ai-video-composition";
 
 const storage = new ObjectStorageService();
@@ -107,7 +108,8 @@ async function renderClaimedProject(project: AiVideoProject): Promise<void> {
     const brief = aiVideoBriefSchema.parse(project.brief);
     const storyboard = aiVideoStoryboardSchema.parse(project.storyboard);
     const voice: Voice = VOICES.has(brief.voice) ? brief.voice as Voice : "nova";
-    const finalPath = await composeAiVideo({
+    const compose = brief.mode === "narrated_images" ? composeEconomyAiVideo : composeAiVideo;
+    const finalPath = await compose({
       brief,
       storyboard,
       dir,
@@ -138,7 +140,9 @@ async function renderClaimedProject(project: AiVideoProject): Promise<void> {
       storage.uploadBufferAsPrivate({
         buffer: output,
         contentType: "video/mp4",
-        ownerPrefix: `ai-video/${project.teacherId}/projects/${project.id}`,
+        ownerPrefix: brief.mode === "narrated_images"
+          ? `ai-video-economy/${project.teacherId}/projects/${project.id}`
+          : `ai-video/${project.teacherId}/projects/${project.id}`,
         extension: "mp4",
       }),
       uploadTimeout,

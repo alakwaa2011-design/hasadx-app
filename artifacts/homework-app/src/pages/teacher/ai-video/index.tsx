@@ -25,12 +25,10 @@ export default function AiVideoIndexPage() {
     if (authLoading) return;
     if (authError || !currentUser) {
       setLocation("/login?redirect=" + encodeURIComponent("/teacher/ai-video"));
-    } else if (!isAdmin) {
-      setLocation("/teacher");
     }
-  }, [authLoading, authError, currentUser, isAdmin, setLocation]);
+  }, [authLoading, authError, currentUser, setLocation]);
 
-  const { data: projects = [], isLoading } = useAiVideoProjects(!authLoading && !authError && isAdmin);
+  const { data: projects = [], isLoading } = useAiVideoProjects(!authLoading && !authError);
 
   const filteredProjects = useMemo(() => {
     if (!search.trim()) return projects;
@@ -60,7 +58,7 @@ export default function AiVideoIndexPage() {
   };
 
   if (authLoading) return <Layout><div className="min-h-[100dvh]" /></Layout>;
-  if (authError || !currentUser || !isAdmin) return null;
+  if (authError || !currentUser) return null;
 
   return (
     <Layout>
@@ -83,8 +81,8 @@ export default function AiVideoIndexPage() {
                 </div>
                 <p className="text-emerald-100/90 max-w-xl text-sm lg:text-base font-medium leading-relaxed">
                   {isAr
-                    ? "حوّل محتواك التعليمي إلى فيديو مولّد بالذكاء الاصطناعي بحركة فعلية ودقة 720p. قد يستغرق الإنشاء عدة دقائق."
-                    : "Turn educational content into an AI-generated true-motion video at 720p. Generation may take several minutes."}
+                    ? (isAdmin ? "حوّل محتواك التعليمي إلى فيديو بحركة فعلية أو صور ثابتة مع تعليق صوتي." : "حوّل محتواك التعليمي إلى فيديو مع صور توضيحية وتعليق صوتي عربي.")
+                    : (isAdmin ? "Turn educational content into a true-motion or narrated-image video." : "Turn educational content into an AI-generated narrated image video.")}
                 </p>
               </div>
               <button
@@ -186,6 +184,10 @@ export default function AiVideoIndexPage() {
                               <span className="flex items-center gap-1">
                                 <LayoutTemplate className="w-3.5 h-3.5" />
                                 {project.brief.aspectRatio}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Video className="w-3.5 h-3.5" />
+                                {project.brief.mode === "realistic_motion" ? (isAr ? "حركة" : "Motion") : (isAr ? "صور" : "Images")}
                               </span>
                             </div>
                             <span>

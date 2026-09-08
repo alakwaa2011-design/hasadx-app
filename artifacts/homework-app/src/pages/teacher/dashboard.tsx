@@ -2931,15 +2931,21 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
           accent: BRAND.gold,
           href: "/teacher/video-lesson/new",
         },
-        ...(user?.isAdmin === true ? [{
+        {
           icon: <Video className="w-6 h-6" />,
-          title: isAr ? "إنتاج فيديو بالذكاء الاصطناعي" : "AI Video Production",
+          title: isAr
+            ? (user?.isAdmin ? "إنتاج فيديو بالذكاء الاصطناعي (شامل)" : "إنتاج فيديو بالذكاء الاصطناعي (شرح بالصور)")
+            : (user?.isAdmin ? "AI Video Production (Advanced)" : "AI Video Production (Narrated Images)"),
           desc: isAr
-            ? "حوّل محتواك إلى فيديوهات احترافية شاملة للتعليق الصوتي والصور"
-            : "Turn your content into professional videos with voiceover and images",
+            ? (user?.isAdmin
+                ? "حوّل محتواك إلى فيديوهات احترافية بالحركة الواقعية أو الشرح بالصور"
+                : "حوّل محتواك التعليمي إلى فيديو مع صور توضيحية وتعليق صوتي عربي بسهولة")
+            : (user?.isAdmin
+                ? "Turn your content into professional videos with realistic motion or narrated images"
+                : "Turn your content into an educational video with images and Arabic voiceover easily"),
           accent: BRAND.gold,
           href: "/teacher/ai-video",
-        }] : []),
+        },
         {
           icon: <Monitor className="w-6 h-6" />,
           title: isAr ? "العروض التفاعلية" : "Interactive Presentations",

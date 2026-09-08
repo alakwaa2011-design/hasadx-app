@@ -23,6 +23,7 @@ export type AiVideoProject = {
     music: boolean;
     captions: boolean;
     sourceImages?: string[];
+    mode?: "narrated_images" | "realistic_motion";
   };
   storyboard: {
     title: string;
@@ -129,6 +130,7 @@ export function useCreateAiVideoStoryboard() {
       voice: string;
       music: boolean;
       captions: boolean;
+      mode?: "narrated_images" | "realistic_motion";
       idempotencyKey: string;
     }): Promise<AiVideoProject> => {
       const res = await creditAwareFetch(`${API_BASE}/api/ai-video/projects/storyboard`, {

@@ -155,8 +155,20 @@ function renderDocument(
       min-height: ${Math.max(56, Math.round(86 * scale))}px;
       padding: ${verticalPadding}px ${horizontalPadding}px;
       border-radius: ${radius}px;
-      background: rgba(10, 16, 28, 0.78);
+      background: linear-gradient(135deg, rgba(9, 27, 22, 0.94), rgba(16, 43, 35, 0.88));
+      border: ${Math.max(1, Math.round(scale))}px solid rgba(255, 255, 255, 0.20);
+      box-shadow: 0 ${Math.max(8, Math.round(14 * scale))}px ${Math.max(20, Math.round(42 * scale))}px rgba(0, 0, 0, 0.30);
       color: #fff;
+    }
+    .term-panel::before {
+      content: "";
+      position: absolute;
+      inset-inline-start: ${Math.max(7, Math.round(12 * scale))}px;
+      top: 24%;
+      bottom: 24%;
+      width: ${Math.max(3, Math.round(5 * scale))}px;
+      border-radius: 999px;
+      background: #d6b15f;
     }
     .term-text {
       display: -webkit-box;
@@ -172,6 +184,7 @@ function renderDocument(
       line-height: 1.32;
       letter-spacing: 0;
       text-align: center;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
       text-overflow: clip;
       unicode-bidi: plaintext;
       white-space: normal;

@@ -82,6 +82,28 @@ describe("AI video owned object admin access", () => {
     expect(mocks.createReadStream).not.toHaveBeenCalled();
   });
 
+  it("allows a non-admin owner to download an economical narrated-image video", async () => {
+    mocks.access.mockResolvedValue(false);
+
+    const response = await request(app(42))
+      .get("/objects/uploads/ai-video-economy/42/projects/9/render.mp4");
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe("https://storage.example/signed");
+    expect(mocks.access).not.toHaveBeenCalled();
+    expect(mocks.getFile).toHaveBeenCalledWith(
+      "/objects/uploads/ai-video-economy/42/projects/9/render.mp4",
+    );
+  });
+
+  it("hides another teacher's economical video", async () => {
+    const response = await request(app(7))
+      .get("/objects/uploads/ai-video-economy/42/projects/9/render.mp4");
+
+    expect(response.status).toBe(404);
+    expect(mocks.getFile).not.toHaveBeenCalled();
+  });
+
   it("preserves owner-hiding 404 for a different admin", async () => {
     const response = await request(app(7))
       .get("/objects/uploads/ai-video/42/files/render.mp4");

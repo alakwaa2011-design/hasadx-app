@@ -202,12 +202,14 @@ async function serveObject(req: Request, res: Response) {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
-    const aiVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
+    const economyVideoOwner = wildcardPath.match(/^uploads\/ai-video-economy\/(\d+)\//)?.[1];
+    const advancedVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
+    const aiVideoOwner = economyVideoOwner ?? advancedVideoOwner;
     if (aiVideoOwner && Number(aiVideoOwner) !== req.session?.teacherId) {
       res.status(404).json({ error: "Object not found" });
       return;
     }
-    if (aiVideoOwner && !(await hasAiVideoAdminAccess(req.session.teacherId!))) {
+    if (advancedVideoOwner && !(await hasAiVideoAdminAccess(req.session.teacherId!))) {
       res.status(403).json({ error: "ADMIN_ONLY" });
       return;
     }
