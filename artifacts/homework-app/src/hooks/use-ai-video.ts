@@ -74,9 +74,10 @@ export function shouldHydrateAiVideoEditor(input: {
   return !input.isDirty && input.currentContentKey !== input.nextContentKey;
 }
 
-export function useAiVideoProjects() {
+export function useAiVideoProjects(enabled = true) {
   return useQuery({
     queryKey: ["ai-video-projects"],
+    enabled,
     queryFn: async (): Promise<AiVideoProject[]> => {
       const res = await fetch(`${API_BASE}/api/ai-video/projects`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch projects");
@@ -93,7 +94,7 @@ export function useAiVideoProjects() {
   });
 }
 
-export function useAiVideoProject(id: number | null) {
+export function useAiVideoProject(id: number | null, enabled = true) {
   return useQuery({
     queryKey: ["ai-video-project", id],
     queryFn: async (): Promise<AiVideoProject> => {
@@ -102,7 +103,7 @@ export function useAiVideoProject(id: number | null) {
       if (!res.ok) throw new Error("Failed to fetch project");
       return res.json();
     },
-    enabled: !!id,
+    enabled: enabled && !!id,
     refetchInterval: (query) => {
       if (query.state.data?.status === "draft" || query.state.data?.status === "rendering") {
         return 3000;

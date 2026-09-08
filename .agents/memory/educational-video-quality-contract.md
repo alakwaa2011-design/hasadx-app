@@ -32,3 +32,9 @@ Estimated words-per-second are planning guidance, never a hard narration-plan va
 **Why:** treating conservative word estimates as hard limits sent short Arabic sentences through repeated plan rejection before their audio could be measured. Generic rejection feedback hid whether the problem was metadata or just one extra word.
 
 **How to apply:** allow plausibly short sentences to reach measurement, normalize harmless ordering/extra metadata, keep identity and semantic-coverage checks, and report specific invalid fields without logging lesson content.
+
+Keep AI video production administrator-only unless the owner explicitly asks to reopen it to teachers; this does not restrict the separate interactive-video lesson tool.
+
+**Why:** the owner explicitly restricted this generator. Fixing its generation quality or completing a phase is not permission to expand access again.
+
+**How to apply:** preserve the access restriction when changing discovery, navigation, production routes, or generated-media serving.

@@ -14,6 +14,10 @@ vi.mock("../lib/objectStorage", () => ({
   },
 }));
 
+vi.mock("../lib/ai-video-access", () => ({
+  hasAiVideoAdminAccess: vi.fn(async () => true),
+}));
+
 import aiVideoProjectsRouter from "../routes/ai-video-projects";
 import { AI_VIDEO_SOURCE_IMAGE_MAX_BYTES } from "../lib/ai-video-source-images";
 

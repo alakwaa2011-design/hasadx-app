@@ -103,6 +103,23 @@ function buttonContaining(text: string) {
   ) as HTMLButtonElement | undefined;
 }
 
+function buttonWithLabel(label: string) {
+  return container.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement | null;
+}
+
+function inputWithLabel(label: string) {
+  return container.querySelector(`input[aria-label="${label}"]`) as HTMLInputElement | null;
+}
+
+function changeInput(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 async function renderTemplate(template: ReturnType<typeof makeTemplate>) {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
     ok: true,
@@ -198,5 +215,153 @@ describe("WheelPlay turn modes", () => {
     const leftPoints = labels.find((label) => label.value === "300");
     expect(leftTitle?.x).toBeLessThan(canvasCenterX);
     expect(leftPoints).toBeUndefined();
+  });
+});
+
+describe("WheelPlay manual score editing", () => {
+  it("opens with the current score focused and selected, then commits an Enter edit without changing the active team", async () => {
+    await renderTemplate(makeTemplate({
+      turnMode: "team_first",
+      pointsMode: "uniform",
+      uniformPoints: 100,
+    }));
+
+    await act(async () => buttonWithLabel("Edit score: Beta")!.click());
+
+    const input = inputWithLabel("Score: Beta")!;
+    expect(input).toBeTruthy();
+    expect(input.value).toBe("0");
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe(1);
+
+    await act(async () => {
+      changeInput(input, "125");
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+
+    expect(inputWithLabel("Score: Beta")).toBeFalsy();
+    expect(buttonWithLabel("Edit score: Beta")?.textContent).toContain("125");
+    expect(container.textContent).toContain("TURN NOW:");
+    expect(container.textContent).toMatch(/TURN NOW:\s*Alpha/);
+    expect(buttonWithLabel("Edit score: Alpha")?.closest('[role="button"]')?.textContent).toContain("TURN NOW");
+  });
+
+  it("commits normalized Arabic and Persian digits on blur for an additional team", async () => {
+    await renderTemplate(makeTemplate({ turnMode: "team_first" }));
+
+    await act(async () => buttonWithLabel("Edit score: Gamma")!.click());
+    const input = inputWithLabel("Score: Gamma")!;
+    await act(async () => {
+      changeInput(input, "١۲٣");
+      input.blur();
+    });
+
+    expect(inputWithLabel("Score: Gamma")).toBeFalsy();
+    expect(buttonWithLabel("Edit score: Gamma")?.textContent).toContain("123");
+    expect(container.textContent).toMatch(/TURN NOW:\s*Alpha/);
+  });
+
+  it("cancels an edit with Escape and does not let the key select the edited team", async () => {
+    await renderTemplate(makeTemplate({ turnMode: "team_first" }));
+
+    await act(async () => buttonWithLabel("Edit score: Beta")!.click());
+    const input = inputWithLabel("Score: Beta")!;
+    await act(async () => {
+      changeInput(input, "900");
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    expect(inputWithLabel("Score: Beta")).toBeFalsy();
+    expect(buttonWithLabel("Edit score: Beta")?.textContent).toContain("0");
+    expect(container.textContent).toMatch(/TURN NOW:\s*Alpha/);
+    expect(buttonWithLabel("Edit score: Alpha")?.closest('[role="button"]')?.textContent).toContain("TURN NOW");
+  });
+
+  it.each(["", "-1", "1.5", "9007199254740992"])(
+    "keeps the prior score when %j is committed",
+    async (invalidValue) => {
+      await renderTemplate(makeTemplate({ turnMode: "team_first" }));
+
+      await act(async () => buttonWithLabel("Edit score: Alpha")!.click());
+      let input = inputWithLabel("Score: Alpha")!;
+      await act(async () => {
+        changeInput(input, "42");
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+      expect(buttonWithLabel("Edit score: Alpha")?.textContent).toContain("42");
+
+      await act(async () => buttonWithLabel("Edit score: Alpha")!.click());
+      input = inputWithLabel("Score: Alpha")!;
+      await act(async () => {
+        changeInput(input, invalidValue);
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+
+      expect(inputWithLabel("Score: Alpha")).toBeFalsy();
+      expect(buttonWithLabel("Edit score: Alpha")?.textContent).toContain("42");
+    },
+  );
+
+  it("adds a uniform question award to a manually edited score", async () => {
+    await renderTemplate(makeTemplate({
+      turnMode: "team_first",
+      pointsMode: "uniform",
+      uniformPoints: 100,
+    }));
+
+    await act(async () => buttonWithLabel("Edit score: Alpha")!.click());
+    const input = inputWithLabel("Score: Alpha")!;
+    await act(async () => {
+      changeInput(input, "250");
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+
+    await act(async () => {
+      buttonContaining("Spin the Wheel")!.click();
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    await act(async () => buttonContaining("+100 · Alpha")!.click());
+
+    expect(buttonWithLabel("Edit score: Alpha")?.textContent).toContain("350");
+    expect(toast.success).toHaveBeenCalledWith("+100 to Alpha");
+  });
+});
+
+describe("WheelPlay center spin control", () => {
+  it("starts the same spin and keeps both spin controls disabled in flight, while settling, and with the result open", async () => {
+    let animationCallback: FrameRequestCallback | undefined;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      animationCallback = callback;
+      return 1;
+    });
+    await renderTemplate(makeTemplate({ turnMode: "team_first" }));
+
+    const centerButton = buttonWithLabel("Spin the wheel from Hasaad")!;
+    const bottomButton = buttonContaining("Spin the Wheel")!;
+    expect(centerButton).toBeTruthy();
+
+    await act(async () => centerButton.click());
+    expect(centerButton.disabled).toBe(true);
+    expect(bottomButton.disabled).toBe(true);
+
+    await act(async () => animationCallback!(3000));
+    expect(centerButton.disabled).toBe(true);
+    expect(bottomButton.disabled).toBe(true);
+    expect(container.textContent).not.toMatch(/First question|Second question/);
+
+    await act(async () => vi.advanceTimersByTimeAsync(350));
+    expect(container.textContent).toMatch(/First question|Second question/);
+    expect(centerButton.disabled).toBe(true);
+    expect(bottomButton.disabled).toBe(true);
+  });
+
+  it("provides the Arabic center-button label for Arabic games", async () => {
+    await renderTemplate({
+      ...makeTemplate({ turnMode: "team_first" }),
+      language: "ar",
+    });
+
+    expect(buttonWithLabel("تدوير العجلة من حصاد")).toBeTruthy();
   });
 });

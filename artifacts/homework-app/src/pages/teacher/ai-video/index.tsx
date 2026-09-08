@@ -20,13 +20,17 @@ export default function AiVideoIndexPage() {
   const [search, setSearch] = useState("");
 
   const { data: currentUser, isLoading: authLoading, error: authError } = useGetCurrentTeacher({ query: { retry: false } as any });
+  const isAdmin = currentUser?.isAdmin === true;
   useEffect(() => {
-    if (!authLoading && (authError || !currentUser)) {
+    if (authLoading) return;
+    if (authError || !currentUser) {
       setLocation("/login?redirect=" + encodeURIComponent("/teacher/ai-video"));
+    } else if (!isAdmin) {
+      setLocation("/teacher");
     }
-  }, [authLoading, authError, currentUser, setLocation]);
+  }, [authLoading, authError, currentUser, isAdmin, setLocation]);
 
-  const { data: projects = [], isLoading } = useAiVideoProjects();
+  const { data: projects = [], isLoading } = useAiVideoProjects(!authLoading && !authError && isAdmin);
 
   const filteredProjects = useMemo(() => {
     if (!search.trim()) return projects;
@@ -54,6 +58,9 @@ export default function AiVideoIndexPage() {
         return { label: status, color: "text-slate-500 bg-slate-100", icon: LayoutTemplate };
     }
   };
+
+  if (authLoading) return <Layout><div className="min-h-[100dvh]" /></Layout>;
+  if (authError || !currentUser || !isAdmin) return null;
 
   return (
     <Layout>

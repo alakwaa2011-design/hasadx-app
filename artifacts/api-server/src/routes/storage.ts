@@ -3,6 +3,7 @@ import { Readable } from "stream";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { featureAccess } from "@workspace/billing";
+import { hasAiVideoAdminAccess } from "../lib/ai-video-access";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -204,6 +205,10 @@ async function serveObject(req: Request, res: Response) {
     const aiVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
     if (aiVideoOwner && Number(aiVideoOwner) !== req.session?.teacherId) {
       res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    if (aiVideoOwner && !(await hasAiVideoAdminAccess(req.session.teacherId!))) {
+      res.status(403).json({ error: "ADMIN_ONLY" });
       return;
     }
     const objectPath = `/objects/${wildcardPath}`;

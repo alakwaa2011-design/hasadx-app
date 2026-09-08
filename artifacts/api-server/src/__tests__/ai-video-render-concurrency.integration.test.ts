@@ -114,6 +114,10 @@ vi.mock("../lib/rate-limiter", () => ({
   sensitiveActionLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
+vi.mock("../lib/ai-video-access", () => ({
+  hasAiVideoAdminAccess: vi.fn(async () => true),
+}));
+
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: { chat: { completions: { create: vi.fn() } } },
 }));

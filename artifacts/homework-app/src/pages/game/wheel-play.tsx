@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/sonner";
 import { playVictoryFanfare, playCorrectSound, playGiftSound, playNotificationSound } from "@/lib/game-sounds";
 import { QuestionImage } from "@/components/game/question-image";
 import { useWheelAudio } from "@/lib/wheel-audio";
+import { WheelScoreEditor } from "@/components/game/wheel-score-editor";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -352,25 +353,8 @@ export default function WheelPlay() {
     });
     ctx.restore();
 
-    // Center hub
-    ctx.beginPath();
-    ctx.arc(cx, cy, 42, 0, Math.PI * 2);
-    const grad = ctx.createRadialGradient(cx, cy - 8, 4, cx, cy, 42);
-    grad.addColorStop(0, "#fff");
-    grad.addColorStop(0.6, BRAND_GOLD);
-    grad.addColorStop(1, "#8a6418");
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = BRAND_PRIMARY;
-    ctx.stroke();
-
-    // Hub label — bilingual based on template language.
-    ctx.fillStyle = BRAND_PRIMARY;
-    ctx.font = "900 16px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(template.language === "ar" ? "حصاد" : "Hasaad", cx, cy);
+    // The hub is an accessible HTML button above the canvas, so its brand
+    // typography stays sharp and the center supports touch and keyboard input.
   }, [template, usedIds]);
 
   // Initial draw + redraw on rotation/used updates
@@ -380,7 +364,7 @@ export default function WheelPlay() {
 
   /* ── Spin animation ───────────────────────────────────────── */
   const spin = useCallback(() => {
-    if (!template || spinning) return;
+    if (!template || spinning || showResult || showFinal) return;
     const turnMode = template.config.turnMode ?? "wheel_first";
     if (turnMode === "team_first" && activeTeamIndex === null) {
       toast.error(ar ? "اختر الفريق صاحب الدور أولاً" : "Choose the active team first");
@@ -422,20 +406,20 @@ export default function WheelPlay() {
       if (t < 1) {
         animFrameRef.current = requestAnimationFrame(tick);
       } else {
-        setSpinning(false);
         audio.stopTicking();
         setResultIndex(targetIdx);
         setSwapPicks([]);
         setShowAnswer(false);
         // Slight delay so the wheel visibly settles before the modal opens.
         scheduleTimeout(() => {
+          setSpinning(false);
           setShowResult(true);
           if (soundOn) playNotificationSound();
         }, 350);
       }
     };
     animFrameRef.current = requestAnimationFrame(tick);
-  }, [template, spinning, usedIds, rotation, audio, scheduleTimeout, activeTeamIndex, ar]);
+  }, [template, spinning, showResult, showFinal, usedIds, rotation, audio, scheduleTimeout, activeTeamIndex, ar, soundOn]);
 
   useEffect(() => () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -581,6 +565,9 @@ export default function WheelPlay() {
 
   const resetGame = () => {
     if (!window.confirm(ar ? "إعادة بدء اللعبة؟ ستُمحى النقاط." : "Restart the game? Scores will reset.")) return;
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    audio.stopTicking();
+    setSpinning(false);
     clearAllTimeouts();
     setScores(new Array(template?.config.teamCount ?? 2).fill(0));
     setUsedIds(new Set());
@@ -654,6 +641,7 @@ export default function WheelPlay() {
   const winnerIdx = scores.length === 0 ? -1 : scores.reduce((best, v, i) => v > scores[best] ? i : best, 0);
   const turnMode = template.config.turnMode ?? "wheel_first";
   const isTeamFirst = turnMode === "team_first";
+  const spinDisabled = spinning || showResult || showFinal || segsLeft === 0 || (isTeamFirst && activeTeamIndex === null);
   const pointsMode = template.config.pointsMode ?? "varied";
   const pointsForQuestion = (segment: Segment) =>
     pointsMode === "uniform" ? (template.config.uniformPoints ?? 100) : segment.points;
@@ -743,7 +731,14 @@ export default function WheelPlay() {
               </>
             )}
           </div>
-          <span className={`${compact ? "text-xl" : "text-3xl sm:text-4xl"} font-black tabular-nums shrink-0`} style={{ color: isLeader || isActive ? BRAND_GOLD : "#fff" }}>{score}</span>
+          <WheelScoreEditor
+            score={score}
+            teamName={name}
+            ar={ar}
+            compact={compact}
+            color={isLeader || isActive ? BRAND_GOLD : "#fff"}
+            onSave={value => setScores(previous => previous.map((current, index) => index === teamIdx ? value : current))}
+          />
         </div>
         {isActive && (
           <div className="mt-3 rounded-lg px-2.5 py-1.5 text-center text-[11px] font-black border"
@@ -888,12 +883,38 @@ export default function WheelPlay() {
                   className="relative block mt-6 rounded-full"
                   style={{ width: wheelSize, height: wheelSize }}
                 />
+                <button
+                  type="button"
+                  onClick={spin}
+                  disabled={spinDisabled}
+                  aria-label={ar ? "تدوير العجلة من حصاد" : "Spin the wheel from Hasaad"}
+                  title={ar ? "اضغط على حصاد لتدوير العجلة" : "Press Hasaad to spin the wheel"}
+                  className="absolute left-1/2 z-10 flex h-[88px] w-[88px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-[3px] shadow-xl transition-[filter,scale] enabled:hover:brightness-110 enabled:active:scale-95 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/80"
+                  style={{
+                    top: wheelSize / 2 + 24,
+                    borderColor: BRAND_PRIMARY,
+                    color: BRAND_PRIMARY,
+                    background: `radial-gradient(circle at 40% 24%, #fff6d9, ${BRAND_GOLD} 70%, #8a6418)`,
+                    boxShadow: "0 4px 14px #0006, inset 0 1px 3px #fff9",
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={ar ? "text-[22px] font-extrabold leading-none" : "text-[12px] font-black tracking-[0.12em]"}
+                    style={{ fontFamily: "'Tajawal', sans-serif" }}
+                  >
+                    {ar ? "حــصــاد" : "HASAAD"}
+                  </span>
+                  <span aria-hidden="true" className="mt-1.5 text-[8px] font-black uppercase tracking-[0.22em]">
+                    {ar ? "HASAAD" : "SPIN"}
+                  </span>
+                </button>
               </div>
 
               <button
                 type="button"
                 onClick={spin}
-                disabled={spinning || segsLeft === 0 || (isTeamFirst && activeTeamIndex === null)}
+                disabled={spinDisabled}
                 className="mt-4 px-7 sm:px-10 py-3.5 rounded-2xl font-black text-lg sm:text-xl shadow-2xl flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 active:scale-95"
                 style={{
                   background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})`,

@@ -21,12 +21,20 @@ import {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-function AdminOnly({ children }: { children: ReactNode }) {
+function AdminOnly({
+  children,
+  requireDatabaseFlag = false,
+}: {
+  children: ReactNode;
+  requireDatabaseFlag?: boolean;
+}) {
   const [, setLocation] = useLocation();
   const { data: user, isLoading } = useGetCurrentTeacher({
     query: { retry: false } as any,
   });
-  const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
+  const isAdmin = requireDatabaseFlag
+    ? user?.isAdmin === true
+    : Boolean(user?.isAdmin) || user?.role === "admin";
 
   useEffect(() => {
     if (!isLoading && !isAdmin) setLocation("/teacher");
@@ -464,8 +472,12 @@ function Router() {
         </Route>
         <Route path="/teacher/video-lesson/new" component={CreateVideoLesson} />
         <Route path="/teacher/create-video-lesson" component={CreateVideoLesson} />
-        <Route path="/teacher/ai-video" component={AiVideoIndex} />
-        <Route path="/teacher/ai-video/new" component={AiVideoNew} />
+        <Route path="/teacher/ai-video">
+          <AdminOnly requireDatabaseFlag><AiVideoIndex /></AdminOnly>
+        </Route>
+        <Route path="/teacher/ai-video/new">
+          <AdminOnly requireDatabaseFlag><AiVideoNew /></AdminOnly>
+        </Route>
         <Route path="/teacher/video-lesson/:id/live" component={VideoLive} />
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
         <Route path="/teacher/parent-messages" component={ParentMessagesPage} />

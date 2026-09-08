@@ -38,6 +38,7 @@ import {
   startAiVideoRender,
 } from "../lib/ai-video-renderer";
 import { sensitiveActionLimiter } from "../lib/rate-limiter";
+import { hasAiVideoAdminAccess } from "../lib/ai-video-access";
 import {
   AI_VIDEO_SOURCE_IMAGE_MAX_BYTES,
   InvalidAiVideoSourceImageError,
@@ -48,9 +49,19 @@ import {
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
 
-function requireTeacher(req: Request, res: Response, next: NextFunction): void {
+async function requireAiVideoAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.session?.teacherId) {
     res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+  try {
+    if (!(await hasAiVideoAdminAccess(req.session.teacherId))) {
+      res.status(403).json({ message: "أداة إنتاج الفيديو بالذكاء الاصطناعي متاحة للمسؤول فقط", code: "ADMIN_ONLY" });
+      return;
+    }
+  } catch (err) {
+    req.log.error({ err }, "AI video access verification failed");
+    res.status(503).json({ message: "تعذّر التحقق من صلاحية الوصول" });
     return;
   }
   next();
@@ -132,7 +143,7 @@ async function validateSourceImages(paths: string[], teacherId: number): Promise
   }));
 }
 
-router.use("/ai-video", requireTeacher);
+router.use("/ai-video", requireAiVideoAdmin);
 
 const aiVideoImageUpload = multer({
   storage: multer.memoryStorage(),

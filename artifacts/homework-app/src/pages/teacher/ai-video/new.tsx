@@ -55,13 +55,20 @@ export default function AiVideoStudio() {
   const id = useQueryId();
 
   const { data: currentUser, isLoading: authLoading, error: authError } = useGetCurrentTeacher({ query: { retry: false } as any });
+  const isAdmin = currentUser?.isAdmin === true;
   useEffect(() => {
-    if (!authLoading && (authError || !currentUser)) {
+    if (authLoading) return;
+    if (authError || !currentUser) {
       setLocation("/login?redirect=" + encodeURIComponent(window.location.pathname + window.location.search));
+    } else if (!isAdmin) {
+      setLocation("/teacher");
     }
-  }, [authLoading, authError, currentUser, setLocation]);
+  }, [authLoading, authError, currentUser, isAdmin, setLocation]);
 
-  const { data: project, isLoading: loadingProject } = useAiVideoProject(id);
+  const { data: project, isLoading: loadingProject } = useAiVideoProject(
+    id,
+    !authLoading && !authError && isAdmin,
+  );
   const createMutation = useCreateAiVideoStoryboard();
   const updateMutation = useUpdateAiVideoProject();
   const renderMutation = useRenderAiVideoProject();
@@ -309,7 +316,7 @@ export default function AiVideoStudio() {
     setEditScenes(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
   };
 
-  if (loadingProject) {
+  if (authLoading || (isAdmin && loadingProject)) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[100dvh]">
@@ -318,6 +325,8 @@ export default function AiVideoStudio() {
       </Layout>
     );
   }
+
+  if (authError || !currentUser || !isAdmin) return null;
 
   const currentStatus = project?.status || "draft";
   const hasRenderableStoryboard = Boolean(project?.storyboard && project.storyboard.scenes.length >= 5);
