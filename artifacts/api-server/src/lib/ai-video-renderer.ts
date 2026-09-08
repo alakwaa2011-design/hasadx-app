@@ -271,7 +271,7 @@ export async function failStaleAiVideoStoryboards(projectId?: number): Promise<n
            )
            OR (
              storyboard_lease_id IS NULL
-             AND ${row.storyboard_lease_id} IS NULL
+             AND ${row.storyboard_lease_id}::text IS NULL
              AND updated_at <= ${legacyStaleBefore}
            )
          )
@@ -349,7 +349,7 @@ export async function failStaleAiVideoRenders(): Promise<number> {
            (render_lease_id = ${row.render_lease_id} AND render_lease_expires_at <= NOW())
            OR (
              render_lease_id IS NULL
-             AND ${row.render_lease_id} IS NULL
+             AND ${row.render_lease_id}::text IS NULL
              AND updated_at <= ${legacyStaleBefore}
            )
          )

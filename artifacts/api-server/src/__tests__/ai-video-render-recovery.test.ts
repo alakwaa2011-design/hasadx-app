@@ -231,3 +231,62 @@ describe("AI video storyboard lease recovery", () => {
     expect(mocks.updateSets).toContainEqual(expect.objectContaining({ status: "failed" }));
   });
 });
+
+describe.each([
+  {
+    stage: "render",
+    recover: () => failStaleAiVideoRenders(),
+    row: {
+      id: project.id,
+      teacher_id: project.teacherId,
+      render_idempotency_key: project.renderIdempotencyKey,
+      render_lease_id: project.renderLeaseId,
+    },
+    requestId: aiVideoRenderCreditRequestId(project.teacherId, project.id, project.renderIdempotencyKey),
+  },
+  {
+    stage: "storyboard",
+    recover: () => failStaleAiVideoStoryboards(project.id),
+    row: {
+      id: project.id,
+      teacher_id: project.teacherId,
+      storyboard_idempotency_key: project.storyboardIdempotencyKey,
+      storyboard_lease_id: "storyboard-worker",
+    },
+    requestId: aiVideoStoryboardCreditRequestId(project.teacherId, project.storyboardIdempotencyKey),
+  },
+])("$stage recovery settlement boundaries", ({ recover, row, requestId }) => {
+  it("does not settle credits or change state when another worker owns the claim", async () => {
+    mocks.executeRows = [[row], []];
+
+    await expect(recover()).resolves.toBe(0);
+
+    expect(mocks.getHoldStatus).not.toHaveBeenCalled();
+    expect(mocks.refund).not.toHaveBeenCalled();
+    expect(mocks.compensate).not.toHaveBeenCalled();
+    expect(mocks.updateSets).toEqual([]);
+  });
+
+  it("uses compensation rather than refund for a captured hold", async () => {
+    mocks.executeRows = [[row], [{ id: project.id }]];
+    mocks.getHoldStatus.mockResolvedValue("completed");
+    mocks.compensate.mockResolvedValue({ compensated: true });
+
+    await expect(recover()).resolves.toBe(1);
+
+    expect(mocks.compensate).toHaveBeenCalledExactlyOnceWith(requestId, expect.any(String));
+    expect(mocks.refund).not.toHaveBeenCalled();
+    expect(mocks.updateSets).toContainEqual(expect.objectContaining({ status: "failed" }));
+  });
+
+  it("does not expose retry while captured-credit compensation has failed", async () => {
+    mocks.executeRows = [[row], [{ id: project.id }]];
+    mocks.getHoldStatus.mockResolvedValue("completed");
+    mocks.compensate.mockRejectedValue(new Error("database unavailable"));
+
+    await expect(recover()).resolves.toBe(0);
+
+    expect(mocks.refund).not.toHaveBeenCalled();
+    expect(mocks.updateSets).toEqual([]);
+  });
+});
