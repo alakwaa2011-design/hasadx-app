@@ -3,7 +3,8 @@ import { promisify } from "node:util";
 import { join } from "node:path";
 import { generateAiVideoMotion } from "./ai-video-motion";
 import { renderAiVideoTerm } from "./ai-video-typography";
-import { fitAiVideoNarration, narrationWindow, VIDEO_TRANSITION_SECONDS, type VideoVoice } from "./ai-video-timing";
+import { VIDEO_TRANSITION_SECONDS, type VideoVoice } from "./ai-video-timing";
+import { prepareAiVideoNarration } from "./ai-video-narration-preflight";
 import { sanitizeStoryboard, type AiVideoBrief, type AiVideoStoryboard } from "./ai-video-schemas";
 
 const execFileAsync = promisify(execFile);
@@ -92,8 +93,8 @@ type CompositionOptions = {
 export async function composeAiVideo(options: CompositionOptions): Promise<string> {
   const { brief, dir, assertActive } = options;
   // Recompute the timeline for old drafts and never trust timestamps from clients.
-  const storyboard = sanitizeStoryboard(options.storyboard, brief);
-  if (storyboard.scenes.some((scene) => scene.sourceImage)) {
+  const sanitized = sanitizeStoryboard(options.storyboard, brief);
+  if (sanitized.scenes.some((scene) => scene.sourceImage)) {
     throw new Error("هذه المرحلة تنتج الحركة من النص فقط. أنشئ مخططاً نصياً دون صور مرجعية. / Create a text-only storyboard for generated motion.");
   }
   const timeout = (cap: number) => {
@@ -102,21 +103,9 @@ export async function composeAiVideo(options: CompositionOptions): Promise<strin
     return Math.min(cap, remaining);
   };
   const { width, height } = videoDimensions(brief.aspectRatio);
-  const timing: Array<{ lead: number; speech: number }> = [];
-  let elapsed = 0;
-  // Fit ALL speech before incurring the more expensive video generation calls.
+  // Whole-lesson redistribution + real WAV checks are a barrier before ANY motion.
+  const { storyboard, timing } = await prepareAiVideoNarration({ ...options, storyboard: sanitized });
   for (const [index, scene] of storyboard.scenes.entries()) {
-    const window = narrationWindow(scene.durationSeconds, index, storyboard.scenes.length);
-    const fitted = await fitAiVideoNarration({
-      narration: scene.narration, objective: scene.objective, language: brief.language,
-      budgetSeconds: window.budget, voice: options.voice,
-      outputPath: join(dir, `audio-${index}.wav`), timeoutMs: timeout(330_000), assertActive,
-    });
-    scene.narration = fitted.narration;
-    scene.narrationStartTime = Number((elapsed + window.lead).toFixed(3));
-    scene.narrationEndTime = Number((elapsed + window.lead + fitted.durationSeconds).toFixed(3));
-    scene.audioDurationSeconds = fitted.durationSeconds;
-    timing.push({ lead: window.lead, speech: fitted.durationSeconds });
     // Verify font availability and render all labels before paid motion requests.
     if (brief.captions && scene.onScreenText.trim()) {
       await renderAiVideoTerm({
@@ -124,7 +113,6 @@ export async function composeAiVideo(options: CompositionOptions): Promise<strin
         outputPath: join(dir, `term-${index}.png`),
       });
     }
-    elapsed += scene.durationSeconds;
   }
   await assertActive();
   await options.persistStoryboard(storyboard);

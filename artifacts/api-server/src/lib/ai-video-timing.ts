@@ -37,7 +37,7 @@ export async function probeAudioSeconds(path: string): Promise<number> {
   return duration;
 }
 
-type FitOptions = {
+export type FitOptions = {
   narration: string;
   objective: string;
   language: "ar" | "en";
@@ -46,13 +46,28 @@ type FitOptions = {
   outputPath: string;
   timeoutMs: number;
   assertActive: () => Promise<void>;
+  maxAttempts?: number;
+  initialMaxWords?: number;
+  safetySeconds?: number;
 };
-type FitDependencies = {
+export type FitDependencies = {
   speak: (text: string, voice: VideoVoice, timeoutMs: number) => Promise<Buffer>;
   rewrite: (text: string, options: { objective: string; language: string; maxWords: number; expand: boolean; timeoutMs: number }) => Promise<string>;
   write: (path: string, data: Buffer) => Promise<unknown>;
   probe: (path: string) => Promise<number>;
 };
+
+export class NarrationNeedsReflowError extends Error {
+  constructor(
+    public readonly narration: string,
+    public readonly durationSeconds: number,
+    public readonly maxWords: number,
+    public readonly attempts: number,
+  ) {
+    super("Internal coordinator needs reflow: complete narration does not fit the available scene budget.");
+    this.name = "NarrationNeedsReflowError";
+  }
+}
 
 const fitDependencies: FitDependencies = {
   speak: (text, voice, timeoutMs) => textToSpeech(text, voice, "wav", timeoutMs),
@@ -70,7 +85,7 @@ const fitDependencies: FitDependencies = {
           language: options.language,
           objective: options.objective,
           narration: text,
-          instruction: options.expand ? "Improve this unusually short narration with one useful clarification already implicit in this same concept." : "Concisely rewrite this narration as a complete natural sentence, retaining its essential information.",
+          instruction: "Concisely rewrite this narration as a complete natural sentence, retaining its essential information.",
           maximumWords: options.maxWords,
         }) },
       ],
@@ -88,6 +103,14 @@ export async function fitAiVideoNarration(
   options: FitOptions,
   dependencies: FitDependencies = fitDependencies,
 ): Promise<{ narration: string; durationSeconds: number; attempts: number }> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const effectiveBudget = options.budgetSeconds - (options.safetySeconds ?? 0.15);
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error("Narration fitting maxAttempts must be a positive integer");
+  }
+  if (!Number.isFinite(effectiveBudget) || effectiveBudget <= 0) {
+    throw new Error("Narration fitting has no usable speech budget");
+  }
   const deadline = Date.now() + options.timeoutMs;
   const timeout = () => {
     const remaining = deadline - Date.now();
@@ -95,34 +118,81 @@ export async function fitAiVideoNarration(
     return Math.min(100_000, remaining);
   };
   let narration = options.narration.trim();
-  let maxWords = narrationWordBudget(options.budgetSeconds, options.language);
-  const initialWords = narrationWords(narration);
-  if (initialWords > maxWords || initialWords < maxWords * 0.4) {
-    await options.assertActive();
-    narration = await dependencies.rewrite(narration, {
-      objective: options.objective, language: options.language,
-      maxWords, expand: initialWords < maxWords * 0.4, timeoutMs: timeout(),
-    });
+  let maxWords = options.initialMaxWords ?? narrationWordBudget(effectiveBudget, options.language);
+  if (!Number.isInteger(maxWords) || maxWords < 1) {
+    throw new Error("Narration fitting initialMaxWords must be a positive integer");
   }
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+
+  // A correction is another text-only rewrite, never another speech request.
+  // Keeping this bound separate from maxAttempts prevents malformed model output
+  // from consuming audio attempts or reaching TTS.
+  const rewriteToTarget = async (source: string, targetWords: number): Promise<string | undefined> => {
+    const sourceWords = narrationWords(source);
+    if (sourceWords <= targetWords) return source;
+    for (let correction = 0; correction < 3; correction += 1) {
+      await options.assertActive();
+      const rewritten = await dependencies.rewrite(source, {
+        objective: options.objective,
+        language: options.language,
+        maxWords: targetWords,
+        expand: false,
+        timeoutMs: timeout(),
+      });
+      await options.assertActive();
+      if (typeof rewritten !== "string") continue;
+      const candidate = rewritten.trim();
+      const candidateWords = narrationWords(candidate);
+      if (!candidate || candidate.length > 1500 || candidateWords > targetWords || candidateWords >= sourceWords) {
+        continue;
+      }
+      return candidate;
+    }
+    return undefined;
+  };
+
+  if (narrationWords(narration) > maxWords) {
+    const rewritten = await rewriteToTarget(narration, maxWords);
+    if (!rewritten) throw new Error("Narration fitting returned no valid shorter text");
+    narration = rewritten;
+  }
+
+  let lastMeasuredNarration = narration;
+  let lastMeasuredDuration = 0;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await options.assertActive();
     const audio = await dependencies.speak(narration, options.voice, timeout());
+    await options.assertActive();
     if (!audio.length) throw new Error("Speech provider returned empty audio");
     await dependencies.write(options.outputPath, audio);
     const measured = await dependencies.probe(options.outputPath);
     if (!Number.isFinite(measured) || measured < 0.15) throw new Error("Speech duration is invalid");
-    if (measured <= options.budgetSeconds) {
+    lastMeasuredNarration = narration;
+    lastMeasuredDuration = measured;
+    if (measured <= effectiveBudget) {
       // Short speech is left at its natural speed; padding belongs to the visual timeline.
       return { narration, durationSeconds: measured, attempts: attempt };
     }
-    if (attempt === 3) break;
-    maxWords = Math.max(1, Math.min(maxWords - 1,
-      Math.floor(narrationWords(narration) * options.budgetSeconds / measured * 0.85)));
-    await options.assertActive();
-    narration = await dependencies.rewrite(narration, {
-      objective: options.objective, language: options.language, maxWords,
-      expand: false, timeoutMs: timeout(),
-    });
+
+    const spokenWords = narrationWords(narration);
+    maxWords = Math.max(0, Math.min(
+      maxWords - 1,
+      spokenWords - 1,
+      Math.floor(spokenWords * effectiveBudget / measured * 0.85),
+    ));
+    if (attempt === maxAttempts || maxWords < 1) {
+      throw new NarrationNeedsReflowError(
+        lastMeasuredNarration, lastMeasuredDuration, maxWords, attempt,
+      );
+    }
+    const rewritten = await rewriteToTarget(narration, maxWords);
+    if (!rewritten) {
+      throw new NarrationNeedsReflowError(
+        lastMeasuredNarration, lastMeasuredDuration, maxWords, attempt,
+      );
+    }
+    narration = rewritten;
   }
-  throw new Error("تعذّر إدخال التعليق كاملاً في زمن المشهد بعد إعادة صياغته. اختصر التعليق ثم أعد المحاولة. / Complete narration does not fit this scene.");
+  throw new NarrationNeedsReflowError(
+    lastMeasuredNarration, lastMeasuredDuration, maxWords, maxAttempts,
+  );
 }

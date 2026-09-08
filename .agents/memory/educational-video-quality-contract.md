@@ -20,3 +20,9 @@ For fal queue tracking, trust the attached connector contract over generic API a
 **Why:** a review incorrectly recommended retaining the model subpath in tracking URLs. The connector documents that this produces empty 405 responses; following that recommendation would break work after a paid submission.
 
 **How to apply:** verify against the provider/connector contract before changing queue path normalization, and never use a paid render merely to probe endpoint shapes.
+
+Treat narration timing as a whole-lesson allocation problem, not an isolated retry count. Never lengthen an already-complete short narration merely to fill a scene.
+
+**Why:** per-scene word-rate estimates and a few isolated rewrites still caused reported failures on short lessons. Repeated shortening can also lose meaning when an overloaded scene could share its content with neighbouring scenes.
+
+**How to apply:** preserve the original lesson as the semantic source during redistribution, align visual prompts with moved content, learn capacity from measured speech, and validate every final recording before any paid motion request.

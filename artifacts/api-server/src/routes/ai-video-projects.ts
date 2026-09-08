@@ -81,7 +81,8 @@ function publicProject(project: AiVideoProject) {
 
 function storyboardPrompt(brief: AiVideoBrief): string {
   const sceneCount = AI_VIDEO_TARGET_SCENE_COUNTS[brief.durationSeconds];
-  const speechRate = brief.language === "ar" ? 2.0 : 2.3;
+  // Leave headroom for natural TTS; measured whole-lesson preflight is authoritative.
+  const speechRate = brief.language === "ar" ? 1.6 : 1.9;
   return [
     `Create a ${brief.language === "ar" ? "Modern Standard Arabic" : "English"} educational video storyboard.`,
     `Exact target duration: ${brief.durationSeconds} seconds, using exactly ${sceneCount} scenes of about 6 seconds each. Style: ${brief.visualStyle}.`,
@@ -90,7 +91,8 @@ function storyboardPrompt(brief: AiVideoBrief): string {
     "Phase 1 is text-to-video only. Set sourceImage to null in every scene; do not claim that reference images influence generated motion.",
     `Write natural narration at no more than ${speechRate.toFixed(1)} words per second (${brief.language === "ar" ? "Arabic" : "English"}).`,
     "Reserve a 0.3-second intro before narration in scene 1 and a 0.5-second lead in every later scene. Reserve a 0.35-second ending pause in intermediate scenes and a 0.9-second safe tail in the final scene.",
-    `For every scene, narration word count must be at most floor((scene duration - lead - tail) * ${speechRate.toFixed(1)}), using the lead and tail rules above.`,
+    `For every scene, narration word count must be at most floor((scene duration - lead - tail - 0.15) * ${speechRate.toFixed(1)}), using the lead and tail rules above.`,
+    "Distribute the essential lesson meaning across all scenes rather than packing a long explanation into one scene. Use complete short sentences. Never expand short complete narration merely to fill its time slot.",
     "Narration must be teachable, factual, age-neutral, and preserve the meaning and source context for every subject, not only selected examples.",
     "onScreenText must be a short keyword label of at most 7 words and 60 characters. Never copy or fall back to the full narration.",
     "Default transition to dissolve unless another transition is semantically necessary.",
