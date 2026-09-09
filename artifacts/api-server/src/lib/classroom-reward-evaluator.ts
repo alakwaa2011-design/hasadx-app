@@ -81,12 +81,16 @@ export async function evaluateClassroomRewardEvidence(tx: any, evidence: {
       await tx.execute(sql`SAVEPOINT classroom_reward_grant`);
       const student = (await tx.execute(sql`SELECT id,name,student_class,grade_level FROM students WHERE id=${evidence.studentId} AND teacher_id=${evidence.teacherId} FOR UPDATE`)).rows[0] as any;
       if (!student) throw new Error("student_not_owned");
+      const className = student.student_class ?? student.grade_level ?? null;
+      const teacherClass = className
+        ? (await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${evidence.teacherId} AND name=${className}`)).rows[0] as any
+        : null;
       const key = `rule:${rule.id}:source:${evidence.sourceType}:${evidence.sourceResultId}:student:${evidence.studentId}`;
       const grant = (await tx.execute(sql`INSERT INTO classroom_reward_transactions
         (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,
-         class_name_snapshot,reward_type_name_snapshot,category_snapshot,source_type,source_result_id,rule_id)
+         class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot,source_type,source_result_id,rule_id)
         VALUES (${evidence.teacherId},${student.id},${student.name},${rule.reward_type_id},${rule.amount},'grant',${key},
-          ${student.student_class ?? student.grade_level ?? null},${rule.reward_type_name},${rule.category_snapshot},
+          ${className},${teacherClass?.id ?? null},${rule.reward_type_name},${rule.category_snapshot},
           ${evidence.sourceType},${evidence.sourceResultId},${rule.id})
         ON CONFLICT (teacher_id,idempotency_key,student_id) DO NOTHING RETURNING *`)).rows[0] as any;
       if (!grant) throw new Error("grant_conflict");

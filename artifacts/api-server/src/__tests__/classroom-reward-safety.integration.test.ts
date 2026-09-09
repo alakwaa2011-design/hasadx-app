@@ -69,6 +69,11 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       "utf8",
     );
     await db.execute(sql.raw(goalsAndReversalsMigration));
+    const academicGoalsMigration = readFileSync(
+      new URL("../../../../scripts/migrations/2026-09-09-classroom-reward-goals.sql", import.meta.url),
+      "utf8",
+    );
+    await db.execute(sql.raw(academicGoalsMigration));
     await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS kids_profiles (
         id SERIAL PRIMARY KEY,
@@ -439,6 +444,9 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     const denied = await request(teacherApp()).post(`/api/classroom-rewards/classes/${className}/goals`)
       .send({title:"هدف خاطئ",targetPoints:5,studentId:outsider});
     expect(denied.status).toBe(403);
+    const otherClassId=Number((await db.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name='B'`)).rows[0].id);
+    await db.execute(sql`INSERT INTO classroom_reward_transactions(teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${goalStudent},'هدف',${rewardTypeId},9,'grant',${`goal-other-class:${nonce}`},'B',${otherClassId},'نوع آخر','test')`);
+    expect((await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/goals`)).body.goals[0].currentPoints).toBe(0);
     const validGrant = await request(teacherApp()).post("/api/classroom-rewards/grants")
       .send({className,studentIds:[goalStudent],typeId:rewardTypeId,idempotencyKey:`goal-grant-valid:${nonce}`});
     expect(validGrant.status).toBe(201);

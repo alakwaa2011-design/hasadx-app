@@ -387,6 +387,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           className: currentClass,
           goalId: editingGoal.id,
           title: data.title,
+          skill: data.skill,
           targetType: data.targetType,
           targetId: data.targetType === "student" ? Number(data.targetId) : null,
           targetPoints: data.targetPoints,
@@ -397,6 +398,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         await createGoalMutation.mutateAsync({
           className: currentClass,
           title: data.title,
+          skill: data.skill,
           targetType: data.targetType,
           targetId: data.targetType === "student" ? Number(data.targetId) : undefined,
           targetPoints: data.targetPoints,
@@ -910,6 +912,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7">
             {students.map((student: any) => {
               const isSelected = selectedIds.has(student.id);
+              const daysSinceReward = student.lastRewardAt ? Math.floor((Date.now() - new Date(student.lastRewardAt).getTime()) / 86400000) : null;
+              const goalPercent = student.goal ? Math.min(100, Math.round((Number(student.goal.progress || 0) / Number(student.goal.targetPoints || 1)) * 100)) : 0;
               return (
                 <div
                   key={student.id}
@@ -1001,6 +1005,23 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                             </span>
                           ))}
                       </div>
+                      {student.goal && (
+                        <div className="mt-2 w-full rounded-xl border border-emerald-100 bg-white/80 p-2 text-right">
+                          <div className="flex items-center justify-between gap-2 text-[10px] font-black text-emerald-900">
+                            <span className="truncate">{student.goal.skill || student.goal.title}</span>
+                            <span>{goalPercent}%</span>
+                          </div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-emerald-100">
+                            <div className="h-full rounded-full bg-emerald-600" style={{ width: `${goalPercent}%` }} />
+                          </div>
+                          <div className="mt-1 text-[9px] font-bold text-emerald-900/55">متبقّي {student.goal.remaining} نقطة</div>
+                        </div>
+                      )}
+                      {!displayMode && (daysSinceReward === null || daysSinceReward >= 7) && (
+                        <div className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">
+                          {daysSinceReward === null ? "لم يُحفّز بعد" : `منذ آخر تحفيز ${daysSinceReward} أيام`}
+                        </div>
+                      )}
                     </div>
                   </button>
                 </div>
@@ -1090,6 +1111,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         }}
         initialData={editingGoal ? {
           title: editingGoal.title,
+          skill: editingGoal.skill || editingGoal.title,
           targetType: editingGoal.targetType,
           targetId: editingGoal.targetId,
           targetPoints: editingGoal.targetPoints,

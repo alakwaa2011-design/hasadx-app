@@ -212,6 +212,31 @@ async function runSchemaMigrations() {
       );
       CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_group_members_group_student_uq ON classroom_reward_group_members(group_id,student_id);
       CREATE INDEX IF NOT EXISTS classroom_reward_group_members_teacher_student_idx ON classroom_reward_group_members(teacher_id,student_id);
+      CREATE TABLE IF NOT EXISTS classroom_reward_goals (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        teacher_class_id INTEGER NOT NULL REFERENCES teacher_classes(id) ON DELETE CASCADE,
+        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        skill TEXT NOT NULL DEFAULT 'هدف أكاديمي',
+        target_points INTEGER NOT NULL CHECK (target_points > 0),
+        reward_type_id INTEGER REFERENCES classroom_reward_types(id) ON DELETE SET NULL,
+        starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ends_at TIMESTAMPTZ,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS classroom_reward_goals_class_idx ON classroom_reward_goals(teacher_id,teacher_class_id,is_active);
+      CREATE INDEX IF NOT EXISTS classroom_reward_goals_student_idx ON classroom_reward_goals(teacher_id,student_id,is_active);
+      ALTER TABLE classroom_reward_goals ADD COLUMN IF NOT EXISTS skill TEXT;
+      ALTER TABLE classroom_reward_goals ADD COLUMN IF NOT EXISTS reward_type_id INTEGER REFERENCES classroom_reward_types(id) ON DELETE SET NULL;
+      ALTER TABLE classroom_reward_goals ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+      ALTER TABLE classroom_reward_goals ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+      UPDATE classroom_reward_goals SET skill=COALESCE(NULLIF(skill,''),title),is_active=(status='active') WHERE skill IS NULL OR skill='' OR is_active<>(status='active');
+      ALTER TABLE classroom_reward_goals ALTER COLUMN skill SET DEFAULT 'هدف أكاديمي';
+      ALTER TABLE classroom_reward_goals ALTER COLUMN skill SET NOT NULL;
       -- Do not deduplicate a conflicting partial deployment: unique-index creation
       -- must fail explicitly rather than silently merging or discarding ledger data.
       CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_types_owner_name_semantic_uq
@@ -226,14 +251,6 @@ async function runSchemaMigrations() {
         ON classroom_reward_transactions(reversal_of_id) WHERE reversal_of_id IS NOT NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_transactions_reversal_request_uq ON classroom_reward_transactions(teacher_id,idempotency_key) WHERE kind='reversal';
       CREATE INDEX IF NOT EXISTS classroom_reward_audit_owner_created_idx ON classroom_reward_audit_logs(teacher_id,created_at);
-      CREATE TABLE IF NOT EXISTS classroom_reward_goals (
-        id SERIAL PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-        teacher_class_id INTEGER NOT NULL REFERENCES teacher_classes(id) ON DELETE CASCADE,
-        student_id INTEGER REFERENCES students(id) ON DELETE SET NULL, title TEXT NOT NULL,
-        target_points INTEGER NOT NULL CHECK (target_points > 0), starts_at TIMESTAMPTZ NOT NULL,
-        ends_at TIMESTAMPTZ, status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
       CREATE INDEX IF NOT EXISTS classroom_reward_goals_owner_class_idx ON classroom_reward_goals(teacher_id,teacher_class_id);
       CREATE INDEX IF NOT EXISTS classroom_reward_goals_owner_status_idx ON classroom_reward_goals(teacher_id,status);
       CREATE TABLE IF NOT EXISTS classroom_reward_batch_reversals (

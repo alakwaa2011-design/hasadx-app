@@ -100,6 +100,7 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
 
 export interface GoalEditorData {
   title: string;
+  skill: string;
   targetType: GoalTargetType;
   targetId?: string | number;
   targetPoints: number;
@@ -117,6 +118,7 @@ export interface GoalDialogProps {
 
 export function GoalDialog({ open, onOpenChange, initialData, onSave, students = [], saving = false }: GoalDialogProps) {
   const [title, setTitle] = useState(initialData?.title || "");
+  const [skill, setSkill] = useState(initialData?.skill || "");
   const [targetType, setTargetType] = useState<GoalTargetType>(initialData?.targetType || "class");
   const [targetId, setTargetId] = useState<string | number | undefined>(initialData?.targetId);
   const [targetPoints, setTargetPoints] = useState<number>(initialData?.targetPoints || 100);
@@ -125,6 +127,7 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
   useEffect(() => {
     if (open) {
       setTitle(initialData?.title || "");
+      setSkill(initialData?.skill || "");
       setTargetType(initialData?.targetType || "class");
       setTargetId(initialData?.targetId);
       setTargetPoints(initialData?.targetPoints || 100);
@@ -134,9 +137,10 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || targetPoints <= 0) return;
+    if (!title.trim() || !skill.trim() || targetPoints <= 0) return;
     const saved = await onSave({
       title: title.trim(),
+      skill: skill.trim(),
       targetType,
       targetId: targetType === "student" ? targetId : undefined,
       targetPoints,
@@ -175,6 +179,16 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
               value={title} 
               onChange={e => setTitle(e.target.value)} 
               placeholder="مثال: إكمال قراءة 10 قصص"
+              className="w-full rounded-2xl border-2 border-emerald-100 px-4 py-3.5 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15 transition-all text-emerald-950 shadow-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-black text-emerald-950">المهارة أو عادة التعلّم</label>
+            <input
+              value={skill}
+              onChange={e => setSkill(e.target.value)}
+              placeholder="مثال: القراءة اليومية أو المشاركة بثقة"
               className="w-full rounded-2xl border-2 border-emerald-100 px-4 py-3.5 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15 transition-all text-emerald-950 shadow-sm"
               required
             />

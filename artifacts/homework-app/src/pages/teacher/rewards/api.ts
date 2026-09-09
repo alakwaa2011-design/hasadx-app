@@ -41,6 +41,8 @@ export interface RewardGroup {
 export interface ClassroomRewardGoal {
   id: string;
   title: string;
+  skill?: string;
+  rewardTypeId?: number | null;
   targetType: "class" | "student";
   targetId?: number;
   studentName?: string | null;
@@ -56,6 +58,8 @@ export interface ClassroomRewardGoal {
 const normalizeGoal = (goal: any): ClassroomRewardGoal => ({
   id: String(goal.id),
   title: String(goal.title),
+  skill: goal.skill ? String(goal.skill) : undefined,
+  rewardTypeId: goal.rewardTypeId == null ? null : Number(goal.rewardTypeId),
   targetType: goal.studentId == null ? "class" : "student",
   targetId: goal.studentId == null ? undefined : Number(goal.studentId),
   studentName: goal.studentName ?? null,
@@ -284,6 +288,7 @@ export const useGrantRewards = () => {
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+       qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
        for (const studentId of variables.studentIds ?? []) {
          qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
@@ -344,6 +349,7 @@ export const useReverseRewardBatch = () => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
     },
   });
 };
@@ -394,6 +400,8 @@ export const useCreateRewardGoal = () => {
       targetId?: number;
       targetPoints: number;
       endDate?: string | null;
+      skill?: string;
+      rewardTypeId?: number | null;
     }) => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/goals`, {
       method: "POST",
       body: JSON.stringify({
@@ -401,11 +409,15 @@ export const useCreateRewardGoal = () => {
         targetPoints: data.targetPoints,
         studentId: data.targetType === "student" ? data.targetId : null,
         endsAt: endDateToIso(data.endDate),
+        skill: data.skill,
+        rewardTypeId: data.rewardTypeId,
       }),
     }),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "goals", variables.className] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
     },
   });
 };
@@ -422,6 +434,8 @@ export const useUpdateRewardGoal = () => {
       targetPoints?: number;
       endDate?: string | null;
       status?: "active" | "archived";
+      skill?: string;
+      rewardTypeId?: number | null;
     }) => fetcher(`/api/classroom-rewards/goals/${encodeURIComponent(goalId)}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -432,11 +446,15 @@ export const useUpdateRewardGoal = () => {
           : {}),
         ...(data.endDate !== undefined ? { endsAt: endDateToIso(data.endDate) } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.skill !== undefined ? { skill: data.skill } : {}),
+        ...(data.rewardTypeId !== undefined ? { rewardTypeId: data.rewardTypeId } : {}),
       }),
     }),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "goals", variables.className] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
     },
   });
 };
@@ -449,6 +467,8 @@ export const useArchiveRewardGoal = () => {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "goals", variables.className] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
     },
   });
 };

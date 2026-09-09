@@ -80,6 +80,28 @@ export const classroomRewardGroupMembersTable = pgTable("classroom_reward_group_
   teacherStudentIndex: index("classroom_reward_group_members_teacher_student_idx").on(t.teacherId, t.studentId),
 }));
 
+/** Academic motivation goals. Class goals are templates; progress is always computed per student. */
+export const classroomRewardGoalsTable = pgTable("classroom_reward_goals", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  teacherClassId: integer("teacher_class_id").notNull().references(() => teacherClassesTable.id, { onDelete: "cascade" }),
+  studentId: integer("student_id").references(() => studentsTable.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  skill: text("skill").notNull().default("هدف أكاديمي"),
+  targetPoints: integer("target_points").notNull(),
+  rewardTypeId: integer("reward_type_id").references(() => classroomRewardTypesTable.id, { onDelete: "set null" }),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  isActive: boolean("is_active").notNull().default(true),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  classIndex: index("classroom_reward_goals_class_idx").on(t.teacherId, t.teacherClassId, t.isActive),
+  studentIndex: index("classroom_reward_goals_student_idx").on(t.teacherId, t.studentId, t.isActive),
+  ownerStatusIndex: index("classroom_reward_goals_owner_status_idx").on(t.teacherId, t.status),
+}));
+
 export const classroomRewardBatchesTable = pgTable("classroom_reward_batches", {
   id: serial("id").primaryKey(),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
@@ -122,23 +144,6 @@ export const classroomRewardTransactionsTable = pgTable("classroom_reward_transa
   categoryCreatedIndex: index("classroom_reward_transactions_category_created_idx").on(t.teacherId, t.categorySnapshot, t.createdAt),
   classCreatedIndex: index("classroom_reward_transactions_class_created_idx").on(t.teacherId, t.teacherClassId, t.createdAt),
   reversalRequestUnique: uniqueIndex("classroom_reward_transactions_reversal_request_uq").on(t.teacherId, t.idempotencyKey).where(sql`kind = 'reversal'`),
-}));
-
-export const classroomRewardGoalsTable = pgTable("classroom_reward_goals", {
-  id: serial("id").primaryKey(),
-  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
-  teacherClassId: integer("teacher_class_id").notNull().references(() => teacherClassesTable.id, { onDelete: "cascade" }),
-  studentId: integer("student_id").references(() => studentsTable.id, { onDelete: "set null" }),
-  title: text("title").notNull(),
-  targetPoints: integer("target_points").notNull(),
-  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
-  endsAt: timestamp("ends_at", { withTimezone: true }),
-  status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => ({
-  ownerClassIndex: index("classroom_reward_goals_owner_class_idx").on(t.teacherId, t.teacherClassId),
-  ownerStatusIndex: index("classroom_reward_goals_owner_status_idx").on(t.teacherId, t.status),
 }));
 
 export const classroomRewardBatchReversalsTable = pgTable("classroom_reward_batch_reversals", {

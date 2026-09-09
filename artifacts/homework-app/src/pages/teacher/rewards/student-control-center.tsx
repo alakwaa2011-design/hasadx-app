@@ -9,7 +9,6 @@ import {
   useResetStudentPassword,
   useGrantRewards,
   useAdjustStudentBalance,
-  useGetRewardGoals,
 } from "./api";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
@@ -184,10 +183,15 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
 }) {
   const { student, rewards } = data;
   const grantMutation = useGrantRewards();
-  const { data: goalsData } = useGetRewardGoals(className);
-  const studentGoals = (goalsData?.goals ?? []).filter(
-    (goal) => goal.targetType === "class" || goal.targetId === studentId,
-  );
+  const studentGoals = data.goal ? [{
+    id: String(data.goal.id),
+    title: data.goal.title,
+    targetType: data.goal.studentId == null ? "class" as const : "student" as const,
+    targetId: data.goal.studentId ?? undefined,
+    targetPoints: Number(data.goal.targetPoints),
+    currentPoints: Number(data.goal.progress ?? 0),
+    endDate: data.goal.endsAt ?? null,
+  }] : [];
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const grantInFlightRef = useRef(false);
