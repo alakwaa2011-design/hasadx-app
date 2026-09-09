@@ -16,7 +16,7 @@ import { RewardCelebration, type RewardCelebrationData } from "./reward-celebrat
 import {
   User, Shield, Key, History, FileText, Activity,
   Loader2, Save, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock,
-  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp, SlidersHorizontal
+  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp, SlidersHorizontal, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -96,7 +96,7 @@ export function StudentControlCenter({ open, onOpenChange, studentId, className,
       <DialogContent className="sm:max-w-4xl p-0 overflow-hidden bg-slate-50 border-2 border-emerald-100 rounded-[2rem] flex flex-col h-[94dvh] sm:h-[85vh] motion-reduce:animate-none">
         <DialogHeader className="px-4 sm:px-6 py-4 sm:py-5 border-b-2 border-emerald-800 bg-emerald-950 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-          <DialogTitle className="text-xl font-black text-white relative z-10 flex items-center gap-3 tracking-wide">
+          <DialogTitle className="text-xl font-black text-white relative z-10 flex items-center gap-3 pr-24 tracking-wide">
             {isLoading ? "جاري فتح السجل..." : (
               <>
                 <Compass className="text-amber-400" size={28} />
@@ -104,6 +104,10 @@ export function StudentControlCenter({ open, onOpenChange, studentId, className,
               </>
             )}
           </DialogTitle>
+          <button type="button" onClick={() => onOpenChange(false)}
+            className="absolute right-4 top-1/2 z-20 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-white/20">
+            <ArrowRight size={16} /> رجوع
+          </button>
           <DialogDescription className="sr-only">
             إدارة بيانات الطالب ونقاطه وإنجازاته وواجباته ونشاطه.
           </DialogDescription>
@@ -376,6 +380,10 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="sm:max-w-md rounded-[2rem] border-2 border-emerald-100 p-0 overflow-hidden motion-reduce:animate-none">
         <DialogHeader className="border-b border-emerald-100 bg-emerald-50/60 p-6">
+          <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
+            className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50">
+            <ArrowRight size={16} /> رجوع
+          </button>
           <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
             <SlidersHorizontal size={20} className="text-emerald-600" /> خصم نقاط من {studentName}
           </DialogTitle>

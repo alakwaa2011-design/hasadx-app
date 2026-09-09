@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRound, Trophy, RotateCcw, Medal } from "lucide-react";
+import { ArrowRight, Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRound, Trophy, RotateCcw, Medal } from "lucide-react";
 import { toast } from "sonner";
 import {
   type RewardGroup,
@@ -125,9 +125,15 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="flex h-[92dvh] max-h-[850px] flex-col overflow-hidden rounded-[2rem] border-2 border-emerald-100 p-0 sm:max-w-5xl motion-reduce:animate-none">
         <DialogHeader className="shrink-0 border-b-2 border-emerald-800 bg-emerald-950 px-5 py-4 text-white sm:px-7">
-          <DialogTitle className="flex items-center gap-2 text-xl font-black text-white">
-            <UsersRound className="text-amber-400" /> مجموعات الصف
-          </DialogTitle>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => onOpenChange(false)} disabled={saving}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-white/20 disabled:opacity-50">
+              <ArrowRight size={16} /> رجوع
+            </button>
+            <DialogTitle className="flex items-center gap-2 text-xl font-black text-white">
+              <UsersRound className="text-amber-400" /> مجموعات الصف
+            </DialogTitle>
+          </div>
           <DialogDescription className="text-sm font-medium text-emerald-100/75">
             نظّم طلاب {className} في مجموعات ملوّنة، ثم حدد أي مجموعة من لوحة التحفيز بنقرة واحدة.
           </DialogDescription>
@@ -320,6 +326,10 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm rounded-3xl p-6 text-center border-2 border-emerald-100">
+        <button type="button" onClick={() => onOpenChange(false)} disabled={grantMutation.isPending}
+          className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50">
+          <ArrowRight size={16} /> رجوع
+        </button>
         <div className="flex justify-center -mt-12 mb-4">
           <AvatarDisplay
             avatar={group.avatar}
@@ -377,11 +387,12 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
   );
 }
 
-export function GroupDetailDialog({ open, onOpenChange, group, className, onAward }: {
+export function GroupDetailDialog({ open, onOpenChange, group, className, onBack, onAward }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   group: RewardGroup | null;
   className: string;
+  onBack: () => void;
   onAward: (groupName: string) => void;
 }) {
   const resetMutation = useResetGroupScore();
@@ -439,6 +450,10 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onAwar
       }
     }}>
       <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden border-2 border-emerald-100">
+        <button type="button" onClick={onBack} disabled={resetMutation.isPending || grantMutation.isPending}
+          className="absolute right-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-emerald-950/40 px-3 py-2 text-xs font-black text-white backdrop-blur-sm transition-colors hover:bg-emerald-950/60 disabled:opacity-50">
+          <ArrowRight size={16} /> رجوع
+        </button>
         <div className="bg-emerald-950 p-6 text-white text-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundColor: group.color }} />
           <div className="relative z-10 flex flex-col items-center">

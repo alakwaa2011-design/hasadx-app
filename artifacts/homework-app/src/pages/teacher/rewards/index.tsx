@@ -18,7 +18,7 @@ import { RewardGroupChip, RewardGroupsDialog, GroupAwardDialog, GroupDetailDialo
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -423,6 +423,19 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           <div className="absolute top-10 right-10 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
 
           <div className="flex items-center gap-4 w-full sm:w-auto relative z-10">
+            <button
+              type="button"
+              onClick={() => {
+                if (embedded) setEmbeddedClass(undefined);
+                else setLocation("/teacher/rewards");
+              }}
+              className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 text-sm font-black text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              aria-label="الرجوع إلى اختيار الصف"
+              title="اختيار صف آخر"
+            >
+              <ArrowRight size={18} />
+              <span className="hidden sm:inline">رجوع</span>
+            </button>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg border border-amber-200/50 shrink-0 transform -rotate-3">
               <Map size={24} className="text-white fill-white/20" />
             </div>
@@ -938,6 +951,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         onOpenChange={setGroupsDetailOpen}
         group={groupsData?.groups?.find(g => g.id === activeGroupId) ?? null}
         className={currentClass}
+        onBack={() => {
+          setGroupsDetailOpen(false);
+          setGroupGrantOpen(true);
+        }}
         onAward={() => {
           playSound();
         }}
@@ -1002,6 +1019,14 @@ function SingleStudentGrantDialog({
             </div>
           </div>
           <DialogTitle className="text-2xl font-black text-white relative z-10 tracking-wide">{student.name}</DialogTitle>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+            className="absolute right-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+          >
+            <ArrowRight size={16} /> رجوع
+          </button>
         </DialogHeader>
 
           <div className="max-h-[65dvh] overflow-y-auto bg-slate-50/50 p-4 sm:p-8">
@@ -1169,8 +1194,8 @@ function CustomGrantDialog({ open, onOpenChange, onGrant, loading }: { open: boo
             </div>
           </div>
           <div className="pt-4 flex justify-end gap-3">
-            <button type="button" onClick={() => onOpenChange(false)} className="px-5 py-3 rounded-2xl text-emerald-900/60 font-bold hover:bg-emerald-50 hover:text-emerald-950 transition-colors">
-              إلغاء
+            <button type="button" onClick={() => onOpenChange(false)} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-emerald-900/60 font-bold hover:bg-emerald-50 hover:text-emerald-950 transition-colors">
+              <ArrowRight size={17} /> رجوع
             </button>
             <button type="submit" disabled={loading} className="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black hover:from-amber-500 hover:to-orange-600 transition-all motion-reduce:transition-none motion-reduce:transform-none flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-white/30" />}
