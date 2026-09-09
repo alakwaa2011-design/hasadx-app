@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Settings,
   Mail,
+  Orbit,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -738,6 +739,21 @@ export function Layout({ children, noHeader }: LayoutProps) {
                               ? "تلقائي"
                               : "System"}
                       </button>
+                      <Link
+                        href="/teacher/rewards"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="mx-1 flex items-center gap-3 rounded-2xl border border-amber-300/70 bg-gradient-to-l from-amber-50 to-white px-4 py-3.5 text-sm font-black text-emerald-950 shadow-sm transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none"
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-950 text-amber-300 shadow-sm">
+                          <Orbit className="h-5 w-5" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block">{lang === "ar" ? "لوحة التحفيز" : "Rewards Board"}</span>
+                          <span className="mt-0.5 block text-[11px] font-bold text-emerald-900/55">
+                            {lang === "ar" ? "نقاط المغامرة وتقدم الطلاب" : "Adventure points and student progress"}
+                          </span>
+                        </span>
+                      </Link>
                       <Link
                          href="/teacher/messages"
                         onClick={() => setMobileMenuOpen(false)}

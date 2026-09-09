@@ -93,6 +93,7 @@ import {
   ChevronRight,
   School,
   Dices,
+  Orbit,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
@@ -304,6 +305,7 @@ type TabId =
   | "stats"
   | "kids_board"
   | "students"
+  | "rewards"
   | "parent_messages";
 
 interface SharedAssignment {
@@ -818,6 +820,13 @@ export default function TeacherDashboard() {
       icon: <Users className="w-4 h-4" />,
     },
     {
+      id: "rewards",
+      label: lang === "ar" ? "لوحة التحفيز" : "Rewards Board",
+      shortLabel: lang === "ar" ? "التحفيز" : "Rewards",
+      icon: <Orbit className="w-4 h-4" />,
+      href: "/teacher/rewards",
+    },
+    {
       id: "parent_messages",
       label: t.dashboard.parentMessages,
       shortLabel: t.dashboard.parentsShort,
@@ -975,8 +984,8 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {t.dashboard.overview}
             </p>
-            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","parent_messages","stats", ...(isAdminUser ? ["kids_board"] : [])].includes(t.id)).sort((a, b) => {
-                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","parent_messages","stats"];
+            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","rewards","parent_messages","stats", ...(isAdminUser ? ["kids_board"] : [])].includes(t.id)).sort((a, b) => {
+                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","rewards","parent_messages","stats"];
                 return order.indexOf(a.id) - order.indexOf(b.id);
               }).map((tab) => {
               const active = activeTab === tab.id;
@@ -3005,6 +3014,16 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
       groupTitle: isAr ? "إدارة الطلاب" : "Student Management",
       groupIcon: <Users className="w-4 h-4" />,
       tools: [
+        {
+          icon: <Orbit className="w-6 h-6" />,
+          title: isAr ? "لوحة التحفيز" : "Rewards Board",
+          desc: isAr
+            ? "امنح نقاط المغامرة وتابع تقدم طلابك من لوحة واحدة"
+            : "Award adventure points and follow student progress from one board",
+          accent: BRAND.gold,
+          href: "/teacher/rewards",
+          featured: true,
+        },
         {
           icon: <Users className="w-6 h-6" />,
           title: t.dashboard.toolStudents,
