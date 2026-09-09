@@ -848,7 +848,7 @@ function AssignmentsTab({ assignments }: { assignments: any[] }) {
             <div className="flex items-center gap-5 shrink-0 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
               <div className="text-center">
                 <div className="text-xs font-bold text-emerald-900/50 mb-1">النتيجة</div>
-                <div className="font-black font-mono text-emerald-950 text-lg">{assignment.score} <span className="text-emerald-900/40 text-sm">/ {assignment.totalPoints}</span></div>
+                <div className="font-black font-mono text-emerald-950 text-lg">{formatRewardPoints(assignment.score)} <span className="text-emerald-900/40 text-sm">/ {formatRewardPoints(assignment.totalPoints)}</span></div>
               </div>
               {assignment.earnedPoints > 0 && (
                 <div className="text-center border-r-2 border-slate-200 pr-5">

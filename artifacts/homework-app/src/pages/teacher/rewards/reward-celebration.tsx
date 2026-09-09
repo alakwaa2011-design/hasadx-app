@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Award, Sparkles, Star } from "lucide-react";
 import { AvatarDisplay } from "@/components/avatar-display";
+import { formatRewardPoints } from "./format";
 
 export interface RewardCelebrationStudent {
   id: number;
@@ -96,7 +97,7 @@ export function RewardCelebration({
             </motion.div>
 
             <div className="relative z-10 mb-2 text-sm font-black text-emerald-800 tracking-wider">إنجاز جديد في رحلة حصاد</div>
-            <div className="relative z-10 mb-5 text-5xl font-black text-primary drop-shadow-sm">+{celebration.points}</div>
+            <div className="relative z-10 mb-5 text-5xl font-black text-primary drop-shadow-sm">+{formatRewardPoints(celebration.points)}</div>
 
             <div className="relative z-10 mb-5 flex min-h-36 items-end justify-center -space-x-4 space-x-reverse">
               {visibleStudents.map((student, index) => (
