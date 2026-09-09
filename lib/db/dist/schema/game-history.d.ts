@@ -43,7 +43,7 @@ export declare const gameHistoryTable: import("drizzle-orm/pg-core").PgTableWith
             columnType: "PgInteger";
             data: number;
             driverParam: string | number;
-            notNull: true;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -79,6 +79,23 @@ export declare const gameHistoryTable: import("drizzle-orm/pg-core").PgTableWith
             driverParam: string;
             notNull: true;
             hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        gameRunId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "game_run_id";
+            tableName: "game_history";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;

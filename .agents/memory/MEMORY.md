@@ -83,3 +83,4 @@
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Reward class groups](reward-class-groups.md) — groups may overlap; metadata and membership save atomically, while deletion never changes balances or transaction history.
 - [RTL numeric UI assertions](rtl-numeric-ui-assertions.md) — exact full-string selectors around arrows and localized digits are brittle; assert values within their semantic row.
+- [Safe required columns on publish](safe-required-columns-publish.md) — required columns added to populated production tables need a per-row default or Publish may propose truncation.

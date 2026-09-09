@@ -1,4 +1,5 @@
 import { pgTable, serial, text, timestamp, integer, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 
@@ -8,7 +9,7 @@ export const gameHistoryTable = pgTable("game_history", {
   assignmentId: integer("assignment_id").references(() => assignmentsTable.id),
   assignmentTitle: text("assignment_title").notNull(),
   pin: text("pin").notNull(),
-  gameRunId: text("game_run_id").notNull(),
+  gameRunId: text("game_run_id").notNull().default(sql`('legacy:' || gen_random_uuid()::text)`),
   playerCount: integer("player_count").notNull().default(0),
   questionCount: integer("question_count").notNull().default(0),
   winnerName: text("winner_name"),
