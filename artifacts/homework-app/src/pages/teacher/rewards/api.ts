@@ -127,19 +127,21 @@ const fetcher = async (url: string, options?: RequestInit) => {
   return res.json();
 };
 
-export const useGetClassRewards = (className?: string) => {
+export const useGetClassRewards = (className?: string, options?: { refetchInterval?: number }) => {
   return useQuery({
     queryKey: ["classroom-rewards", "classes", className],
     queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}`),
     enabled: !!className,
+    refetchInterval: options?.refetchInterval,
   });
 };
 
-export const useGetRewardGroups = (className?: string) => {
+export const useGetRewardGroups = (className?: string, options?: { refetchInterval?: number }) => {
   return useQuery<{ groups: RewardGroup[] }>({
     queryKey: ["classroom-rewards", "groups", className],
     queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}/groups`),
     enabled: !!className,
+    refetchInterval: options?.refetchInterval,
   });
 };
 
@@ -290,6 +292,7 @@ export const useGrantRewards = () => {
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+       qc.invalidateQueries({ queryKey: ["classroom-rewards", "suggestions", variables.className] });
        for (const studentId of variables.studentIds ?? []) {
          qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
        }
@@ -571,6 +574,45 @@ export const useAdjustStudentBalances = () => {
       for (const studentId of variables.studentIds) {
         qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
       }
+    },
+  });
+};
+
+export interface RewardSuggestion {
+  id: string;
+  submissionId: number;
+  studentId: number;
+  studentName: string;
+  studentAvatar?: string | null;
+  reason: string;
+  evidenceLabel: string;
+  evidenceDetail: string;
+  rewardTypeId: number;
+  rewardTypeName: string;
+  points: number;
+}
+
+export const useGetRewardSuggestions = (className?: string, options?: { refetchInterval?: number }) => {
+  return useQuery<{ suggestions: RewardSuggestion[] }>({
+    queryKey: ["classroom-rewards", "suggestions", className],
+    queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}/suggestions`),
+    enabled: !!className,
+    refetchInterval: options?.refetchInterval,
+  });
+};
+
+export const useApproveRewardSuggestion = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, submissionId }: { className: string; submissionId: number }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/suggestions/${submissionId}/approve`, {
+        method: "POST",
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "suggestions", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
     },
   });
 };

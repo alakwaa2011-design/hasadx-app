@@ -139,6 +139,23 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        avatar: import("drizzle-orm/pg-core").PgColumn<{
+            name: "avatar";
+            tableName: "students";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         accountUsername: import("drizzle-orm/pg-core").PgColumn<{
             name: "account_username";
             tableName: "students";
@@ -213,6 +230,7 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
 export declare const insertStudentSchema: z.ZodObject<{
     name: z.ZodString;
     teacherId: z.ZodInt;
+    avatar: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     gradeLevel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     studentClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     parentPhone: z.ZodOptional<z.ZodNullable<z.ZodString>>;

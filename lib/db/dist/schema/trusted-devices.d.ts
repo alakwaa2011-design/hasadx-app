@@ -121,40 +121,6 @@ export declare const trustedDevicesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        trustTokenHash: import("drizzle-orm/pg-core").PgColumn<{
-            name: "trust_token_hash";
-            tableName: "trusted_devices";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        trustTokenExpiresAt: import("drizzle-orm/pg-core").PgColumn<{
-            name: "trust_token_expires_at";
-            tableName: "trusted_devices";
-            dataType: "date";
-            columnType: "PgTimestamp";
-            data: Date;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
         firstSeenAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "first_seen_at";
             tableName: "trusted_devices";

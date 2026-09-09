@@ -284,13 +284,13 @@ export declare const savedGameActivitiesTable: import("drizzle-orm/pg-core").PgT
     dialect: "pg";
 }>;
 export declare const insertSavedGameActivitySchema: z.ZodObject<{
-    gameType: z.ZodString;
     title: z.ZodString;
-    content: z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>;
-    settings: z.ZodOptional<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>;
-    source: z.ZodOptional<z.ZodString>;
     isShared: z.ZodOptional<z.ZodBoolean>;
+    source: z.ZodOptional<z.ZodString>;
     questionCount: z.ZodOptional<z.ZodInt>;
+    gameType: z.ZodString;
+    settings: z.ZodOptional<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>;
+    content: z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>;
 }, {
     out: {};
     in: {};

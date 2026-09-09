@@ -88,6 +88,23 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        studentIdentityVerified: import("drizzle-orm/pg-core").PgColumn<{
+            name: "student_identity_verified";
+            tableName: "submissions";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         deviceFingerprint: import("drizzle-orm/pg-core").PgColumn<{
             name: "device_fingerprint";
             tableName: "submissions";
@@ -318,6 +335,7 @@ export declare const insertSubmissionSchema: z.ZodObject<{
     studentClass: z.ZodOptional<z.ZodString>;
     studentName: z.ZodString;
     studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    studentIdentityVerified: z.ZodOptional<z.ZodBoolean>;
     deviceFingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     score: z.ZodNumber;
     totalQuestions: z.ZodInt;

@@ -144,6 +144,9 @@ export const classroomRewardTransactionsTable = pgTable("classroom_reward_transa
   categoryCreatedIndex: index("classroom_reward_transactions_category_created_idx").on(t.teacherId, t.categorySnapshot, t.createdAt),
   classCreatedIndex: index("classroom_reward_transactions_class_created_idx").on(t.teacherId, t.teacherClassId, t.createdAt),
   reversalRequestUnique: uniqueIndex("classroom_reward_transactions_reversal_request_uq").on(t.teacherId, t.idempotencyKey).where(sql`kind = 'reversal'`),
+  suggestionEvidenceUnique: uniqueIndex("classroom_reward_transactions_suggestion_evidence_uq")
+    .on(t.teacherId, t.sourceResultId)
+    .where(sql`source_type = 'reward_suggestion_submission' AND kind = 'grant'`),
 }));
 
 export const classroomRewardBatchReversalsTable = pgTable("classroom_reward_batch_reversals", {

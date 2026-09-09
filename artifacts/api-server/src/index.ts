@@ -307,6 +307,7 @@ async function runSchemaMigrations() {
       ALTER TABLE classroom_reward_transactions ADD COLUMN IF NOT EXISTS rule_id INTEGER;
       CREATE INDEX IF NOT EXISTS classroom_reward_rules_teacher_source_idx ON classroom_reward_rules(teacher_id,source_type);
       CREATE INDEX IF NOT EXISTS classroom_reward_transactions_source_idx ON classroom_reward_transactions(teacher_id,source_type,source_result_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_transactions_suggestion_evidence_uq ON classroom_reward_transactions(teacher_id,source_result_id) WHERE source_type='reward_suggestion_submission' AND kind='grant';
       ALTER TABLE submissions ADD COLUMN IF NOT EXISTS student_identity_verified BOOLEAN NOT NULL DEFAULT FALSE;
       ALTER TABLE game_history DROP CONSTRAINT IF EXISTS game_history_teacher_pin_uq;
       DROP INDEX IF EXISTS game_history_teacher_pin_uq;

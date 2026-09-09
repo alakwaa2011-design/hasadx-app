@@ -15,6 +15,10 @@ export interface RewardCelebrationData {
   students: RewardCelebrationStudent[];
   points: number;
   rewardName?: string;
+  isGroup?: boolean;
+  groupName?: string;
+  groupAvatar?: string | null;
+  mode?: "full" | "live";
 }
 
 export function RewardCelebration({
@@ -36,8 +40,11 @@ export function RewardCelebration({
 
   useEffect(() => {
     if (!celebration) return;
-    overlayRef.current?.focus();
-    const timer = window.setTimeout(() => onCompleteRef.current(), reduceMotion ? 1800 : 2800);
+    if (celebration.mode !== "live") {
+      overlayRef.current?.focus();
+    }
+    const duration = celebration.mode === "live" ? 2200 : 2800;
+    const timer = window.setTimeout(() => onCompleteRef.current(), reduceMotion ? duration - 1000 : duration);
     return () => window.clearTimeout(timer);
   }, [celebration, reduceMotion]);
 
@@ -45,7 +52,38 @@ export function RewardCelebration({
 
   return createPortal(
     <AnimatePresence>
-      {celebration && (
+      {celebration && celebration.mode === "live" && (
+        <motion.div
+          className="pointer-events-none fixed left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-[100] flex w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-[2rem] border-2 border-amber-400/50 bg-emerald-900 px-4 py-3 text-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:w-auto sm:gap-4 sm:px-5"
+          initial={reduceMotion ? false : { y: -50, opacity: 0, scale: 0.9 }}
+          animate={reduceMotion ? { opacity: 1 } : { y: 0, opacity: 1, scale: 1 }}
+          exit={reduceMotion ? undefined : { y: -20, opacity: 0, scale: 0.9 }}
+          transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 25 }}
+        >
+          <div className="flex -space-x-3 space-x-reverse relative">
+            {celebration.isGroup ? (
+              <AvatarDisplay avatar={celebration.groupAvatar} fallback={celebration.groupName?.charAt(0) || "G"} size="lg" className="h-12 w-12 border-2 border-emerald-900 rounded-xl" />
+            ) : (
+              visibleStudents.map((s) => (
+                <AvatarDisplay key={s.id} avatar={s.avatar} fallback={s.name.charAt(0)} size="lg" className="h-12 w-12 border-2 border-emerald-900 rounded-full" />
+              ))
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-black text-amber-400 text-xl leading-none">+{formatRewardPoints(celebration.points)}</span>
+            <span className="text-xs font-bold text-emerald-200 mt-0.5 truncate max-w-[150px]">
+              {celebration.isGroup ? celebration.groupName : (visibleStudents.length === 1 ? visibleStudents[0].name : `${visibleStudents.length} طلاب`)}
+            </span>
+          </div>
+          {celebration.rewardName && (
+            <div className="bg-emerald-950/50 px-3 py-1.5 rounded-xl border border-emerald-800/50 text-sm font-bold ml-2">
+              {celebration.rewardName}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {celebration && celebration.mode !== "live" && (
         <motion.div
           ref={overlayRef}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-emerald-950/45 p-4 backdrop-blur-sm"

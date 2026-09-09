@@ -142,7 +142,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isMuted, setIsMuted] = useLocalStorage("hasaad_rewards_muted", false);
-  const [displayMode, setDisplayMode] = useLocalStorage("hasaad_rewards_display_mode", false);
   const [viewMode, setViewMode] = useLocalStorage<"students" | "groups">("hasaad_rewards_view_mode", "students");
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -536,14 +535,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             }))}
             groups={boardData.groups}
             onExit={() => setLiveBoardOpen(false)}
-            onStudentClick={(studentId) => {
-              setLiveBoardOpen(false);
-              setSingleGrantStudentId(studentId);
-            }}
-            onGroupClick={(groupId) => {
-              setLiveBoardOpen(false);
-              setActiveGroupId(groupId);
-              setGroupGrantOpen(true);
+            onCelebrate={(data) => {
+              playSound();
+              setCelebration(data);
             }}
           />
         ) : (
@@ -557,10 +551,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         )
       )}
 
-      <div className={cn("max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none", displayMode && "mt-2")}>
+      <div className="max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none">
 
         {/* Storybook Header */}
-        <div className={cn("flex flex-col sm:flex-row gap-4 items-center justify-between p-5 rounded-3xl bg-emerald-950 text-white shadow-xl relative overflow-hidden transition-all motion-reduce:transition-none", displayMode && "py-3 opacity-90 hover:opacity-100 shadow-none")}>
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-5 rounded-3xl bg-emerald-950 text-white shadow-xl relative overflow-hidden transition-all motion-reduce:transition-none">
           <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_18%_25%,rgba(255,255,255,0.35)_0_1px,transparent_1.5px),radial-gradient(circle_at_78%_62%,rgba(251,191,36,0.45)_0_1.5px,transparent_2px)] [background-size:34px_34px,48px_48px] pointer-events-none" />
           <div className="absolute -top-20 -left-20 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-10 right-10 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -610,19 +604,18 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   </div>
                 </span>
               </h1>
-              {!displayMode && <p className="text-sm text-emerald-200/80 font-medium hidden sm:block mt-0.5">نقاط جميلة تصنع لحظات إنجاز لا تُنسى</p>}
+              <p className="text-sm text-emerald-200/80 font-medium hidden sm:block mt-0.5">نقاط جميلة تصنع لحظات إنجاز لا تُنسى</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 relative z-10 [scrollbar-width:thin] sm:[scrollbar-width:none]">
             <button
-              onClick={() => setDisplayMode(!displayMode)}
-              className={cn("flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all motion-reduce:transition-none shadow-sm border whitespace-nowrap",
-                displayMode ? "bg-amber-400 text-amber-950 border-amber-300" : "bg-white/10 text-white hover:bg-white/20 border-white/10 backdrop-blur-md"
-              )}
+              onClick={() => setLiveBoardOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all motion-reduce:transition-none shadow-sm border whitespace-nowrap bg-amber-400 text-amber-950 border-amber-300 hover:bg-amber-300"
+              data-testid="button-live-board"
             >
-              {displayMode ? <EyeOff size={16} /> : <Eye size={16} />}
-              {displayMode ? "عرض نشط" : "عرض الأبطال"}
+              <Sparkles size={16} />
+              السبورة الحية
             </button>
             <button
               onClick={() => setIsMuted(!isMuted)}
@@ -656,9 +649,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </div>
         </div>
 
-        {!displayMode && (
-          <section aria-label="ملخص التحفيز الأسبوعي" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-            {weeklySummaryLoading ? (
+        <section aria-label="ملخص التحفيز الأسبوعي" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+          {weeklySummaryLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="h-[74px] animate-pulse rounded-2xl border border-emerald-100 bg-emerald-50/60" />
               ))
@@ -687,9 +679,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </>
             )}
           </section>
-        )}
 
-        {!displayMode && (
+        {!liveBoardOpen && (
           <section aria-labelledby="reward-goals-title" className="rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-4 shadow-sm sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -749,7 +740,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         )}
 
         {/* Toolbar */}
-        {!displayMode && (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex bg-white border-2 border-emerald-100 rounded-xl p-1 shadow-sm shrink-0">
@@ -829,7 +819,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </div>
             )}
           </div>
-        )}
 
         {/* Groups / Students Grid */}
         {viewMode === "groups" ? (
@@ -866,10 +855,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
                     <AdventurePointsBadge
                       points={group.score || 0}
-                      className={cn(
-                        "scale-90 transition-transform group-hover:scale-100 motion-reduce:transition-none",
-                        displayMode && "scale-100",
-                      )}
+                      className="scale-90 transition-transform group-hover:scale-100 motion-reduce:transition-none"
                     />
                   </div>
                 </div>
@@ -924,7 +910,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 >
                   <div className={cn("absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl transition-colors duration-500", isSelected ? "bg-amber-300/40" : "bg-emerald-200/40 group-hover:bg-amber-200/40")} />
 
-                  {!displayMode && (
                     <button
                       type="button"
                       aria-label={isSelected ? `إلغاء تحديد ${student.name}` : `تحديد ${student.name} للمنح الجماعي`}
@@ -947,7 +932,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                         {isSelected && <Check size={14} strokeWidth={4} />}
                       </div>
                     </button>
-                  )}
 
                   <button
                     type="button"
@@ -984,8 +968,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                           points={student.points || 0}
                           className={cn(
                             "scale-90 transition-transform group-hover/avatar:scale-100 motion-reduce:transition-none",
-                            isSelected && "scale-100",
-                            displayMode && "scale-100",
+                            isSelected && "scale-100"
                           )}
                         />
                       </div>
@@ -1017,7 +1000,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                           <div className="mt-1 text-[9px] font-bold text-emerald-900/55">متبقّي {student.goal.remaining} نقطة</div>
                         </div>
                       )}
-                      {!displayMode && (daysSinceReward === null || daysSinceReward >= 7) && (
+                      {(daysSinceReward === null || daysSinceReward >= 7) && (
                         <div className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">
                           {daysSinceReward === null ? "لم يُحفّز بعد" : `منذ آخر تحفيز ${daysSinceReward} أيام`}
                         </div>

@@ -1,10 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Maximize, Minimize, Shuffle, Users, Star, Trophy, Sparkles, UserRound, ArrowRight, Target } from "lucide-react";
+import { Maximize, Minimize, Shuffle, Users, Star, Trophy, Sparkles, UserRound, ArrowRight, Target, Check, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { formatRewardPoints } from "./format";
 import { GoalProgressCard, type RewardGoal } from "./goal-progress";
+import {
+  useApproveRewardSuggestion,
+  useGetRewardSuggestions,
+  useGetRewardTypes,
+  useGrantGroupReward,
+  useGrantRewards,
+  type RewardSuggestion,
+} from "./api";
+import type { RewardCelebrationData } from "./reward-celebration";
+import { toast } from "sonner";
 
 export interface BoardStudent {
   id: number;
@@ -32,6 +42,7 @@ export interface LiveBoardProps {
   onGroupClick?: (groupId: number) => void;
   onExit?: () => void;
   onFairnessSelect?: (studentId: number) => void;
+  onCelebrate: (data: RewardCelebrationData) => void;
 }
 
 export function LiveBoard({
@@ -42,12 +53,52 @@ export function LiveBoard({
   onStudentClick,
   onGroupClick,
   onExit,
-  onFairnessSelect
+  onFairnessSelect,
+  onCelebrate,
 }: LiveBoardProps) {
   const reduceMotion = useReducedMotion();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fairnessHighlight, setFairnessHighlight] = useState<number | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
+  const { data: suggestionsData, isError: suggestionsError } = useGetRewardSuggestions(className, { refetchInterval: 10000 });
+  const { data: rewardTypesData } = useGetRewardTypes();
+  const grantStudent = useGrantRewards();
+  const grantGroup = useGrantGroupReward();
+  const approveSuggestion = useApproveRewardSuggestion();
+  const defaultReward = useMemo(() => {
+    const active = (rewardTypesData || []).filter((type: any) => type.active && type.points > 0).sort((a: any, b: any) => a.order - b.order);
+    return active[0];
+  }, [rewardTypesData]);
+
+  const awardStudent = (student: BoardStudent) => {
+    if (grantStudent.isPending) return;
+    const points = defaultReward?.points || 1;
+    const rewardName = defaultReward?.name || "مشاركة سريعة";
+    grantStudent.mutate({
+      className,
+      studentIds: [student.id],
+      typeId: defaultReward?.id,
+      customReason: defaultReward?.id ? undefined : rewardName,
+      customPoints: defaultReward?.id ? undefined : points,
+      idempotencyKey: crypto.randomUUID(),
+    }, {
+      onSuccess: () => onCelebrate({ students: [student], points, rewardName, mode: "live" }),
+      onError: (error: Error) => toast.error(error.message || "تعذر منح نقاط الطالب"),
+    });
+  };
+
+  const awardGroup = (group: BoardGroup) => {
+    if (grantGroup.isPending) return;
+    const points = defaultReward?.points || 1;
+    const rewardName = defaultReward?.name || "عمل جماعي";
+    grantGroup.mutate({ className, groupId: group.id, points, idempotencyKey: crypto.randomUUID() }, {
+      onSuccess: () => onCelebrate({
+        students: [], isGroup: true, groupName: group.name, groupAvatar: group.avatar,
+        points, rewardName, mode: "live",
+      }),
+      onError: (error: Error) => toast.error(error.message || "تعذر منح نقاط المجموعة"),
+    });
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -113,7 +164,7 @@ export function LiveBoard({
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <button aria-label="الخروج من السبورة الحية" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+          <button aria-label="الخروج من السبورة الحية" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
             <ArrowRight size={22} />
           </button>
           <div className="min-w-0">
@@ -164,7 +215,7 @@ export function LiveBoard({
                 {groupScores.map((group, index) => (
                   <button
                     key={group.id}
-                    onClick={() => onGroupClick?.(group.id)}
+                    onClick={() => awardGroup(group)}
                     className="group relative min-w-56 flex-1 rounded-[1.5rem] text-right outline-none focus:ring-4 focus:ring-emerald-400/20 lg:min-w-0 lg:flex-none lg:w-full"
                   >
                     <div className="absolute inset-0 rounded-[1.5rem] bg-white opacity-40 transition-opacity group-hover:opacity-100 shadow-sm" />
@@ -207,14 +258,14 @@ export function LiveBoard({
                   <motion.button
                     key={student.id}
                     layout
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0.8 }}
                     animate={{ 
                       opacity: 1, 
                       scale: isHighlighted ? 1.05 : 1,
                       zIndex: isHighlighted ? 10 : 1
                     }}
-                    transition={{ duration: 0.3 }}
-                    onClick={() => onStudentClick?.(student.id)}
+                    transition={reduceMotion ? { duration: 0 } : { duration: 0.3 }}
+                    onClick={() => awardStudent(student)}
                     className={cn(
                       "group relative flex flex-col items-center gap-3 rounded-[1.75rem] border-2 p-3 transition-all outline-none focus:ring-4 focus:ring-emerald-400/20 sm:gap-4 sm:rounded-[2.5rem] sm:p-5",
                       isHighlighted 
@@ -251,9 +302,9 @@ export function LiveBoard({
                       )}
                       {isHighlighted && (
                         <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0 }}
+                          initial={reduceMotion ? false : { opacity: 0, y: 10, scale: 0 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                          transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 15 }}
                           className="absolute -top-4 -left-4 text-amber-500 drop-shadow-xl z-20"
                         >
                           <Sparkles size={32} />
@@ -290,6 +341,15 @@ export function LiveBoard({
         </main>
       </div>
 
+      <SuggestionsOverlay
+        className={className}
+        suggestions={suggestionsData?.suggestions || []}
+        onCelebrate={onCelebrate}
+        approveSuggestion={approveSuggestion}
+        reduceMotion={reduceMotion}
+        isError={suggestionsError}
+      />
+
       <style dangerouslySetInnerHTML={{__html: `
         .hidden-scrollbar::-webkit-scrollbar {
           width: 0px;
@@ -297,6 +357,52 @@ export function LiveBoard({
           background: transparent;
         }
       `}} />
+    </div>
+  );
+}
+
+function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSuggestion, reduceMotion, isError }: any) {
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const activeSuggestions = useMemo(
+    () => suggestions.filter((suggestion: RewardSuggestion) => !dismissed.has(suggestion.id)),
+    [suggestions, dismissed],
+  );
+  if (activeSuggestions.length === 0) {
+    if (!isError) return null;
+    return <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border border-amber-300 bg-white px-4 py-3 text-xs font-bold text-amber-900 shadow-xl sm:inset-x-auto sm:left-6" data-testid="status-suggestions-error">تعذر تحديث الاقتراحات الأكاديمية الآن</div>;
+  }
+  const approve = (suggestion: RewardSuggestion) => {
+    approveSuggestion.mutate({ className, submissionId: suggestion.submissionId }, {
+      onSuccess: () => {
+        onCelebrate({
+          students: [{ id: suggestion.studentId, name: suggestion.studentName, avatar: suggestion.studentAvatar }],
+          points: suggestion.points, rewardName: suggestion.rewardTypeName || suggestion.reason, mode: "live",
+        });
+        setDismissed((previous) => new Set(previous).add(suggestion.id));
+      },
+      onError: (error: Error) => toast.error(error.message || "تعذر اعتماد الاقتراح"),
+    });
+  };
+  return (
+    <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex max-w-80 flex-col gap-3 sm:inset-x-auto sm:bottom-6 sm:left-6 sm:w-80">
+      <AnimatePresence>
+        {activeSuggestions.slice(0, 3).map((suggestion: RewardSuggestion) => (
+          <motion.div key={suggestion.id} initial={reduceMotion ? false : { opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={reduceMotion ? { duration: 0 } : undefined} className="pointer-events-auto rounded-3xl border border-emerald-100 bg-white/95 p-4 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 rounded-xl bg-amber-100 p-2.5 text-amber-600"><Lightbulb size={22} /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-emerald-950"><span className="text-amber-700">{suggestion.studentName}</span> يستحق التحفيز</p>
+                <p className="mt-1.5 truncate text-xs font-bold text-emerald-800">{suggestion.reason}</p>
+                <p className="mt-1 text-[11px] font-bold text-slate-600">{suggestion.evidenceDetail}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button onClick={() => approve(suggestion)} disabled={approveSuggestion.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-black text-emerald-950 disabled:cursor-wait disabled:opacity-60" data-testid={`approve-suggestion-${suggestion.id}`}><Check size={16} />موافق (+{suggestion.points})</button>
+              <button onClick={() => setDismissed((previous) => new Set(previous).add(suggestion.id))} className="rounded-xl bg-slate-100 p-2.5 text-slate-500" aria-label="تجاهل الاقتراح" data-testid={`reject-suggestion-${suggestion.id}`}><X size={18} /></button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

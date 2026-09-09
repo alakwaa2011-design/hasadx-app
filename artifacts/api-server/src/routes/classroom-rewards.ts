@@ -85,6 +85,9 @@ function teacher(req: any, res: any): number | null {
 function resultRows(result: any): any[] { return result.rows ?? result ?? []; }
 function numericId(value: unknown): number | null { const parsed = Number(value); return Number.isInteger(parsed) && parsed > 0 ? parsed : null; }
 function validateClassName(value: unknown): string | null { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 200 ? value.trim() : null; }
+function formatAcademicScore(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
+}
 function periodStart(period: string | undefined) {
   if (period === "today") return sql`date_trunc('day', NOW())`;
   if (period === "week") return sql`date_trunc('week', NOW())`;
@@ -308,6 +311,171 @@ router.get("/classroom-rewards/classes/:className", async (req: any, res) => {
     GROUP BY g.id,s.id`));
   res.json({students:students.map(s=>{const goal=goals.find(g=>g.studentId===Number(s.id))??goals.find(g=>g.studentId===null)??null;const achieved=goal?Number(progress.find(p=>Number(p.goal_id)===goal.id&&Number(p.student_id)===Number(s.id))?.progress??0):0;return{...s,lastRewardAt:s.last_reward_at,goal:goal?{...goal,progress:achieved,remaining:Math.max(0,goal.targetPoints-achieved)}:null};}),goals});
 });
+router.get("/classroom-rewards/classes/:className/suggestions", async (req: any, res) => {
+  const teacherId = teacher(req, res); if (!teacherId) return;
+  const className = validateClassName(req.params.className);
+  if (!className) return res.status(400).json({ message: "اسم الصف غير صالح" });
+  const classRow = await ownedClass(teacherId, className);
+  if (!classRow) return res.status(404).json({ message: "الصف غير موجود" });
+  await ensureDefaults(teacherId);
+  const rewardType = resultRows(await db.execute(sql`
+    SELECT id,name,default_amount
+    FROM classroom_reward_types
+    WHERE teacher_id=${teacherId} AND is_active=TRUE AND name NOT LIKE '__custom__:%'
+    ORDER BY CASE WHEN category='achievement' THEN 0 ELSE 1 END,sort_order,id
+    LIMIT 1
+  `))[0];
+  if (!rewardType) return res.json({ suggestions: [] });
+
+  const evidence = resultRows(await db.execute(sql`
+    SELECT DISTINCT ON (sub.student_id)
+      sub.id AS submission_id,
+      sub.student_id,
+      s.name AS student_name,
+      COALESCE(s.avatar,sa.avatar,kp.avatar_key,NULL) AS student_avatar,
+      a.title AS assignment_title,
+      COALESCE(sub.teacher_adjusted_points,sub.earned_points,0)::real AS earned_points,
+      COALESCE(NULLIF(sub.total_points,0),NULLIF(sub.total_questions,0),1)::real AS total_points,
+      sub.submitted_at
+    FROM submissions sub
+    JOIN assignments a ON a.id=sub.assignment_id AND a.teacher_id=${teacherId}
+    JOIN students s ON s.id=sub.student_id AND s.teacher_id=${teacherId}
+    LEFT JOIN student_accounts sa ON sa.id=s.student_account_id
+    LEFT JOIN kids_profiles kp ON kp.student_account_id=s.student_account_id
+    WHERE sub.student_id IS NOT NULL
+      AND sub.student_identity_verified=TRUE
+      AND (s.student_class=${className} OR (s.student_class IS NULL AND s.grade_level=${className}))
+      AND sub.submitted_at >= NOW() - INTERVAL '14 days'
+      AND COALESCE(sub.teacher_adjusted_points,sub.earned_points,0) > 0
+      AND COALESCE(sub.teacher_adjusted_points,sub.earned_points,0)
+        / COALESCE(NULLIF(sub.total_points,0),NULLIF(sub.total_questions,0),1) >= 0.8
+      AND NOT EXISTS (
+        SELECT 1 FROM classroom_reward_transactions tr
+        WHERE tr.teacher_id=${teacherId}
+          AND tr.student_id=sub.student_id
+          AND tr.kind='grant'
+          AND tr.created_at >= date_trunc('week',NOW())
+          AND NOT EXISTS (
+            SELECT 1 FROM classroom_reward_transactions rv
+            WHERE rv.reversal_of_id=tr.id
+          )
+      )
+    ORDER BY sub.student_id,sub.submitted_at DESC,sub.id DESC
+    LIMIT 12
+  `));
+  res.json({
+    suggestions: evidence.map((row) => {
+      const earned = Number(row.earned_points);
+      const total = Number(row.total_points);
+      const percentage = Math.round((earned / total) * 100);
+      return {
+        id: `assignment_submission:${row.submission_id}`,
+        submissionId: Number(row.submission_id),
+        studentId: Number(row.student_id),
+        studentName: row.student_name,
+        studentAvatar: row.student_avatar,
+        reason: "إنجاز أكاديمي موثّق",
+        evidenceLabel: row.assignment_title || "واجب مكتمل",
+        evidenceDetail: `${formatAcademicScore(earned)} من ${formatAcademicScore(total)} (${percentage}٪)`,
+        rewardTypeId: Number(rewardType.id),
+        rewardTypeName: rewardType.name,
+        points: Number(rewardType.default_amount),
+      };
+    }),
+  });
+});
+router.post("/classroom-rewards/classes/:className/suggestions/:submissionId/approve", async (req: any, res) => {
+  const teacherId = teacher(req, res); if (!teacherId) return;
+  const className = validateClassName(req.params.className);
+  const submissionId = numericId(req.params.submissionId);
+  if (!className || !submissionId) return res.status(400).json({ message: "بيانات الاقتراح غير صالحة" });
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const evidence = resultRows(await tx.execute(sql`
+        SELECT sub.id,sub.student_id,s.name student_name,a.title assignment_title,
+          COALESCE(sub.teacher_adjusted_points,sub.earned_points,0)::real earned_points,
+          COALESCE(NULLIF(sub.total_points,0),NULLIF(sub.total_questions,0),1)::real total_points,
+          tc.id teacher_class_id
+        FROM submissions sub
+        JOIN assignments a ON a.id=sub.assignment_id AND a.teacher_id=${teacherId}
+        JOIN students s ON s.id=sub.student_id AND s.teacher_id=${teacherId}
+        JOIN teacher_classes tc ON tc.teacher_id=${teacherId} AND tc.name=${className}
+        WHERE sub.id=${submissionId}
+          AND sub.student_identity_verified=TRUE
+          AND (s.student_class=${className} OR (s.student_class IS NULL AND s.grade_level=${className}))
+          AND sub.submitted_at >= NOW() - INTERVAL '14 days'
+        FOR UPDATE OF sub,s
+      `))[0];
+      if (!evidence) throw new Error("evidence_unavailable");
+      const earned = Number(evidence.earned_points);
+      const total = Number(evidence.total_points);
+      if (earned <= 0 || earned / total < 0.8) throw new Error("evidence_unavailable");
+
+      const prior = resultRows(await tx.execute(sql`
+        SELECT * FROM classroom_reward_transactions
+        WHERE teacher_id=${teacherId}
+          AND source_type='reward_suggestion_submission'
+          AND source_result_id=${submissionId}
+          AND kind='grant'
+        FOR UPDATE
+      `))[0];
+      if (prior) return { grant: prior, idempotent: true };
+
+      const type = resultRows(await tx.execute(sql`
+        SELECT * FROM classroom_reward_types
+        WHERE teacher_id=${teacherId} AND is_active=TRUE AND name NOT LIKE '__custom__:%'
+        ORDER BY CASE WHEN category='achievement' THEN 0 ELSE 1 END,sort_order,id
+        LIMIT 1 FOR UPDATE
+      `))[0];
+      if (!type) throw new Error("reward_type_unavailable");
+      const key = `reward-suggestion:assignment:${submissionId}`;
+      const fingerprint = JSON.stringify({ className, submissionId, studentId: Number(evidence.student_id), typeId: Number(type.id) });
+      const batch = resultRows(await tx.execute(sql`
+        INSERT INTO classroom_reward_batches
+          (teacher_id,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_id,reason_snapshot,points,target_count,request_fingerprint)
+        VALUES
+          (${teacherId},${key},${className},${evidence.teacher_class_id},${type.id},${type.name},${type.default_amount},1,${fingerprint})
+        ON CONFLICT (teacher_id,idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key
+        RETURNING id
+      `))[0];
+      const grant = resultRows(await tx.execute(sql`
+        INSERT INTO classroom_reward_transactions
+          (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,batch_id,batch_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot,source_type,source_result_id)
+        VALUES
+          (${teacherId},${evidence.student_id},${evidence.student_name},${type.id},${type.default_amount},'grant',${key},${batch.id},${key},${className},${evidence.teacher_class_id},${type.name},${type.category},'reward_suggestion_submission',${submissionId})
+        ON CONFLICT (teacher_id,source_result_id)
+          WHERE source_type='reward_suggestion_submission' AND kind='grant'
+        DO NOTHING RETURNING *
+      `))[0];
+      if (!grant) {
+        const concurrent = resultRows(await tx.execute(sql`
+          SELECT * FROM classroom_reward_transactions
+          WHERE teacher_id=${teacherId}
+            AND source_type='reward_suggestion_submission'
+            AND source_result_id=${submissionId}
+            AND kind='grant'
+        `))[0];
+        return { grant: concurrent, idempotent: true };
+      }
+      await tx.execute(sql`
+        INSERT INTO classroom_reward_balances (teacher_id,student_id,reward_type_id,balance,updated_at)
+        VALUES (${teacherId},${evidence.student_id},${type.id},${type.default_amount},NOW())
+        ON CONFLICT (teacher_id,student_id,reward_type_id)
+        DO UPDATE SET balance=classroom_reward_balances.balance+EXCLUDED.balance,updated_at=NOW()
+      `);
+      await tx.execute(sql`
+        INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key,detail)
+        VALUES (${teacherId},'approve_reward_suggestion','submission',${submissionId},${key},${evidence.assignment_title})
+      `);
+      return { grant, idempotent: false };
+    });
+    res.status(outcome.idempotent ? 200 : 201).json(outcome);
+  } catch (error: any) {
+    if (error?.message === "evidence_unavailable") return res.status(409).json({ message: "لم يعد الدليل الأكاديمي صالحًا للاعتماد" });
+    if (error?.message === "reward_type_unavailable") return res.status(409).json({ message: "لا يوجد نوع تحفيز نشط للاعتماد" });
+    res.status(500).json({ message: "تعذر اعتماد الاقتراح" });
+  }
+});
 // Historical alias retained for clients released before the route contract was final.
 router.get("/classroom-rewards/classes/:className/students", async (req: any, res) => {
   const teacherId = teacher(req, res); if (!teacherId) return;
@@ -435,8 +603,13 @@ async function changeGroupScore(teacherId: number, className: string, groupId: n
     if (!classRow) throw new Error("class_not_found");
     const group = resultRows(await tx.execute(sql`SELECT id FROM classroom_reward_groups WHERE id=${groupId} AND teacher_id=${teacherId} AND teacher_class_id=${classRow.id} FOR UPDATE`))[0];
     if (!group) throw new Error("group_not_found");
-    const prior = resultRows(await tx.execute(sql`SELECT score FROM classroom_reward_group_score_receipts WHERE teacher_id=${teacherId} AND idempotency_key=${key}`))[0];
-    if (prior) return { score: Number(prior.score), idempotent: true };
+    const prior = resultRows(await tx.execute(sql`SELECT group_id,operation,points,score FROM classroom_reward_group_score_receipts WHERE teacher_id=${teacherId} AND idempotency_key=${key}`))[0];
+    if (prior) {
+      if (Number(prior.group_id) !== groupId || prior.operation !== (reset ? "reset" : "award") || Number(prior.points) !== (reset ? 0 : points)) {
+        throw new Error("idempotency_conflict");
+      }
+      return { score: Number(prior.score), idempotent: true };
+    }
     const updated = resultRows(await tx.execute(reset
       ? sql`UPDATE classroom_reward_groups SET score=0,updated_at=NOW() WHERE id=${groupId} RETURNING score`
       : sql`UPDATE classroom_reward_groups SET score=score+${points},updated_at=NOW() WHERE id=${groupId} RETURNING score`))[0];
@@ -449,14 +622,14 @@ router.post("/classroom-rewards/classes/:className/groups/:groupId/score", async
   const className=validateClassName(req.params.className); if (!className || !groupId) return res.status(400).json({message:"بيانات المجموعة غير صالحة"});
   const parsed=groupScoreInput.safeParse(req.body); if (!parsed.success) return res.status(400).json({message:"بيانات النقاط غير صالحة"});
   try { res.json({groupId,...await changeGroupScore(teacherId,className,groupId,parsed.data.idempotencyKey,parsed.data.points,false)}); }
-  catch (e:any) { res.status(e.message==="group_not_found"||e.message==="class_not_found"?404:500).json({message:e.message==="class_not_found"?"الصف غير موجود":e.message==="group_not_found"?"المجموعة غير موجودة":"تعذر إضافة نقاط المجموعة"}); }
+  catch (e:any) { res.status(e.message==="idempotency_conflict"?409:e.message==="group_not_found"||e.message==="class_not_found"?404:500).json({message:e.message==="idempotency_conflict"?"مفتاح التكرار مستخدم لطلب مختلف":e.message==="class_not_found"?"الصف غير موجود":e.message==="group_not_found"?"المجموعة غير موجودة":"تعذر إضافة نقاط المجموعة"}); }
 });
 router.post("/classroom-rewards/classes/:className/groups/:groupId/reset", async (req: any, res) => {
   const teacherId=teacher(req,res), groupId=numericId(req.params.groupId); if (!teacherId) return;
   const className=validateClassName(req.params.className); if (!className || !groupId) return res.status(400).json({message:"بيانات المجموعة غير صالحة"});
   const parsed=groupResetInput.safeParse(req.body); if (!parsed.success) return res.status(400).json({message:"بيانات التصفير غير صالحة"});
   try { res.json({groupId,...await changeGroupScore(teacherId,className,groupId,parsed.data.idempotencyKey,0,true)}); }
-  catch (e:any) { res.status(e.message==="group_not_found"||e.message==="class_not_found"?404:500).json({message:e.message==="class_not_found"?"الصف غير موجود":e.message==="group_not_found"?"المجموعة غير موجودة":"تعذر تصفير نقاط المجموعة"}); }
+  catch (e:any) { res.status(e.message==="idempotency_conflict"?409:e.message==="group_not_found"||e.message==="class_not_found"?404:500).json({message:e.message==="idempotency_conflict"?"مفتاح التكرار مستخدم لطلب مختلف":e.message==="class_not_found"?"الصف غير موجود":e.message==="group_not_found"?"المجموعة غير موجودة":"تعذر تصفير نقاط المجموعة"}); }
 });
 
 router.put("/classroom-rewards/classes/:className/groups/:groupId/members", async (req: any, res) => {

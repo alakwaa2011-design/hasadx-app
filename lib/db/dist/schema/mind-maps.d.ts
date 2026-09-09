@@ -192,9 +192,9 @@ export declare const mindMapsTable: import("drizzle-orm/pg-core").PgTableWithCol
 }>;
 export declare const insertMindMapSchema: z.ZodObject<{
     teacherId: z.ZodInt;
-    clientRequestId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     title: z.ZodString;
     language: z.ZodOptional<z.ZodString>;
+    clientRequestId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     topic: z.ZodString;
     depth: z.ZodOptional<z.ZodString>;
     map: z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>;

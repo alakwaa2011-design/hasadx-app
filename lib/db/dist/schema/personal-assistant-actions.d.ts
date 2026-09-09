@@ -128,10 +128,10 @@ export declare const personalAssistantActionsTable: import("drizzle-orm/pg-core"
     dialect: "pg";
 }>;
 export declare const insertPersonalAssistantActionSchema: z.ZodObject<{
-    threadId: z.ZodInt;
     messageId: z.ZodInt;
-    actionType: z.ZodOptional<z.ZodString>;
     status: z.ZodOptional<z.ZodString>;
+    threadId: z.ZodInt;
+    actionType: z.ZodOptional<z.ZodString>;
     reviewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
 }, {
     out: {};
