@@ -148,6 +148,50 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toHaveCount(0);
 
   await studentCard.locator("xpath=..").getByTitle("ملف الطالب").click();
+  const profileGrant = page.getByRole("button", { name: /مشاركة مميزة/ });
+  await expect(profileGrant).toBeVisible();
+
+  let failedProfileGrantRequests = 0;
+  await page.route("**/api/classroom-rewards/grants", async (route) => {
+    failedProfileGrantRequests += 1;
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "فشل منح ملف الطالب" }),
+    });
+  });
+  await profileGrant.click();
+  await expect(page.getByText("فشل منح ملف الطالب")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toHaveCount(0);
+  expect(failedProfileGrantRequests).toBe(1);
+  await page.unroute("**/api/classroom-rewards/grants");
+
+  let profileGrantRequests = 0;
+  await page.route("**/api/classroom-rewards/grants", async (route) => {
+    profileGrantRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await route.continue();
+  });
+  await profileGrant.click();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toBeVisible();
+  expect(profileGrantRequests).toBe(1);
+  await expect.poll(async () => {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM classroom_reward_transactions
+       WHERE teacher_id = $1 AND student_id = $2 AND kind = 'grant'`,
+      [fixture!.teacher.id, student.id],
+    );
+    return result.rows[0]?.count;
+  }).toBe(2);
+  await page.unroute("**/api/classroom-rewards/grants");
+  await page.getByRole("dialog", { name: "احتفال بمنح النقاط" }).evaluate((element) => {
+    (element as HTMLElement).click();
+  });
+  await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toHaveCount(0);
+
   await page.getByRole("tab", { name: "البيانات" }).click();
   const avatarChoice = page.getByRole("button", { name: "راصدة النجوم" });
   await avatarChoice.click();

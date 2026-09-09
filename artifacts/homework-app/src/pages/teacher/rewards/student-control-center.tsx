@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger
 } from "@/components/ui/dialog";
@@ -177,9 +177,11 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
   const { student, rewards } = data;
   const grantMutation = useGrantRewards();
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
+  const grantInFlightRef = useRef(false);
 
   const grant = (type: { id: number; name: string; points: number }) => {
-    if (!className) return;
+    if (!className || grantInFlightRef.current || celebration) return;
+    grantInFlightRef.current = true;
     grantMutation.mutate({
       className,
       studentIds: [studentId],
@@ -195,6 +197,9 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
         toast.success("تم منح النقاط للطالب بنجاح");
       },
       onError: (error: any) => toast.error(error.message || "تعذر منح النقاط"),
+      onSettled: () => {
+        grantInFlightRef.current = false;
+      },
     });
   };
   
