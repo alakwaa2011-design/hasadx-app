@@ -10,7 +10,7 @@ const router: IRouter = Router();
 const ICONS = new Set(["Star", "Heart", "ThumbsUp", "Zap", "Trophy", "Target", "Shield", "Flame", "Award", "Crown", "Lightbulb", "Rocket"]);
 // Keep this server-side allowlist deliberately closed: only bundled illustrations
 // and approved emoji are accepted, never user-supplied URLs, data URIs, or SVG.
-const NORMAL_AVATARS = new Set([
+export const NORMAL_AVATARS = new Set([
   "/avatars/adventurer-boy.webp","/avatars/adventurer-girl.webp","/avatars/space-boy.webp",
   "/avatars/space-girl.webp","/avatars/science-girl.webp","/avatars/nature-boy.webp",
   "/avatars/ocean-girl.webp","/avatars/hero-boy.webp",

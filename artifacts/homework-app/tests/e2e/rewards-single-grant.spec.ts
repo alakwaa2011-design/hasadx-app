@@ -6,6 +6,8 @@ import {
   teacherClassesTable,
   teachersTable,
 } from "../../../../lib/db/src/index.ts";
+import { NORMAL_AVATARS as SERVER_NORMAL_AVATARS } from "../../../api-server/src/routes/classroom-rewards.ts";
+import { ILLUSTRATED_AVATARS } from "../../src/lib/avatars.ts";
 import { attachSession, newApi, type TestTeacher } from "./helpers";
 
 test.setTimeout(120_000);
@@ -106,6 +108,17 @@ test.afterAll(async () => {
   }
 });
 
+test("every illustrated avatar offered by the UI is accepted by the server", () => {
+  const missingFromServer = ILLUSTRATED_AVATARS
+    .map((avatar) => avatar.value)
+    .filter((avatar) => !SERVER_NORMAL_AVATARS.has(avatar));
+
+  expect(
+    missingFromServer,
+    `Add these UI avatars to the server NORMAL_AVATARS allowlist: ${missingFromServer.join(", ")}`,
+  ).toEqual([]);
+});
+
 test("single grant celebrates only success, resists repeated input, and saves only the avatar", async ({ page }) => {
   if (!fixture) throw new Error("Rewards fixture is unavailable");
   await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`);
@@ -193,7 +206,8 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toHaveCount(0);
 
   await page.getByRole("tab", { name: "البيانات" }).click();
-  const avatarChoice = page.getByRole("button", { name: "راصدة النجوم" });
+  await page.getByRole("button", { name: /عرض المجموعة الكاملة/ }).click();
+  const avatarChoice = page.getByRole("button", { name: "روح الإبداع" });
   await avatarChoice.click();
   const saveAvatar = page.getByRole("button", { name: "حفظ الشخصية" });
   await expect(saveAvatar).toBeVisible();
@@ -203,24 +217,39 @@ test("single grant celebrates only success, resists repeated input, and saves on
   expect(gridBox, "avatar grid must have visible geometry").not.toBeNull();
   expect(saveBox!.y).toBeLessThan(gridBox!.y);
 
-  const profileRequest = page.waitForRequest((request) =>
-    request.method() === "PATCH" &&
-    request.url().includes(`/api/classroom-rewards/students/${student.id}/profile`),
-  );
-  await saveAvatar.click();
-  const request = await profileRequest;
-  expect(request.postDataJSON()).toEqual({ avatar: "/avatars/hijabi-stargazer.webp" });
+  let avatarSaveRequests = 0;
+  const avatarSaveBodies: unknown[] = [];
+  await page.route(`**/api/classroom-rewards/students/${student.id}/profile`, async (route) => {
+    avatarSaveRequests += 1;
+    avatarSaveBodies.push(route.request().postDataJSON());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.continue();
+  });
+  await saveAvatar.dispatchEvent("click");
+  await saveAvatar.dispatchEvent("click");
+  await saveAvatar.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
   await expect(page.getByText("تم تحديث شخصية الطالب بنجاح")).toBeVisible();
+  expect(avatarSaveRequests).toBe(1);
+  expect(avatarSaveBodies).toEqual([{ avatar: "/avatars/casual-bob-girl.webp" }]);
+  await page.unroute(`**/api/classroom-rewards/students/${student.id}/profile`);
 
   const saved = await pool.query(
     "SELECT avatar, parent_name, notes FROM students WHERE id = $1",
     [student.id],
   );
   expect(saved.rows[0]).toMatchObject({
-    avatar: "/avatars/hijabi-stargazer.webp",
+    avatar: "/avatars/casual-bob-girl.webp",
     parent_name: "ولي أمر ثابت",
     notes: "ملاحظة ثابتة",
   });
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tab", { name: "البيانات" })).toHaveCount(0);
+  await studentCard.locator("xpath=..").getByTitle("ملف الطالب").click();
+  await page.getByRole("tab", { name: "البيانات" }).click();
+  await expect(page.getByRole("button", { name: "روح الإبداع" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("bulk grant sends one request and records one grant per student under rapid click and Enter", async ({ page }) => {
