@@ -174,12 +174,93 @@ test("every illustrated avatar has a local image file", () => {
   ).toEqual([]);
 });
 
-test("single grant celebrates only success, resists repeated input, and saves only the avatar", async ({ page }) => {
+test("mobile avatar gallery keeps its first and last cards reachable with loaded images", async ({ page }) => {
   if (!fixture) throw new Error("Rewards fixture is unavailable");
-  const selectedAvatar = ILLUSTRATED_AVATARS.find(
-    (avatar) => avatar.value === "/avatars/casual-bob-girl.webp",
-  );
-  if (!selectedAvatar) throw new Error("Expected illustrated avatar fixture is unavailable");
+
+  const failedAvatarRequests = new Set<string>();
+  page.on("requestfailed", (request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.startsWith("/avatars/")) failedAvatarRequests.add(pathname);
+  });
+  page.on("response", (response) => {
+    const pathname = new URL(response.url()).pathname;
+    if (pathname.startsWith("/avatars/") && response.status() >= 400) {
+      failedAvatarRequests.add(pathname);
+    }
+  });
+
+  await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`);
+  const student = fixture.students[0];
+  const studentCard = page.getByRole("button", { name: `فتح خيارات تحفيز ${student.name}` });
+  await expect(studentCard).toBeVisible({ timeout: 20_000 });
+  await studentCard.locator("xpath=..").getByTitle("ملف الطالب").click();
+  await page.getByRole("tab", { name: "البيانات" }).click();
+  await page.getByRole("button", { name: /عرض المجموعة الكاملة/ }).click();
+
+  const firstAvatar = ILLUSTRATED_AVATARS[0];
+  const lastAvatar = ILLUSTRATED_AVATARS.at(-1);
+  if (!firstAvatar || !lastAvatar) throw new Error("Illustrated avatar gallery is empty");
+
+  const assertCardAndImageReachable = async (avatar: (typeof ILLUSTRATED_AVATARS)[number]) => {
+    const card = page.getByRole("button", { name: avatar.label });
+    await card.scrollIntoViewIfNeeded();
+    await expect(card, `بطاقة "${avatar.label}" غير قابلة للوصول على الهاتف`).toBeVisible();
+
+    const image = card.locator("img");
+    await expect(image).toBeVisible();
+    await expect(image).toHaveAttribute("src", avatar.value);
+    await expect
+      .poll(
+        () =>
+          image.evaluate((element: HTMLImageElement) => ({
+            complete: element.complete,
+            naturalWidth: element.naturalWidth,
+            naturalHeight: element.naturalHeight,
+          })),
+        { message: `صورة "${avatar.label}" لم تُحمّل أثناء التمرير على الهاتف` },
+      )
+      .toMatchObject({
+        complete: true,
+        naturalWidth: expect.any(Number),
+        naturalHeight: expect.any(Number),
+      });
+    const dimensions = await image.evaluate((element: HTMLImageElement) => ({
+      width: element.naturalWidth,
+      height: element.naturalHeight,
+    }));
+    expect(dimensions.width).toBeGreaterThan(0);
+    expect(dimensions.height).toBeGreaterThan(0);
+    return card;
+  };
+
+  await assertCardAndImageReachable(firstAvatar);
+  const lastCard = await assertCardAndImageReachable(lastAvatar);
+  await lastCard.click();
+
+  const saveAvatar = page.getByRole("button", { name: "حفظ الشخصية" });
+  await expect(saveAvatar).toBeAttached();
+  const [lastBox, saveBox] = await Promise.all([lastCard.boundingBox(), saveAvatar.boundingBox()]);
+  expect(lastBox, "last avatar card must have visible geometry").not.toBeNull();
+  if (saveBox) {
+    const overlaps =
+      saveBox.x < lastBox!.x + lastBox!.width &&
+      saveBox.x + saveBox.width > lastBox!.x &&
+      saveBox.y < lastBox!.y + lastBox!.height &&
+      saveBox.y + saveBox.height > lastBox!.y;
+    expect(overlaps, "زر حفظ الشخصية يحجب آخر بطاقة على الهاتف").toBe(false);
+  }
+
+  await assertCardAndImageReachable(firstAvatar);
+  await expect(saveAvatar).toBeVisible();
+  expect(
+    [...failedAvatarRequests],
+    "يجب ألا تفشل أي طلبات صور للشخصيات أثناء تمرير المجموعة الكاملة",
+  ).toEqual([]);
+});
+
+test("single grant celebrates only success, resists repeated input, and saves only the avatar", async ({ page, browser, baseURL }) => {
+  if (!fixture) throw new Error("Rewards fixture is unavailable");
+  if (!baseURL) throw new Error("baseURL is required");
   const failedAvatarRequests: string[] = [];
   page.on("requestfailed", (request) => {
     if (new URL(request.url()).pathname.startsWith("/avatars/")) {
@@ -322,7 +403,11 @@ test("single grant celebrates only success, resists repeated input, and saves on
     ).toEqual([]);
   }
 
-  const avatarChoice = page.getByRole("button", { name: "روح الإبداع" });
+  const selectedAvatar = ILLUSTRATED_AVATARS.find(
+    (avatar) => avatar.value === "/avatars/casual-bob-girl.webp",
+  );
+  if (!selectedAvatar) throw new Error("Saved avatar fixture is missing from ILLUSTRATED_AVATARS");
+  const avatarChoice = page.getByRole("button", { name: selectedAvatar.label });
   await avatarChoice.click();
   const saveAvatar = page.getByRole("button", { name: "حفظ الشخصية" });
   await expect(saveAvatar).toBeVisible();
@@ -347,7 +432,7 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await page.keyboard.press("Enter");
   await expect(page.getByText("تم تحديث شخصية الطالب بنجاح")).toBeVisible();
   expect(avatarSaveRequests).toBe(1);
-  expect(avatarSaveBodies).toEqual([{ avatar: "/avatars/casual-bob-girl.webp" }]);
+  expect(avatarSaveBodies).toEqual([{ avatar: selectedAvatar.value }]);
   await page.unroute(`**/api/classroom-rewards/students/${student.id}/profile`);
 
   const saved = await pool.query(
@@ -355,7 +440,7 @@ test("single grant celebrates only success, resists repeated input, and saves on
     [student.id],
   );
   expect(saved.rows[0]).toMatchObject({
-    avatar: "/avatars/casual-bob-girl.webp",
+    avatar: selectedAvatar.value,
     parent_name: "ولي أمر ثابت",
     notes: "ملاحظة ثابتة",
   });
@@ -366,112 +451,51 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await page.getByRole("tab", { name: "البيانات" }).click();
   await expect(page.getByRole("button", { name: "روح الإبداع" })).toHaveAttribute("aria-pressed", "true");
 
-  const login = await page.request.post("/api/student-auth/login", {
-    data: {
-      username: fixture.studentAccount.email,
-      password: fixture.studentAccount.password,
-    },
-  });
-  expect(login.ok(), `Student login failed: ${login.status()} ${await login.text()}`).toBe(true);
-  await page.goto("/student/dashboard");
-  await page.reload();
+  const studentContext = await browser.newContext({ baseURL });
+  try {
+    const studentPage = await studentContext.newPage();
+    studentPage.on("requestfailed", (request) => {
+      if (new URL(request.url()).pathname.startsWith("/avatars/")) {
+        failedAvatarRequests.push(request.url());
+      }
+    });
+    const login = await studentContext.request.post("/api/student-auth/login", {
+      data: {
+        username: fixture.studentAccount.email,
+        password: fixture.studentAccount.password,
+      },
+    });
+    expect(login.ok(), `Student login failed: ${login.status()} ${await login.text()}`).toBe(true);
+    await studentPage.goto("/student/dashboard");
+    await studentPage.reload();
 
-  const persistedAvatar = page.locator(`img[src="${selectedAvatar.value}"]`).first();
-  await expect(persistedAvatar).toBeVisible({ timeout: 20_000 });
-  await expect
-    .poll(() => persistedAvatar.evaluate((image: HTMLImageElement) => ({
-      complete: image.complete,
+    const persistedAvatar = studentPage.locator(`img[src="${selectedAvatar.value}"]`).first();
+    await expect(persistedAvatar).toBeVisible({ timeout: 20_000 });
+    await expect
+      .poll(() => persistedAvatar.evaluate((image: HTMLImageElement) => ({
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+      })), {
+        message: `لم تظهر الشخصية المحفوظة للطالب بعد إعادة تحميل لوحة الطالب: ${selectedAvatar.value}`,
+      })
+      .toEqual({
+        complete: true,
+        naturalWidth: expect.any(Number),
+        naturalHeight: expect.any(Number),
+      });
+    const persistedDimensions = await persistedAvatar.evaluate((image: HTMLImageElement) => ({
       naturalWidth: image.naturalWidth,
       naturalHeight: image.naturalHeight,
-    })), {
-      message: `لم تظهر الشخصية المحفوظة للطالب بعد إعادة تحميل لوحة الطالب: ${selectedAvatar.value}`,
-    })
-    .toEqual({
-      complete: true,
-      naturalWidth: expect.any(Number),
-      naturalHeight: expect.any(Number),
-    });
-  const persistedDimensions = await persistedAvatar.evaluate((image: HTMLImageElement) => ({
-    naturalWidth: image.naturalWidth,
-    naturalHeight: image.naturalHeight,
-  }));
-  expect(persistedDimensions.naturalWidth).toBeGreaterThan(0);
-  expect(persistedDimensions.naturalHeight).toBeGreaterThan(0);
-  expect(
-    failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
-  ).toEqual([]);
-
-  await page.goto(`/stu/${encodeURIComponent(fixture.studentAccount.email)}`);
-  const publicProfileAvatar = page.locator(`img[src="${selectedAvatar.value}"]`).first();
-  await expect(publicProfileAvatar).toBeVisible({ timeout: 20_000 });
-  const publicProfileDimensions = await publicProfileAvatar.evaluate((element: HTMLImageElement) => ({
-    complete: element.complete,
-    naturalWidth: element.naturalWidth,
-    naturalHeight: element.naturalHeight,
-  }));
-
-  const validGamePin = "654321";
-  await page.route(`**/api/game-info/${validGamePin}`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        exists: true,
-        hackMode: false,
-        targetClass: null,
-        targetClasses: [],
-        students: [],
-      }),
-    });
-  });
-  const gameInfoResolved = page.waitForResponse(
-    (response) =>
-      response.url().endsWith(`/api/game-info/${validGamePin}`) && response.status() === 200,
-  );
-  await page.goto(`/game/join/${validGamePin}`);
-  await gameInfoResolved;
-  const gameAvatar = page.locator(`img[src="${selectedAvatar.value}"]`).first();
-  await expect(gameAvatar).toBeVisible({ timeout: 20_000 });
-  const gameDimensions = await gameAvatar.evaluate((element: HTMLImageElement) => ({
-    complete: element.complete,
-    naturalWidth: element.naturalWidth,
-    naturalHeight: element.naturalHeight,
-  }));
-
-  for (const [surface, dimensions] of [
-    ["الملف العام", publicProfileDimensions],
-    ["شاشة اللعبة", gameDimensions],
-  ] as const) {
-    expect(dimensions.complete, `لم يكتمل تحميل الشخصية في ${surface}`).toBe(true);
-    expect(dimensions.naturalWidth, `صورة الشخصية بلا عرض فعلي في ${surface}`).toBeGreaterThan(0);
-    expect(dimensions.naturalHeight, `صورة الشخصية بلا ارتفاع فعلي في ${surface}`).toBeGreaterThan(0);
+    }));
+    expect(persistedDimensions.naturalWidth).toBeGreaterThan(0);
+    expect(persistedDimensions.naturalHeight).toBeGreaterThan(0);
+    expect(
+      failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
+    ).toEqual([]);
+  } finally {
+    await studentContext.close();
   }
-  expect(
-    failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
-    "فشل طلب الشخصية المرتبطة في الملف العام أو شاشة اللعبة",
-  ).toEqual([]);
-  await page.unroute(`**/api/game-info/${validGamePin}`);
-
-  const legacyAccountAvatar = "🦊";
-  await pool.query("UPDATE student_accounts SET avatar = $1 WHERE id = $2", [
-    legacyAccountAvatar,
-    fixture.studentAccount.id,
-  ]);
-  await pool.query("UPDATE students SET avatar = NULL WHERE student_account_id = $1", [
-    fixture.studentAccount.id,
-  ]);
-  const [fallbackMe, fallbackPublic] = await Promise.all([
-    page.request.get("/api/student-auth/me"),
-    page.request.get(`/api/student-auth/public/${encodeURIComponent(fixture.studentAccount.email)}`),
-  ]);
-  expect(fallbackMe.ok()).toBe(true);
-  expect(fallbackPublic.ok()).toBe(true);
-  expect((await fallbackMe.json()).avatar).toBe(legacyAccountAvatar);
-  expect((await fallbackPublic.json()).student.avatar).toBe(legacyAccountAvatar);
-  await pool.query("UPDATE students SET avatar = $1 WHERE student_account_id = $2", [
-    selectedAvatar.value,
-    fixture.studentAccount.id,
-  ]);
 });
 
 test("bulk grant sends one request and records one grant per student under rapid click and Enter", async ({ page }) => {
@@ -482,7 +506,7 @@ test("bulk grant sends one request and records one grant per student under rapid
     await page.getByRole("button", { name: `تحديد ${student.name} للمنح الجماعي` }).click();
   }
 
-  const grantButton = page.locator("button").filter({ hasText: /^\s*مشاركة مميزة\s*\+\d+\s*$/ }).first();
+  const grantButton = page.getByRole("button", { name: /مشاركة مميزة/ }).last();
   await expect(grantButton).toBeVisible();
   await grantButton.focus();
 

@@ -89,7 +89,7 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-portrait",
-      testIgnore: /(escape-setup|worksheet-pdf|lesson-plan-word)\.spec\.ts/,
+      testIgnore: /(escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
@@ -147,11 +147,22 @@ export default defineConfig({
     {
       name: "desktop-rewards",
       testMatch: /rewards-single-grant\.spec\.ts/,
+      grepInvert: /mobile avatar gallery/,
       use: {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
         isMobile: false,
         hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "mobile-rewards",
+      testMatch: /rewards-single-grant\.spec\.ts/,
+      grep: /mobile avatar gallery/,
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 },
         ...chromiumLaunchOptions,
       },
     },
