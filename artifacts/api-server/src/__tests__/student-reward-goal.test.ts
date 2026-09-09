@@ -61,7 +61,7 @@ describe("student reward goal", () => {
   });
 
   it("returns only the current student's goal progress contract", async () => {
-    mockState.execute.mockResolvedValue({
+    mockState.execute.mockResolvedValueOnce({
       rows: [{
         id: 17,
         title: "إتقان جدول الضرب",
@@ -70,6 +70,16 @@ describe("student reward goal", () => {
         current_points: 74,
         teacher_name: "must not leak",
         class_name: "must not leak",
+        student_name: "must not leak",
+      }],
+    }).mockResolvedValueOnce({
+      rows: [{
+        id: 12,
+        title: "المواظبة على القراءة",
+        skill: "القراءة",
+        target_points: 25,
+        completed_at: "2026-09-08T08:30:00.000Z",
+        teacher_name: "must not leak",
         student_name: "must not leak",
       }],
     });
@@ -89,11 +99,18 @@ describe("student reward goal", () => {
         completed: false,
         progressLabel: "74/100",
       },
+      completedGoals: [{
+        id: 12,
+        title: "المواظبة على القراءة",
+        skill: "القراءة",
+        targetPoints: 25,
+        completedAt: "2026-09-08T08:30:00.000Z",
+      }],
     });
   });
 
   it("caps completed progress and reports no remaining points", async () => {
-    mockState.execute.mockResolvedValue({
+    mockState.execute.mockResolvedValueOnce({
       rows: [{
         id: 18,
         title: "هدف القراءة",
@@ -101,7 +118,7 @@ describe("student reward goal", () => {
         target_points: 40,
         current_points: 55,
       }],
-    });
+    }).mockResolvedValueOnce({ rows: [] });
 
     const response = await request(makeApp(42)).get("/api/student-auth/me/reward-goal");
 
@@ -111,6 +128,34 @@ describe("student reward goal", () => {
       progressPercent: 100,
       completed: true,
       progressLabel: "40/40",
+    });
+    expect(response.body.completedGoals).toEqual([]);
+  });
+
+  it("returns completed history when there is no active goal card", async () => {
+    mockState.execute
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 22,
+          title: "هدف سابق",
+          skill: "المثابرة",
+          target_points: 10,
+          completed_at: "2026-09-01T10:00:00.000Z",
+        }],
+      });
+
+    const response = await request(makeApp(42)).get("/api/student-auth/me/reward-goal");
+
+    expect(response.body).toEqual({
+      goal: null,
+      completedGoals: [{
+        id: 22,
+        title: "هدف سابق",
+        skill: "المثابرة",
+        targetPoints: 10,
+        completedAt: "2026-09-01T10:00:00.000Z",
+      }],
     });
   });
 });

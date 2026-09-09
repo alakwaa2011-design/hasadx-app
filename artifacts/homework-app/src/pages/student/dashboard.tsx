@@ -101,6 +101,14 @@ interface StudentRewardGoal {
   completed: boolean;
 }
 
+interface CompletedStudentRewardGoal {
+  id: number;
+  title: string;
+  skill: string;
+  targetPoints: number;
+  completedAt: string;
+}
+
 const GAME_LABELS: Record<string, { key: keyof typeof import("@/locales/ar").ar.studentDashboard; color: string }> = {
   flags: { key: "flags", color: "text-emerald-600 bg-emerald-500/10" },
   color: { key: "color", color: "text-orange-600 bg-orange-500/10" },
@@ -121,6 +129,7 @@ export default function StudentDashboard() {
   const [activityDays, setActivityDays] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [rewardGoal, setRewardGoal] = useState<StudentRewardGoal | null>(null);
+  const [completedRewardGoals, setCompletedRewardGoals] = useState<CompletedStudentRewardGoal[]>([]);
   const previousGoalRef = useRef<StudentRewardGoal | null | undefined>(undefined);
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
@@ -307,6 +316,7 @@ export default function StudentDashboard() {
         if (!response.ok) return;
         const payload = await response.json();
         const nextGoal: StudentRewardGoal | null = payload?.goal ?? null;
+        const nextCompletedGoals = Array.isArray(payload?.completedGoals) ? payload.completedGoals : [];
         if (cancelled) return;
 
         const previousGoal = previousGoalRef.current;
@@ -327,6 +337,7 @@ export default function StudentDashboard() {
 
         previousGoalRef.current = nextGoal;
         setRewardGoal(nextGoal);
+        setCompletedRewardGoals(nextCompletedGoals);
       } catch {
         // Preserve the last successful response during a temporary network failure.
       }
@@ -687,6 +698,62 @@ export default function StudentDashboard() {
                   </div>
                 </div>
               </div>
+            </section>
+          )}
+
+          {completedRewardGoals.length > 0 && (
+            <section
+              className="mb-6 rounded-3xl border border-amber-100 bg-white p-4 shadow-sm dark:border-amber-900/40 dark:bg-background sm:p-5"
+              aria-labelledby="student-completed-goals"
+              data-testid="card-student-completed-goals"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <AvatarDisplay
+                  avatar={student.avatar}
+                  fallback={student.displayName.charAt(0)}
+                  size="lg"
+                  className="shrink-0 rounded-2xl bg-amber-50 ring-2 ring-amber-100 dark:bg-amber-950 dark:ring-amber-900"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-amber-700 dark:text-amber-300">
+                    {lang === "ar" ? "إنجازاتي" : "My achievements"}
+                  </p>
+                  <h2 id="student-completed-goals" className="truncate text-lg font-black">
+                    {lang === "ar" ? "أهداف أكملتها" : "Completed goals"}
+                  </h2>
+                </div>
+                <Award className="ms-auto h-6 w-6 shrink-0 text-[#E8A80E]" aria-hidden="true" />
+              </div>
+
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {completedRewardGoals.map((goal) => (
+                  <li
+                    key={goal.id}
+                    className="flex min-w-0 items-center gap-3 rounded-2xl bg-amber-50/70 px-3 py-3 dark:bg-amber-950/20"
+                    data-testid={`completed-goal-${goal.id}`}
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#E8A80E]/15 text-amber-700 dark:text-amber-300">
+                      <Sparkles className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black">{goal.title}</p>
+                      <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                        {lang === "ar" ? "اكتمل في " : "Completed "}
+                        <time dateTime={goal.completedAt}>
+                          {new Intl.DateTimeFormat(lang === "ar" ? "ar-SA" : "en", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          }).format(new Date(goal.completedAt))}
+                        </time>
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-black text-amber-700 shadow-sm dark:bg-background dark:text-amber-300">
+                      {arDigit(goal.targetPoints)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

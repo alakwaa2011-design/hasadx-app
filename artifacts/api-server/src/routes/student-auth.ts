@@ -240,8 +240,96 @@ router.get("/student-auth/me/reward-goal", async (req, res) => {
       GROUP BY eg.id, eg.title, eg.skill, eg.target_points
     `);
     const row = (result as any).rows?.[0];
+    const completedResult = await db.execute(sql`
+      WITH eligible_goals AS (
+        SELECT
+          g.id,
+          g.title,
+          g.skill,
+          g.target_points,
+          g.starts_at,
+          g.ends_at,
+          g.reward_type_id,
+          g.teacher_id,
+          g.teacher_class_id,
+          s.id AS student_id,
+          tc.name AS class_name
+        FROM students s
+        JOIN teacher_classes tc
+          ON tc.teacher_id = s.teacher_id
+         AND tc.name = COALESCE(s.student_class, s.grade_level)
+        JOIN classroom_reward_goals g
+          ON g.teacher_id = s.teacher_id
+         AND g.teacher_class_id = tc.id
+         AND (g.student_id = s.id OR g.student_id IS NULL)
+        WHERE s.student_account_id = ${studentAccountId}
+          AND g.status = 'active'
+          AND g.is_active = TRUE
+          AND g.starts_at <= NOW()
+          AND (g.ends_at IS NULL OR g.ends_at >= NOW())
+      ),
+      valid_grants AS (
+        SELECT
+          eg.id AS goal_id,
+          eg.title,
+          eg.skill,
+          eg.target_points,
+          tr.id AS transaction_id,
+          tr.amount,
+          tr.created_at
+        FROM eligible_goals eg
+        JOIN classroom_reward_transactions tr
+          ON tr.teacher_id = eg.teacher_id
+         AND tr.student_id = eg.student_id
+         AND tr.kind = 'grant'
+         AND (tr.teacher_class_id = eg.teacher_class_id OR (
+           tr.teacher_class_id IS NULL AND tr.class_name_snapshot = eg.class_name
+         ))
+         AND tr.created_at >= eg.starts_at
+         AND (eg.ends_at IS NULL OR tr.created_at <= eg.ends_at)
+         AND (eg.reward_type_id IS NULL OR tr.reward_type_id = eg.reward_type_id)
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM classroom_reward_transactions reversal
+          WHERE reversal.reversal_of_id = tr.id
+            AND reversal.kind = 'reversal'
+        )
+      ),
+      progress_events AS (
+        SELECT
+          goal_id,
+          title,
+          skill,
+          target_points,
+          created_at,
+          SUM(amount) OVER (
+            PARTITION BY goal_id
+            ORDER BY created_at, transaction_id
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+          ) AS running_points
+        FROM valid_grants
+      )
+      SELECT
+        goal_id AS id,
+        title,
+        skill,
+        target_points,
+        MIN(created_at) FILTER (WHERE running_points >= target_points) AS completed_at
+      FROM progress_events
+      GROUP BY goal_id, title, skill, target_points
+      HAVING MAX(running_points) >= target_points
+      ORDER BY completed_at DESC, goal_id DESC
+      LIMIT 6
+    `);
+    const completedGoals = ((completedResult as any).rows ?? []).map((completedRow: any) => ({
+      id: Number(completedRow.id),
+      title: completedRow.title,
+      skill: completedRow.skill,
+      targetPoints: Number(completedRow.target_points),
+      completedAt: completedRow.completed_at,
+    }));
     if (!row) {
-      res.json({ goal: null });
+      res.json({ goal: null, completedGoals });
       return;
     }
 
@@ -260,6 +348,7 @@ router.get("/student-auth/me/reward-goal", async (req, res) => {
         completed: currentPoints >= targetPoints,
         progressLabel: `${cappedPoints}/${targetPoints}`,
       },
+      completedGoals,
     });
   } catch (error) {
     req.log.error({ err: error }, "GET /student-auth/me/reward-goal failed");
