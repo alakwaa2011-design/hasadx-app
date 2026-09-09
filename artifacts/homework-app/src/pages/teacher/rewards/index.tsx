@@ -28,7 +28,7 @@ import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progre
 import { LiveBoard } from "./live-board";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, Presentation
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, Presentation, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
 }
 
 const formatPoints = formatRewardPoints;
+const INITIAL_VISIBLE_GOALS = 2;
 type TeacherClassOption = { className?: string | null; name?: string | null };
 
 function AdventurePointsBadge({ points, className, animate = false }: { points: number, className?: string, animate?: boolean }) {
@@ -178,8 +179,13 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const [groupGrantOpen, setGroupGrantOpen] = useState(false);
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<ClassroomRewardGoal | null>(null);
+  const [showAllGoals, setShowAllGoals] = useState(false);
   const [liveBoardOpen, setLiveBoardOpen] = useState(false);
   const { data: boardData, isLoading: boardLoading } = useGetRewardBoard(currentClass, liveBoardOpen);
+
+  useEffect(() => {
+    setShowAllGoals(false);
+  }, [currentClass]);
 
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
@@ -739,15 +745,34 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 {[0, 1].map((item) => <div key={item} className="h-36 animate-pulse rounded-[2rem] bg-emerald-100/50" />)}
               </div>
             ) : (goalsData?.goals?.length ?? 0) > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {goalsData!.goals.map((goal) => (
-                  <GoalProgressCard
-                    key={goal.id}
-                    goal={goal}
-                    onEdit={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
-                    onArchive={() => handleArchiveGoal(goal)}
-                  />
-                ))}
+              <div>
+                <div id="reward-goals-list" className="grid gap-3 md:grid-cols-2">
+                  {goalsData!.goals
+                    .slice(0, showAllGoals ? undefined : INITIAL_VISIBLE_GOALS)
+                    .map((goal) => (
+                      <GoalProgressCard
+                        key={goal.id}
+                        goal={goal}
+                        onEdit={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
+                        onArchive={() => handleArchiveGoal(goal)}
+                      />
+                    ))}
+                </div>
+                {goalsData!.goals.length > INITIAL_VISIBLE_GOALS && (
+                  <button
+                    type="button"
+                    data-testid="button-toggle-reward-goals"
+                    aria-expanded={showAllGoals}
+                    aria-controls="reward-goals-list"
+                    onClick={() => setShowAllGoals((current) => !current)}
+                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-white px-3 py-2.5 text-sm font-black text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/30 motion-reduce:transition-none"
+                  >
+                    {showAllGoals ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    {showAllGoals
+                      ? "طي الأهداف"
+                      : `عرض ${formatPoints(goalsData!.goals.length - INITIAL_VISIBLE_GOALS)} أهداف أخرى`}
+                  </button>
+                )}
               </div>
             ) : (
               <button

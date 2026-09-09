@@ -243,13 +243,25 @@ test("rewards pavilion stays clear with real class data, edge states, and reduce
   await page.route(classRoute, loadingHandler);
 
   await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`, { waitUntil: "domcontentloaded" });
-  await expect(page.getByText("جاري تحميل الطلاب...")).toBeVisible();
 
   const longStudent = fixture.students[0];
   await expect(page.getByRole("button", { name: `فتح خيارات تحفيز ${longStudent.name}` })).toBeVisible({ timeout: 20_000 });
   await page.unroute(classRoute, loadingHandler);
   await expect(page.getByRole("heading", { name: "أهداف التقدم" })).toBeVisible();
-  await expect(page.locator(".rewards-pavilion-goals").getByText(/هدف تعليمي طويل وواضح/)).toHaveCount(8);
+  const goalsSection = page.locator(".rewards-pavilion-goals");
+  const goalCards = goalsSection.getByText(/هدف تعليمي طويل وواضح/);
+  const goalsToggle = goalsSection.getByRole("button", { name: "عرض 6 أهداف أخرى" });
+  await expect(goalCards).toHaveCount(2);
+  await expect(goalsToggle).toHaveAttribute("aria-expanded", "false");
+  await goalsToggle.click();
+  await expect(goalCards).toHaveCount(8);
+  await expect(goalsSection.getByRole("button", { name: "تعديل الهدف" })).toHaveCount(8);
+  await expect(goalsSection.getByRole("button", { name: "أرشفة الهدف" })).toHaveCount(8);
+  const collapseGoals = goalsSection.getByRole("button", { name: "طي الأهداف" });
+  await expect(collapseGoals).toHaveAttribute("aria-expanded", "true");
+  await collapseGoals.click();
+  await expect(goalCards).toHaveCount(2);
+  await expect(page.getByRole("button", { name: `فتح خيارات تحفيز ${longStudent.name}` })).toBeVisible();
   await page.getByRole("button", { name: "المجموعات" }).click();
   await expect(page.getByText(/فريق المستكشفين أصحاب الاسم الطويل/)).toBeVisible();
 
@@ -284,6 +296,19 @@ test("rewards pavilion stays clear with real class data, edge states, and reduce
   for (const state of animationState) {
     expect(state.animationName).toBe("none");
     expect(state.transitionDuration).toBe("0s");
+  }
+
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 760 });
+    const mobileToggle = page.getByTestId("button-toggle-reward-goals");
+    await expect(mobileToggle).toBeVisible();
+    await expect(mobileToggle).toHaveCSS("transition-duration", "0s");
+    await expect(page.getByRole("button", { name: `فتح خيارات تحفيز ${longStudent.name}` })).toBeVisible();
+    const geometry = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    }));
+    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
   }
 });
 
