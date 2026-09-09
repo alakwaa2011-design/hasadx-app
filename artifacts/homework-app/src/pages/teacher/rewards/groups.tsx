@@ -141,6 +141,9 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
 
           <form onSubmit={save} className="min-h-0 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto max-w-3xl space-y-5">
+              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm font-black leading-6 text-amber-950">
+                ١. اختر مجموعة موجودة أو أنشئ مجموعة جديدة. ٢. اضغط على أسماء الطلاب حتى تظهر عبارة «تمت الإضافة». ٣. اضغط زر الحفظ الأخضر.
+              </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="flex items-center gap-2 text-lg font-black text-emerald-950">
@@ -208,11 +211,21 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
                     const checked = memberIds.has(student.id);
                     return (
                       <button key={student.id} type="button" onClick={() => toggleMember(student.id)}
-                        className={cn("flex items-center gap-3 rounded-xl border-2 p-2.5 text-right transition-colors", checked ? "border-emerald-400 bg-emerald-50" : "border-slate-100 bg-white hover:border-emerald-200")}>
+                        aria-pressed={checked}
+                        className={cn(
+                          "flex min-h-14 items-center gap-3 rounded-xl border-2 p-2.5 text-right shadow-sm transition-all",
+                          checked
+                            ? "border-emerald-600 bg-emerald-700 text-white ring-2 ring-emerald-200"
+                            : "border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50",
+                        )}>
                         <AvatarDisplay avatar={student.avatar} fallback={student.name.charAt(0)} size="sm" />
-                        <span className="min-w-0 flex-1 truncate text-sm font-black text-emerald-950">{student.name}</span>
-                        <span className={cn("flex h-6 w-6 items-center justify-center rounded-lg border-2", checked ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200")}>
-                          {checked && <Check size={14} strokeWidth={4} />}
+                        <span className={cn("min-w-0 flex-1 truncate text-sm font-black", checked ? "text-white" : "text-emerald-950")}>{student.name}</span>
+                        <span className={cn(
+                          "flex min-w-20 items-center justify-center gap-1 rounded-lg border-2 px-2 py-1 text-[10px] font-black",
+                          checked ? "border-white/50 bg-white text-emerald-800" : "border-emerald-200 bg-emerald-50 text-emerald-800",
+                        )}>
+                          {checked && <Check size={13} strokeWidth={4} />}
+                          {checked ? "تمت الإضافة" : "إضافة"}
                         </span>
                       </button>
                     );
@@ -223,7 +236,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
               <button type="submit" disabled={saving}
                 className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3.5 font-black text-white shadow-lg shadow-emerald-950/20 transition-colors hover:bg-emerald-800 disabled:opacity-50">
                 {saving ? <Loader2 size={19} className="animate-spin" /> : <Save size={19} />}
-                {selected ? "حفظ تغييرات المجموعة" : "إنشاء المجموعة"}
+                {selected ? `حفظ المجموعة (${memberIds.size} طالب)` : `إنشاء المجموعة (${memberIds.size} طالب)`}
               </button>
             </div>
           </form>

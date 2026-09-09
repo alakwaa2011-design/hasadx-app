@@ -474,17 +474,23 @@ export default function RewardsPage() {
                       type="button"
                       aria-label={isSelected ? `إلغاء تحديد ${student.name}` : `تحديد ${student.name} للمنح الجماعي`}
                       aria-pressed={isSelected}
-                      className="absolute top-3 right-3 flex items-center gap-1 z-20"
+                      className={cn(
+                        "absolute right-3 top-3 z-20 flex min-h-8 items-center gap-1.5 rounded-xl border-2 px-2.5 py-1.5 text-[10px] font-black shadow-md transition-all",
+                        isSelected
+                          ? "border-amber-500 bg-amber-400 text-amber-950"
+                          : "border-emerald-200 bg-white text-emerald-800 hover:border-amber-400 hover:bg-amber-50",
+                      )}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleStudent(student.id);
                       }}
                     >
-                      <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-all shadow-sm",
-                        isSelected ? "bg-amber-400 border-amber-400 text-amber-950 scale-110" : "border-emerald-200 bg-white hover:border-amber-300 hover:scale-105"
+                      <div className={cn("flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all",
+                        isSelected ? "border-amber-950/25 bg-white/50" : "border-emerald-300 bg-emerald-50"
                       )}>
                         {isSelected && <Check size={14} strokeWidth={4} />}
                       </div>
+                      <span>{isSelected ? "محدد للمنح" : "تحديد للمنح"}</span>
                     </button>
                   )}
 
