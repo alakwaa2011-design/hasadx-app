@@ -79,6 +79,7 @@ export default function RewardsPage() {
   const grantMutation = useGrantRewards();
 
   const grantIntentRef = useRef<{ signature: string; key: string } | null>(null);
+  const bulkGrantPendingRef = useRef(false);
   const singleGrantPendingRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -174,7 +175,8 @@ export default function RewardsPage() {
   };
 
   const handleGrant = (type?: any, customData?: { reason: string, points: number }) => {
-    if (selectedIds.size === 0 || !currentClass) return;
+    if (selectedIds.size === 0 || !currentClass || bulkGrantPendingRef.current || celebration) return;
+    bulkGrantPendingRef.current = true;
 
     resumeAudioContext();
 
@@ -212,7 +214,10 @@ export default function RewardsPage() {
         const pts = type?.points || customData?.points;
         toast.success(`تم منح ${pts} نقطة لـ ${payload.studentIds.length} طالب`);
       },
-      onError: (err) => toast.error(err.message || "حدث خطأ أثناء منح النقاط")
+      onError: (err) => {
+        bulkGrantPendingRef.current = false;
+        toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+      },
     });
   };
 
@@ -230,7 +235,13 @@ export default function RewardsPage() {
 
   return (
     <Layout>
-      <RewardCelebration celebration={celebration} onComplete={() => setCelebration(null)} />
+      <RewardCelebration
+        celebration={celebration}
+        onComplete={() => {
+          bulkGrantPendingRef.current = false;
+          setCelebration(null);
+        }}
+      />
 
       <div className={cn("max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none", displayMode && "mt-2")}>
 
