@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { BadgeCheck, Trophy, Gamepad2, Star, Loader2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { AvatarDisplay } from "@/components/avatar-display";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -112,12 +113,8 @@ export default function StudentPublicProfile() {
         {/* Profile card */}
         <Card className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 text-center">
           {/* Avatar / emoji */}
-          <div className="text-5xl">
-            {student.avatar ? (
-              <span>{student.avatar}</span>
-            ) : (
-              <span>🎓</span>
-            )}
+          <div className="flex justify-center">
+            <AvatarDisplay avatar={student.avatar} size="4xl" fallback="🎓" />
           </div>
 
           {/* Name + verified badge */}

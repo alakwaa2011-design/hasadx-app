@@ -176,6 +176,10 @@ test("every illustrated avatar has a local image file", () => {
 
 test("single grant celebrates only success, resists repeated input, and saves only the avatar", async ({ page }) => {
   if (!fixture) throw new Error("Rewards fixture is unavailable");
+  const selectedAvatar = ILLUSTRATED_AVATARS.find(
+    (avatar) => avatar.value === "/avatars/casual-bob-girl.webp",
+  );
+  if (!selectedAvatar) throw new Error("Expected illustrated avatar fixture is unavailable");
   const failedAvatarRequests: string[] = [];
   page.on("requestfailed", (request) => {
     if (new URL(request.url()).pathname.startsWith("/avatars/")) {
@@ -396,6 +400,78 @@ test("single grant celebrates only success, resists repeated input, and saves on
   expect(
     failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
   ).toEqual([]);
+
+  await page.goto(`/stu/${encodeURIComponent(fixture.studentAccount.email)}`);
+  const publicProfileAvatar = page.locator(`img[src="${selectedAvatar.value}"]`).first();
+  await expect(publicProfileAvatar).toBeVisible({ timeout: 20_000 });
+  const publicProfileDimensions = await publicProfileAvatar.evaluate((element: HTMLImageElement) => ({
+    complete: element.complete,
+    naturalWidth: element.naturalWidth,
+    naturalHeight: element.naturalHeight,
+  }));
+
+  const validGamePin = "654321";
+  await page.route(`**/api/game-info/${validGamePin}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        exists: true,
+        hackMode: false,
+        targetClass: null,
+        targetClasses: [],
+        students: [],
+      }),
+    });
+  });
+  const gameInfoResolved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/game-info/${validGamePin}`) && response.status() === 200,
+  );
+  await page.goto(`/game/join/${validGamePin}`);
+  await gameInfoResolved;
+  const gameAvatar = page.locator(`img[src="${selectedAvatar.value}"]`).first();
+  await expect(gameAvatar).toBeVisible({ timeout: 20_000 });
+  const gameDimensions = await gameAvatar.evaluate((element: HTMLImageElement) => ({
+    complete: element.complete,
+    naturalWidth: element.naturalWidth,
+    naturalHeight: element.naturalHeight,
+  }));
+
+  for (const [surface, dimensions] of [
+    ["الملف العام", publicProfileDimensions],
+    ["شاشة اللعبة", gameDimensions],
+  ] as const) {
+    expect(dimensions.complete, `لم يكتمل تحميل الشخصية في ${surface}`).toBe(true);
+    expect(dimensions.naturalWidth, `صورة الشخصية بلا عرض فعلي في ${surface}`).toBeGreaterThan(0);
+    expect(dimensions.naturalHeight, `صورة الشخصية بلا ارتفاع فعلي في ${surface}`).toBeGreaterThan(0);
+  }
+  expect(
+    failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
+    "فشل طلب الشخصية المرتبطة في الملف العام أو شاشة اللعبة",
+  ).toEqual([]);
+  await page.unroute(`**/api/game-info/${validGamePin}`);
+
+  const legacyAccountAvatar = "🦊";
+  await pool.query("UPDATE student_accounts SET avatar = $1 WHERE id = $2", [
+    legacyAccountAvatar,
+    fixture.studentAccount.id,
+  ]);
+  await pool.query("UPDATE students SET avatar = NULL WHERE student_account_id = $1", [
+    fixture.studentAccount.id,
+  ]);
+  const [fallbackMe, fallbackPublic] = await Promise.all([
+    page.request.get("/api/student-auth/me"),
+    page.request.get(`/api/student-auth/public/${encodeURIComponent(fixture.studentAccount.email)}`),
+  ]);
+  expect(fallbackMe.ok()).toBe(true);
+  expect(fallbackPublic.ok()).toBe(true);
+  expect((await fallbackMe.json()).avatar).toBe(legacyAccountAvatar);
+  expect((await fallbackPublic.json()).student.avatar).toBe(legacyAccountAvatar);
+  await pool.query("UPDATE students SET avatar = $1 WHERE student_account_id = $2", [
+    selectedAvatar.value,
+    fixture.studentAccount.id,
+  ]);
 });
 
 test("bulk grant sends one request and records one grant per student under rapid click and Enter", async ({ page }) => {

@@ -82,7 +82,7 @@ export default function GameJoin() {
           if (isHack) {
             setAvatar("01");
           } else {
-            setAvatar(DEFAULT_AVATAR);
+            setAvatar(studentAccount?.avatar || DEFAULT_AVATAR);
           }
           const classes: string[] = Array.isArray(data.targetClasses) && data.targetClasses.length > 0
             ? data.targetClasses
@@ -102,14 +102,14 @@ export default function GameJoin() {
         })
         .catch(() => {
           setHackMode(false);
-          setAvatar(DEFAULT_AVATAR);
+          setAvatar(studentAccount?.avatar || DEFAULT_AVATAR);
           setGameTargetClass(null);
           setGameTargetClasses([]);
           setGameStudents([]);
           setSelectedClass("");
         });
     }
-  }, [pin]);
+  }, [pin, studentAccount?.avatar]);
 
   const handleJoin = () => {
     const trimmedPin = pin.trim();

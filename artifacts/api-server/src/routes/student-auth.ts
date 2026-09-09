@@ -380,13 +380,14 @@ router.get("/student-auth/public/:username", async (req, res) => {
         id: studentAccountsTable.id,
         username: studentAccountsTable.username,
         displayName: studentAccountsTable.displayName,
-        avatar: studentAccountsTable.avatar,
+        avatar: sql<string | null>`COALESCE(students.avatar, ${studentAccountsTable.avatar})`,
         totalScore: studentAccountsTable.totalScore,
         gamesPlayed: studentAccountsTable.gamesPlayed,
         googleId: studentAccountsTable.googleId,
         createdAt: studentAccountsTable.createdAt,
       })
       .from(studentAccountsTable)
+      .leftJoin(studentsTable, eq(studentsTable.studentAccountId, studentAccountsTable.id))
       .where(eq(studentAccountsTable.username, username))
       .limit(1);
 
