@@ -44,6 +44,8 @@ export const classroomRewardGroupsTable = pgTable("classroom_reward_groups", {
   name: text("name").notNull(),
   description: text("description"),
   color: text("color").notNull(),
+  avatar: text("avatar"),
+  score: integer("score").notNull().default(0),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -51,6 +53,21 @@ export const classroomRewardGroupsTable = pgTable("classroom_reward_groups", {
   classNameUnique: uniqueIndex("classroom_reward_groups_class_name_uq").on(t.teacherId, t.teacherClassId, t.name),
   idTeacherUnique: uniqueIndex("classroom_reward_groups_id_teacher_uq").on(t.id, t.teacherId),
   classIndex: index("classroom_reward_groups_class_idx").on(t.teacherId, t.teacherClassId),
+}));
+
+/** Idempotent, immutable receipts for independent group competition scoring. */
+export const classroomRewardGroupScoreReceiptsTable = pgTable("classroom_reward_group_score_receipts", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => classroomRewardGroupsTable.id, { onDelete: "cascade" }),
+  idempotencyKey: text("idempotency_key").notNull(),
+  operation: text("operation").notNull(),
+  points: integer("points").notNull(),
+  score: integer("score").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  ownerRequestUnique: uniqueIndex("classroom_reward_group_score_receipts_owner_request_uq").on(t.teacherId, t.idempotencyKey),
+  groupIndex: index("classroom_reward_group_score_receipts_group_idx").on(t.teacherId, t.groupId),
 }));
 
 export const classroomRewardGroupMembersTable = pgTable("classroom_reward_group_members", {

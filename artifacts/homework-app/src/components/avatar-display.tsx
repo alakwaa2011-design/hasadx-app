@@ -19,11 +19,13 @@ export function AvatarDisplay({
   size = "md",
   className = "",
   fallback = "🦁",
+  style,
 }: {
   avatar?: string | null;
   size?: Size;
   className?: string;
   fallback?: string;
+  style?: React.CSSProperties;
 }) {
   const value = avatar || fallback;
   const sz = sizeClasses[size];
@@ -39,6 +41,7 @@ export function AvatarDisplay({
           "rounded-full object-cover bg-white/10 border border-white/20 shrink-0 inline-block",
           className,
         )}
+        style={style}
       />
     );
   }
@@ -50,6 +53,7 @@ export function AvatarDisplay({
         sz.text,
         className,
       )}
+      style={style}
     >
       {value}
     </span>

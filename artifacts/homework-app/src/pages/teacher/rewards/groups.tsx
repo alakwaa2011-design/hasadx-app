@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AvatarDisplay } from "@/components/avatar-display";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRound } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRound, Trophy, RotateCcw, Medal } from "lucide-react";
 import { toast } from "sonner";
 import {
   type RewardGroup,
@@ -10,9 +10,14 @@ import {
   useDeleteRewardGroup,
   useGetRewardGroups,
   useUpdateRewardGroup,
+  useGrantGroupReward,
+  useResetGroupScore
 } from "./api";
 
 export const REWARD_GROUP_COLORS = ["#468064", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0891b2", "#f97316"];
+export const REWARD_GROUP_AVATARS = [
+  "/avatars/oryx-companion.webp", "/avatars/falcon-guide.webp", "/avatars/desert-fox.webp", "/avatars/arabian-horse.webp", "/avatars/hero-boy.webp", "/avatars/space-girl.webp", "/avatars/wise-explorer.webp", "/avatars/nature-boy.webp"
+];
 
 type Student = { id: number; name: string; avatar?: string | null; points?: number };
 
@@ -31,6 +36,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(REWARD_GROUP_COLORS[0]);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [memberIds, setMemberIds] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -50,11 +56,13 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
       setName(selected.name);
       setDescription(selected.description ?? "");
       setColor(selected.color);
+      setAvatar(selected.avatar ?? null);
       setMemberIds(new Set(selected.members.map((member) => member.studentId)));
     } else {
       setName("");
       setDescription("");
       setColor(REWARD_GROUP_COLORS[groups.length % REWARD_GROUP_COLORS.length]);
+      setAvatar(null);
       setMemberIds(new Set());
     }
     setSearch("");
@@ -81,9 +89,9 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
     try {
       let groupId = selected?.id;
       if (groupId) {
-        await updateMutation.mutateAsync({ className, groupId, name: name.trim(), description: description.trim() || null, color, studentIds: [...memberIds] });
+        await updateMutation.mutateAsync({ className, groupId, name: name.trim(), description: description.trim() || null, color, avatar, studentIds: [...memberIds] } as any);
       } else {
-        const created = await createMutation.mutateAsync({ className, name: name.trim(), description: description.trim() || null, color, sortOrder: groups.length, studentIds: [...memberIds] });
+        const created = await createMutation.mutateAsync({ className, name: name.trim(), description: description.trim() || null, color, avatar, sortOrder: groups.length, studentIds: [...memberIds] } as any);
         groupId = created.id;
       }
       setSelectedId(groupId!);
@@ -178,15 +186,30 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-black text-emerald-950">لون المجموعة</label>
-                <div className="flex flex-wrap gap-2">
-                  {REWARD_GROUP_COLORS.map((swatch) => (
-                    <button key={swatch} type="button" onClick={() => setColor(swatch)} aria-label={`اختيار اللون ${swatch}`}
-                      className={cn("flex h-10 w-10 items-center justify-center rounded-xl border-4 border-white shadow-sm ring-2 transition-transform hover:scale-105 motion-reduce:transform-none", color === swatch ? "scale-110 ring-emerald-900" : "ring-slate-200")}
-                      style={{ backgroundColor: swatch }}>
-                      {color === swatch && <Check size={18} className="text-white" strokeWidth={4} />}
+                <label className="mb-2 block text-sm font-black text-emerald-950">لون ورمز المجموعة</label>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {REWARD_GROUP_COLORS.map((swatch) => (
+                      <button key={swatch} type="button" onClick={() => setColor(swatch)} aria-label={`اختيار اللون ${swatch}`}
+                        className={cn("flex h-10 w-10 items-center justify-center rounded-xl border-4 border-white shadow-sm ring-2 transition-transform hover:scale-105 motion-reduce:transform-none", color === swatch ? "scale-110 ring-emerald-900" : "ring-slate-200")}
+                        style={{ backgroundColor: swatch }}>
+                        {color === swatch && <Check size={18} className="text-white" strokeWidth={4} />}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setAvatar(null)} aria-label="بدون رمز"
+                      className={cn("flex h-12 w-12 items-center justify-center rounded-xl border-2 shadow-sm transition-transform hover:scale-105 motion-reduce:transform-none", avatar === null ? "border-emerald-600 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-400")}>
+                      <span className="text-xs font-bold">بدون</span>
                     </button>
-                  ))}
+                    {REWARD_GROUP_AVATARS.map((av) => (
+                      <button key={av} type="button" onClick={() => setAvatar(av)} aria-label={`اختيار الرمز ${av}`}
+                        className={cn("flex h-12 w-12 items-center justify-center rounded-xl border-2 shadow-sm transition-transform hover:scale-105 motion-reduce:transform-none", avatar === av ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-600 ring-offset-1" : "border-slate-200 bg-white")}
+                        style={avatar === av ? { borderColor: color, backgroundColor: `${color}15`, outlineColor: color } : {}}>
+                        <AvatarDisplay avatar={av} size="md" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -255,5 +278,220 @@ export function RewardGroupChip({ group, active, onClick }: { group: RewardGroup
       {group.name}
       <span className={cn("rounded-md px-1.5 py-0.5 text-[10px]", active ? "bg-white/20" : "bg-slate-100 text-slate-600")}>{group.members.length}</span>
     </button>
+  );
+}
+
+export function GroupAwardDialog({ open, onOpenChange, group, className, onDetailsClick, onAward }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: RewardGroup | null;
+  className: string;
+  onDetailsClick: () => void;
+  onAward: (groupName: string) => void;
+}) {
+  const grantMutation = useGrantGroupReward();
+
+  if (!group) return null;
+
+  const handleGrant = (points: number) => {
+    grantMutation.mutate({
+      className,
+      groupId: group.id,
+      points,
+      idempotencyKey: crypto.randomUUID()
+    }, {
+      onSuccess: () => {
+        toast.success(`تم منح ${points} نقطة لمجموعة ${group.name}`);
+        onAward(group.name);
+        onOpenChange(false);
+      },
+      onError: (err) => {
+        toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+      }
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm rounded-3xl p-6 text-center border-2 border-emerald-100">
+        <div className="flex justify-center -mt-12 mb-4">
+          <AvatarDisplay
+            avatar={group.avatar}
+            fallback={group.name.charAt(0)}
+            size="4xl"
+            className="w-24 h-24 shadow-xl ring-4 ring-white"
+            style={{ backgroundColor: group.color }}
+          />
+        </div>
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-2xl font-black text-emerald-950">{group.name}</DialogTitle>
+          <DialogDescription className="text-sm font-bold text-emerald-900/60 mt-1">
+            {group.members.length} أعضاء • رصيد المجموعة: <span className="text-emerald-700">{group.score || 0}</span> نقطة
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {[1, 2, 3, 5].map((pts) => (
+            <button
+              key={pts}
+              type="button"
+              disabled={grantMutation.isPending}
+              onClick={() => handleGrant(pts)}
+              className="flex items-center justify-center gap-2 rounded-2xl border-2 border-amber-200 bg-amber-50 py-4 text-xl font-black text-amber-900 transition-all hover:scale-105 hover:bg-amber-100 hover:shadow-lg disabled:opacity-50"
+            >
+              <Plus size={20} className="text-amber-500" /> {pts}
+            </button>
+          ))}
+        </div>
+
+        <DialogFooter className="sm:justify-center border-t border-emerald-100 pt-4 mt-2">
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              onDetailsClick();
+            }}
+            className="flex items-center gap-2 text-sm font-bold text-emerald-600 hover:text-emerald-800 transition-colors"
+          >
+            <UsersRound size={16} /> عرض تفاصيل المجموعة
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function GroupDetailDialog({ open, onOpenChange, group, className, onAward }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: RewardGroup | null;
+  className: string;
+  onAward: (groupName: string) => void;
+}) {
+  const resetMutation = useResetGroupScore();
+  const grantMutation = useGrantGroupReward();
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  useEffect(() => {
+    if (open) setConfirmReset(false);
+  }, [open]);
+
+  if (!group) return null;
+
+  const handleReset = () => {
+    if (!confirmReset) {
+      setConfirmReset(true);
+      return;
+    }
+
+    resetMutation.mutate({
+      className,
+      groupId: group.id,
+      idempotencyKey: crypto.randomUUID()
+    }, {
+      onSuccess: () => {
+        toast.success(`تم تصفير نقاط مجموعة ${group.name}`);
+        setConfirmReset(false);
+      },
+      onError: (err) => {
+        toast.error(err.message || "حدث خطأ أثناء تصفير النقاط");
+      }
+    });
+  };
+
+  const handleGrant = (points: number) => {
+    grantMutation.mutate({
+      className,
+      groupId: group.id,
+      points,
+      idempotencyKey: crypto.randomUUID()
+    }, {
+      onSuccess: () => {
+        toast.success(`تم منح ${points} نقطة لمجموعة ${group.name}`);
+        onAward(group.name);
+      },
+      onError: (err) => {
+        toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+      }
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => {
+      if (!resetMutation.isPending && !grantMutation.isPending) {
+        onOpenChange(next);
+      }
+    }}>
+      <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden border-2 border-emerald-100">
+        <div className="bg-emerald-950 p-6 text-white text-center relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundColor: group.color }} />
+          <div className="relative z-10 flex flex-col items-center">
+            <AvatarDisplay
+              avatar={group.avatar}
+              fallback={group.name.charAt(0)}
+              size="4xl"
+              className="w-20 h-20 shadow-lg ring-4 ring-white/20 mb-3"
+              style={{ backgroundColor: group.color }}
+            />
+            <h2 className="text-2xl font-black tracking-wide">{group.name}</h2>
+            {group.description && <p className="text-emerald-100/80 text-sm font-medium mt-1">{group.description}</p>}
+
+            <div className="mt-4 flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-2xl">
+              <Trophy className="text-amber-400" size={24} />
+              <span className="text-3xl font-black text-amber-400">{group.score || 0}</span>
+              <span className="text-sm font-bold text-emerald-100 ml-1">نقطة</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="flex gap-2 mb-6">
+            <button
+              type="button"
+              disabled={grantMutation.isPending}
+              onClick={() => handleGrant(5)}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-600 bg-emerald-700 py-3 text-sm font-black text-white transition-all hover:bg-emerald-800 disabled:opacity-50"
+            >
+              <Plus size={18} /> منح 5 نقاط
+            </button>
+            <button
+              type="button"
+              disabled={resetMutation.isPending}
+              onClick={handleReset}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-black transition-colors disabled:opacity-50",
+                confirmReset
+                  ? "border-rose-600 bg-rose-600 text-white"
+                  : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+              )}
+            >
+              {resetMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />}
+              {confirmReset ? "تأكيد التصفير" : "تصفير"}
+            </button>
+          </div>
+
+          <h3 className="font-black text-emerald-950 mb-3 flex items-center gap-2 text-sm">
+            <UsersRound size={16} className="text-emerald-600" />
+            أعضاء المجموعة ({group.members.length})
+          </h3>
+
+          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-2 max-h-60 overflow-y-auto">
+            <div className="flex flex-col gap-1">
+              {group.members.map((member) => (
+                <div key={member.studentId} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white transition-colors">
+                  <AvatarDisplay avatar={member.avatar} fallback={member.name.charAt(0)} size="sm" />
+                  <span className="font-bold text-sm text-emerald-900 truncate flex-1">{member.name}</span>
+                </div>
+              ))}
+              {group.members.length === 0 && (
+                <div className="p-4 text-center text-emerald-900/50 text-sm font-bold">
+                  لا يوجد أعضاء في هذه المجموعة.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

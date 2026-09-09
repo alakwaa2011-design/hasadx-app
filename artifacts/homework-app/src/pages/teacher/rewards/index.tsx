@@ -14,7 +14,7 @@ import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
 import { BalanceAdjustmentDialog, StudentControlCenter } from "./student-control-center";
-import { RewardGroupChip, RewardGroupsDialog } from "./groups";
+import { RewardGroupChip, RewardGroupsDialog, GroupAwardDialog, GroupDetailDialog } from "./groups";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
@@ -69,9 +69,9 @@ export default function RewardsPage() {
   const params = useParams<{ className?: string }>();
   const [, setLocation] = useLocation();
   const currentClass = params.className;
-  
+
   const { data: classesList, isLoading: loadingClasses } = useGetTeacherClasses();
-  
+
   useEffect(() => {
     if (!currentClass && classesList && classesList.length > 0) {
       setLocation(`/teacher/rewards/${encodeURIComponent(classesList[0].className || classesList[0].name)}`);
@@ -124,7 +124,8 @@ export default function RewardsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isMuted, setIsMuted] = useLocalStorage("hasaad_rewards_muted", false);
   const [displayMode, setDisplayMode] = useLocalStorage("hasaad_rewards_display_mode", false);
-  
+  const [viewMode, setViewMode] = useLocalStorage<"students" | "groups">("hasaad_rewards_view_mode", "students");
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
@@ -136,7 +137,9 @@ export default function RewardsPage() {
   const [bulkBalanceAdjustmentOpen, setBulkBalanceAdjustmentOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
-  
+  const [groupsDetailOpen, setGroupsDetailOpen] = useState(false);
+  const [groupGrantOpen, setGroupGrantOpen] = useState(false);
+
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
   const students = useMemo(() => {
@@ -376,7 +379,7 @@ export default function RewardsPage() {
             >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
-            <button 
+            <button
               onClick={() => setLedgerOpen(true)}
               className="p-2 rounded-xl bg-white/10 border border-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-md shrink-0 shadow-sm"
               title="السجل والملخص"
@@ -404,56 +407,176 @@ export default function RewardsPage() {
         {/* Toolbar */}
         {!displayMode && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setGroupsOpen(true)}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">
-                <UsersRound size={15} /> إضافة الطلاب للمجموعات
-              </button>
-              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
-              <button type="button" onClick={() => setActiveGroupId(null)}
-                className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
-                كل الطلاب
-              </button>
-              {(groupsData?.groups ?? []).map((group) => (
-                <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
-                  onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
-              ))}
-              </div>
-            </div>
             <div className="flex items-center gap-3">
-            <div className="relative flex-1 group">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-900/40 group-focus-within:text-emerald-600 transition-colors" size={18} />
-              <input
-                type="text"
-                placeholder="ابحث عن طالب..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full pl-4 pr-11 py-3 rounded-2xl border-2 border-emerald-100 bg-white text-sm font-bold text-emerald-950 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 transition-all shadow-sm"
-              />
-            </div>
-            {activeGroup && (
-              <button type="button" onClick={() => setSelectedIds(new Set(activeGroup.members.map((member) => member.studentId)))}
-                className="hidden items-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-black text-white shadow-sm sm:flex"
-                style={{ backgroundColor: activeGroup.color, borderColor: activeGroup.color }}>
-                <UsersRound size={18} /> تحديد المجموعة
-              </button>
-            )}
-            <button 
-              onClick={toggleAll}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl border-2 border-emerald-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 text-sm font-black text-emerald-950 transition-all shrink-0 shadow-sm"
-            >
-              {selectedIds.size === students.length && students.length > 0 ? (
-                <><CheckSquare size={18} className="text-amber-500" /> إلغاء التحديد</>
-              ) : (
-                <><Square size={18} className="text-emerald-900/40" /> {activeGroup ? "تحديد المجموعة" : "تحديد الكل"}</>
+              <div className="flex bg-white border-2 border-emerald-100 rounded-xl p-1 shadow-sm shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("students")}
+                  className={cn("px-4 py-2 rounded-lg text-sm font-black transition-colors", viewMode === "students" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
+                >
+                  الطلاب
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("groups")}
+                  className={cn("px-4 py-2 rounded-lg text-sm font-black transition-colors", viewMode === "groups" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
+                >
+                  المجموعات
+                </button>
+              </div>
+
+              {viewMode === "students" && (
+                <>
+                  <button type="button" onClick={() => setGroupsOpen(true)}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">
+                    <UsersRound size={15} /> إدارة المجموعات
+                  </button>
+                  <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                  <button type="button" onClick={() => setActiveGroupId(null)}
+                    className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
+                    كل الطلاب
+                  </button>
+                  {(groupsData?.groups ?? []).map((group) => (
+                    <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
+                      onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
+                  ))}
+                  </div>
+                </>
               )}
-            </button>
+
+              {viewMode === "groups" && (
+                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                  <button type="button" onClick={() => setGroupsOpen(true)}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900 shadow-sm hover:border-emerald-400 hover:bg-emerald-50">
+                    <Plus size={18} className="text-emerald-600" /> مجموعة جديدة
+                  </button>
+                </div>
+              )}
             </div>
+
+            {viewMode === "students" && (
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 group">
+                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-900/40 group-focus-within:text-emerald-600 transition-colors" size={18} />
+                  <input
+                    type="text"
+                    placeholder="ابحث عن طالب..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-4 pr-11 py-3 rounded-2xl border-2 border-emerald-100 bg-white text-sm font-bold text-emerald-950 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 transition-all shadow-sm"
+                  />
+                </div>
+                {activeGroup && (
+                  <button type="button" onClick={() => setSelectedIds(new Set(activeGroup.members.map((member) => member.studentId)))}
+                    className="hidden items-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-black text-white shadow-sm sm:flex"
+                    style={{ backgroundColor: activeGroup.color, borderColor: activeGroup.color }}>
+                    <UsersRound size={18} /> تحديد المجموعة
+                  </button>
+                )}
+                <button
+                  onClick={toggleAll}
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl border-2 border-emerald-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 text-sm font-black text-emerald-950 transition-all shrink-0 shadow-sm"
+                >
+                  {selectedIds.size === students.length && students.length > 0 ? (
+                    <><CheckSquare size={18} className="text-amber-500" /> إلغاء التحديد</>
+                  ) : (
+                    <><Square size={18} className="text-emerald-900/40" /> {activeGroup ? "تحديد المجموعة" : "تحديد الكل"}</>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Students Grid */}
-        {loadingStudents ? (
+        {/* Groups / Students Grid */}
+        {viewMode === "groups" ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+            {(groupsData?.groups ?? []).map((group) => (
+              <div
+                key={group.id}
+                className={cn(
+                  "group relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4",
+                  "border-emerald-100 bg-gradient-to-b from-white to-emerald-50/30 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-900/5 hover:-translate-y-1"
+                )}
+                style={{
+                  borderColor: `${group.color}40`,
+                }}
+              >
+                <div
+                  className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl transition-colors duration-500 opacity-30 group-hover:opacity-50"
+                  style={{ backgroundColor: group.color }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveGroupId(group.id);
+                    setGroupsDetailOpen(true);
+                  }}
+                  className="absolute left-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-white p-0 text-[10px] font-black shadow-md transition-all hover:shadow-lg sm:left-3 sm:top-3"
+                  style={{ borderColor: `${group.color}40`, color: group.color }}
+                  title="تفاصيل المجموعة"
+                >
+                  <UsersRound size={13} strokeWidth={2.7} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveGroupId(group.id);
+                    setGroupGrantOpen(true);
+                  }}
+                  className="relative mt-4 flex w-full flex-col items-center rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar sm:mt-6"
+                >
+                  <div className="relative">
+                    <AvatarDisplay
+                      avatar={group.avatar}
+                      fallback={group.name.charAt(0)}
+                      size="4xl"
+                      className={cn(
+                        "relative z-10 h-24 w-24 bg-white shadow-md ring-[4px] transition-transform duration-500 group-hover/avatar:scale-105 motion-reduce:transition-none motion-reduce:transform-none sm:h-28 sm:w-28",
+                      )}
+                      style={{ color: group.color, borderColor: `${group.color}40`, outlineColor: group.color }}
+                    />
+                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+                      <AdventurePointsBadge
+                        points={group.score || 0}
+                        className={cn(
+                          "scale-90 transition-transform group-hover/avatar:scale-100 motion-reduce:transition-none",
+                          displayMode && "scale-100",
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-5 w-full px-1 text-center">
+                    <div className="truncate text-sm font-black tracking-wide text-emerald-950 transition-colors group-hover/avatar:text-emerald-700 motion-reduce:transition-none">
+                      {group.name}
+                    </div>
+                    <div className="mt-1 text-[10px] font-bold text-emerald-900/50">
+                      {group.members.length} أعضاء
+                    </div>
+                  </div>
+                </button>
+              </div>
+            ))}
+            {(groupsData?.groups ?? []).length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-24 text-emerald-900/40 space-y-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-emerald-100 rounded-full blur-xl opacity-50" />
+                  <UsersRound size={64} className="relative drop-shadow-sm" strokeWidth={1.5} />
+                </div>
+                <p className="font-bold text-lg">لم يتم العثور على مجموعات.</p>
+                <button
+                  type="button"
+                  onClick={() => setGroupsOpen(true)}
+                  className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 transition-colors"
+                >
+                  إنشاء مجموعة جديدة
+                </button>
+              </div>
+            )}
+          </div>
+        ) : loadingStudents ? (
           <div className="flex flex-col items-center justify-center py-20 text-emerald-800 space-y-4">
             <Loader2 className="animate-spin" size={40} />
             <p className="font-bold">جاري تحميل الطلاب...</p>
@@ -560,8 +683,8 @@ export default function RewardsPage() {
             })}
           </div>
         )}
-        
-        {students.length === 0 && !loadingStudents && (
+
+        {viewMode === "students" && students.length === 0 && !loadingStudents && (
           <div className="flex flex-col items-center justify-center py-24 text-emerald-900/40 space-y-4">
             <div className="relative">
               <div className="absolute inset-0 bg-emerald-100 rounded-full blur-xl opacity-50" />
@@ -714,6 +837,27 @@ export default function RewardsPage() {
         className={currentClass}
         students={classData?.students ?? []}
       />
+      <GroupAwardDialog
+        open={groupGrantOpen}
+        onOpenChange={setGroupGrantOpen}
+        group={groupsData?.groups?.find(g => g.id === activeGroupId) ?? null}
+        className={currentClass}
+        onDetailsClick={() => setGroupsDetailOpen(true)}
+        onAward={() => {
+          playSound();
+        }}
+      />
+
+      <GroupDetailDialog
+        open={groupsDetailOpen}
+        onOpenChange={setGroupsDetailOpen}
+        group={groupsData?.groups?.find(g => g.id === activeGroupId) ?? null}
+        className={currentClass}
+        onAward={() => {
+          playSound();
+        }}
+      />
+
       <BulkBalanceAdjustmentDialog
         open={bulkBalanceAdjustmentOpen}
         onOpenChange={setBulkBalanceAdjustmentOpen}
@@ -913,8 +1057,8 @@ function CustomGrantDialog({ open, onOpenChange, onGrant, loading }: { open: boo
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           <div>
             <label className="text-sm font-bold text-emerald-950 mb-2 block">السبب</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="مثال: مساعدة زميل، مهمة إضافية..."

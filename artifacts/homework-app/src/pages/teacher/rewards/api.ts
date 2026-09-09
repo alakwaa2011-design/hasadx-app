@@ -32,6 +32,8 @@ export interface RewardGroup {
   name: string;
   description?: string | null;
   color: string;
+  avatar?: string | null;
+  score: number;
   sortOrder: number;
   members: RewardGroupMember[];
 }
@@ -135,6 +137,35 @@ export const useUpdateRewardType = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: any) => fetcher(`/api/classroom-rewards/types/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-rewards", "types"] }),
+  });
+};
+
+export const useGrantGroupReward = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, groupId, ...data }: { className: string; groupId: number; points: number; idempotencyKey: string }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/groups/${groupId}/score`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+    },
+  });
+};
+
+export const useResetGroupScore = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, groupId, idempotencyKey }: { className: string; groupId: number; idempotencyKey: string }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/groups/${groupId}/reset`, {
+        method: "POST",
+        body: JSON.stringify({ idempotencyKey }),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", variables.className] });
+    },
   });
 };
 
