@@ -44,6 +44,8 @@ export interface UnifiedQuestionSourceFlowProps {
   maxQuestions: number;
   /** Leaves the source menu through the caller's safe in-app route. */
   onBackFromMenu?: () => void;
+  /** Optional label for the flow back controls. */
+  backLabel?: string;
   onComplete: (data: {
     questions: Array<{
       text: string;
@@ -101,6 +103,7 @@ export function UnifiedQuestionSourceFlow({
   minQuestions,
   maxQuestions,
   onBackFromMenu,
+  backLabel,
   onComplete,
 }: UnifiedQuestionSourceFlowProps) {
   const { lang } = useI18n();
@@ -238,6 +241,7 @@ export function UnifiedQuestionSourceFlow({
   const BackBtn = () => (
     <GameFlowBackButton
       onBack={goBack}
+      label={backLabel}
       testId="button-back-question-source"
       className="shrink-0"
     />
@@ -806,7 +810,7 @@ export function UnifiedQuestionSourceFlow({
     <div className={cn("mx-auto w-full space-y-8 px-1 sm:px-3 lg:space-y-10 lg:px-6", tugPresentation ? "max-w-2xl" : "max-w-7xl")} dir={dir}>
       {viewState === "menu" && onBackFromMenu && (
         <div className={cn("mx-auto", tugPresentation ? "max-w-2xl" : "max-w-5xl")}>
-          <GameFlowBackButton onBack={onBackFromMenu} />
+          <GameFlowBackButton onBack={onBackFromMenu} label={backLabel} />
         </div>
       )}
       {/* Header & Step Indicator */}

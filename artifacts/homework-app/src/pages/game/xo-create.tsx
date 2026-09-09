@@ -152,6 +152,7 @@ export default function XoCreate() {
             minQuestions={2}
             maxQuestions={20}
             onBackFromMenu={handleFlowBack}
+            backLabel={ar ? "رجوع" : "Back"}
             onComplete={({ questions: q, sourceTitle, source }) => {
               setQuestions(toXoQuestions(q));
               setQuestionSource(source);
@@ -169,7 +170,7 @@ export default function XoCreate() {
       <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
         <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="mb-3">
-            <GameFlowBackButton onBack={handleFlowBack} />
+            <GameFlowBackButton onBack={handleFlowBack} label={ar ? "رجوع" : "Back"} />
           </div>
           <div className="rounded-3xl border bg-card shadow-sm overflow-hidden">
             <header className="border-b bg-muted/20 px-6 py-5 flex items-center gap-4">

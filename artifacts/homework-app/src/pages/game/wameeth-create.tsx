@@ -119,7 +119,7 @@ export default function WameethCreate() {
   const [aiGenerating, setAiGenerating] = useState(false);
 
   // ─── Step 2: play mode ────────────────────────────────────────────────────
-  const [mode, setMode] = useState<PlayMode | null>(null);
+  const [mode, setMode] = useState<PlayMode | null>("classroom");
   const [teamCount, setTeamCount] = useState(2);
   const [customTeamNames, setCustomTeamNames] = useState<string[]>(["", "", "", "", "", ""]);
   const [targetClass, setTargetClass] = useState<string>(() => getRememberedTargetClass());
@@ -940,10 +940,10 @@ export default function WameethCreate() {
               </div>
             </div>
 
-            <div className="space-y-2.5 sm:space-y-4 lg:space-y-5">
+            <div className="flex flex-col gap-2.5 sm:gap-4 lg:gap-5">
               <section
                 data-testid="playmode-devices-section"
-                className="rounded-2xl sm:rounded-3xl border border-blue-200/70 bg-blue-50/40 p-2.5 sm:p-4 lg:p-5 dark:border-blue-900/40 dark:bg-blue-950/20"
+                className="order-2 rounded-2xl sm:rounded-3xl border border-blue-200/70 bg-blue-50/40 p-2.5 sm:p-4 lg:p-5 dark:border-blue-900/40 dark:bg-blue-950/20"
               >
                 <div className="flex items-center gap-2 px-0.5 pb-2 sm:items-start sm:gap-3 sm:px-2 sm:pb-4">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 sm:mt-0.5 sm:h-9 sm:w-9 sm:rounded-xl dark:bg-blue-900/50 dark:text-blue-300">
@@ -997,7 +997,7 @@ export default function WameethCreate() {
 
               <section
                 data-testid="playmode-board-section"
-                className="rounded-2xl sm:rounded-3xl border border-emerald-200/70 bg-emerald-50/40 p-2.5 sm:p-4 lg:p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+                className="order-1 rounded-2xl sm:rounded-3xl border border-emerald-200/70 bg-emerald-50/40 p-2.5 sm:p-4 lg:p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20"
               >
                 <div className="flex items-center gap-2 px-0.5 pb-2 sm:items-start sm:gap-3 sm:px-2 sm:pb-4">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 sm:mt-0.5 sm:h-9 sm:w-9 sm:rounded-xl dark:bg-emerald-900/50 dark:text-emerald-300">

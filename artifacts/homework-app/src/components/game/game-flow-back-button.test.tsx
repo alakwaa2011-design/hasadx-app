@@ -78,6 +78,8 @@ describe("game setup back-button contract", () => {
     expect(backHandler).toContain('setSetupStep("questions")');
     expect(backHandler).not.toContain("setQuestions([])");
     expect(source).toContain("onBackFromMenu={handleFlowBack}");
+    expect(source).toContain('backLabel={ar ? "رجوع" : "Back"}');
+    expect(source).toContain('label={ar ? "رجوع" : "Back"}');
   });
 
   it.each(MULTI_STEP_BACK_CONTRACTS)(
