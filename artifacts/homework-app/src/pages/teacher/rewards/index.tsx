@@ -477,8 +477,9 @@ export default function RewardsPage() {
                       type="button"
                       aria-label={isSelected ? `إلغاء تحديد ${student.name}` : `تحديد ${student.name} للمنح الجماعي`}
                       aria-pressed={isSelected}
+                      title={isSelected ? "إلغاء التحديد" : "تحديد الطالب"}
                       className={cn(
-                        "absolute right-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 p-0 text-[10px] font-black shadow-md transition-all sm:right-3 sm:top-3 sm:h-auto sm:w-auto sm:min-h-8 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1.5",
+                        "absolute right-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 p-0 text-[10px] font-black shadow-md transition-all sm:right-3 sm:top-3",
                         isSelected
                           ? "border-amber-500 bg-amber-400 text-amber-950"
                           : "border-emerald-200 bg-white text-emerald-800 hover:border-amber-400 hover:bg-amber-50",
@@ -493,7 +494,6 @@ export default function RewardsPage() {
                       )}>
                         {isSelected && <Check size={14} strokeWidth={4} />}
                       </div>
-                      <span className="hidden sm:inline">{isSelected ? "محدد للمنح" : "تحديد للمنح"}</span>
                     </button>
                   )}
 
@@ -504,18 +504,17 @@ export default function RewardsPage() {
                       setActiveStudentId(student.id);
                       setStudentControlOpen(true);
                     }}
-                    className="absolute left-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-200 bg-white p-0 text-[10px] font-black text-emerald-800 shadow-md transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg sm:left-3 sm:top-3 sm:h-auto sm:w-auto sm:gap-1 sm:rounded-xl sm:px-2 sm:py-1.5"
+                    className="absolute left-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-200 bg-white p-0 text-[10px] font-black text-emerald-800 shadow-md transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg sm:left-3 sm:top-3"
                     title="فتح ملف الطالب"
                     aria-label={`فتح ملف الطالب ${student.name}`}
                   >
                     <UserRound size={13} strokeWidth={2.7} />
-                    <span className="hidden sm:inline">ملف الطالب</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSingleGrantStudentId(student.id)}
-                    className="relative mt-1 flex w-full flex-col items-center rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar sm:mt-2"
+                    className="relative mt-8 flex w-full flex-col items-center rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar sm:mt-10"
                     aria-label={`فتح خيارات تحفيز ${student.name}`}
                   >
                     <div className="relative">
@@ -524,7 +523,7 @@ export default function RewardsPage() {
                         fallback={student.name.charAt(0)}
                         size="4xl"
                         className={cn(
-                          "shadow-md ring-[4px] ring-white relative z-10 transition-transform duration-500 group-hover/avatar:scale-105 bg-emerald-50 motion-reduce:transition-none motion-reduce:transform-none",
+                          "relative z-10 h-24 w-24 bg-emerald-50 shadow-md ring-[4px] ring-white transition-transform duration-500 group-hover/avatar:scale-105 motion-reduce:transition-none motion-reduce:transform-none sm:h-28 sm:w-28",
                           isSelected && "ring-amber-200 shadow-amber-400/30"
                         )}
                       />
@@ -556,22 +555,6 @@ export default function RewardsPage() {
                       </div>
                     </div>
                   </button>
-                  {!displayMode && (
-                    <button
-                      type="button"
-                      disabled={(student.points || 0) < 1}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setBalanceAdjustmentStudentId(student.id);
-                      }}
-                      className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/80 p-0 text-[11px] font-black text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 sm:mt-1 sm:h-auto sm:w-full sm:gap-1.5 sm:rounded-xl sm:px-2 sm:py-1.5"
-                      aria-label={`خصم نقاط من رصيد ${student.name}`}
-                      title="خصم نقاط"
-                    >
-                      <SlidersHorizontal size={15} />
-                      <span className="hidden sm:inline">خصم نقاط</span>
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -669,6 +652,11 @@ export default function RewardsPage() {
         onOpenChange={(v) => { if (!v) setSingleGrantStudentId(null); }}
         student={singleGrantStudent}
         rewardTypes={activeRewardTypes}
+        onAdjustBalance={() => {
+          if (!singleGrantStudent) return;
+          setBalanceAdjustmentStudentId(singleGrantStudent.id);
+          setSingleGrantStudentId(null);
+        }}
         onGrant={(type, customData) => {
           if (!singleGrantStudent || !currentClass || singleGrantPendingRef.current) return;
           singleGrantPendingRef.current = true;
@@ -738,13 +726,14 @@ export default function RewardsPage() {
 }
 
 function SingleStudentGrantDialog({
-  open, onOpenChange, student, rewardTypes, onGrant, loading
+  open, onOpenChange, student, rewardTypes, onGrant, onAdjustBalance, loading
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   student: any;
   rewardTypes: any[];
   onGrant: (type?: any, customData?: { reason: string, points: number }) => void;
+  onAdjustBalance: () => void;
   loading: boolean;
 }) {
   const [customOpen, setCustomOpen] = useState(false);
@@ -785,7 +774,19 @@ function SingleStudentGrantDialog({
           <div className="max-h-[65dvh] overflow-y-auto bg-slate-50/50 p-4 sm:p-8">
           {!customOpen ? (
             <div className="space-y-5">
-              <h3 className="text-sm font-black text-emerald-900/60 text-center tracking-wide">اختر نوع التحفيز للطالب</h3>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-black tracking-wide text-emerald-900/60">اختر نوع التحفيز للطالب</h3>
+                <button
+                  type="button"
+                  onClick={onAdjustBalance}
+                  disabled={loading || (student.points || 0) < 1}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={`خصم نقاط من رصيد ${student.name}`}
+                >
+                  <SlidersHorizontal size={13} />
+                  خصم
+                </button>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {rewardTypes.map(type => (
                   <button
