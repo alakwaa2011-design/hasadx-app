@@ -39,6 +39,8 @@ import {
   Gift,
   Award,
   History,
+  Target,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -88,6 +90,17 @@ interface RecentScore {
   createdAt: string;
 }
 
+interface StudentRewardGoal {
+  id: number;
+  title: string;
+  skill: string;
+  targetPoints: number;
+  currentPoints: number;
+  remainingPoints: number;
+  progressPercent: number;
+  completed: boolean;
+}
+
 const GAME_LABELS: Record<string, { key: keyof typeof import("@/locales/ar").ar.studentDashboard; color: string }> = {
   flags: { key: "flags", color: "text-emerald-600 bg-emerald-500/10" },
   color: { key: "color", color: "text-orange-600 bg-orange-500/10" },
@@ -107,6 +120,8 @@ export default function StudentDashboard() {
   const [recentScores, setRecentScores] = useState<RecentScore[]>([]);
   const [activityDays, setActivityDays] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rewardGoal, setRewardGoal] = useState<StudentRewardGoal | null>(null);
+  const previousGoalRef = useRef<StudentRewardGoal | null | undefined>(undefined);
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
@@ -278,6 +293,55 @@ export default function StudentDashboard() {
       setActivityDays(Array.isArray(daysData?.days) ? daysData.days : []);
     }).catch(() => setLocation("/student/login")).finally(() => setLoading(false));
   }, [setLocation]);
+
+  useEffect(() => {
+    if (!student) return;
+    let cancelled = false;
+
+    const refreshGoal = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/student-auth/me/reward-goal`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const nextGoal: StudentRewardGoal | null = payload?.goal ?? null;
+        if (cancelled) return;
+
+        const previousGoal = previousGoalRef.current;
+        if (
+          previousGoal !== undefined &&
+          nextGoal?.completed &&
+          previousGoal?.id === nextGoal.id &&
+          !previousGoal.completed
+        ) {
+          setCelebration({
+            active: true,
+            title: lang === "ar" ? "أحسنت! وصلت إلى هدفك" : "Great job! You reached your goal",
+            subtitle: nextGoal.title,
+            icon: "badge",
+          });
+          window.setTimeout(() => setCelebration(null), 4200);
+        }
+
+        previousGoalRef.current = nextGoal;
+        setRewardGoal(nextGoal);
+      } catch {
+        // Preserve the last successful response during a temporary network failure.
+      }
+    };
+
+    void refreshGoal();
+    const intervalId = window.setInterval(refreshGoal, 10000);
+    const refreshOnFocus = () => void refreshGoal();
+    window.addEventListener("focus", refreshOnFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
+  }, [student, lang]);
 
   const copyLink = (a: PublicAssignment) => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -551,6 +615,80 @@ export default function StudentDashboard() {
           <div className="mb-6 animate-in fade-in duration-300 delay-75">
             <InstallAppButton variant="card" />
           </div>
+
+          {rewardGoal && (
+            <section
+              className="mb-6 overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-[#f7fbf8] via-white to-amber-50/70 p-5 shadow-sm dark:border-emerald-900/40 dark:from-emerald-950/30 dark:via-background dark:to-amber-950/20 sm:p-6"
+              aria-labelledby="student-active-goal"
+              data-testid="card-student-active-goal"
+            >
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="relative shrink-0">
+                  <AvatarDisplay
+                    avatar={student.avatar}
+                    fallback={student.displayName.charAt(0)}
+                    size="3xl"
+                    className="rounded-3xl bg-emerald-100 ring-4 ring-white shadow-md dark:bg-emerald-900 dark:ring-emerald-950"
+                  />
+                  <span className="absolute -bottom-2 -end-2 grid h-9 w-9 place-items-center rounded-2xl bg-[#E8A80E] text-white shadow-md">
+                    {rewardGoal.completed ? <Sparkles className="h-5 w-5" /> : <Target className="h-5 w-5" />}
+                  </span>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                      {lang === "ar" ? "هدفي الآن" : "My goal"}
+                    </p>
+                    {rewardGoal.completed && (
+                      <span className="rounded-full bg-[#E8A80E]/15 px-2.5 py-1 text-xs font-black text-amber-700 dark:text-amber-300">
+                        {lang === "ar" ? "تم الإنجاز" : "Completed"}
+                      </span>
+                    )}
+                  </div>
+                  <h2
+                    id="student-active-goal"
+                    className="truncate text-xl font-black text-foreground sm:text-2xl"
+                    data-testid="text-active-goal-title"
+                  >
+                    {rewardGoal.title}
+                  </h2>
+                  <p className="mt-1 text-sm font-medium text-muted-foreground" data-testid="text-active-goal-next-step">
+                    {rewardGoal.completed
+                      ? (lang === "ar" ? "واصل التألق، إنجازك القادم أقرب مما تتخيل." : "Keep going—your next achievement is close.")
+                      : (lang === "ar"
+                        ? `خطوتك التالية: اجمع ${arDigit(rewardGoal.remainingPoints)} نقطة`
+                        : `Next step: earn ${arDigit(rewardGoal.remainingPoints)} points`)}
+                  </p>
+
+                  <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm font-bold">
+                      <span data-testid="text-active-goal-progress">{arDigit(rewardGoal.progressPercent)}%</span>
+                      <span className="text-muted-foreground" data-testid="text-active-goal-points">
+                        {arDigit(Math.min(rewardGoal.currentPoints, rewardGoal.targetPoints))} / {arDigit(rewardGoal.targetPoints)}
+                      </span>
+                    </div>
+                    <div
+                      className="h-3 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-950"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={rewardGoal.progressPercent}
+                      aria-label={lang === "ar" ? "تقدم الهدف" : "Goal progress"}
+                      data-testid="progress-active-goal"
+                    >
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-l from-[#225739] to-[#E8A80E]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${rewardGoal.progressPercent}%` }}
+                        transition={{ duration: 0.65, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Public profile link + verification prompt */}
           <div className="mb-6 animate-in fade-in duration-300 delay-75 space-y-2">

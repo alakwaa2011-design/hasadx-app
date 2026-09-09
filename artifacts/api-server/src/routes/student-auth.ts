@@ -174,6 +174,96 @@ router.get("/student-auth/me", async (req, res) => {
   });
 });
 
+router.get("/student-auth/me/reward-goal", async (req, res) => {
+  const studentAccountId = req.session.studentAccountId;
+  if (!studentAccountId) {
+    res.status(401).json({ message: "غير مسجل الدخول" });
+    return;
+  }
+
+  try {
+    const result = await db.execute(sql`
+      WITH eligible_goal AS (
+        SELECT
+          g.id,
+          g.title,
+          g.skill,
+          g.target_points,
+          g.starts_at,
+          g.ends_at,
+          g.reward_type_id,
+          g.teacher_id,
+          g.teacher_class_id,
+          s.id AS student_id,
+          tc.name AS class_name
+        FROM students s
+        JOIN teacher_classes tc
+          ON tc.teacher_id = s.teacher_id
+         AND tc.name = COALESCE(s.student_class, s.grade_level)
+        JOIN classroom_reward_goals g
+          ON g.teacher_id = s.teacher_id
+         AND g.teacher_class_id = tc.id
+         AND (g.student_id = s.id OR g.student_id IS NULL)
+        WHERE s.student_account_id = ${studentAccountId}
+          AND g.status = 'active'
+          AND g.is_active = TRUE
+          AND g.starts_at <= NOW()
+          AND (g.ends_at IS NULL OR g.ends_at >= NOW())
+        ORDER BY (g.student_id IS NOT NULL) DESC, g.created_at DESC, g.id DESC
+        LIMIT 1
+      )
+      SELECT
+        eg.id,
+        eg.title,
+        eg.skill,
+        eg.target_points,
+        COALESCE(SUM(
+          CASE WHEN tr.id IS NOT NULL AND reversal.id IS NULL THEN tr.amount ELSE 0 END
+        ), 0)::int AS current_points
+      FROM eligible_goal eg
+      LEFT JOIN classroom_reward_transactions tr
+        ON tr.teacher_id = eg.teacher_id
+       AND tr.student_id = eg.student_id
+       AND tr.kind = 'grant'
+       AND (tr.teacher_class_id = eg.teacher_class_id OR (
+         tr.teacher_class_id IS NULL AND tr.class_name_snapshot = eg.class_name
+       ))
+       AND tr.created_at >= eg.starts_at
+       AND (eg.ends_at IS NULL OR tr.created_at <= eg.ends_at)
+       AND (eg.reward_type_id IS NULL OR tr.reward_type_id = eg.reward_type_id)
+      LEFT JOIN classroom_reward_transactions reversal
+        ON reversal.reversal_of_id = tr.id
+       AND reversal.kind = 'reversal'
+      GROUP BY eg.id, eg.title, eg.skill, eg.target_points
+    `);
+    const row = (result as any).rows?.[0];
+    if (!row) {
+      res.json({ goal: null });
+      return;
+    }
+
+    const targetPoints = Number(row.target_points);
+    const currentPoints = Math.max(0, Number(row.current_points));
+    const cappedPoints = Math.min(currentPoints, targetPoints);
+    res.json({
+      goal: {
+        id: Number(row.id),
+        title: row.title,
+        skill: row.skill,
+        targetPoints,
+        currentPoints,
+        remainingPoints: Math.max(0, targetPoints - currentPoints),
+        progressPercent: targetPoints > 0 ? Math.min(100, Math.round((currentPoints / targetPoints) * 100)) : 0,
+        completed: currentPoints >= targetPoints,
+        progressLabel: `${cappedPoints}/${targetPoints}`,
+      },
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "GET /student-auth/me/reward-goal failed");
+    res.status(500).json({ message: "تعذّر تحميل الهدف الآن" });
+  }
+});
+
 router.get("/student-auth/recent-scores", async (req, res) => {
   if (!req.session.studentAccountId) {
     res.status(401).json({ message: "غير مسجل الدخول" });
