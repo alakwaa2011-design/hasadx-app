@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { trackProjectAnalyticsEvent } from "@/lib/analytics";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void] {
@@ -963,8 +964,23 @@ function BulkBalanceAdjustmentDialog({
   const [reason, setReason] = useState("");
   const mutation = useAdjustStudentBalances();
   const requestKeyRef = useRef<string | null>(null);
+  const previewTrackedRef = useRef(false);
   const eligible = students.filter((student) => (student.points || 0) >= points);
   const excluded = students.filter((student) => (student.points || 0) < points);
+
+  useEffect(() => {
+    if (!open) {
+      previewTrackedRef.current = false;
+      return;
+    }
+    if (previewTrackedRef.current) return;
+
+    previewTrackedRef.current = true;
+    trackProjectAnalyticsEvent("bulk_balance_preview_opened", {
+      eligible_count: eligible.length,
+      excluded_count: excluded.length,
+    });
+  }, [open, eligible.length, excluded.length]);
 
   const close = (next: boolean) => {
     if (mutation.isPending) return;
@@ -999,6 +1015,10 @@ function BulkBalanceAdjustmentDialog({
       idempotencyKey: requestKeyRef.current,
     }, {
       onSuccess: (result) => {
+        trackProjectAnalyticsEvent("bulk_balance_adjustment_completed", {
+          eligible_count: result.adjusted.length,
+          excluded_count: result.excluded.length,
+        });
         toast.success(`تم تعديل رصيد ${result.adjusted.length} طالب${result.excluded.length ? ` واستبعاد ${result.excluded.length}` : ""}`);
         onOpenChange(false);
         onComplete();
