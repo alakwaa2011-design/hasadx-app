@@ -528,6 +528,39 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(Number((await db.execute(sql`SELECT id FROM teacher_classes WHERE id=${classId}`)).rows[0].id)).toBe(classId);
   });
 
+  it("does not rename another teacher's matching class or students", async () => {
+    const sharedName = `SHARED-RENAME-${nonce}`;
+    const renamedName = `OWNER-RENAMED-${nonce}`;
+    await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name)
+      VALUES (${teacherId},${sharedName}),(${otherTeacherId},${sharedName})
+    `);
+    const otherTeacherStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,grade_level,notes)
+      VALUES ('طالب المعلم الآخر',${otherTeacherId},${sharedName},${sharedName},'بيانات ثابتة')
+      RETURNING id
+    `)).rows[0].id);
+
+    const renamed = await request(teacherApp()).patch("/api/teacher/classes/rename")
+      .send({oldName:sharedName,newName:renamedName});
+    expect(renamed.status).toBe(200);
+
+    expect((await db.execute(sql`
+      SELECT name FROM teacher_classes
+      WHERE teacher_id=${otherTeacherId} AND name=${sharedName}
+    `)).rows).toHaveLength(1);
+    expect((await db.execute(sql`
+      SELECT name,teacher_id,student_class,grade_level,notes
+      FROM students WHERE id=${otherTeacherStudent}
+    `)).rows[0]).toMatchObject({
+      name:"طالب المعلم الآخر",
+      teacher_id:otherTeacherId,
+      student_class:sharedName,
+      grade_level:sharedName,
+      notes:"بيانات ثابتة",
+    });
+  });
+
   it("does not leak old identity or legacy name history into a recreated class", async () => {
     const className = `RECREATE-${nonce}`;
     const oldClassId = Number((await db.execute(sql`
