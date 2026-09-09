@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { teachersTable } from "./teachers";
 import { studentsTable } from "./students";
@@ -62,12 +62,15 @@ export const classroomRewardTransactionsTable = pgTable("classroom_reward_transa
   idempotencyKey: text("idempotency_key").notNull(),
   batchId: integer("batch_id").references(() => classroomRewardBatchesTable.id, { onDelete: "restrict" }),
   batchKey: text("batch_key"),
-  reversalOfId: integer("reversal_of_id").unique().references(() => classroomRewardTransactionsTable.id, { onDelete: "restrict" }),
+  reversalOfId: integer("reversal_of_id").unique().references((): AnyPgColumn => classroomRewardTransactionsTable.id, { onDelete: "restrict" }),
   note: text("note"),
   classNameSnapshot: text("class_name_snapshot"),
   teacherClassId: integer("teacher_class_id").references(() => teacherClassesTable.id, { onDelete: "set null" }),
   rewardTypeNameSnapshot: text("reward_type_name_snapshot").notNull(),
   categorySnapshot: text("category_snapshot").notNull(),
+  sourceType: text("source_type"),
+  sourceResultId: integer("source_result_id"),
+  ruleId: integer("rule_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   requestStudentUnique: uniqueIndex("classroom_reward_transactions_owner_request_student_uq").on(t.teacherId, t.idempotencyKey, t.studentId),
@@ -76,6 +79,38 @@ export const classroomRewardTransactionsTable = pgTable("classroom_reward_transa
   classCreatedIndex: index("classroom_reward_transactions_class_created_idx").on(t.teacherId, t.teacherClassId, t.createdAt),
   reversalRequestUnique: uniqueIndex("classroom_reward_transactions_reversal_request_uq").on(t.teacherId, t.idempotencyKey).where(sql`kind = 'reversal'`),
 }));
+
+/** Teacher-configured automatic grants. Evidence is evaluated server-side only. */
+export const classroomRewardRulesTable = pgTable("classroom_reward_rules", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sourceType: text("source_type").notNull(),
+  condition: text("condition").notNull(),
+  threshold: integer("threshold"),
+  rewardTypeId: integer("reward_type_id").notNull().references(() => classroomRewardTypesTable.id, { onDelete: "restrict" }),
+  amount: integer("amount").notNull(),
+  categorySnapshot: text("category_snapshot").notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ teacherSourceIndex: index("classroom_reward_rules_teacher_source_idx").on(t.teacherId, t.sourceType) }));
+
+/** Durable processing receipt: one decision for each rule, evidence result, and explicit student. */
+export const classroomRewardRuleEvaluationsTable = pgTable("classroom_reward_rule_evaluations", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  ruleId: integer("rule_id").notNull().references(() => classroomRewardRulesTable.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(),
+  sourceResultId: integer("source_result_id").notNull(),
+  studentId: integer("student_id").notNull().references(() => studentsTable.id, { onDelete: "cascade" }),
+  outcome: text("outcome").notNull(),
+  detail: text("detail"),
+  evidenceSummary: jsonb("evidence_summary"),
+  ruleNameSnapshot: text("rule_name_snapshot").notNull(),
+  transactionId: integer("transaction_id").references(() => classroomRewardTransactionsTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ once: uniqueIndex("classroom_reward_rule_evaluations_once_uq").on(t.ruleId, t.sourceType, t.sourceResultId, t.studentId) }));
 
 export const classroomRewardAuditLogsTable = pgTable("classroom_reward_audit_logs", {
   id: serial("id").primaryKey(),

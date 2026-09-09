@@ -49,7 +49,10 @@ vi.mock("@workspace/db", () => {
       insert: () => mockState.makeChain(mockState.queue.shift()),
       update: () => mockState.makeChain(mockState.queue.shift()),
       delete: () => mockState.makeChain(mockState.queue.shift()),
-      transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({}),
+      transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({
+        execute: async () => ({rows: mockState.queue.shift() as unknown[]}),
+        update: () => mockState.makeChain(mockState.queue.shift()),
+      }),
     },
     worksheetsTable: stub,
     teachersTable: stub,
@@ -158,12 +161,21 @@ async function patchStudentName(
   body: { studentName: string; studentClass?: string },
   roster: { id: number; name: string; studentClass: string | null }[],
 ) {
-  // طابور PATCH: (1) الورقة+التصحيح، (2) سجل الطلاب، (3) نتيجة التحديث
+  // طابور PATCH: الصف المقفول، القفل الاستشاري، السجل، فحص المنح، ثم التحديث.
+  const normalize=(value:string)=>value.replace(/[\u064B-\u065F\u0670]/g,"").replace(/[أإآٱ]/g,"ا")
+    .replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/ؤ/g,"و").replace(/ئ/g,"ي")
+    .replace(/عبد\s+ال/g,"عبدال").replace(/\s+/g," ").trim().toLowerCase();
+  const normalized=normalize(body.studentName);
+  const expectedMatch=roster.find(s=>normalize(s.name)===normalized) ??
+    roster.find(s=>(normalize(s.name).includes(normalized)||normalized.includes(normalize(s.name))) && Math.min(normalize(s.name).length,normalized.length)>=5);
   mockState.queue.push(
-    [{ submission: target, assignment: ASSIGNMENT }],
-    roster,
-    [target],
+    [{ ...target, assignment_source: ASSIGNMENT.source, teacher_id: TEACHER_ID,
+      student_id: target.studentId, student_identity_verified: false, student_class: target.studentClass }],
+    [],
+    roster.map(s=>({id:s.id,name:s.name,student_class:s.studentClass})),
   );
+  if(target.studentId!==(expectedMatch?.id ?? null))mockState.queue.push([]);
+  mockState.queue.push([target]);
   const res = await request(makeApp(submissionsRouter, { teacherId: TEACHER_ID }))
     .patch(`/api/submissions/${target.id}/student-name`)
     .send(body);

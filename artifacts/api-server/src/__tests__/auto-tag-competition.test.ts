@@ -110,6 +110,17 @@ vi.mock("../lib/xp/socket", () => ({
 
 vi.mock("../lib/activity-logger", () => ({
   logActivity: vi.fn(),
+  sanitizeDetails: vi.fn((value) => value),
+}));
+
+vi.mock("../lib/wameeth-game-history", () => ({
+  persistWameethGameHistory: vi.fn(async () => ({ id: (calls.insertReturning.shift() as any)?.[0]?.id ?? 99, replayed: false })),
+}));
+vi.mock("../lib/wameeth-full-save", () => ({
+  saveFullWameethGame: vi.fn(async (game:any) => {
+    if(game.assignmentId>0)calls.updates.push({table:"assignments",set:{contentKind:"competition"},whereCalled:true});
+    return {id:(calls.insertReturning.shift() as any)?.[0]?.id ?? 99,replayed:false};
+  }),
 }));
 
 vi.mock("@workspace/billing", () => ({
@@ -266,6 +277,8 @@ describe("task #599 — auto-tag assignments as competitions", () => {
       questions: [],
       players: new Map(),
       gameMode: "solo",
+      gameRunId:"run-abc",
+      state:"finished",
     });
 
     const res = await request(makeApp(gameHistoryRouter, { teacherId: 7 }))
@@ -294,6 +307,8 @@ describe("task #599 — auto-tag assignments as competitions", () => {
       questions: [],
       players: new Map(),
       gameMode: "solo",
+      gameRunId:"run-xyz",
+      state:"finished",
     });
 
     const res = await request(makeApp(gameHistoryRouter, { teacherId: 7 }))

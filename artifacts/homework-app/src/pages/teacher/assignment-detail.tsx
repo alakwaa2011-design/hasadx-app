@@ -266,6 +266,28 @@ export default function TeacherAssignmentDetail() {
       }
     }
   });
+  const studentLinkMutation = useMutation({
+    mutationFn: async ({ submissionId, studentId }: { submissionId: number; studentId: number | null }) => {
+      const response = await fetch(`${BASE}/api/submissions/${submissionId}/student-link`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || payload?.error || "تعذر ربط الطالب");
+      }
+      return response.json().catch(() => null);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/submissions/${variables.submissionId}/details`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}/submissions`] });
+      queryClient.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
+      toast.success(lang === "ar" ? "تم تحديث ربط الطالب" : "Student link updated");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const [detailSubId, setDetailSubId] = useState<number | null>(null);
   const detailQuery = useGetSubmissionDetails(detailSubId ?? 0, { query: { enabled: detailSubId !== null } } as any);
@@ -1994,6 +2016,12 @@ export default function TeacherAssignmentDetail() {
                     <div className="grid gap-3">
                       {sortedFilteredSubmissions.map((sub) => {
                         const isEditing = editingSubId === sub.id;
+                        const rewardLinkedSub = sub as typeof sub & {
+                          studentId?: number | null;
+                          studentIdentityVerified?: boolean;
+                        };
+                        const linkedStudentId = typeof rewardLinkedSub.studentId === "number" ? rewardLinkedSub.studentId : null;
+                        const isVerifiedLink = rewardLinkedSub.studentIdentityVerified === true;
                         const finalPoints = sub.teacherAdjustedPoints !== null && sub.teacherAdjustedPoints !== undefined ? sub.teacherAdjustedPoints : sub.earnedPoints;
                         const scorePct = Math.round(sub.score);
                         const scoreColor = sub.score >= 80 ? "text-green-600 bg-green-50 dark:bg-green-900/20 border-green-200" : sub.score >= 50 ? "text-secondary bg-secondary/10 border-secondary/20" : "text-destructive bg-red-50 dark:bg-red-900/20 border-red-200";
@@ -2023,6 +2051,46 @@ export default function TeacherAssignmentDetail() {
                                 <span className={`font-black text-sm px-3 py-1.5 rounded-xl border ${scoreColor}`}>
                                   {scorePct}%
                                 </span>
+                              </div>
+                            </div>
+
+                            <div className="mt-2.5 rounded-lg border border-border/70 bg-muted/20 px-2.5 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span data-testid={`status-submission-link-${sub.id}`} className={`text-[11px] font-bold ${linkedStudentId ? "text-primary" : "text-muted-foreground"}`}>
+                                  {linkedStudentId
+                                    ? (isVerifiedLink ? (lang === "ar" ? "مرتبط ومتحقق" : "Linked & verified") : (lang === "ar" ? "غير متحقق — يحتاج تأكيد المعلم" : "Unverified — teacher confirmation needed"))
+                                    : (lang === "ar" ? "غير مرتبط" : "Not linked")}
+                                </span>
+                              </div>
+                              <div className="sm:mr-auto flex flex-col sm:flex-row gap-1.5 flex-1 sm:flex-none">
+                                <select
+                                  data-testid={`select-submission-student-link-${sub.id}`}
+                                  value={linkedStudentId === null ? "" : String(linkedStudentId)}
+                                  disabled={rosterLoading || studentLinkMutation.isPending}
+                                  onChange={(event) => {
+                                    const selectedId = event.target.value ? Number(event.target.value) : null;
+                                    studentLinkMutation.mutate({ submissionId: sub.id, studentId: selectedId });
+                                  }}
+                                  className="min-w-0 flex-1 sm:flex-none sm:w-52 rounded-md border border-border bg-background px-2 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                                >
+                                  <option value="">{lang === "ar" ? "إلغاء الربط / اختر طالبًا" : "Unlink / choose student"}</option>
+                                  {(classRoster || []).map((student) => (
+                                    <option key={student.id} value={student.id}>{student.name}</option>
+                                  ))}
+                                </select>
+                                {linkedStudentId !== null && !isVerifiedLink && (
+                                  <button
+                                    type="button"
+                                    data-testid={`button-confirm-submission-student-${sub.id}`}
+                                    disabled={studentLinkMutation.isPending}
+                                    onClick={() => studentLinkMutation.mutate({ submissionId: sub.id, studentId: linkedStudentId })}
+                                    className="rounded-md bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1"
+                                  >
+                                    {studentLinkMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                    {lang === "ar" ? "تأكيد الربط" : "Confirm link"}
+                                  </button>
+                                )}
                               </div>
                             </div>
 

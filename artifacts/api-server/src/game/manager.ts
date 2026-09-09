@@ -173,6 +173,8 @@ export type GiftRoundInterval = 1 | 3;
 
 export interface Game {
   pin: string;
+  /** Immutable server-generated identity for this game execution. */
+  readonly gameRunId: string;
   /** Server-only marker for one-player sessions created from a public direct-play link. */
   independentSession: boolean;
   /** Capability generated per direct session and required for the sole player to join. */
@@ -354,6 +356,7 @@ export function createGame(
 
   const game: Game = {
     pin,
+    gameRunId: randomUUID(),
     independentSession: false,
     independentControllerToken: null,
     independentPlayerSocketId: null,
@@ -468,6 +471,7 @@ export function clearQuestionTimeout(game: Game): void {
 }
 
 export function resetGameToLobby(game: Game): void {
+  Object.assign(game,{gameRunId:randomUUID()});
   clearQuestionTimeout(game);
   if (game.autoAdvanceTimerId) {
     clearTimeout(game.autoAdvanceTimerId);
@@ -670,13 +674,15 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
     if (existingPlayer.isBot) {
       game.players.delete(oldSocketId);
     } else {
+      const incomingAccountId=studentAccountId != null ? studentAccountId : null;
+      const incomingStudentId=studentId != null && incomingAccountId != null ? studentId : null;
+      if(existingPlayer.studentId!==incomingStudentId || existingPlayer.studentAccountId!==incomingAccountId)return null;
       if (oldSocketId !== socketId) {
         game.players.delete(oldSocketId);
         existingPlayer.socketId = socketId;
         game.players.set(socketId, existingPlayer);
       }
       existingPlayer.disconnected = false;
-      if (studentAccountId) existingPlayer.studentAccountId = studentAccountId;
       console.log(`[GAME ${pin}] Player "${name}" reconnected (score=${existingPlayer.score})`);
       return existingPlayer;
     }
@@ -689,8 +695,8 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
     name,
     audioToken: randomUUID(),
     avatar,
-    studentId: studentId || null,
-    studentAccountId: studentAccountId || null,
+    studentId: studentId != null && studentAccountId != null ? studentId : null,
+    studentAccountId: studentAccountId != null ? studentAccountId : null,
     score: 0,
     streak: 0,
     totalCorrect: 0,

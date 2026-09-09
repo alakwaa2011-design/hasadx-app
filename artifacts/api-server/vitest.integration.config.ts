@@ -40,6 +40,7 @@ export default defineConfig({
       "src/__tests__/welcome-credits-auth-routes.integration.test.ts",
       "src/__tests__/ai-video-render-recovery.integration.test.ts",
       "src/__tests__/ai-video-request-journal.integration.test.ts",
+      "src/__tests__/classroom-reward-safety.integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل

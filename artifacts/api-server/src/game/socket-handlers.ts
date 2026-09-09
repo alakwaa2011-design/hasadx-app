@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { db, assignmentsTable, questionsTable, gameHistoryTable, studentsTable, studentAccountsTable, wameethScoresTable, millionBankQuestionsTable } from "@workspace/db";
+import { db, assignmentsTable, questionsTable, gameHistoryTable, studentsTable, millionBankQuestionsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import {
   createGame,
@@ -57,6 +57,8 @@ import {
   type GameMode,
 } from "./manager";
 import { logger } from "../lib/logger";
+import { resolveWameethStudentIdentity } from "../lib/wameeth-game-history";
+import { coordinateFullGameSave as sharedCoordinateFullGameSave, finalizeWameethGameForReplay, saveFullWameethGame } from "../lib/wameeth-full-save";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
 
@@ -174,23 +176,19 @@ const TEACHER_RECONNECT_GRACE_ACTIVE_MS = 10 * 60 * 1000;
 let _sharedIo: Server | null = null;
 export function getGameIo(): Server | null { return _sharedIo; }
 
-// Track which game pins have already been persisted to history so we don't
-// double-save. Stored as Map<pin, savedAtMs> with a periodic sweep so the
-// structure cannot grow unbounded over the lifetime of the server.
-const SAVED_GAME_TTL_MS = 60 * 60 * 1000; // 1 hour
-const savedGames = new Map<string, number>();
-setInterval(() => {
-  const now = Date.now();
-  for (const [pin, ts] of savedGames.entries()) {
-    if (now - ts > SAVED_GAME_TTL_MS) savedGames.delete(pin);
-  }
-}, 10 * 60 * 1000).unref();
-
 const teacherDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+export async function coordinateFullGameSave(
+  game: Pick<Game,"gameRunId">,
+  persist:()=>Promise<{replayed:boolean}>,
+  runInsertedSideEffects:()=>Promise<void>,
+) {
+  return sharedCoordinateFullGameSave(game,persist as any,runInsertedSideEffects);
+}
+
 async function saveGameHistory(game: Game) {
-  if (savedGames.has(game.pin)) return;
-  if (game.players.size === 0 || game.currentQuestionIndex < 0) return;
+  return saveFullWameethGame(game);
+  /*
   try {
     const leaderboard = getLeaderboard(game);
     const humanLeaderboard = leaderboard.filter(p => {
@@ -234,27 +232,13 @@ async function saveGameHistory(game: Game) {
         };
       });
 
-    await db.insert(gameHistoryTable).values({
-      teacherId: game.teacherId,
-      assignmentId: game.assignmentId,
-      assignmentTitle: game.assignmentTitle,
-      pin: game.pin,
-      playerCount: game.players.size,
-      questionCount: game.questions.length,
-      winnerName: winner?.name || null,
-      winnerAvatar: winner?.avatar || null,
-      winnerScore: winner?.score || null,
-      topPlayers: topPlayers,
-      gameMode: game.gameMode,
-      detailedResults: detailedResults,
-    });
-    savedGames.set(game.pin, Date.now());
+    await coordinateFullGameSave(game,()=>persistWameethGameHistory(game),async()=>{
 
     /* Auto-tag: any assignment that has actually been launched as a live
        game is a competition by definition. Flip stale 'homework' rows so
        the competitions library stays current as new games are played
        (task #599). Conditional WHERE keeps it idempotent and a no-op for
-       rows the teacher already marked as 'competition'. */
+       rows the teacher already marked as 'competition'.
     if (game.assignmentId && game.assignmentId > 0) {
       try {
         await db
@@ -295,9 +279,11 @@ async function saveGameHistory(game: Game) {
         logger.error({ err: scoreErr }, "Error saving wameeth score for student account");
       }
     }
+    });
   } catch (err) {
-    logger.error({ err }, "Error saving game history");
+    throw err;
   }
+  */
 }
 
 function pickBotAnswer(question: GameQuestion, correct: boolean): string {
@@ -544,7 +530,7 @@ function endHackGame(io: Server, game: Game) {
     totalQuestions: game.questions.length,
     hackTimeUp: true,
   });
-  saveGameHistory(game);
+  void saveGameHistory(game).catch(err=>logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save timed-out hack game"));
   trackEvent({
     userRole: "teacher",
     eventName: "game_completed",
@@ -579,7 +565,7 @@ function doAutoAdvance(io: Server, pin: string) {
     emitLeaderboardData(io, currentGame, "game:finished", {
       totalQuestions: currentGame.questions.length,
     });
-    saveGameHistory(currentGame);
+    void saveGameHistory(currentGame).catch(err=>logger.error({err,pin:currentGame.pin,gameRunId:currentGame.gameRunId},"Failed to save auto-finished game"));
     currentGame.finishDeleteTimerId = setTimeout(() => deleteGame(currentGame.pin), 60000);
     return;
   }
@@ -732,7 +718,7 @@ function finishGiftRound(io: Server, game: Game) {
     emitLeaderboardData(io, game, "game:finished", {
       totalQuestions: game.questions.length,
     });
-    saveGameHistory(game);
+    void saveGameHistory(game).catch(err=>logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save gift-round game"));
     game.finishDeleteTimerId = setTimeout(() => deleteGame(game.pin), 60000);
     return;
   }
@@ -1028,8 +1014,10 @@ export function setupGameSocket(io: Server) {
     });
 
     socket.on("student:join-game", async (data: JoinGameData & { studentAccountId?: number }, callback: (res: JoinGameResponse) => void) => {
-      const { pin, name, avatar, studentId, studentAccountId } = data;
+      const { pin, name, avatar } = data;
       const game = getGame(pin);
+      const sessionStudentAccountId = Number((socket.request as any).session?.studentAccountId);
+      const authenticatedAccountId = Number.isInteger(sessionStudentAccountId) && sessionStudentAccountId > 0 ? sessionStudentAccountId : null;
 
       if (!game) {
         callback?.({ error: "كود اللعبة غير صحيح" });
@@ -1045,14 +1033,14 @@ export function setupGameSocket(io: Server) {
       }
 
       logActivity({
-        userId: studentAccountId ?? studentId ?? null,
+        userId: authenticatedAccountId,
         userName: name?.toString().slice(0, 100) ?? null,
         userRole: "student",
         action: "join_game",
         details: { pin, gameType: "wameedh" },
       });
       trackEvent({
-        userId: studentAccountId ?? studentId ?? null,
+        userId: authenticatedAccountId,
         userName: name?.toString().slice(0, 100) ?? null,
         userRole: "student",
         eventName: "student_joined_game",
@@ -1083,37 +1071,26 @@ export function setupGameSocket(io: Server) {
       }
 
       let verifiedStudentId: number | null = null;
-      if (studentId && game.targetClass && game.teacherId) {
+      const verifiedStudentAccountId: number | null = authenticatedAccountId;
+      const targetClasses = game.targetClasses?.length ? game.targetClasses : (game.targetClass ? [game.targetClass] : []);
+      if (authenticatedAccountId && game.teacherId) {
         try {
-          const [student] = await db
-            .select({ id: studentsTable.id, name: studentsTable.name })
-            .from(studentsTable)
-            .where(and(
-              eq(studentsTable.id, studentId),
-              eq(studentsTable.teacherId, game.teacherId),
-              eq(studentsTable.gradeLevel, game.targetClass)
-            ))
-            .limit(1);
-          if (student && student.name.trim().toLowerCase() === trimmedName.toLowerCase()) {
-            verifiedStudentId = student.id;
+          const identity=await resolveWameethStudentIdentity(db,{teacherId:game.teacherId,studentAccountId:authenticatedAccountId,targetClasses});
+          if(identity) {
+            verifiedStudentId = identity.studentId;
           }
         } catch (err) {
-          console.error("Student verification failed:", err);
+          logger.warn({ err, teacherId: game.teacherId }, "Student game identity verification failed");
         }
       }
 
-      let verifiedStudentAccountId: number | null = null;
-      if (studentAccountId) {
-        try {
-          const [account] = await db
-            .select({ id: studentAccountsTable.id })
-            .from(studentAccountsTable)
-            .where(eq(studentAccountsTable.id, studentAccountId))
-            .limit(1);
-          if (account) verifiedStudentAccountId = account.id;
-        } catch (err) {
-          console.error("Student account verification failed:", err);
-        }
+      const existingSameName=Array.from(game.players.values()).find(p=>p.name===trimmedName && !p.isBot);
+      if(existingSameName && (
+        existingSameName.studentId!==verifiedStudentId ||
+        existingSameName.studentAccountId!==verifiedStudentAccountId
+      )) {
+        callback?.({error:"لا يمكن استعادة هذا اللاعب بحساب طالب مختلف"});
+        return;
       }
 
       let player: GamePlayer | null;
@@ -1125,6 +1102,10 @@ export function setupGameSocket(io: Server) {
         const [oldSocketId, existingPlayer] = Array.from(game.players.entries())[0];
         if (existingPlayer.isBot) {
           callback?.({ error: "جلسة اللعب غير صالحة" });
+          return;
+        }
+        if(existingPlayer.studentId!==verifiedStudentId || existingPlayer.studentAccountId!==verifiedStudentAccountId) {
+          callback?.({error:"لا يمكن استعادة هذا اللاعب بحساب طالب مختلف"});
           return;
         }
         if (oldSocketId !== socket.id) {
@@ -1636,7 +1617,7 @@ export function setupGameSocket(io: Server) {
 
     socket.on(
       "independent:end-game",
-      (data: PinData, callback?: (result: { ok?: true; error?: string }) => void) => {
+      async (data: PinData, callback?: (result: { ok?: true; saved?: boolean; reason?: "no_play"; error?: string }) => void) => {
         const game = getIndependentGameControlledByPlayer(data.pin);
         if (!game) {
           callback?.({ error: "غير مصرح بالتحكم في هذه اللعبة" });
@@ -1653,12 +1634,23 @@ export function setupGameSocket(io: Server) {
         game.hackEndTimerId = null;
         game.botTimers = [];
         game.paused = false;
+        const playStarted=game.currentQuestionIndex>=0;
         game.state = "finished";
 
-        callback?.({ ok: true });
+        if(playStarted) {
+          try {
+            await saveGameHistory(game);
+          } catch(err) {
+            logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save independently-ended game");
+            callback?.({error:"تعذر حفظ نتيجة اللعبة"});
+            socket.emit("game:save-error",{error:"تعذر حفظ نتيجة اللعبة"});
+            return;
+          }
+        }
         emitLeaderboardData(io, game, "game:finished", {
           totalQuestions: game.questions.length,
         });
+        callback?.(playStarted?{ok:true,saved:true}:{ok:true,saved:false,reason:"no_play"});
         game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
       },
     );
@@ -2104,7 +2096,7 @@ export function setupGameSocket(io: Server) {
         emitLeaderboardData(io, game, "game:finished", {
           totalQuestions: game.questions.length,
         });
-        saveGameHistory(game);
+        void saveGameHistory(game).catch(err=>logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save next-question completion"));
         game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
         return;
       }
@@ -2419,7 +2411,7 @@ export function setupGameSocket(io: Server) {
       endQuestion(io, game);
     });
 
-    socket.on("teacher:replay-game", (data: PinData) => {
+    socket.on("teacher:replay-game", async (data: PinData,callback?:(result:{success?:boolean;error?:string})=>void) => {
       const game = getGame(data.pin);
       if (!game || game.teacherSocketId !== socket.id) return;
 
@@ -2428,7 +2420,14 @@ export function setupGameSocket(io: Server) {
 
       if (game.state !== "finished") return;
 
-      resetGameToLobby(game);
+      try {
+        if(game.currentQuestionIndex>=0)await finalizeWameethGameForReplay(game,saveGameHistory as any);
+        else resetGameToLobby(game);
+      } catch(err) {
+        logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to finalize game before replay");
+        callback?.({error:"تعذر حفظ الجولة السابقة"});
+        return;
+      }
       const playerList = getPlayerList(game);
       io.to(`game:${game.pin}`).emit("game:replay", {
         players: playerList,
@@ -2437,9 +2436,10 @@ export function setupGameSocket(io: Server) {
         roomLocked: game.roomLocked,
         lockedTeams: Array.from(game.lockedTeams),
       });
+      callback?.({success:true});
     });
 
-    socket.on("teacher:end-game", (data: PinData) => {
+    socket.on("teacher:end-game", async (data: PinData,callback?:(result:{success?:boolean;saved?:boolean;reason?:"no_play";error?:string})=>void) => {
       const game = getGame(data.pin);
       if (!game || game.teacherSocketId !== socket.id) return;
 
@@ -2447,11 +2447,22 @@ export function setupGameSocket(io: Server) {
       if (!teacherId || teacherId !== game.teacherId) return;
 
       clearQuestionTimeout(game);
+      const playStarted=game.currentQuestionIndex>=0;
       game.state = "finished";
+      if(playStarted) {
+        try {
+          await saveGameHistory(game);
+        } catch(err) {
+          logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save teacher-ended game");
+          callback?.({error:"تعذر حفظ نتيجة اللعبة"});
+          socket.emit("game:save-error",{error:"تعذر حفظ نتيجة اللعبة"});
+          return;
+        }
+      }
       emitLeaderboardData(io, game, "game:finished", {
         totalQuestions: game.questions.length,
       });
-      saveGameHistory(game);
+      callback?.(playStarted?{success:true,saved:true}:{success:true,saved:false,reason:"no_play"});
       game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
     });
 

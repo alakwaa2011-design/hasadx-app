@@ -2,6 +2,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+export type RewardRuleSourceType = "assignment_submission" | "kids_activity_completion" | "game_history";
+export type RewardRuleConditionType = "completion" | "score_at_least";
+
+export interface RewardRuleInput {
+  name: string;
+  sourceType: RewardRuleSourceType;
+  conditionType: RewardRuleConditionType;
+  threshold: number;
+  rewardTypeId: number;
+  amount: number;
+  isActive: boolean;
+}
+
+export interface RewardRule extends RewardRuleInput {
+  id: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const fetcher = async (url: string, options?: RequestInit) => {
   const res = await fetch(`${API_BASE}${url}`, {
     ...options,
@@ -53,6 +72,48 @@ export const useUpdateRewardType = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: any) => fetcher(`/api/classroom-rewards/types/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-rewards", "types"] }),
+  });
+};
+
+export const useGetRewardRules = () => {
+  return useQuery<RewardRule[]>({
+    queryKey: ["classroom-rewards", "rules"],
+    queryFn: async (): Promise<RewardRule[]> => {
+      const response: unknown = await fetcher(`/api/classroom-rewards/rules`);
+      if (!Array.isArray(response)) throw new Error("استجابة قواعد التحفيز غير صالحة");
+      return response as RewardRule[];
+    },
+  });
+};
+
+export const useCreateRewardRule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: RewardRuleInput) =>
+      fetcher(`/api/classroom-rewards/rules`, { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-rewards", "rules"] }),
+  });
+};
+
+export const useUpdateRewardRule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: Partial<RewardRuleInput> & { id: string }) =>
+      fetcher(`/api/classroom-rewards/rules/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["classroom-rewards", "rules"] }),
+  });
+};
+
+export const useReprocessRewardRule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetcher(`/api/classroom-rewards/rules/${encodeURIComponent(id)}/reprocess`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "rules"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+    },
   });
 };
 

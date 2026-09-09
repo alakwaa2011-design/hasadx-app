@@ -77,3 +77,4 @@
 - [Private teacher-generated media](teacher-generated-media-privacy.md) — generated teacher media stays private; authorize ownership before issuing short-lived signed URLs.
 - [Educational video quality](educational-video-quality-contract.md) — true generated motion, no silent still-image fallback; phase-one acceptance requires the user's manual review.
 - [PostgreSQL parameter inference](postgres-parameter-inference.md) — each SQL interpolation has its own type; nullable predicates require real PostgreSQL coverage, not database mocks.
+- [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.

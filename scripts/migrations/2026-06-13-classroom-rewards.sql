@@ -155,3 +155,55 @@ CREATE TABLE IF NOT EXISTS classroom_reward_audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS classroom_reward_audit_owner_created_idx ON classroom_reward_audit_logs(teacher_id, created_at);
+
+-- Automatic rules use only persisted final assignment submissions or completed
+-- kids sessions with an explicit students.id linkage. They never touch XP/stars.
+CREATE TABLE IF NOT EXISTS classroom_reward_rules (
+  id SERIAL PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  source_type TEXT NOT NULL CHECK (source_type IN ('assignment_submission','kids_activity_completion','game_history')),
+  condition TEXT NOT NULL CHECK (condition IN ('completion','score_at_least')),
+  threshold INTEGER, reward_type_id INTEGER NOT NULL REFERENCES classroom_reward_types(id) ON DELETE RESTRICT,
+  amount INTEGER NOT NULL CHECK (amount >= 1), category_snapshot TEXT NOT NULL,
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK ((condition='completion' AND threshold IS NULL) OR (condition='score_at_least' AND threshold IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS classroom_reward_rules_teacher_source_idx ON classroom_reward_rules(teacher_id,source_type);
+CREATE TABLE IF NOT EXISTS classroom_reward_rule_evaluations (
+  id SERIAL PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+  rule_id INTEGER NOT NULL REFERENCES classroom_reward_rules(id) ON DELETE CASCADE,
+  source_type TEXT NOT NULL, source_result_id INTEGER NOT NULL,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  outcome TEXT NOT NULL, detail TEXT, evidence_summary JSONB, transaction_id INTEGER REFERENCES classroom_reward_transactions(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT classroom_reward_rule_evaluations_once_uq UNIQUE(rule_id,source_type,source_result_id,student_id)
+);
+ALTER TABLE classroom_reward_rules ADD COLUMN IF NOT EXISTS name TEXT;
+UPDATE classroom_reward_rules SET name = 'قاعدة تلقائية #' || id WHERE name IS NULL;
+ALTER TABLE classroom_reward_rules ALTER COLUMN name SET NOT NULL;
+DO $$ DECLARE constraint_name TEXT; BEGIN
+  FOR constraint_name IN SELECT conname FROM pg_constraint WHERE conrelid='classroom_reward_rules'::regclass AND contype='c' AND pg_get_constraintdef(oid) LIKE '%source_type%' LOOP
+    EXECUTE format('ALTER TABLE classroom_reward_rules DROP CONSTRAINT %I', constraint_name);
+  END LOOP;
+END $$;
+ALTER TABLE classroom_reward_rules DROP CONSTRAINT IF EXISTS classroom_reward_rules_source_ck;
+ALTER TABLE classroom_reward_rules ADD CONSTRAINT classroom_reward_rules_source_ck CHECK (source_type IN ('assignment_submission','kids_activity_completion','game_history'));
+ALTER TABLE classroom_reward_rule_evaluations ADD COLUMN IF NOT EXISTS evidence_summary JSONB;
+ALTER TABLE classroom_reward_rule_evaluations ADD COLUMN IF NOT EXISTS rule_name_snapshot TEXT;
+UPDATE classroom_reward_rule_evaluations e SET rule_name_snapshot=r.name FROM classroom_reward_rules r WHERE e.rule_name_snapshot IS NULL AND e.rule_id=r.id;
+UPDATE classroom_reward_rule_evaluations SET rule_name_snapshot='قاعدة محذوفة' WHERE rule_name_snapshot IS NULL;
+ALTER TABLE classroom_reward_rule_evaluations ALTER COLUMN rule_name_snapshot SET NOT NULL;
+ALTER TABLE classroom_reward_rule_evaluations DROP CONSTRAINT IF EXISTS classroom_reward_rule_evaluations_once_uq;
+DROP INDEX IF EXISTS classroom_reward_rule_evaluations_once_uq;
+ALTER TABLE classroom_reward_rule_evaluations ADD CONSTRAINT classroom_reward_rule_evaluations_once_uq UNIQUE(rule_id,source_type,source_result_id,student_id);
+ALTER TABLE classroom_reward_transactions ADD COLUMN IF NOT EXISTS source_type TEXT;
+ALTER TABLE classroom_reward_transactions ADD COLUMN IF NOT EXISTS source_result_id INTEGER;
+ALTER TABLE classroom_reward_transactions ADD COLUMN IF NOT EXISTS rule_id INTEGER;
+CREATE INDEX IF NOT EXISTS classroom_reward_transactions_source_idx ON classroom_reward_transactions(teacher_id,source_type,source_result_id);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS student_identity_verified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE game_history DROP CONSTRAINT IF EXISTS game_history_teacher_pin_uq;
+DROP INDEX IF EXISTS game_history_teacher_pin_uq;
+ALTER TABLE game_history ADD COLUMN IF NOT EXISTS game_run_id TEXT;
+ALTER TABLE game_history ALTER COLUMN assignment_id DROP NOT NULL;
+UPDATE game_history SET game_run_id='legacy:' || id WHERE game_run_id IS NULL;
+ALTER TABLE game_history ALTER COLUMN game_run_id SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS game_history_game_run_uq ON game_history(game_run_id);

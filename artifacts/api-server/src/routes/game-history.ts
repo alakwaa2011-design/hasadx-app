@@ -3,6 +3,8 @@ import { db, gameHistoryTable, studentsTable, assignmentsTable, presentationSess
 import { eq, desc, and, ne, sql } from "drizzle-orm";
 import type { Game, GamePlayer, GameQuestion } from "../game/manager.js";
 import { getGame, findActiveGameByTeacher } from "../game/manager.js";
+import { evaluateClassroomRewardEvidence } from "../lib/classroom-reward-evaluator";
+import { saveFullWameethGame } from "../lib/wameeth-full-save";
 
 interface AnswerDetail {
   questionIndex: number;
@@ -21,6 +23,8 @@ interface PlayerResult {
   totalCorrect: number;
   totalQuestions: number;
   teamName: string | null;
+  /** Server-verified at game join; omitted for guests/unlinked players. */
+  studentId?: number;
   answers: AnswerDetail[];
 }
 
@@ -30,7 +34,7 @@ interface TopPlayer {
   score: number;
 }
 
-function buildDetailedResults(game: Game): PlayerResult[] {
+export function buildDetailedResults(game: Game): PlayerResult[] {
   return Array.from(game.players.values())
     .filter((p: GamePlayer) => !p.isBot)
     .sort((a: GamePlayer, b: GamePlayer) => b.score - a.score)
@@ -55,6 +59,7 @@ function buildDetailedResults(game: Game): PlayerResult[] {
         totalCorrect: p.totalCorrect,
         totalQuestions: game.questions.length,
         teamName: p.teamName,
+        ...(Number.isInteger(p.studentId) && (p.studentId as number) > 0 ? { studentId: p.studentId as number } : {}),
         answers: answersArr,
       };
     });
@@ -190,78 +195,45 @@ router.post("/game-history/save/:pin", async (req, res) => {
 
   try {
     const pin = req.params.pin;
+    const { getGame } = await import("../game/manager.js");
+    const game = getGame(pin);
 
+    // An active run always wins over historical PIN reuse. PIN is display/join
+    // data only and is not an execution identity.
+    if (!game) {
     const existing = await db
-      .select({ id: gameHistoryTable.id })
+      .select({ id: gameHistoryTable.id, assignmentId: gameHistoryTable.assignmentId, detailedResults: gameHistoryTable.detailedResults })
       .from(gameHistoryTable)
       .where(and(eq(gameHistoryTable.pin, pin), eq(gameHistoryTable.teacherId, teacherId)))
+      .orderBy(desc(gameHistoryTable.createdAt),desc(gameHistoryTable.id))
       .limit(1);
 
     if (existing.length > 0) {
+      await db.transaction(async tx => {
+        for (const player of ((existing[0].detailedResults as PlayerResult[] | null) ?? [])) if (player.studentId) {
+          await evaluateClassroomRewardEvidence(tx, { teacherId, sourceType:"game_history", sourceResultId:existing[0].id, studentId:player.studentId, completed:true, score:player.score,
+            evidenceSummary:{ gameHistoryId:existing[0].id, assignmentId:existing[0].assignmentId, score:player.score, rank:player.rank, totalCorrect:player.totalCorrect, totalQuestions:player.totalQuestions } });
+        }
+      });
       res.json({ success: true, message: "already_saved", id: existing[0].id });
       return;
     }
-
-    const { getGame, getLeaderboard } = await import("../game/manager.js");
-    const game = getGame(pin);
-    if (!game) {
-      res.status(404).json({ error: "Game not found or already cleaned up" });
-      return;
+    res.status(404).json({ error: "Game not found or already cleaned up" });
+    return;
     }
     if (game.teacherId !== teacherId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-
-    const leaderboard = getLeaderboard(game);
-    const humanLeaderboard = leaderboard.filter((p: { name: string; score: number; avatar: string }) => {
-      const pl = Array.from(game.players.values()).find((x: GamePlayer) => x.name === p.name);
-      return pl && !pl.isBot;
-    });
-    const rankingList = humanLeaderboard.length > 0 ? humanLeaderboard : leaderboard;
-    const winner = rankingList[0];
-    const topPlayers: TopPlayer[] = rankingList.slice(0, 5).map((p: { name: string; score: number; avatar: string }) => ({
-      name: p.name,
-      avatar: p.avatar,
-      score: p.score,
-    }));
-
-    const detailedResults = buildDetailedResults(game);
-
-    const [inserted] = await db.insert(gameHistoryTable).values({
-      teacherId: game.teacherId,
-      assignmentId: game.assignmentId,
-      assignmentTitle: game.assignmentTitle,
-      pin: game.pin,
-      playerCount: game.players.size,
-      questionCount: game.questions.length,
-      winnerName: winner?.name || null,
-      winnerAvatar: winner?.avatar || null,
-      winnerScore: winner?.score || null,
-      topPlayers: topPlayers,
-      gameMode: game.gameMode,
-      detailedResults: detailedResults,
-    }).returning({ id: gameHistoryTable.id });
-
-    /* Auto-tag: a game-history insert means the assignment was actually
-       launched as a live game, so flip stale 'homework' rows to
-       'competition' to keep the competitions library current
-       (task #599). Idempotent — no-op when already 'competition'. */
-    if (game.assignmentId && game.assignmentId > 0) {
-      try {
-        await db
-          .update(assignmentsTable)
-          .set({ contentKind: "competition" })
-          .where(and(
-            eq(assignmentsTable.id, game.assignmentId),
-            eq(assignmentsTable.contentKind, "homework"),
-          ));
-      } catch (flipErr) {
-        req.log.error({ err: flipErr, assignmentId: game.assignmentId }, "Failed to auto-tag assignment as competition");
-      }
+    if(game.state!=="finished") {
+      res.status(409).json({error:"Game is not finished"});
+      return;
     }
-
-    res.json({ success: true, message: "saved", id: inserted.id });
+    const saved=await saveFullWameethGame(game);
+    const canonical=await db.select({id:gameHistoryTable.id}).from(gameHistoryTable)
+      .where(eq((gameHistoryTable as any).gameRunId,game.gameRunId)).limit(1);
+    res.json({success:true,message:saved.replayed?"already_saved":"saved",id:canonical[0]?.id ?? saved.id});
+    return;
   } catch {
     res.status(500).json({ error: "Failed to save game results" });
   }

@@ -10,6 +10,7 @@ export const submissionsTable = pgTable("submissions", {
   studentName: text("student_name").notNull(),
   studentClass: text("student_class").notNull().default(""),
   studentId: integer("student_id").references(() => studentsTable.id, { onDelete: "set null" }),
+  studentIdentityVerified: boolean("student_identity_verified").notNull().default(false),
   deviceFingerprint: text("device_fingerprint"),
   score: real("score").notNull(),
   totalQuestions: integer("total_questions").notNull(),

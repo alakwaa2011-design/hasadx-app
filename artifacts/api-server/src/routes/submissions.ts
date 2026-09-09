@@ -19,8 +19,15 @@ import { imageUploadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { trackAiUsageCall } from "../lib/ai-usage-ledger";
+import { evaluateClassroomRewardEvidence, hasActiveAutomaticAssignmentGrant, lockAssignmentRewardEvidence } from "../lib/classroom-reward-evaluator";
 
 const router: IRouter = Router();
+async function verifiedSubmissionStudentId(req: any, teacherId: number): Promise<number | null> {
+  const accountId=Number(req.session?.studentAccountId);
+  if(!Number.isInteger(accountId) || accountId<1) return null;
+  const rows=(await db.execute(sql`SELECT id FROM students WHERE teacher_id=${teacherId} AND student_account_id=${accountId}`) as any).rows ?? [];
+  return rows.length===1 ? Number(rows[0].id) : null;
+}
 
 /* ── مطابقة أسماء عربية بتسامح: توحيد الهمزات والألف والتاء المربوطة
    وإزالة التشكيل والمسافات الزائدة، ليطابق «عبد الله» «عبدالله» مثلاً. */
@@ -574,13 +581,15 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
       : null;
     const startedAtVal = durationSec !== null ? new Date(Date.now() - durationSec * 1000) : null;
 
-    const [submission] = await db
-      .insert(submissionsTable)
+    const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
+    const submission = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(submissionsTable)
       .values({
         assignmentId: id,
         studentName: body.studentName,
         studentClass: body.studentClass,
-        studentId: body.studentId || null,
+        studentId: verifiedStudentId ?? (body.studentId || null),
+        studentIdentityVerified: verifiedStudentId !== null,
         deviceFingerprint: body.deviceFingerprint || null,
         score,
         totalQuestions,
@@ -590,17 +599,25 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
         aiFeedback,
         startedAt: startedAtVal,
         durationSeconds: durationSec,
-      })
+      } as any)
       .returning();
-
-    await db.insert(answersTable).values(
+    await tx.insert(answersTable).values(
       answerResults.map((a) => ({
-        submissionId: submission.id,
+        submissionId: created.id,
         questionId: a.questionId,
         selectedAnswer: a.selectedAnswer,
         isCorrect: a.isCorrect,
       })),
     );
+    // Submission is now final persisted evidence. Never use a name/fingerprint
+    // fallback: automatic classroom rewards require the explicit students.id.
+    if (verifiedStudentId && created.studentId) await evaluateClassroomRewardEvidence(tx, {
+      teacherId: assignment.teacherId, sourceType: "assignment_submission", sourceResultId: created.id,
+      studentId: created.studentId!, completed: true, score: Number(created.earnedPoints),
+      evidenceSummary: { effectivePoints: created.earnedPoints, totalPoints: created.totalPoints },
+    });
+    return created;
+    });
 
     const releaseMode = assignment.resultsReleaseMode || "immediate";
     let canSeeResults = assignment.showResults;
@@ -1251,14 +1268,16 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
       req.log.error({ err: e }, "AI feedback error (image)");
     }
 
-    const [submission] = await db
-      .insert(submissionsTable)
+    const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
+    const submission = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(submissionsTable)
       .values({
         assignmentId: id,
         studentName: finalStudentName,
         studentClass: finalStudentClass,
         // ورقة العمل: لا نثق بأي studentId من العميل — الربط عبر مطابقة السجل فقط.
-        studentId: isWorksheetSource ? (matchedStudent?.id ?? null) : (body.studentId ?? null),
+        studentId: verifiedStudentId ?? (isWorksheetSource ? (matchedStudent?.id ?? null) : (body.studentId ?? null)),
+        studentIdentityVerified: verifiedStudentId !== null,
         deviceFingerprint: body.deviceFingerprint || null,
         score,
         totalQuestions,
@@ -1266,17 +1285,23 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
         earnedPoints,
         totalPoints: totalPointsVal,
         aiFeedback,
-      })
+      } as any)
       .returning();
-
-    await db.insert(answersTable).values(
+    await tx.insert(answersTable).values(
       answerResults.map((a) => ({
-        submissionId: submission.id,
+        submissionId: created.id,
         questionId: a.questionId,
         selectedAnswer: a.selectedAnswer,
         isCorrect: a.isCorrect,
       })),
     );
+    if (verifiedStudentId && created.studentId) await evaluateClassroomRewardEvidence(tx, {
+      teacherId: assignment.teacherId, sourceType: "assignment_submission", sourceResultId: created.id,
+      studentId: created.studentId!, completed: true, score: Number(created.earnedPoints),
+      evidenceSummary: { effectivePoints: created.earnedPoints, totalPoints: created.totalPoints },
+    });
+    return created;
+    });
 
     const releaseMode = assignment.resultsReleaseMode || "immediate";
     let canSeeResults = assignment.showResults;
@@ -1360,47 +1385,48 @@ router.patch("/submissions/:id/student-name", async (req, res) => {
       res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
       return;
     }
-    const [row] = await db
-      .select({ submission: submissionsTable, assignment: assignmentsTable })
-      .from(submissionsTable)
-      .innerJoin(assignmentsTable, eq(assignmentsTable.id, submissionsTable.assignmentId))
-      .where(eq(submissionsTable.id, subId))
-      .limit(1);
-    if (!row) {
+    const teacherId=req.session.teacherId;
+    const result=await db.transaction(async tx=>{
+      const row=(await tx.execute(sql`
+        SELECT sub.*,a.teacher_id,a.source assignment_source
+        FROM submissions sub JOIN assignments a ON a.id=sub.assignment_id
+        WHERE sub.id=${subId} FOR UPDATE
+      `)).rows[0] as any;
+      if(!row)return null;
+      if(row.assignment_source!=="worksheet" || Number(row.teacher_id)!==teacherId)throw new Error("not_allowed");
+      await lockAssignmentRewardEvidence(tx,teacherId,subId);
+
+      let matched: {id:number;name:string;studentClass:string|null}|null=null;
+      try {
+        const roster=(await tx.execute(sql`SELECT id,name,student_class FROM students WHERE teacher_id=${teacherId}`)).rows
+          .map((student:any)=>({id:Number(student.id),name:student.name,studentClass:student.student_class}));
+        matched=matchStudentByName(parsed.studentName,roster);
+      } catch { /* غير حرج */ }
+      const nextStudentId=matched?.id ?? null;
+      const identityChanges=(row.student_id===null?null:Number(row.student_id))!==nextStudentId;
+      if(identityChanges && await hasActiveAutomaticAssignmentGrant(tx,teacherId,subId))throw new Error("active_automatic_reward");
+      const keepVerified=!identityChanges && Boolean(row.student_identity_verified);
+      const [updated]=await tx.update(submissionsTable).set({
+        studentName:matched?.name ?? parsed.studentName,
+        studentClass:parsed.studentClass ?? row.student_class,
+        studentId:nextStudentId,
+        studentIdentityVerified:keepVerified,
+      } as any).where(eq(submissionsTable.id,subId)).returning();
+      return {updated,matchedStudentId:nextStudentId};
+    });
+    if (!result) {
       res.status(404).json({ message: "النتيجة غير موجودة" });
       return;
     }
-    if ((row.assignment as any).source !== "worksheet" || row.assignment.teacherId !== req.session.teacherId) {
-      res.status(403).json({ message: "غير مسموح" });
-      return;
-    }
-
-    // إعادة محاولة الربط بطالب موجود بعد التصحيح اليدوي.
-    let matched: { id: number; name: string; studentClass: string | null } | null = null;
-    try {
-      const roster = await db
-        .select({ id: studentsTable.id, name: studentsTable.name, studentClass: studentsTable.studentClass })
-        .from(studentsTable)
-        .where(eq(studentsTable.teacherId, req.session.teacherId));
-      matched = matchStudentByName(parsed.studentName, roster);
-    } catch { /* غير حرج */ }
-
-    const [updated] = await db
-      .update(submissionsTable)
-      .set({
-        studentName: matched?.name ?? parsed.studentName,
-        studentClass: parsed.studentClass ?? row.submission.studentClass,
-        studentId: matched?.id ?? null,
-      })
-      .where(eq(submissionsTable.id, subId))
-      .returning();
     res.json({
-      id: updated.id,
-      studentName: updated.studentName,
-      studentClass: updated.studentClass,
-      matchedStudentId: matched?.id ?? null,
+      id: result.updated.id,
+      studentName: result.updated.studentName,
+      studentClass: result.updated.studentClass,
+      matchedStudentId: result.matchedStudentId,
     });
   } catch (error: any) {
+    if(error?.message==="active_automatic_reward")return res.status(409).json({message:"لا يمكن تغيير هوية الطالب لوجود مكافأة تلقائية نشطة. اعكس المكافأة من سجل المكافآت أولاً ثم أعد المحاولة."});
+    if(error?.message==="not_allowed")return res.status(403).json({message:"غير مسموح"});
     req.log.error({ err: error }, "Update submission student name error");
     res.status(400).json({ message: error.message || "تعذّر تحديث الاسم" });
   }
@@ -1436,6 +1462,7 @@ router.get("/assignments/:id/submissions", async (req, res) => {
       submissions.map((s) => ({
         id: s.id,
         studentId: s.studentId,
+        studentIdentityVerified: (s as any).studentIdentityVerified,
         studentName: s.studentName,
         studentClass: s.studentClass,
         score: s.score,
@@ -1529,6 +1556,11 @@ router.patch("/submissions/:submissionId", async (req, res) => {
         actionKey: "submission.graded",
         refId: `submission.graded:${submissionId}`,
       });
+      if ((u as any).studentIdentityVerified && u.studentId) await evaluateClassroomRewardEvidence(tx, {
+        teacherId, sourceType: "assignment_submission", sourceResultId: u.id, studentId: u.studentId,
+        completed: true, score: Number(u.teacherAdjustedPoints ?? u.earnedPoints),
+        evidenceSummary: { effectivePoints: u.teacherAdjustedPoints ?? u.earnedPoints, totalPoints: u.totalPoints },
+      });
       return { updated: u, runAfterCommit: rac };
     });
 
@@ -1545,6 +1577,7 @@ router.patch("/submissions/:submissionId", async (req, res) => {
       earnedPoints: updated.earnedPoints,
       totalPoints: updated.totalPoints,
       teacherAdjustedPoints: updated.teacherAdjustedPoints,
+      studentIdentityVerified: (updated as any).studentIdentityVerified,
       teacherNote: updated.teacherNote,
       aiFeedback: updated.aiFeedback,
       submittedAt: updated.submittedAt.toISOString(),
@@ -1552,6 +1585,38 @@ router.patch("/submissions/:submissionId", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Update submission error");
     res.status(500).json({ message: "خطأ في تعديل الدرجة" });
+  }
+});
+
+router.patch("/submissions/:submissionId/student-link", async (req:any,res) => {
+  const teacherId=Number(req.session?.teacherId), submissionId=Number(req.params.submissionId);
+  const target=req.body?.studentId === null ? null : Number(req.body?.studentId);
+  if(!Number.isInteger(teacherId)||!Number.isInteger(submissionId)|| (target!==null && (!Number.isInteger(target)||target<1))) return res.status(400).json({message:"بيانات الربط غير صالحة"});
+  try {
+    const outcome=await db.transaction(async tx => {
+      const sub=(await tx.execute(sql`SELECT sub.*,a.teacher_id FROM submissions sub JOIN assignments a ON a.id=sub.assignment_id WHERE sub.id=${submissionId} AND a.teacher_id=${teacherId} FOR UPDATE`)).rows[0] as any;
+      if(!sub)return null;
+      await lockAssignmentRewardEvidence(tx,teacherId,submissionId);
+      const requiresGrantGuard=!Boolean(sub.student_identity_verified) ||
+        (sub.student_id===null?null:Number(sub.student_id))!==target;
+      if(requiresGrantGuard) {
+        if(await hasActiveAutomaticAssignmentGrant(tx,teacherId,submissionId))throw new Error("active_automatic_reward");
+      }
+      if(target===null){ await tx.execute(sql`UPDATE submissions SET student_id=NULL,student_identity_verified=FALSE WHERE id=${submissionId}`); return { studentId:null }; }
+      const student=(await tx.execute(sql`SELECT id FROM students WHERE id=${target} AND teacher_id=${teacherId}`)).rows[0] as any;
+      if(!student)throw new Error("student_not_owned");
+      await tx.execute(sql`UPDATE submissions SET student_id=${target},student_identity_verified=TRUE WHERE id=${submissionId}`);
+      const points=Number(sub.teacher_adjusted_points ?? sub.earned_points);
+      const outcomes=await evaluateClassroomRewardEvidence(tx,{teacherId,sourceType:"assignment_submission",sourceResultId:submissionId,studentId:target,completed:true,score:points,evidenceSummary:{effectivePoints:points,totalPoints:sub.total_points}});
+      return {studentId:target,outcomes};
+    });
+    if(!outcome)return res.status(404).json({message:"الإجابة غير موجودة"});
+    res.json(outcome);
+  } catch(error:any) {
+    if(error?.message==="active_automatic_reward") return res.status(409).json({message:"لا يمكن تغيير ربط الطالب لوجود مكافأة تلقائية نشطة. اعكس المكافأة من سجل المكافآت أولاً ثم أعد المحاولة."});
+    if(error?.message==="student_not_owned") return res.status(404).json({message:"الطالب غير موجود"});
+    req.log.error({error,submissionId},"Submission student link update failed");
+    res.status(500).json({message:"تعذر تحديث ربط الطالب"});
   }
 });
 
@@ -1691,6 +1756,7 @@ router.get("/teacher/stats", async (req, res) => {
         id: submissionsTable.id,
         assignmentId: submissionsTable.assignmentId,
         studentId: submissionsTable.studentId,
+        studentIdentityVerified: (submissionsTable as any).studentIdentityVerified,
         studentName: submissionsTable.studentName,
         studentClass: submissionsTable.studentClass,
         score: submissionsTable.score,
@@ -1941,6 +2007,7 @@ router.get("/submissions/:submissionId/details", async (req, res) => {
     res.json({
       submission: {
         id: submission.id,
+        studentIdentityVerified: (submission as any).studentIdentityVerified,
         studentName: submission.studentName,
         studentClass: submission.studentClass,
         score: submission.score,

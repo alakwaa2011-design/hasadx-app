@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { classroomRewardFingerprint, classroomRewardReversalKey } from "../lib/classroom-reward-fingerprint";
+import { evaluateClassroomRewardEvidence } from "../lib/classroom-reward-evaluator";
 
 const router: IRouter = Router();
 const ICONS = new Set(["Star", "Heart", "ThumbsUp", "Zap", "Trophy", "Target", "Shield", "Flame", "Award", "Crown", "Lightbulb", "Rocket"]);
@@ -25,6 +26,15 @@ const grantInput = z.object({
   customPoints: z.number().int().min(1).max(1000).optional(),
   idempotencyKey: requestKey,
 }).refine((v) => (v.typeId !== undefined) !== (v.customReason !== undefined), "حدد سببًا واحدًا").refine((v) => !v.customReason || v.customPoints !== undefined, "نقاط السبب المخصص مطلوبة");
+const ruleInput = z.object({
+  name: z.string().trim().min(1).max(100),
+  sourceType: z.enum(["assignment_submission", "kids_activity_completion", "game_history"]),
+  conditionType: z.enum(["completion", "score_at_least"]),
+  threshold: z.number().int().min(0).max(1000).optional(),
+  rewardTypeId: z.number().int().positive(),
+  amount: z.number().int().min(1).max(1000),
+  isActive: z.boolean().optional(),
+}).strict().superRefine((v, ctx) => { if (v.conditionType === "score_at_least" && v.threshold === undefined) ctx.addIssue({ code: "custom", message: "threshold required" }); });
 
 function teacher(req: any, res: any): number | null {
   const value = Number(req.session?.teacherId);
@@ -52,6 +62,56 @@ async function ensureDefaults(teacherId: number) {
 function normalizedType(t: any) {
   return { id: t.id, name: t.name, category: t.category, points: t.default_amount, icon: t.icon, color: t.color, order: t.sort_order, active: t.is_active };
 }
+function normalizedRule(r: any) { return { id:r.id, name:r.name, sourceType:r.source_type, conditionType:r.condition, threshold:r.threshold, rewardTypeId:r.reward_type_id, amount:r.amount, isActive:r.is_enabled }; }
+
+router.get("/classroom-rewards/rules", async (req: any, res) => {
+  const teacherId=teacher(req,res); if (!teacherId) return;
+  res.json(resultRows(await db.execute(sql`SELECT * FROM classroom_reward_rules WHERE teacher_id=${teacherId} ORDER BY id DESC`)).map(normalizedRule));
+});
+router.post("/classroom-rewards/rules", async (req: any, res) => {
+  const teacherId=teacher(req,res); if (!teacherId) return; const parsed=ruleInput.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message:"بيانات القاعدة غير صالحة" }); const d=parsed.data;
+  const type=resultRows(await db.execute(sql`SELECT * FROM classroom_reward_types WHERE id=${d.rewardTypeId} AND teacher_id=${teacherId}`))[0];
+  if (!type) return res.status(404).json({message:"نوع التحفيز غير موجود"});
+  const row=resultRows(await db.execute(sql`INSERT INTO classroom_reward_rules (teacher_id,name,source_type,condition,threshold,reward_type_id,amount,category_snapshot,is_enabled) VALUES (${teacherId},${d.name},${d.sourceType},${d.conditionType},${d.conditionType==="score_at_least"?d.threshold!:null},${d.rewardTypeId},${d.amount},${type.category},${d.isActive ?? true}) RETURNING *`))[0];
+  await db.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id) VALUES (${teacherId},'create','reward_rule',${row.id})`);
+  res.status(201).json(normalizedRule(row));
+});
+router.patch("/classroom-rewards/rules/:id", async (req:any,res) => {
+  const teacherId=teacher(req,res), ruleId=numericId(req.params.id); if(!teacherId)return; if(!ruleId)return res.status(400).json({message:"معرف غير صالح"});
+  const parsed=ruleInput.partial().safeParse(req.body); if(!parsed.success || !Object.keys(parsed.data).length)return res.status(400).json({message:"بيانات القاعدة غير صالحة"});
+  const old=resultRows(await db.execute(sql`SELECT * FROM classroom_reward_rules WHERE id=${ruleId} AND teacher_id=${teacherId}`))[0]; if(!old)return res.status(404).json({message:"القاعدة غير موجودة"});
+  const d=parsed.data; const typeId=d.rewardTypeId??old.reward_type_id; const type=resultRows(await db.execute(sql`SELECT * FROM classroom_reward_types WHERE id=${typeId} AND teacher_id=${teacherId}`))[0]; if(!type)return res.status(404).json({message:"نوع التحفيز غير موجود"});
+  const condition=d.conditionType??old.condition, threshold=d.threshold ?? old.threshold; if(condition==="score_at_least" && threshold===null)return res.status(400).json({message:"الحد مطلوب"});
+  const row=resultRows(await db.execute(sql`UPDATE classroom_reward_rules SET name=${d.name??old.name},source_type=${d.sourceType??old.source_type},condition=${condition},threshold=${condition==="score_at_least"?threshold:null},reward_type_id=${typeId},amount=${d.amount??old.amount},category_snapshot=${type.category},is_enabled=${d.isActive??old.is_enabled},updated_at=NOW() WHERE id=${ruleId} RETURNING *`))[0];
+  await db.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id) VALUES (${teacherId},'update','reward_rule',${ruleId})`); res.json(normalizedRule(row));
+});
+router.post("/classroom-rewards/rules/:id/enable", async (req:any,res) => {
+ const teacherId=teacher(req,res), ruleId=numericId(req.params.id); if(!teacherId)return;if(!ruleId)return res.status(400).json({message:"معرف غير صالح"});
+ const enabled=typeof req.body?.isActive==="boolean"?req.body.isActive:true; const row=resultRows(await db.execute(sql`UPDATE classroom_reward_rules SET is_enabled=${enabled},updated_at=NOW() WHERE id=${ruleId} AND teacher_id=${teacherId} RETURNING *`))[0]; if(!row)return res.status(404).json({message:"القاعدة غير موجودة"}); res.json(normalizedRule(row));
+});
+router.delete("/classroom-rewards/rules/:id", async (req:any,res) => {
+ const teacherId=teacher(req,res), ruleId=numericId(req.params.id); if(!teacherId)return;if(!ruleId)return res.status(400).json({message:"معرف غير صالح"});
+ const row=resultRows(await db.execute(sql`UPDATE classroom_reward_rules SET is_enabled=FALSE,updated_at=NOW() WHERE id=${ruleId} AND teacher_id=${teacherId} RETURNING id`))[0];
+ if(!row)return res.status(404).json({message:"القاعدة غير موجودة"});
+ await db.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id) VALUES (${teacherId},'disable','reward_rule',${ruleId})`);
+ res.status(409).json({message:"لا يمكن حذف القاعدة؛ تم تعطيلها للحفاظ على السجل"});
+});
+router.post("/classroom-rewards/rules/:id/reprocess", async (req:any,res) => {
+  const teacherId=teacher(req,res), ruleId=numericId(req.params.id); if(!teacherId)return;if(!ruleId)return res.status(400).json({message:"معرف غير صالح"});
+  const rule=resultRows(await db.execute(sql`SELECT * FROM classroom_reward_rules WHERE id=${ruleId} AND teacher_id=${teacherId}`))[0];
+  if(!rule)return res.status(404).json({message:"القاعدة غير موجودة"});
+  const outcomes=await db.transaction(async tx => {
+    const evidence=rule.source_type==="assignment_submission"
+      ? resultRows(await tx.execute(sql`SELECT sub.id source_id,sub.student_id,COALESCE(sub.teacher_adjusted_points,sub.earned_points) score,sub.total_points FROM submissions sub JOIN assignments a ON a.id=sub.assignment_id WHERE a.teacher_id=${teacherId} AND sub.student_id IS NOT NULL AND sub.student_identity_verified=TRUE ORDER BY sub.id`))
+      : rule.source_type==="kids_activity_completion"
+        ? resultRows(await tx.execute(sql`SELECT ss.id source_id,st.id student_id,ss.score,NULL::real total_points,ss.activity_id FROM kids_activity_sessions ss JOIN kids_profiles kp ON kp.id=ss.profile_id JOIN students st ON st.student_account_id=kp.student_account_id AND st.teacher_id=${teacherId} WHERE ss.status='completed' AND (SELECT COUNT(*) FROM students one_st WHERE one_st.student_account_id=kp.student_account_id)=1 ORDER BY ss.id`))
+        : resultRows(await tx.execute(sql`SELECT gh.id source_id,gh.assignment_id,entry FROM game_history gh CROSS JOIN LATERAL jsonb_array_elements(COALESCE(gh.detailed_results,'[]'::jsonb)) entry WHERE gh.teacher_id=${teacherId} ORDER BY gh.id`)).flatMap((row:any) => Number.isInteger(Number(row.entry?.studentId)) && Number(row.entry.studentId)>0 ? [{source_id:row.source_id,student_id:Number(row.entry.studentId),score:Number(row.entry.score),assignment_id:row.assignment_id,rank:row.entry.rank,total_correct:row.entry.totalCorrect,total_questions:row.entry.totalQuestions}] : []);
+    const all:any[]=[]; for(const e of evidence) all.push(...await evaluateClassroomRewardEvidence(tx,{teacherId,ruleId,sourceType:rule.source_type,sourceResultId:e.source_id,studentId:e.student_id,completed:true,score:Number(e.score),evidenceSummary:rule.source_type==="assignment_submission"?{effectivePoints:e.score,totalPoints:e.total_points}:rule.source_type==="kids_activity_completion"?{score:e.score,activityId:e.activity_id}:{gameHistoryId:e.source_id,assignmentId:e.assignment_id,score:e.score,rank:e.rank,totalCorrect:e.total_correct,totalQuestions:e.total_questions}})); return all;
+  });
+  await db.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,detail) VALUES (${teacherId},'automatic_reprocess','reward_rule',${ruleId},'recent evidence')`);
+  res.json({outcomes});
+});
 
 router.get("/classroom-rewards/types", async (req: any, res) => {
   const teacherId = teacher(req, res); if (!teacherId) return;
@@ -182,16 +242,16 @@ router.get("/classroom-rewards/ledger", async (req: any, res) => {
   if (req.query.studentId !== undefined && !studentId) return res.status(400).json({ message: "معرف غير صالح" });
   const start = periodStart(typeof req.query.period === "string" ? req.query.period : undefined);
   const found = resultRows(await db.execute(sql`
-    SELECT tr.id,COALESCE(s.name,tr.student_name_snapshot) AS student_name,tr.reward_type_name_snapshot AS reason,tr.amount AS points,tr.created_at,
+    SELECT tr.id,COALESCE(s.name,tr.student_name_snapshot) AS student_name,tr.reward_type_name_snapshot AS reason,tr.amount AS points,tr.created_at,tr.source_type,tr.source_result_id,tr.rule_id,COALESCE(ev.rule_name_snapshot,r.name) rule_name,ev.evidence_summary,
       EXISTS(SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id) AS is_reversed
-    FROM classroom_reward_transactions tr LEFT JOIN students s ON s.id=tr.student_id
+    FROM classroom_reward_transactions tr LEFT JOIN students s ON s.id=tr.student_id LEFT JOIN classroom_reward_rules r ON r.id=tr.rule_id LEFT JOIN classroom_reward_rule_evaluations ev ON ev.transaction_id=tr.id
     WHERE tr.teacher_id=${teacherId} AND tr.kind='grant'
     ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className}))` : sql``}
     ${studentId ? sql`AND tr.student_id=${studentId}` : sql``}
     ${start ? sql`AND tr.created_at>=${start}` : sql``}
     ORDER BY tr.created_at DESC,tr.id DESC LIMIT 500
   `));
-  res.json(found.map((r) => ({ id: r.id, studentName: r.student_name, reason: r.reason, points: r.points, createdAt: r.created_at, isReversed: r.is_reversed })));
+  res.json(found.map((r) => ({ id: r.id, studentName: r.student_name, reason: r.reason, points: r.points, createdAt: r.created_at, isReversed: r.is_reversed, ruleName:r.rule_name, sourceType:r.source_type, sourceId:r.source_result_id, evidenceSummary:r.evidence_summary })));
 });
 router.post("/classroom-rewards/ledger/:id/reverse", async (req: any, res) => {
   const teacherId = teacher(req, res), ledgerId = numericId(req.params.id); if (!teacherId) return; if (!ledgerId) return res.status(400).json({ message: "معرف غير صالح" });

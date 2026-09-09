@@ -18,9 +18,11 @@ describe("classroom reward request identity", () => {
 
   it("keeps the rewards route isolated from prohibited score and credit domains", () => {
     const route = readFileSync(new URL("../routes/classroom-rewards.ts", import.meta.url), "utf8");
-    for (const table of ["credit_accounts", "credit_transactions", "xp_", "game_scores", "assignments", "kids_adventure_states"]) {
+    for (const table of ["credit_accounts", "credit_transactions", "xp_", "game_scores", "kids_adventure_states"]) {
       expect(route).not.toContain(table);
     }
+    // Assignment evidence is an allowed automatic source, never a score mutation.
+    expect(route).toContain("assignment_submission");
   });
 
   it("uses immutable teacher class identity for new ledger filtering", () => {
@@ -39,5 +41,14 @@ describe("classroom reward request identity", () => {
     expect(migration).toContain("ON DELETE SET NULL");
     expect(migration).toContain("ALTER COLUMN student_id DROP NOT NULL");
     expect(route).toContain("اسم نوع التحفيز مستخدم بالفعل");
+  });
+
+  it("wires submission relinking through the locked active-grant guard", () => {
+    const route=readFileSync(new URL("../routes/submissions.ts",import.meta.url),"utf8");
+    const handler=route.slice(route.indexOf('router.patch("/submissions/:submissionId/student-link"'),route.indexOf('router.get("/assignments/:id/export-csv"'));
+    expect(handler).toContain("FOR UPDATE");
+    expect(handler).toContain("lockAssignmentRewardEvidence");
+    expect(handler).toContain("hasActiveAutomaticAssignmentGrant");
+    expect(handler).toContain('status(409)');
   });
 });

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { evaluateKidsMastery, selectKidsAdventure, isKidsAvatarKeyForAgeBand, normalizeKidsAvatarAgeBand, defaultKidsAvatarAgeBand, type KidsActivity, type KidsAttempt } from "@workspace/api-zod";
 import { randomInt } from "node:crypto";
+import { evaluateClassroomRewardEvidence } from "../lib/classroom-reward-evaluator";
 
 const router: IRouter = Router();
 let kidsReady = false;
@@ -408,6 +409,18 @@ router.post("/kids/sessions/:id/complete", async (req: any, res) => {
       WHERE id=${daily.id}
     `);
   }
+  // Classroom rewards are intentionally separate from stars. A kids profile is
+  // eligible only if its account maps to exactly one student owned by a teacher.
+  const linked = await tx.execute(sql`
+    SELECT st.teacher_id,st.id student_id FROM students st
+    WHERE st.student_account_id=${profile.student_account_id}
+  `);
+  const linkedRows=(linked as any)?.rows ?? [];
+  if (linkedRows.length === 1) await evaluateClassroomRewardEvidence(tx, {
+    teacherId:Number(linkedRows[0].teacher_id), sourceType:"kids_activity_completion",
+    sourceResultId:sessionId, studentId:Number(linkedRows[0].student_id), completed:true, score:Number(score),
+    evidenceSummary: { score, activityId },
+  });
   return { session, mastery: (mastery as any).rows[0], score, reward: rewarded ? "kids/stickers/completion-star" : null };
   });
   if (outcome.missing) return res.status(404).json({ message: "الجلسة غير موجودة" });

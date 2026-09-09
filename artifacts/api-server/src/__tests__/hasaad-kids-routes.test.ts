@@ -191,7 +191,8 @@ describe("Hasaad Kids guarded routes", () => {
     const completed = await request(makeStudentApp()).post("/api/kids/sessions/72/complete");
     expect(completed.status).toBe(200);
     expect(completed.body.score).toBe(100);
-    expect(txExecute).toHaveBeenCalledTimes(9);
+    // Final persisted completion checks explicit classroom-student linkage.
+    expect(txExecute).toHaveBeenCalledTimes(10);
   });
 
   it("denies student sessions access to teacher reports and returns only owned live progress", async () => {

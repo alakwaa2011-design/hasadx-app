@@ -87,6 +87,40 @@ function LedgerView({ className, period }: { className: string, period: string }
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>;
   if (!ledger || ledger.length === 0) return <EmptyState text="لا يوجد حركات تحفيز في هذه الفترة" />;
+  const sourceLabel = (sourceType?: string) => {
+    if (sourceType === "assignment_submission") return "تسليم واجب";
+    if (sourceType === "kids_activity_completion") return "إكمال نشاط أطفال";
+    if (sourceType === "game_history") return "لعبة وميض";
+    return sourceType || "";
+  };
+  const formatEvidenceSummary = (sourceType: string | undefined, evidence: unknown): string => {
+    if (typeof evidence === "string") return evidence;
+    if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return "";
+    const value = evidence as Record<string, unknown>;
+    const text = (...keys: string[]) => {
+      const found = keys.map((key) => value[key]).find((item) => item !== undefined && item !== null && item !== "");
+      return found === undefined ? "" : String(found);
+    };
+    if (sourceType === "assignment_submission") {
+      const effective = text("effectivePoints", "earnedPoints", "points");
+      const total = text("totalPoints", "maxPoints");
+      return effective || total ? `نقاط الواجب: ${effective || "0"}${total ? ` / ${total}` : ""}` : "تم توثيق نتيجة الواجب";
+    }
+    if (sourceType === "game_history") {
+      const parts = [
+        text("score", "points") && `النتيجة: ${text("score", "points")}`,
+        text("rank", "position") && `الترتيب: ${text("rank", "position")}`,
+        text("correct", "correctCount") && `الصحيح: ${text("correct", "correctCount")}`,
+      ].filter(Boolean);
+      return parts.join(" • ") || "تم توثيق نتيجة اللعبة";
+    }
+    if (sourceType === "kids_activity_completion") {
+      const activity = text("activity", "activityName", "title", "name");
+      const score = text("score", "points");
+      return [activity && `النشاط: ${activity}`, score && `النتيجة: ${score}`].filter(Boolean).join(" • ") || "تم توثيق إكمال النشاط";
+    }
+    return "تم توثيق نتيجة المصدر";
+  };
 
   return (
     <div className="space-y-3">
@@ -94,6 +128,7 @@ function LedgerView({ className, period }: { className: string, period: string }
         const date = new Date(item.createdAt);
         const dateLabel = isToday(date) ? "اليوم" : isYesterday(date) ? "أمس" : format(date, "d MMM", { locale: ar });
         const timeLabel = format(date, "h:mm a", { locale: ar });
+        const evidenceText = formatEvidenceSummary(item.sourceType, item.evidenceSummary);
         
         return (
           <div key={item.id} className={cn("p-3 rounded-xl border flex items-center gap-3 transition-colors", item.isReversed ? "bg-muted/30 border-dashed border-border/50 opacity-60" : "bg-card border-border shadow-sm")}>
@@ -111,6 +146,14 @@ function LedgerView({ className, period }: { className: string, period: string }
                 <Clock size={10} />
                 <span>{dateLabel} {timeLabel}</span>
               </div>
+                {(item.sourceType || item.ruleName || evidenceText || item.sourceId) && (
+                  <div data-testid={`text-ledger-evidence-${item.id}`} className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground">
+                    {item.sourceType && <span className="rounded bg-muted px-1.5 py-0.5 font-bold">{sourceLabel(item.sourceType)}</span>}
+                    {item.ruleName && <span>قاعدة: {item.ruleName}</span>}
+                    {evidenceText && <span>• {evidenceText}</span>}
+                    {item.sourceId && <span className="font-mono opacity-70">#{item.sourceId}</span>}
+                  </div>
+                )}
             </div>
 
             {!item.isReversed && (

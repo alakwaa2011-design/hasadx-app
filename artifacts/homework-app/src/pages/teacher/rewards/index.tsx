@@ -11,9 +11,10 @@ import {
 } from "./api";
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
+import { RewardRulesDialog } from "./rules";
 import { 
   Star, Settings, History, Volume2, VolumeX, Eye, EyeOff, 
-  Search, CheckSquare, Square, Plus, Trophy, Loader2, Check
+  Search, CheckSquare, Square, Plus, Trophy, Loader2, Check, Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -85,6 +86,7 @@ export default function RewardsPage() {
   const [displayMode, setDisplayMode] = useLocalStorage("hasaad_rewards_display_mode", false);
   
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [customGrantOpen, setCustomGrantOpen] = useState(false);
   
@@ -220,7 +222,7 @@ export default function RewardsPage() {
           </div>
           
           <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <button 
+            <button
               onClick={() => setDisplayMode(!displayMode)}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors motion-reduce:transition-none border whitespace-nowrap", 
                 displayMode ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground hover:bg-muted border-border"
@@ -229,7 +231,7 @@ export default function RewardsPage() {
               {displayMode ? <EyeOff size={14} /> : <Eye size={14} />}
               {displayMode ? "عرض صفي نشط" : "عرض صفي"}
             </button>
-            <button 
+            <button
               onClick={() => setIsMuted(!isMuted)}
               className="p-1.5 rounded-lg bg-card border border-border text-muted-foreground hover:bg-muted transition-colors shrink-0"
               title={isMuted ? "إلغاء الكتم" : "كتم الصوت"}
@@ -243,7 +245,15 @@ export default function RewardsPage() {
             >
               <History size={16} />
             </button>
-            <button 
+            <button
+              data-testid="button-open-reward-rules"
+              onClick={() => setRulesOpen(true)}
+              className="p-1.5 rounded-lg bg-card border border-border text-muted-foreground hover:bg-muted transition-colors shrink-0"
+              title="قواعد التحفيز التلقائي"
+            >
+              <Zap size={16} />
+            </button>
+            <button
               onClick={() => setSettingsOpen(true)}
               className="p-1.5 rounded-lg bg-card border border-border text-muted-foreground hover:bg-muted transition-colors shrink-0"
               title="إعدادات التحفيز"
@@ -378,6 +388,7 @@ export default function RewardsPage() {
       </div>
 
       <RewardTypesSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <RewardRulesDialog open={rulesOpen} onOpenChange={setRulesOpen} rewardTypes={rewardTypesData || []} />
       <RewardLedgerDialog open={ledgerOpen} onOpenChange={setLedgerOpen} className={currentClass} />
       <CustomGrantDialog 
         open={customGrantOpen} 

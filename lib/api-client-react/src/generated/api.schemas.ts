@@ -752,6 +752,8 @@ export interface Submission {
   id: number;
   studentName: string;
   studentClass: string;
+  studentId?: number | null;
+  studentIdentityVerified?: boolean;
   score: number;
   totalQuestions: number;
   correctAnswers: number;
