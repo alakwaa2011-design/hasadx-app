@@ -190,6 +190,14 @@ export interface ParentMessageEmailParams {
   schoolName?: string;
   schoolLogoUrl?: string;
   attachments?: AttachmentMeta[];
+  motivationSummary?: {
+    period: "week" | "month";
+    periodStart?: string;
+    periodEnd?: string;
+    totalPoints: number;
+    categories: Array<{ name: string; points: number }>;
+    achievements: Array<{ title: string; points: number }>;
+  };
 }
 
 export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
@@ -230,6 +238,18 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
 
               <!-- Info cards -->
               ${infoCards(cards)}
+
+              ${p.motivationSummary ? `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="margin:16px 0;background:#f0f7f3;border:1px solid #b5d4c3;border-radius:12px;">
+                <tr><td style="padding:18px;direction:rtl;">
+                  <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:${G.green};">ملخص التحفيز ${p.motivationSummary.period === "week" ? "الأسبوعي" : "الشهري"}</p>
+                  ${p.motivationSummary.periodStart && p.motivationSummary.periodEnd ? `<p style="margin:0 0 8px;font-size:11px;color:${G.muted};">${esc(new Date(p.motivationSummary.periodStart).toLocaleDateString("ar-SA"))} — ${esc(new Date(p.motivationSummary.periodEnd).toLocaleDateString("ar-SA"))}</p>` : ""}
+                  <p style="margin:0 0 12px;font-size:24px;font-weight:800;color:${G.gold};">${p.motivationSummary.totalPoints} نقطة تحفيز</p>
+                  ${p.motivationSummary.categories.map(c => `<span style="display:inline-block;margin:0 0 6px 6px;padding:5px 9px;background:#fff;border:1px solid ${G.border};border-radius:20px;font-size:12px;color:${G.text};">${esc(c.name)} · ${c.points}</span>`).join("")}
+                  ${p.motivationSummary.achievements.length ? `<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:${G.muted};">إنجازات مختارة</p>${p.motivationSummary.achievements.map(a => `<p style="margin:3px 0;font-size:13px;color:${G.text};">⭐ ${esc(a.title)} (+${a.points})</p>`).join("")}` : ""}
+                </td></tr>
+              </table>` : ""}
 
               <!-- Subject -->
               <p style="margin:16px 0 6px;font-size:11px;font-weight:700;color:${G.muted};text-transform:uppercase;

@@ -36,6 +36,8 @@ vi.mock("@workspace/db", () => {
     parentMessageRepliesTable: stub,
     studentsTable: stub,
     teachersTable: stub,
+    notificationsTable: stub,
+    classroomRewardTransactionsTable: stub,
   };
 });
 
@@ -88,6 +90,86 @@ beforeEach(() => {
   mockState.queue.length = 0;
   mockSendEmail.mockReset();
   mockSendEmail.mockResolvedValue({ delivered: true });
+  process.env.SESSION_SECRET = "test-session-secret-for-summary-signatures";
+});
+
+describe("motivation summary privacy boundary", () => {
+  it("does not preview a student not owned by the teacher", async () => {
+    mockState.queue.push([]);
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/parent-messages/motivation-summary/preview")
+      .send({ studentId: 777, period: "week", selectedAchievementIds: [], teacherMessage: "" });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns a signed, student-only snapshot without internal notes", async () => {
+    mockState.queue.push([{ ...STUDENT, parentEmail: "parent@example.com" }]);
+    mockState.queue.push([{
+      id: 10, amount: 3, rewardTypeName: "التعاون", category: "السلوك الإيجابي",
+      reversalOfId: null, createdAt: new Date(),
+    }]);
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/parent-messages/motivation-summary/preview")
+      .send({ studentId: 42, period: "week", selectedAchievementIds: [10], teacherMessage: "أحسنت" });
+    expect(res.status).toBe(200);
+    expect(res.body.snapshot.totalPoints).toBe(3);
+    expect(res.body.snapshot.achievements).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 10, title: "التعاون" }),
+    ]));
+    expect(res.body.previewToken).toEqual(expect.any(String));
+    expect(JSON.stringify(res.body)).not.toContain("note");
+  });
+
+  it("rejects a motivation snapshot changed after preview", async () => {
+    mockState.queue.push([{ ...STUDENT, parentEmail: "parent@example.com" }]);
+    mockState.queue.push([]);
+    const app = makeApp({ teacherId: 1 });
+    const preview = await request(app)
+      .post("/api/parent-messages/motivation-summary/preview")
+      .send({ studentId: 42, period: "week", selectedAchievementIds: [], teacherMessage: "أحسنت" });
+    const tampered = { ...preview.body.snapshot, totalPoints: 999 };
+    const res = await request(app)
+      .post("/api/parent-messages/motivation-summary")
+      .send({
+        studentId: 42,
+        snapshot: tampered,
+        previewExpiresAt: preview.body.previewExpiresAt,
+        previewToken: preview.body.previewToken,
+      });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("expired parent portal links", () => {
+  const expiredBase = {
+    id: 99, teacherId: 1, subject: "رسالة", body: "نص الرسالة",
+    parentName: null, sentAt: new Date(), readAt: new Date(),
+    replyText: null, repliedAt: null,
+    tokenExpiresAt: new Date(Date.now() - 60_000),
+    studentName: "أحمد", studentClass: "3أ", gradeLevel: "الثالث",
+    teacherName: "أستاذ علي",
+  };
+
+  it("keeps an expired ordinary message readable but read-only", async () => {
+    mockState.queue.push([{ ...expiredBase, motivationSummary: null }]);
+    mockState.queue.push([]);
+    const res = await request(makeApp(null)).get("/api/parent-portal/ordinary-expired");
+    expect(res.status).toBe(200);
+    expect(res.body.expired).toBe(true);
+    expect(res.body.body).toBe("نص الرسالة");
+  });
+
+  it("returns no student or summary data for an expired motivation link", async () => {
+    mockState.queue.push([{
+      ...expiredBase,
+      motivationSummary: { version: 1, kind: "motivation_summary", totalPoints: 5 },
+    }]);
+    const res = await request(makeApp(null)).get("/api/parent-portal/summary-expired");
+    expect(res.status).toBe(410);
+    expect(res.body).toEqual({ message: "انتهت صلاحية هذا الرابط", expired: true });
+    expect(JSON.stringify(res.body)).not.toContain("أحمد");
+    expect(JSON.stringify(res.body)).not.toContain("totalPoints");
+  });
 });
 
 // ── tests ──────────────────────────────────────────────────────────────────

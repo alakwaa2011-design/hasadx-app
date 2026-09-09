@@ -15,6 +15,8 @@ import {
   Users,
   ExternalLink,
   LineChart as LineChartIcon,
+  Send,
+  X,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useSmartBack } from "@/lib/nav-history";
@@ -86,6 +88,47 @@ export default function StudentTimelinePage() {
   const [data, setData] = useState<TimelinePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryPeriod, setSummaryPeriod] = useState<"week" | "month">("week");
+  const [summaryMessage, setSummaryMessage] = useState("");
+  const [summaryPreview, setSummaryPreview] = useState<any>(null);
+  const [selectedAchievements, setSelectedAchievements] = useState<number[]>([]);
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+
+  async function loadSummaryPreview(period = summaryPeriod, selected = selectedAchievements) {
+    setSummaryBusy(true); setSummaryError("");
+    try {
+      const r = await fetch(`${API_BASE}/api/parent-messages/motivation-summary/preview`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: sid, period, selectedAchievementIds: selected, teacherMessage: summaryMessage }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "تعذر تحميل الملخص");
+      setSummaryPreview(j);
+    } catch (e: any) { setSummaryError(e.message); }
+    finally { setSummaryBusy(false); }
+  }
+
+  async function sendSummary() {
+    setSummaryBusy(true); setSummaryError("");
+    try {
+      const r = await fetch(`${API_BASE}/api/parent-messages/motivation-summary`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: sid,
+          snapshot: summaryPreview.snapshot,
+          previewExpiresAt: summaryPreview.previewExpiresAt,
+          previewToken: summaryPreview.previewToken,
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "تعذر إرسال الملخص");
+      setShowSummary(false);
+      alert("تم إرسال ملخص التحفيز بنجاح");
+    } catch (e: any) { setSummaryError(e.message); }
+    finally { setSummaryBusy(false); }
+  }
 
   useEffect(() => {
     if (!Number.isFinite(sid)) {
@@ -163,6 +206,11 @@ export default function StudentTimelinePage() {
                   {student.className}
                 </div>
               )}
+              <button onClick={() => { setShowSummary(true); loadSummaryPreview(); }}
+                className="mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm"
+                style={{ background: BRAND_GREEN }}>
+                <Send className="w-4 h-4" /> إرسال ملخص التحفيز لولي الأمر
+              </button>
             </div>
           </div>
         </header>
@@ -310,6 +358,46 @@ export default function StudentTimelinePage() {
               </section>
             )}
           </>
+        )}
+        {showSummary && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowSummary(false)}>
+            <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between gap-3">
+                <div><h2 className="text-lg font-black text-emerald-900">ملخص التحفيز لولي الأمر</h2><p className="text-xs text-slate-500 mt-1">لن يظهر ترتيب الطالب أو أي بيانات لزملائه.</p></div>
+                <button onClick={() => setShowSummary(false)} className="p-2 text-slate-500"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-5">
+                {(["week", "month"] as const).map(p => <button key={p} onClick={() => { setSummaryPeriod(p); setSelectedAchievements([]); loadSummaryPreview(p, []); }}
+                  className={`rounded-lg border px-3 py-2 text-sm font-bold ${summaryPeriod === p ? "border-emerald-700 bg-emerald-50 text-emerald-800" : "border-slate-200"}`}>{p === "week" ? "آخر أسبوع" : "آخر شهر"}</button>)}
+              </div>
+              {summaryBusy && !summaryPreview ? <Loader2 className="w-6 h-6 animate-spin mx-auto my-8" /> : summaryPreview && <>
+                {!summaryPreview.student.parentEmail && <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">لا يوجد بريد ولي أمر صالح. أضفه من صفحة الطلاب قبل الإرسال.</div>}
+                <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                  <div className="text-xs font-bold text-emerald-800">المجموع خلال الفترة</div><div className="text-3xl font-black text-amber-600 mt-1">{summaryPreview.snapshot.totalPoints}</div>
+                  <div className="flex flex-wrap gap-2 mt-3">{summaryPreview.snapshot.categories.map((c: any) => <span key={c.name} className="bg-white border rounded-full px-2.5 py-1 text-xs">{c.name} · {c.points}</span>)}</div>
+                </div>
+                <div className="mt-4"><div className="text-sm font-bold text-slate-700 mb-2">اختر إنجازات لإظهارها</div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">{summaryPreview.selectableAchievements.map((a: any) => <label key={a.id} className="flex items-center gap-2 border rounded-lg p-2 text-sm"><input type="checkbox" checked={selectedAchievements.includes(a.id)} onChange={e => {
+                    setSelectedAchievements(v => e.target.checked ? [...v, a.id].slice(0, 8) : v.filter(x => x !== a.id));
+                    setSummaryPreview((prev: any) => prev ? { ...prev, previewToken: "" } : prev);
+                  }} />⭐ {a.title} <b className="text-emerald-700">+{a.points}</b></label>)}</div>
+                </div>
+                <label className="block mt-4 text-sm font-bold text-slate-700">رسالة المعلم
+                  <textarea value={summaryMessage} onChange={e => {
+                    setSummaryMessage(e.target.value);
+                    setSummaryPreview((prev: any) => prev ? { ...prev, previewToken: "" } : prev);
+                  }} maxLength={1000} rows={3} className="mt-2 w-full rounded-lg border border-slate-200 p-3 font-normal" placeholder="اكتب رسالة إيجابية مختصرة..." />
+                </label>
+              </>}
+              {summaryError && <div className="mt-3 text-sm text-rose-700">{summaryError}</div>}
+              <button onClick={() => summaryPreview?.previewToken ? sendSummary() : loadSummaryPreview(summaryPeriod, selectedAchievements)}
+                disabled={summaryBusy || !summaryPreview?.student?.parentEmail}
+                className="mt-5 w-full rounded-xl px-4 py-3 text-sm font-bold text-white disabled:opacity-50" style={{ background: BRAND_GREEN }}>
+                {summaryBusy ? "جارٍ التنفيذ..." : summaryPreview?.previewToken ? "إرسال الملخص" : "تحديث المعاينة قبل الإرسال"}
+              </button>
+              <p className="text-[11px] text-slate-500 mt-2 text-center">الرابط صالح لمدة 30 يومًا ويمكن لولي الأمر الرد ضمن المحادثة الحالية.</p>
+            </div>
+          </div>
         )}
       </div>
     </div>

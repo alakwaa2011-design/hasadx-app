@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import {
   db, parentMessagesTable, parentMessageRepliesTable,
-  studentsTable, teachersTable, notificationsTable,
+  studentsTable, teachersTable, notificationsTable, classroomRewardTransactionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
-import { randomUUID } from "crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const attachmentSchema = z.array(z.object({
@@ -19,9 +19,213 @@ import {
   buildTeacherReplyNotificationEmail,
   buildParentThreadReplyEmail,
 } from "../lib/parent-message-email";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql, gte, lte } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+const summaryRequestSchema = z.object({
+  studentId: z.number().int().positive(),
+  period: z.enum(["week", "month"]),
+  selectedAchievementIds: z.array(z.number().int().positive()).max(8).default([]),
+  teacherMessage: z.string().max(1000).default(""),
+});
+
+const motivationSnapshotSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("motivation_summary"),
+  period: z.enum(["week", "month"]),
+  periodStart: z.string().datetime(),
+  periodEnd: z.string().datetime(),
+  totalPoints: z.number().int(),
+  categories: z.array(z.object({ name: z.string().max(120), points: z.number().int().positive() })).max(8),
+  achievements: z.array(z.object({
+    id: z.number().int().positive(), title: z.string().max(200),
+    points: z.number().int().positive(), date: z.string().datetime(),
+  })).max(8),
+  teacherMessage: z.string().max(1000),
+  createdAt: z.string().datetime(),
+});
+
+function previewSecret() {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is required for motivation summary previews");
+  return secret;
+}
+
+function signPreview(teacherId: number, studentId: number, snapshot: z.infer<typeof motivationSnapshotSchema>, expiresAt: string) {
+  const payload = JSON.stringify({ teacherId, studentId, snapshot, expiresAt });
+  return createHmac("sha256", previewSecret()).update(payload).digest("base64url");
+}
+
+function validPreviewSignature(signature: string, expected: string) {
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function summaryRange(period: "week" | "month") {
+  const to = new Date();
+  const from = new Date(to);
+  if (period === "week") from.setDate(from.getDate() - 7);
+  else from.setMonth(from.getMonth() - 1);
+  return { from, to };
+}
+
+async function buildMotivationSummary(teacherId: number, input: z.infer<typeof summaryRequestSchema>) {
+  const [student] = await db.select({
+    id: studentsTable.id, name: studentsTable.name, parentName: studentsTable.parentName,
+    parentEmail: studentsTable.parentEmail, studentClass: studentsTable.studentClass,
+  }).from(studentsTable).where(and(
+    eq(studentsTable.id, input.studentId), eq(studentsTable.teacherId, teacherId),
+  )).limit(1);
+  if (!student) return null;
+
+  const { from, to } = summaryRange(input.period);
+  const txs = await db.select({
+    id: classroomRewardTransactionsTable.id,
+    amount: classroomRewardTransactionsTable.amount,
+    rewardTypeName: classroomRewardTransactionsTable.rewardTypeNameSnapshot,
+    category: classroomRewardTransactionsTable.categorySnapshot,
+    reversalOfId: classroomRewardTransactionsTable.reversalOfId,
+    createdAt: classroomRewardTransactionsTable.createdAt,
+  }).from(classroomRewardTransactionsTable).where(and(
+    eq(classroomRewardTransactionsTable.teacherId, teacherId),
+    eq(classroomRewardTransactionsTable.studentId, input.studentId),
+    gte(classroomRewardTransactionsTable.createdAt, from),
+    lte(classroomRewardTransactionsTable.createdAt, to),
+  )).orderBy(desc(classroomRewardTransactionsTable.createdAt));
+
+  const total = txs.reduce((sum, tx) => sum + tx.amount, 0);
+  const grouped = new Map<string, number>();
+  for (const tx of txs) grouped.set(tx.category, (grouped.get(tx.category) || 0) + tx.amount);
+  const categories = [...grouped.entries()]
+    .filter(([, points]) => points > 0)
+    .map(([name, points]) => ({ name, points }))
+    .sort((a, b) => b.points - a.points)
+    .slice(0, 8);
+  const reversedIds = new Set(txs.map(tx => tx.reversalOfId).filter((id): id is number => id != null));
+  const selectable = txs.filter(tx => tx.amount > 0 && !reversedIds.has(tx.id)).slice(0, 20);
+  const allowedIds = new Set(selectable.map(tx => tx.id));
+  const achievements = selectable
+    .filter(tx => input.selectedAchievementIds.includes(tx.id) && allowedIds.has(tx.id))
+    .map(tx => ({
+      id: tx.id, title: tx.rewardTypeName, points: tx.amount,
+      date: tx.createdAt.toISOString(),
+    }));
+
+  return {
+    student,
+    snapshot: {
+      version: 1 as const,
+      kind: "motivation_summary" as const,
+      period: input.period,
+      periodStart: from.toISOString(),
+      periodEnd: to.toISOString(),
+      totalPoints: total,
+      categories,
+      achievements,
+      teacherMessage: input.teacherMessage.trim(),
+      createdAt: new Date().toISOString(),
+    },
+    selectableAchievements: selectable.map(tx => ({
+      id: tx.id, title: tx.rewardTypeName, points: tx.amount, date: tx.createdAt.toISOString(),
+    })),
+  };
+}
+
+router.post("/parent-messages/motivation-summary/preview", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }
+  const parsed = summaryRequestSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
+  const result = await buildMotivationSummary(teacherId, parsed.data);
+  if (!result) { res.status(404).json({ message: "الطالب غير موجود" }); return; }
+  const previewExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  res.json({
+    ...result,
+    previewExpiresAt,
+    previewToken: signPreview(teacherId, parsed.data.studentId, result.snapshot, previewExpiresAt),
+  });
+});
+
+router.post("/parent-messages/motivation-summary", async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId;
+    if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }
+    const parsed = z.object({
+      studentId: z.number().int().positive(),
+      snapshot: motivationSnapshotSchema,
+      previewExpiresAt: z.string().datetime(),
+      previewToken: z.string().min(20).max(200),
+    }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
+    const { studentId, snapshot, previewExpiresAt, previewToken } = parsed.data;
+    if (new Date(previewExpiresAt) < new Date()) {
+      res.status(410).json({ message: "انتهت صلاحية المعاينة. حدّث الملخص ثم أرسله." }); return;
+    }
+    const expected = signPreview(teacherId, studentId, snapshot, previewExpiresAt);
+    if (!validPreviewSignature(previewToken, expected)) {
+      res.status(403).json({ message: "تم تغيير الملخص بعد المعاينة. حدّث المعاينة قبل الإرسال." }); return;
+    }
+    const [student] = await db.select({
+      id: studentsTable.id, name: studentsTable.name, parentName: studentsTable.parentName,
+      parentEmail: studentsTable.parentEmail, studentClass: studentsTable.studentClass,
+    }).from(studentsTable).where(and(
+      eq(studentsTable.id, studentId), eq(studentsTable.teacherId, teacherId),
+    )).limit(1);
+    if (!student) { res.status(404).json({ message: "الطالب غير موجود" }); return; }
+    const emailCheck = z.string().email().safeParse(student.parentEmail);
+    if (!emailCheck.success) {
+      res.status(400).json({ message: "لا يوجد بريد ولي أمر صالح لهذا الطالب" }); return;
+    }
+    const [teacher] = await db.select({
+      name: teachersTable.name, displaySchool: teachersTable.displaySchool, schoolLogo: teachersTable.schoolLogo,
+    }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+    if (!teacher) { res.status(404).json({ message: "المعلم غير موجود" }); return; }
+
+    const replyToken = randomUUID();
+    const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const periodLabel = snapshot.period === "week" ? "الأسبوعي" : "الشهري";
+    const subject = `ملخص التحفيز ${periodLabel} — ${student.name}`;
+    const body = snapshot.teacherMessage || `يسعدني مشاركتكم ملخص التحفيز الإيجابي للطالب/ة ${student.name}.`;
+    const [msg] = await db.insert(parentMessagesTable).values({
+      teacherId, studentId: student.id, subject, body,
+      parentEmail: emailCheck.data, parentName: student.parentName,
+      replyToken, tokenExpiresAt, motivationSummary: snapshot,
+    }).returning();
+
+    const baseUrl = getAppBaseUrl();
+    const portalUrl = `${baseUrl}/parent/${replyToken}`;
+    const emailHtml = buildParentMessageEmail({
+      teacherName: teacher.name, studentName: student.name,
+      studentClass: student.studentClass || "", gradeLevel: "",
+      subject, body, portalUrl, parentName: student.parentName || undefined,
+      schoolName: teacher.displaySchool ?? undefined,
+      schoolLogoUrl: teacher.schoolLogo ? `${baseUrl}/api/storage${teacher.schoolLogo}` : undefined,
+      motivationSummary: snapshot,
+    });
+    const delivery = await sendEmail({
+      to: emailCheck.data,
+      subject: `منصة حصاد | ${subject}`,
+      html: emailHtml,
+      text: [
+        body,
+        `مجموع التحفيز: ${snapshot.totalPoints}`,
+        snapshot.categories.length ? `الفئات الإيجابية: ${snapshot.categories.map(c => `${c.name} (${c.points})`).join("، ")}` : "",
+        snapshot.achievements.length ? `الإنجازات المختارة:\n${snapshot.achievements.map(a => `- ${a.title} (+${a.points})`).join("\n")}` : "",
+        `لعرض الملخص والرد: ${portalUrl}`,
+      ].filter(Boolean).join("\n\n"),
+    });
+    if (!delivery.delivered) {
+      await db.delete(parentMessagesTable).where(eq(parentMessagesTable.id, msg.id));
+      res.status(502).json({ message: "تعذّر إرسال البريد. لم تُحفظ الرسالة." }); return;
+    }
+    res.status(201).json(msg);
+  } catch (err) {
+    console.error("motivation summary send error:", err);
+    res.status(500).json({ message: "حدث خطأ أثناء إرسال الملخص" });
+  }
+});
 
 // ── Teacher: send a single message ─────────────────────────
 router.post("/parent-messages", async (req, res) => {
@@ -231,6 +435,7 @@ router.get("/parent-messages", async (req, res) => {
         tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
         isArchived: parentMessagesTable.isArchived,
         attachments: parentMessagesTable.attachments,
+        motivationSummary: parentMessagesTable.motivationSummary,
         hasUnreadReply: sql<boolean>`EXISTS (
           SELECT 1 FROM parent_message_replies pmr
           WHERE pmr.message_id = ${parentMessagesTable.id}
@@ -276,6 +481,7 @@ router.get("/parent-messages/:id/thread", async (req, res) => {
         repliedAt: parentMessagesTable.repliedAt,
         tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
         attachments: parentMessagesTable.attachments,
+        motivationSummary: parentMessagesTable.motivationSummary,
         studentName: studentsTable.name,
       })
       .from(parentMessagesTable)
@@ -412,6 +618,7 @@ router.get("/parent-portal/:token", async (req, res) => {
         replyText: parentMessagesTable.replyText,
         repliedAt: parentMessagesTable.repliedAt,
         tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+        motivationSummary: parentMessagesTable.motivationSummary,
         studentName: studentsTable.name,
         studentClass: studentsTable.studentClass,
         gradeLevel: studentsTable.gradeLevel,
@@ -426,8 +633,12 @@ router.get("/parent-portal/:token", async (req, res) => {
     if (!msg) { res.status(404).json({ message: "الرابط غير صالح أو منتهي الصلاحية" }); return; }
 
     const expired = msg.tokenExpiresAt < new Date();
+    if (expired && msg.motivationSummary) {
+      res.status(410).json({ message: "انتهت صلاحية هذا الرابط", expired: true });
+      return;
+    }
 
-    if (!msg.readAt && !expired) {
+    if (!msg.readAt) {
       const readNow = new Date();
       await db.update(parentMessagesTable).set({ readAt: readNow })
         .where(eq(parentMessagesTable.replyToken, token));

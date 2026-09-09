@@ -1496,6 +1496,16 @@ async function runSchemaMigrations() {
     logger.error(err, "parent_messages.attachments column migration failed");
   }
 
+  // ── Parent messages: immutable motivation summary snapshot ────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE parent_messages ADD COLUMN IF NOT EXISTS motivation_summary JSONB
+    `);
+    logger.info("parent_messages.motivation_summary column migrated");
+  } catch (err) {
+    logger.error(err, "parent_messages.motivation_summary column migration failed");
+  }
+
   // ── Parent message replies: attachments column ────────────────────────────
   try {
     await db.execute(sql`

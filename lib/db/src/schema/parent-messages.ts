@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, index, unique, jsonb } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 import { studentsTable } from "./students";
 
@@ -18,6 +18,7 @@ export const parentMessagesTable = pgTable("parent_messages", {
   tokenExpiresAt: timestamp("token_expires_at").notNull(),
   isArchived: boolean("is_archived").notNull().default(false),
   attachments: text("attachments"), // JSON: Array<{name,objectPath,contentType,size}>
+  motivationSummary: jsonb("motivation_summary"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   teacherIdx: index("parent_messages_teacher_idx").on(t.teacherId),

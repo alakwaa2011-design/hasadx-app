@@ -46,6 +46,12 @@ interface MessageData {
   tokenExpiresAt: string; expired: boolean;
   studentName: string; studentClass: string | null; gradeLevel: string | null;
   teacherName: string; replies: Reply[]; attachments: string | null;
+  motivationSummary?: {
+    period: "week" | "month"; periodStart: string; periodEnd: string; totalPoints: number;
+    categories: Array<{ name: string; points: number }>;
+    achievements: Array<{ id: number; title: string; points: number; date: string }>;
+    teacherMessage: string;
+  } | null;
 }
 
 // ── Inline attachment viewer ────────────────────────────────
@@ -201,7 +207,11 @@ export default function ParentPortalPage() {
     if (!token) return;
     fetch(`${BASE}/api/parent-portal/${token}`)
       .then(async r => {
-        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || tr("الرابط غير صالح", "Invalid link")); }
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          if (r.status === 410) throw new Error(tr("انتهت صلاحية هذا الرابط ولم تعد بيانات الملخص متاحة", "This link has expired and the summary is no longer available"));
+          throw new Error(d.message || tr("الرابط غير صالح", "Invalid link"));
+        }
         return r.json();
       })
       .then(d => { setData(d); setLocalReplies(d.replies || []); })
@@ -330,6 +340,37 @@ export default function ParentPortalPage() {
           <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 5 }}>{tr("الموضوع", "Subject")}</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>{data.subject}</div>
         </motion.div>
+
+        {data.motivationSummary && (
+          <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: "#f0f7f3", borderRadius: 16, padding: "20px", marginBottom: 14, border: "1px solid #b5d4c3", boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: C.green }}>
+              {tr(data.motivationSummary.period === "week" ? "ملخص التحفيز الأسبوعي" : "ملخص التحفيز الشهري", "Positive motivation summary")}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 5 }}>
+              {new Date(data.motivationSummary.periodStart).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")} — {new Date(data.motivationSummary.periodEnd).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")}
+            </div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: C.gold, margin: "8px 0 2px" }}>
+              {data.motivationSummary.totalPoints}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{tr("نقطة تحفيز", "motivation points")}</div>
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+              {data.motivationSummary.categories.map(c => (
+                <span key={c.name} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 999, padding: "6px 10px", fontSize: 12, color: C.text }}>
+                  {c.name} · <b>{c.points}</b>
+                </span>
+              ))}
+            </div>
+            {data.motivationSummary.achievements.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: C.green, marginBottom: 7 }}>{tr("إنجازات اختارها المعلم", "Selected achievements")}</div>
+                {data.motivationSummary.achievements.map(a => (
+                  <div key={a.id} style={{ background: "#fff", borderRadius: 9, padding: "9px 11px", marginTop: 6, fontSize: 13 }}>⭐ {a.title} <b style={{ color: C.green }}>+{a.points}</b></div>
+                ))}
+              </div>
+            )}
+          </motion.section>
+        )}
 
         {/* Thread */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
