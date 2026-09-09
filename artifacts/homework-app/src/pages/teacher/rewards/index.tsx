@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { AvatarDisplay } from "@/components/avatar-display";
-import { ConfettiBurst } from "@/components/confetti-burst";
 import { 
   useGetClassRewards, 
   useGetRewardTypes, 
@@ -93,8 +92,8 @@ export default function RewardsPage() {
   const [customGrantOpen, setCustomGrantOpen] = useState(false);
   const [studentControlOpen, setStudentControlOpen] = useState(false);
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
+  const [singleGrantStudentId, setSingleGrantStudentId] = useState<number | null>(null);
   
-  const [confettiActive, setConfettiActive] = useState(false);
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
   const students = useMemo(() => {
@@ -103,6 +102,15 @@ export default function RewardsPage() {
       s.name.toLowerCase().includes(search.toLowerCase())
     );
   }, [classData, search]);
+
+  const singleGrantStudent = useMemo(
+    () => classData?.students?.find((student: any) => student.id === singleGrantStudentId) ?? null,
+    [classData, singleGrantStudentId],
+  );
+
+  useEffect(() => {
+    setSingleGrantStudentId(null);
+  }, [currentClass]);
 
   const activeRewardTypes = useMemo(() => {
     if (!rewardTypesData) return [];
@@ -144,13 +152,6 @@ export default function RewardsPage() {
     }
   };
 
-  const fireConfetti = () => {
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReduced) return;
-    setConfettiActive(true);
-    setTimeout(() => setConfettiActive(false), 2500);
-  };
-
   const getGrantSignature = (classN: string, studentIds: number[], typeId?: string, customReason?: string, customPoints?: number) => {
     const sorted = [...studentIds].sort((a, b) => a - b).join(",");
     return `${classN}|${sorted}|${typeId || ""}|${customReason || ""}|${customPoints || ""}`;
@@ -181,7 +182,6 @@ export default function RewardsPage() {
     grantMutation.mutate(payload, {
       onSuccess: () => {
         playSound();
-        fireConfetti();
         const awardedStudents = (classData?.students ?? [])
           .filter((student: any) => payload.studentIds.includes(student.id))
           .map((student: any) => ({ id: student.id, name: student.name, avatar: student.avatar }));
@@ -214,7 +214,6 @@ export default function RewardsPage() {
 
   return (
     <Layout>
-      <ConfettiBurst active={confettiActive} />
       <RewardCelebration celebration={celebration} onComplete={() => setCelebration(null)} />
       
       <div className={cn("max-w-5xl mx-auto space-y-4 pb-32 transition-all motion-reduce:transition-none", displayMode && "mt-2")}>
@@ -234,7 +233,7 @@ export default function RewardsPage() {
               {!displayMode && <p className="text-xs text-muted-foreground font-medium hidden sm:block">كافئ طلابك وعزز مشاركتهم</p>}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
             <button
               onClick={() => setDisplayMode(!displayMode)}
@@ -311,22 +310,30 @@ export default function RewardsPage() {
             {students.map((student: any) => {
               const isSelected = selectedIds.has(student.id);
               return (
-                <div 
+                <div
                   key={student.id}
-                  onClick={() => toggleStudent(student.id)}
                   className={cn(
-                    "relative cursor-pointer rounded-2xl border-2 transition-all motion-reduce:transition-none motion-reduce:transform-none p-3 flex flex-col items-center gap-2 overflow-hidden",
+                    "relative rounded-2xl border-2 transition-all motion-reduce:transition-none motion-reduce:transform-none p-3 flex flex-col items-center gap-2 overflow-hidden",
                     isSelected ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "border-border bg-card hover:border-primary/30 hover:shadow-sm"
                   )}
                 >
                   {!displayMode && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+                    <button
+                      type="button"
+                      aria-label={isSelected ? `إلغاء تحديد ${student.name}` : `تحديد ${student.name} للمنح الجماعي`}
+                      aria-pressed={isSelected}
+                      className="absolute top-2 right-2 flex items-center gap-1 z-10 p-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleStudent(student.id);
+                      }}
+                    >
                       <div className={cn("w-5 h-5 rounded flex items-center justify-center border transition-colors motion-reduce:transition-none bg-background",
-                        isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/30 bg-background/80"
+                        isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/30 bg-background/80 hover:border-primary/50"
                       )}>
                         {isSelected && <Check size={12} strokeWidth={4} />}
                       </div>
-                    </div>
+                    </button>
                   )}
 
                   {!displayMode && (
@@ -343,21 +350,34 @@ export default function RewardsPage() {
                     </button>
                   )}
 
-                  <AvatarDisplay 
-                    avatar={student.avatar} 
-                    fallback={student.name.charAt(0)}
-                    size="2xl" 
-                    className={cn("shadow-sm ring-4 transition-all motion-reduce:transition-none motion-reduce:transform-none", isSelected ? "ring-primary/20" : "ring-transparent", displayMode && "w-16 h-16")} 
-                  />
-                  
-                  <div className="text-center w-full">
-                    <div className="font-bold text-sm truncate text-foreground">{student.name}</div>
-                    {!displayMode && (
-                      <div className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-black">
-                        {student.points || 0}
+                  <button
+                    type="button"
+                    onClick={() => setSingleGrantStudentId(student.id)}
+                    className="group flex w-full flex-col items-center gap-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    aria-label={`فتح خيارات تحفيز ${student.name}`}
+                  >
+                    <AvatarDisplay
+                      avatar={student.avatar}
+                      fallback={student.name.charAt(0)}
+                      size="2xl"
+                      className={cn(
+                        "shadow-sm ring-4 transition-transform group-hover:scale-105 motion-reduce:transition-none motion-reduce:transform-none",
+                        isSelected ? "ring-primary/20" : "ring-transparent",
+                        displayMode && "w-16 h-16",
+                      )}
+                    />
+
+                    <div className="text-center w-full">
+                      <div className="font-bold text-sm truncate text-foreground group-hover:text-primary transition-colors">
+                        {student.name}
                       </div>
-                    )}
-                  </div>
+                      {!displayMode && (
+                        <div className="inline-flex items-center justify-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-black">
+                          {student.points || 0}
+                        </div>
+                      )}
+                    </div>
+                  </button>
                 </div>
               );
             })}
@@ -388,7 +408,7 @@ export default function RewardsPage() {
               <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:text-red-500 font-medium transition-colors">إلغاء التحديد</button>
             </div>
           </div>
-          
+
           <div className="flex-1 flex items-center gap-2 overflow-x-auto w-full pb-1 sm:pb-0 hide-scrollbar">
             {activeRewardTypes.map((type: any) => (
               <button
@@ -432,7 +452,179 @@ export default function RewardsPage() {
         onGrant={(data) => handleGrant(undefined, data)} 
         loading={grantMutation.isPending}
       />
+      <SingleStudentGrantDialog
+        open={singleGrantStudentId !== null && Boolean(singleGrantStudent)}
+        onOpenChange={(v) => { if (!v) setSingleGrantStudentId(null); }}
+        student={singleGrantStudent}
+        rewardTypes={activeRewardTypes}
+        onGrant={(type, customData) => {
+          if (!singleGrantStudent || !currentClass) return;
+          resumeAudioContext();
+
+          const signature = getGrantSignature(currentClass, [singleGrantStudent.id], type?.id, customData?.reason, customData?.points);
+          let key: string = crypto.randomUUID();
+          if (grantIntentRef.current?.signature === signature) {
+            key = grantIntentRef.current.key;
+          } else {
+            grantIntentRef.current = { signature, key };
+          }
+
+          grantMutation.mutate({
+            className: currentClass,
+            studentIds: [singleGrantStudent.id],
+            typeId: type?.id,
+            customReason: customData?.reason,
+            customPoints: customData?.points,
+            idempotencyKey: key
+          }, {
+            onSuccess: () => {
+              playSound();
+              setCelebration({
+                students: [{ id: singleGrantStudent.id, name: singleGrantStudent.name, avatar: singleGrantStudent.avatar }],
+                points: type?.points || customData?.points || 0,
+                rewardName: type?.name || customData?.reason,
+              });
+              grantIntentRef.current = null;
+              setSingleGrantStudentId(null);
+            },
+            onError: (err) => toast.error(err.message || "حدث خطأ أثناء منح النقاط")
+          });
+        }}
+        loading={grantMutation.isPending}
+      />
     </Layout>
+  );
+}
+
+function SingleStudentGrantDialog({
+  open, onOpenChange, student, rewardTypes, onGrant, loading
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  student: any;
+  rewardTypes: any[];
+  onGrant: (type?: any, customData?: { reason: string, points: number }) => void;
+  loading: boolean;
+}) {
+  const [customOpen, setCustomOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [points, setPoints] = useState(1);
+
+  useEffect(() => {
+    if (open) {
+      setCustomOpen(false);
+      setReason("");
+      setPoints(1);
+    }
+  }, [open]);
+
+  if (!student) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl p-0 overflow-hidden bg-card border-border motion-reduce:animate-none">
+        <DialogHeader className="p-6 pb-4 border-b border-border/50 bg-gradient-to-b from-amber-50 to-background flex flex-col items-center justify-center relative">
+          <div className="relative mb-3">
+            <AvatarDisplay
+              avatar={student.avatar}
+              fallback={student.name.charAt(0)}
+              size="4xl"
+              className="ring-4 ring-white shadow-xl bg-white w-24 h-24"
+            />
+            <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center font-black shadow-lg border-2 border-white text-xs">
+              <Star size={14} className="fill-current" />
+            </div>
+          </div>
+          <DialogTitle className="text-xl font-black">{student.name}</DialogTitle>
+          <div className="text-sm font-bold text-muted-foreground mt-1">الرصيد الحالي: <span className="text-primary font-black">{student.points || 0}</span> نقطة</div>
+        </DialogHeader>
+
+        <div className="p-6">
+          {!customOpen ? (
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-muted-foreground text-center">اختر المكافأة التي تود منحها للطالب</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {rewardTypes.map(type => (
+                  <button
+                    key={type.id}
+                    onClick={() => onGrant(type)}
+                    disabled={loading}
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-border bg-card hover:border-primary/50 hover:bg-primary/5 hover:-translate-y-0.5 active:scale-95 transition-all motion-reduce:transition-none motion-reduce:transform-none focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                    style={{ borderColor: type.color ? `${type.color}40` : undefined }}
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-background shadow-sm border border-border">
+                      <IconRenderer name={type.icon} style={{ color: type.color }} />
+                    </div>
+                    <div className="text-center">
+                      <div className="font-bold text-sm text-foreground">{type.name}</div>
+                      <div className="text-xs font-black text-primary mt-0.5">+{type.points}</div>
+                    </div>
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCustomOpen(true)}
+                  disabled={loading}
+                  className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-border bg-card hover:border-primary/50 hover:bg-primary/5 hover:-translate-y-0.5 active:scale-95 transition-all motion-reduce:transition-none motion-reduce:transform-none text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted">
+                    <Plus size={20} />
+                  </div>
+                  <div className="font-bold text-sm">مكافأة مخصصة</div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!reason.trim()) { toast.error("يرجى إدخال السبب"); return; }
+                if (points < 1) { toast.error("يجب أن تكون النقاط 1 على الأقل"); return; }
+                onGrant(undefined, { reason, points });
+              }}
+              className="space-y-5"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-foreground flex items-center gap-2">
+                  <Star size={16} className="text-amber-500" /> مكافأة مخصصة
+                </h3>
+                <button type="button" onClick={() => setCustomOpen(false)} className="text-xs font-bold text-muted-foreground hover:text-foreground">
+                  العودة للخيارات
+                </button>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1.5 block">سبب المكافأة</label>
+                <input
+                  type="text"
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  placeholder="مثال: إجابة متميزة، مساعدة زميل..."
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground mb-1.5 block">عدد النقاط</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={points}
+                  onChange={e => setPoints(parseInt(e.target.value) || 1)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-center font-mono font-bold text-lg"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                  {loading && <Loader2 size={16} className="animate-spin" />}
+                  منح النقاط
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

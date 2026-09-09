@@ -327,7 +327,28 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
     avatar: student.avatar || ""
   });
   
+  const [avatarChanged, setAvatarChanged] = useState(false);
   const updateMutation = useUpdateStudentProfile();
+
+  const handleAvatarSelect = (avatarValue: string) => {
+    setFormData(prev => ({ ...prev, avatar: avatarValue }));
+    setAvatarChanged(avatarValue !== student.avatar);
+  };
+
+  const handleSaveAvatarOnly = () => {
+    updateMutation.mutate({
+      studentId,
+      avatar: formData.avatar || null,
+    }, {
+      onSuccess: () => {
+        toast.success("تم تحديث شخصية الطالب بنجاح");
+        setAvatarChanged(false);
+      },
+      onError: (err: any) => {
+        toast.error(err.message || "فشل في تحديث البيانات");
+      }
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,6 +365,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
     }, {
       onSuccess: () => {
         toast.success("تم تحديث بيانات الطالب بنجاح");
+        setAvatarChanged(false);
       },
       onError: (err: any) => {
         toast.error(err.message || "فشل في تحديث البيانات");
@@ -355,16 +377,31 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
     <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl mx-auto pb-8">
       <div className="bg-card border rounded-2xl p-6 shadow-sm space-y-6">
         <div>
-          <h3 className="font-black text-lg mb-1 flex items-center gap-2"><User size={20} /> شخصية مغامرة الطالب</h3>
-          <p className="text-sm text-muted-foreground mb-4">اختر شخصية مرسومة تظهر للطالب في رحلته وإنجازاته.</p>
+          <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3 mb-4">
+            <div>
+              <h3 className="font-black text-lg mb-1 flex items-center gap-2"><User size={20} /> شخصية مغامرة الطالب</h3>
+              <p className="text-sm text-muted-foreground">اختر شخصية مرسومة تظهر للطالب في رحلته وإنجازاته.</p>
+            </div>
+            {avatarChanged && (
+              <button
+                type="button"
+                onClick={handleSaveAvatarOnly}
+                disabled={updateMutation.isPending}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2 animate-in fade-in zoom-in duration-300 motion-reduce:animate-none motion-reduce:transition-none"
+              >
+                {updateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                حفظ الشخصية
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {ILLUSTRATED_AVATARS.map((avatar) => (
               <button
                 key={avatar.value}
                 type="button"
-                onClick={() => setFormData({ ...formData, avatar: avatar.value })}
+                onClick={() => handleAvatarSelect(avatar.value)}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-amber-50 to-emerald-50 p-2 text-center transition-all",
+                  "group relative overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-amber-50 to-emerald-50 p-2 text-center transition-all motion-reduce:transition-none motion-reduce:transform-none",
                   formData.avatar === avatar.value
                     ? "border-primary shadow-md ring-2 ring-primary/15"
                     : "border-border hover:border-primary/50 hover:-translate-y-0.5"
