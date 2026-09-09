@@ -712,6 +712,52 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     });
   });
 
+  it("does not rename another teacher's matching legacy reward snapshot", async () => {
+    const sharedName = `SHARED-LEGACY-${nonce}`;
+    const renamedName = `OWNER-LEGACY-RENAMED-${nonce}`;
+    await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name)
+      VALUES (${teacherId},${sharedName}),(${otherTeacherId},${sharedName})
+    `);
+    const ownerStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class)
+      VALUES ('سجل المالك',${teacherId},${sharedName})
+      RETURNING id
+    `)).rows[0].id);
+    const otherOwnerStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class)
+      VALUES ('سجل المعلم الآخر',${otherTeacherId},${sharedName})
+      RETURNING id
+    `)).rows[0].id);
+    const ownerKey = `rename-owner-legacy:${nonce}`;
+    const otherOwnerKey = `rename-other-owner-legacy:${nonce}`;
+    await db.execute(sql`
+      INSERT INTO classroom_reward_transactions
+        (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,
+         class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot)
+      VALUES
+        (${teacherId},${ownerStudent},'سجل المالك',${rewardTypeId},1,'grant',${ownerKey},
+         ${sharedName},NULL,'قديم','test'),
+        (${otherTeacherId},${otherOwnerStudent},'سجل المعلم الآخر',${rewardTypeId},1,'grant',${otherOwnerKey},
+         ${sharedName},NULL,'قديم','test')
+    `);
+
+    const renamed = await request(teacherApp()).patch("/api/teacher/classes/rename")
+      .send({oldName:sharedName,newName:renamedName});
+    expect(renamed.status).toBe(200);
+
+    const snapshots = (await db.execute(sql`
+      SELECT teacher_id,class_name_snapshot
+      FROM classroom_reward_transactions
+      WHERE idempotency_key IN (${ownerKey},${otherOwnerKey})
+      ORDER BY teacher_id
+    `)).rows;
+    expect(snapshots).toEqual(expect.arrayContaining([
+      expect.objectContaining({teacher_id:teacherId,class_name_snapshot:renamedName}),
+      expect.objectContaining({teacher_id:otherTeacherId,class_name_snapshot:sharedName}),
+    ]));
+  });
+
   it("does not leak old identity or legacy name history into a recreated class", async () => {
     const className = `RECREATE-${nonce}`;
     const oldClassId = Number((await db.execute(sql`
