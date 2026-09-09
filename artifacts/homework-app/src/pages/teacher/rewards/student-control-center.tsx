@@ -15,7 +15,7 @@ import { RewardCelebration, type RewardCelebrationData } from "./reward-celebrat
 import {
   User, Shield, Key, History, FileText, Activity,
   Loader2, Save, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock,
-  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints
+  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -406,7 +406,17 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
   });
   
   const [avatarChanged, setAvatarChanged] = useState(false);
+  const [showAllAvatars, setShowAllAvatars] = useState(false);
   const updateMutation = useUpdateStudentProfile();
+  const featuredAvatars = ILLUSTRATED_AVATARS.slice(0, 8);
+  const currentHiddenAvatar = ILLUSTRATED_AVATARS.find(
+    (avatar) => avatar.value === formData.avatar && !featuredAvatars.some((featured) => featured.value === avatar.value),
+  );
+  const visibleAvatars = showAllAvatars
+    ? ILLUSTRATED_AVATARS
+    : currentHiddenAvatar
+      ? [...featuredAvatars, currentHiddenAvatar]
+      : featuredAvatars;
 
   const handleAvatarSelect = (avatarValue: string) => {
     setFormData(prev => ({ ...prev, avatar: avatarValue }));
@@ -458,7 +468,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
           <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4 mb-6">
             <div>
               <h3 className="font-black text-xl mb-1.5 flex items-center gap-2 text-emerald-950"><User size={24} className="text-emerald-600" /> شخصية المغامر</h3>
-              <p className="text-sm text-emerald-900/60 font-medium">اختر شخصية مرسومة تمثل البطل في رحلته.</p>
+              <p className="text-sm text-emerald-900/60 font-medium">اختر من الشخصيات المميزة، أو افتح المجموعة الكاملة لمزيد من التنوع.</p>
             </div>
             {avatarChanged && (
               <button
@@ -473,7 +483,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
             )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
-            {ILLUSTRATED_AVATARS.map((avatar) => (
+            {visibleAvatars.map((avatar) => (
                <button
                 key={avatar.value}
                 type="button"
@@ -487,6 +497,9 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
                 aria-pressed={formData.avatar === avatar.value}
               >
                 <img src={avatar.value} alt="" className="mx-auto aspect-square w-full rounded-2xl object-cover object-top bg-white/50" />
+                <span className="absolute left-3 top-3 rounded-full border border-white/70 bg-emerald-950/70 px-2 py-0.5 text-[9px] font-black text-white shadow-sm backdrop-blur-sm">
+                  {avatar.category}
+                </span>
                 <span className="mt-2 block truncate text-xs font-black text-emerald-950">{avatar.label}</span>
                 {formData.avatar === avatar.value && (
                   <div className="absolute top-2 right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center shadow-md border-2 border-white">
@@ -496,6 +509,17 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setShowAllAvatars((visible) => !visible)}
+            aria-expanded={showAllAvatars}
+            className="mx-auto mt-5 flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-100 bg-white px-5 py-3 text-sm font-black text-emerald-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            {showAllAvatars ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {showAllAvatars
+              ? "عرض الشخصيات المميزة فقط"
+              : `عرض المجموعة الكاملة (${ILLUSTRATED_AVATARS.length - featuredAvatars.length} شخصية إضافية)`}
+          </button>
         </div>
 
         <div className="space-y-5">
