@@ -1649,3 +1649,25 @@ mtime_ms = 1788938293814
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/2002d725-a394-4a6b-9d97-bcbe24924882/182900c3-62df-4723-adcd-1ffdd941332c"
 storage_version_token = "1788938317079314"
 content_type = "audio/mpeg"
+
+[[outputs]]
+id = "OReDiv2nn_8ZF53Xitamu"
+uri = "file://attached_assets/generated_audio/hasaad-assignment-voiceover.mp3"
+type = "audio"
+title = "hasaad assignment walkthrough gulf arabic"
+description = "Text-to-speech audio: مع حصاد، يتحول إعداد الواجب من خطوات طويلة إلى تجربة واضحة وسريعة. من لوحة المعلم نختار إنشاء نشاط جديد، ثم واجب أو اختبار. نضيف عنوان النشاط، والمادة، والصف المستهدف. بعدها نخت…"
+logical_id = "c0df907d-cc72-47b8-85cb-1e9802939e9f"
+
+[[outputs]]
+id = "C5IaLksIsrng_UhlA6rUe"
+uri = "file://attached_assets/hasaad-create-real-assignment-vertical.mp4"
+type = "video"
+title = "فيديو إنشاء واجب حقيقي في حصاد"
+description = "فيديو عمودي 9:16 يوثّق إنشاء ونشر واجب «أنواع الخبر — الصف السادس» داخل منصة حصاد الفعلية، مع تعليق صوتي عربي وعناوين مكتوبة."
+logical_id = "ac17c47a-b0ca-4de5-820d-e23c490d190e"
+content_hash = "sha256:53661317283e789e2d2b3adc3c1f4bf4deec622379677993bb081b6820ef12d7"
+size = 4994099
+mtime_ms = 1788989912022
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/ac17c47a-b0ca-4de5-820d-e23c490d190e/4e406872-1bbc-40d6-a666-9c0a586ff55d"
+storage_version_token = "1788989957615113"
+content_type = "video/mp4"
