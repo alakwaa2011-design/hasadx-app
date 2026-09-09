@@ -377,10 +377,10 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
       <DialogContent className="sm:max-w-md rounded-[2rem] border-2 border-emerald-100 p-0 overflow-hidden motion-reduce:animate-none">
         <DialogHeader className="border-b border-emerald-100 bg-emerald-50/60 p-6">
           <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
-            <SlidersHorizontal size={20} className="text-emerald-600" /> تعديل رصيد {studentName}
+            <SlidersHorizontal size={20} className="text-emerald-600" /> خصم نقاط من {studentName}
           </DialogTitle>
           <DialogDescription className="pt-2 font-medium leading-relaxed text-emerald-900/65">
-            استخدم هذا الإجراء لتصحيح الرصيد أو تسجيل ملاحظة صفية. سيظهر التعديل بهدوء في السجل دون مؤثرات سلبية.
+            يمكنك خصم نقاط من رصيد الطالب.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-5 p-6">
@@ -389,13 +389,13 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
             <strong className="text-lg font-black text-amber-800">{formatPoints(currentBalance)} نقطة</strong>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-black text-emerald-950">مقدار التعديل</label>
+            <label className="mb-2 block text-sm font-black text-emerald-950">عدد النقاط المراد خصمها</label>
             <input type="number" min={1} max={currentBalance} value={points} onChange={(e) => setPoints(Number(e.target.value))}
               className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-black outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
             <p className="mt-1.5 text-xs font-bold text-slate-500">سيصبح الرصيد: {formatPoints(Math.max(0, currentBalance - (Number.isFinite(points) ? points : 0)))} نقطة</p>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-black text-emerald-950">سبب التعديل</label>
+            <label className="mb-2 block text-sm font-black text-emerald-950">سبب الخصم</label>
             <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200}
               placeholder="مثال: تصحيح رصيد أضيف بالخطأ"
               className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
@@ -405,7 +405,7 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
               className="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3 font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
             <button type="submit" disabled={mutation.isPending || currentBalance < 1}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-black text-white hover:bg-emerald-800 disabled:opacity-50">
-              {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} تأكيد التعديل
+              {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} تأكيد الخصم
             </button>
           </div>
         </form>

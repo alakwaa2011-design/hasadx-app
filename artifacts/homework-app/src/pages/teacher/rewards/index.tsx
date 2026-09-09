@@ -459,14 +459,14 @@ export default function RewardsPage() {
             <p className="font-bold">جاري تحميل الطلاب...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
             {students.map((student: any) => {
               const isSelected = selectedIds.has(student.id);
               return (
                 <div
                   key={student.id}
                   className={cn(
-                    "group relative rounded-[2rem] border-[3px] p-4 flex flex-col items-center gap-3 overflow-hidden transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none",
+                    "group relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4",
                     isSelected ? "border-amber-400 bg-amber-50/80 shadow-lg shadow-amber-500/15 -translate-y-1" : "border-emerald-100 bg-gradient-to-b from-white to-emerald-50/30 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-900/5 hover:-translate-y-1"
                   )}
                 >
@@ -478,7 +478,7 @@ export default function RewardsPage() {
                       aria-label={isSelected ? `إلغاء تحديد ${student.name}` : `تحديد ${student.name} للمنح الجماعي`}
                       aria-pressed={isSelected}
                       className={cn(
-                        "absolute right-3 top-3 z-20 flex min-h-8 items-center gap-1.5 rounded-xl border-2 px-2.5 py-1.5 text-[10px] font-black shadow-md transition-all",
+                        "absolute right-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 p-0 text-[10px] font-black shadow-md transition-all sm:right-3 sm:top-3 sm:h-auto sm:w-auto sm:min-h-8 sm:gap-1.5 sm:rounded-xl sm:px-2.5 sm:py-1.5",
                         isSelected
                           ? "border-amber-500 bg-amber-400 text-amber-950"
                           : "border-emerald-200 bg-white text-emerald-800 hover:border-amber-400 hover:bg-amber-50",
@@ -493,7 +493,7 @@ export default function RewardsPage() {
                       )}>
                         {isSelected && <Check size={14} strokeWidth={4} />}
                       </div>
-                      <span>{isSelected ? "محدد للمنح" : "تحديد للمنح"}</span>
+                      <span className="hidden sm:inline">{isSelected ? "محدد للمنح" : "تحديد للمنح"}</span>
                     </button>
                   )}
 
@@ -504,18 +504,18 @@ export default function RewardsPage() {
                       setActiveStudentId(student.id);
                       setStudentControlOpen(true);
                     }}
-                    className="absolute left-3 top-3 z-20 flex items-center gap-1 rounded-xl border-2 border-emerald-200 bg-white px-2 py-1.5 text-[10px] font-black text-emerald-800 shadow-md transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg"
-                    title="فتح ملف الطالب وكل بيانات التحفيز"
+                    className="absolute left-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-200 bg-white p-0 text-[10px] font-black text-emerald-800 shadow-md transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg sm:left-3 sm:top-3 sm:h-auto sm:w-auto sm:gap-1 sm:rounded-xl sm:px-2 sm:py-1.5"
+                    title="فتح ملف الطالب"
                     aria-label={`فتح ملف الطالب ${student.name}`}
                   >
                     <UserRound size={13} strokeWidth={2.7} />
-                    <span>ملف الطالب</span>
+                    <span className="hidden sm:inline">ملف الطالب</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSingleGrantStudentId(student.id)}
-                    className="w-full flex flex-col items-center relative rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar mt-2"
+                    className="relative mt-1 flex w-full flex-col items-center rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar sm:mt-2"
                     aria-label={`فتح خيارات تحفيز ${student.name}`}
                   >
                     <div className="relative">
@@ -564,10 +564,12 @@ export default function RewardsPage() {
                         event.stopPropagation();
                         setBalanceAdjustmentStudentId(student.id);
                       }}
-                      className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-2 py-1.5 text-[11px] font-black text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label={`تعديل رصيد ${student.name}`}
+                      className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/80 p-0 text-[11px] font-black text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40 sm:mt-1 sm:h-auto sm:w-full sm:gap-1.5 sm:rounded-xl sm:px-2 sm:py-1.5"
+                      aria-label={`خصم نقاط من رصيد ${student.name}`}
+                      title="خصم نقاط"
                     >
-                      <SlidersHorizontal size={13} /> تعديل الرصيد
+                      <SlidersHorizontal size={15} />
+                      <span className="hidden sm:inline">خصم نقاط</span>
                     </button>
                   )}
                 </div>
