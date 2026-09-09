@@ -147,7 +147,7 @@ export default defineConfig({
     {
       name: "desktop-rewards",
       testMatch: /rewards-single-grant\.spec\.ts/,
-      grepInvert: /mobile avatar gallery/,
+      grepInvert: /mobile (avatar gallery|bulk balance preview)/,
       use: {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
@@ -159,10 +159,20 @@ export default defineConfig({
     {
       name: "mobile-rewards",
       testMatch: /rewards-single-grant\.spec\.ts/,
-      grep: /mobile (avatar gallery|bulk balance preview)/,
+      grep: /mobile (avatar gallery|bulk balance preview)|rewards pavilion/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "mobile-320-rewards",
+      testMatch: /rewards-single-grant\.spec\.ts/,
+      grep: /rewards pavilion/,
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 320, height: 720 },
         ...chromiumLaunchOptions,
       },
     },

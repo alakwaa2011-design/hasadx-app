@@ -20,6 +20,7 @@ type RewardsFixture = {
   teacher: TestTeacher;
   studentAccount: TestTeacher;
   className: string;
+  emptyClassName: string;
   students: Array<{ id: number; name: string }>;
 };
 
@@ -44,7 +45,12 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
   const email = `e2e-rewards-${suffix}@example.com`;
   const otp = "994000";
   const className = `صف اختبار ${suffix}`;
-  const studentNames = [`طالب اختبار أ ${suffix}`, `طالب اختبار ب ${suffix}`];
+  const emptyClassName = `صف فارغ ${suffix}`;
+  const studentNames = [
+    `الطالب صاحب الاسم العربي الطويل جدًا للاختبار ${suffix}`,
+    `طالبة اختبار ب ${suffix}`,
+    ...Array.from({ length: 6 }, (_, index) => `طالب رحلة المكافآت ${index + 3} ${suffix}`),
+  ];
   const studentUsername = `reward_student_${suffix}`;
   const studentPassword = "RewardTest123!";
   const studentApi = await newApi(baseURL);
@@ -77,7 +83,10 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
   }).returning({ id: teachersTable.id });
   if (!teacherRow) throw new Error("Could not create the rewards teacher fixture");
 
-  await db.insert(teacherClassesTable).values({ teacherId: teacherRow.id, name: className });
+  await db.insert(teacherClassesTable).values([
+    { teacherId: teacherRow.id, name: className },
+    { teacherId: teacherRow.id, name: emptyClassName },
+  ]);
   const studentRows = await db.insert(studentsTable).values(
     studentNames.map((name, index) => ({
       teacherId: teacherRow.id,
@@ -90,6 +99,54 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
     })),
   ).returning({ id: studentsTable.id, name: studentsTable.name });
   if (studentRows.length !== studentNames.length) throw new Error("Could not create the rewards student fixtures");
+
+  const teacherClassResult = await pool.query(
+    "SELECT id FROM teacher_classes WHERE teacher_id = $1 AND name = $2",
+    [teacherRow.id, className],
+  );
+  const teacherClassId = teacherClassResult.rows[0]?.id;
+  if (!teacherClassId) throw new Error("Could not find rewards teacher class fixture");
+
+  const groupNames = [
+    `فريق المستكشفين أصحاب الاسم الطويل ${suffix}`,
+    `نجوم المعرفة ${suffix}`,
+    `رواد الإنجاز ${suffix}`,
+  ];
+  for (const [groupIndex, groupName] of groupNames.entries()) {
+    const groupResult = await pool.query(
+      `INSERT INTO classroom_reward_groups
+         (teacher_id, teacher_class_id, name, description, color, avatar, score, sort_order)
+       VALUES ($1, $2, $3, 'مجموعة اختبار حقيقية', $4, '/avatars/adventurer-boy.webp', $5, $6)
+       RETURNING id`,
+      [teacherRow.id, teacherClassId, groupName, ["#225739", "#9c6816", "#855578"][groupIndex], 20 + groupIndex, groupIndex],
+    );
+    const memberIds = studentRows
+      .filter((_, studentIndex) => studentIndex % groupNames.length === groupIndex)
+      .map((student) => student.id);
+    for (const studentId of memberIds) {
+      await pool.query(
+        `INSERT INTO classroom_reward_group_members (teacher_id, group_id, student_id)
+         VALUES ($1, $2, $3)`,
+        [teacherRow.id, groupResult.rows[0].id, studentId],
+      );
+    }
+  }
+
+  for (let goalIndex = 0; goalIndex < 8; goalIndex += 1) {
+    await pool.query(
+      `INSERT INTO classroom_reward_goals
+         (teacher_id, teacher_class_id, student_id, title, skill, target_points, starts_at, ends_at, status, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW() + INTERVAL '30 days', 'active', true)`,
+      [
+        teacherRow.id,
+        teacherClassId,
+        goalIndex % 2 === 0 ? null : studentRows[goalIndex % studentRows.length].id,
+        `هدف تعليمي طويل وواضح رقم ${goalIndex + 1} لتنمية عادة القراءة اليومية ${suffix}`,
+        `مهارة التقدم ${goalIndex + 1}`,
+        50 + goalIndex * 10,
+      ],
+    );
+  }
 
   const api = await newApi(baseURL);
   try {
@@ -117,6 +174,7 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
         cookieHeader: "",
       },
       className,
+      emptyClassName,
       students: studentRows,
     };
   } finally {
@@ -172,6 +230,61 @@ test("every illustrated avatar has a local image file", () => {
           .join("\n")}`
       : "كل شخصية مصوّرة مرتبطة بملف صورة محلي",
   ).toEqual([]);
+});
+
+test("rewards pavilion stays clear with real class data, edge states, and reduced motion", async ({ page }) => {
+  if (!fixture) throw new Error("Rewards fixture is unavailable");
+
+  const classRoute = "**/api/classroom-rewards/classes/**";
+  const loadingHandler = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    await route.continue();
+  };
+  await page.route(classRoute, loadingHandler);
+
+  await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("جاري تحميل الطلاب...")).toBeVisible();
+
+  const longStudent = fixture.students[0];
+  await expect(page.getByRole("button", { name: `فتح خيارات تحفيز ${longStudent.name}` })).toBeVisible({ timeout: 20_000 });
+  await page.unroute(classRoute, loadingHandler);
+  await expect(page.getByRole("heading", { name: "أهداف التقدم" })).toBeVisible();
+  await expect(page.locator(".rewards-pavilion-goals").getByText(/هدف تعليمي طويل وواضح/)).toHaveCount(8);
+  await page.getByRole("button", { name: "المجموعات" }).click();
+  await expect(page.getByText(/فريق المستكشفين أصحاب الاسم الطويل/)).toBeVisible();
+
+  const horizontalGeometry = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: document.documentElement.clientWidth,
+    pavilionWidth: document.querySelector(".rewards-pavilion")?.scrollWidth ?? 0,
+    pavilionClientWidth: document.querySelector(".rewards-pavilion")?.clientWidth ?? 0,
+  }));
+  expect(horizontalGeometry.documentWidth).toBeLessThanOrEqual(horizontalGeometry.viewportWidth + 1);
+  expect(horizontalGeometry.pavilionWidth).toBeLessThanOrEqual(horizontalGeometry.pavilionClientWidth + 1);
+
+  await page.getByRole("button", { name: "الطلاب" }).click();
+  await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.emptyClassName)}`);
+  await expect(page.getByText("لم يتم العثور على طلاب في هذا الصف.")).toBeVisible({ timeout: 20_000 });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`);
+  const animationState = await page.locator(".rewards-pavilion").evaluate((pavilion) => {
+    const light = pavilion.querySelector(".rewards-pavilion-lights i");
+    const hero = pavilion.querySelector(".rewards-pavilion-hero");
+    return [
+      light ? getComputedStyle(light) : null,
+      hero ? getComputedStyle(hero, "::before") : null,
+      hero ? getComputedStyle(hero, "::after") : null,
+    ].filter(Boolean).map((style) => ({
+      animationName: style!.animationName,
+      transitionDuration: style!.transitionDuration,
+    }));
+  });
+  expect(animationState).not.toHaveLength(0);
+  for (const state of animationState) {
+    expect(state.animationName).toBe("none");
+    expect(state.transitionDuration).toBe("0s");
+  }
 });
 
 test("mobile avatar gallery keeps its first and last cards reachable with loaded images", async ({ page }) => {
