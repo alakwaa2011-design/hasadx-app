@@ -111,8 +111,8 @@ const CHOICE_INFO: Record<GiftChoiceType, {
   },
   steal: {
     icon: "💰",
-    ar: "سرقة نقاط", en: "Steal Points",
-    resultAr: (n) => `سرقت ${n ?? 300} نقطة! 💰`, resultEn: (n) => `Stole ${n ?? 300} pts! 💰`,
+    ar: "سحب نقاط", en: "Pull Points",
+    resultAr: (n) => `سحبت ${n ?? 300} نقطة! 💰`, resultEn: (n) => `Pulled ${n ?? 300} pts! 💰`,
     bg: "linear-gradient(150deg,#7c2d12,#c2410c)",
     border: "#f97316",  glow: "rgba(249,115,22,0.4)",
   },

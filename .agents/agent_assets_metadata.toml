@@ -1564,3 +1564,88 @@ uri = "file://artifacts/homework-app/public/audio/rewards/hasaad-coin-celebratio
 type = "audio"
 title = "premium reward coin celebration"
 description = "Generated sound effect: Premium educational app reward sound. Three bright metallic gold coin chimes in a satisfying ascending rhythm, then a warm sparkling success flourish with a very short subtle …"
+logical_id = "4d195b21-4b54-43d6-a1a9-e351f0281774"
+
+[[outputs]]
+id = "D5KFPkkOz6-A362jg0cgS"
+uri = "file://attached_assets/reward-sound-options/01-luxury-coins.mp3"
+type = "audio"
+title = "الخيار 1 — عملات فاخرة"
+description = "ثلاث عملات معدنية متصاعدة مع لمعة خفيفة؛ واضح ومباشر."
+logical_id = "cb390343-f7e9-4e1a-bf60-9096e6e4db44"
+content_hash = "sha256:5e3f4851e54b51231efefa5351db92e0f43eb23df0b524104e74496bd3ff7993"
+size = 24703
+mtime_ms = 1788938292830
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/cb390343-f7e9-4e1a-bf60-9096e6e4db44/3e63db02-0916-46fe-8b56-bf4ba6e24c78"
+storage_version_token = "1788938308019274"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "-4LJZYvN3yod0_wBNzGyw"
+uri = "file://attached_assets/reward-sound-options/03-crystal-success.mp3"
+type = "audio"
+title = "الخيار 3 — نجاح كريستالي"
+description = "نغمات زجاجية أنيقة ولمعة دافئة؛ هادئ وفخم."
+logical_id = "7a20eb9f-4eba-4bd2-a3c4-6127862b0939"
+content_hash = "sha256:ced336bc37f1d17175c4d38bbf1bfa7746520770197e2d6055d9630dbbbc9ae1"
+size = 23031
+mtime_ms = 1788938293226
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/7a20eb9f-4eba-4bd2-a3c4-6127862b0939/07e14a2b-c680-4b34-af73-efb0702ba654"
+storage_version_token = "1788938311846067"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "d2YVs_xFM0l9IzWtFf-2S"
+uri = "file://attached_assets/reward-sound-options/02-studio-applause.mp3"
+type = "audio"
+title = "الخيار 2 — تصفيق استوديو"
+description = "تصفيق احترافي قصير مع نغمة نجاح؛ أكثر حماسًا داخل الصف."
+logical_id = "6d5e99aa-db70-49d5-a9a7-8704d4e331cb"
+content_hash = "sha256:9e0993f9686e87addb3b80c6f6095f5e718b39bfed1a1ae26dbf728b3a4f7e45"
+size = 29301
+mtime_ms = 1788938293042
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/6d5e99aa-db70-49d5-a9a7-8704d4e331cb/b7aa3965-5fdf-4fbb-966b-8c119b80196f"
+storage_version_token = "1788938310631893"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "ZAhNeZqNG6jjnot0R3So6"
+uri = "file://attached_assets/reward-sound-options/04-arabic-celebration.mp3"
+type = "audio"
+title = "الخيار 4 — احتفال عربي خفيف"
+description = "ضربة دف ناعمة وتصفيقتان ولمعة؛ طابع محلي دون مبالغة."
+logical_id = "100cec70-795b-437d-a7e7-9a26b9e6ff71"
+content_hash = "sha256:116e7c9b27a88b050ea8377bdbf3cef0216dc075aaef297794b83d32e3fb4db1"
+size = 26793
+mtime_ms = 1788938293426
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/100cec70-795b-437d-a7e7-9a26b9e6ff71/9d61c6dc-8241-46c0-994e-b96199c5d3b9"
+storage_version_token = "1788938313278400"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "BkhYPl71a6mGjHa6VRuTW"
+uri = "file://attached_assets/reward-sound-options/05-treasure-reward.mp3"
+type = "audio"
+title = "الخيار 5 — صندوق الكنز"
+description = "فتح صندوق ثم سقوط عملات؛ ممتع وواضح للأطفال."
+logical_id = "63cb0511-9891-4323-8a4d-0b96cae5d492"
+content_hash = "sha256:73b4c1646d1c4e015258d4ce5db5f50eb1a048b2ed369f9a21dd2490b679765a"
+size = 28047
+mtime_ms = 1788938293638
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/63cb0511-9891-4323-8a4d-0b96cae5d492/ca0907f4-2feb-4c74-92ac-a24438ffcc35"
+storage_version_token = "1788938314590327"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "o0kb99wJXnpAUNLKXCjal"
+uri = "file://attached_assets/reward-sound-options/06-modern-success.mp3"
+type = "audio"
+title = "الخيار 6 — نجاح حديث"
+description = "ثلاث نغمات حديثة قصيرة؛ أنظف خيار للتكرار اليومي."
+logical_id = "2002d725-a394-4a6b-9d97-bcbe24924882"
+content_hash = "sha256:7ea61a7f4cd31bce14416bb8297fdd6600276f07d05c132d50012007fde0f90b"
+size = 20106
+mtime_ms = 1788938293814
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/2002d725-a394-4a6b-9d97-bcbe24924882/182900c3-62df-4723-adcd-1ffdd941332c"
+storage_version_token = "1788938317079314"
+content_type = "audio/mpeg"
