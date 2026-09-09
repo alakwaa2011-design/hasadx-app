@@ -51,7 +51,6 @@ export const classroomRewardGroupsTable = pgTable("classroom_reward_groups", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   classNameUnique: uniqueIndex("classroom_reward_groups_class_name_uq").on(t.teacherId, t.teacherClassId, t.name),
-  idTeacherUnique: uniqueIndex("classroom_reward_groups_id_teacher_uq").on(t.id, t.teacherId),
   classIndex: index("classroom_reward_groups_class_idx").on(t.teacherId, t.teacherClassId),
 }));
 
