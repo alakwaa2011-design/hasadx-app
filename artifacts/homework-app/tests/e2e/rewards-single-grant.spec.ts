@@ -347,12 +347,17 @@ test("mobile bulk balance preview keeps eligible, excluded, and confirmation con
   const confirm = dialog.getByRole("button", { name: "تأكيد تعديل 4" });
   await expect(confirm).toBeVisible();
   await expect(confirm).toBeEnabled();
+  await confirm.click({ trial: true });
   const confirmBox = await confirm.boundingBox();
-  const viewport = page.viewportSize();
+  const visibleViewport = await page.evaluate(() => ({
+    top: window.visualViewport?.offsetTop ?? 0,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  }));
   expect(confirmBox, "زر تأكيد تعديل الأرصدة بلا أبعاد مرئية").not.toBeNull();
-  expect(viewport, "تعذر تحديد أبعاد شاشة الهاتف").not.toBeNull();
-  expect(confirmBox!.y).toBeGreaterThanOrEqual(0);
-  expect(confirmBox!.y + confirmBox!.height).toBeLessThanOrEqual(viewport!.height);
+  expect(confirmBox!.y).toBeGreaterThanOrEqual(visibleViewport.top);
+  expect(confirmBox!.y + confirmBox!.height).toBeLessThanOrEqual(
+    visibleViewport.top + visibleViewport.height,
+  );
 
   await confirm.click();
   await expect(page.getByText("تم تعديل رصيد 4 طالب واستبعاد 4")).toBeVisible();

@@ -166,6 +166,15 @@ export default defineConfig({
         ...chromiumLaunchOptions,
       },
     },
+    {
+      name: "iphone-webkit-rewards",
+      testMatch: /rewards-single-grant\.spec\.ts/,
+      grep: /mobile bulk balance preview/,
+      use: {
+        ...devices["iPhone 13"],
+        ...webkitLaunchOptions,
+      },
+    },
   ],
   webServer: [
     {
