@@ -82,3 +82,4 @@
 - [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are the official reward-system identity; never expose emoji or legacy avatars as alternatives.
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Reward class groups](reward-class-groups.md) — groups may overlap; metadata and membership save atomically, while deletion never changes balances or transaction history.
+- [RTL numeric UI assertions](rtl-numeric-ui-assertions.md) — exact full-string selectors around arrows and localized digits are brittle; assert values within their semantic row.

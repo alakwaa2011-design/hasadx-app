@@ -159,7 +159,7 @@ export default defineConfig({
     {
       name: "mobile-rewards",
       testMatch: /rewards-single-grant\.spec\.ts/,
-      grep: /mobile avatar gallery/,
+      grep: /mobile (avatar gallery|bulk balance preview)/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },

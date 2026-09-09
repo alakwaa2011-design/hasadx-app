@@ -258,6 +258,106 @@ test("mobile avatar gallery keeps its first and last cards reachable with loaded
   ).toEqual([]);
 });
 
+test("mobile bulk balance preview keeps eligible, excluded, and confirmation controls reachable", async ({ page }) => {
+  if (!fixture) throw new Error("Rewards fixture is unavailable");
+
+  const extraStudents: Array<{ id: number; name: string }> = [];
+  for (let index = 0; index < 6; index += 1) {
+    const name = `طالب معاينة ${index + 1} ${uniqueSuffix()}`;
+    const result = await pool.query(
+      `INSERT INTO students
+         (teacher_id, name, student_class, parent_name, notes, avatar)
+       VALUES ($1, $2, $3, 'ولي أمر ثابت', 'معاينة هاتف', '/avatars/adventurer-boy.webp')
+       RETURNING id, name`,
+      [fixture.teacher.id, name, fixture.className],
+    );
+    extraStudents.push(result.rows[0]);
+  }
+  const testStudents = [...fixture.students, ...extraStudents];
+
+  const rewardType = await pool.query(
+    `INSERT INTO classroom_reward_types
+       (teacher_id, name, category, default_amount, sort_order, is_active)
+     VALUES ($1, $2, 'e2e', 1, 0, true)
+     RETURNING id`,
+    [fixture.teacher.id, `رصيد تمهيدي ${uniqueSuffix()}`],
+  );
+  const teacherClass = await pool.query(
+    "SELECT id FROM teacher_classes WHERE teacher_id = $1 AND name = $2",
+    [fixture.teacher.id, fixture.className],
+  );
+  const rewardTypeId = rewardType.rows[0]?.id;
+  const teacherClassId = teacherClass.rows[0]?.id;
+  if (!rewardTypeId || !teacherClassId) throw new Error("Could not create bulk adjustment balances");
+
+  const startingBalances = [5, 2, 6, 1, 8, 2, 4, 1];
+  for (const [index, student] of testStudents.entries()) {
+    await pool.query(
+      `INSERT INTO classroom_reward_transactions
+         (teacher_id, student_id, student_name_snapshot, reward_type_id, amount, kind,
+          idempotency_key, class_name_snapshot, teacher_class_id, reward_type_name_snapshot, category_snapshot)
+       VALUES ($1, $2, $3, $4, $5, 'grant', $6, $7, $8, 'رصيد اختباري', 'e2e')`,
+      [
+        fixture.teacher.id,
+        student.id,
+        student.name,
+        rewardTypeId,
+        startingBalances[index],
+        `e2e-bulk-balance-${uniqueSuffix()}`,
+        fixture.className,
+        teacherClassId,
+      ],
+    );
+    await pool.query(
+      `INSERT INTO classroom_reward_balances
+         (teacher_id, student_id, reward_type_id, balance)
+       VALUES ($1, $2, $3, $4)`,
+      [fixture.teacher.id, student.id, rewardTypeId, startingBalances[index]],
+    );
+  }
+
+  await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`);
+  for (const student of testStudents) {
+    await page.getByRole("button", { name: `تحديد ${student.name} للمنح الجماعي` }).click();
+  }
+
+  const openAdjustment = page.getByRole("button", { name: "تعديل الأرصدة" });
+  await openAdjustment.scrollIntoViewIfNeeded();
+  await openAdjustment.click();
+
+  const dialog = page.getByRole("dialog", { name: `تعديل أرصدة ${testStudents.length} طلاب` });
+  await expect(dialog).toBeVisible();
+  await dialog.locator('input[type="number"]').fill("3");
+  await dialog.getByPlaceholder("مثال: تصحيح رصيد أضيف بالخطأ").fill("تصحيح رصيد اختباري");
+
+  const eligibleRow = dialog.getByText(fixture.students[0].name, { exact: true }).locator("xpath=../..");
+  const excludedRow = dialog.getByText(fixture.students[1].name, { exact: true }).locator("xpath=../..");
+  await expect(eligibleRow).toBeVisible();
+  await expect(eligibleRow).toContainText(new Intl.NumberFormat("ar-KW").format(5));
+  await expect(eligibleRow).toContainText(new Intl.NumberFormat("ar-KW").format(2));
+  await expect(excludedRow).toBeVisible();
+  await expect(excludedRow).toContainText(new Intl.NumberFormat("ar-KW").format(2));
+  await expect(excludedRow).toContainText("مستبعد: الرصيد الحالي لا يكفي");
+
+  const lastExcludedRow = dialog.getByText(testStudents.at(-1)!.name, { exact: true }).locator("xpath=../..");
+  await lastExcludedRow.scrollIntoViewIfNeeded();
+  await expect(lastExcludedRow).toBeVisible();
+  await expect(lastExcludedRow).toContainText("مستبعد: الرصيد الحالي لا يكفي");
+
+  const confirm = dialog.getByRole("button", { name: "تأكيد تعديل 4" });
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toBeEnabled();
+  const confirmBox = await confirm.boundingBox();
+  const viewport = page.viewportSize();
+  expect(confirmBox, "زر تأكيد تعديل الأرصدة بلا أبعاد مرئية").not.toBeNull();
+  expect(viewport, "تعذر تحديد أبعاد شاشة الهاتف").not.toBeNull();
+  expect(confirmBox!.y).toBeGreaterThanOrEqual(0);
+  expect(confirmBox!.y + confirmBox!.height).toBeLessThanOrEqual(viewport!.height);
+
+  await confirm.click();
+  await expect(page.getByText("تم تعديل رصيد 4 طالب واستبعاد 4")).toBeVisible();
+});
+
 test("single grant celebrates only success, resists repeated input, and saves only the avatar", async ({ page, browser, baseURL }) => {
   if (!fixture) throw new Error("Rewards fixture is unavailable");
   if (!baseURL) throw new Error("baseURL is required");
