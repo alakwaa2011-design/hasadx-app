@@ -26,6 +26,10 @@ author = "agent"
 task = "workflow.run"
 args = "api-server-test"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "api-server-typecheck"
+
 [[workflows.workflow]]
 name = "api-server-test"
 author = "agent"
@@ -36,6 +40,17 @@ isValidation = true
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/api-server exec vitest run src/__tests__/"
+
+[[workflows.workflow]]
+name = "api-server-typecheck"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server exec tsc --noEmit"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "PNPM_WORKSPACE"
