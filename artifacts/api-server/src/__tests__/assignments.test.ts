@@ -57,7 +57,7 @@ vi.mock("@workspace/billing", () => ({
 
 import express from "express";
 import request from "supertest";
-import router from "../routes/assignments";
+import router, { hasAssignmentId } from "../routes/assignments";
 import { localizeApiMessages } from "../lib/request-locale";
 
 type Session = { teacherId?: number };
@@ -163,5 +163,12 @@ describe("assignments.ts — auth & ownership", () => {
       .patch("/api/assignments/5/share")
       .send({ isShared: true });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("assignments.ts — nullable game assignment", () => {
+  it("skips game-history rows that are not linked to an assignment", () => {
+    expect(hasAssignmentId({ assignmentId: null })).toBe(false);
+    expect(hasAssignmentId({ assignmentId: 42 })).toBe(true);
   });
 });

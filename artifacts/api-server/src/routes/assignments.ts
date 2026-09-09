@@ -59,6 +59,12 @@ const UpdateAssignmentBody = z.object({
 
 const router: IRouter = Router();
 
+export function hasAssignmentId<T extends { assignmentId: number | null }>(
+  row: T,
+): row is T & { assignmentId: number } {
+  return row.assignmentId !== null;
+}
+
 async function isAdminTeacher(teacherId: number | undefined): Promise<boolean> {
   if (!teacherId) return false;
   const [t] = await db.select({ isAdmin: teachersTable.isAdmin }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
@@ -907,6 +913,7 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
       }
 
       for (const gr of gameResults) {
+        if (!hasAssignmentId(gr)) continue;
         if (!Array.isArray(gr.detailedResults)) continue;
         const assignment = assignments.find(a => a.id === gr.assignmentId);
         const baseTotal = assignment?.totalPoints ?? gr.questionCount;
