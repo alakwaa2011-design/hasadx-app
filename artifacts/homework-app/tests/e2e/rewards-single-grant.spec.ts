@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   db,
   pool,
@@ -19,6 +22,8 @@ type RewardsFixture = {
 };
 
 let fixture: RewardsFixture | undefined;
+
+const publicDirectory = fileURLToPath(new URL("../../public/", import.meta.url));
 
 function uniqueSuffix(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -119,8 +124,32 @@ test("every illustrated avatar offered by the UI is accepted by the server", () 
   ).toEqual([]);
 });
 
+test("every illustrated avatar has a local image file", () => {
+  const missingLocalFiles = ILLUSTRATED_AVATARS
+    .map((avatar) => ({
+      ...avatar,
+      filePath: resolve(publicDirectory, avatar.value.replace(/^\/+/, "")),
+    }))
+    .filter(({ filePath }) => !existsSync(filePath) || !statSync(filePath).isFile());
+
+  expect(
+    missingLocalFiles,
+    missingLocalFiles.length > 0
+      ? `ملفات صور الشخصيات المفقودة:\n${missingLocalFiles
+          .map(({ label, value, filePath }) => `- ${label}: ${value} (${filePath})`)
+          .join("\n")}`
+      : "كل شخصية مصوّرة مرتبطة بملف صورة محلي",
+  ).toEqual([]);
+});
+
 test("single grant celebrates only success, resists repeated input, and saves only the avatar", async ({ page }) => {
   if (!fixture) throw new Error("Rewards fixture is unavailable");
+  const failedAvatarRequests: string[] = [];
+  page.on("requestfailed", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/avatars/")) {
+      failedAvatarRequests.push(request.url());
+    }
+  });
   await page.goto(`/teacher/rewards/${encodeURIComponent(fixture.className)}`);
   const student = fixture.students[0];
   const studentCard = page.getByRole("button", { name: `فتح خيارات تحفيز ${student.name}` });
@@ -209,6 +238,41 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await page.getByRole("button", { name: /عرض المجموعة الكاملة/ }).click();
   const avatarChoice = page.getByRole("button", { name: "روح الإبداع" });
   await avatarChoice.click();
+  const selectedAvatar = ILLUSTRATED_AVATARS.find((avatar) => avatar.label === "روح الإبداع");
+  if (!selectedAvatar) throw new Error("The selected illustrated avatar is missing from the local catalog");
+  const selectedAvatarImage = avatarChoice.locator("img");
+  await expect(selectedAvatarImage).toBeVisible();
+  await expect(selectedAvatarImage).toHaveAttribute("src", selectedAvatar.value);
+  await expect
+    .poll(
+      () =>
+        selectedAvatarImage.evaluate((image: HTMLImageElement) => ({
+          complete: image.complete,
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          currentSrc: image.currentSrc || image.src,
+        })),
+      {
+        message: `الشخصية "${selectedAvatar.label}" لم تُحمّل صورتها من ${selectedAvatar.value}`,
+      },
+    )
+    .toMatchObject({ complete: true });
+  const selectedAvatarDimensions = await selectedAvatarImage.evaluate((image: HTMLImageElement) => ({
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+  }));
+  expect(
+    selectedAvatarDimensions.naturalWidth,
+    `الشخصية "${selectedAvatar.label}" حمّلت ملفًا بلا عرض فعلي: ${selectedAvatar.value}`,
+  ).toBeGreaterThan(0);
+  expect(
+    selectedAvatarDimensions.naturalHeight,
+    `الشخصية "${selectedAvatar.label}" حمّلت ملفًا بلا ارتفاع فعلي: ${selectedAvatar.value}`,
+  ).toBeGreaterThan(0);
+  expect(
+    failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
+    `فشل طلب صورة الشخصية "${selectedAvatar.label}": ${selectedAvatar.value}`,
+  ).toEqual([]);
   const saveAvatar = page.getByRole("button", { name: "حفظ الشخصية" });
   await expect(saveAvatar).toBeVisible();
   const avatarGrid = avatarChoice.locator("xpath=..");
