@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import express from "express";
 import request from "supertest";
+import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import {
@@ -58,6 +59,27 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       "utf8",
     );
     await db.execute(sql.raw(avatarMigration));
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS kids_profiles (
+        id SERIAL PRIMARY KEY,
+        student_account_id INTEGER NOT NULL UNIQUE REFERENCES student_accounts(id) ON DELETE CASCADE,
+        display_name TEXT NOT NULL,
+        avatar_key TEXT
+      );
+      CREATE TABLE IF NOT EXISTS motivation_badge_definitions (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        icon_key TEXT
+      );
+      CREATE TABLE IF NOT EXISTS motivation_badge_grants (
+        id SERIAL PRIMARY KEY,
+        badge_definition_id INTEGER NOT NULL REFERENCES motivation_badge_definitions(id) ON DELETE CASCADE,
+        profile_id INTEGER NOT NULL REFERENCES kids_profiles(id) ON DELETE CASCADE,
+        granted_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `));
     teacherId=Number((await db.execute(sql`INSERT INTO teachers(name,email,password_hash) VALUES (${"Reward "+nonce},${`reward_${nonce}@test.invalid`},'x') RETURNING id`)).rows[0].id);
     otherTeacherId=Number((await db.execute(sql`INSERT INTO teachers(name,email,password_hash) VALUES (${"Other "+nonce},${`other_${nonce}@test.invalid`},'x') RETURNING id`)).rows[0].id);
     accountId=Number((await db.execute(sql`INSERT INTO student_accounts(username,display_name,password_hash) VALUES (${`reward_${nonce}`},'طالب','x') RETURNING id`)).rows[0].id);
@@ -102,24 +124,67 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(corrected.status).toBe(200);
   });
 
-  it("lets the owning teacher manage an avatar without a student account and hides control data from other teachers", async () => {
+  it("keeps student control data owner-scoped, saves safe avatars, and never returns credentials", async () => {
+    const fullBlankOptionalPayload = await request(teacherApp())
+      .patch(`/api/classroom-rewards/students/${otherStudentId}/profile`)
+      .send({
+        name: "آخر",
+        gradeLevel: "",
+        studentClass: "B",
+        parentName: "",
+        parentPhone: "",
+        parentEmail: "",
+        notes: "",
+        avatar: "",
+      });
+    expect(fullBlankOptionalPayload.status).toBe(200);
+    expect(fullBlankOptionalPayload.body.student).toMatchObject({ avatar: null, parent_email: null });
+
     const avatar = "🦁";
     const updated = await request(teacherApp())
       .patch(`/api/classroom-rewards/students/${otherStudentId}/profile`)
-      .send({ avatar });
+      .send({ avatar, notes: "ملاحظة خاصة" });
     expect(updated.status).toBe(200);
     expect(updated.body.student.avatar).toBe(avatar);
     expect((await db.execute(sql`SELECT avatar FROM students WHERE id=${otherStudentId}`)).rows[0].avatar).toBe(avatar);
 
+    const invalidAvatar = await request(teacherApp())
+      .patch(`/api/classroom-rewards/students/${otherStudentId}/profile`)
+      .send({ avatar: "data:image/svg+xml,<svg onload=alert(1) />" });
+    expect(invalidAvatar.status).toBe(400);
+
     const detail = await request(teacherApp()).get(`/api/classroom-rewards/students/${otherStudentId}`);
     expect(detail.status).toBe(200);
     expect(detail.body.student.avatar).toBe(avatar);
-    expect(JSON.stringify(detail.body)).not.toContain("password");
-    expect(JSON.stringify(detail.body)).not.toContain("accessCode");
+    expect(detail.body.student.notes).toBe("ملاحظة خاصة");
 
-    const denied = await request(teacherApp(otherTeacherId))
+    const linkedDetail = await request(teacherApp()).get(`/api/classroom-rewards/students/${studentId}`);
+    expect(linkedDetail.status).toBe(200);
+    expect(linkedDetail.body.student.account).toMatchObject({ linked: true, username: `reward_${nonce}` });
+    const serializedDetails = JSON.stringify([detail.body, linkedDetail.body]);
+    expect(serializedDetails).not.toMatch(/password|accessCode|access_code|token/i);
+
+    const deniedRead = await request(teacherApp(otherTeacherId))
       .get(`/api/classroom-rewards/students/${otherStudentId}`);
-    expect(denied.status).toBe(404);
+    expect(deniedRead.status).toBe(404);
+    const deniedUpdate = await request(teacherApp(otherTeacherId))
+      .patch(`/api/classroom-rewards/students/${otherStudentId}/profile`)
+      .send({ name: "اسم مسروق" });
+    expect(deniedUpdate.status).toBe(404);
+    const deniedReset = await request(teacherApp(otherTeacherId))
+      .post(`/api/classroom-rewards/students/${studentId}/reset-password`)
+      .send({ newPassword: "other-secret" });
+    expect(deniedReset.status).toBe(404);
+
+    const oldHash = String((await db.execute(sql`SELECT password_hash FROM student_accounts WHERE id=${accountId}`)).rows[0].password_hash);
+    const reset = await request(teacherApp())
+      .post(`/api/classroom-rewards/students/${studentId}/reset-password`)
+      .send({ newPassword: "owner-secret" });
+    expect(reset.status).toBe(200);
+    expect(JSON.stringify(reset.body)).not.toMatch(/owner-secret|password|token/i);
+    const newHash = String((await db.execute(sql`SELECT password_hash FROM student_accounts WHERE id=${accountId}`)).rows[0].password_hash);
+    expect(newHash).not.toBe(oldHash);
+    expect(await bcrypt.compare("owner-secret", newHash)).toBe(true);
   });
 
   it("maps question-bank sessions by teacher/account and rejects spoofed or wrong-teacher identities",async()=>{

@@ -122,10 +122,12 @@ export const useGrantRewards = () => {
   return useMutation({
     mutationFn: (data: any) => fetcher(`/api/classroom-rewards/grants`, { method: "POST", body: JSON.stringify(data) }),
     onSuccess: (_, variables) => {
-       // Invalidate so points update and ledger updates
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+       for (const studentId of variables.studentIds ?? []) {
+         qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
+       }
     },
   });
 };
@@ -192,7 +194,16 @@ export const useGetStudentProfile = (studentId?: number | null) => {
 export const useUpdateStudentProfile = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ studentId, ...data }: any) => fetcher(`/api/classroom-rewards/students/${studentId}/profile`, { method: "PATCH", body: JSON.stringify(data) }),
+    mutationFn: ({ studentId, ...data }: any) => {
+      const nullableFields = ["gradeLevel", "studentClass", "parentName", "parentPhone", "parentEmail", "notes", "avatar"];
+      const normalized = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          nullableFields.includes(key) && typeof value === "string" && value.trim() === "" ? null : value,
+        ]),
+      );
+      return fetcher(`/api/classroom-rewards/students/${studentId}/profile`, { method: "PATCH", body: JSON.stringify(normalized) });
+    },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", variables.studentId] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
