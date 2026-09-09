@@ -50,6 +50,10 @@ const balanceAdjustmentInput = z.object({
   reason: z.string().trim().min(2).max(200),
   idempotencyKey: requestKey,
 }).strict();
+const bulkBalanceAdjustmentInput = balanceAdjustmentInput.extend({
+  className: z.string().trim().min(1).max(200),
+  studentIds: z.array(z.number().int().positive()).min(2).max(500),
+}).strict().refine((value) => new Set(value.studentIds).size === value.studentIds.length, "معرفات الطلاب مكررة");
 const groupInput = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(160).nullable().optional(),
@@ -442,6 +446,145 @@ router.post("/classroom-rewards/students/:studentId/balance-adjustments", async 
       return res.status(409).json({ message: "مفتاح التكرار مستخدم لتعديل مختلف" });
     }
     res.status(500).json({ message: "تعذر تعديل الرصيد" });
+  }
+});
+
+router.post("/classroom-rewards/balance-adjustments", async (req: any, res) => {
+  const teacherId = teacher(req, res);
+  if (!teacherId) return;
+  const parsed = bulkBalanceAdjustmentInput.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "بيانات تعديل الأرصدة غير صالحة" });
+  const d = parsed.data;
+  const fingerprint = JSON.stringify({
+    className: d.className,
+    studentIds: [...d.studentIds].sort((a, b) => a - b),
+    points: d.points,
+    reason: d.reason,
+  });
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const priorBatch = resultRows(await tx.execute(sql`
+        SELECT * FROM classroom_reward_batches
+        WHERE teacher_id=${teacherId} AND idempotency_key=${d.idempotencyKey}
+        FOR UPDATE
+      `))[0];
+      if (priorBatch) {
+        if (priorBatch.request_fingerprint !== fingerprint) throw new Error("idempotency_conflict");
+        const replay = resultRows(await tx.execute(sql`
+          SELECT tr.student_id,tr.student_name_snapshot,
+            COALESCE((SELECT SUM(balance) FROM classroom_reward_balances b WHERE b.teacher_id=${teacherId} AND b.student_id=tr.student_id),0)::int balance
+          FROM classroom_reward_transactions tr
+          WHERE tr.teacher_id=${teacherId} AND tr.batch_id=${priorBatch.id} AND tr.kind='adjustment'
+          ORDER BY tr.id
+        `));
+        return {
+          adjusted: replay.map((row) => ({ studentId: row.student_id, studentName: row.student_name_snapshot, balance: Number(row.balance) })),
+          excluded: [],
+          idempotent: true,
+        };
+      }
+
+      const classRow = resultRows(await tx.execute(sql`
+        SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${d.className} FOR UPDATE
+      `))[0];
+      if (!classRow) throw new Error("invalid_class");
+      const students = resultRows(await tx.execute(sql`
+        SELECT id,name FROM students
+        WHERE teacher_id=${teacherId}
+          AND id IN (${sql.join(d.studentIds.map((id) => sql`${id}`), sql`,`)})
+          AND (student_class=${d.className} OR grade_level=${d.className})
+        ORDER BY id FOR UPDATE
+      `));
+      if (students.length !== d.studentIds.length) throw new Error("invalid_students");
+
+      await tx.execute(sql`
+        SELECT id FROM classroom_reward_balances
+        WHERE teacher_id=${teacherId}
+          AND student_id IN (${sql.join(d.studentIds.map((id) => sql`${id}`), sql`,`)})
+        ORDER BY student_id,id FOR UPDATE
+      `);
+      const balances = resultRows(await tx.execute(sql`
+        SELECT s.id student_id,COALESCE(SUM(b.balance),0)::int balance
+        FROM students s
+        LEFT JOIN classroom_reward_balances b ON b.teacher_id=${teacherId} AND b.student_id=s.id
+        WHERE s.id IN (${sql.join(d.studentIds.map((id) => sql`${id}`), sql`,`)})
+        GROUP BY s.id ORDER BY s.id
+      `));
+      const balanceByStudent = new Map(balances.map((row) => [Number(row.student_id), Number(row.balance)]));
+      const eligible = students.filter((student) => (balanceByStudent.get(Number(student.id)) ?? 0) >= d.points);
+      const excluded = students
+        .filter((student) => (balanceByStudent.get(Number(student.id)) ?? 0) < d.points)
+        .map((student) => ({
+          studentId: Number(student.id),
+          studentName: student.name,
+          balance: balanceByStudent.get(Number(student.id)) ?? 0,
+          reason: "الرصيد الحالي لا يكفي",
+        }));
+
+      const type = resultRows(await tx.execute(sql`
+        INSERT INTO classroom_reward_types (teacher_id,name,category,default_amount,icon,color,sort_order,is_active)
+        VALUES (${teacherId},'__balance_adjustment__','adjustment',1,'Target','#468064',10000,FALSE)
+        ON CONFLICT (teacher_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id
+      `))[0];
+      const batch = resultRows(await tx.execute(sql`
+        INSERT INTO classroom_reward_batches
+          (teacher_id,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_id,reason_snapshot,points,target_count,request_fingerprint)
+        VALUES
+          (${teacherId},${d.idempotencyKey},${d.className},${classRow.id},${type.id},${d.reason},${d.points},${d.studentIds.length},${fingerprint})
+        ON CONFLICT (teacher_id,idempotency_key) DO NOTHING
+        RETURNING id
+      `))[0];
+      if (!batch) {
+        const concurrentBatch = resultRows(await tx.execute(sql`
+          SELECT * FROM classroom_reward_batches
+          WHERE teacher_id=${teacherId} AND idempotency_key=${d.idempotencyKey}
+          FOR UPDATE
+        `))[0];
+        if (!concurrentBatch || concurrentBatch.request_fingerprint !== fingerprint) throw new Error("idempotency_conflict");
+        const replay = resultRows(await tx.execute(sql`
+          SELECT tr.student_id,tr.student_name_snapshot,
+            COALESCE((SELECT SUM(balance) FROM classroom_reward_balances b WHERE b.teacher_id=${teacherId} AND b.student_id=tr.student_id),0)::int balance
+          FROM classroom_reward_transactions tr
+          WHERE tr.teacher_id=${teacherId} AND tr.batch_id=${concurrentBatch.id} AND tr.kind='adjustment'
+          ORDER BY tr.id
+        `));
+        return {
+          adjusted: replay.map((row) => ({ studentId: row.student_id, studentName: row.student_name_snapshot, balance: Number(row.balance) })),
+          excluded: [],
+          idempotent: true,
+        };
+      }
+      const adjusted: any[] = [];
+      for (const student of eligible) {
+        const currentBalance = balanceByStudent.get(Number(student.id)) ?? 0;
+        await tx.execute(sql`
+          INSERT INTO classroom_reward_transactions
+            (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,batch_id,batch_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot)
+          VALUES
+            (${teacherId},${student.id},${student.name},${type.id},${-d.points},'adjustment',${d.idempotencyKey},${batch.id},${d.idempotencyKey},${d.className},${classRow.id},${d.reason},'adjustment')
+        `);
+        await tx.execute(sql`
+          INSERT INTO classroom_reward_balances (teacher_id,student_id,reward_type_id,balance,updated_at)
+          VALUES (${teacherId},${student.id},${type.id},${-d.points},NOW())
+          ON CONFLICT (teacher_id,student_id,reward_type_id)
+          DO UPDATE SET balance=classroom_reward_balances.balance+EXCLUDED.balance,updated_at=NOW()
+        `);
+        adjusted.push({ studentId: Number(student.id), studentName: student.name, balance: currentBalance - d.points });
+      }
+      await tx.execute(sql`
+        INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key,detail)
+        VALUES (${teacherId},'adjust_balance_batch','class',${classRow.id},${d.idempotencyKey},${d.reason})
+      `);
+      return { adjusted, excluded, idempotent: false };
+    });
+    res.status(outcome.idempotent ? 200 : 201).json(outcome);
+  } catch (error: any) {
+    if (error?.message === "invalid_class") return res.status(404).json({ message: "الصف غير موجود" });
+    if (error?.message === "invalid_students") return res.status(403).json({ message: "كل الطلاب يجب أن يكونوا ضمن صف المعلم" });
+    if (error?.message === "idempotency_conflict" || error?.code === "23505" || error?.cause?.code === "23505") {
+      return res.status(409).json({ message: "مفتاح التكرار مستخدم لتعديل مختلف" });
+    }
+    res.status(500).json({ message: "تعذر تعديل أرصدة الطلاب" });
   }
 });
 

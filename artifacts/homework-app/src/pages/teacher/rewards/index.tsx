@@ -8,6 +8,7 @@ import {
   useGrantRewards,
   useGetTeacherClasses,
   useGetRewardGroups,
+  useAdjustStudentBalances,
 } from "./api";
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -131,6 +132,7 @@ export default function RewardsPage() {
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   const [singleGrantStudentId, setSingleGrantStudentId] = useState<number | null>(null);
   const [balanceAdjustmentStudentId, setBalanceAdjustmentStudentId] = useState<number | null>(null);
+  const [bulkBalanceAdjustmentOpen, setBulkBalanceAdjustmentOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   
@@ -629,6 +631,16 @@ export default function RewardsPage() {
                <Plus size={18} strokeWidth={2.5} />
                 <span className="text-sm">نقاط مخصصة</span>
              </button>
+              {selectedIds.size > 1 && (
+                <button
+                  onClick={() => setBulkBalanceAdjustmentOpen(true)}
+                  disabled={Boolean(celebration)}
+                  className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-black text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50 shrink-0"
+                >
+                  <SlidersHorizontal size={17} />
+                  تعديل الأرصدة
+                </button>
+              )}
            </div>
         </div>
       </div>
@@ -710,6 +722,13 @@ export default function RewardsPage() {
         onOpenChange={setGroupsOpen}
         className={currentClass}
         students={classData?.students ?? []}
+      />
+      <BulkBalanceAdjustmentDialog
+        open={bulkBalanceAdjustmentOpen}
+        onOpenChange={setBulkBalanceAdjustmentOpen}
+        className={currentClass}
+        students={(classData?.students ?? []).filter((student: any) => selectedIds.has(student.id))}
+        onComplete={() => setSelectedIds(new Set())}
       />
     </Layout>
   );
@@ -919,6 +938,148 @@ function CustomGrantDialog({ open, onOpenChange, onGrant, loading }: { open: boo
             <button type="submit" disabled={loading} className="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black hover:from-amber-500 hover:to-orange-600 transition-all motion-reduce:transition-none motion-reduce:transform-none flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-white/30" />}
               تأكيد المنح
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkBalanceAdjustmentDialog({
+  open,
+  onOpenChange,
+  className,
+  students,
+  onComplete,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  className: string;
+  students: Array<{ id: number; name: string; points?: number }>;
+  onComplete: () => void;
+}) {
+  const [points, setPoints] = useState(1);
+  const [reason, setReason] = useState("");
+  const mutation = useAdjustStudentBalances();
+  const requestKeyRef = useRef<string | null>(null);
+  const eligible = students.filter((student) => (student.points || 0) >= points);
+  const excluded = students.filter((student) => (student.points || 0) < points);
+
+  const close = (next: boolean) => {
+    if (mutation.isPending) return;
+    onOpenChange(next);
+    if (!next) {
+      setPoints(1);
+      setReason("");
+      requestKeyRef.current = null;
+    }
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!reason.trim()) {
+      toast.error("اكتب سبب تعديل الأرصدة");
+      return;
+    }
+    if (!Number.isInteger(points) || points < 1 || points > 1000) {
+      toast.error("اختر مقدارًا صحيحًا بين 1 و1000");
+      return;
+    }
+    if (eligible.length === 0) {
+      toast.error("لا يوجد طالب برصيد كافٍ لهذا التعديل");
+      return;
+    }
+    requestKeyRef.current ||= crypto.randomUUID();
+    mutation.mutate({
+      className,
+      studentIds: students.map((student) => student.id),
+      points,
+      reason: reason.trim(),
+      idempotencyKey: requestKeyRef.current,
+    }, {
+      onSuccess: (result) => {
+        toast.success(`تم تعديل رصيد ${result.adjusted.length} طالب${result.excluded.length ? ` واستبعاد ${result.excluded.length}` : ""}`);
+        onOpenChange(false);
+        onComplete();
+        setPoints(1);
+        setReason("");
+        requestKeyRef.current = null;
+      },
+      onError: (error: any) => toast.error(error.message || "تعذر تعديل أرصدة الطلاب"),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent className="max-h-[92dvh] overflow-hidden rounded-[2rem] border-2 border-emerald-100 p-0 sm:max-w-xl motion-reduce:animate-none">
+        <DialogHeader className="border-b border-emerald-100 bg-emerald-50/70 p-6">
+          <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
+            <SlidersHorizontal size={20} className="text-emerald-700" />
+            تعديل أرصدة {students.length} طلاب
+          </DialogTitle>
+          <DialogDescription className="pt-2 font-medium leading-relaxed text-emerald-900/65">
+            سيُطبّق المقدار والسبب نفسيهما على أصحاب الرصيد الكافي فقط. راجع المعاينة قبل التأكيد.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="flex max-h-[calc(92dvh-9rem)] flex-col">
+          <div className="space-y-4 overflow-y-auto p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-black text-emerald-950">مقدار التعديل</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={points}
+                  onChange={(event) => setPoints(Number(event.target.value))}
+                  className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-black outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-black text-emerald-950">سبب التعديل</label>
+                <input
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  maxLength={200}
+                  placeholder="مثال: تصحيح رصيد أضيف بالخطأ"
+                  className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15"
+                />
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="flex items-center justify-between bg-slate-50 px-4 py-3">
+                <strong className="text-sm font-black text-slate-800">المعاينة</strong>
+                <span className="text-xs font-bold text-emerald-700">{eligible.length} سيُعدّل · {excluded.length} سيُستبعد</span>
+              </div>
+              <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto">
+                {students.map((student) => {
+                  const current = student.points || 0;
+                  const canAdjust = current >= points;
+                  return (
+                    <div key={student.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-black text-slate-800">{student.name}</div>
+                        {!canAdjust && <div className="text-xs font-bold text-rose-600">مستبعد: الرصيد الحالي لا يكفي</div>}
+                      </div>
+                      <div className={cn("shrink-0 text-sm font-black", canAdjust ? "text-emerald-700" : "text-slate-400")}>
+                        {formatPoints(current)} ← {canAdjust ? formatPoints(current - points) : "—"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 border-t border-slate-100 bg-white p-5">
+            <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
+              className="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3 font-black text-slate-600 hover:bg-slate-50">
+              إلغاء
+            </button>
+            <button type="submit" disabled={mutation.isPending || eligible.length === 0}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-black text-white hover:bg-emerald-800 disabled:opacity-50">
+              {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+              تأكيد تعديل {eligible.length}
             </button>
           </div>
         </form>

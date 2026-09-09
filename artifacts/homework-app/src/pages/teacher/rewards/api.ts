@@ -212,6 +212,13 @@ export const useAdjustStudentBalance = () => {
   });
 };
 
+export interface BulkBalanceAdjustmentInput {
+  className: string;
+  studentIds: number[];
+  points: number;
+  reason: string;
+  idempotencyKey: string;
+}
 export const useReverseReward = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -294,5 +301,30 @@ export const useUpdateStudentProfile = () => {
 export const useResetStudentPassword = () => {
   return useMutation({
     mutationFn: ({ studentId, newPassword }: any) => fetcher(`/api/classroom-rewards/students/${studentId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+  });
+};
+
+export interface BulkBalanceAdjustmentResult {
+  adjusted: Array<{ studentId: number; studentName: string; balance: number }>;
+  excluded: Array<{ studentId: number; studentName: string; balance: number; reason: string }>;
+  idempotent: boolean;
+}
+
+export const useAdjustStudentBalances = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkBalanceAdjustmentInput) =>
+      fetcher(`/api/classroom-rewards/balance-adjustments`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }) as Promise<BulkBalanceAdjustmentResult>,
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+      for (const studentId of variables.studentIds) {
+        qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
+      }
+    },
   });
 };

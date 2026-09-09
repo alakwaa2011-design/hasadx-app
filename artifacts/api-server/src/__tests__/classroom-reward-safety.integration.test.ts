@@ -248,6 +248,62 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(denied.status).toBe(404);
   });
 
+  it("adjusts eligible students as one idempotent batch and excludes insufficient balances", async () => {
+    await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},'A')
+      ON CONFLICT DO NOTHING
+    `);
+    const eligibleId = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('مؤهل',${teacherId},'A') RETURNING id
+    `)).rows[0].id);
+    const insufficientId = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('غير مؤهل',${teacherId},'A') RETURNING id
+    `)).rows[0].id);
+    await db.execute(sql`
+      INSERT INTO classroom_reward_balances(teacher_id,student_id,reward_type_id,balance)
+      VALUES (${teacherId},${eligibleId},${rewardTypeId},8),(${teacherId},${insufficientId},${rewardTypeId},2)
+    `);
+    const key = `bulk-adjust:${nonce}`;
+    const payload = {
+      className: "A",
+      studentIds: [eligibleId, insufficientId],
+      points: 5,
+      reason: "تصحيح جماعي",
+      idempotencyKey: key,
+    };
+
+    const [adjusted, replay] = await Promise.all([
+      request(teacherApp()).post("/api/classroom-rewards/balance-adjustments").send(payload),
+      request(teacherApp()).post("/api/classroom-rewards/balance-adjustments").send(payload),
+    ]);
+    expect([adjusted.status, replay.status].sort()).toEqual([200, 201]);
+    const created = adjusted.status === 201 ? adjusted : replay;
+    expect(created.body).toMatchObject({
+      adjusted: [{ studentId: eligibleId, studentName: "مؤهل", balance: 3 }],
+      excluded: [{ studentId: insufficientId, studentName: "غير مؤهل", balance: 2, reason: "الرصيد الحالي لا يكفي" }],
+      idempotent: false,
+    });
+    const retried = await request(teacherApp()).post("/api/classroom-rewards/balance-adjustments").send(payload);
+    expect(retried.status).toBe(200);
+    expect(retried.body.idempotent).toBe(true);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND idempotency_key=${key} AND kind='adjustment'
+    `)).rows[0].n)).toBe(1);
+    expect(Number((await db.execute(sql`
+      SELECT COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id=${eligibleId}
+    `)).rows[0].balance)).toBe(3);
+    expect(Number((await db.execute(sql`
+      SELECT COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id=${insufficientId}
+    `)).rows[0].balance)).toBe(2);
+    expect((await db.execute(sql`
+      SELECT reward_type_name_snapshot FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND idempotency_key=${key}
+    `)).rows[0].reward_type_name_snapshot).toBe("تصحيح جماعي");
+  });
+
   it("creates teacher-owned reward groups and replaces only same-class members", async () => {
     const created = await request(teacherApp())
       .post("/api/classroom-rewards/classes/A/groups")
