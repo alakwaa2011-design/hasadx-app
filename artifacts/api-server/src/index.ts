@@ -156,8 +156,16 @@ async function runSchemaMigrations() {
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='classroom_reward_types_positive_amount_ck' AND conrelid='classroom_reward_types'::regclass) THEN
           ALTER TABLE classroom_reward_types ADD CONSTRAINT classroom_reward_types_positive_amount_ck CHECK (default_amount >= 1) NOT VALID;
         END IF;
+        IF EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname='classroom_reward_transactions_amount_kind_ck'
+            AND conrelid='classroom_reward_transactions'::regclass
+            AND pg_get_constraintdef(oid) NOT LIKE '%adjustment%'
+        ) THEN
+          ALTER TABLE classroom_reward_transactions DROP CONSTRAINT classroom_reward_transactions_amount_kind_ck;
+        END IF;
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='classroom_reward_transactions_amount_kind_ck' AND conrelid='classroom_reward_transactions'::regclass) THEN
-          ALTER TABLE classroom_reward_transactions ADD CONSTRAINT classroom_reward_transactions_amount_kind_ck CHECK ((kind='grant' AND amount >= 1) OR (kind='reversal' AND amount <= -1)) NOT VALID;
+          ALTER TABLE classroom_reward_transactions ADD CONSTRAINT classroom_reward_transactions_amount_kind_ck CHECK ((kind='grant' AND amount >= 1) OR (kind IN ('reversal','adjustment') AND amount <= -1)) NOT VALID;
         END IF;
       END $$;
       CREATE INDEX IF NOT EXISTS classroom_reward_types_teacher_idx ON classroom_reward_types(teacher_id);

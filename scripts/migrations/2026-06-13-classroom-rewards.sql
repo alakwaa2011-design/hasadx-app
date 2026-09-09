@@ -124,8 +124,16 @@ ALTER TABLE classroom_reward_transactions ADD COLUMN IF NOT EXISTS created_at TI
 CREATE INDEX IF NOT EXISTS classroom_reward_batches_class_idx ON classroom_reward_batches(teacher_id, teacher_class_id);
 CREATE INDEX IF NOT EXISTS classroom_reward_transactions_class_created_idx ON classroom_reward_transactions(teacher_id, teacher_class_id, created_at);
 DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'classroom_reward_transactions_amount_kind_ck'
+      AND conrelid = 'classroom_reward_transactions'::regclass
+      AND pg_get_constraintdef(oid) NOT LIKE '%adjustment%'
+  ) THEN
+    ALTER TABLE classroom_reward_transactions DROP CONSTRAINT classroom_reward_transactions_amount_kind_ck;
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'classroom_reward_transactions_amount_kind_ck' AND conrelid = 'classroom_reward_transactions'::regclass) THEN
-    ALTER TABLE classroom_reward_transactions ADD CONSTRAINT classroom_reward_transactions_amount_kind_ck CHECK ((kind = 'grant' AND amount >= 1) OR (kind = 'reversal' AND amount <= -1)) NOT VALID;
+    ALTER TABLE classroom_reward_transactions ADD CONSTRAINT classroom_reward_transactions_amount_kind_ck CHECK ((kind = 'grant' AND amount >= 1) OR (kind IN ('reversal','adjustment') AND amount <= -1)) NOT VALID;
   END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS classroom_reward_transactions_student_created_idx ON classroom_reward_transactions(teacher_id, student_id, created_at);

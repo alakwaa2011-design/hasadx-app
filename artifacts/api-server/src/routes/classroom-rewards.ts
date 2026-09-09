@@ -45,6 +45,11 @@ const grantInput = z.object({
   customPoints: z.number().int().min(1).max(1000).optional(),
   idempotencyKey: requestKey,
 }).refine((v) => (v.typeId !== undefined) !== (v.customReason !== undefined), "حدد سببًا واحدًا").refine((v) => !v.customReason || v.customPoints !== undefined, "نقاط السبب المخصص مطلوبة");
+const balanceAdjustmentInput = z.object({
+  points: z.number().int().min(1).max(1000),
+  reason: z.string().trim().min(2).max(200),
+  idempotencyKey: requestKey,
+}).strict();
 const ruleInput = z.object({
   name: z.string().trim().min(1).max(100),
   sourceType: z.enum(["assignment_submission", "kids_activity_completion", "game_history"]),
@@ -251,6 +256,50 @@ router.post("/classroom-rewards/grants", async (req: any, res) => {
   }
 });
 
+router.post("/classroom-rewards/students/:studentId/balance-adjustments", async (req: any, res) => {
+  const teacherId = teacher(req, res), studentId = numericId(req.params.studentId);
+  if (!teacherId) return;
+  if (!studentId) return res.status(400).json({ message: "معرف غير صالح" });
+  const parsed = balanceAdjustmentInput.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "بيانات تعديل الرصيد غير صالحة" });
+  const d = parsed.data;
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const student = resultRows(await tx.execute(sql`SELECT id,name,student_class,grade_level FROM students WHERE id=${studentId} AND teacher_id=${teacherId} FOR UPDATE`))[0];
+      if (!student) throw new Error("student_not_found");
+
+      const prior = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND student_id=${studentId} AND idempotency_key=${d.idempotencyKey} FOR UPDATE`))[0];
+      if (prior) {
+        if (prior.kind !== "adjustment" || Number(prior.amount) !== -d.points || prior.reward_type_name_snapshot !== d.reason) {
+          throw new Error("idempotency_conflict");
+        }
+        const current = resultRows(await tx.execute(sql`SELECT COALESCE(SUM(balance),0)::int points FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${studentId}`))[0];
+        return { entry: prior, balance: Number(current?.points ?? 0), idempotent: true };
+      }
+
+      const balanceRows = resultRows(await tx.execute(sql`SELECT balance FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${studentId} FOR UPDATE`));
+      const currentBalance = balanceRows.reduce((sum, row) => sum + Number(row.balance ?? 0), 0);
+      if (d.points > currentBalance) throw new Error("insufficient_balance");
+
+      const type = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_types (teacher_id,name,category,default_amount,icon,color,sort_order,is_active) VALUES (${teacherId},'__balance_adjustment__','adjustment',1,'Target','#468064',10000,FALSE) ON CONFLICT (teacher_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id`))[0];
+      const className = student.student_class || student.grade_level || null;
+      const classRow = className ? resultRows(await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${className}`))[0] : null;
+      const entry = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${studentId},${student.name},${type.id},${-d.points},'adjustment',${d.idempotencyKey},${className},${classRow?.id ?? null},${d.reason},'adjustment') RETURNING *`))[0];
+      await tx.execute(sql`INSERT INTO classroom_reward_balances (teacher_id,student_id,reward_type_id,balance,updated_at) VALUES (${teacherId},${studentId},${type.id},${-d.points},NOW()) ON CONFLICT (teacher_id,student_id,reward_type_id) DO UPDATE SET balance=classroom_reward_balances.balance+EXCLUDED.balance,updated_at=NOW()`);
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key,detail) VALUES (${teacherId},'adjust_balance','student',${studentId},${d.idempotencyKey},${d.reason})`);
+      return { entry, balance: currentBalance - d.points, idempotent: false };
+    });
+    res.status(outcome.idempotent ? 200 : 201).json(outcome);
+  } catch (error: any) {
+    if (error?.message === "student_not_found") return res.status(404).json({ message: "الطالب غير موجود" });
+    if (error?.message === "insufficient_balance") return res.status(409).json({ message: "لا يمكن أن يتجاوز التعديل رصيد الطالب الحالي" });
+    if (error?.message === "idempotency_conflict" || error?.code === "23505" || error?.cause?.code === "23505") {
+      return res.status(409).json({ message: "مفتاح التكرار مستخدم لتعديل مختلف" });
+    }
+    res.status(500).json({ message: "تعذر تعديل الرصيد" });
+  }
+});
+
 router.get("/classroom-rewards/ledger", async (req: any, res) => {
   const teacherId = teacher(req, res); if (!teacherId) return;
   const className = req.query.className === undefined ? undefined : validateClassName(req.query.className);
@@ -352,16 +401,27 @@ router.post("/classroom-rewards/ledger/:id/reverse", async (req: any, res) => {
       if (keyed.reversal_of_id !== ledgerId) throw new Error("reversal_key_conflict");
       return { entry: keyed, idempotent: true };
     }
+    const originalRef = resultRows(await tx.execute(sql`SELECT student_id FROM classroom_reward_transactions WHERE id=${ledgerId} AND teacher_id=${teacherId} AND kind='grant'`))[0];
+    if (!originalRef) return null;
+    if (originalRef.student_id !== null) {
+      await tx.execute(sql`SELECT id FROM students WHERE id=${originalRef.student_id} AND teacher_id=${teacherId} FOR UPDATE`);
+    }
     const original = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE id=${ledgerId} AND teacher_id=${teacherId} AND kind='grant' FOR UPDATE`))[0];
     if (!original) return null;
     const existing = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE reversal_of_id=${ledgerId}`))[0];
     if (existing) return { entry: existing, idempotent: true };
+    if (original.student_id !== null) {
+      const balances = resultRows(await tx.execute(sql`SELECT balance FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${original.student_id} FOR UPDATE`));
+      const totalBalance = balances.reduce((sum, row) => sum + Number(row.balance ?? 0), 0);
+      if (Number(original.amount) > totalBalance) throw new Error("insufficient_balance_for_reversal");
+    }
     const reversal = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,reversal_of_id,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${original.student_id},${original.student_name_snapshot},${original.reward_type_id},${-original.amount},'reversal',${reversalKey},${ledgerId},${original.class_name_snapshot},${original.teacher_class_id},${original.reward_type_name_snapshot},${original.category_snapshot}) RETURNING *`))[0];
     if (original.student_id !== null) await tx.execute(sql`UPDATE classroom_reward_balances SET balance=balance-${original.amount},updated_at=NOW() WHERE teacher_id=${teacherId} AND student_id=${original.student_id} AND reward_type_id=${original.reward_type_id}`);
     await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key) VALUES (${teacherId},'reverse','transaction',${reversal.id},${d.idempotencyKey})`);
     return { entry: reversal, idempotent: false };
   }); } catch (error: any) {
     if (error?.message === "reversal_key_conflict") return res.status(409).json({ message: "مفتاح التكرار مستخدم لحركة مختلفة" });
+    if (error?.message === "insufficient_balance_for_reversal") return res.status(409).json({ message: "لا يمكن التراجع عن هذه المنحة لأن الرصيد عُدّل بعدها" });
     if (error?.code === "23505" || error?.cause?.code === "23505") {
       const existing = resultRows(await db.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND idempotency_key=${reversalKey} AND kind='reversal'`))[0];
       if (existing && existing.reversal_of_id === ledgerId) return res.json({ entry: existing, idempotent: true });

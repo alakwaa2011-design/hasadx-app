@@ -8,6 +8,7 @@ import {
   useUpdateStudentProfile,
   useResetStudentPassword,
   useGrantRewards,
+  useAdjustStudentBalance,
 } from "./api";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
@@ -15,7 +16,7 @@ import { RewardCelebration, type RewardCelebrationData } from "./reward-celebrat
 import {
   User, Shield, Key, History, FileText, Activity,
   Loader2, Save, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock,
-  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp
+  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp, SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -177,6 +178,7 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
   const { student, rewards } = data;
   const grantMutation = useGrantRewards();
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
+  const [adjustOpen, setAdjustOpen] = useState(false);
   const grantInFlightRef = useRef(false);
 
   const grant = (type: { id: number; name: string; points: number }) => {
@@ -277,8 +279,18 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
           </div>
         </div>
 
-        <div className="bg-white border-2 border-emerald-100 rounded-[2rem] p-6 shadow-sm">
-          <h4 className="font-black text-lg flex items-center gap-2 mb-4 text-emerald-950"><Orbit size={20} className="text-amber-500" /> منح نقاط الآن</h4>
+         <div className="bg-white border-2 border-emerald-100 rounded-[2rem] p-6 shadow-sm">
+           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+             <h4 className="font-black text-lg flex items-center gap-2 text-emerald-950"><Orbit size={20} className="text-amber-500" /> منح نقاط الآن</h4>
+             <button
+               type="button"
+               onClick={() => setAdjustOpen(true)}
+               disabled={(rewards?.balance || 0) < 1}
+               className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-black text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-45"
+             >
+               <SlidersHorizontal size={16} /> تعديل الرصيد
+             </button>
+           </div>
           {rewardTypes.length ? (
             <div className="flex flex-wrap gap-3">
               {rewardTypes.map((type) => (
@@ -301,9 +313,104 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
             <p className="text-sm font-bold text-emerald-900/50">أضف أنواع التحفيز من إعدادات اللوحة أولًا.</p>
           )}
         </div>
+         <BalanceAdjustmentDialog
+           open={adjustOpen}
+           onOpenChange={setAdjustOpen}
+           studentId={studentId}
+           studentName={student.name}
+           currentBalance={rewards?.balance || 0}
+         />
       </div>
     </div>
     </>
+  );
+}
+
+export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, studentName, currentBalance }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  studentId: number;
+  studentName: string;
+  currentBalance: number;
+}) {
+  const [points, setPoints] = useState(1);
+  const [reason, setReason] = useState("");
+  const mutation = useAdjustStudentBalance();
+  const requestKeyRef = useRef<string | null>(null);
+
+  const close = (next: boolean) => {
+    if (!mutation.isPending) {
+      onOpenChange(next);
+      if (!next) {
+        setPoints(1);
+        setReason("");
+        requestKeyRef.current = null;
+      }
+    }
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!reason.trim()) {
+      toast.error("اكتب سبب تعديل الرصيد");
+      return;
+    }
+    if (points < 1 || points > currentBalance) {
+      toast.error("اختر عددًا لا يتجاوز الرصيد الحالي");
+      return;
+    }
+    requestKeyRef.current ||= crypto.randomUUID();
+    mutation.mutate({ studentId, points, reason: reason.trim(), idempotencyKey: requestKeyRef.current }, {
+      onSuccess: (result: any) => {
+        toast.success(`تم تحديث رصيد ${studentName}. الرصيد الآن ${formatPoints(result.balance)} نقطة`);
+        onOpenChange(false);
+        setPoints(1);
+        setReason("");
+        requestKeyRef.current = null;
+      },
+      onError: (error: any) => toast.error(error.message || "تعذر تعديل الرصيد"),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent className="sm:max-w-md rounded-[2rem] border-2 border-emerald-100 p-0 overflow-hidden motion-reduce:animate-none">
+        <DialogHeader className="border-b border-emerald-100 bg-emerald-50/60 p-6">
+          <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
+            <SlidersHorizontal size={20} className="text-emerald-600" /> تعديل رصيد {studentName}
+          </DialogTitle>
+          <DialogDescription className="pt-2 font-medium leading-relaxed text-emerald-900/65">
+            استخدم هذا الإجراء لتصحيح الرصيد أو تسجيل ملاحظة صفية. سيظهر التعديل بهدوء في السجل دون مؤثرات سلبية.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-5 p-6">
+          <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <span className="text-sm font-bold text-amber-900/70">الرصيد الحالي</span>
+            <strong className="text-lg font-black text-amber-800">{formatPoints(currentBalance)} نقطة</strong>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-black text-emerald-950">مقدار التعديل</label>
+            <input type="number" min={1} max={currentBalance} value={points} onChange={(e) => setPoints(Number(e.target.value))}
+              className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-black outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
+            <p className="mt-1.5 text-xs font-bold text-slate-500">سيصبح الرصيد: {formatPoints(Math.max(0, currentBalance - (Number.isFinite(points) ? points : 0)))} نقطة</p>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-black text-emerald-950">سبب التعديل</label>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200}
+              placeholder="مثال: تصحيح رصيد أضيف بالخطأ"
+              className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
+              className="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3 font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
+            <button type="submit" disabled={mutation.isPending || currentBalance < 1}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-black text-white hover:bg-emerald-800 disabled:opacity-50">
+              {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} تأكيد التعديل
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -656,7 +763,7 @@ function LedgerTab({ ledger, balance }: { ledger: any[], balance: number }) {
                     {new Date(entry.createdAt).toLocaleDateString('en-GB')}
                   </td>
                   <td className="px-5 py-4 font-black text-emerald-950">
-                    {entry.kind === "grant" ? "منح نقاط" : entry.kind === "redemption" ? "استبدال" : entry.kind === "auto" ? "تحفيز تلقائي" : entry.kind}
+                    {entry.kind === "grant" ? "منح نقاط" : entry.kind === "adjustment" ? "تعديل الرصيد" : entry.kind === "reversal" ? "تراجع عن منحة" : entry.kind === "redemption" ? "استبدال" : entry.kind === "auto" ? "تحفيز تلقائي" : entry.kind}
                   </td>
                   <td className="px-5 py-4 text-emerald-900/80 font-bold">
                     {entry.reason || "-"}

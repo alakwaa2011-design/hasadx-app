@@ -187,6 +187,61 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(await bcrypt.compare("owner-secret", newHash)).toBe(true);
   });
 
+  it("adjusts a balance once, blocks overdrafts, and keeps the action owner-scoped", async () => {
+    const grantId = Number((await db.execute(sql`
+      INSERT INTO classroom_reward_transactions
+        (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,reward_type_name_snapshot,category_snapshot)
+      VALUES
+        (${teacherId},${otherStudentId},'آخر',${rewardTypeId},10,'grant',${`adjust-grant:${nonce}`},'رصيد اختبار','test')
+      RETURNING id
+    `)).rows[0].id);
+    await db.execute(sql`
+      INSERT INTO classroom_reward_balances (teacher_id,student_id,reward_type_id,balance)
+      VALUES (${teacherId},${otherStudentId},${rewardTypeId},10)
+      ON CONFLICT (teacher_id,student_id,reward_type_id)
+      DO UPDATE SET balance=classroom_reward_balances.balance+10
+    `);
+    const before = Number((await db.execute(sql`
+      SELECT COALESCE(SUM(balance),0)::int points
+      FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id=${otherStudentId}
+    `)).rows[0].points);
+    const key = `adjust:${nonce}`;
+    const payload = { points: 4, reason: "تصحيح رصيد", idempotencyKey: key };
+
+    const adjusted = await request(teacherApp())
+      .post(`/api/classroom-rewards/students/${otherStudentId}/balance-adjustments`)
+      .send(payload);
+    expect(adjusted.status).toBe(201);
+    expect(adjusted.body).toMatchObject({ balance: before - 4, idempotent: false });
+
+    const replay = await request(teacherApp())
+      .post(`/api/classroom-rewards/students/${otherStudentId}/balance-adjustments`)
+      .send(payload);
+    expect(replay.status).toBe(200);
+    expect(replay.body).toMatchObject({ balance: before - 4, idempotent: true });
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND student_id=${otherStudentId}
+        AND idempotency_key=${key} AND kind='adjustment'
+    `)).rows[0].n)).toBe(1);
+
+    const overdraft = await request(teacherApp())
+      .post(`/api/classroom-rewards/students/${otherStudentId}/balance-adjustments`)
+      .send({ points: before, reason: "تعديل أكبر من الرصيد", idempotencyKey: `overdraft:${nonce}` });
+    expect(overdraft.status).toBe(409);
+
+    const unsafeReversal = await request(teacherApp())
+      .post(`/api/classroom-rewards/ledger/${grantId}/reverse`)
+      .send({ idempotencyKey: `reverse-after-adjust:${nonce}` });
+    expect(unsafeReversal.status).toBe(409);
+
+    const denied = await request(teacherApp(otherTeacherId))
+      .post(`/api/classroom-rewards/students/${otherStudentId}/balance-adjustments`)
+      .send({ points: 1, reason: "غير مصرح", idempotencyKey: `denied:${nonce}` });
+    expect(denied.status).toBe(404);
+  });
+
   it("maps question-bank sessions by teacher/account and rejects spoofed or wrong-teacher identities",async()=>{
     expect(await resolveWameethStudentIdentity(db,{teacherId,studentAccountId:accountId,targetClasses:[]})).toEqual({studentId,studentAccountId:accountId});
     expect(await resolveWameethStudentIdentity(db,{teacherId:otherTeacherId,studentAccountId:accountId,targetClasses:[]})).toBeNull();

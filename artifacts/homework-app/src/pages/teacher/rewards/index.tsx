@@ -11,11 +11,11 @@ import {
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
-import { StudentControlCenter } from "./student-control-center";
+import { BalanceAdjustmentDialog, StudentControlCenter } from "./student-control-center";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, Info, Map, Sparkles, Orbit
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, Info, Map, Sparkles, Orbit, SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -112,6 +112,7 @@ export default function RewardsPage() {
   const [studentControlOpen, setStudentControlOpen] = useState(false);
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   const [singleGrantStudentId, setSingleGrantStudentId] = useState<number | null>(null);
+  const [balanceAdjustmentStudentId, setBalanceAdjustmentStudentId] = useState<number | null>(null);
   
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
@@ -125,6 +126,10 @@ export default function RewardsPage() {
   const singleGrantStudent = useMemo(
     () => classData?.students?.find((student: any) => student.id === singleGrantStudentId) ?? null,
     [classData, singleGrantStudentId],
+  );
+  const balanceAdjustmentStudent = useMemo(
+    () => classData?.students?.find((student: any) => student.id === balanceAdjustmentStudentId) ?? null,
+    [classData, balanceAdjustmentStudentId],
   );
 
   useEffect(() => {
@@ -422,6 +427,20 @@ export default function RewardsPage() {
                       </div>
                     </div>
                   </button>
+                  {!displayMode && (
+                    <button
+                      type="button"
+                      disabled={(student.points || 0) < 1}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setBalanceAdjustmentStudentId(student.id);
+                      }}
+                      className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-2 py-1.5 text-[11px] font-black text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label={`تعديل رصيد ${student.name}`}
+                    >
+                      <SlidersHorizontal size={13} /> تعديل الرصيد
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -551,6 +570,15 @@ export default function RewardsPage() {
         }}
         loading={grantMutation.isPending}
       />
+      {balanceAdjustmentStudent && (
+        <BalanceAdjustmentDialog
+          open={balanceAdjustmentStudentId !== null}
+          onOpenChange={(next) => { if (!next) setBalanceAdjustmentStudentId(null); }}
+          studentId={balanceAdjustmentStudent.id}
+          studentName={balanceAdjustmentStudent.name}
+          currentBalance={balanceAdjustmentStudent.points || 0}
+        />
+      )}
     </Layout>
   );
 }

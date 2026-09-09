@@ -132,6 +132,23 @@ export const useGrantRewards = () => {
   });
 };
 
+export const useAdjustStudentBalance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, ...data }: { studentId: number; points: number; reason: string; idempotencyKey: string }) =>
+      fetcher(`/api/classroom-rewards/students/${studentId}/balance-adjustments`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", variables.studentId] });
+    },
+  });
+};
+
 export const useReverseReward = () => {
   const qc = useQueryClient();
   return useMutation({
