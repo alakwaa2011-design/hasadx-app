@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatRewardPoints } from "./format";
 
 interface StudentControlCenterProps {
   open: boolean;
@@ -29,7 +30,7 @@ interface StudentControlCenterProps {
   rewardTypes: Array<{ id: number; name: string; points: number; color?: string }>;
 }
 
-const formatPoints = (points: number) => new Intl.NumberFormat("ar-KW").format(points);
+const formatPoints = formatRewardPoints;
 
 function PointsOrb({ points, label = "نقاط المغامرة", compact = false }: { points: number; label?: string; compact?: boolean }) {
   return (

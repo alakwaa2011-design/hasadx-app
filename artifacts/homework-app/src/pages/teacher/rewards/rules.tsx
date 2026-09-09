@@ -11,6 +11,7 @@ import {
 } from "./api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatRewardPoints } from "./format";
 
 type RewardType = { id: number; name: string; points: number; active: boolean };
 type RuleForm = Omit<RewardRuleInput, "rewardTypeId"> & { rewardTypeId: string };
@@ -28,18 +29,18 @@ const emptyRule = (rewardTypeId: number | string = ""): RuleForm => ({
 function rulePreview(rule: Omit<RewardRuleInput, "rewardTypeId"> & { rewardTypeId: number | string }, rewardTypes: RewardType[]) {
   const reward = rewardTypes.find((type) => type.id === Number(rule.rewardTypeId))?.name || "نوع التحفيز المختار";
   if (rule.sourceType === "kids_activity_completion") {
-    return `عند إكمال الطالب لنشاط الأطفال، يُمنح ${rule.amount} من «${reward}».`;
+      return `عند إكمال الطالب لنشاط الأطفال، يُمنح ${formatRewardPoints(rule.amount)} من «${reward}».`;
   }
   if (rule.sourceType === "game_history") {
     if (rule.conditionType === "score_at_least") {
-      return `عند تسجيل الطالب ${rule.threshold} نقطة أو أكثر في النتيجة النهائية المحفوظة للعبة وميض، يُمنح ${rule.amount} من «${reward}».`;
+      return `عند تسجيل الطالب ${formatRewardPoints(rule.threshold)} نقطة أو أكثر في النتيجة النهائية المحفوظة للعبة وميض، يُمنح ${formatRewardPoints(rule.amount)} من «${reward}».`;
     }
-    return `عند حفظ النتيجة النهائية للطالب في لعبة وميض، يُمنح ${rule.amount} من «${reward}».`;
+    return `عند حفظ النتيجة النهائية للطالب في لعبة وميض، يُمنح ${formatRewardPoints(rule.amount)} من «${reward}».`;
   }
   if (rule.conditionType === "score_at_least") {
-    return `عند حصول الطالب على ${rule.threshold || 0} درجة أو أكثر في الواجب، يُمنح ${rule.amount} من «${reward}».`;
+    return `عند حصول الطالب على ${formatRewardPoints(rule.threshold || 0)} درجة أو أكثر في الواجب، يُمنح ${formatRewardPoints(rule.amount)} من «${reward}».`;
   }
-  return `عند إكمال الطالب للواجب، يُمنح ${rule.amount} من «${reward}».`;
+  return `عند إكمال الطالب للواجب، يُمنح ${formatRewardPoints(rule.amount)} من «${reward}».`;
 }
 
 export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: boolean; onOpenChange: (open: boolean) => void; rewardTypes: RewardType[] }) {
@@ -159,7 +160,7 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
               <div className="grid grid-cols-[1fr_88px] gap-2">
                 <select data-testid="select-rule-reward-type" value={form.rewardTypeId} onChange={(event) => setForm({ ...form, rewardTypeId: event.target.value })} className="rounded-lg border border-border bg-background px-2 py-2 text-xs">
                   <option value="">اختر التحفيز</option>
-                  {activeTypes.map((type) => <option key={type.id} value={type.id}>{type.name} (+{type.points})</option>)}
+                  {activeTypes.map((type) => <option key={type.id} value={type.id}>{type.name} (+{formatRewardPoints(type.points)})</option>)}
                 </select>
                 <input data-testid="input-rule-amount" type="number" min="1" value={form.amount} onChange={(event) => setForm({ ...form, amount: Math.max(1, Number(event.target.value) || 1) })} className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-center" />
               </div>

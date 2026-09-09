@@ -5,6 +5,7 @@ import { useGetRewardTypes, useCreateRewardType, useUpdateRewardType } from "./a
 import { Loader2, Plus, Check, X, ArrowUp, ArrowDown, Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { formatRewardPoints } from "./format";
 
 export const PRESET_ICONS = ["Star", "Heart", "ThumbsUp", "Zap", "Trophy", "Target", "Shield", "Flame", "Award", "Crown", "Lightbulb", "Rocket"];
 export const PRESET_COLORS = ["#468064", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0891b2", "#f97316"];
@@ -126,7 +127,7 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
                       {t.name}
                       {!t.active && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">متوقف</span>}
                     </div>
-                    <div className="text-xs text-muted-foreground font-medium">+{t.points} نقطة</div>
+                    <div className="text-xs text-muted-foreground font-medium">+{formatRewardPoints(t.points)} نقطة</div>
                   </div>
 
                   <div className="flex items-center gap-1">

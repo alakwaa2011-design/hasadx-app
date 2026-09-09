@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { cn } from "@/lib/utils";
 import { ArrowRight, Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRound, Trophy, RotateCcw, Medal } from "lucide-react";
 import { toast } from "sonner";
+import { formatRewardPoints } from "./format";
 import {
   type RewardGroup,
   useCreateRewardGroup,
@@ -342,7 +343,7 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
         <DialogHeader className="mb-6">
           <DialogTitle className="text-2xl font-black text-emerald-950">{group.name}</DialogTitle>
           <DialogDescription className="text-sm font-bold text-emerald-900/60 mt-1">
-            {group.members.length} أعضاء • رصيد المجموعة: <span className="text-emerald-700">{group.score || 0}</span> نقطة
+            {formatRewardPoints(group.members.length)} أعضاء • رصيد المجموعة: <span className="text-emerald-700">{formatRewardPoints(group.score || 0)}</span> نقطة
           </DialogDescription>
         </DialogHeader>
 
@@ -469,7 +470,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
 
             <div className="mt-4 flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-2xl">
               <Trophy className="text-amber-400" size={24} />
-              <span className="text-3xl font-black text-amber-400">{group.score || 0}</span>
+              <span className="text-3xl font-black text-amber-400">{formatRewardPoints(group.score || 0)}</span>
               <span className="text-sm font-bold text-emerald-100 ml-1">نقطة</span>
             </div>
           </div>

@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackProjectAnalyticsEvent } from "@/lib/analytics";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatRewardPoints } from "./format";
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -43,7 +44,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
   return [storedValue, setValue];
 }
 
-const formatPoints = (points: number) => new Intl.NumberFormat("ar-KW").format(points);
+const formatPoints = formatRewardPoints;
 type TeacherClassOption = { className?: string | null; name?: string | null };
 
 function AdventurePointsBadge({ points, className, animate = false }: { points: number, className?: string, animate?: boolean }) {

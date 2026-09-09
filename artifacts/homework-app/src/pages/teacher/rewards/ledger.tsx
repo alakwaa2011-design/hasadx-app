@@ -6,6 +6,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatRewardPoints } from "./format";
 
 export function RewardLedgerDialog({ open, onOpenChange, className }: { open: boolean, onOpenChange: (v: boolean) => void, className: string }) {
   const [tab, setTab] = useState<"ledger" | "summary">("ledger");
@@ -134,7 +135,7 @@ function LedgerView({ className, period }: { className: string, period: string }
           <div key={item.id} className={cn("p-3 rounded-xl border flex items-center gap-3 transition-colors", item.isReversed ? "bg-muted/30 border-dashed border-border/50 opacity-60" : "bg-card border-border shadow-sm")}>
             <div className="w-10 text-center shrink-0">
               <span className={cn("text-sm font-black block", item.points > 0 ? "text-primary" : "text-destructive")}>
-                {item.points > 0 ? "+" : ""}{item.points}
+                {item.points > 0 ? "+" : ""}{formatRewardPoints(item.points)}
               </span>
             </div>
             
@@ -197,7 +198,7 @@ function SummaryView({ className, period }: { className: string, period: string 
           {students.map((s: any) => (
             <div key={s.studentId} className="flex items-center gap-3 p-2.5 rounded-xl border border-border bg-card shadow-sm">
               <div className="flex-1 font-semibold text-sm truncate">{s.studentName}</div>
-              <div className="text-sm font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">{s.points}</div>
+              <div className="text-sm font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">{formatRewardPoints(s.points)}</div>
             </div>
           ))}
         </div>
@@ -214,7 +215,7 @@ function SummaryView({ className, period }: { className: string, period: string 
                 <span className="font-semibold text-sm">{t.typeName}</span>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>{t.count} مرة</span>
-                  <span className="font-bold text-foreground px-2 py-0.5 rounded-md bg-muted">{t.points} نقطة</span>
+                  <span className="font-bold text-foreground px-2 py-0.5 rounded-md bg-muted">{formatRewardPoints(t.points)} نقطة</span>
                 </div>
               </div>
             ))}
