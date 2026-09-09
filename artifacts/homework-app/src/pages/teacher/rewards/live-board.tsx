@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Maximize, Minimize, Shuffle, Users, Star, Trophy, Sparkles, UserRound, ArrowRight, Target, Check, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import {
 } from "./api";
 import type { RewardCelebrationData } from "./reward-celebration";
 import { toast } from "sonner";
+import { selectFairnessStudent } from "./fairness";
 
 export interface BoardStudent {
   id: number;
@@ -60,6 +61,7 @@ export function LiveBoard({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fairnessHighlight, setFairnessHighlight] = useState<number | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
+  const spinTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { data: suggestionsData, isError: suggestionsError } = useGetRewardSuggestions(className, { refetchInterval: 10000 });
   const { data: rewardTypesData } = useGetRewardTypes();
   const grantStudent = useGrantRewards();
@@ -105,29 +107,47 @@ export function LiveBoard({
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      if (spinTimerRef.current) {
+        clearInterval(spinTimerRef.current);
+        spinTimerRef.current = null;
+      }
+    };
   }, []);
 
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen().catch(() => {});
-    } else {
-      await document.exitFullscreen().catch(() => {});
+    // Fullscreen is not available in some embedded browsers and jsdom. The
+    // board must remain usable rather than throwing when the API is absent.
+    if (typeof document === "undefined") return;
+    try {
+      if (!document.fullscreenElement) {
+        if (typeof document.documentElement?.requestFullscreen === "function") {
+          await document.documentElement.requestFullscreen();
+        }
+      } else if (typeof document.exitFullscreen === "function") {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Fullscreen permission can be denied; the inline board is still usable.
     }
   };
 
   const triggerFairnessCue = () => {
     if (students.length === 0 || isSpinning) return;
+    if (spinTimerRef.current) {
+      clearInterval(spinTimerRef.current);
+      spinTimerRef.current = null;
+    }
     setIsSpinning(true);
     setFairnessHighlight(null);
     
     // Choose fairest student (lowest points, randomize if tied)
-    const unrecognized = students.filter((student) => !student.recognizedThisWeek);
-    const fairnessPool = unrecognized.length ? unrecognized : students;
-    const sorted = [...fairnessPool].sort((a, b) => a.points - b.points);
-    const lowestPoints = sorted[0].points;
-    const candidates = sorted.filter(s => s.points === lowestPoints);
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    const chosen = selectFairnessStudent(students);
+    if (!chosen) {
+      setIsSpinning(false);
+      return;
+    }
     
     if (reduceMotion) {
       setFairnessHighlight(chosen.id);
@@ -138,12 +158,13 @@ export function LiveBoard({
 
     let spins = 0;
     const maxSpins = 16;
-    const interval = setInterval(() => {
+    spinTimerRef.current = setInterval(() => {
       const rand = students[Math.floor(Math.random() * students.length)];
       setFairnessHighlight(rand.id);
       spins++;
       if (spins >= maxSpins) {
-        clearInterval(interval);
+        if (spinTimerRef.current) clearInterval(spinTimerRef.current);
+        spinTimerRef.current = null;
         setFairnessHighlight(chosen.id);
         setIsSpinning(false);
         onFairnessSelect?.(chosen.id);
@@ -154,7 +175,7 @@ export function LiveBoard({
   const groupScores = [...groups].sort((a,b) => b.score - a.score);
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#F8FAFC] text-slate-900 font-sans" dir="rtl">
+    <div className="fixed inset-0 z-[100] flex min-h-dvh min-w-0 max-w-[100vw] flex-col overflow-x-hidden bg-[#F8FAFC] text-slate-900 font-sans" dir="rtl" data-testid="live-board">
       {/* Background Decor */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-300/15 blur-[120px]" />
@@ -162,14 +183,14 @@ export function LiveBoard({
       </div>
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
+      <header className="relative z-10 flex min-w-0 items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-2 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <button aria-label="الخروج من السبورة الحية" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+          <button type="button" data-testid="button-exit-live-board" aria-label="الخروج من السبورة الحية" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
             <ArrowRight size={22} />
           </button>
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 truncate text-sm font-black text-emerald-950 sm:text-xl">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
+              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
               اللوحة الحية: {className}
             </h1>
             <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">تحديث فوري لنقاط الأبطال</p>
@@ -179,21 +200,24 @@ export function LiveBoard({
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button 
             onClick={triggerFairnessCue} 
-            disabled={isSpinning || students.length === 0}
-            className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-3 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:rounded-2xl sm:px-6 sm:py-3"
+             type="button"
+             aria-label="من يستحق التحفيز؟"
+             data-testid="button-fairness-cue"
+             disabled={isSpinning || students.length === 0}
+             className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-2 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:w-auto sm:rounded-2xl sm:px-6 sm:py-3"
           >
             <Shuffle size={18} />
             <span className="hidden sm:inline">من يستحق التحفيز؟</span>
           </button>
           
-          <button aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"} onClick={toggleFullscreen} className="hidden h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:flex">
+           <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
             {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto p-3 sm:p-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
+       <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-2 sm:p-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
         
         {/* Right Panel: Goals & Groups */}
         <aside className="flex h-auto w-full shrink-0 flex-col gap-4 overflow-visible pb-0 lg:h-full lg:w-[340px] lg:gap-6 lg:overflow-y-auto">
@@ -216,7 +240,10 @@ export function LiveBoard({
                   <button
                     key={group.id}
                     onClick={() => awardGroup(group)}
-                    className="group relative min-w-56 flex-1 rounded-[1.5rem] text-right outline-none focus:ring-4 focus:ring-emerald-400/20 lg:min-w-0 lg:flex-none lg:w-full"
+                     type="button"
+                     data-testid={`button-group-reward-${group.id}`}
+                     aria-label={`منح نقاط للمجموعة ${group.name}`}
+                     className="group relative min-w-[13rem] flex-1 rounded-[1.5rem] text-right outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 lg:min-w-0 lg:flex-none lg:w-full"
                   >
                     <div className="absolute inset-0 rounded-[1.5rem] bg-white opacity-40 transition-opacity group-hover:opacity-100 shadow-sm" />
                     <div className="relative flex items-center gap-3 p-3 rounded-[1.5rem] border-2 border-transparent transition-all group-hover:border-emerald-100/50">
@@ -265,17 +292,20 @@ export function LiveBoard({
                       zIndex: isHighlighted ? 10 : 1
                     }}
                     transition={reduceMotion ? { duration: 0 } : { duration: 0.3 }}
+                     type="button"
+                     data-testid={`button-student-reward-${student.id}`}
+                     aria-label={`منح نقاط للطالب ${student.name}`}
                     onClick={() => awardStudent(student)}
                     className={cn(
-                      "group relative flex flex-col items-center gap-3 rounded-[1.75rem] border-2 p-3 transition-all outline-none focus:ring-4 focus:ring-emerald-400/20 sm:gap-4 sm:rounded-[2.5rem] sm:p-5",
+                       "group relative flex flex-col items-center gap-3 rounded-[1.75rem] border-2 p-3 transition-all motion-reduce:transition-none outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 sm:gap-4 sm:rounded-[2.5rem] sm:p-5",
                       isHighlighted 
                         ? "bg-gradient-to-b from-amber-50 to-white border-amber-300 shadow-2xl shadow-amber-300/40" 
                         : "bg-white border-white/80 shadow-md hover:border-emerald-200 hover:shadow-lg hover:bg-emerald-50/50"
                     )}
                   >
                     {isHighlighted && (
-                      <motion.div 
-                        layoutId="fairness-glow"
+                        <motion.div
+                         layoutId={reduceMotion ? undefined : "fairness-glow"}
                         className="absolute inset-0 rounded-[2.5rem] shadow-[0_0_40px_rgba(251,191,36,0.4)] pointer-events-none"
                       />
                     )}
@@ -286,7 +316,7 @@ export function LiveBoard({
                         fallback={student.name.charAt(0)}
                         size="xl"
                         className={cn(
-                           "h-20 w-20 shadow-lg ring-4 transition-transform duration-300 group-hover:scale-110 sm:h-24 sm:w-24",
+                           "h-20 w-20 shadow-lg ring-4 transition-transform duration-300 motion-reduce:transition-none motion-reduce:transform-none group-hover:scale-110 sm:h-24 sm:w-24",
                           isHighlighted ? "ring-amber-300" : "ring-white"
                         )}
                         style={group ? { backgroundColor: `${group.color}15` } : undefined}
@@ -387,7 +417,7 @@ function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSugges
     <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex max-w-80 flex-col gap-3 sm:inset-x-auto sm:bottom-6 sm:left-6 sm:w-80">
       <AnimatePresence>
         {activeSuggestions.slice(0, 3).map((suggestion: RewardSuggestion) => (
-          <motion.div key={suggestion.id} initial={reduceMotion ? false : { opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={reduceMotion ? { duration: 0 } : undefined} className="pointer-events-auto rounded-3xl border border-emerald-100 bg-white/95 p-4 shadow-2xl backdrop-blur-xl">
+            <motion.div key={suggestion.id} layout={!reduceMotion} initial={reduceMotion ? false : { opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={reduceMotion ? { duration: 0 } : undefined} className="pointer-events-auto rounded-3xl border border-emerald-100 bg-white/95 p-4 shadow-2xl backdrop-blur-xl">
             <div className="flex items-start gap-3">
               <div className="shrink-0 rounded-xl bg-amber-100 p-2.5 text-amber-600"><Lightbulb size={22} /></div>
               <div className="min-w-0 flex-1">
@@ -397,8 +427,8 @@ function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSugges
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <button onClick={() => approve(suggestion)} disabled={approveSuggestion.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-black text-emerald-950 disabled:cursor-wait disabled:opacity-60" data-testid={`approve-suggestion-${suggestion.id}`}><Check size={16} />موافق (+{suggestion.points})</button>
-              <button onClick={() => setDismissed((previous) => new Set(previous).add(suggestion.id))} className="rounded-xl bg-slate-100 p-2.5 text-slate-500" aria-label="تجاهل الاقتراح" data-testid={`reject-suggestion-${suggestion.id}`}><X size={18} /></button>
+              <button type="button" onClick={() => approve(suggestion)} disabled={approveSuggestion.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-black text-emerald-950 disabled:cursor-wait disabled:opacity-60" data-testid={`approve-suggestion-${suggestion.id}`}><Check size={16} />موافق (+{suggestion.points})</button>
+              <button type="button" onClick={() => setDismissed((previous) => new Set(previous).add(suggestion.id))} className="rounded-xl bg-slate-100 p-2.5 text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="تجاهل الاقتراح" data-testid={`reject-suggestion-${suggestion.id}`}><X size={18} /></button>
             </div>
           </motion.div>
         ))}

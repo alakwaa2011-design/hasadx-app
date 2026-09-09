@@ -195,7 +195,8 @@ router.get("/student-auth/me/reward-goal", async (req, res) => {
           g.teacher_id,
           g.teacher_class_id,
           s.id AS student_id,
-          tc.name AS class_name
+          tc.name AS class_name,
+          tc.created_at AS class_created_at
         FROM students s
         JOIN teacher_classes tc
           ON tc.teacher_id = s.teacher_id
@@ -226,7 +227,9 @@ router.get("/student-auth/me/reward-goal", async (req, res) => {
        AND tr.student_id = eg.student_id
        AND tr.kind = 'grant'
        AND (tr.teacher_class_id = eg.teacher_class_id OR (
-         tr.teacher_class_id IS NULL AND tr.class_name_snapshot = eg.class_name
+          tr.teacher_class_id IS NULL
+          AND tr.class_name_snapshot = eg.class_name
+          AND tr.created_at >= eg.class_created_at
        ))
        AND tr.created_at >= eg.starts_at
        AND (eg.ends_at IS NULL OR tr.created_at <= eg.ends_at)

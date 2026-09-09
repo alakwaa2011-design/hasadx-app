@@ -16,6 +16,7 @@ import { saveFullWameethGame } from "../lib/wameeth-full-save";
 import { addPlayer, createGame, deleteGame, resetGameToLobby, type GameQuestion } from "../game/manager";
 import submissionsRouter from "../routes/submissions";
 import classroomRewardsRouter from "../routes/classroom-rewards";
+import studentAuthRouter from "../routes/student-auth";
 import teacherClassesRouter from "../routes/teacher-classes";
 import gameHistoryRouter from "../routes/game-history";
 import { setupGameSocket } from "../game/socket-handlers";
@@ -46,6 +47,18 @@ function gameHistoryApp(){
   app.use(express.json());
   app.use((req:any,_res,next)=>{req.session={teacherId};req.log={error:()=>{},warn:()=>{},info:()=>{}};next();});
   app.use("/api",gameHistoryRouter);
+  return app;
+}
+
+function studentRewardApp(studentAccountId: number) {
+  const app = express();
+  app.use(express.json());
+  app.use((req: any, _res, next) => {
+    req.session = { studentAccountId };
+    req.log = { error: () => {}, warn: () => {}, info: () => {} };
+    next();
+  });
+  app.use("/api", studentAuthRouter);
   return app;
 }
 
@@ -124,6 +137,99 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     await db.execute(sql`INSERT INTO classroom_reward_rule_evaluations(teacher_id,rule_id,source_type,source_result_id,student_id,outcome,detail,evidence_summary,rule_name_snapshot) VALUES (${teacherId},${ruleId},'assignment_submission',${retrySource},${studentId},'failed','forced','{}','قاعدة')`);
     const retried=await db.transaction(tx=>evaluateClassroomRewardEvidence(tx,{...evidence,sourceResultId:retrySource}));
     expect(retried[0].outcome).toBe("granted");
+  });
+
+  it("approves an academic suggestion once when the same request is replayed", async () => {
+    const freshSubmission = Number((await db.execute(sql`
+      INSERT INTO submissions
+        (assignment_id,student_name,student_id,student_identity_verified,score,total_questions,correct_answers,earned_points,total_points)
+      VALUES (${assignmentId},'طالب',${studentId},TRUE,1,1,1,1,1) RETURNING id
+    `)).rows[0].id);
+    const payload = {};
+    const path = `/api/classroom-rewards/classes/A/suggestions/${freshSubmission}/approve`;
+
+    const first = await request(teacherApp()).post(path).send(payload);
+    const replay = await request(teacherApp()).post(path).send(payload);
+
+    expect(first.status).toBe(201);
+    expect(first.body.idempotent).toBe(false);
+    expect(replay.status).toBe(200);
+    expect(replay.body.idempotent).toBe(true);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND source_type='reward_suggestion_submission'
+        AND source_result_id=${freshSubmission} AND kind='grant'
+    `)).rows[0].n)).toBe(1);
+  });
+
+  it("serializes concurrent approvals even when callers use different request keys", async () => {
+    const freshSubmission = Number((await db.execute(sql`
+      INSERT INTO submissions
+        (assignment_id,student_name,student_id,student_identity_verified,score,total_questions,correct_answers,earned_points,total_points)
+      VALUES (${assignmentId},'طالب',${studentId},TRUE,1,1,1,1,1) RETURNING id
+    `)).rows[0].id);
+    const path = `/api/classroom-rewards/classes/A/suggestions/${freshSubmission}/approve`;
+    const [left, right] = await Promise.all([
+      request(teacherApp()).post(path).set("Idempotency-Key", `suggestion-left:${nonce}`).send({ requestKey: "left" }),
+      request(teacherApp()).post(path).set("Idempotency-Key", `suggestion-right:${nonce}`).send({ requestKey: "right" }),
+    ]);
+
+    expect([left.status, right.status].sort()).toEqual([200, 201]);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND source_type='reward_suggestion_submission'
+        AND source_result_id=${freshSubmission} AND kind='grant'
+    `)).rows[0].n)).toBe(1);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_audit_logs
+      WHERE teacher_id=${teacherId} AND action='approve_reward_suggestion'
+        AND entity_id=${freshSubmission}
+    `)).rows[0].n)).toBe(1);
+  });
+
+  it("rejects the same submission outside its owning class or teacher", async () => {
+    const freshSubmission = Number((await db.execute(sql`
+      INSERT INTO submissions
+        (assignment_id,student_name,student_id,student_identity_verified,score,total_questions,correct_answers,earned_points,total_points)
+      VALUES (${assignmentId},'طالب',${studentId},TRUE,1,1,1,1,1) RETURNING id
+    `)).rows[0].id);
+    const wrongClass = await request(teacherApp())
+      .post(`/api/classroom-rewards/classes/B/suggestions/${freshSubmission}/approve`).send({});
+    const wrongTeacher = await request(teacherApp(otherTeacherId))
+      .post(`/api/classroom-rewards/classes/A/suggestions/${freshSubmission}/approve`).send({});
+
+    expect(wrongClass.status).toBe(409);
+    expect(wrongTeacher.status).toBe(409);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions
+      WHERE source_type='reward_suggestion_submission' AND source_result_id=${freshSubmission}
+    `)).rows[0].n)).toBe(0);
+  });
+
+  it("updates the balance exactly once for an approved suggestion", async () => {
+    const freshSubmission = Number((await db.execute(sql`
+      INSERT INTO submissions
+        (assignment_id,student_name,student_id,student_identity_verified,score,total_questions,correct_answers,earned_points,total_points)
+      VALUES (${assignmentId},'طالب',${studentId},TRUE,1,1,1,1,1) RETURNING id
+    `)).rows[0].id);
+    const before = Number((await db.execute(sql`
+      SELECT COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id=${studentId}
+    `)).rows[0].balance);
+    const response = await request(teacherApp())
+      .post(`/api/classroom-rewards/classes/A/suggestions/${freshSubmission}/approve`).send({});
+    expect(response.status).toBe(201);
+    const amount = Number(response.body.grant.amount);
+    expect(Number((await db.execute(sql`
+      SELECT COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id=${studentId}
+    `)).rows[0].balance)).toBe(before + amount);
+    expect(Number((await db.execute(sql`
+      SELECT COALESCE(SUM(amount),0)::int amount FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND student_id=${studentId}
+        AND source_type='reward_suggestion_submission' AND source_result_id=${freshSubmission}
+        AND kind='grant'
+    `)).rows[0].amount)).toBe(amount);
   });
 
   it("blocks correction while an automatic grant is active and permits it after reversal",async()=>{
@@ -459,6 +565,51 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     const board = await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/board`);
     expect(board.status).toBe(200);
     expect(JSON.stringify(board.body)).not.toMatch(/parent|phone|email|notes|account|username|password/i);
+  });
+
+  it("keeps student and teacher goal progress identical for legacy class-name transactions", async () => {
+    const className = `GOAL-PARITY-${nonce}`;
+    const classRow = (await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className})
+      RETURNING id,created_at
+    `)).rows[0];
+    const goalAccount = Number((await db.execute(sql`
+      INSERT INTO student_accounts(username,display_name,password_hash)
+      VALUES (${`goal_parity_${nonce}`},'طالب الاتساق','x') RETURNING id
+    `)).rows[0].id);
+    const goalStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_account_id,student_class)
+      VALUES ('طالب الاتساق',${teacherId},${goalAccount},${className}) RETURNING id
+    `)).rows[0].id);
+    await db.execute(sql`
+      INSERT INTO classroom_reward_goals(
+        teacher_id,teacher_class_id,student_id,title,skill,target_points,
+        starts_at,status,is_active
+      ) VALUES (
+        ${teacherId},${Number(classRow.id)},${goalStudent},'هدف الاتساق','مهارة الاتساق',10,
+        ${new Date(new Date(classRow.created_at as string).getTime() - 172_800_000).toISOString()},
+        'active',TRUE
+      )
+    `);
+    await db.execute(sql`
+      INSERT INTO classroom_reward_transactions(
+        teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,
+        idempotency_key,class_name_snapshot,reward_type_name_snapshot,category_snapshot,created_at
+      ) VALUES
+        (${teacherId},${goalStudent},'طالب الاتساق',${rewardTypeId},8,'grant',
+         ${`goal-parity-stale:${nonce}`},${className},'نوع قديم','test',
+         ${new Date(new Date(classRow.created_at as string).getTime() - 86_400_000).toISOString()}),
+        (${teacherId},${goalStudent},'طالب الاتساق',${rewardTypeId},2,'grant',
+         ${`goal-parity-current:${nonce}`},${className},'نوع حالي','test',NOW())
+    `);
+
+    const teacherView = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(className)}`);
+    const studentView = await request(studentRewardApp(goalAccount)).get("/api/student-auth/me/reward-goal");
+
+    expect(teacherView.status).toBe(200);
+    expect(studentView.status).toBe(200);
+    expect(teacherView.body.students[0].goal.progress).toBe(2);
+    expect(studentView.body.goal.currentPoints).toBe(2);
   });
 
   it("keeps manual, automatic, and legacy reward history attached after a class rename", async () => {
