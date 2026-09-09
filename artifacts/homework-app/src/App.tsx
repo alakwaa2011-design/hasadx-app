@@ -369,8 +369,8 @@ function Router() {
         <Route path="/islamic/challenge/play/:pin" component={IslamicChallengePlay} />
         <Route path="/islamic/tournament/play/:pin" component={IslamicTournamentPlay} />
         <Route path="/islamic/tournament/host/:pin" component={IslamicTournamentHost} />
-        <Route path="/teacher/rewards" component={RewardsPage} />
-        <Route path="/teacher/rewards/:className" component={RewardsPage} />
+        <Route path="/teacher/rewards"><RewardsPage /></Route>
+        <Route path="/teacher/rewards/:className"><RewardsPage /></Route>
         <Route path="/teacher/classroom" component={ClassroomPage} />
         <Route path="/teacher/teams" component={TeamsPage} />
         <Route path="/teacher/students" component={StudentsPage} />

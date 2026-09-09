@@ -66,10 +66,11 @@ function AdventurePointsBadge({ points, className, animate = false }: { points: 
   );
 }
 
-export default function RewardsPage() {
+export default function RewardsPage({ embedded = false }: { embedded?: boolean }) {
   const params = useParams<{ className?: string }>();
   const [, setLocation] = useLocation();
-  const currentClass = params.className;
+  const [embeddedClass, setEmbeddedClass] = useState<string>();
+  const currentClass = params.className || embeddedClass;
 
   const { data: classesList, isLoading: loadingClasses } = useGetTeacherClasses();
   const classOptions = useMemo(
@@ -78,12 +79,6 @@ export default function RewardsPage() {
       .filter((name): name is string => Boolean(name)),
     [classesList],
   );
-
-  useEffect(() => {
-    if (!currentClass && classesList && classesList.length > 0) {
-      setLocation(`/teacher/rewards/${encodeURIComponent(classesList[0].className || classesList[0].name)}`);
-    }
-  }, [currentClass, classesList, setLocation]);
 
   const { data: classData, isLoading: loadingStudents } = useGetClassRewards(currentClass);
   const { data: groupsData } = useGetRewardGroups(currentClass);
@@ -143,6 +138,7 @@ export default function RewardsPage() {
   const [balanceAdjustmentStudentId, setBalanceAdjustmentStudentId] = useState<number | null>(null);
   const [bulkBalanceAdjustmentOpen, setBulkBalanceAdjustmentOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [groupManagerTargetId, setGroupManagerTargetId] = useState<number | "new">("new");
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [groupsDetailOpen, setGroupsDetailOpen] = useState(false);
   const [groupGrantOpen, setGroupGrantOpen] = useState(false);
@@ -326,18 +322,90 @@ export default function RewardsPage() {
 
   if (!currentClass) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          {loadingClasses ? <Loader2 className="animate-spin text-emerald-600" size={32} /> :
-            <p className="text-emerald-900/60 font-bold">الرجاء اختيار صف للبدء</p>
-          }
+      <PageContainer embedded={embedded}>
+        <div className="mx-auto flex min-h-[62vh] max-w-4xl items-center justify-center px-3 py-8 sm:px-6">
+          {loadingClasses ? (
+            <div className="flex flex-col items-center gap-3 text-emerald-800">
+              <Loader2 className="animate-spin" size={34} />
+              <p className="font-bold">نجهّز صفوفك…</p>
+            </div>
+          ) : classOptions.length > 0 ? (
+            <section className="relative w-full overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/60 to-amber-50 p-6 text-center shadow-sm sm:p-10">
+              <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-emerald-200/35 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-12 h-48 w-48 rounded-full bg-amber-200/45 blur-3xl" />
+              <div className="relative">
+                <div className="mx-auto mb-5 flex w-fit items-end justify-center -space-x-3 space-x-reverse" aria-hidden="true">
+                  {[0, 1, 2].map((index) => (
+                    <span
+                      key={index}
+                      className={cn(
+                        "flex h-16 w-16 items-center justify-center rounded-full border-4 border-white shadow-md sm:h-20 sm:w-20",
+                        index === 0 && "bg-amber-100 text-amber-600",
+                        index === 1 && "z-10 bg-emerald-100 text-emerald-700",
+                        index === 2 && "bg-sky-100 text-sky-600",
+                      )}
+                    >
+                      <UserRound size={index === 1 ? 34 : 28} strokeWidth={2.4} />
+                    </span>
+                  ))}
+                </div>
+                <p className="mb-2 text-xs font-black tracking-wide text-emerald-700">لوحة التحفيز</p>
+                <h1 className="text-2xl font-black text-emerald-950 sm:text-3xl">أي صف سنحفّز اليوم؟</h1>
+                <p className="mx-auto mt-3 max-w-xl text-sm font-bold leading-7 text-emerald-900/60 sm:text-base">
+                  اختر صفًا لعرض طلابه ومجموعاته ونقاط مغامرتهم.
+                </p>
+                <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-2">
+                  {classOptions.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        if (embedded) setEmbeddedClass(name);
+                        else setLocation(`/teacher/rewards/${encodeURIComponent(name)}`);
+                      }}
+                      className="group flex min-h-16 items-center gap-3 rounded-2xl border-2 border-emerald-100 bg-white px-4 py-3 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 motion-reduce:transform-none"
+                      aria-label={`فتح لوحة تحفيز صف ${name}`}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-950 text-amber-300">
+                        <UsersRound size={20} />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-base font-black text-emerald-950">{name}</span>
+                      <span className="text-xl font-black text-amber-500 transition-transform group-hover:-translate-x-1" aria-hidden="true">←</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section className="w-full rounded-[2rem] border-2 border-dashed border-emerald-200 bg-gradient-to-b from-white to-emerald-50/50 p-7 text-center sm:p-12">
+              <div className="mx-auto mb-5 flex h-24 w-36 items-end justify-center gap-1 opacity-35" aria-hidden="true">
+                {[0, 1, 2].map((index) => (
+                  <span key={index} className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-slate-200 text-slate-400 shadow-sm">
+                    <UserRound size={28} />
+                  </span>
+                ))}
+              </div>
+              <h1 className="text-2xl font-black text-emerald-950">أضف صفك الأول لتبدأ التحفيز</h1>
+              <p className="mx-auto mt-3 max-w-md font-bold leading-7 text-emerald-900/55">
+                بعد إضافة الصف والطلاب ستظهر هنا بطاقات التحفيز والمجموعات ونقاط المغامرة.
+              </p>
+              <button
+                type="button"
+                onClick={() => setLocation("/teacher/students")}
+                className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-6 py-3 font-black text-white shadow-lg shadow-emerald-950/15 transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/50"
+              >
+                <Plus size={19} />
+                إضافة صف وطلاب
+              </button>
+            </section>
+          )}
         </div>
-      </Layout>
+      </PageContainer>
     );
   }
 
   return (
-    <Layout>
+    <PageContainer embedded={embedded}>
       <RewardCelebration
         celebration={celebration}
         onComplete={() => {
@@ -368,7 +436,8 @@ export default function RewardsPage() {
                     value={currentClass}
                     onChange={(e) => {
                       if (e.target.value) {
-                        setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
+                        if (embedded) setEmbeddedClass(e.target.value);
+                        else setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
                       }
                     }}
                     aria-label="اختر صف لوحة التحفيز"
@@ -454,10 +523,6 @@ export default function RewardsPage() {
 
               {viewMode === "students" && (
                 <>
-                  <button type="button" onClick={() => setGroupsOpen(true)}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">
-                    <UsersRound size={15} /> إدارة المجموعات
-                  </button>
                   <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
                   <button type="button" onClick={() => setActiveGroupId(null)}
                     className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
@@ -473,7 +538,10 @@ export default function RewardsPage() {
 
               {viewMode === "groups" && (
                 <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                  <button type="button" onClick={() => setGroupsOpen(true)}
+                  <button type="button" onClick={() => {
+                    setGroupManagerTargetId("new");
+                    setGroupsOpen(true);
+                  }}
                     className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900 shadow-sm hover:border-emerald-400 hover:bg-emerald-50">
                     <Plus size={18} className="text-emerald-600" /> مجموعة جديدة
                   </button>
@@ -576,7 +644,10 @@ export default function RewardsPage() {
                 <p className="font-bold text-lg">لم يتم العثور على مجموعات.</p>
                 <button
                   type="button"
-                  onClick={() => setGroupsOpen(true)}
+                  onClick={() => {
+                    setGroupManagerTargetId("new");
+                    setGroupsOpen(true);
+                  }}
                   className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 transition-colors"
                 >
                   إنشاء مجموعة جديدة
@@ -590,7 +661,7 @@ export default function RewardsPage() {
             <p className="font-bold">جاري تحميل الطلاب...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7">
             {students.map((student: any) => {
               const isSelected = selectedIds.has(student.id);
               return (
@@ -844,6 +915,7 @@ export default function RewardsPage() {
         onOpenChange={setGroupsOpen}
         className={currentClass}
         students={classData?.students ?? []}
+        initialGroupId={groupManagerTargetId}
       />
       <GroupAwardDialog
         open={groupGrantOpen}
@@ -851,6 +923,11 @@ export default function RewardsPage() {
         group={groupsData?.groups?.find(g => g.id === activeGroupId) ?? null}
         className={currentClass}
         onDetailsClick={() => setGroupsDetailOpen(true)}
+        onManageClick={() => {
+          if (activeGroupId === null) return;
+          setGroupManagerTargetId(activeGroupId);
+          setGroupsOpen(true);
+        }}
         onAward={() => {
           playSound();
         }}
@@ -873,8 +950,12 @@ export default function RewardsPage() {
         students={(classData?.students ?? []).filter((student: any) => selectedIds.has(student.id))}
         onComplete={() => setSelectedIds(new Set())}
       />
-    </Layout>
+    </PageContainer>
   );
+}
+
+function PageContainer({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+  return embedded ? <>{children}</> : <Layout>{children}</Layout>;
 }
 
 function SingleStudentGrantDialog({

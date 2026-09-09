@@ -21,11 +21,12 @@ export const REWARD_GROUP_AVATARS = [
 
 type Student = { id: number; name: string; avatar?: string | null; points?: number };
 
-export function RewardGroupsDialog({ open, onOpenChange, className, students }: {
+export function RewardGroupsDialog({ open, onOpenChange, className, students, initialGroupId = "new" }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   className: string;
   students: Student[];
+  initialGroupId?: number | "new";
 }) {
   const { data, isLoading } = useGetRewardGroups(className);
   const groups = data?.groups ?? [];
@@ -45,11 +46,15 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
   const saving = createMutation.isPending || updateMutation.isPending;
 
   useEffect(() => {
-    if (!open) return;
+    if (open) setSelectedId(initialGroupId);
+  }, [initialGroupId, open]);
+
+  useEffect(() => {
+    if (!open || isLoading) return;
     if (selectedId !== "new" && !groups.some((group) => group.id === selectedId)) {
       setSelectedId(groups[0]?.id ?? "new");
     }
-  }, [groups, open, selectedId]);
+  }, [groups, isLoading, open, selectedId]);
 
   useEffect(() => {
     if (selected) {
@@ -281,12 +286,13 @@ export function RewardGroupChip({ group, active, onClick }: { group: RewardGroup
   );
 }
 
-export function GroupAwardDialog({ open, onOpenChange, group, className, onDetailsClick, onAward }: {
+export function GroupAwardDialog({ open, onOpenChange, group, className, onDetailsClick, onManageClick, onAward }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   group: RewardGroup | null;
   className: string;
   onDetailsClick: () => void;
+  onManageClick: () => void;
   onAward: (groupName: string) => void;
 }) {
   const grantMutation = useGrantGroupReward();
@@ -344,16 +350,26 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
           ))}
         </div>
 
-        <DialogFooter className="sm:justify-center border-t border-emerald-100 pt-4 mt-2">
+        <DialogFooter className="grid grid-cols-2 gap-2 border-t border-emerald-100 pt-4 mt-2 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => {
               onOpenChange(false);
               onDetailsClick();
             }}
-            className="flex items-center gap-2 text-sm font-bold text-emerald-600 hover:text-emerald-800 transition-colors"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-900"
           >
             <UsersRound size={16} /> عرض تفاصيل المجموعة
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              onManageClick();
+            }}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-bold text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-50"
+          >
+            <Pencil size={16} /> إدارة المجموعة
           </button>
         </DialogFooter>
       </DialogContent>

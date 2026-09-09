@@ -30,7 +30,7 @@ const suggestedAges: Record<string, AgeBand[]> = {
   ordering_puzzle: ["5-6"],
 };
 
-export default function TeacherKidsBoard() {
+export default function TeacherKidsBoard({ embedded = false, onBack }: { embedded?: boolean; onBack?: () => void }) {
   const [, setLocation] = useLocation();
   const { data: activities, isLoading: activitiesLoading } = useTeacherKidsActivities();
   const [selectedActivityId, setSelectedActivityId] = useState("");
@@ -75,8 +75,7 @@ export default function TeacherKidsBoard() {
     setSelectedActivityId("");
   };
 
-  return (
-    <Layout>
+  const content = (
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col p-3 pb-36 font-display sm:p-5 md:p-8">
 
         <div className="relative mb-6 overflow-hidden rounded-[2rem] border-4 border-indigo-100/20 bg-gradient-to-l from-indigo-900 via-violet-800 to-purple-900 p-5 shadow-lg sm:p-8 md:rounded-[2.5rem] md:p-10">
@@ -86,7 +85,7 @@ export default function TeacherKidsBoard() {
           <div className="relative z-10 flex items-center justify-between gap-3 text-right">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 sm:gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setLocation("/teacher/kids")} className="shrink-0 rounded-full text-white hover:bg-white/20">
+                <Button variant="ghost" size="icon" onClick={() => onBack ? onBack() : setLocation("/teacher/kids")} className="shrink-0 rounded-full text-white hover:bg-white/20" aria-label="العودة">
                   <ArrowRight className="h-6 w-6" />
                 </Button>
                 <h1 className="text-2xl font-black leading-tight tracking-tight text-white drop-shadow-sm sm:text-4xl md:text-5xl">
@@ -249,6 +248,7 @@ export default function TeacherKidsBoard() {
         </div>
 
       </div>
-    </Layout>
   );
+
+  return embedded ? content : <Layout>{content}</Layout>;
 }

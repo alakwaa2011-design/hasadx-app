@@ -33,6 +33,8 @@ import {
 import type { Assignment } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import RewardsPage from "@/pages/teacher/rewards";
+import TeacherKidsBoard from "@/pages/teacher/kids/board";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
 import { Link, useLocation } from "wouter";
 import {
@@ -342,6 +344,7 @@ type AssignmentLiveGameChoice =
 const DASHBOARD_ALLOWED_TABS = [
   "overview", "credits", "assignments", "shared", "library_homework",
   "library_competitions", "competitive", "tools", "videos", "stats", "students",
+  "rewards", "kids_board",
 ] as const;
 
 export type DashboardUrlParseResult = {
@@ -811,7 +814,6 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "سبورة الصغار" : "Kids Board",
       shortLabel: lang === "ar" ? "سبورة الصغار" : "Kids Board",
       icon: <School className="w-4 h-4" />,
-      href: "/teacher/kids/board",
     },
     {
       id: "students",
@@ -824,7 +826,6 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "لوحة التحفيز" : "Rewards Board",
       shortLabel: lang === "ar" ? "التحفيز" : "Rewards",
       icon: <Orbit className="w-4 h-4" />,
-      href: "/teacher/rewards",
     },
     {
       id: "parent_messages",
@@ -912,7 +913,15 @@ export default function TeacherDashboard() {
           />
         )}
         {activeTab === "tools" && (
-          <ToolsTab t={t} lang={lang} setLocation={setLocation} user={user} classroomEnabled={classroomEnabled} activeGroup={toolsSubTab} />
+          <ToolsTab
+            t={t}
+            lang={lang}
+            setLocation={setLocation}
+            user={user}
+            classroomEnabled={classroomEnabled}
+            activeGroup={toolsSubTab}
+            openRewards={() => setActiveTab("rewards")}
+          />
         )}
         {activeTab === "videos" && (
           <VideoLessonsTab lang={lang} setLocation={setLocation} user={user} />
@@ -945,6 +954,12 @@ export default function TeacherDashboard() {
         )}
         {activeTab === "credits" && (
           <PricingContent />
+        )}
+        {activeTab === "rewards" && (
+          <RewardsPage embedded />
+        )}
+        {activeTab === "kids_board" && (
+          <TeacherKidsBoard embedded onBack={() => setActiveTab("overview")} />
         )}
       </motion.div>
     </AnimatePresence>
@@ -1199,7 +1214,9 @@ export default function TeacherDashboard() {
                 activeTab !== "assignments" &&
                 activeTab !== "competitive" &&
                 activeTab !== "stats" &&
-                activeTab !== "credits" && (
+                activeTab !== "credits" &&
+                activeTab !== "rewards" &&
+                activeTab !== "kids_board" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
@@ -1207,7 +1224,7 @@ export default function TeacherDashboard() {
               </div>
               )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
-          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "library_competitions", "videos", "presentations", "parent_messages", "stats"].includes(activeTab) && (
+          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "library_competitions", "videos", "presentations", "parent_messages", "stats", "rewards", "kids_board"].includes(activeTab) && (
           <div
             className={cn(
               "grid grid-cols-3 gap-3",
@@ -1357,7 +1374,7 @@ export default function TeacherDashboard() {
           <div className="mb-3">
             <GuestDraftImportBanner />
           </div>
-          {activeTab !== "assignments" && activeTab !== "competitive" && activeTab !== "credits" && (
+          {activeTab !== "assignments" && activeTab !== "competitive" && activeTab !== "credits" && activeTab !== "rewards" && activeTab !== "kids_board" && (
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             <span className="[&_svg]:w-5 [&_svg]:h-5 text-primary">
               {tabs.find((t) => t.id === activeTab)?.icon}
@@ -2876,7 +2893,7 @@ function CompetitiveTab({
   );
 }
 
-function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }: any) {
+function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, openRewards }: any) {
   const isAr = lang === "ar";
   // Map sidebar sub-tab id → which toolGroups to show
   const groupFilter: Record<string, string[]> = {
@@ -3195,7 +3212,10 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup }:
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay, duration: 0.22 }}
-                  onClick={() => tool.href && setLocation(tool.href)}
+                  onClick={() => {
+                    if (tool.href === "/teacher/rewards") openRewards();
+                    else if (tool.href) setLocation(tool.href);
+                  }}
                   className={cn(
                     "group relative flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-xl border bg-card/60 text-start min-h-[96px] overflow-hidden",
                     "transition-[transform,box-shadow,border-color,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",

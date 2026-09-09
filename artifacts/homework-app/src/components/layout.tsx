@@ -739,8 +739,8 @@ export function Layout({ children, noHeader }: LayoutProps) {
                               ? "تلقائي"
                               : "System"}
                       </button>
-                      <Link
-                        href="/teacher/rewards"
+                      <a
+                        href="/teacher?tab=rewards"
                         onClick={() => setMobileMenuOpen(false)}
                         className="mx-1 flex items-center gap-3 rounded-2xl border border-amber-300/70 bg-gradient-to-l from-amber-50 to-white px-4 py-3.5 text-sm font-black text-emerald-950 shadow-sm transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none"
                       >
@@ -753,7 +753,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                             {lang === "ar" ? "نقاط المغامرة وتقدم الطلاب" : "Adventure points and student progress"}
                           </span>
                         </span>
-                      </Link>
+                      </a>
                       <Link
                          href="/teacher/messages"
                         onClick={() => setMobileMenuOpen(false)}
