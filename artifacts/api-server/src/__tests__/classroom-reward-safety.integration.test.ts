@@ -679,6 +679,77 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(Number((await db.execute(sql`SELECT id FROM teacher_classes WHERE id=${classId}`)).rows[0].id)).toBe(classId);
   });
 
+  it("rolls back every class rename update when the target name already exists", async () => {
+    const oldName = `RENAME-CONFLICT-OLD-${nonce}`;
+    const existingName = `RENAME-CONFLICT-EXISTING-${nonce}`;
+    const classes = (await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name)
+      VALUES (${teacherId},${oldName}),(${teacherId},${existingName})
+      RETURNING id,name
+    `)).rows;
+    const oldClassId = Number(classes.find((row: any) => row.name === oldName)?.id);
+    const existingClassId = Number(classes.find((row: any) => row.name === existingName)?.id);
+    const students = (await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,grade_level,notes)
+      VALUES
+        ('طالب التعارض القديم',${teacherId},${oldName},${oldName},'يبقى في الصف القديم'),
+        ('طالب التعارض الموجود',${teacherId},${existingName},${existingName},'يبقى في الصف الموجود')
+      RETURNING id
+    `)).rows;
+    const oldStudentId = Number(students[0].id);
+    const existingStudentId = Number(students[1].id);
+    await db.execute(sql`
+      INSERT INTO classroom_reward_transactions
+        (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,
+         class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot)
+      VALUES
+        (${teacherId},${oldStudentId},'لقطة الطالب القديم',${rewardTypeId},2,'grant',
+         ${`rename-conflict-old:${nonce}`},${oldName},NULL,'لقطة المكافأة القديمة','test'),
+        (${teacherId},${existingStudentId},'لقطة الطالب الموجود',${rewardTypeId},3,'grant',
+         ${`rename-conflict-existing:${nonce}`},${existingName},${existingClassId},'لقطة المكافأة الموجودة','test')
+    `);
+
+    const beforeClasses = (await db.execute(sql`
+      SELECT id,name FROM teacher_classes
+      WHERE id IN (${oldClassId},${existingClassId})
+      ORDER BY id
+    `)).rows;
+    const beforeStudents = (await db.execute(sql`
+      SELECT id,name,student_class,grade_level,notes FROM students
+      WHERE id IN (${oldStudentId},${existingStudentId})
+      ORDER BY id
+    `)).rows;
+    const beforeRewards = (await db.execute(sql`
+      SELECT id,student_id,student_name_snapshot,class_name_snapshot,teacher_class_id,reward_type_name_snapshot
+      FROM classroom_reward_transactions
+      WHERE idempotency_key IN (${`rename-conflict-old:${nonce}`},${`rename-conflict-existing:${nonce}`})
+      ORDER BY id
+    `)).rows;
+
+    const conflict = await request(teacherApp())
+      .patch("/api/teacher/classes/rename")
+      .send({oldName,newName:existingName});
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toMatchObject({message:"اسم الصف مستخدم بالفعل"});
+
+    expect((await db.execute(sql`
+      SELECT id,name FROM teacher_classes
+      WHERE id IN (${oldClassId},${existingClassId})
+      ORDER BY id
+    `)).rows).toEqual(beforeClasses);
+    expect((await db.execute(sql`
+      SELECT id,name,student_class,grade_level,notes FROM students
+      WHERE id IN (${oldStudentId},${existingStudentId})
+      ORDER BY id
+    `)).rows).toEqual(beforeStudents);
+    expect((await db.execute(sql`
+      SELECT id,student_id,student_name_snapshot,class_name_snapshot,teacher_class_id,reward_type_name_snapshot
+      FROM classroom_reward_transactions
+      WHERE idempotency_key IN (${`rename-conflict-old:${nonce}`},${`rename-conflict-existing:${nonce}`})
+      ORDER BY id
+    `)).rows).toEqual(beforeRewards);
+  });
+
   it("does not rename another teacher's matching class or students", async () => {
     const sharedName = `SHARED-RENAME-${nonce}`;
     const renamedName = `OWNER-RENAMED-${nonce}`;
