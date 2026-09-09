@@ -444,7 +444,7 @@ export default function DashboardOverview({
   const firstName = teacherName.split(" ")[0];
 
   async function copyLink(a: Assignment) {
-    const url = `${window.location.origin}/student/assignment/${a.id}`;
+    const url = `${window.location.origin}/solve/${a.id}`;
     await navigator.clipboard.writeText(url);
     setCopiedId(a.id);
     toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
