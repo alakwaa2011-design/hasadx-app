@@ -431,7 +431,7 @@ export default function TeacherDashboard() {
     null,
   );
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "students" | "other">("ai-tools");
+  const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "content" | "other">("ai-tools");
   const [toolsExpanded, setToolsExpanded] = useState(false);
   // Kept only as a safe fallback for an already-open legacy modal. All active
   // Wameeth launchers now navigate directly to the shared setup route below.
@@ -1040,9 +1040,9 @@ export default function TeacherDashboard() {
               const isTools = tab.id === "tools";
 
               if (isTools) {
-                const subItems: { id: "ai-tools" | "students" | "other"; label: string; icon: ReactNode }[] = [
+                const subItems: { id: "ai-tools" | "content" | "other"; label: string; icon: ReactNode }[] = [
                   { id: "ai-tools",  label: lang === "ar" ? "أدوات الذكاء الاصطناعي" : "AI Tools",      icon: <Sparkles className="w-3.5 h-3.5" /> },
-                  { id: "students",  label: lang === "ar" ? "إدارة الطلاب والمحتوى" : "Students & Content", icon: <Users className="w-3.5 h-3.5" /> },
+                  { id: "content",   label: lang === "ar" ? "المحتوى والموارد" : "Content & Resources",   icon: <Database className="w-3.5 h-3.5" /> },
                   { id: "other",     label: lang === "ar" ? "أخرى" : "Other",                             icon: <MessageSquarePlus className="w-3.5 h-3.5" /> },
                 ];
                 return (
@@ -2895,6 +2895,12 @@ function CompetitiveTab({
 
 function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, openRewards }: any) {
   const isAr = lang === "ar";
+  // Keep the sidebar shortcut aligned with the visual order of the sections.
+  const groupFilter: Record<string, string[]> = {
+    "ai-tools": ["ai-tools"],
+    "content": ["content"],
+    "other": ["students", "other"],
+  };
 
   // Brand palette for tools — green primary, gold accent, warm white bg
   const BRAND = { green: "#225739", gold: "#D9A521", light: "#FCFAF8" };
@@ -3028,22 +3034,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           accent: BRAND.gold,
           href: "/teacher/student-wheel",
         },
-        {
-          icon: <Database className="w-6 h-6" />,
-          title: t.dashboard.toolQuestionBank,
-          desc: t.dashboard.toolQuestionBankDesc,
-          accent: BRAND.green,
-          href: "/teacher/question-bank",
-        },
-        {
-          icon: <Library className="w-6 h-6" />,
-          title: isAr ? "مكتبة المعلم" : "Teacher Library",
-          desc: isAr
-            ? "ارفع وأدر كتبك وأوراق عملك ومصادرك التعليمية"
-            : "Upload and manage your books, worksheets & teaching resources",
-          accent: BRAND.green,
-          href: "/teacher/library",
-        },
         ...((Boolean(user?.isAdmin) || user?.role === "admin") ? [{
           icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>,
           title: isAr ? "منصة الصغار" : "Kids Platform",
@@ -3076,6 +3066,29 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
             : "Import students, publish assignments via Teams",
           accent: "#5059C9",
           href: "/teacher/teams",
+        },
+      ],
+    },
+    {
+      groupId: "content",
+      groupTitle: isAr ? "المحتوى والموارد" : "Content & Resources",
+      groupIcon: <Database className="w-4 h-4" />,
+      tools: [
+        {
+          icon: <Database className="w-6 h-6" />,
+          title: t.dashboard.toolQuestionBank,
+          desc: t.dashboard.toolQuestionBankDesc,
+          accent: BRAND.green,
+          href: "/teacher/question-bank",
+        },
+        {
+          icon: <Library className="w-6 h-6" />,
+          title: isAr ? "مكتبة المعلم" : "Teacher Library",
+          desc: isAr
+            ? "ارفع وأدر كتبك وأوراق عملك ومصادرك التعليمية"
+            : "Upload and manage your books, worksheets & teaching resources",
+          accent: BRAND.green,
+          href: "/teacher/library",
         },
       ],
     },
