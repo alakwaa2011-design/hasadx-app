@@ -44,6 +44,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
 }
 
 const formatPoints = (points: number) => new Intl.NumberFormat("ar-KW").format(points);
+type TeacherClassOption = { className?: string | null; name?: string | null };
 
 function AdventurePointsBadge({ points, className, animate = false }: { points: number, className?: string, animate?: boolean }) {
   return (
@@ -71,6 +72,12 @@ export default function RewardsPage() {
   const currentClass = params.className;
 
   const { data: classesList, isLoading: loadingClasses } = useGetTeacherClasses();
+  const classOptions = useMemo(
+    () => ((classesList ?? []) as TeacherClassOption[])
+      .map((item) => item.className || item.name)
+      .filter((name): name is string => Boolean(name)),
+    [classesList],
+  );
 
   useEffect(() => {
     if (!currentClass && classesList && classesList.length > 0) {
@@ -352,10 +359,30 @@ export default function RewardsPage() {
               <Map size={24} className="text-white fill-white/20" />
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-black flex items-center gap-2 tracking-wide">
-                 رحلة التحفيز
-                <span className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-amber-100 font-bold border border-white/10 backdrop-blur-sm shadow-inner">
-                  {currentClass}
+              <h1 className="flex min-w-0 flex-wrap items-center gap-2 text-xl font-black tracking-wide">
+                رحلة التحفيز
+                <span className="group/class-selector relative min-w-0">
+                  <label htmlFor="rewards-class-selector" className="sr-only">اختر صف لوحة التحفيز</label>
+                  <select
+                    id="rewards-class-selector"
+                    value={currentClass}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
+                      }
+                    }}
+                    aria-label="اختر صف لوحة التحفيز"
+                    className="max-w-[12rem] cursor-pointer appearance-none truncate rounded-xl border border-white/20 bg-white/10 py-1.5 pl-8 pr-3 text-sm font-bold text-amber-50 shadow-inner outline-none backdrop-blur-md transition-all hover:bg-white/20 focus:ring-2 focus:ring-amber-400/50 sm:max-w-[18rem]"
+                  >
+                    {classOptions.map((name) => (
+                      <option key={name} value={name} className="font-bold text-emerald-950">
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-200/80 group-hover/class-selector:text-amber-100 transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
                 </span>
               </h1>
               {!displayMode && <p className="text-sm text-emerald-200/80 font-medium hidden sm:block mt-0.5">نقاط جميلة تصنع لحظات إنجاز لا تُنسى</p>}
@@ -492,72 +519,53 @@ export default function RewardsPage() {
         {viewMode === "groups" ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
             {(groupsData?.groups ?? []).map((group) => (
-              <div
+              <button
                 key={group.id}
+                type="button"
+                onClick={() => {
+                  setActiveGroupId(group.id);
+                  setGroupGrantOpen(true);
+                }}
                 className={cn(
-                  "group relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4",
+                  "group relative flex w-full flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 text-center transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30",
                   "border-emerald-100 bg-gradient-to-b from-white to-emerald-50/30 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-900/5 hover:-translate-y-1"
                 )}
-                style={{
-                  borderColor: `${group.color}40`,
-                }}
+                style={{ borderColor: `${group.color}40` }}
               >
                 <div
-                  className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl transition-colors duration-500 opacity-30 group-hover:opacity-50"
+                  className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl transition-colors duration-500 opacity-30 group-hover:opacity-50 pointer-events-none"
                   style={{ backgroundColor: group.color }}
                 />
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveGroupId(group.id);
-                    setGroupsDetailOpen(true);
-                  }}
-                  className="absolute left-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-white p-0 text-[10px] font-black shadow-md transition-all hover:shadow-lg sm:left-3 sm:top-3"
-                  style={{ borderColor: `${group.color}40`, color: group.color }}
-                  title="تفاصيل المجموعة"
-                >
-                  <UsersRound size={13} strokeWidth={2.7} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveGroupId(group.id);
-                    setGroupGrantOpen(true);
-                  }}
-                  className="relative mt-4 flex w-full flex-col items-center rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar sm:mt-6"
-                >
-                  <div className="relative">
-                    <AvatarDisplay
-                      avatar={group.avatar}
-                      fallback={group.name.charAt(0)}
-                      size="4xl"
+                <div className="relative mt-2 sm:mt-4">
+                  <AvatarDisplay
+                    avatar={group.avatar}
+                    fallback={group.name.charAt(0)}
+                    size="4xl"
+                    className={cn(
+                      "relative z-10 h-24 w-24 bg-white shadow-md ring-[4px] transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none motion-reduce:transform-none sm:h-28 sm:w-28",
+                    )}
+                    style={{ color: group.color, borderColor: `${group.color}40`, outlineColor: group.color }}
+                  />
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+                    <AdventurePointsBadge
+                      points={group.score || 0}
                       className={cn(
-                        "relative z-10 h-24 w-24 bg-white shadow-md ring-[4px] transition-transform duration-500 group-hover/avatar:scale-105 motion-reduce:transition-none motion-reduce:transform-none sm:h-28 sm:w-28",
+                        "scale-90 transition-transform group-hover:scale-100 motion-reduce:transition-none",
+                        displayMode && "scale-100",
                       )}
-                      style={{ color: group.color, borderColor: `${group.color}40`, outlineColor: group.color }}
                     />
-                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
-                      <AdventurePointsBadge
-                        points={group.score || 0}
-                        className={cn(
-                          "scale-90 transition-transform group-hover/avatar:scale-100 motion-reduce:transition-none",
-                          displayMode && "scale-100",
-                        )}
-                      />
-                    </div>
                   </div>
-                  <div className="mt-5 w-full px-1 text-center">
-                    <div className="truncate text-sm font-black tracking-wide text-emerald-950 transition-colors group-hover/avatar:text-emerald-700 motion-reduce:transition-none">
-                      {group.name}
-                    </div>
-                    <div className="mt-1 text-[10px] font-bold text-emerald-900/50">
-                      {group.members.length} أعضاء
-                    </div>
+                </div>
+                <div className="mt-4 w-full px-1">
+                  <div className="truncate text-sm font-black tracking-wide text-emerald-950 transition-colors group-hover:text-emerald-700 motion-reduce:transition-none">
+                    {group.name}
                   </div>
-                </button>
-              </div>
+                  <div className="mt-1 text-[11px] font-bold text-emerald-900/50">
+                    {group.members.length} أعضاء
+                  </div>
+                </div>
+              </button>
             ))}
             {(groupsData?.groups ?? []).length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-24 text-emerald-900/40 space-y-4">
