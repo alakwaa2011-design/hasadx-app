@@ -471,6 +471,14 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       INSERT INTO students(name,teacher_id,student_class,grade_level)
       VALUES ('إعادة تسمية',${teacherId},${oldName},${oldName}) RETURNING id
     `)).rows[0].id);
+    const legacyStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,grade_level)
+      VALUES ('سجل قديم',${teacherId},${oldName},NULL) RETURNING id
+    `)).rows[0].id);
+    const otherClassStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,grade_level)
+      VALUES ('صف مختلف',${teacherId},'صف آخر','صف آخر') RETURNING id
+    `)).rows[0].id);
     const manual = await request(teacherApp()).post("/api/classroom-rewards/grants")
       .send({className:oldName,studentIds:[renameStudent],typeId:rewardTypeId,idempotencyKey:`rename-manual:${nonce}`});
     expect(manual.status).toBe(201);
@@ -502,8 +510,17 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     const goals = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(newName)}/goals`);
     expect(goals.body.goals[0]).toMatchObject({id:goal.body.id,currentPoints:7});
     const classDetail = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(newName)}`);
-    expect(classDetail.body.students[0]).toMatchObject({id:renameStudent});
-    expect(classDetail.body.students[0].lastRewardAt).not.toBeNull();
+    expect(classDetail.body.students).toEqual(expect.arrayContaining([
+      expect.objectContaining({id:renameStudent}),
+      expect.objectContaining({id:legacyStudent}),
+    ]));
+    expect(classDetail.body.students.find((student: any) => student.id === renameStudent).lastRewardAt).not.toBeNull();
+    expect((await db.execute(sql`
+      SELECT student_class,grade_level FROM students WHERE id=${legacyStudent}
+    `)).rows[0]).toMatchObject({student_class:newName,grade_level:newName});
+    expect((await db.execute(sql`
+      SELECT student_class,grade_level FROM students WHERE id=${otherClassStudent}
+    `)).rows[0]).toMatchObject({student_class:"صف آخر",grade_level:"صف آخر"});
     expect((await db.execute(sql`
       SELECT class_name_snapshot FROM classroom_reward_transactions
       WHERE teacher_id=${teacherId} AND idempotency_key=${`rename-legacy:${nonce}`} AND teacher_class_id IS NULL

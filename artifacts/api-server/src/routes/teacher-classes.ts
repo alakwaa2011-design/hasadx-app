@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, teacherClassesTable, studentsTable } from "@workspace/db";
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 import { featureAccess } from "@workspace/billing";
 
 const router: IRouter = Router();
@@ -102,7 +102,13 @@ router.patch("/teacher/classes/rename", requireAuth, async (req: any, res) => {
         `);
         await tx.update(studentsTable)
           .set({ gradeLevel: newName, studentClass: newName })
-          .where(and(eq(studentsTable.teacherId, teacherId), eq(studentsTable.gradeLevel, oldName)));
+          .where(and(
+            eq(studentsTable.teacherId, teacherId),
+            or(
+              eq(studentsTable.studentClass, oldName),
+              eq(studentsTable.gradeLevel, oldName),
+            ),
+          ));
       });
     } catch (error: any) {
       if (error?.message === "class_not_found") return res.status(404).json({ message: "الصف غير موجود" });
