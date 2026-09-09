@@ -21,6 +21,21 @@ export interface RewardRule extends RewardRuleInput {
   updatedAt?: string;
 }
 
+export interface RewardGroupMember {
+  studentId: number;
+  name: string;
+  avatar?: string | null;
+}
+
+export interface RewardGroup {
+  id: number;
+  name: string;
+  description?: string | null;
+  color: string;
+  sortOrder: number;
+  members: RewardGroupMember[];
+}
+
 const fetcher = async (url: string, options?: RequestInit) => {
   const res = await fetch(`${API_BASE}${url}`, {
     ...options,
@@ -49,6 +64,54 @@ export const useGetClassRewards = (className?: string) => {
     queryKey: ["classroom-rewards", "classes", className],
     queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}`),
     enabled: !!className,
+  });
+};
+
+export const useGetRewardGroups = (className?: string) => {
+  return useQuery<{ groups: RewardGroup[] }>({
+    queryKey: ["classroom-rewards", "groups", className],
+    queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}/groups`),
+    enabled: !!className,
+  });
+};
+
+const invalidateGroups = (qc: ReturnType<typeof useQueryClient>, className: string) => {
+  qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", className] });
+};
+
+export const useCreateRewardGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, ...data }: { className: string; name: string; description?: string | null; color: string; sortOrder?: number; studentIds?: number[] }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/groups`, { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => invalidateGroups(qc, variables.className),
+  });
+};
+
+export const useUpdateRewardGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, groupId, ...data }: { className: string; groupId: number; name?: string; description?: string | null; color?: string; sortOrder?: number; studentIds?: number[] }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/groups/${groupId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => invalidateGroups(qc, variables.className),
+  });
+};
+
+export const useReplaceRewardGroupMembers = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, groupId, studentIds }: { className: string; groupId: number; studentIds: number[] }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/groups/${groupId}/members`, { method: "PUT", body: JSON.stringify({ studentIds }) }),
+    onSuccess: (_, variables) => invalidateGroups(qc, variables.className),
+  });
+};
+
+export const useDeleteRewardGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, groupId }: { className: string; groupId: number }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/groups/${groupId}`, { method: "DELETE" }),
+    onSuccess: (_, variables) => invalidateGroups(qc, variables.className),
   });
 };
 

@@ -50,6 +50,16 @@ const balanceAdjustmentInput = z.object({
   reason: z.string().trim().min(2).max(200),
   idempotencyKey: requestKey,
 }).strict();
+const groupInput = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(160).nullable().optional(),
+  color: z.string().refine((v) => COLORS.has(v), "invalid color"),
+  sortOrder: z.number().int().min(0).max(10000).optional(),
+  studentIds: z.array(z.number().int().positive()).max(500).optional(),
+}).strict();
+const groupMembersInput = z.object({
+  studentIds: z.array(z.number().int().positive()).max(500),
+}).strict();
 const ruleInput = z.object({
   name: z.string().trim().min(1).max(100),
   sourceType: z.enum(["assignment_submission", "kids_activity_completion", "game_history"]),
@@ -175,7 +185,7 @@ async function classStudents(teacherId: number, className: string) {
     LEFT JOIN student_accounts a ON a.id=s.student_account_id
     LEFT JOIN kids_profiles k ON k.student_account_id=s.student_account_id
     LEFT JOIN classroom_reward_balances b ON b.teacher_id=${teacherId} AND b.student_id=s.id
-    WHERE s.teacher_id=${teacherId} AND (s.student_class=${className} OR s.grade_level=${className})
+    WHERE s.teacher_id=${teacherId} AND (s.student_class=${className} OR (s.student_class IS NULL AND s.grade_level=${className}))
     GROUP BY s.id,s.name,s.avatar,a.avatar,k.avatar_key ORDER BY s.name
   `));
 }
@@ -192,6 +202,141 @@ router.get("/classroom-rewards/classes/:className/students", async (req: any, re
   const teacherId = teacher(req, res); if (!teacherId) return;
   const name = validateClassName(req.params.className); if (!name) return res.status(400).json({ message: "اسم الصف غير صالح" });
   res.json({ students: await classStudents(teacherId, name) });
+});
+
+router.get("/classroom-rewards/classes/:className/groups", async (req: any, res) => {
+  const teacherId = teacher(req, res); if (!teacherId) return;
+  const className = validateClassName(req.params.className); if (!className) return res.status(400).json({ message: "اسم الصف غير صالح" });
+  const classRow = await ownedClass(teacherId, className); if (!classRow) return res.status(404).json({ message: "الصف غير موجود" });
+  const groups = resultRows(await db.execute(sql`SELECT id,name,description,color,sort_order FROM classroom_reward_groups WHERE teacher_id=${teacherId} AND teacher_class_id=${classRow.id} ORDER BY sort_order,name,id`));
+  if (!groups.length) return res.json({ groups: [] });
+  const groupIds = groups.map((group) => Number(group.id));
+  const members = resultRows(await db.execute(sql`
+    SELECT gm.group_id,gm.student_id,s.name,COALESCE(s.avatar,a.avatar,k.avatar_key,NULL) avatar
+    FROM classroom_reward_group_members gm
+    JOIN students s ON s.id=gm.student_id AND s.teacher_id=${teacherId}
+    LEFT JOIN student_accounts a ON a.id=s.student_account_id
+    LEFT JOIN kids_profiles k ON k.student_account_id=s.student_account_id
+    WHERE gm.teacher_id=${teacherId} AND gm.group_id IN (${sql.join(groupIds.map((id) => sql`${id}`), sql`,`)})
+    ORDER BY s.name
+  `));
+  res.json({
+    groups: groups.map((group) => ({
+      id: Number(group.id),
+      name: group.name,
+      description: group.description,
+      color: group.color,
+      sortOrder: Number(group.sort_order),
+      members: members.filter((member) => Number(member.group_id) === Number(group.id)).map((member) => ({
+        studentId: Number(member.student_id),
+        name: member.name,
+        avatar: member.avatar,
+      })),
+    })),
+  });
+});
+
+router.post("/classroom-rewards/classes/:className/groups", async (req: any, res) => {
+  const teacherId = teacher(req, res); if (!teacherId) return;
+  const className = validateClassName(req.params.className); if (!className) return res.status(400).json({ message: "اسم الصف غير صالح" });
+  const parsed = groupInput.safeParse(req.body); if (!parsed.success) return res.status(400).json({ message: "بيانات المجموعة غير صالحة" });
+  const d = parsed.data;
+  const ids = d.studentIds ?? [];
+  if (new Set(ids).size !== ids.length) return res.status(400).json({ message: "لا يمكن تكرار الطالب في المجموعة نفسها" });
+  try {
+    const row = await db.transaction(async (tx) => {
+      const classRow = resultRows(await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${className} FOR UPDATE`))[0];
+      if (!classRow) throw new Error("class_not_found");
+      const students = ids.length ? resultRows(await tx.execute(sql`SELECT id FROM students WHERE teacher_id=${teacherId} AND id IN (${sql.join(ids.map((id) => sql`${id}`), sql`,`)}) AND (student_class=${className} OR (student_class IS NULL AND grade_level=${className})) FOR UPDATE`)) : [];
+      if (students.length !== ids.length) throw new Error("invalid_students");
+      const created = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_groups (teacher_id,teacher_class_id,name,description,color,sort_order) VALUES (${teacherId},${classRow.id},${d.name},${d.description ?? null},${d.color},${d.sortOrder ?? 0}) RETURNING *`))[0];
+      for (const student of students) await tx.execute(sql`INSERT INTO classroom_reward_group_members (teacher_id,group_id,student_id) VALUES (${teacherId},${created.id},${student.id})`);
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,detail) VALUES (${teacherId},'create','reward_group',${created.id},${className})`);
+      return created;
+    });
+    res.status(201).json({ id:Number(row.id),name:row.name,description:row.description,color:row.color,sortOrder:Number(row.sort_order),members:[] });
+  } catch (error: any) {
+    if (error?.message === "class_not_found") return res.status(404).json({ message: "الصف غير موجود" });
+    if (error?.message === "invalid_students") return res.status(403).json({ message: "كل الطلاب يجب أن يكونوا ضمن الصف نفسه" });
+    const duplicate = error?.code === "23505" || error?.cause?.code === "23505";
+    res.status(duplicate ? 409 : 500).json({ message: duplicate ? "اسم المجموعة مستخدم في هذا الصف" : "تعذر إنشاء المجموعة" });
+  }
+});
+
+router.patch("/classroom-rewards/classes/:className/groups/:groupId", async (req: any, res) => {
+  const teacherId = teacher(req, res), groupId = numericId(req.params.groupId); if (!teacherId) return;
+  if (!groupId) return res.status(400).json({ message: "معرف المجموعة غير صالح" });
+  const className = validateClassName(req.params.className); if (!className) return res.status(400).json({ message: "اسم الصف غير صالح" });
+  const parsed = groupInput.partial().safeParse(req.body); if (!parsed.success || !Object.keys(parsed.data).length) return res.status(400).json({ message: "بيانات المجموعة غير صالحة" });
+  const d = parsed.data;
+  const ids = d.studentIds;
+  if (ids && new Set(ids).size !== ids.length) return res.status(400).json({ message: "لا يمكن تكرار الطالب في المجموعة نفسها" });
+  try {
+    const row = await db.transaction(async (tx) => {
+      const classRow = resultRows(await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${className} FOR UPDATE`))[0];
+      if (!classRow) throw new Error("class_not_found");
+      const old = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_groups WHERE id=${groupId} AND teacher_id=${teacherId} AND teacher_class_id=${classRow.id} FOR UPDATE`))[0];
+      if (!old) throw new Error("group_not_found");
+      const students = ids?.length ? resultRows(await tx.execute(sql`SELECT id FROM students WHERE teacher_id=${teacherId} AND id IN (${sql.join(ids.map((id) => sql`${id}`), sql`,`)}) AND (student_class=${className} OR (student_class IS NULL AND grade_level=${className})) FOR UPDATE`)) : [];
+      if (ids && students.length !== ids.length) throw new Error("invalid_students");
+      const updated = resultRows(await tx.execute(sql`UPDATE classroom_reward_groups SET name=${d.name ?? old.name},description=${d.description !== undefined ? d.description : old.description},color=${d.color ?? old.color},sort_order=${d.sortOrder ?? old.sort_order},updated_at=NOW() WHERE id=${groupId} RETURNING *`))[0];
+      if (ids) {
+        await tx.execute(sql`DELETE FROM classroom_reward_group_members WHERE teacher_id=${teacherId} AND group_id=${groupId}`);
+        for (const student of students) await tx.execute(sql`INSERT INTO classroom_reward_group_members (teacher_id,group_id,student_id) VALUES (${teacherId},${groupId},${student.id})`);
+      }
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,detail) VALUES (${teacherId},'update','reward_group',${groupId},${className})`);
+      return updated;
+    });
+    res.json({ id:Number(row.id),name:row.name,description:row.description,color:row.color,sortOrder:Number(row.sort_order) });
+  } catch (error: any) {
+    if (error?.message === "class_not_found") return res.status(404).json({ message: "الصف غير موجود" });
+    if (error?.message === "group_not_found") return res.status(404).json({ message: "المجموعة غير موجودة" });
+    if (error?.message === "invalid_students") return res.status(403).json({ message: "كل الطلاب يجب أن يكونوا ضمن الصف نفسه" });
+    const duplicate = error?.code === "23505" || error?.cause?.code === "23505";
+    res.status(duplicate ? 409 : 500).json({ message: duplicate ? "اسم المجموعة مستخدم في هذا الصف" : "تعذر تحديث المجموعة" });
+  }
+});
+
+router.put("/classroom-rewards/classes/:className/groups/:groupId/members", async (req: any, res) => {
+  const teacherId = teacher(req, res), groupId = numericId(req.params.groupId); if (!teacherId) return;
+  if (!groupId) return res.status(400).json({ message: "معرف المجموعة غير صالح" });
+  const className = validateClassName(req.params.className); if (!className) return res.status(400).json({ message: "اسم الصف غير صالح" });
+  const parsed = groupMembersInput.safeParse(req.body); if (!parsed.success) return res.status(400).json({ message: "قائمة الطلاب غير صالحة" });
+  const ids = parsed.data.studentIds;
+  if (new Set(ids).size !== ids.length) return res.status(400).json({ message: "لا يمكن تكرار الطالب في المجموعة نفسها" });
+  try {
+    const members = await db.transaction(async (tx) => {
+      const classRow = resultRows(await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${className} FOR UPDATE`))[0];
+      if (!classRow) throw new Error("class_not_found");
+      const group = resultRows(await tx.execute(sql`SELECT id FROM classroom_reward_groups WHERE id=${groupId} AND teacher_id=${teacherId} AND teacher_class_id=${classRow.id} FOR UPDATE`))[0];
+      if (!group) throw new Error("group_not_found");
+      const students = ids.length ? resultRows(await tx.execute(sql`SELECT id,name FROM students WHERE teacher_id=${teacherId} AND id IN (${sql.join(ids.map((id) => sql`${id}`), sql`,`)}) AND (student_class=${className} OR (student_class IS NULL AND grade_level=${className})) FOR UPDATE`)) : [];
+      if (students.length !== ids.length) throw new Error("invalid_students");
+      await tx.execute(sql`DELETE FROM classroom_reward_group_members WHERE teacher_id=${teacherId} AND group_id=${groupId}`);
+      for (const student of students) {
+        await tx.execute(sql`INSERT INTO classroom_reward_group_members (teacher_id,group_id,student_id) VALUES (${teacherId},${groupId},${student.id})`);
+      }
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,detail) VALUES (${teacherId},'replace_members','reward_group',${groupId},${String(ids.length)})`);
+      return students.map((student) => ({ studentId:Number(student.id),name:student.name }));
+    });
+    res.json({ groupId, members });
+  } catch (error: any) {
+    if (error?.message === "class_not_found") return res.status(404).json({ message: "الصف غير موجود" });
+    if (error?.message === "group_not_found") return res.status(404).json({ message: "المجموعة غير موجودة" });
+    if (error?.message === "invalid_students") return res.status(403).json({ message: "كل الطلاب يجب أن يكونوا ضمن الصف نفسه" });
+    res.status(500).json({ message: "تعذر حفظ طلاب المجموعة" });
+  }
+});
+
+router.delete("/classroom-rewards/classes/:className/groups/:groupId", async (req: any, res) => {
+  const teacherId = teacher(req, res), groupId = numericId(req.params.groupId); if (!teacherId) return;
+  if (!groupId) return res.status(400).json({ message: "معرف المجموعة غير صالح" });
+  const className = validateClassName(req.params.className); if (!className) return res.status(400).json({ message: "اسم الصف غير صالح" });
+  const classRow = await ownedClass(teacherId, className); if (!classRow) return res.status(404).json({ message: "الصف غير موجود" });
+  const deleted = resultRows(await db.execute(sql`DELETE FROM classroom_reward_groups WHERE id=${groupId} AND teacher_id=${teacherId} AND teacher_class_id=${classRow.id} RETURNING id`))[0];
+  if (!deleted) return res.status(404).json({ message: "المجموعة غير موجودة" });
+  await db.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,detail) VALUES (${teacherId},'delete','reward_group',${groupId},${className})`);
+  res.json({ deleted: true });
 });
 
 router.post("/classroom-rewards/grants", async (req: any, res) => {
@@ -232,7 +377,7 @@ router.post("/classroom-rewards/grants", async (req: any, res) => {
         type = inserted[0];
         await tx.execute(sql`UPDATE classroom_reward_batches SET reward_type_id=${type.id} WHERE id=${createdBatch.id}`);
       }
-      const students = resultRows(await tx.execute(sql`SELECT id,name FROM students WHERE teacher_id=${teacherId} AND id IN (${sql.join(d.studentIds.map((v) => sql`${v}`), sql`,`)}) AND (student_class=${d.className} OR grade_level=${d.className}) FOR UPDATE`));
+      const students = resultRows(await tx.execute(sql`SELECT id,name FROM students WHERE teacher_id=${teacherId} AND id IN (${sql.join(d.studentIds.map((v) => sql`${v}`), sql`,`)}) AND (student_class=${d.className} OR (student_class IS NULL AND grade_level=${d.className})) FOR UPDATE`));
       // Exact cardinality makes cross-owner IDs, duplicates, and other-class IDs reject the entire batch.
       if (students.length !== d.studentIds.length || new Set(d.studentIds).size !== d.studentIds.length) throw new Error("invalid_students");
       const output: any[] = [];

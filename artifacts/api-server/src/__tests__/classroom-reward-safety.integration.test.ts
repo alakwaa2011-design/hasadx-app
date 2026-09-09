@@ -59,6 +59,11 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       "utf8",
     );
     await db.execute(sql.raw(avatarMigration));
+    const rewardGroupsMigration = readFileSync(
+      new URL("../../../../scripts/migrations/2026-09-09-classroom-reward-groups.sql", import.meta.url),
+      "utf8",
+    );
+    await db.execute(sql.raw(rewardGroupsMigration));
     await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS kids_profiles (
         id SERIAL PRIMARY KEY,
@@ -82,6 +87,7 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     `));
     teacherId=Number((await db.execute(sql`INSERT INTO teachers(name,email,password_hash) VALUES (${"Reward "+nonce},${`reward_${nonce}@test.invalid`},'x') RETURNING id`)).rows[0].id);
     otherTeacherId=Number((await db.execute(sql`INSERT INTO teachers(name,email,password_hash) VALUES (${"Other "+nonce},${`other_${nonce}@test.invalid`},'x') RETURNING id`)).rows[0].id);
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},'A'),(${teacherId},'B')`);
     accountId=Number((await db.execute(sql`INSERT INTO student_accounts(username,display_name,password_hash) VALUES (${`reward_${nonce}`},'طالب','x') RETURNING id`)).rows[0].id);
     studentId=Number((await db.execute(sql`INSERT INTO students(name,teacher_id,student_account_id,student_class) VALUES ('طالب',${teacherId},${accountId},'A') RETURNING id`)).rows[0].id);
     otherStudentId=Number((await db.execute(sql`INSERT INTO students(name,teacher_id,student_class) VALUES ('آخر',${teacherId},'B') RETURNING id`)).rows[0].id);
@@ -240,6 +246,44 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       .post(`/api/classroom-rewards/students/${otherStudentId}/balance-adjustments`)
       .send({ points: 1, reason: "غير مصرح", idempotencyKey: `denied:${nonce}` });
     expect(denied.status).toBe(404);
+  });
+
+  it("creates teacher-owned reward groups and replaces only same-class members", async () => {
+    const created = await request(teacherApp())
+      .post("/api/classroom-rewards/classes/A/groups")
+      .send({ name: "رواد القراءة", description: "تحديات القراءة", color: "#3b82f6", sortOrder: 0, studentIds: [studentId] });
+    expect(created.status).toBe(201);
+    const groupId = Number(created.body.id);
+
+    const savedMembers = await request(teacherApp())
+      .put(`/api/classroom-rewards/classes/A/groups/${groupId}/members`)
+      .send({ studentIds: [studentId] });
+    expect(savedMembers.status).toBe(200);
+    expect(savedMembers.body.members).toEqual([{ studentId, name: "طالب" }]);
+
+    const wrongClass = await request(teacherApp())
+      .patch(`/api/classroom-rewards/classes/A/groups/${groupId}`)
+      .send({ name: "اسم يجب ألا يحفظ", studentIds: [studentId, otherStudentId] });
+    expect(wrongClass.status).toBe(403);
+
+    const listed = await request(teacherApp()).get("/api/classroom-rewards/classes/A/groups");
+    expect(listed.status).toBe(200);
+    expect(listed.body.groups[0]).toMatchObject({
+      id: groupId,
+      name: "رواد القراءة",
+      color: "#3b82f6",
+      members: [{ studentId, name: "طالب" }],
+    });
+
+    const denied = await request(teacherApp(otherTeacherId))
+      .patch(`/api/classroom-rewards/classes/A/groups/${groupId}`)
+      .send({ name: "مجموعة مسروقة" });
+    expect(denied.status).toBe(404);
+
+    const deleted = await request(teacherApp())
+      .delete(`/api/classroom-rewards/classes/A/groups/${groupId}`);
+    expect(deleted.status).toBe(200);
+    expect((await request(teacherApp()).get("/api/classroom-rewards/classes/A/groups")).body.groups).toEqual([]);
   });
 
   it("maps question-bank sessions by teacher/account and rejects spoofed or wrong-teacher identities",async()=>{

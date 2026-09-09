@@ -36,6 +36,34 @@ export const classroomRewardBalancesTable = pgTable("classroom_reward_balances",
   studentIndex: index("classroom_reward_balances_student_idx").on(t.teacherId, t.studentId),
 }));
 
+/** Teacher-defined organizational groups inside one rewards class. */
+export const classroomRewardGroupsTable = pgTable("classroom_reward_groups", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  teacherClassId: integer("teacher_class_id").notNull().references(() => teacherClassesTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  classNameUnique: uniqueIndex("classroom_reward_groups_class_name_uq").on(t.teacherId, t.teacherClassId, t.name),
+  idTeacherUnique: uniqueIndex("classroom_reward_groups_id_teacher_uq").on(t.id, t.teacherId),
+  classIndex: index("classroom_reward_groups_class_idx").on(t.teacherId, t.teacherClassId),
+}));
+
+export const classroomRewardGroupMembersTable = pgTable("classroom_reward_group_members", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => classroomRewardGroupsTable.id, { onDelete: "cascade" }),
+  studentId: integer("student_id").notNull().references(() => studentsTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  groupStudentUnique: uniqueIndex("classroom_reward_group_members_group_student_uq").on(t.groupId, t.studentId),
+  teacherStudentIndex: index("classroom_reward_group_members_teacher_student_idx").on(t.teacherId, t.studentId),
+}));
+
 export const classroomRewardBatchesTable = pgTable("classroom_reward_batches", {
   id: serial("id").primaryKey(),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),

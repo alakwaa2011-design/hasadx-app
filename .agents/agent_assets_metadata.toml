@@ -1557,3 +1557,10 @@ mtime_ms = 1788881542745
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/b6ae34f9-5acf-417c-b97e-90807060b96a/f859f535-e312-413c-84ef-d1e6bd373285"
 storage_version_token = "1788881604406275"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "TGIGKmFDW6JYl8dj6qdrs"
+uri = "file://artifacts/homework-app/public/audio/rewards/hasaad-coin-celebration.mp3"
+type = "audio"
+title = "premium reward coin celebration"
+description = "Generated sound effect: Premium educational app reward sound. Three bright metallic gold coin chimes in a satisfying ascending rhythm, then a warm sparkling success flourish with a very short subtle …"

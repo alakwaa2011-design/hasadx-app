@@ -6,16 +6,18 @@ import {
   useGetClassRewards,
   useGetRewardTypes,
   useGrantRewards,
-  useGetTeacherClasses
+  useGetTeacherClasses,
+  useGetRewardGroups,
 } from "./api";
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
 import { BalanceAdjustmentDialog, StudentControlCenter } from "./student-control-center";
+import { RewardGroupChip, RewardGroupsDialog } from "./groups";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, Info, Map, Sparkles, Orbit, SlidersHorizontal
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, Info, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -75,6 +77,7 @@ export default function RewardsPage() {
   }, [currentClass, classesList, setLocation]);
 
   const { data: classData, isLoading: loadingStudents } = useGetClassRewards(currentClass);
+  const { data: groupsData } = useGetRewardGroups(currentClass);
   const { data: rewardTypesData } = useGetRewardTypes();
   const grantMutation = useGrantRewards();
 
@@ -82,9 +85,24 @@ export default function RewardsPage() {
   const bulkGrantPendingRef = useRef(false);
   const singleGrantPendingRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const rewardSoundBufferRef = useRef<AudioBuffer | null>(null);
 
   useEffect(() => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioCtxRef.current = ctx;
+    let cancelled = false;
+    fetch(`${import.meta.env.BASE_URL}audio/rewards/hasaad-coin-celebration.mp3`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Reward sound failed to load (${response.status})`);
+        return response.arrayBuffer();
+      })
+      .then((data) => ctx.decodeAudioData(data))
+      .then((buffer) => {
+        if (!cancelled) rewardSoundBufferRef.current = buffer;
+      })
+      .catch((error) => console.warn("[Rewards] Premium celebration sound unavailable", error));
     return () => {
+      cancelled = true;
       if (audioCtxRef.current) {
         audioCtxRef.current.close().catch(() => {});
       }
@@ -113,15 +131,21 @@ export default function RewardsPage() {
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   const [singleGrantStudentId, setSingleGrantStudentId] = useState<number | null>(null);
   const [balanceAdjustmentStudentId, setBalanceAdjustmentStudentId] = useState<number | null>(null);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
   const students = useMemo(() => {
     if (!classData?.students) return [];
-    return classData.students.filter((s: any) => 
-      s.name.toLowerCase().includes(search.toLowerCase())
+    const activeGroup = groupsData?.groups?.find((group) => group.id === activeGroupId);
+    const memberIds = activeGroup ? new Set(activeGroup.members.map((member) => member.studentId)) : null;
+    return classData.students.filter((s: any) =>
+      (!memberIds || memberIds.has(s.id)) && s.name.toLowerCase().includes(search.toLowerCase())
     );
-  }, [classData, search]);
+  }, [activeGroupId, classData, groupsData, search]);
+
+  const activeGroup = groupsData?.groups?.find((group) => group.id === activeGroupId) ?? null;
 
   const singleGrantStudent = useMemo(
     () => classData?.students?.find((student: any) => student.id === singleGrantStudentId) ?? null,
@@ -134,7 +158,31 @@ export default function RewardsPage() {
 
   useEffect(() => {
     setSingleGrantStudentId(null);
+    setActiveGroupId(null);
+    setSelectedIds(new Set());
   }, [currentClass]);
+
+  useEffect(() => {
+    if (activeGroupId !== null && !groupsData?.groups?.some((group) => group.id === activeGroupId)) {
+      setActiveGroupId(null);
+    }
+  }, [activeGroupId, groupsData]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [activeGroupId]);
+
+  useEffect(() => {
+    const eligibleIds = new Set(
+      activeGroup
+        ? activeGroup.members.map((member) => member.studentId)
+        : (classData?.students ?? []).map((student: any) => student.id),
+    );
+    setSelectedIds((current) => {
+      const next = new Set([...current].filter((id) => eligibleIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [activeGroup, classData]);
 
   const activeRewardTypes = useMemo(() => {
     if (!rewardTypesData) return [];
@@ -160,18 +208,42 @@ export default function RewardsPage() {
     if (isMuted || !audioCtxRef.current) return;
     try {
       const ctx = audioCtxRef.current;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {}
+      const buffer = rewardSoundBufferRef.current;
+      if (buffer) {
+        const source = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        source.buffer = buffer;
+        gain.gain.value = 0.82;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.start();
+        return;
+      }
+
+      // Polished lightweight fallback while the premium audio finishes loading.
+      [0, 0.09, 0.19].forEach((delay, index) => {
+        const start = ctx.currentTime + delay;
+        const gain = ctx.createGain();
+        const fundamental = ctx.createOscillator();
+        const shimmer = ctx.createOscillator();
+        fundamental.type = "sine";
+        shimmer.type = "sine";
+        fundamental.frequency.value = [880, 1108, 1320][index];
+        shimmer.frequency.value = fundamental.frequency.value * 2.01;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.18, start + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+        fundamental.connect(gain);
+        shimmer.connect(gain);
+        gain.connect(ctx.destination);
+        fundamental.start(start);
+        shimmer.start(start);
+        fundamental.stop(start + 0.43);
+        shimmer.stop(start + 0.43);
+      });
+    } catch (error) {
+      console.warn("[Rewards] Could not play celebration sound", error);
+    }
   };
 
   const getGrantSignature = (classN: string, studentIds: number[], typeId?: string, customReason?: string, customPoints?: number) => {
@@ -181,11 +253,22 @@ export default function RewardsPage() {
 
   const handleGrant = (type?: any, customData?: { reason: string, points: number }) => {
     if (selectedIds.size === 0 || !currentClass || bulkGrantPendingRef.current || celebration) return;
+    const eligibleIds = new Set(
+      activeGroup
+        ? activeGroup.members.map((member) => member.studentId)
+        : (classData?.students ?? []).map((student: any) => student.id),
+    );
+    const validSelectedIds = [...selectedIds].filter((id) => eligibleIds.has(id));
+    if (!validSelectedIds.length) {
+      toast.error("لم يعد هناك طلاب صالحون ضمن هذا الاختيار");
+      setSelectedIds(new Set());
+      return;
+    }
     bulkGrantPendingRef.current = true;
 
     resumeAudioContext();
 
-    const signature = getGrantSignature(currentClass, Array.from(selectedIds), type?.id, customData?.reason, customData?.points);
+    const signature = getGrantSignature(currentClass, validSelectedIds, type?.id, customData?.reason, customData?.points);
     let key: string = crypto.randomUUID();
     if (grantIntentRef.current?.signature === signature) {
       key = grantIntentRef.current.key;
@@ -195,7 +278,7 @@ export default function RewardsPage() {
 
     const payload = {
       className: currentClass,
-      studentIds: Array.from(selectedIds),
+      studentIds: validSelectedIds,
       typeId: type?.id,
       customReason: customData?.reason,
       customPoints: customData?.points,
@@ -317,7 +400,24 @@ export default function RewardsPage() {
 
         {/* Toolbar */}
         {!displayMode && (
-          <div className="flex items-center gap-3">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setGroupsOpen(true)}
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">
+                <UsersRound size={15} /> إدارة المجموعات
+              </button>
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+              <button type="button" onClick={() => setActiveGroupId(null)}
+                className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
+                كل الطلاب
+              </button>
+              {(groupsData?.groups ?? []).map((group) => (
+                <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
+                  onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
+              ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
             <div className="relative flex-1 group">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-900/40 group-focus-within:text-emerald-600 transition-colors" size={18} />
               <input
@@ -328,16 +428,24 @@ export default function RewardsPage() {
                 className="w-full pl-4 pr-11 py-3 rounded-2xl border-2 border-emerald-100 bg-white text-sm font-bold text-emerald-950 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 transition-all shadow-sm"
               />
             </div>
+            {activeGroup && (
+              <button type="button" onClick={() => setSelectedIds(new Set(activeGroup.members.map((member) => member.studentId)))}
+                className="hidden items-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-black text-white shadow-sm sm:flex"
+                style={{ backgroundColor: activeGroup.color, borderColor: activeGroup.color }}>
+                <UsersRound size={18} /> تحديد المجموعة
+              </button>
+            )}
             <button 
               onClick={toggleAll}
               className="flex items-center gap-2 px-5 py-3 rounded-2xl border-2 border-emerald-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 text-sm font-black text-emerald-950 transition-all shrink-0 shadow-sm"
             >
               {selectedIds.size === students.length && students.length > 0 ? (
-                <><CheckSquare size={18} className="text-amber-500" /> إلغاء الكل</>
+                <><CheckSquare size={18} className="text-amber-500" /> إلغاء التحديد</>
               ) : (
-                <><Square size={18} className="text-emerald-900/40" /> تحديد الكل</>
+                <><Square size={18} className="text-emerald-900/40" /> {activeGroup ? "تحديد المجموعة" : "تحديد الكل"}</>
               )}
             </button>
+            </div>
           </div>
         )}
 
@@ -424,6 +532,17 @@ export default function RewardsPage() {
                     <div className="mt-5 w-full px-1 text-center">
                       <div className="truncate text-sm font-black tracking-wide text-emerald-950 transition-colors group-hover/avatar:text-emerald-700 motion-reduce:transition-none">
                       {student.name}
+                      </div>
+                      <div className="mt-1.5 flex min-h-5 flex-wrap items-center justify-center gap-1">
+                        {(groupsData?.groups ?? [])
+                          .filter((group) => group.members.some((member) => member.studentId === student.id))
+                          .slice(0, 2)
+                          .map((group) => (
+                            <span key={group.id} className="max-w-full truncate rounded-md border px-1.5 py-0.5 text-[9px] font-black"
+                              style={{ borderColor: `${group.color}55`, backgroundColor: `${group.color}12`, color: group.color }}>
+                              {group.name}
+                            </span>
+                          ))}
                       </div>
                     </div>
                   </button>
@@ -579,6 +698,12 @@ export default function RewardsPage() {
           currentBalance={balanceAdjustmentStudent.points || 0}
         />
       )}
+      <RewardGroupsDialog
+        open={groupsOpen}
+        onOpenChange={setGroupsOpen}
+        className={currentClass}
+        students={classData?.students ?? []}
+      />
     </Layout>
   );
 }

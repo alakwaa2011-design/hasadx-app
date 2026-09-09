@@ -174,6 +174,42 @@ async function runSchemaMigrations() {
       CREATE INDEX IF NOT EXISTS classroom_reward_transactions_category_created_idx ON classroom_reward_transactions(teacher_id,category_snapshot,created_at);
       CREATE INDEX IF NOT EXISTS classroom_reward_batches_class_idx ON classroom_reward_batches(teacher_id,teacher_class_id);
       CREATE INDEX IF NOT EXISTS classroom_reward_transactions_class_created_idx ON classroom_reward_transactions(teacher_id,teacher_class_id,created_at);
+      CREATE TABLE IF NOT EXISTS classroom_reward_groups (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        teacher_class_id INTEGER NOT NULL REFERENCES teacher_classes(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT,
+        color TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_groups_class_name_uq ON classroom_reward_groups(teacher_id,teacher_class_id,name);
+      CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_groups_id_teacher_uq ON classroom_reward_groups(id,teacher_id);
+      CREATE INDEX IF NOT EXISTS classroom_reward_groups_class_idx ON classroom_reward_groups(teacher_id,teacher_class_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS teacher_classes_id_teacher_reward_groups_uq ON teacher_classes(id,teacher_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS students_id_teacher_reward_groups_uq ON students(id,teacher_id);
+      CREATE TABLE IF NOT EXISTS classroom_reward_group_members (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES classroom_reward_groups(id) ON DELETE CASCADE,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_group_members_group_student_uq ON classroom_reward_group_members(group_id,student_id);
+      CREATE INDEX IF NOT EXISTS classroom_reward_group_members_teacher_student_idx ON classroom_reward_group_members(teacher_id,student_id);
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='classroom_reward_groups_class_owner_fk') THEN
+          ALTER TABLE classroom_reward_groups ADD CONSTRAINT classroom_reward_groups_class_owner_fk FOREIGN KEY (teacher_class_id,teacher_id) REFERENCES teacher_classes(id,teacher_id) NOT VALID;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='classroom_reward_group_members_group_owner_fk') THEN
+          ALTER TABLE classroom_reward_group_members ADD CONSTRAINT classroom_reward_group_members_group_owner_fk FOREIGN KEY (group_id,teacher_id) REFERENCES classroom_reward_groups(id,teacher_id) NOT VALID;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='classroom_reward_group_members_student_owner_fk') THEN
+          ALTER TABLE classroom_reward_group_members ADD CONSTRAINT classroom_reward_group_members_student_owner_fk FOREIGN KEY (student_id,teacher_id) REFERENCES students(id,teacher_id) NOT VALID;
+        END IF;
+      END $$;
       -- Do not deduplicate a conflicting partial deployment: unique-index creation
       -- must fail explicitly rather than silently merging or discarding ledger data.
       CREATE UNIQUE INDEX IF NOT EXISTS classroom_reward_types_owner_name_semantic_uq
