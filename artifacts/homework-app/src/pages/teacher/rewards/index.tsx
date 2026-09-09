@@ -61,6 +61,7 @@ export default function RewardsPage() {
   const grantMutation = useGrantRewards();
 
   const grantIntentRef = useRef<{ signature: string; key: string } | null>(null);
+  const singleGrantPendingRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -458,7 +459,8 @@ export default function RewardsPage() {
         student={singleGrantStudent}
         rewardTypes={activeRewardTypes}
         onGrant={(type, customData) => {
-          if (!singleGrantStudent || !currentClass) return;
+          if (!singleGrantStudent || !currentClass || singleGrantPendingRef.current) return;
+          singleGrantPendingRef.current = true;
           resumeAudioContext();
 
           const signature = getGrantSignature(currentClass, [singleGrantStudent.id], type?.id, customData?.reason, customData?.points);
@@ -487,7 +489,13 @@ export default function RewardsPage() {
               grantIntentRef.current = null;
               setSingleGrantStudentId(null);
             },
-            onError: (err) => toast.error(err.message || "حدث خطأ أثناء منح النقاط")
+            onError: (err) => {
+              singleGrantPendingRef.current = false;
+              toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+            },
+            onSettled: () => {
+              singleGrantPendingRef.current = false;
+            },
           });
         }}
         loading={grantMutation.isPending}

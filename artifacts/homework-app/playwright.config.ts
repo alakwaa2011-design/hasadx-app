@@ -144,6 +144,17 @@ export default defineConfig({
         ...chromiumLaunchOptions,
       },
     },
+    {
+      name: "desktop-rewards",
+      testMatch: /rewards-single-grant\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
   ],
   webServer: [
     {
