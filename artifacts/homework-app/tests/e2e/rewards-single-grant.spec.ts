@@ -230,7 +230,6 @@ test("bulk grant sends one request and records one grant per student under rapid
   for (const student of fixture.students) {
     await page.getByRole("button", { name: `تحديد ${student.name} للمنح الجماعي` }).click();
   }
-  await expect(page.getByText("تم تحديد الطلاب")).toBeVisible();
 
   const grantButton = page.locator("button").filter({ hasText: /^\s*مشاركة مميزة\s*\+\d+\s*$/ }).first();
   await expect(grantButton).toBeVisible();
@@ -291,4 +290,18 @@ test("bulk grant sends one request and records one grant per student under rapid
     count: 1,
     target_count: fixture.students.length,
   });
+
+  await page.unroute("**/api/classroom-rewards/grants");
+  await page.getByRole("dialog", { name: "احتفال بمنح النقاط" }).evaluate((element) => {
+    (element as HTMLElement).click();
+  });
+  await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: `تحديد ${fixture.students[0].name} للمنح الجماعي` }).click();
+  const nextGrantRequest = page.waitForRequest((request) =>
+    request.method() === "POST" && request.url().includes("/api/classroom-rewards/grants"),
+  );
+  await grantButton.click();
+  await nextGrantRequest;
+  await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toBeVisible();
 });

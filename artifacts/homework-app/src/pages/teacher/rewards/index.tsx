@@ -215,8 +215,10 @@ export default function RewardsPage() {
         toast.success(`تم منح ${pts} نقطة لـ ${payload.studentIds.length} طالب`);
       },
       onError: (err) => {
-        bulkGrantPendingRef.current = false;
         toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+      },
+      onSettled: () => {
+        bulkGrantPendingRef.current = false;
       },
     });
   };
