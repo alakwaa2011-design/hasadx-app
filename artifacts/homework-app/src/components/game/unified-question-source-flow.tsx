@@ -19,6 +19,7 @@ import {
 import { normalizeGameQuestion, type NormalizedGameQuestion } from "@/lib/normalize-game-question";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { getAiSourceTitle } from "@/lib/ai-source-title";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -41,6 +42,8 @@ export interface UnifiedQuestionSourceFlowProps {
   allowFillBlank?: boolean;
   minQuestions: number;
   maxQuestions: number;
+  /** Leaves the source menu through the caller's safe in-app route. */
+  onBackFromMenu?: () => void;
   onComplete: (data: {
     questions: Array<{
       text: string;
@@ -97,12 +100,12 @@ export function UnifiedQuestionSourceFlow({
   allowFillBlank = false,
   minQuestions,
   maxQuestions,
+  onBackFromMenu,
   onComplete,
 }: UnifiedQuestionSourceFlowProps) {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
-  const BackIcon = ar ? ChevronRight : ChevronLeft;
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const [viewState, setViewState] = useState<ViewState>("menu");
@@ -233,14 +236,11 @@ export function UnifiedQuestionSourceFlow({
   };
 
   const BackBtn = () => (
-    <button
-      type="button"
-      data-testid="button-back-question-source"
-      onClick={goBack}
-      className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 border border-transparent hover:border-border"
-    >
-      <BackIcon className="w-5 h-5 lg:w-6 lg:h-6" />
-    </button>
+    <GameFlowBackButton
+      onBack={goBack}
+      testId="button-back-question-source"
+      className="shrink-0"
+    />
   );
 
   // ─── Assignment Logic ───
@@ -804,6 +804,11 @@ export function UnifiedQuestionSourceFlow({
 
   return (
     <div className={cn("mx-auto w-full space-y-8 px-1 sm:px-3 lg:space-y-10 lg:px-6", tugPresentation ? "max-w-2xl" : "max-w-7xl")} dir={dir}>
+      {viewState === "menu" && onBackFromMenu && (
+        <div className={cn("mx-auto", tugPresentation ? "max-w-2xl" : "max-w-5xl")}>
+          <GameFlowBackButton onBack={onBackFromMenu} />
+        </div>
+      )}
       {/* Header & Step Indicator */}
       {header ?? (
         <div className="mx-auto mb-12 max-w-3xl text-center lg:mb-14">

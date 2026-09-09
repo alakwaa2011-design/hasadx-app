@@ -6,6 +6,7 @@ interface GameFlowBackButtonProps {
   onBack: () => void;
   label?: string;
   className?: string;
+  testId?: string;
 }
 
 /**
@@ -18,6 +19,7 @@ export function GameFlowBackButton({
   onBack,
   label,
   className,
+  testId,
 }: GameFlowBackButtonProps) {
   const { lang } = useI18n();
   const ar = lang === "ar";
@@ -26,6 +28,7 @@ export function GameFlowBackButton({
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onBack}
       aria-label={label || (ar ? "الرجوع خطوة" : "Go back one step")}
       className={cn(

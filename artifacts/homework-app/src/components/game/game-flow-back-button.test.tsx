@@ -51,7 +51,7 @@ const MULTI_STEP_BACK_CONTRACTS = [
   ["tug-create.tsx", ['setSetupStep("questions")', 'setLocation("/")']],
   ["wameeth-create.tsx", ['step === "mode" ? setStep("prepare") : setLocation("/")']],
   ["wheel-create.tsx", ['setupStep === "settings" ? returnToQuestions() : setLocation("/")']],
-  ["xo-create.tsx", ['setSetupStep("questions")', 'navigate("/")']],
+  ["xo-create.tsx", ['setSetupStep("questions")', 'useSmartBack("/games")']],
 ] as const;
 
 function gamePageSource(fileName: string) {
@@ -67,9 +67,18 @@ describe("game setup back-button contract", () => {
         'import { GameFlowBackButton } from "@/components/game/game-flow-back-button";',
       );
       expect(source).toMatch(/<GameFlowBackButton\b/);
-      expect(source).toMatch(/(?:setLocation|navigate)\("\/"\)/);
+      expect(source).toMatch(/(?:setLocation|navigate)\("\/"\)|useSmartBack\("\/games"\)/);
     },
   );
+
+  it("keeps prepared XO questions when returning from settings", () => {
+    const source = gamePageSource("xo-create.tsx");
+    const backHandler = source.match(/const handleFlowBack = \(\) => \{([\s\S]*?)\n  \};/)?.[1] ?? "";
+
+    expect(backHandler).toContain('setSetupStep("questions")');
+    expect(backHandler).not.toContain("setQuestions([])");
+    expect(source).toContain("onBackFromMenu={handleFlowBack}");
+  });
 
   it.each(MULTI_STEP_BACK_CONTRACTS)(
     "returns to the previous setup step before home in %s",

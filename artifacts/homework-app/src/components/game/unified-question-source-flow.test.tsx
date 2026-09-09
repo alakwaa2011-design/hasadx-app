@@ -128,6 +128,33 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uses the caller back action on the source menu and returns sub-sources to that menu", async () => {
+    const onBackFromMenu = vi.fn();
+    await act(async () => {
+      root.render(
+        <UnifiedQuestionSourceFlow
+          gameTitle="Test game"
+          gameDescription="Test description"
+          gameIcon={null}
+          minQuestions={2}
+          maxQuestions={20}
+          onBackFromMenu={onBackFromMenu}
+          onComplete={vi.fn()}
+        />,
+      );
+    });
+
+    await click(buttonContaining("Back one step"));
+    expect(onBackFromMenu).toHaveBeenCalledOnce();
+
+    await click(buttonContaining("From an assignment"));
+    expect(container.textContent).toContain("Choose an assignment");
+    await click(buttonContaining("Back one step"));
+
+    expect(container.textContent).toContain("From an assignment");
+    expect(onBackFromMenu).toHaveBeenCalledOnce();
+  });
+
   it("does not reuse a previous assignment after a later selection fails, then recovers for a valid selection", async () => {
     const onComplete = vi.fn();
     await act(async () => {

@@ -1737,16 +1737,16 @@ export default function Home() {
   const heroQuizChoices: { badge: string; label: string; correct?: boolean }[] =
     lang === "ar"
       ? [
-          { badge: "أ", label: "التكاثف", correct: true },
-          { badge: "ب", label: "التبخر" },
-          { badge: "ج", label: "الهطول" },
-          { badge: "د", label: "الجريان السطحي" },
+          { badge: "أ", label: "المشتري", correct: true },
+          { badge: "ب", label: "الأرض" },
+          { badge: "ج", label: "المريخ" },
+          { badge: "د", label: "عطارد" },
         ]
       : [
-          { badge: "A", label: "Condensation", correct: true },
-          { badge: "B", label: "Evaporation" },
-          { badge: "C", label: "Precipitation" },
-          { badge: "D", label: "Runoff" },
+          { badge: "A", label: "Jupiter", correct: true },
+          { badge: "B", label: "Earth" },
+          { badge: "C", label: "Mars" },
+          { badge: "D", label: "Mercury" },
         ];
   const heroFeatures = lang === "ar" ? [
     {
@@ -2183,15 +2183,15 @@ export default function Home() {
                     <div className="p-4">
                       <div className="rounded-2xl bg-[#0b4b35] px-5 py-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
                         <p className="text-[10px] font-bold text-[#e6c585]">
-                          {lang === "ar" ? "علوم · الصف الرابع" : "Science · Grade 4"}
+                          {lang === "ar" ? "علوم · النظام الشمسي" : "Science · The Solar System"}
                         </p>
-                        <h2 className="mt-2 text-2xl font-black text-white">
-                          {lang === "ar" ? "دورة الماء" : "The water cycle"}
+                        <h2 className="mt-2 text-xl font-black text-white">
+                          {lang === "ar" ? "رحلة عبر النظام الشمسي" : "A Journey Through the Solar System"}
                         </h2>
-                        <p className="mt-2 text-xs text-white/70">
+                        <p className="mt-2 text-sm font-bold text-white/90">
                           {lang === "ar"
-                            ? "التبخر · التكاثف · الهطول"
-                            : "Evaporation · Condensation · Precipitation"}
+                            ? "ما أكبر كواكب المجموعة الشمسية؟"
+                            : "Which is the largest planet in the Solar System?"}
                         </p>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2">

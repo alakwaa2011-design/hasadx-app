@@ -14,6 +14,7 @@ import { XO_CLASS_SETUP_KEY } from "@/pages/game/xo-class";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
 import { localizeXoError } from "@/lib/xo-error-messages";
+import { useSmartBack } from "@/lib/nav-history";
 
 type Question = {
   text: string;
@@ -50,6 +51,7 @@ export default function XoCreate() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const [, navigate] = useLocation();
+  const leaveSetupSafely = useSmartBack("/games");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionSource, setQuestionSource] = useState<QuestionSource>("manual");
   const [title, setTitle] = useState<string | null>(null);
@@ -64,11 +66,10 @@ export default function XoCreate() {
 
   const handleFlowBack = () => {
     if (setupStep === "settings") {
-      setQuestions([]);
       setSetupStep("questions");
       return;
     }
-    navigate("/");
+    leaveSetupSafely();
   };
 
   useEffect(() => {
@@ -142,9 +143,6 @@ export default function XoCreate() {
     return (
       <Layout>
         <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
-          <div className="mx-auto mb-3 max-w-3xl">
-            <GameFlowBackButton onBack={handleFlowBack} />
-          </div>
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"}
             gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."}
@@ -153,6 +151,7 @@ export default function XoCreate() {
             floatingAssignmentContinue
             minQuestions={2}
             maxQuestions={20}
+            onBackFromMenu={handleFlowBack}
             onComplete={({ questions: q, sourceTitle, source }) => {
               setQuestions(toXoQuestions(q));
               setQuestionSource(source);
