@@ -16,6 +16,7 @@ import { saveFullWameethGame } from "../lib/wameeth-full-save";
 import { addPlayer, createGame, deleteGame, resetGameToLobby, type GameQuestion } from "../game/manager";
 import submissionsRouter from "../routes/submissions";
 import classroomRewardsRouter from "../routes/classroom-rewards";
+import teacherClassesRouter from "../routes/teacher-classes";
 import gameHistoryRouter from "../routes/game-history";
 import { setupGameSocket } from "../game/socket-handlers";
 
@@ -37,6 +38,7 @@ function teacherApp(sessionTeacherId = teacherId) {
   });
   app.use("/api", submissionsRouter);
   app.use("/api", classroomRewardsRouter);
+  app.use("/api", teacherClassesRouter);
   return app;
 }
 function gameHistoryApp(){
@@ -457,6 +459,96 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     const board = await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/board`);
     expect(board.status).toBe(200);
     expect(JSON.stringify(board.body)).not.toMatch(/parent|phone|email|notes|account|username|password/i);
+  });
+
+  it("keeps manual, automatic, and legacy reward history attached after a class rename", async () => {
+    const oldName = `RENAME-OLD-${nonce}`;
+    const newName = `RENAME-NEW-${nonce}`;
+    const classId = Number((await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${oldName}) RETURNING id
+    `)).rows[0].id);
+    const renameStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,grade_level)
+      VALUES ('إعادة تسمية',${teacherId},${oldName},${oldName}) RETURNING id
+    `)).rows[0].id);
+    const manual = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({className:oldName,studentIds:[renameStudent],typeId:rewardTypeId,idempotencyKey:`rename-manual:${nonce}`});
+    expect(manual.status).toBe(201);
+    await db.transaction((tx) => evaluateClassroomRewardEvidence(tx, {
+      teacherId, ruleId, sourceType:"assignment_submission", sourceResultId:submissionId+2_000_000,
+      studentId:renameStudent, completed:true, score:1, evidenceSummary:{effectivePoints:1},
+    }));
+    await db.execute(sql`
+      INSERT INTO classroom_reward_transactions
+        (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,
+         class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot)
+      VALUES
+        (${teacherId},${renameStudent},'إعادة تسمية',${rewardTypeId},4,'grant',${`rename-legacy:${nonce}`},
+         ${oldName},NULL,'قديم','test')
+    `);
+    const goal = await request(teacherApp()).post(`/api/classroom-rewards/classes/${encodeURIComponent(oldName)}/goals`)
+      .send({
+        title:"هدف إعادة التسمية",
+        targetPoints:20,
+        studentId:renameStudent,
+        startsAt:new Date(Date.now()-60_000).toISOString(),
+      });
+    expect(goal.status).toBe(201);
+
+    const renamed = await request(teacherApp()).patch("/api/teacher/classes/rename").send({oldName,newName});
+    expect(renamed.status).toBe(200);
+    const summary = await request(teacherApp()).get(`/api/classroom-rewards/summary?className=${encodeURIComponent(newName)}`);
+    expect(summary.body.metrics).toMatchObject({totalGrantedPoints:7,recognizedStudentIds:[renameStudent]});
+    const goals = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(newName)}/goals`);
+    expect(goals.body.goals[0]).toMatchObject({id:goal.body.id,currentPoints:7});
+    const classDetail = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(newName)}`);
+    expect(classDetail.body.students[0]).toMatchObject({id:renameStudent});
+    expect(classDetail.body.students[0].lastRewardAt).not.toBeNull();
+    expect((await db.execute(sql`
+      SELECT class_name_snapshot FROM classroom_reward_transactions
+      WHERE teacher_id=${teacherId} AND idempotency_key=${`rename-legacy:${nonce}`} AND teacher_class_id IS NULL
+    `)).rows[0].class_name_snapshot).toBe(newName);
+    expect(Number((await db.execute(sql`SELECT id FROM teacher_classes WHERE id=${classId}`)).rows[0].id)).toBe(classId);
+  });
+
+  it("does not leak old identity or legacy name history into a recreated class", async () => {
+    const className = `RECREATE-${nonce}`;
+    const oldClassId = Number((await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name,created_at) VALUES (${teacherId},${className},NOW()-INTERVAL '2 hours') RETURNING id
+    `)).rows[0].id);
+    const oldStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('قديم',${teacherId},${className}) RETURNING id
+    `)).rows[0].id);
+    await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({className,studentIds:[oldStudent],typeId:rewardTypeId,idempotencyKey:`recreate-manual:${nonce}`});
+    await db.transaction((tx) => evaluateClassroomRewardEvidence(tx, {
+      teacherId, ruleId, sourceType:"assignment_submission", sourceResultId:submissionId+3_000_000,
+      studentId:oldStudent, completed:true, score:1, evidenceSummary:{effectivePoints:1},
+    }));
+    await db.execute(sql`
+      INSERT INTO classroom_reward_transactions
+        (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,
+         class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot,created_at)
+      VALUES
+        (${teacherId},${oldStudent},'قديم',${rewardTypeId},4,'grant',${`recreate-legacy:${nonce}`},
+         ${className},NULL,'قديم','test',NOW()-INTERVAL '1 hour')
+    `);
+    await db.execute(sql`DELETE FROM teacher_classes WHERE id=${oldClassId}`);
+    const newClassId = Number((await db.execute(sql`
+      INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className}) RETURNING id
+    `)).rows[0].id);
+    await db.execute(sql`UPDATE students SET student_class=${className} WHERE id=${oldStudent}`);
+    const newGoal = await request(teacherApp()).post(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/goals`)
+      .send({title:"هدف الهوية الجديدة",targetPoints:10,studentId:oldStudent});
+    expect(newGoal.status).toBe(201);
+
+    const summary = await request(teacherApp()).get(`/api/classroom-rewards/summary?className=${encodeURIComponent(className)}`);
+    expect(summary.body.metrics).toMatchObject({totalGrantedPoints:0,recognizedStudentIds:[]});
+    const goals = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/goals`);
+    expect(goals.body.goals[0]).toMatchObject({id:newGoal.body.id,currentPoints:0});
+    const classDetail = await request(teacherApp()).get(`/api/classroom-rewards/classes/${encodeURIComponent(className)}`);
+    expect(classDetail.body.students[0]).toMatchObject({id:oldStudent,lastRewardAt:null});
+    expect(newClassId).not.toBe(oldClassId);
   });
 
   it("creates teacher-owned reward groups and replaces only same-class members", async () => {

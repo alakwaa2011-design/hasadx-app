@@ -93,6 +93,13 @@ router.patch("/teacher/classes/rename", requireAuth, async (req: any, res) => {
           .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.name, oldName)))
           .returning({ id: teacherClassesTable.id });
         if (!renamed[0]) throw new Error("class_not_found");
+        await tx.execute(sql`
+          UPDATE classroom_reward_transactions
+          SET class_name_snapshot=${newName}
+          WHERE teacher_id=${teacherId}
+            AND teacher_class_id IS NULL
+            AND class_name_snapshot=${oldName}
+        `);
         await tx.update(studentsTable)
           .set({ gradeLevel: newName, studentClass: newName })
           .where(and(eq(studentsTable.teacherId, teacherId), eq(studentsTable.gradeLevel, oldName)));

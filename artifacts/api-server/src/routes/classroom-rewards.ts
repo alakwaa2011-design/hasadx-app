@@ -185,12 +185,14 @@ router.patch("/classroom-rewards/types/:id", async (req: any, res) => {
 });
 
 async function classStudents(teacherId: number, className: string, teacherClassId: number) {
+  const teacherClass = await ownedClass(teacherId, className);
+  if (!teacherClass || Number(teacherClass.id) !== teacherClassId) return [];
   return resultRows(await db.execute(sql`
     SELECT s.id,s.name,COALESCE(s.avatar,a.avatar,k.avatar_key,NULL) AS avatar,
       COALESCE(SUM(b.balance),0)::int AS points,
       (SELECT MAX(tr.created_at) FROM classroom_reward_transactions tr
        WHERE tr.teacher_id=${teacherId} AND tr.student_id=s.id AND tr.kind='grant'
-         AND (tr.teacher_class_id=${teacherClassId} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className}))
+          AND (tr.teacher_class_id=${teacherClassId} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className} AND tr.created_at>=${teacherClass.created_at}))
          AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id)) AS last_reward_at
     FROM students s
     LEFT JOIN student_accounts a ON a.id=s.student_account_id
@@ -201,7 +203,7 @@ async function classStudents(teacherId: number, className: string, teacherClassI
   `));
 }
 async function ownedClass(teacherId: number, name: string) {
-  return resultRows(await db.execute(sql`SELECT id,name FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${name}`))[0] ?? null;
+  return resultRows(await db.execute(sql`SELECT id,name,created_at FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${name}`))[0] ?? null;
 }
 const goalInput = z.object({
   title: z.string().trim().min(1).max(160),
@@ -225,7 +227,7 @@ function goalObject(row: any) {
 const goalSelect = (teacherId: number, classId: number, goalId?: number) => sql`
   SELECT g.*,tc.name class_name,
     COALESCE((SELECT SUM(tr.amount) FROM classroom_reward_transactions tr
-      WHERE tr.teacher_id=g.teacher_id AND (tr.teacher_class_id=g.teacher_class_id OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=tc.name))
+      WHERE tr.teacher_id=g.teacher_id AND (tr.teacher_class_id=g.teacher_class_id OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=tc.name AND tr.created_at>=tc.created_at))
         AND tr.kind='grant' AND tr.created_at>=g.starts_at AND (g.ends_at IS NULL OR tr.created_at<=g.ends_at)
         AND (g.reward_type_id IS NULL OR tr.reward_type_id=g.reward_type_id)
         AND (g.student_id IS NULL OR tr.student_id=g.student_id)
@@ -298,7 +300,7 @@ router.get("/classroom-rewards/classes/:className", async (req: any, res) => {
       AND (s.student_class=${name} OR (s.student_class IS NULL AND s.grade_level=${name}))
       AND (g.student_id IS NULL OR g.student_id=s.id)
     LEFT JOIN classroom_reward_transactions tr ON tr.teacher_id=${teacherId} AND tr.student_id=s.id AND tr.kind='grant'
-      AND (tr.teacher_class_id=g.teacher_class_id OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${name}))
+      AND (tr.teacher_class_id=g.teacher_class_id OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${name} AND tr.created_at>=${c.created_at}))
       AND tr.created_at>=g.starts_at AND (g.ends_at IS NULL OR tr.created_at<=g.ends_at)
       AND (g.reward_type_id IS NULL OR tr.reward_type_id=g.reward_type_id)
       AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id)
@@ -355,7 +357,7 @@ router.get("/classroom-rewards/classes/:className/board", async (req:any,res) =>
   const students=resultRows(await db.execute(sql`
     SELECT s.id,s.name,COALESCE(s.avatar,a.avatar,k.avatar_key,NULL) avatar,
       COALESCE((SELECT SUM(b.balance) FROM classroom_reward_balances b WHERE b.teacher_id=${teacherId} AND b.student_id=s.id),0)::int points,
-      EXISTS(SELECT 1 FROM classroom_reward_transactions tr WHERE tr.teacher_id=${teacherId} AND tr.student_id=s.id AND tr.kind='grant' AND (tr.teacher_class_id=${c.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className})) AND tr.created_at>=date_trunc('week',NOW()) AND NOT EXISTS(SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id AND rv.kind='reversal')) recognized_this_week
+      EXISTS(SELECT 1 FROM classroom_reward_transactions tr WHERE tr.teacher_id=${teacherId} AND tr.student_id=s.id AND tr.kind='grant' AND (tr.teacher_class_id=${c.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className} AND tr.created_at>=${c.created_at})) AND tr.created_at>=date_trunc('week',NOW()) AND NOT EXISTS(SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id AND rv.kind='reversal')) recognized_this_week
     FROM students s LEFT JOIN student_accounts a ON a.id=s.student_account_id LEFT JOIN kids_profiles k ON k.student_account_id=s.student_account_id
     WHERE s.teacher_id=${teacherId} AND (s.student_class=${className} OR (s.student_class IS NULL AND s.grade_level=${className})) ORDER BY s.name`));
   const groups=resultRows(await db.execute(sql`SELECT id,name,description,color,avatar,score FROM classroom_reward_groups WHERE teacher_id=${teacherId} AND teacher_class_id=${c.id} ORDER BY sort_order,name`));
@@ -758,7 +760,7 @@ router.get("/classroom-rewards/ledger", async (req: any, res) => {
       EXISTS(SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id) AS is_reversed
     FROM classroom_reward_transactions tr LEFT JOIN students s ON s.id=tr.student_id LEFT JOIN classroom_reward_rules r ON r.id=tr.rule_id LEFT JOIN classroom_reward_rule_evaluations ev ON ev.transaction_id=tr.id
     WHERE tr.teacher_id=${teacherId} AND tr.kind='grant'
-    ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className}))` : sql``}
+    ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className} AND tr.created_at>=${classRow!.created_at}))` : sql``}
     ${studentId ? sql`AND tr.student_id=${studentId}` : sql``}
     ${start ? sql`AND tr.created_at>=${start}` : sql``}
     ORDER BY tr.created_at DESC,tr.id DESC LIMIT 500
@@ -797,7 +799,7 @@ router.get("/classroom-rewards/students/:studentId", async (req: any, res) => {
   const activeGoals=classRow?resultRows(await db.execute(sql`SELECT g.*,tc.name class_name FROM classroom_reward_goals g JOIN teacher_classes tc ON tc.id=g.teacher_class_id WHERE g.teacher_id=${teacherId} AND g.teacher_class_id=${classRow.id} AND g.status='active' AND g.is_active=TRUE AND (g.ends_at IS NULL OR g.ends_at>=NOW()) ORDER BY (g.student_id IS NOT NULL) DESC,g.created_at DESC,g.id DESC`)): [];
   const goalRow=activeGoals.find(g=>Number(g.student_id)===studentId)??activeGoals.find(g=>g.student_id==null)??null;
   const goal=goalRow?goalObject(goalRow):null;
-  const goalProgress=goal&&classRow?Number(resultRows(await db.execute(sql`SELECT COALESCE(SUM(tr.amount),0)::int progress FROM classroom_reward_transactions tr WHERE tr.teacher_id=${teacherId} AND tr.student_id=${studentId} AND tr.kind='grant' AND (tr.teacher_class_id=${classRow.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className})) AND tr.created_at>=${new Date(goal.startsAt)} AND (${goal.endsAt?sql`tr.created_at<=${new Date(goal.endsAt)}`:sql`TRUE`}) AND (${goal.rewardTypeId?sql`tr.reward_type_id=${goal.rewardTypeId}`:sql`TRUE`}) AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id)`))[0]?.progress??0):0;
+  const goalProgress=goal&&classRow?Number(resultRows(await db.execute(sql`SELECT COALESCE(SUM(tr.amount),0)::int progress FROM classroom_reward_transactions tr WHERE tr.teacher_id=${teacherId} AND tr.student_id=${studentId} AND tr.kind='grant' AND (tr.teacher_class_id=${classRow.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className} AND tr.created_at>=${classRow.created_at})) AND tr.created_at>=${new Date(goal.startsAt)} AND (${goal.endsAt?sql`tr.created_at<=${new Date(goal.endsAt)}`:sql`TRUE`}) AND (${goal.rewardTypeId?sql`tr.reward_type_id=${goal.rewardTypeId}`:sql`TRUE`}) AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id)`))[0]?.progress??0):0;
   res.json({
     student: { id:student.id,name:student.name,gradeLevel:student.grade_level,studentClass:student.student_class,parentPhone:student.parent_phone,parentName:student.parent_name,parentEmail:student.parent_email,notes:student.notes,avatar:student.avatar,account:{linked:Boolean(student.account_linked),username:student.account_linked?student.account_username:null,displayName:student.account_linked?student.account_display_name:null} },
     rewards:{balance:Number(balance?.points??0),ledger:ledger.map((r)=>({id:r.id,points:Number(r.points),kind:r.kind,reason:r.reason,createdAt:r.created_at}))},
@@ -956,7 +958,7 @@ router.get("/classroom-rewards/summary", async (req: any, res) => {
   const classRow = className ? await ownedClass(teacherId, className) : null;
   if (className && !classRow) return res.status(404).json({ message: "الصف غير موجود" });
   const start = periodStart(typeof req.query.period === "string" ? req.query.period : undefined);
-  const scope = sql`WHERE tr.teacher_id=${teacherId} AND tr.kind='grant' AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rev WHERE rev.teacher_id=tr.teacher_id AND rev.reversal_of_id=tr.id AND rev.kind='reversal') ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className}))` : sql``} ${start ? sql`AND tr.created_at>=${start}` : sql``}`;
+  const scope = sql`WHERE tr.teacher_id=${teacherId} AND tr.kind='grant' AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rev WHERE rev.teacher_id=tr.teacher_id AND rev.reversal_of_id=tr.id AND rev.kind='reversal') ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className} AND tr.created_at>=${classRow!.created_at}))` : sql``} ${start ? sql`AND tr.created_at>=${start}` : sql``}`;
   const studentRows = resultRows(await db.execute(sql`SELECT tr.student_id,COALESCE(s.name,tr.student_name_snapshot) AS student_name,SUM(tr.amount)::int AS points FROM classroom_reward_transactions tr LEFT JOIN students s ON s.id=tr.student_id ${scope} GROUP BY tr.student_id,COALESCE(s.name,tr.student_name_snapshot)`));
   const typeRows = resultRows(await db.execute(sql`SELECT tr.reward_type_id,tr.reward_type_name_snapshot AS type_name,COUNT(*)::int AS count,SUM(tr.amount)::int AS points FROM classroom_reward_transactions tr ${scope} GROUP BY tr.reward_type_id,tr.reward_type_name_snapshot`));
   const recognizedStudentIds = studentRows.map((row) => Number(row.student_id)).filter(Boolean);
