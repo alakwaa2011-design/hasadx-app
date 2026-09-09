@@ -146,7 +146,11 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
                   <h3 className="flex items-center gap-2 text-lg font-black text-emerald-950">
                     {selected ? <Pencil size={19} /> : <Plus size={19} />} {selected ? "تعديل المجموعة" : "إنشاء مجموعة"}
                   </h3>
-                  <p className="mt-1 text-xs font-bold text-slate-500">يمكن للطالب الانضمام إلى أكثر من مجموعة.</p>
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    {selected
+                      ? "اختر الطلاب بالضغط على أسمائهم أدناه، ثم اضغط حفظ تغييرات المجموعة."
+                      : "اكتب اسم المجموعة، اختر الطلاب بالضغط على أسمائهم، ثم أنشئ المجموعة."}
+                  </p>
                 </div>
                 {selected && (
                   <button type="button" onClick={remove} disabled={deleteMutation.isPending}
@@ -186,7 +190,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students }: 
               <section className="overflow-hidden rounded-2xl border-2 border-emerald-100">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 bg-emerald-50/50 p-3">
                   <div>
-                    <h4 className="font-black text-emerald-950">طلاب المجموعة</h4>
+                    <h4 className="font-black text-emerald-950">اختر طلاب المجموعة</h4>
                     <p className="text-xs font-bold text-emerald-900/55">تم اختيار {memberIds.size} من {students.length}</p>
                   </div>
                   <div className="flex gap-2">

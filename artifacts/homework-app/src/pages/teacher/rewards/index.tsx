@@ -17,7 +17,7 @@ import { RewardGroupChip, RewardGroupsDialog } from "./groups";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, Info, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -404,7 +404,7 @@ export default function RewardsPage() {
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setGroupsOpen(true)}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-3 py-2 text-xs font-black text-emerald-800 hover:bg-emerald-50">
-                <UsersRound size={15} /> إدارة المجموعات
+                <UsersRound size={15} /> إضافة الطلاب للمجموعات
               </button>
               <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
               <button type="button" onClick={() => setActiveGroupId(null)}
@@ -488,19 +488,20 @@ export default function RewardsPage() {
                     </button>
                   )}
 
-                  {!displayMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveStudentId(student.id);
-                        setStudentControlOpen(true);
-                      }}
-                      className="absolute top-3 left-3 w-7 h-7 rounded-lg bg-white/80 hover:bg-white border-2 border-emerald-100 shadow-sm flex items-center justify-center text-emerald-900/40 hover:text-emerald-700 hover:border-emerald-300 transition-all z-20"
-                      title="ملف الطالب"
-                    >
-                      <Info size={14} strokeWidth={2.5} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveStudentId(student.id);
+                      setStudentControlOpen(true);
+                    }}
+                    className="absolute left-3 top-3 z-20 flex items-center gap-1 rounded-xl border-2 border-emerald-200 bg-white px-2 py-1.5 text-[10px] font-black text-emerald-800 shadow-md transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg"
+                    title="فتح ملف الطالب وكل بيانات التحفيز"
+                    aria-label={`فتح ملف الطالب ${student.name}`}
+                  >
+                    <UserRound size={13} strokeWidth={2.7} />
+                    <span>ملف الطالب</span>
+                  </button>
 
                   <button
                     type="button"
