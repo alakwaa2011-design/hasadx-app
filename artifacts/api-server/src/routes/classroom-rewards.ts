@@ -199,6 +199,72 @@ async function classStudents(teacherId: number, className: string) {
 async function ownedClass(teacherId: number, name: string) {
   return resultRows(await db.execute(sql`SELECT id,name FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${name}`))[0] ?? null;
 }
+const goalInput = z.object({
+  title: z.string().trim().min(1).max(160),
+  targetPoints: z.number().int().positive().max(100000),
+  studentId: z.number().int().positive().optional().nullable(),
+  startsAt: z.string().datetime().optional(),
+  endsAt: z.string().datetime().optional().nullable(),
+  status: z.enum(["active", "archived"]).optional(),
+}).strict();
+function goalObject(row: any) {
+  return {
+    id: Number(row.id), className: row.class_name, studentId: row.student_id == null ? null : Number(row.student_id),
+    title: row.title, targetPoints: Number(row.target_points), startsAt: row.starts_at, endsAt: row.ends_at,
+    status: row.status, currentPoints: Number(row.current_points ?? 0),
+    completed: Number(row.current_points ?? 0) >= Number(row.target_points),
+  };
+}
+const goalSelect = (teacherId: number, classId: number, goalId?: number) => sql`
+  SELECT g.*,tc.name class_name,
+    COALESCE((SELECT SUM(tr.amount) FROM classroom_reward_transactions tr
+      WHERE tr.teacher_id=g.teacher_id AND (tr.teacher_class_id=g.teacher_class_id OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=tc.name))
+        AND tr.kind='grant' AND tr.created_at>=g.starts_at AND (g.ends_at IS NULL OR tr.created_at<=g.ends_at)
+        AND (g.student_id IS NULL OR tr.student_id=g.student_id)
+        AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id AND rv.kind='reversal')),0)::int current_points
+  FROM classroom_reward_goals g JOIN teacher_classes tc ON tc.id=g.teacher_class_id
+  WHERE g.teacher_id=${teacherId} AND g.teacher_class_id=${classId} ${goalId ? sql`AND g.id=${goalId}` : sql``}
+`;
+router.get("/classroom-rewards/classes/:className/goals", async (req: any, res) => {
+  const teacherId=teacher(req,res); if(!teacherId)return;
+  const name=validateClassName(req.params.className); if(!name)return res.status(400).json({message:"اسم الصف غير صالح"});
+  const c=await ownedClass(teacherId,name); if(!c)return res.status(404).json({message:"الصف غير موجود"});
+  const rows=resultRows(await db.execute(sql`${goalSelect(teacherId,Number(c.id))} AND g.status='active' ORDER BY g.id DESC`));
+  res.json({goals:rows.map(goalObject)});
+});
+router.post("/classroom-rewards/classes/:className/goals", async (req: any, res) => {
+  const teacherId=teacher(req,res); if(!teacherId)return;
+  const name=validateClassName(req.params.className); const parsed=goalInput.safeParse(req.body);
+  if(!name||!parsed.success)return res.status(400).json({message:"بيانات الهدف غير صالحة"});
+  const d=parsed.data, c=await ownedClass(teacherId,name); if(!c)return res.status(404).json({message:"الصف غير موجود"});
+  const starts=d.startsAt ? new Date(d.startsAt) : new Date();
+  if(Number.isNaN(starts.getTime()) || (d.endsAt && Number.isNaN(new Date(d.endsAt).getTime())) || (d.endsAt && new Date(d.endsAt)<=starts)) return res.status(400).json({message:"التواريخ غير صالحة"});
+  if(d.studentId!==null && d.studentId!==undefined) {
+    const s=resultRows(await db.execute(sql`SELECT id FROM students WHERE id=${d.studentId} AND teacher_id=${teacherId} AND (student_class=${name} OR (student_class IS NULL AND grade_level=${name}))`))[0];
+    if(!s)return res.status(403).json({message:"الطالب ليس ضمن الصف"});
+  }
+  const row=resultRows(await db.execute(sql`INSERT INTO classroom_reward_goals(teacher_id,teacher_class_id,student_id,title,target_points,starts_at,ends_at,status) VALUES (${teacherId},${c.id},${d.studentId??null},${d.title},${d.targetPoints},${starts.toISOString()},${d.endsAt?new Date(d.endsAt).toISOString():null},${d.status??"active"}) RETURNING id`))[0];
+  const saved=resultRows(await db.execute(sql`${goalSelect(teacherId,Number(c.id),Number(row.id))}`))[0];
+  await db.execute(sql`INSERT INTO classroom_reward_audit_logs(teacher_id,action,entity_type,entity_id,detail) VALUES (${teacherId},'create','reward_goal',${row.id},${name})`);
+  res.status(201).json(goalObject(saved));
+});
+router.patch("/classroom-rewards/goals/:goalId", async (req:any,res) => {
+  const teacherId=teacher(req,res), id=numericId(req.params.goalId); if(!teacherId)return; if(!id)return res.status(400).json({message:"معرف الهدف غير صالح"});
+  const parsed=goalInput.partial().safeParse(req.body); if(!parsed.success||!Object.keys(parsed.data).length)return res.status(400).json({message:"بيانات الهدف غير صالحة"});
+  const old=resultRows(await db.execute(sql`SELECT g.*,tc.name class_name FROM classroom_reward_goals g JOIN teacher_classes tc ON tc.id=g.teacher_class_id WHERE g.id=${id} AND g.teacher_id=${teacherId}`))[0]; if(!old)return res.status(404).json({message:"الهدف غير موجود"});
+  const d=parsed.data;
+  if(d.studentId!==undefined&&d.studentId!==null){const s=resultRows(await db.execute(sql`SELECT id FROM students WHERE id=${d.studentId} AND teacher_id=${teacherId} AND (student_class=${old.class_name} OR (student_class IS NULL AND grade_level=${old.class_name}))`))[0];if(!s)return res.status(403).json({message:"الطالب ليس ضمن الصف"});}
+  const starts=d.startsAt?new Date(d.startsAt):new Date(old.starts_at), ends=d.endsAt===null?null:d.endsAt?new Date(d.endsAt):old.ends_at;
+  if(Number.isNaN(starts.getTime())||(ends&&new Date(ends)<=starts))return res.status(400).json({message:"التواريخ غير صالحة"});
+  await db.execute(sql`UPDATE classroom_reward_goals SET title=${d.title??old.title},target_points=${d.targetPoints??old.target_points},student_id=${d.studentId===undefined?old.student_id:d.studentId},starts_at=${starts.toISOString()},ends_at=${ends},status=${d.status??old.status},updated_at=NOW() WHERE id=${id} AND teacher_id=${teacherId}`);
+  const saved=resultRows(await db.execute(sql`${goalSelect(teacherId,Number(old.teacher_class_id),id)}`))[0]; res.json(goalObject(saved));
+});
+router.delete("/classroom-rewards/goals/:goalId", async (req:any,res) => {
+  const teacherId=teacher(req,res), id=numericId(req.params.goalId); if(!teacherId)return; if(!id)return res.status(400).json({message:"معرف الهدف غير صالح"});
+  const row=resultRows(await db.execute(sql`UPDATE classroom_reward_goals SET status='archived',updated_at=NOW() WHERE id=${id} AND teacher_id=${teacherId} RETURNING id`))[0]; if(!row)return res.status(404).json({message:"الهدف غير موجود"});
+  await db.execute(sql`INSERT INTO classroom_reward_audit_logs(teacher_id,action,entity_type,entity_id) VALUES (${teacherId},'archive','reward_goal',${id})`);
+  res.json({archived:true});
+});
 router.get("/classroom-rewards/classes/:className", async (req: any, res) => {
   const teacherId = teacher(req, res); if (!teacherId) return;
   const name = validateClassName(req.params.className); if (!name) return res.status(400).json({ message: "اسم الصف غير صالح" });
@@ -243,6 +309,24 @@ router.get("/classroom-rewards/classes/:className/groups", async (req: any, res)
       })),
     })),
   });
+});
+
+router.get("/classroom-rewards/classes/:className/board", async (req:any,res) => {
+  const teacherId=teacher(req,res); if(!teacherId)return;
+  const className=validateClassName(req.params.className); if(!className)return res.status(400).json({message:"اسم الصف غير صالح"});
+  const c=await ownedClass(teacherId,className); if(!c)return res.status(404).json({message:"الصف غير موجود"});
+  const students=resultRows(await db.execute(sql`
+    SELECT s.id,s.name,COALESCE(s.avatar,a.avatar,k.avatar_key,NULL) avatar,
+      COALESCE((SELECT SUM(b.balance) FROM classroom_reward_balances b WHERE b.teacher_id=${teacherId} AND b.student_id=s.id),0)::int points,
+      EXISTS(SELECT 1 FROM classroom_reward_transactions tr WHERE tr.teacher_id=${teacherId} AND tr.student_id=s.id AND tr.kind='grant' AND tr.created_at>=date_trunc('week',NOW()) AND NOT EXISTS(SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id AND rv.kind='reversal')) recognized_this_week
+    FROM students s LEFT JOIN student_accounts a ON a.id=s.student_account_id LEFT JOIN kids_profiles k ON k.student_account_id=s.student_account_id
+    WHERE s.teacher_id=${teacherId} AND (s.student_class=${className} OR (s.student_class IS NULL AND s.grade_level=${className})) ORDER BY s.name`));
+  const groups=resultRows(await db.execute(sql`SELECT id,name,description,color,avatar,score FROM classroom_reward_groups WHERE teacher_id=${teacherId} AND teacher_class_id=${c.id} ORDER BY sort_order,name`));
+  const members=groups.length ? resultRows(await db.execute(sql`SELECT group_id,student_id FROM classroom_reward_group_members WHERE teacher_id=${teacherId} AND group_id IN (${sql.join(groups.map(g=>sql`${g.id}`),sql`,`)})`)) : [];
+  const goals=resultRows(await db.execute(sql`${goalSelect(teacherId,Number(c.id))} AND g.status='active' ORDER BY g.id DESC`));
+  res.json({className,students:students.map(s=>({id:Number(s.id),name:s.name,avatar:s.avatar??null,points:Number(s.points),currentWeeklyRecognition:Boolean(s.recognized_this_week)})),
+    groups:groups.map(g=>({id:Number(g.id),name:g.name,description:g.description,color:g.color,avatar:g.avatar,score:Number(g.score),memberIds:members.filter(m=>Number(m.group_id)===Number(g.id)).map(m=>Number(m.student_id))})),
+    goals:goals.map(goalObject),weeklyFairness:{recognizedStudentCount:students.filter(s=>s.recognized_this_week).length,totalStudentCount:students.length}});
 });
 
 router.post("/classroom-rewards/classes/:className/groups", async (req: any, res) => {
@@ -765,8 +849,20 @@ router.post("/classroom-rewards/batches/:batchId/reverse", async (req: any, res)
   const reversalKey = classroomRewardReversalKey(parsed.data.idempotencyKey);
   try {
     const outcome = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${teacherId},hashtext(${parsed.data.idempotencyKey}))`);
       const batch = resultRows(await tx.execute(sql`SELECT id FROM classroom_reward_batches WHERE id=${batchId} AND teacher_id=${teacherId} FOR UPDATE`))[0];
       if (!batch) return null;
+      const priorReceipt = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_batch_reversals WHERE teacher_id=${teacherId} AND idempotency_key=${parsed.data.idempotencyKey} FOR UPDATE`))[0];
+      if (priorReceipt && Number(priorReceipt.batch_id) !== batchId) throw new Error("reversal_key_conflict");
+      if (priorReceipt) {
+        const replay = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND batch_id=${batchId} AND kind='reversal' ORDER BY reversal_of_id`));
+        return { entries: replay, idempotent: true };
+      }
+      const batchReceipt = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_batch_reversals WHERE teacher_id=${teacherId} AND batch_id=${batchId} FOR UPDATE`))[0];
+      if (batchReceipt) {
+        const replay = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND batch_id=${batchId} AND kind='reversal' ORDER BY reversal_of_id`));
+        return { entries: replay, idempotent: true };
+      }
       const grants = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND batch_id=${batchId} AND kind='grant' ORDER BY student_id,id FOR UPDATE`));
       if (!grants.length) return null;
       const grantIds = grants.map((grant) => Number(grant.id));
@@ -790,10 +886,12 @@ router.post("/classroom-rewards/batches/:batchId/reverse", async (req: any, res)
       }
       const entries: any[] = [];
       for (const grant of grants) {
-        const reversal = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,reversal_of_id,batch_id,batch_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${grant.student_id},${grant.student_name_snapshot},${grant.reward_type_id},${-Number(grant.amount)},'reversal',${reversalKey},${grant.id},${batchId},${parsed.data.idempotencyKey},${grant.class_name_snapshot},${grant.teacher_class_id},${grant.reward_type_name_snapshot},${grant.category_snapshot}) RETURNING *`))[0];
+        const perGrantKey = `${reversalKey}:${grant.id}`;
+        const reversal = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,reversal_of_id,batch_id,batch_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${grant.student_id},${grant.student_name_snapshot},${grant.reward_type_id},${-Number(grant.amount)},'reversal',${perGrantKey},${grant.id},${batchId},${parsed.data.idempotencyKey},${grant.class_name_snapshot},${grant.teacher_class_id},${grant.reward_type_name_snapshot},${grant.category_snapshot}) RETURNING *`))[0];
         await tx.execute(sql`UPDATE classroom_reward_balances SET balance=balance-${grant.amount},updated_at=NOW() WHERE teacher_id=${teacherId} AND student_id=${grant.student_id} AND reward_type_id=${grant.reward_type_id}`);
         entries.push(reversal);
       }
+      await tx.execute(sql`INSERT INTO classroom_reward_batch_reversals (teacher_id,batch_id,idempotency_key) VALUES (${teacherId},${batchId},${parsed.data.idempotencyKey})`);
       await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key) VALUES (${teacherId},'reverse_batch','reward_batch',${batchId},${parsed.data.idempotencyKey})`);
       return { entries, idempotent: false };
     });
@@ -801,6 +899,7 @@ router.post("/classroom-rewards/batches/:batchId/reverse", async (req: any, res)
     res.status(outcome.idempotent ? 200 : 201).json(outcome);
   } catch (error: any) {
     if (error?.message === "batch_already_partially_reversed") return res.status(409).json({ message: "تم التراجع عن جزء من هذه الدفعة سابقًا؛ راجع السجل" });
+    if (error?.message === "reversal_key_conflict") return res.status(409).json({ message: "مفتاح التكرار مستخدم لدفعة مختلفة" });
     if (error?.message === "insufficient_balance_for_reversal") return res.status(409).json({ message: "لا يمكن التراجع عن الدفعة لأن أحد الأرصدة عُدّل بعدها" });
     throw error;
   }

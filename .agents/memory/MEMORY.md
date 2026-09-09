@@ -85,3 +85,4 @@
 - [RTL numeric UI assertions](rtl-numeric-ui-assertions.md) — exact full-string selectors around arrows and localized digits are brittle; assert values within their semantic row.
 - [Safe required columns on publish](safe-required-columns-publish.md) — required columns added to populated production tables need a per-row default or Publish may propose truncation.
 - [Reward grant undo semantics](reward-grant-undo-semantics.md) — undo a multi-student reward grant atomically by batch; weekly recognition counts only unreversed grants.
+- [Reward goal progress semantics](reward-goal-progress-semantics.md) — goals derive progress from unreversed grants in their active period; group scores remain independent.

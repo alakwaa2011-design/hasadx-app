@@ -9,8 +9,14 @@ import {
   useGetTeacherClasses,
   useGetRewardGroups,
   useGetRewardSummary,
+  useGetRewardGoals,
+  useCreateRewardGoal,
+  useUpdateRewardGoal,
+  useArchiveRewardGoal,
+  useGetRewardBoard,
   useAdjustStudentBalances,
   useReverseRewardBatch,
+  type ClassroomRewardGoal,
 } from "./api";
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
@@ -18,9 +24,11 @@ import { RewardRulesDialog } from "./rules";
 import { BalanceAdjustmentDialog, StudentControlCenter } from "./student-control-center";
 import { RewardGroupChip, RewardGroupsDialog, GroupAwardDialog, GroupDetailDialog } from "./groups";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
+import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progress";
+import { LiveBoard } from "./live-board";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, Presentation
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,8 +95,12 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const { data: groupsData } = useGetRewardGroups(currentClass);
   const { data: rewardTypesData } = useGetRewardTypes();
   const { data: weeklySummary, isLoading: weeklySummaryLoading, isError: weeklySummaryError } = useGetRewardSummary(currentClass, "week");
+  const { data: goalsData, isLoading: goalsLoading } = useGetRewardGoals(currentClass);
   const grantMutation = useGrantRewards();
   const reverseBatchMutation = useReverseRewardBatch();
+  const createGoalMutation = useCreateRewardGoal();
+  const updateGoalMutation = useUpdateRewardGoal();
+  const archiveGoalMutation = useArchiveRewardGoal();
 
   const grantIntentRef = useRef<{ signature: string; key: string } | null>(null);
   const bulkGrantPendingRef = useRef(false);
@@ -147,6 +159,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [groupsDetailOpen, setGroupsDetailOpen] = useState(false);
   const [groupGrantOpen, setGroupGrantOpen] = useState(false);
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<ClassroomRewardGoal | null>(null);
+  const [liveBoardOpen, setLiveBoardOpen] = useState(false);
+  const { data: boardData, isLoading: boardLoading } = useGetRewardBoard(currentClass, liveBoardOpen);
 
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
@@ -363,6 +379,57 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     });
   };
 
+  const handleSaveGoal = async (data: GoalEditorData) => {
+    if (!currentClass) return false;
+    try {
+      if (editingGoal) {
+        await updateGoalMutation.mutateAsync({
+          className: currentClass,
+          goalId: editingGoal.id,
+          title: data.title,
+          targetType: data.targetType,
+          targetId: data.targetType === "student" ? Number(data.targetId) : null,
+          targetPoints: data.targetPoints,
+          endDate: data.endDate,
+        });
+        toast.success("تم تحديث الهدف");
+      } else {
+        await createGoalMutation.mutateAsync({
+          className: currentClass,
+          title: data.title,
+          targetType: data.targetType,
+          targetId: data.targetType === "student" ? Number(data.targetId) : undefined,
+          targetPoints: data.targetPoints,
+          endDate: data.endDate,
+        });
+        toast.success("تم إنشاء الهدف");
+      }
+      setEditingGoal(null);
+      return true;
+    } catch (error: any) {
+      toast.error(error.message || "تعذر حفظ الهدف");
+      return false;
+    }
+  };
+
+  const handleArchiveGoal = async (goal: ClassroomRewardGoal) => {
+    if (!currentClass || archiveGoalMutation.isPending) return;
+    try {
+      await archiveGoalMutation.mutateAsync({ className: currentClass, goalId: goal.id });
+      toast.success("تمت أرشفة الهدف", {
+        action: {
+          label: "تراجع",
+          onClick: () => updateGoalMutation.mutate(
+            { className: currentClass, goalId: goal.id, status: "active" },
+            { onSuccess: () => toast.success("تمت إعادة الهدف"), onError: (error) => toast.error(error.message) },
+          ),
+        },
+      });
+    } catch (error: any) {
+      toast.error(error.message || "تعذرت أرشفة الهدف");
+    }
+  };
+
   if (!currentClass) {
     return (
       <PageContainer embedded={embedded}>
@@ -456,6 +523,37 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           setCelebration(null);
         }}
       />
+      {liveBoardOpen && (
+        boardData ? (
+          <LiveBoard
+            className={boardData.className}
+            goal={boardData.goals.find((goal) => goal.targetType === "class" && !goal.completed) ?? boardData.goals[0]}
+            students={boardData.students.map((student) => ({
+              ...student,
+              groupIds: boardData.groups.filter((group) => group.memberIds.includes(student.id)).map((group) => group.id),
+            }))}
+            groups={boardData.groups}
+            onExit={() => setLiveBoardOpen(false)}
+            onStudentClick={(studentId) => {
+              setLiveBoardOpen(false);
+              setSingleGrantStudentId(studentId);
+            }}
+            onGroupClick={(groupId) => {
+              setLiveBoardOpen(false);
+              setActiveGroupId(groupId);
+              setGroupGrantOpen(true);
+            }}
+          />
+        ) : (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50" dir="rtl">
+            <div className="flex flex-col items-center gap-3 font-black text-emerald-900">
+              <Loader2 className="animate-spin" size={34} />
+              {boardLoading ? "نجهّز السبورة الحية…" : "تعذر تحميل السبورة الحية"}
+              <button type="button" onClick={() => setLiveBoardOpen(false)} className="mt-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm">رجوع</button>
+            </div>
+          </div>
+        )
+      )}
 
       <div className={cn("max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none", displayMode && "mt-2")}>
 
@@ -585,6 +683,65 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               <p className="mt-1 truncate text-sm font-black text-emerald-950">{weeklyStats.topTypeName}</p>
             </div>
               </>
+            )}
+          </section>
+        )}
+
+        {!displayMode && (
+          <section aria-labelledby="reward-goals-title" className="rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-950 text-amber-300 shadow-sm">
+                  <Target size={21} />
+                </span>
+                <div>
+                  <h2 id="reward-goals-title" className="font-black text-emerald-950">أهداف التقدم</h2>
+                  <p className="text-xs font-bold text-emerald-900/55">حوّل النقاط إلى رحلة تعلم واضحة</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLiveBoardOpen(true)}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-900 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/30"
+                >
+                  <Presentation size={16} />
+                  السبورة الحية
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
+                >
+                  <Plus size={16} />
+                  هدف جديد
+                </button>
+              </div>
+            </div>
+            {goalsLoading ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {[0, 1].map((item) => <div key={item} className="h-36 animate-pulse rounded-[2rem] bg-emerald-100/50" />)}
+              </div>
+            ) : (goalsData?.goals?.length ?? 0) > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {goalsData!.goals.map((goal) => (
+                  <GoalProgressCard
+                    key={goal.id}
+                    goal={goal}
+                    onEdit={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
+                    onArchive={() => handleArchiveGoal(goal)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-emerald-200 bg-white/70 px-4 py-5 text-sm font-black text-emerald-800 transition hover:border-amber-300 hover:bg-amber-50"
+              >
+                <Target size={19} className="text-amber-500" />
+                أنشئ أول هدف للصف أو لطالب
+              </button>
             )}
           </section>
         )}
@@ -925,6 +1082,23 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       <RewardTypesSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
       <RewardRulesDialog open={rulesOpen} onOpenChange={setRulesOpen} rewardTypes={rewardTypesData || []} />
       <RewardLedgerDialog open={ledgerOpen} onOpenChange={setLedgerOpen} className={currentClass} />
+      <GoalDialog
+        open={goalDialogOpen}
+        onOpenChange={(next) => {
+          setGoalDialogOpen(next);
+          if (!next) setEditingGoal(null);
+        }}
+        initialData={editingGoal ? {
+          title: editingGoal.title,
+          targetType: editingGoal.targetType,
+          targetId: editingGoal.targetId,
+          targetPoints: editingGoal.targetPoints,
+          endDate: editingGoal.endDate,
+        } : null}
+        students={classData?.students ?? []}
+        saving={createGoalMutation.isPending || updateGoalMutation.isPending}
+        onSave={handleSaveGoal}
+      />
       <StudentControlCenter
         open={studentControlOpen}
         onOpenChange={(v) => { setStudentControlOpen(v); if (!v) setActiveStudentId(null); }}

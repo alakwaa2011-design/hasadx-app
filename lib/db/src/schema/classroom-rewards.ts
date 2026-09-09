@@ -124,6 +124,34 @@ export const classroomRewardTransactionsTable = pgTable("classroom_reward_transa
   reversalRequestUnique: uniqueIndex("classroom_reward_transactions_reversal_request_uq").on(t.teacherId, t.idempotencyKey).where(sql`kind = 'reversal'`),
 }));
 
+export const classroomRewardGoalsTable = pgTable("classroom_reward_goals", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  teacherClassId: integer("teacher_class_id").notNull().references(() => teacherClassesTable.id, { onDelete: "cascade" }),
+  studentId: integer("student_id").references(() => studentsTable.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  targetPoints: integer("target_points").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  ownerClassIndex: index("classroom_reward_goals_owner_class_idx").on(t.teacherId, t.teacherClassId),
+  ownerStatusIndex: index("classroom_reward_goals_owner_status_idx").on(t.teacherId, t.status),
+}));
+
+export const classroomRewardBatchReversalsTable = pgTable("classroom_reward_batch_reversals", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  batchId: integer("batch_id").notNull().references(() => classroomRewardBatchesTable.id, { onDelete: "cascade" }),
+  idempotencyKey: text("idempotency_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  ownerKeyUnique: uniqueIndex("classroom_reward_batch_reversals_owner_key_uq").on(t.teacherId, t.idempotencyKey),
+  ownerBatchUnique: uniqueIndex("classroom_reward_batch_reversals_owner_batch_uq").on(t.teacherId, t.batchId),
+}));
+
 /** Teacher-configured automatic grants. Evidence is evaluated server-side only. */
 export const classroomRewardRulesTable = pgTable("classroom_reward_rules", {
   id: serial("id").primaryKey(),

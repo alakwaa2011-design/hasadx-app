@@ -64,6 +64,11 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       "utf8",
     );
     await db.execute(sql.raw(rewardGroupsMigration));
+    const goalsAndReversalsMigration = readFileSync(
+      new URL("../../../../scripts/migrations/2026-09-11-classroom-reward-goals-reversal-receipts.sql", import.meta.url),
+      "utf8",
+    );
+    await db.execute(sql.raw(goalsAndReversalsMigration));
     await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS kids_profiles (
         id SERIAL PRIMARY KEY,
@@ -337,6 +342,113 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     const after = await request(teacherApp()).get(`/api/classroom-rewards/summary?className=${encodeURIComponent(className)}&period=week`);
     expect(after.body.metrics).toMatchObject({ totalGrantedPoints: 0, recognizedStudentIds: [], recognizedStudentCount: 0 });
     expect(after.body.typeSummaries).toEqual([]);
+  });
+
+  it("replays a batch reversal receipt and rejects the same key for another batch", async () => {
+    const className = `REPLAY-${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className})`);
+    const ids = (await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('إعادة 1',${teacherId},${className}),('إعادة 2',${teacherId},${className}) RETURNING id
+    `)).rows.map((r:any) => Number(r.id));
+    const grant = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({ className, studentIds: ids, typeId: rewardTypeId, idempotencyKey: `replay-grant:${nonce}` });
+    const batchId = Number(grant.body.grants[0].batch_id);
+    const payload = { idempotencyKey: `replay-reverse:${nonce}` };
+    const first = await request(teacherApp()).post(`/api/classroom-rewards/batches/${batchId}/reverse`).send(payload);
+    const replay = await request(teacherApp()).post(`/api/classroom-rewards/batches/${batchId}/reverse`).send(payload);
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(200);
+    expect(replay.body.entries).toHaveLength(2);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions WHERE batch_id=${batchId} AND kind='reversal'
+    `)).rows[0].n)).toBe(2);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_batch_reversals WHERE teacher_id=${teacherId} AND batch_id=${batchId}
+    `)).rows[0].n)).toBe(1);
+
+    const secondClass = `${className}-2`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${secondClass})`);
+    const secondStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('إعادة 3',${teacherId},${secondClass}) RETURNING id
+    `)).rows[0].id);
+    const secondGrant = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({ className: secondClass, studentIds: [secondStudent], typeId: rewardTypeId, idempotencyKey: `replay-grant-2:${nonce}` });
+    const conflict = await request(teacherApp())
+      .post(`/api/classroom-rewards/batches/${Number(secondGrant.body.grants[0].batch_id)}/reverse`).send(payload);
+    expect(conflict.status).toBe(409);
+  });
+
+  it("concurrently reverses every grant once and preserves atomic failure on partial or insufficient batches", async () => {
+    const className = `CONCURRENT-${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className})`);
+    const ids = (await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('تزامن 1',${teacherId},${className}),('تزامن 2',${teacherId},${className}) RETURNING id
+    `)).rows.map((r:any) => Number(r.id));
+    const grant = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({ className, studentIds: ids, typeId: rewardTypeId, idempotencyKey: `concurrent-grant:${nonce}` });
+    const batchId = Number(grant.body.grants[0].batch_id), key = `concurrent-reverse:${nonce}`;
+    const [a,b] = await Promise.all([
+      request(teacherApp()).post(`/api/classroom-rewards/batches/${batchId}/reverse`).send({ idempotencyKey:key }),
+      request(teacherApp()).post(`/api/classroom-rewards/batches/${batchId}/reverse`).send({ idempotencyKey:key }),
+    ]);
+    expect([a.status,b.status].sort()).toEqual([200,201]);
+    expect(Number((await db.execute(sql`
+      SELECT count(*) n FROM classroom_reward_transactions WHERE batch_id=${batchId} AND kind='reversal'
+    `)).rows[0].n)).toBe(2);
+    const balances = (await db.execute(sql`
+      SELECT student_id,COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id IN (${sql.join(ids.map(id=>sql`${id}`),sql`,`)}) GROUP BY student_id ORDER BY student_id
+    `)).rows;
+    expect(balances.map((r:any)=>Number(r.balance))).toEqual([0,0]);
+
+    const partialClass = `PARTIAL-${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${partialClass})`);
+    const partialIds = (await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class) VALUES ('جزئي 1',${teacherId},${partialClass}),('جزئي 2',${teacherId},${partialClass}) RETURNING id
+    `)).rows.map((r:any) => Number(r.id));
+    const partialGrant = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({ className:partialClass,studentIds:partialIds,typeId:rewardTypeId,idempotencyKey:`partial-grant:${nonce}` });
+    const partialBatch = Number(partialGrant.body.grants[0].batch_id);
+    const oneGrant = Number(partialGrant.body.grants[0].id);
+    expect((await request(teacherApp()).post(`/api/classroom-rewards/ledger/${oneGrant}/reverse`).send({idempotencyKey:`partial-one:${nonce}`})).status).toBe(201);
+    const partialBefore = Number((await db.execute(sql`SELECT count(*) n FROM classroom_reward_transactions WHERE batch_id=${partialBatch} AND kind='reversal'`)).rows[0].n);
+    expect((await request(teacherApp()).post(`/api/classroom-rewards/batches/${partialBatch}/reverse`).send({idempotencyKey:`partial-batch:${nonce}`})).status).toBe(409);
+    expect(Number((await db.execute(sql`SELECT count(*) n FROM classroom_reward_transactions WHERE batch_id=${partialBatch} AND kind='reversal'`)).rows[0].n)).toBe(partialBefore);
+
+    const poorClass = `POOR-${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${poorClass})`);
+    const poorStudent = Number((await db.execute(sql`INSERT INTO students(name,teacher_id,student_class) VALUES ('ناقص',${teacherId},${poorClass}) RETURNING id`)).rows[0].id);
+    const poorGrant = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({className:poorClass,studentIds:[poorStudent],typeId:rewardTypeId,idempotencyKey:`poor-grant:${nonce}`});
+    const poorBatch = Number(poorGrant.body.grants[0].batch_id);
+    await db.execute(sql`UPDATE classroom_reward_balances SET balance=0 WHERE teacher_id=${teacherId} AND student_id=${poorStudent}`);
+    expect((await request(teacherApp()).post(`/api/classroom-rewards/batches/${poorBatch}/reverse`).send({idempotencyKey:`poor-batch:${nonce}`})).status).toBe(409);
+    expect(Number((await db.execute(sql`SELECT count(*) n FROM classroom_reward_transactions WHERE batch_id=${poorBatch} AND kind='reversal'`)).rows[0].n)).toBe(0);
+  });
+
+  it("keeps goals owner-scoped, counts only unreversed grants, and strips private board fields", async () => {
+    const className = `GOALS-${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className})`);
+    const goalStudent = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,parent_name,parent_phone,parent_email,notes) VALUES ('هدف',${teacherId},${className},'ولي','555','private@example.invalid','private') RETURNING id
+    `)).rows[0].id);
+    const outsider = Number((await db.execute(sql`INSERT INTO students(name,teacher_id,student_class) VALUES ('خارج',${teacherId},'B') RETURNING id`)).rows[0].id);
+    const created = await request(teacherApp()).post(`/api/classroom-rewards/classes/${className}/goals`)
+      .send({title:"هدف أسبوعي",targetPoints:5,studentId:goalStudent});
+    expect(created.status).toBe(201);
+    const denied = await request(teacherApp()).post(`/api/classroom-rewards/classes/${className}/goals`)
+      .send({title:"هدف خاطئ",targetPoints:5,studentId:outsider});
+    expect(denied.status).toBe(403);
+    const validGrant = await request(teacherApp()).post("/api/classroom-rewards/grants")
+      .send({className,studentIds:[goalStudent],typeId:rewardTypeId,idempotencyKey:`goal-grant-valid:${nonce}`});
+    expect(validGrant.status).toBe(201);
+    const goal = await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/goals`);
+    expect(goal.body.goals[0]).toMatchObject({studentId:goalStudent,currentPoints:1,completed:false});
+    await request(teacherApp()).post(`/api/classroom-rewards/ledger/${validGrant.body.grants[0].id}/reverse`).send({idempotencyKey:`goal-reverse:${nonce}`});
+    expect((await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/goals`)).body.goals[0].currentPoints).toBe(0);
+    const board = await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/board`);
+    expect(board.status).toBe(200);
+    expect(JSON.stringify(board.body)).not.toMatch(/parent|phone|email|notes|account|username|password/i);
   });
 
   it("creates teacher-owned reward groups and replaces only same-class members", async () => {

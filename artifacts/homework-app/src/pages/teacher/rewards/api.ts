@@ -38,6 +38,68 @@ export interface RewardGroup {
   members: RewardGroupMember[];
 }
 
+export interface ClassroomRewardGoal {
+  id: string;
+  title: string;
+  targetType: "class" | "student";
+  targetId?: number;
+  studentName?: string | null;
+  targetPoints: number;
+  currentPoints: number;
+  endDate?: string | null;
+  status: "active" | "archived";
+  completed: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+const normalizeGoal = (goal: any): ClassroomRewardGoal => ({
+  id: String(goal.id),
+  title: String(goal.title),
+  targetType: goal.studentId == null ? "class" : "student",
+  targetId: goal.studentId == null ? undefined : Number(goal.studentId),
+  studentName: goal.studentName ?? null,
+  targetPoints: Number(goal.targetPoints),
+  currentPoints: Number(goal.currentPoints ?? 0),
+  endDate: goal.endsAt ?? goal.endDate ?? null,
+  status: goal.status === "archived" ? "archived" : "active",
+  completed: Boolean(goal.completed),
+  createdAt: goal.createdAt,
+  updatedAt: goal.updatedAt,
+});
+
+const endDateToIso = (value?: string | null) => {
+  if (!value) return null;
+  if (value.includes("T")) return new Date(value).toISOString();
+  return new Date(`${value}T23:59:59.999`).toISOString();
+};
+
+export interface RewardBoardSnapshot {
+  className: string;
+  students: Array<{
+    id: number;
+    name: string;
+    avatar?: string | null;
+    points: number;
+    recognizedThisWeek: boolean;
+  }>;
+  groups: Array<{
+    id: number;
+    name: string;
+    description?: string | null;
+    color: string;
+    avatar?: string | null;
+    score: number;
+    memberIds: number[];
+  }>;
+  goals: ClassroomRewardGoal[];
+  weekly: {
+    totalGrantedPoints: number;
+    recognizedStudentCount: number;
+    awaitingRecognitionCount: number;
+  };
+}
+
 const fetcher = async (url: string, options?: RequestInit) => {
   const res = await fetch(`${API_BASE}${url}`, {
     ...options,
@@ -79,6 +141,7 @@ export const useGetRewardGroups = (className?: string) => {
 
 const invalidateGroups = (qc: ReturnType<typeof useQueryClient>, className: string) => {
   qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", className] });
+  qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", className] });
 };
 
 export const useCreateRewardGroup = () => {
@@ -151,6 +214,7 @@ export const useGrantGroupReward = () => {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", variables.className] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
     },
   });
 };
@@ -165,6 +229,7 @@ export const useResetGroupScore = () => {
       }),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
     },
   });
 };
@@ -219,6 +284,7 @@ export const useGrantRewards = () => {
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+       qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
        for (const studentId of variables.studentIds ?? []) {
          qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
        }
@@ -308,6 +374,119 @@ export const useGetRewardSummary = (className?: string, period?: string) => {
     enabled: !!className,
   });
 };
+
+export const useGetRewardGoals = (className?: string) => useQuery<{ goals: ClassroomRewardGoal[] }>({
+  queryKey: ["classroom-rewards", "goals", className],
+  queryFn: async () => {
+    const response = await fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}/goals`);
+    return { goals: (response.goals ?? []).map(normalizeGoal) };
+  },
+  enabled: !!className,
+});
+
+export const useCreateRewardGoal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, ...data }: {
+      className: string;
+      title: string;
+      targetType: "class" | "student";
+      targetId?: number;
+      targetPoints: number;
+      endDate?: string | null;
+    }) => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/goals`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: data.title,
+        targetPoints: data.targetPoints,
+        studentId: data.targetType === "student" ? data.targetId : null,
+        endsAt: endDateToIso(data.endDate),
+      }),
+    }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "goals", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+    },
+  });
+};
+
+export const useUpdateRewardGoal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, goalId, ...data }: {
+      className: string;
+      goalId: string;
+      title?: string;
+      targetType?: "class" | "student";
+      targetId?: number | null;
+      targetPoints?: number;
+      endDate?: string | null;
+      status?: "active" | "archived";
+    }) => fetcher(`/api/classroom-rewards/goals/${encodeURIComponent(goalId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.targetPoints !== undefined ? { targetPoints: data.targetPoints } : {}),
+        ...(data.targetType !== undefined || data.targetId !== undefined
+          ? { studentId: data.targetType === "class" ? null : data.targetId }
+          : {}),
+        ...(data.endDate !== undefined ? { endsAt: endDateToIso(data.endDate) } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+      }),
+    }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "goals", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+    },
+  });
+};
+
+export const useArchiveRewardGoal = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, goalId }: { className: string; goalId: string }) =>
+      fetcher(`/api/classroom-rewards/goals/${encodeURIComponent(goalId)}`, { method: "DELETE" }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "goals", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+    },
+  });
+};
+
+export const useGetRewardBoard = (className?: string, enabled = true) => useQuery<RewardBoardSnapshot>({
+  queryKey: ["classroom-rewards", "board", className],
+  queryFn: async () => {
+    const response = await fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}/board`);
+    const recognizedStudentCount = Number(response.weeklyFairness?.recognizedStudentCount ?? 0);
+    const totalStudentCount = Number(response.weeklyFairness?.totalStudentCount ?? response.students?.length ?? 0);
+    return {
+      className: response.className,
+      students: (response.students ?? []).map((student: any) => ({
+        id: Number(student.id),
+        name: student.name,
+        avatar: student.avatar ?? null,
+        points: Number(student.points ?? 0),
+        recognizedThisWeek: Boolean(student.currentWeeklyRecognition),
+      })),
+      groups: (response.groups ?? []).map((group: any) => ({
+        ...group,
+        id: Number(group.id),
+        score: Number(group.score ?? 0),
+        color: group.color || "#225739",
+        memberIds: (group.memberIds ?? []).map(Number),
+      })),
+      goals: (response.goals ?? []).map(normalizeGoal),
+      weekly: {
+        totalGrantedPoints: 0,
+        recognizedStudentCount,
+        awaitingRecognitionCount: Math.max(0, totalStudentCount - recognizedStudentCount),
+      },
+    };
+  },
+  enabled: enabled && !!className,
+  refetchInterval: enabled ? 2000 : false,
+  refetchIntervalInBackground: false,
+});
 
 // Reuse existing classes endpoint to get list of teacher's classes for the dropdown
 export const useGetTeacherClasses = () => {

@@ -9,10 +9,12 @@ import {
   useResetStudentPassword,
   useGrantRewards,
   useAdjustStudentBalance,
+  useGetRewardGoals,
 } from "./api";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
+import { GoalProgressCard } from "./goal-progress";
 import {
   User, Shield, Key, History, FileText, Activity,
   Loader2, Save, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock,
@@ -182,6 +184,10 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
 }) {
   const { student, rewards } = data;
   const grantMutation = useGrantRewards();
+  const { data: goalsData } = useGetRewardGoals(className);
+  const studentGoals = (goalsData?.goals ?? []).filter(
+    (goal) => goal.targetType === "class" || goal.targetId === studentId,
+  );
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const grantInFlightRef = useRef(false);
@@ -253,6 +259,17 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
       </div>
 
       <div className="md:col-span-2 space-y-6">
+        {studentGoals.length > 0 && (
+          <section aria-label="أهداف تقدم الطالب" className="space-y-3">
+            <h4 className="flex items-center gap-2 text-lg font-black text-emerald-950">
+              <Compass size={20} className="text-amber-500" />
+              أهداف التقدم
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {studentGoals.map((goal) => <GoalProgressCard key={goal.id} goal={goal} />)}
+            </div>
+          </section>
+        )}
          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
            <div className="bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 border border-amber-200 rounded-[2rem] p-4 shadow-lg shadow-amber-500/20 text-white relative overflow-hidden flex flex-col items-center justify-center group hover:scale-[1.02] transition-transform motion-reduce:transition-none motion-reduce:transform-none">
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl" />

@@ -1,0 +1,302 @@
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Maximize, Minimize, Shuffle, Users, Star, Trophy, Sparkles, UserRound, ArrowRight, Target } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AvatarDisplay } from "@/components/avatar-display";
+import { formatRewardPoints } from "./format";
+import { GoalProgressCard, type RewardGoal } from "./goal-progress";
+
+export interface BoardStudent {
+  id: number;
+  name: string;
+  avatar?: string | null;
+  points: number;
+  groupIds?: number[];
+  recognizedThisWeek?: boolean;
+}
+
+export interface BoardGroup {
+  id: number;
+  name: string;
+  color: string;
+  avatar?: string | null;
+  score: number;
+}
+
+export interface LiveBoardProps {
+  className?: string; // Class name label
+  goal?: RewardGoal;
+  students: BoardStudent[];
+  groups: BoardGroup[];
+  onStudentClick?: (studentId: number) => void;
+  onGroupClick?: (groupId: number) => void;
+  onExit?: () => void;
+  onFairnessSelect?: (studentId: number) => void;
+}
+
+export function LiveBoard({
+  className = "الصف",
+  goal,
+  students,
+  groups,
+  onStudentClick,
+  onGroupClick,
+  onExit,
+  onFairnessSelect
+}: LiveBoardProps) {
+  const reduceMotion = useReducedMotion();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fairnessHighlight, setFairnessHighlight] = useState<number | null>(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      await document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  const triggerFairnessCue = () => {
+    if (students.length === 0 || isSpinning) return;
+    setIsSpinning(true);
+    setFairnessHighlight(null);
+    
+    // Choose fairest student (lowest points, randomize if tied)
+    const unrecognized = students.filter((student) => !student.recognizedThisWeek);
+    const fairnessPool = unrecognized.length ? unrecognized : students;
+    const sorted = [...fairnessPool].sort((a, b) => a.points - b.points);
+    const lowestPoints = sorted[0].points;
+    const candidates = sorted.filter(s => s.points === lowestPoints);
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    if (reduceMotion) {
+      setFairnessHighlight(chosen.id);
+      setIsSpinning(false);
+      onFairnessSelect?.(chosen.id);
+      return;
+    }
+
+    let spins = 0;
+    const maxSpins = 16;
+    const interval = setInterval(() => {
+      const rand = students[Math.floor(Math.random() * students.length)];
+      setFairnessHighlight(rand.id);
+      spins++;
+      if (spins >= maxSpins) {
+        clearInterval(interval);
+        setFairnessHighlight(chosen.id);
+        setIsSpinning(false);
+        onFairnessSelect?.(chosen.id);
+      }
+    }, 120);
+  };
+
+  const groupScores = [...groups].sort((a,b) => b.score - a.score);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#F8FAFC] text-slate-900 font-sans" dir="rtl">
+      {/* Background Decor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-300/15 blur-[120px]" />
+        <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-amber-300/15 blur-[120px]" />
+      </div>
+
+      {/* Header */}
+      <header className="relative z-10 flex items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+          <button aria-label="الخروج من السبورة الحية" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+            <ArrowRight size={22} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 truncate text-sm font-black text-emerald-950 sm:text-xl">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
+              اللوحة الحية: {className}
+            </h1>
+            <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">تحديث فوري لنقاط الأبطال</p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <button 
+            onClick={triggerFairnessCue} 
+            disabled={isSpinning || students.length === 0}
+            className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-3 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:rounded-2xl sm:px-6 sm:py-3"
+          >
+            <Shuffle size={18} />
+            <span className="hidden sm:inline">من يستحق التحفيز؟</span>
+          </button>
+          
+          <button aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"} onClick={toggleFullscreen} className="hidden h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:flex">
+            {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto p-3 sm:p-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
+        
+        {/* Right Panel: Goals & Groups */}
+        <aside className="flex h-auto w-full shrink-0 flex-col gap-4 overflow-visible pb-0 lg:h-full lg:w-[340px] lg:gap-6 lg:overflow-y-auto">
+          {goal && (
+            <div className="shrink-0">
+              <h2 className="text-xs font-black text-emerald-900/50 mb-3 uppercase tracking-wider flex items-center gap-2 px-1">
+                <Target size={14} /> هدف الإنجاز
+              </h2>
+              <GoalProgressCard goal={goal} className="border-white/80 bg-white/80 backdrop-blur-xl shadow-lg shadow-emerald-900/5" />
+            </div>
+          )}
+
+          {groupScores.length > 0 && (
+            <div className="flex flex-1 flex-col lg:min-h-[300px]">
+              <h2 className="text-xs font-black text-emerald-900/50 mb-3 uppercase tracking-wider flex items-center gap-2 px-1">
+                <Users size={14} /> الفرق المتنافسة
+              </h2>
+               <div className="relative flex flex-1 gap-3 overflow-x-auto rounded-[2rem] border-2 border-white/80 bg-white/60 p-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] backdrop-blur-xl lg:flex-col lg:overflow-y-auto lg:rounded-[2.5rem] lg:p-4">
+                {groupScores.map((group, index) => (
+                  <button
+                    key={group.id}
+                    onClick={() => onGroupClick?.(group.id)}
+                    className="group relative min-w-56 flex-1 rounded-[1.5rem] text-right outline-none focus:ring-4 focus:ring-emerald-400/20 lg:min-w-0 lg:flex-none lg:w-full"
+                  >
+                    <div className="absolute inset-0 rounded-[1.5rem] bg-white opacity-40 transition-opacity group-hover:opacity-100 shadow-sm" />
+                    <div className="relative flex items-center gap-3 p-3 rounded-[1.5rem] border-2 border-transparent transition-all group-hover:border-emerald-100/50">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] shrink-0 bg-white border-2 border-white" style={{ borderColor: `${group.color}30` }}>
+                        {group.avatar ? (
+                          <AvatarDisplay avatar={group.avatar} size="sm" />
+                        ) : (
+                          <span className="font-black text-lg" style={{ color: group.color }}>{index + 1}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-black text-slate-800 truncate">{group.name}</div>
+                        <div className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mt-1">
+                          <Trophy size={11} style={{ color: group.color }} />
+                          <span style={{ color: group.color }}>{formatRewardPoints(group.score)} نقطة</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-slate-300 opacity-0 transition-all group-hover:opacity-100 group-hover:-translate-x-1">
+                        <ArrowRight size={18} className="rotate-180" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* Left Panel: Students Grid */}
+        <main className="relative flex min-h-[420px] flex-1 flex-col overflow-y-auto rounded-[2rem] border-2 border-white/80 bg-white/60 p-3 shadow-xl shadow-emerald-900/5 backdrop-blur-xl sm:rounded-[3rem] sm:p-6 lg:min-h-0">
+          <div className="grid auto-rows-max grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+            <AnimatePresence>
+              {students.map((student) => {
+                const isHighlighted = fairnessHighlight === student.id;
+                const studentGroups = groups.filter((group) => student.groupIds?.includes(group.id));
+                const group = studentGroups[0];
+                
+                return (
+                  <motion.button
+                    key={student.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ 
+                      opacity: 1, 
+                      scale: isHighlighted ? 1.05 : 1,
+                      zIndex: isHighlighted ? 10 : 1
+                    }}
+                    transition={{ duration: 0.3 }}
+                    onClick={() => onStudentClick?.(student.id)}
+                    className={cn(
+                      "group relative flex flex-col items-center gap-3 rounded-[1.75rem] border-2 p-3 transition-all outline-none focus:ring-4 focus:ring-emerald-400/20 sm:gap-4 sm:rounded-[2.5rem] sm:p-5",
+                      isHighlighted 
+                        ? "bg-gradient-to-b from-amber-50 to-white border-amber-300 shadow-2xl shadow-amber-300/40" 
+                        : "bg-white border-white/80 shadow-md hover:border-emerald-200 hover:shadow-lg hover:bg-emerald-50/50"
+                    )}
+                  >
+                    {isHighlighted && (
+                      <motion.div 
+                        layoutId="fairness-glow"
+                        className="absolute inset-0 rounded-[2.5rem] shadow-[0_0_40px_rgba(251,191,36,0.4)] pointer-events-none"
+                      />
+                    )}
+                    
+                    <div className="relative mt-2">
+                      <AvatarDisplay 
+                        avatar={student.avatar} 
+                        fallback={student.name.charAt(0)}
+                        size="xl"
+                        className={cn(
+                           "h-20 w-20 shadow-lg ring-4 transition-transform duration-300 group-hover:scale-110 sm:h-24 sm:w-24",
+                          isHighlighted ? "ring-amber-300" : "ring-white"
+                        )}
+                        style={group ? { backgroundColor: `${group.color}15` } : undefined}
+                      />
+                      {group && (
+                        <div 
+                          className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-white shadow-lg z-10"
+                          style={{ backgroundColor: group.color }}
+                          title={studentGroups.map((item) => item.name).join("، ")}
+                        >
+                          <span className="text-xs font-black">{formatRewardPoints(studentGroups.length)}</span>
+                        </div>
+                      )}
+                      {isHighlighted && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                          className="absolute -top-4 -left-4 text-amber-500 drop-shadow-xl z-20"
+                        >
+                          <Sparkles size={32} />
+                        </motion.div>
+                      )}
+                    </div>
+
+                    <div className="text-center w-full min-w-0 mt-1 mb-1">
+                      <div className="text-sm font-black text-emerald-950 truncate mb-2.5 px-1">{student.name}</div>
+                      <div className={cn(
+                        "inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-black transition-colors shadow-inner border-2",
+                        isHighlighted 
+                          ? "bg-amber-100 text-amber-900 border-amber-200" 
+                          : "bg-slate-50 text-slate-700 border-slate-100/50 group-hover:bg-emerald-100 group-hover:text-emerald-900 group-hover:border-emerald-200"
+                      )}>
+                        <Star size={16} className={cn(isHighlighted ? "fill-amber-400 text-amber-400" : "text-slate-400 group-hover:text-emerald-500 group-hover:fill-emerald-500/20")} />
+                        {formatRewardPoints(student.points)}
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+          
+          {students.length === 0 && (
+            <div className="flex flex-col items-center justify-center flex-1 opacity-60">
+              <div className="w-28 h-28 rounded-full bg-slate-100 flex items-center justify-center mb-5 shadow-inner">
+                <UserRound size={56} className="text-slate-300" />
+              </div>
+              <p className="text-xl font-black text-slate-500">لا يوجد أبطال في هذا الصف بعد</p>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .hidden-scrollbar::-webkit-scrollbar {
+          width: 0px;
+          height: 0px;
+          background: transparent;
+        }
+      `}} />
+    </div>
+  );
+}
