@@ -615,7 +615,10 @@ export default function WameethCreate() {
         </div>
       </div>
 
-      <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-6 sm:py-8 lg:py-10 space-y-6 lg:space-y-8">
+      <div className={cn(
+        "max-w-4xl lg:max-w-6xl mx-auto px-3 sm:px-4 lg:px-8 lg:py-10",
+        step === "mode" ? "py-3 sm:py-6 space-y-3 sm:space-y-6" : "py-6 sm:py-8 space-y-6 lg:space-y-8",
+      )}>
         {/* Step progress */}
         <div className="flex items-center gap-2 px-1">
           {[
@@ -929,45 +932,47 @@ export default function WameethCreate() {
           </>
         ) : (
           /* ─── Step 2: play mode ─────────────────────────────────────── */
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 lg:space-y-5 max-w-3xl lg:max-w-4xl mx-auto">
-            <div className="flex items-center gap-3 lg:gap-4">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 sm:space-y-4 lg:space-y-5 max-w-3xl lg:max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 px-1 lg:gap-4">
               <div>
-                <h2 className="font-black text-xl lg:text-2xl text-foreground">{ar ? "اختر طريقة اللعب" : "Choose play mode"}</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{ar ? `${validQuestions.length} سؤال جاهز — اختر النمط ثم ابدأ` : `${validQuestions.length} questions ready — choose a mode and start`}</p>
+                <h2 className="font-black text-lg sm:text-xl lg:text-2xl text-foreground">{ar ? "اختر طريقة اللعب" : "Choose play mode"}</h2>
+                <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground font-medium">{ar ? `${validQuestions.length} سؤال جاهز — اختر النمط ثم ابدأ` : `${validQuestions.length} questions ready — choose a mode and start`}</p>
               </div>
             </div>
 
-            <div className="space-y-4 lg:space-y-5">
+            <div className="space-y-2.5 sm:space-y-4 lg:space-y-5">
               <section
                 data-testid="playmode-devices-section"
-                className="rounded-3xl border border-blue-200/70 bg-blue-50/40 p-3.5 sm:p-4 lg:p-5 dark:border-blue-900/40 dark:bg-blue-950/20"
+                className="rounded-2xl sm:rounded-3xl border border-blue-200/70 bg-blue-50/40 p-2.5 sm:p-4 lg:p-5 dark:border-blue-900/40 dark:bg-blue-950/20"
               >
-                <div className="flex items-start gap-3 px-1 pb-3 sm:px-2 sm:pb-4">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                    <User className="h-5 w-5" />
+                <div className="flex items-center gap-2 px-0.5 pb-2 sm:items-start sm:gap-3 sm:px-2 sm:pb-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 sm:mt-0.5 sm:h-9 sm:w-9 sm:rounded-xl dark:bg-blue-900/50 dark:text-blue-300">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <h3 className="font-black text-foreground text-base sm:text-lg">
+                    <h3 className="font-black text-foreground text-sm sm:text-lg">
                       {ar ? "من جهاز كل لاعب" : "From each player's device"}
                     </h3>
-                    <p className="mt-0.5 text-xs font-medium leading-relaxed text-muted-foreground">
+                    <p className="mt-0.5 hidden text-xs font-medium leading-relaxed text-muted-foreground sm:block">
                       {ar ? "يجيب كل لاعب من جواله أو جهازه، وتظهر النتائج مباشرة." : "Each player answers from their own device and results update live."}
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button
                     type="button"
                     data-testid="playmode-solo"
                     onClick={() => setMode("solo")}
                     className={cn(
-                      "relative min-h-[124px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+                      "relative min-h-[78px] p-2.5 sm:min-h-[124px] sm:p-4 lg:p-5 rounded-xl sm:rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                       mode === "solo" ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 shadow-md shadow-blue-500/10" : "border-border bg-card hover:border-blue-300",
                     )}
                   >
-                    <User className={cn("w-6 h-6 mb-2 transition-colors", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm sm:text-base">{ar ? "فردي" : "Individual"}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">{ar ? "كل لاعب ينافس بنفسه ويجمع نقاطه بشكل مستقل." : "Every player competes individually and earns a personal score."}</p>
+                    <div className="flex items-center gap-2 sm:block">
+                      <User className={cn("h-5 w-5 shrink-0 transition-colors sm:mb-2 sm:h-6 sm:w-6", mode === "solo" ? "text-blue-600" : "text-muted-foreground")} />
+                      <p className="font-black text-foreground text-sm sm:text-base">{ar ? "فردي" : "Individual"}</p>
+                    </div>
+                    <p className="hidden text-[11px] sm:block sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">{ar ? "كل لاعب ينافس بنفسه ويجمع نقاطه بشكل مستقل." : "Every player competes individually and earns a personal score."}</p>
                     {mode === "solo" && <Check className="absolute top-3 end-3 w-4 h-4 text-blue-600" />}
                   </button>
 
@@ -976,13 +981,15 @@ export default function WameethCreate() {
                     data-testid="playmode-teams"
                     onClick={() => setMode("teams")}
                     className={cn(
-                      "relative min-h-[124px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50",
+                      "relative min-h-[78px] p-2.5 sm:min-h-[124px] sm:p-4 lg:p-5 rounded-xl sm:rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50",
                       mode === "teams" ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 shadow-md shadow-purple-500/10" : "border-border bg-card hover:border-purple-300",
                     )}
                   >
-                    <UsersRound className={cn("w-6 h-6 mb-2 transition-colors", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm sm:text-base">{ar ? "فرق" : "Teams"}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">{ar ? "يلعب كل لاعب من جهازه ضمن فريق واحد." : "Players answer from their devices while competing as teams."}</p>
+                    <div className="flex items-center gap-2 sm:block">
+                      <UsersRound className={cn("h-5 w-5 shrink-0 transition-colors sm:mb-2 sm:h-6 sm:w-6", mode === "teams" ? "text-purple-600" : "text-muted-foreground")} />
+                      <p className="font-black text-foreground text-sm sm:text-base">{ar ? "فرق" : "Teams"}</p>
+                    </div>
+                    <p className="hidden text-[11px] sm:block sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">{ar ? "يلعب كل لاعب من جهازه ضمن فريق واحد." : "Players answer from their devices while competing as teams."}</p>
                     {mode === "teams" && <Check className="absolute top-3 end-3 w-4 h-4 text-purple-600" />}
                   </button>
                 </div>
@@ -990,36 +997,38 @@ export default function WameethCreate() {
 
               <section
                 data-testid="playmode-board-section"
-                className="rounded-3xl border border-emerald-200/70 bg-emerald-50/40 p-3.5 sm:p-4 lg:p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+                className="rounded-2xl sm:rounded-3xl border border-emerald-200/70 bg-emerald-50/40 p-2.5 sm:p-4 lg:p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20"
               >
-                <div className="flex items-start gap-3 px-1 pb-3 sm:px-2 sm:pb-4">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                    <School className="h-5 w-5" />
+                <div className="flex items-center gap-2 px-0.5 pb-2 sm:items-start sm:gap-3 sm:px-2 sm:pb-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 sm:mt-0.5 sm:h-9 sm:w-9 sm:rounded-xl dark:bg-emerald-900/50 dark:text-emerald-300">
+                    <School className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <div>
-                    <h3 className="font-black text-foreground text-base sm:text-lg">
+                    <h3 className="font-black text-foreground text-sm sm:text-lg">
                       {ar ? "على السبورة" : "On the board"}
                     </h3>
-                    <p className="mt-0.5 text-xs font-medium leading-relaxed text-muted-foreground">
+                    <p className="mt-0.5 hidden text-xs font-medium leading-relaxed text-muted-foreground sm:block">
                       {ar ? "اللعب من الشاشة المشتركة في الصف، دون حاجة لجهاز لكل لاعب." : "Play together on the shared classroom screen without a device for every player."}
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button
                     type="button"
                     data-testid="playmode-classroom"
                     onClick={() => classroomEligible.length >= 2 && setMode("classroom")}
                     disabled={classroomEligible.length < 2}
                     className={cn(
-                      "relative min-h-[124px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
+                      "relative min-h-[78px] p-2.5 sm:min-h-[124px] sm:p-4 lg:p-5 rounded-xl sm:rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
                       mode === "classroom" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 shadow-md shadow-emerald-500/10" : "border-border bg-card hover:border-emerald-300",
                       classroomEligible.length < 2 && "opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none hover:border-border",
                     )}
                   >
-                    <School className={cn("w-6 h-6 mb-2 transition-colors", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm sm:text-base">{ar ? "وميض الصف" : "Classroom Wameedh"}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">
+                    <div className="flex items-center gap-2 sm:block">
+                      <School className={cn("h-5 w-5 shrink-0 transition-colors sm:mb-2 sm:h-6 sm:w-6", mode === "classroom" ? "text-emerald-600" : "text-muted-foreground")} />
+                      <p className="font-black text-foreground text-sm sm:text-base">{ar ? "وميض الصف" : "Classroom Wameedh"}</p>
+                    </div>
+                    <p className="hidden text-[11px] sm:block sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">
                       {classroomEligible.length < 2
                         ? (ar ? "لا توجد أسئلة مناسبة للعب الصف حالياً." : "Not enough suitable questions for class play.")
                         : (ar ? "يتنافس طالبان أو فريقان مباشرة على شاشة واحدة." : "Students or two teams compete directly on one shared screen.")}
@@ -1032,13 +1041,15 @@ export default function WameethCreate() {
                     data-testid="playmode-independent"
                     onClick={() => setMode("independent")}
                     className={cn(
-                      "relative min-h-[124px] p-3.5 sm:p-4 lg:p-5 rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50",
+                      "relative min-h-[78px] p-2.5 sm:min-h-[124px] sm:p-4 lg:p-5 rounded-xl sm:rounded-2xl border-2 text-start transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50",
                       mode === "independent" ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30 shadow-md shadow-amber-500/10" : "border-border bg-card hover:border-amber-300",
                     )}
                   >
-                    <Zap className={cn("w-6 h-6 mb-2 transition-colors", mode === "independent" ? "text-amber-600" : "text-muted-foreground")} />
-                    <p className="font-black text-foreground text-sm sm:text-base">{ar ? "مستقلة" : "Independent"}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">{ar ? "لعب فردي على السبورة، مناسب للتحدي السريع أو التدريب الذاتي." : "A solo board experience for a quick challenge or self-practice."}</p>
+                    <div className="flex items-center gap-2 sm:block">
+                      <Zap className={cn("h-5 w-5 shrink-0 transition-colors sm:mb-2 sm:h-6 sm:w-6", mode === "independent" ? "text-amber-600" : "text-muted-foreground")} />
+                      <p className="font-black text-foreground text-sm sm:text-base">{ar ? "مستقلة" : "Independent"}</p>
+                    </div>
+                    <p className="hidden text-[11px] sm:block sm:text-xs text-muted-foreground font-medium mt-1 leading-relaxed">{ar ? "لعب فردي على السبورة، مناسب للتحدي السريع أو التدريب الذاتي." : "A solo board experience for a quick challenge or self-practice."}</p>
                     {mode === "independent" && <Check className="absolute top-3 end-3 w-4 h-4 text-amber-600" />}
                   </button>
                 </div>
