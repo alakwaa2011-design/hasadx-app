@@ -206,7 +206,7 @@ router.post("/parent-messages/motivation-summary", async (req, res) => {
     });
     const delivery = await sendEmail({
       to: emailCheck.data,
-      subject: `منصة حصاد | ${subject}`,
+      subject,
       html: emailHtml,
       text: [
         body,
@@ -287,7 +287,7 @@ router.post("/parent-messages", async (req, res) => {
 
     const emailResult = await sendEmail({
       to: parentEmail,
-      subject: `منصة حصاد | رسالة بخصوص ${student.name}`,
+      subject: `رسالة بخصوص ${student.name}`,
       html: emailHtml,
       text: `رسالة من المعلم ${teacher.name} بخصوص ${student.name}:\n\n${body}\n\nللرد: ${portalUrl}`,
     });
@@ -387,7 +387,7 @@ router.post("/parent-messages/bulk", async (req, res) => {
 
         const result = await sendEmail({
           to: student.parentEmail!,
-          subject: `منصة حصاد | رسالة بخصوص ${student.name}`,
+          subject: `رسالة بخصوص ${student.name}`,
           html: emailHtml,
           text: `رسالة من المعلم ${teacher.name} بخصوص ${student.name}:\n\n${body}\n\nللرد: ${portalUrl}`,
         });
@@ -564,7 +564,7 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
       });
       await sendEmail({
         to: msg.parentEmail,
-        subject: `منصة حصاد | رد المعلم بخصوص ${msg.studentName}`,
+        subject: `رد المعلم بخصوص ${msg.studentName}`,
         html: emailHtml,
       });
     }

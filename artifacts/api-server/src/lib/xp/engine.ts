@@ -928,9 +928,9 @@ async function queueBadgeEmail(
     .insert(emailOutboxTable)
     .values({
       toEmail: t.email,
-      subject: `🏅 ${badgeName} — شارة جديدة في حصاد`,
+      subject: `شارة جديدة: ${badgeName}`,
       htmlBody: buildBadgeEmailHtml(t.name, badgeName),
-      textBody: `تهانينا ${t.name}! حصلت على شارة ${badgeName}.`,
+      textBody: `${t.name}، حصلت على شارة ${badgeName}.`,
       kind: "badge_awarded",
       refKey: `${teacherId}:${badgeId}`,
     })
@@ -955,9 +955,9 @@ async function queueThresholdEmail(
     .insert(emailOutboxTable)
     .values({
       toEmail: t.email,
-      subject: `🎁 جائزة جديدة في حصاد: ${label}`,
+      subject: `جائزة جديدة: ${label}`,
       htmlBody: buildThresholdEmailHtml(t.name, label),
-      textBody: `تهانينا ${t.name}! جائزة جديدة: ${label}.`,
+      textBody: `${t.name}، فُتحت لك جائزة ${label}.`,
       kind: "threshold_granted",
       refKey: `${teacherId}:${rewardId}`,
     })
@@ -1001,7 +1001,7 @@ async function notifyLevelUp(
       .insert(emailOutboxTable)
       .values({
         toEmail: t.email,
-        subject: `🎉 ترقّيت إلى مستوى ${levelNameAr} في حصاد`,
+        subject: `ترقّيت إلى مستوى ${levelNameAr}`,
         htmlBody: buildLevelUpEmailHtml(t.name, newLevel, levelNameAr),
         textBody: `مرحباً ${t.name}، ترقّيت إلى المستوى ${newLevel} — ${levelNameAr}.`,
         kind: "level_up",
@@ -1072,7 +1072,7 @@ async function notifyQuestComplete(
       .insert(emailOutboxTable)
       .values({
         toEmail: t.email,
-        subject: `✅ أكملت مهمة أسبوعية في حصاد: ${questNameAr}`,
+        subject: `أكملت مهمة أسبوعية: ${questNameAr}`,
         htmlBody: buildQuestCompleteEmailHtml(t.name, questNameAr, rewardXp),
         textBody: `${t.name}، أكملت مهمة "${questNameAr}" وحصلت على ${rewardXp} نقطة.`,
         kind: "quest_complete",

@@ -1,0 +1,36 @@
+.reward-world--celebration{
+  --pavilion-cream:#fff8e9; --pavilion-ink:#173f34; --pavilion-green:#0b3028;
+  position:relative; isolation:isolate; background:
+    radial-gradient(ellipse at 10% 12%,rgba(249,194,93,.5),transparent 25%),
+    radial-gradient(ellipse at 93% 23%,rgba(151,224,188,.55),transparent 27%),
+    radial-gradient(ellipse at 66% 100%,rgba(241,139,112,.22),transparent 32%),
+    linear-gradient(135deg,#f4f0df 0%,#f8f6e9 47%,#e6f1df 100%);
+}
+.reward-world--celebration::before{content:"";position:absolute;z-index:-2;inset:0;opacity:.3;pointer-events:none;background-image:linear-gradient(117deg,transparent 0 42%,rgba(255,246,188,.55) 43%,transparent 47%),linear-gradient(63deg,transparent 0 65%,rgba(178,230,201,.45) 66%,transparent 70%);background-size:430px 500px,510px 620px}
+.reward-world--celebration::after{content:"";position:absolute;z-index:-3;inset:3% 4%;border:1px solid rgba(135,151,92,.2);border-radius:50px;pointer-events:none}
+.rw-pavilion-lights{position:absolute;z-index:-1;inset:0;overflow:hidden;pointer-events:none}
+.rw-pavilion-lights i{position:absolute;width:130px;height:36px;border-radius:50%;filter:blur(18px);opacity:.27;transform:rotate(-22deg);animation:rw-drift 18s ease-in-out infinite alternate}
+.rw-pavilion-lights i:nth-child(1){top:13%;right:2%;background:#e8b849;animation-delay:-4s}.rw-pavilion-lights i:nth-child(2){top:39%;left:-3%;background:#75c49f;animation-delay:-9s}.rw-pavilion-lights i:nth-child(3){top:71%;right:4%;background:#ee9c83;animation-delay:-13s}.rw-pavilion-lights i:nth-child(4){top:87%;left:16%;background:#b9e2c5;animation-delay:-7s}.rw-pavilion-lights i:nth-child(5){top:25%;left:40%;width:190px;background:#ffe49c;animation-delay:-15s}
+.reward-world--celebration .rw-shell{position:relative;z-index:1}
+.reward-world--celebration .rw-hero{background:linear-gradient(112deg,#082c25,#12513f 58%,#17614a);box-shadow:0 22px 40px -22px #214d3f}
+.reward-world--celebration .rw-hero::after{opacity:.18;background-image:radial-gradient(#ffe28a 1px,transparent 1.7px);animation:rw-glimmer 11s linear infinite}
+.reward-world--celebration .rw-hero::before{content:"";position:absolute;inset:-60% 33% auto auto;width:280px;height:220px;border-radius:50%;background:rgba(248,203,91,.16);filter:blur(22px);pointer-events:none;animation:rw-halo 12s ease-in-out infinite alternate}
+.reward-world--celebration .rw-hero__arch{border-color:rgba(253,213,111,.22)}
+.reward-world--celebration .rw-summary article,.reward-world--celebration .rw-goals{background:rgba(255,253,247,.84);backdrop-filter:blur(7px)}
+.reward-world--celebration .rw-goals{border-color:rgba(212,185,104,.38);box-shadow:0 16px 30px -24px #466358}
+.reward-world--celebration .rw-goal-card{background:rgba(255,254,249,.93);box-shadow:0 12px 25px -22px #7f6230}
+.reward-world--celebration .rw-goal-card__lantern{animation:rw-lantern 5s ease-in-out infinite}
+.reward-world--celebration .rw-student{background:rgba(255,253,249,.9);backdrop-filter:blur(4px);box-shadow:0 15px 25px -22px #536f52}
+.reward-world--celebration .rw-student:hover{transform:translateY(-5px)}
+@keyframes rw-drift{from{translate:0 0}to{translate:46px 22px}}
+@keyframes rw-glimmer{from{background-position:0 0}to{background-position:120px 70px}}
+@keyframes rw-halo{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-30px,18px,0) scale(1.12)}}
+@keyframes rw-lantern{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media(max-width:560px){
+ .reward-world--celebration::after{inset:1% 2%;border-radius:30px}
+ .reward-world--celebration .rw-hero::before{right:-35%;top:-55%}
+ .reward-world--celebration .rw-goals,.reward-world--celebration .rw-summary article{backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .reward-world--celebration .rw-pavilion-lights i,.reward-world--celebration .rw-hero::after,.reward-world--celebration .rw-hero::before,.reward-world--celebration .rw-goal-card__lantern{animation:none}
+}

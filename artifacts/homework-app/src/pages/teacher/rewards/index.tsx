@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { trackProjectAnalyticsEvent } from "@/lib/analytics";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatRewardPoints } from "./format";
+import "./rewards-pavilion.css";
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -74,6 +75,23 @@ function AdventurePointsBadge({ points, className, animate = false }: { points: 
         <span className="text-xs font-black text-amber-50">نقطة</span>
       </div>
     </div>
+  );
+}
+
+function RoyalCompassEmblem() {
+  return (
+    <span className="rewards-pavilion-emblem" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none">
+        <path d="m17 9 7-5 7 5-2 6H19l-2-6Z" fill="#FFF3B8" stroke="#7E5818" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="m17 9-3 2 3 3m14-5 3 2-3 3" stroke="#FFF8D6" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="24" cy="27" r="12.5" fill="#FFDB68" stroke="#7E5818" strokeWidth="1.8" />
+        <circle cx="24" cy="27" r="8.5" fill="#225C4A" stroke="#FFF3B8" strokeWidth="1.5" />
+        <path d="m24 19.5 2.3 5.2 5.7.6-4.3 3.7 1.3 5.5-5-2.9-5 2.9 1.3-5.5-4.3-3.7 5.7-.6 2.3-5.2Z" fill="#FFE58C" />
+        <circle cx="24" cy="27" r="2" fill="#FFF8D6" />
+        <path d="M12 27a12 12 0 0 1 3.5-8.5M36 27a12 12 0 0 0-3.5-8.5" stroke="#FFF4B8" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="10.5" cy="27" r="1.5" fill="#FFF3B8" /><circle cx="37.5" cy="27" r="1.5" fill="#FFF3B8" />
+      </svg>
+    </span>
   );
 }
 
@@ -551,10 +569,13 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         )
       )}
 
-      <div className="max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none">
+      <div className="rewards-pavilion max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none">
+        <div className="rewards-pavilion-lights" aria-hidden="true">
+          <i /><i /><i /><i /><i />
+        </div>
 
         {/* Storybook Header */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-5 rounded-3xl bg-emerald-950 text-white shadow-xl relative overflow-hidden transition-all motion-reduce:transition-none">
+        <div className="rewards-pavilion-hero flex flex-col sm:flex-row gap-4 items-center justify-between p-5 rounded-3xl bg-emerald-950 text-white shadow-xl relative overflow-hidden transition-all motion-reduce:transition-none">
           <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_18%_25%,rgba(255,255,255,0.35)_0_1px,transparent_1.5px),radial-gradient(circle_at_78%_62%,rgba(251,191,36,0.45)_0_1.5px,transparent_2px)] [background-size:34px_34px,48px_48px] pointer-events-none" />
           <div className="absolute -top-20 -left-20 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-10 right-10 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -573,9 +594,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               <ArrowRight size={18} />
               <span className="hidden sm:inline">رجوع</span>
             </button>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg border border-amber-200/50 shrink-0 transform -rotate-3">
-              <Map size={24} className="text-white fill-white/20" />
-            </div>
+            <RoyalCompassEmblem />
             <div className="flex-1">
               <h1 className="flex min-w-0 flex-wrap items-center gap-2 text-xl font-black tracking-wide">
                 رحلة التحفيز
@@ -649,7 +668,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </div>
         </div>
 
-        <section aria-label="ملخص التحفيز الأسبوعي" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <section aria-label="ملخص التحفيز الأسبوعي" className="rewards-pavilion-summary grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {weeklySummaryLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="h-[74px] animate-pulse rounded-2xl border border-emerald-100 bg-emerald-50/60" />
@@ -660,28 +679,32 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </div>
             ) : (
               <>
-            <div className="rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
-              <p className="text-xs font-bold text-emerald-900/60">نقاط هذا الأسبوع</p>
-              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.totalPoints)}</p>
+            <div className="rewards-pavilion-summary-card rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
+              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--gold"><Sparkles size={17} /></span>
+              <div><p className="text-xs font-bold text-emerald-900/60">نقاط هذا الأسبوع</p>
+              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.totalPoints)}</p></div>
             </div>
-            <div className="rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
-              <p className="text-xs font-bold text-emerald-900/60">طلاب تم تحفيزهم</p>
-              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.recognizedCount)}</p>
+            <div className="rewards-pavilion-summary-card rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
+              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--coral"><UserRound size={17} /></span>
+              <div><p className="text-xs font-bold text-emerald-900/60">طلاب تم تحفيزهم</p>
+              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.recognizedCount)}</p></div>
             </div>
-            <div className={cn("rounded-2xl border px-3 py-3 shadow-sm", weeklyStats.awaitingRecognition > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-100 bg-white")}>
-              <p className="text-xs font-bold text-emerald-900/60">بانتظار التحفيز</p>
-              <p className={cn("mt-1 text-xl font-black", weeklyStats.awaitingRecognition > 0 ? "text-amber-800" : "text-emerald-950")}>{formatPoints(weeklyStats.awaitingRecognition)}</p>
+            <div className={cn("rewards-pavilion-summary-card rounded-2xl border px-3 py-3 shadow-sm", weeklyStats.awaitingRecognition > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-100 bg-white")}>
+              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--mint"><Eye size={17} /></span>
+              <div><p className="text-xs font-bold text-emerald-900/60">بانتظار التحفيز</p>
+              <p className={cn("mt-1 text-xl font-black", weeklyStats.awaitingRecognition > 0 ? "text-amber-800" : "text-emerald-950")}>{formatPoints(weeklyStats.awaitingRecognition)}</p></div>
             </div>
-            <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
-              <p className="text-xs font-bold text-emerald-900/60">الأكثر استخدامًا</p>
-              <p className="mt-1 truncate text-sm font-black text-emerald-950">{weeklyStats.topTypeName}</p>
+            <div className="rewards-pavilion-summary-card min-w-0 rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
+              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--plum"><Zap size={17} /></span>
+              <div className="min-w-0"><p className="text-xs font-bold text-emerald-900/60">الأكثر استخدامًا</p>
+              <p className="mt-1 truncate text-sm font-black text-emerald-950">{weeklyStats.topTypeName}</p></div>
             </div>
               </>
             )}
           </section>
 
         {!liveBoardOpen && (
-          <section aria-labelledby="reward-goals-title" className="rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-4 shadow-sm sm:p-5">
+          <section aria-labelledby="reward-goals-title" className="rewards-pavilion-goals rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-4 shadow-sm sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-950 text-amber-300 shadow-sm">
@@ -740,7 +763,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         )}
 
         {/* Toolbar */}
-          <div className="space-y-3">
+          <div className="rewards-pavilion-toolbar space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex bg-white border-2 border-emerald-100 rounded-xl p-1 shadow-sm shrink-0">
                 <button
@@ -822,7 +845,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
 
         {/* Groups / Students Grid */}
         {viewMode === "groups" ? (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="rewards-pavilion-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
             {(groupsData?.groups ?? []).map((group) => (
               <button
                 key={group.id}
@@ -832,7 +855,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   setGroupGrantOpen(true);
                 }}
                 className={cn(
-                  "group relative flex w-full flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 text-center transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30",
+                  "rewards-pavilion-card group relative flex w-full flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 text-center transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30",
                   "border-emerald-100 bg-gradient-to-b from-white to-emerald-50/30 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-900/5 hover:-translate-y-1"
                 )}
                 style={{ borderColor: `${group.color}40` }}
@@ -895,7 +918,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             <p className="font-bold">جاري تحميل الطلاب...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7">
+          <div className="rewards-pavilion-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7">
             {students.map((student: any) => {
               const isSelected = selectedIds.has(student.id);
               const daysSinceReward = student.lastRewardAt ? Math.floor((Date.now() - new Date(student.lastRewardAt).getTime()) / 86400000) : null;
@@ -904,7 +927,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 <div
                   key={student.id}
                   className={cn(
-                    "group relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4",
+                    "rewards-pavilion-card group relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[1.5rem] border-[3px] p-3 transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none sm:gap-3 sm:rounded-[2rem] sm:p-4",
                     isSelected ? "border-amber-400 bg-amber-50/80 shadow-lg shadow-amber-500/15 -translate-y-1" : "border-emerald-100 bg-gradient-to-b from-white to-emerald-50/30 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-900/5 hover:-translate-y-1"
                   )}
                 >

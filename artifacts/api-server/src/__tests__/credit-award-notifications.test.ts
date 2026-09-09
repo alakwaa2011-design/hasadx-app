@@ -12,8 +12,8 @@ describe("credit award notification copy", () => {
 
     expect(message.type).toBe("credit_award");
     expect(message.title).toContain("هدية");
-    expect(message.body).toContain("٢٥٠");
-    expect(message.body).toContain("١٬٢٥٠");
+    expect(message.body).toContain("250");
+    expect(message.body).toContain("1,250");
     expect(message.body).toContain("مكافأة نشاط");
   });
 
@@ -27,8 +27,8 @@ describe("credit award notification copy", () => {
 
     expect(message.type).toBe("plan_award");
     expect(message.title).toContain("الاحترافية");
-    expect(message.body).toContain("١٬٠٠٠");
-    expect(message.body).toContain("٢٠٢٦");
+    expect(message.body).toContain("1,000");
+    expect(message.body).toContain("2026");
   });
 
   it("يصيغ إشعار تفعيل غير محدود فقط كخبر إيجابي", () => {

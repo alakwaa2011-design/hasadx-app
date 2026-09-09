@@ -11,6 +11,8 @@ import {
 import { SubmitFeedbackBody } from "@workspace/api-zod";
 import { and, desc, eq } from "drizzle-orm";
 import { getAppBaseUrl } from "../lib/email.js";
+import { emailHighlight, renderHasaadEmail } from "../lib/email-design";
+import { esc } from "../lib/html-escape";
 import { notifyEmailQueued } from "../lib/xp/email-worker";
 
 const router: IRouter = Router();
@@ -38,15 +40,6 @@ const typeLabels: Record<string, string> = {
   praise: "إشادة",
   other: "أخرى",
 };
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"]/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-  })[c] ?? c);
-}
 
 async function firstAdminId(): Promise<number | null> {
   const [admin] = await db.select({ id: teachersTable.id })
@@ -196,24 +189,23 @@ router.post("/admin/feedback/:id/respond", async (req: any, res) => {
         : null;
 
       if (sendByEmail && item.email) {
-        const safeMsg = escapeHtml(message);
-        const safeOriginal = escapeHtml(item.message);
         const actionUrl = `${getAppBaseUrl()}/teacher/messages?tab=platform`;
-        const html = `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7;color:#1f2937">
-        <div style="background:#225739;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0">
-          <h2 style="margin:0;font-size:18px">رد من فريق حصاد</h2>
-        </div>
-        <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:22px;border-radius:0 0 12px 12px">
-          <p style="margin:0 0 8px">مرحباً ${item.name}،</p>
-          <p style="margin:0 0 16px">شكراً لتواصلك معنا. هذا ردّنا على ملاحظتك:</p>
-          <div style="background:#f8fafc;border-right:4px solid #D9A521;padding:14px 16px;border-radius:8px;white-space:pre-wrap">${safeMsg}</div>
-          <hr style="border:0;border-top:1px solid #e5e7eb;margin:22px 0" />
-          <p style="margin:0 0 6px;color:#6b7280;font-size:13px">ملاحظتك الأصلية:</p>
-          <div style="color:#6b7280;font-size:13px;white-space:pre-wrap">${safeOriginal}</div>
-          ${teacherId ? `<p style="margin:20px 0 0"><a href="${actionUrl}" style="background:#225739;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">افتح المحادثة للرد</a></p>` : ""}
-          <p style="margin:22px 0 0;color:#225739;font-weight:bold">— ${admin?.name || "فريق حصاد"}</p>
-        </div>
-      </div>`;
+        const html = renderHasaadEmail({
+          title: "رد على ملاحظتك",
+          preheader: "رد فريق حصاد على ملاحظتك.",
+          tone: "message",
+          recipientName: item.name,
+          bodyHtml: [
+            '<p style="margin:0 0 12px">شكرًا لتواصلك معنا. هذا ردّنا على ملاحظتك:</p>',
+            emailHighlight(`<div style="white-space:pre-wrap">${esc(message)}</div>`, "message"),
+            '<p style="margin:20px 0 6px;color:#718078;font-size:13px">ملاحظتك الأصلية:</p>',
+            `<div style="color:#607068;font-size:13px;white-space:pre-wrap">${esc(item.message)}</div>`,
+            `<p style="margin:22px 0 0;color:#225739;font-weight:700">— ${esc(admin?.name || "فريق حصاد")}</p>`,
+          ].join(""),
+          cta: teacherId
+            ? { label: "فتح المحادثة للرد", url: actionUrl }
+            : undefined,
+        });
         const text = `مرحباً ${item.name}،\n\n${message}\n\n${teacherId ? `للمتابعة: ${actionUrl}\n\n` : ""}— ${admin?.name || "فريق حصاد"}`;
         const [insertedEmail] = await tx.insert(emailOutboxTable).values({
           toEmail: item.email,

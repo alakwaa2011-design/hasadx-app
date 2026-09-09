@@ -20,6 +20,7 @@ import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
 import { sendEmail, getAppBaseUrl } from "../lib/email";
+import { emailHighlight, renderHasaadEmail } from "../lib/email-design";
 import { esc } from "../lib/html-escape";
 import { logger } from "../lib/logger";
 import { emitToTeacher } from "../lib/realtime";
@@ -235,14 +236,17 @@ async function emailAdminsOfSupportRequest(
     `المحادثة: ${input.title}`,
     `فتح المحادثة والرد مباشرة: ${actionUrl}`,
   ].join("\n");
-  const html = `
-    <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#163028">
-      <h2 style="margin:0 0 12px">طلب دعم جديد عبر مرشد حصاد</h2>
-      <p>طلب <strong>${esc(input.teacherName)}</strong> دعمًا فنيًا.</p>
-      <p style="padding:12px;background:#f3f7f5;border-radius:10px">${esc(input.title)}</p>
-      <p><a href="${actionUrl}" style="display:inline-block;background:#225739;color:#fff;text-decoration:none;padding:10px 18px;border-radius:9px;font-weight:bold">فتح المحادثة والرد</a></p>
-      <p style="font-size:12px;color:#65756d">سيبقى ردك داخل محادثة مرشد حصاد نفسها.</p>
-    </div>`;
+  const html = renderHasaadEmail({
+    title: "طلب دعم جديد عبر مرشد حصاد",
+    preheader: `طلب دعم جديد من ${input.teacherName}.`,
+    tone: "admin",
+    bodyHtml: [
+      `<p style="margin:0 0 12px">طلب <strong>${esc(input.teacherName)}</strong> دعمًا فنيًا.</p>`,
+      emailHighlight(esc(input.title), "admin"),
+      '<p style="margin:0;color:#607068;font-size:13px">سيبقى ردك داخل محادثة مرشد حصاد نفسها.</p>',
+    ].join(""),
+    cta: { label: "فتح المحادثة والرد", url: actionUrl },
+  });
   const results = await Promise.all(emails.map((to) => sendEmail({ to, subject, html, text })));
   results.forEach((result, index) => {
     if (!result.delivered) {

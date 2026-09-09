@@ -1,0 +1,140 @@
+/* Living Prize Pavilion: page-specific graduation of the approved rewards artwork. */
+.rewards-pavilion {
+  --pavilion-ink: #173f34;
+  --pavilion-deep: #082c25;
+  --pavilion-gold: #f3ba41;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  max-width: none !important;
+  padding: 2rem max(1rem, calc((100vw - 1170px) / 2)) 7rem;
+  color: var(--pavilion-ink);
+  background:
+    radial-gradient(ellipse at 10% 12%, rgba(249,194,93,.42), transparent 25%),
+    radial-gradient(ellipse at 93% 23%, rgba(151,224,188,.44), transparent 27%),
+    radial-gradient(ellipse at 66% 100%, rgba(241,139,112,.18), transparent 32%),
+    linear-gradient(135deg, #f4f0df, #f8f6e9 47%, #e6f1df);
+}
+.rewards-pavilion::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .34;
+  background-image:
+    radial-gradient(#cfaa5a 1px, transparent 1.5px),
+    radial-gradient(#86b79b 1px, transparent 1.5px),
+    linear-gradient(117deg, transparent 0 42%, rgba(255,246,188,.55) 43%, transparent 47%),
+    linear-gradient(63deg, transparent 0 65%, rgba(178,230,201,.45) 66%, transparent 70%);
+  background-size: 38px 38px, 61px 61px, 430px 500px, 510px 620px;
+  mask-image: linear-gradient(to bottom, black, transparent 80%);
+}
+.rewards-pavilion::after {
+  content: ""; position: absolute; z-index: 0; inset: 1.8rem max(.7rem, calc((100vw - 1260px) / 2));
+  border: 1px solid rgba(135,151,92,.2); border-radius: 3.2rem; pointer-events: none;
+}
+.rewards-pavilion > *:not(.rewards-pavilion-lights) { position: relative; z-index: 1; }
+.rewards-pavilion-hero {
+  min-height: 8rem; padding: 1.35rem 1.6rem; border-radius: 1.9rem;
+  background: linear-gradient(112deg, #082c25, #12513f 58%, #17614a);
+  box-shadow: 0 22px 40px -22px #214d3f;
+}
+.rewards-pavilion-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .2;
+  background-image: radial-gradient(#ffe28a 1px, transparent 1.7px); background-size: 31px 31px;
+  animation: rewards-pavilion-glimmer 11s linear infinite;
+}
+.rewards-pavilion-hero::before {
+  content: ""; position: absolute; width: 18rem; height: 14rem; right: 8%; top: -9rem;
+  border-radius: 50%; background: rgba(248,203,91,.16); filter: blur(22px); pointer-events: none;
+  animation: rewards-pavilion-halo 12s ease-in-out infinite alternate;
+}
+.rewards-pavilion-summary {
+  position: relative; z-index: 1; gap: .75rem;
+}
+.rewards-pavilion-summary-card {
+  display: flex; align-items: center; gap: .7rem;
+  min-height: 4.7rem; padding: .8rem 1rem; border: 1px solid #eadfcd; border-radius: 1.2rem;
+  background: rgba(255,253,247,.86); box-shadow: 0 9px 18px -17px #466358; backdrop-filter: blur(7px);
+}
+.rewards-pavilion-summary-card p:first-child { color: #6c7e74; }
+.rewards-pavilion-summary-card p:last-child { color: #173f34; }
+.rewards-pavilion-summary-icon {
+  display: grid; width: 2.4rem; height: 2.4rem; flex: 0 0 auto; place-items: center; border-radius: .8rem;
+}
+.rewards-pavilion-summary-icon--gold { color: #9c6816; background: #fff0bd; }
+.rewards-pavilion-summary-icon--coral { color: #bd6249; background: #fde3d6; }
+.rewards-pavilion-summary-icon--mint { color: #367558; background: #ddf0e4; }
+.rewards-pavilion-summary-icon--plum { color: #855578; background: #eee3ee; }
+.rewards-pavilion-goals {
+  position: relative; border: 1px solid rgba(212,185,104,.38); border-radius: 1.9rem;
+  background: rgba(255,253,247,.84); box-shadow: 0 16px 30px -24px #466358; backdrop-filter: blur(7px);
+}
+.rewards-pavilion-goals::before {
+  content: "بوابة الإنجاز المفتوحة"; position: absolute; left: 2rem; top: -.65rem;
+  padding: .28rem .8rem; border-radius: 999px; color: #78652c; background: #fff1bb;
+  font-size: .65rem; font-weight: 900;
+}
+.rewards-pavilion-goals > div:first-child > div:first-child > span {
+  background: #17473b !important; color: #ffdf70 !important; box-shadow: inset 0 0 0 1px #ffffff24;
+}
+.rewards-pavilion-goals .rounded-\[2rem\] {
+  border-color: #eadcbd; background: rgba(255,254,249,.93); box-shadow: 0 12px 25px -22px #7f6230;
+}
+.rewards-pavilion-goals .h-4 { background: #e9f0e9; }
+.rewards-pavilion-goals .h-4 > div { background: linear-gradient(90deg, #e8b341, #f3c65b); }
+.rewards-pavilion-toolbar > div:first-child > div:first-child {
+  padding: .25rem; border: 1px solid #dfdfcd; border-radius: .9rem; background: rgba(255,253,249,.9);
+}
+.rewards-pavilion-toolbar > div:first-child > div:first-child button {
+  border-radius: .65rem; color: #5a7065;
+}
+.rewards-pavilion-toolbar > div:first-child > div:first-child button[class*="bg-emerald-700"] {
+  background: #195943 !important; color: white;
+}
+.rewards-pavilion input {
+  border-color: #dce4da !important; border-radius: .9rem; background: rgba(255,253,249,.95);
+}
+.rewards-pavilion-grid { gap: .8rem; }
+.rewards-pavilion-card {
+  border-color: #e1e2d3; border-radius: 1.45rem;
+  background: rgba(255,253,249,.9); box-shadow: 0 15px 25px -22px #536f52;
+  backdrop-filter: blur(4px);
+}
+.rewards-pavilion-card:hover { border-color: #c6dcbf; }
+.rewards-pavilion-lights {
+  position: absolute; z-index: 0; inset: 0; overflow: hidden; pointer-events: none;
+}
+.rewards-pavilion-lights i {
+  position: absolute; width: 8rem; height: 2.25rem; border-radius: 50%; filter: blur(18px);
+  opacity: .27; transform: rotate(-22deg); animation: rewards-pavilion-drift 18s ease-in-out infinite alternate;
+}
+.rewards-pavilion-lights i:nth-child(1) { top: 13%; right: 2%; background: #e8b849; animation-delay: -4s; }
+.rewards-pavilion-lights i:nth-child(2) { top: 39%; left: -3%; background: #75c49f; animation-delay: -9s; }
+.rewards-pavilion-lights i:nth-child(3) { top: 71%; right: 4%; background: #ee9c83; animation-delay: -13s; }
+.rewards-pavilion-lights i:nth-child(4) { top: 87%; left: 16%; background: #b9e2c5; animation-delay: -7s; }
+.rewards-pavilion-lights i:nth-child(5) { top: 25%; left: 40%; width: 12rem; background: #ffe49c; animation-delay: -15s; }
+.rewards-pavilion-emblem {
+  position: relative; display: grid; width: 3.8rem; height: 3.8rem; flex: 0 0 auto;
+  place-items: center; border: 1px solid #ffd979; border-radius: 1.2rem;
+  transform: rotate(-4deg); background: linear-gradient(145deg,#ffe58d,#efa334);
+  box-shadow: 0 8px 17px #051c184f;
+}
+.rewards-pavilion-emblem::before { content: ""; position: absolute; inset: .3rem; border: 1px solid #ffffff85; border-radius: .9rem; }
+.rewards-pavilion-emblem svg { position: relative; width: 2.65rem; height: 2.65rem; }
+@keyframes rewards-pavilion-drift { from { translate: 0 0; } to { translate: 46px 22px; } }
+@keyframes rewards-pavilion-glimmer { from { background-position: 0 0; } to { background-position: 120px 70px; } }
+@keyframes rewards-pavilion-halo { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-30px,18px,0) scale(1.12); } }
+@media (max-width: 640px) {
+  .rewards-pavilion { padding: 1rem .75rem 6rem; }
+  .rewards-pavilion::after { inset: .5rem .35rem; border-radius: 2rem; }
+  .rewards-pavilion-hero { padding: 1rem; border-radius: 1.45rem; }
+  .rewards-pavilion-goals { border-radius: 1.45rem; backdrop-filter: none; }
+  .rewards-pavilion-goals::before { left: 1.25rem; }
+  .rewards-pavilion-summary-card { backdrop-filter: none; }
+  .rewards-pavilion-emblem { width: 3rem; height: 3rem; }
+  .rewards-pavilion-emblem svg { width: 2.2rem; height: 2.2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rewards-pavilion *, .rewards-pavilion::before, .rewards-pavilion::after,
+  .rewards-pavilion-lights i, .rewards-pavilion-hero::before, .rewards-pavilion-hero::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important; transition-duration: .01ms !important;
+  }
+}

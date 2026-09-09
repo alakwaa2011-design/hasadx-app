@@ -61,7 +61,6 @@ import { awardXpAndNotify, awardXpInTxAndNotifyAfterCommit } from "../lib/xp/soc
 import {
   buildOtpEmail,
   buildPasswordChangedEmail,
-  buildNewDeviceLoginEmail,
   buildResetEmail,
 } from "../lib/auth-emails";
 import { isConfiguredAdminEmail } from "../lib/admin-identity";
@@ -186,7 +185,7 @@ function computeFingerprint(userAgent: string, ipAddress: string): string {
 async function trackLoginDevice(
   req: any,
   teacher: typeof teachersTable.$inferSelect,
-  log: { error: (obj: any, msg?: string) => void; info: (obj: any, msg?: string) => void; warn: (obj: any, msg?: string) => void },
+  log: { error: (obj: any, msg?: string) => void },
 ) {
   try {
     const userAgent = getUserAgent(req);
@@ -213,13 +212,6 @@ async function trackLoginDevice(
       return;
     }
 
-    // Count existing devices to decide whether to notify.
-    const allDevices = await db
-      .select({ id: trustedDevicesTable.id })
-      .from(trustedDevicesTable)
-      .where(eq(trustedDevicesTable.teacherId, teacher.id));
-    const isFirstDeviceEver = allDevices.length === 0;
-
     await db.insert(trustedDevicesTable).values({
       teacherId: teacher.id,
       fingerprintHash,
@@ -230,40 +222,6 @@ async function trackLoginDevice(
       firstSeenAt: now,
       lastSeenAt: now,
     });
-
-    const sessionsLink = `${getAppBaseUrl()}/teacher/sessions`;
-
-    if (isFirstDeviceEver) {
-      log.info({ teacherId: teacher.id }, "First trusted device recorded; no alert sent");
-      return;
-    }
-
-    if (!teacher.email) {
-      log.info({ teacherId: teacher.id }, "New device login but no email on file; alert skipped");
-      return;
-    }
-
-    const { html, text } = buildNewDeviceLoginEmail(
-      teacher.name,
-      now,
-      ipAddress,
-      userAgent,
-      sessionsLink,
-    );
-    const result = await sendEmail({
-      to: teacher.email,
-      subject: "تنبيه أمني: تسجيل دخول من جهاز جديد - منصة حصاد",
-      html,
-      text,
-    });
-    if (!result.delivered) {
-      log.warn(
-        { teacherId: teacher.id, reason: result.reason },
-        "New device login alert not delivered",
-      );
-    } else {
-      log.info({ teacherId: teacher.id }, "New device login alert sent");
-    }
   } catch (err) {
     log.error({ err, teacherId: teacher.id }, "Failed to track login device");
   }

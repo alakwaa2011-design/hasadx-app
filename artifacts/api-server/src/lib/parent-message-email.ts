@@ -13,7 +13,7 @@ const G = {
 
 /** Format a JS Date as Arabic locale date string for email display */
 function arabicDate(d: Date = new Date()): string {
-  return d.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "long", day: "numeric" });
 }
 
 /**
@@ -108,11 +108,8 @@ function footerRow(studentName: string): string {
           <!-- FOOTER -->
           <tr>
             <td style="background-color:${G.bg};border-top:1px solid ${G.border};padding:20px 32px;text-align:center;direction:rtl;">
-              <p style="margin:0 0 6px;font-size:12px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;line-height:1.6;">
-                وصلتك هذه الرسالة لأن بريدك مسجّل كولي أمر للطالب/ة <strong>${esc(studentName)}</strong>.
-              </p>
-              <p style="margin:0;font-size:11px;color:#999;font-family:'Tajawal',Arial,sans-serif;">
-                يرجى عدم الرد مباشرة على هذا البريد — استخدم زر عرض الرسالة والرد.
+              <p style="margin:0;font-size:11px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;line-height:1.6;">
+                إشعار بخصوص الطالب/ة <strong>${esc(studentName)}</strong>
                 &nbsp;·&nbsp; hasaadx.com
               </p>
             </td>
@@ -220,20 +217,13 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
           <tr>
             <td style="padding:32px 32px 8px;direction:rtl;">
 
-              <!-- Greeting -->
-              <p style="margin:0 0 6px;font-size:13px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;">
-                السلام عليكم ورحمة الله وبركاته،
-              </p>
-              <p style="margin:0 0 20px;font-size:16px;font-weight:700;color:${G.green};font-family:'Tajawal',Arial,sans-serif;">
+              <p style="margin:0 0 10px;font-size:16px;font-weight:700;color:${G.green};font-family:'Tajawal',Arial,sans-serif;">
                 ولي أمر الطالب/ة ${esc(p.studentName)} المحترم،
               </p>
 
-              <!-- Intro -->
               <p style="margin:0 0 24px;font-size:15px;color:${G.muted};line-height:1.65;font-family:'Tajawal',Arial,sans-serif;">
-                لديكم رسالة جديدة من المعلم/ة
-                <strong style="color:${G.text};">${esc(p.teacherName)}</strong>
-                بخصوص الطالب/ة
-                <strong style="color:${G.text};">${esc(p.studentName)}</strong>.
+                رسالة جديدة من المعلم/ة
+                <strong style="color:${G.text};">${esc(p.teacherName)}</strong>، وتفاصيلها أدناه.
               </p>
 
               <!-- Info cards -->
@@ -244,10 +234,10 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
                      style="margin:16px 0;background:#f0f7f3;border:1px solid #b5d4c3;border-radius:12px;">
                 <tr><td style="padding:18px;direction:rtl;">
                   <p style="margin:0 0 10px;font-size:15px;font-weight:800;color:${G.green};">ملخص التحفيز ${p.motivationSummary.period === "week" ? "الأسبوعي" : "الشهري"}</p>
-                  ${p.motivationSummary.periodStart && p.motivationSummary.periodEnd ? `<p style="margin:0 0 8px;font-size:11px;color:${G.muted};">${esc(new Date(p.motivationSummary.periodStart).toLocaleDateString("ar-SA"))} — ${esc(new Date(p.motivationSummary.periodEnd).toLocaleDateString("ar-SA"))}</p>` : ""}
+                  ${p.motivationSummary.periodStart && p.motivationSummary.periodEnd ? `<p style="margin:0 0 8px;font-size:11px;color:${G.muted};">${esc(new Date(p.motivationSummary.periodStart).toLocaleDateString("ar-SA-u-nu-latn"))} — ${esc(new Date(p.motivationSummary.periodEnd).toLocaleDateString("ar-SA-u-nu-latn"))}</p>` : ""}
                   <p style="margin:0 0 12px;font-size:24px;font-weight:800;color:${G.gold};">${p.motivationSummary.totalPoints} نقطة تحفيز</p>
                   ${p.motivationSummary.categories.map(c => `<span style="display:inline-block;margin:0 0 6px 6px;padding:5px 9px;background:#fff;border:1px solid ${G.border};border-radius:20px;font-size:12px;color:${G.text};">${esc(c.name)} · ${c.points}</span>`).join("")}
-                  ${p.motivationSummary.achievements.length ? `<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:${G.muted};">إنجازات مختارة</p>${p.motivationSummary.achievements.map(a => `<p style="margin:3px 0;font-size:13px;color:${G.text};">⭐ ${esc(a.title)} (+${a.points})</p>`).join("")}` : ""}
+                  ${p.motivationSummary.achievements.length ? `<p style="margin:12px 0 4px;font-size:12px;font-weight:700;color:${G.muted};">إنجازات مختارة</p>${p.motivationSummary.achievements.map(a => `<p style="margin:3px 0;font-size:13px;color:${G.text};">${esc(a.title)} (+${a.points})</p>`).join("")}` : ""}
                 </td></tr>
               </table>` : ""}
 
@@ -286,12 +276,12 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
                      style="background:#FAFAF8;border:1px solid ${G.border};border-radius:10px;padding:4px 0;">
                 ${p.attachments.map(att => {
-                  const icon = att.contentType.startsWith("image/") ? "🖼️"
-                    : att.contentType === "application/pdf" ? "📄"
-                    : att.contentType.includes("word") ? "📝"
-                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "📊"
-                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "📑"
-                    : "📎";
+                  const typeBadge = att.contentType.startsWith("image/") ? "صورة"
+                    : att.contentType === "application/pdf" ? "PDF"
+                    : att.contentType.includes("word") ? "Word"
+                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "Excel"
+                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "عرض"
+                    : "ملف";
                   const sizeKb = att.size < 1024 * 1024
                     ? `${Math.round(att.size / 1024)} KB`
                     : `${(att.size / (1024 * 1024)).toFixed(1)} MB`;
@@ -302,7 +292,11 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
                        style="text-decoration:none;display:block;">
                       <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                         <tr>
-                          <td width="28" valign="middle" style="font-size:18px;padding-left:10px;">${icon}</td>
+                          <td width="52" valign="middle" style="padding-left:10px;">
+                            <span style="display:inline-block;padding:4px 7px;background-color:#EEF2EF;border:1px solid ${G.border};
+                                         border-radius:5px;font-size:10px;font-weight:700;color:${G.muted};
+                                         font-family:'Tajawal',Arial,sans-serif;white-space:nowrap;">${typeBadge}</span>
+                          </td>
                           <td valign="middle">
                             <span style="font-size:13px;font-weight:700;color:${G.green};
                                          font-family:'Tajawal',Arial,sans-serif;word-break:break-all;">
@@ -314,7 +308,7 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
                           <td width="60" align="left" valign="middle"
                               style="font-size:11px;color:${G.green};font-family:'Tajawal',Arial,sans-serif;
                                      white-space:nowrap;padding-right:4px;">
-                            ⬇ تحميل
+                            تحميل
                           </td>
                         </tr>
                       </table>
@@ -323,18 +317,6 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
                 </tr>`;
                 }).join("")}
               </table>` : ""}
-
-              <!-- Security notice -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:20px;">
-                <tr>
-                  <td style="background-color:#f0f4f2;border:1px solid #c6dbd0;border-radius:8px;
-                              padding:10px 16px;direction:rtl;">
-                    <p style="margin:0;font-size:12px;color:#2d6b4a;font-family:'Tajawal',Arial,sans-serif;">
-                      هذه رسالة رسمية أُرسلت عبر منصة حصاد التعليمية.
-                    </p>
-                  </td>
-                </tr>
-              </table>
 
             </td>
           </tr>
@@ -355,21 +337,6 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
-
-          <!-- Signature -->
-          <tr>
-            <td style="padding:20px 32px 28px;direction:rtl;border-top:1px solid ${G.border};margin-top:12px;">
-              <p style="margin:0 0 2px;font-size:13px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;">
-                مع خالص التقدير،
-              </p>
-              <p style="margin:0 0 2px;font-size:14px;font-weight:700;color:${G.text};font-family:'Tajawal',Arial,sans-serif;">
-                ${esc(p.teacherName)}
-              </p>
-              <p style="margin:0;font-size:12px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;">
-                عبر منصة حصاد التعليمية
-              </p>
             </td>
           </tr>
 
@@ -429,12 +396,12 @@ export function buildTeacherReplyNotificationEmail(p: TeacherReplyNotificationPa
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
                      style="background:#FAFAF8;border:1px solid ${G.border};border-radius:10px;padding:4px 0;">
                 ${p.attachments.map(att => {
-                  const icon = att.contentType.startsWith("image/") ? "🖼️"
-                    : att.contentType === "application/pdf" ? "📄"
-                    : att.contentType.includes("word") ? "📝"
-                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "📊"
-                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "📑"
-                    : "📎";
+                  const typeBadge = att.contentType.startsWith("image/") ? "صورة"
+                    : att.contentType === "application/pdf" ? "PDF"
+                    : att.contentType.includes("word") ? "Word"
+                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "Excel"
+                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "عرض"
+                    : "ملف";
                   const sizeKb = att.size < 1024 * 1024
                     ? `${Math.round(att.size / 1024)} KB`
                     : `${(att.size / (1024 * 1024)).toFixed(1)} MB`;
@@ -445,7 +412,11 @@ export function buildTeacherReplyNotificationEmail(p: TeacherReplyNotificationPa
                        style="text-decoration:none;display:block;">
                       <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                         <tr>
-                          <td width="28" valign="middle" style="font-size:18px;padding-left:10px;">${icon}</td>
+                          <td width="52" valign="middle" style="padding-left:10px;">
+                            <span style="display:inline-block;padding:4px 7px;background-color:#EEF2EF;border:1px solid ${G.border};
+                                         border-radius:5px;font-size:10px;font-weight:700;color:${G.muted};
+                                         font-family:'Tajawal',Arial,sans-serif;white-space:nowrap;">${typeBadge}</span>
+                          </td>
                           <td valign="middle">
                             <span style="font-size:13px;font-weight:700;color:${G.green};
                                          font-family:'Tajawal',Arial,sans-serif;word-break:break-all;">
@@ -457,7 +428,7 @@ export function buildTeacherReplyNotificationEmail(p: TeacherReplyNotificationPa
                           <td width="60" align="left" valign="middle"
                               style="font-size:11px;color:${G.green};font-family:'Tajawal',Arial,sans-serif;
                                      white-space:nowrap;padding-right:4px;">
-                            ⬇ تحميل
+                            تحميل
                           </td>
                         </tr>
                       </table>
@@ -510,10 +481,7 @@ export function buildParentThreadReplyEmail(p: ParentThreadReplyParams): string 
 
           <tr>
             <td style="padding:32px 32px 8px;direction:rtl;">
-              <p style="margin:0 0 6px;font-size:13px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;">
-                السلام عليكم ورحمة الله وبركاته،
-              </p>
-              <p style="margin:0 0 20px;font-size:16px;font-weight:700;color:${G.green};font-family:'Tajawal',Arial,sans-serif;">
+              <p style="margin:0 0 10px;font-size:16px;font-weight:700;color:${G.green};font-family:'Tajawal',Arial,sans-serif;">
                 ${p.parentName ? `${esc(p.parentName)} المحترم/ة،` : "ولي الأمر الكريم،"}
               </p>
               <p style="margin:0 0 24px;font-size:15px;color:${G.muted};line-height:1.65;font-family:'Tajawal',Arial,sans-serif;">
@@ -545,12 +513,12 @@ export function buildParentThreadReplyEmail(p: ParentThreadReplyParams): string 
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
                      style="background:#FAFAF8;border:1px solid ${G.border};border-radius:10px;padding:4px 0;">
                 ${p.attachments.map(att => {
-                  const icon = att.contentType.startsWith("image/") ? "🖼️"
-                    : att.contentType === "application/pdf" ? "📄"
-                    : att.contentType.includes("word") ? "📝"
-                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "📊"
-                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "📑"
-                    : "📎";
+                  const typeBadge = att.contentType.startsWith("image/") ? "صورة"
+                    : att.contentType === "application/pdf" ? "PDF"
+                    : att.contentType.includes("word") ? "Word"
+                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "Excel"
+                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "عرض"
+                    : "ملف";
                   const sizeKb = att.size < 1024 * 1024
                     ? `${Math.round(att.size / 1024)} KB`
                     : `${(att.size / (1024 * 1024)).toFixed(1)} MB`;
@@ -561,7 +529,11 @@ export function buildParentThreadReplyEmail(p: ParentThreadReplyParams): string 
                        style="text-decoration:none;display:block;">
                       <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                         <tr>
-                          <td width="28" valign="middle" style="font-size:18px;padding-left:10px;">${icon}</td>
+                          <td width="52" valign="middle" style="padding-left:10px;">
+                            <span style="display:inline-block;padding:4px 7px;background-color:#EEF2EF;border:1px solid ${G.border};
+                                         border-radius:5px;font-size:10px;font-weight:700;color:${G.muted};
+                                         font-family:'Tajawal',Arial,sans-serif;white-space:nowrap;">${typeBadge}</span>
+                          </td>
                           <td valign="middle">
                             <span style="font-size:13px;font-weight:700;color:${G.green};
                                          font-family:'Tajawal',Arial,sans-serif;word-break:break-all;">
@@ -573,7 +545,7 @@ export function buildParentThreadReplyEmail(p: ParentThreadReplyParams): string 
                           <td width="60" align="left" valign="middle"
                               style="font-size:11px;color:${G.green};font-family:'Tajawal',Arial,sans-serif;
                                      white-space:nowrap;padding-right:4px;">
-                            ⬇ تحميل
+                            تحميل
                           </td>
                         </tr>
                       </table>
@@ -583,16 +555,6 @@ export function buildParentThreadReplyEmail(p: ParentThreadReplyParams): string 
                 }).join("")}
               </table>` : ""}
 
-              <!-- Security notice -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:20px;">
-                <tr>
-                  <td style="background-color:#f0f4f2;border:1px solid #c6dbd0;border-radius:8px;padding:10px 16px;direction:rtl;">
-                    <p style="margin:0;font-size:12px;color:#2d6b4a;font-family:'Tajawal',Arial,sans-serif;">
-                      هذه رسالة رسمية أُرسلت عبر منصة حصاد التعليمية.
-                    </p>
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
 
@@ -611,15 +573,6 @@ export function buildParentThreadReplyEmail(p: ParentThreadReplyParams): string 
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
-
-          <!-- Signature -->
-          <tr>
-            <td style="padding:20px 32px 28px;direction:rtl;border-top:1px solid ${G.border};">
-              <p style="margin:0 0 2px;font-size:13px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;">مع خالص التقدير،</p>
-              <p style="margin:0 0 2px;font-size:14px;font-weight:700;color:${G.text};font-family:'Tajawal',Arial,sans-serif;">${esc(p.teacherName)}</p>
-              <p style="margin:0;font-size:12px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;">عبر منصة حصاد التعليمية</p>
             </td>
           </tr>
 

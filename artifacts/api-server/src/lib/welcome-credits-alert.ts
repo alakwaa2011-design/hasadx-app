@@ -15,6 +15,7 @@
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { sendEmail, getAppBaseUrl } from "./email";
+import { emailHighlight, renderHasaadEmail } from "./email-design";
 import { esc } from "./html-escape";
 import { logger } from "./logger";
 
@@ -87,7 +88,7 @@ function buildMissingWelcomeCreditsEmail(
   context: "failure" | "digest",
 ): { html: string; text: string } {
   const count = teachers.length;
-  const dateFormatter = new Intl.DateTimeFormat("ar", {
+  const dateFormatter = new Intl.DateTimeFormat("ar-KW-u-nu-latn", {
     dateStyle: "short",
     timeZone: "Asia/Kuwait",
   });
@@ -117,79 +118,35 @@ function buildMissingWelcomeCreditsEmail(
     ? `<p style="margin:8px 0 0;font-size:13px;color:#6b7280">… و${count - 50} معلم آخر. افتح لوحة التحكم للاطلاع على القائمة الكاملة.</p>`
     : "";
 
-  const headerColor = context === "failure" ? "#dc2626" : "#d97706";
-  const headerBg    = context === "failure" ? "#fef2f2" : "#fffbeb";
-  const headerIcon  = context === "failure" ? "🚨" : "⚠️";
+  const contextText =
+    context === "failure"
+      ? "تعذر منح نقاط الترحيب تلقائيًا عند تسجيل الدخول. راجع سجلات الخادم، ثم استخدم لوحة التحكم لتصحيح الرصيد."
+      : "هذا تقرير يومي للحسابات المفعّلة التي لا تملك دفعة نقاط ترحيبية.";
 
-  const html = `<!doctype html>
-<html lang="ar" dir="rtl">
-<head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;direction:rtl">
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td align="center" style="padding:40px 16px">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-
-        <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#1e5238,#2a6647);padding:28px 32px;text-align:center">
-          <h1 style="color:#fff;margin:0;font-size:20px;font-weight:900">منصة حصاد — تنبيه إداري</h1>
-        </td></tr>
-
-        <!-- Alert banner -->
-        <tr><td style="background:${headerBg};border-bottom:2px solid ${headerColor};padding:16px 32px">
-          <p style="margin:0;font-size:16px;font-weight:bold;color:${headerColor}">${headerIcon} ${esc(subjectContext)}</p>
-        </td></tr>
-
-        <!-- Body -->
-        <tr><td style="padding:28px 32px">
-          <p style="margin:0 0 12px;font-size:15px;color:#111827;line-height:1.7">
-            عدد المعلمين الذين لم يتلقوا نقاط الترحيب: <strong style="color:${headerColor}">${count}</strong>
-          </p>
-          ${
-            context === "failure"
-              ? `<p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.7">
-              فشلت عملية منح نقاط الترحيب تلقائياً عند تسجيل دخول أحد المعلمين. راجع سجلات الخادم (api-server) للاطلاع على تفاصيل الخطأ، ثم استخدم لوحة التحكم أدناه لمنح النقاط يدوياً.
-            </p>`
-              : `<p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.7">
-              هذا تقرير يومي تلقائي. المعلمون أدناه لا يملكون أي دفعة نقاط ترحيبية (source='free'). يمكنك منحها بضغطة واحدة من لوحة التحكم.
-            </p>`
-          }
-
-          <!-- Teachers table -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:0 0 8px;font-size:13px">
-            <thead>
-              <tr style="background:#f9fafb">
-                <th style="padding:10px 12px;text-align:right;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">ID</th>
-                <th style="padding:10px 12px;text-align:right;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">الاسم</th>
-                <th style="padding:10px 12px;text-align:left;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb;direction:ltr">البريد الإلكتروني</th>
-                <th style="padding:10px 12px;text-align:right;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">تاريخ التسجيل</th>
-              </tr>
-            </thead>
-            <tbody>${tableRows}</tbody>
-          </table>
-          ${moreNote}
-
-          <!-- CTA button -->
-          <p style="text-align:center;margin:28px 0 0">
-            <a href="${esc(panelUrl)}"
-               style="display:inline-block;background:#1e5238;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:bold">
-              فتح لوحة نقاط الترحيب
-            </a>
-          </p>
-          <p style="text-align:center;margin:10px 0 0;font-size:12px;color:#9ca3af;word-break:break-all">
-            ${esc(panelUrl)}
-          </p>
-        </td></tr>
-
-        <!-- Footer -->
-        <tr><td style="background:#f8f8f8;padding:16px 32px;text-align:center">
-          <p style="font-size:12px;color:#9ca3af;margin:0">منصة حصاد — تنبيه آلي · لا تردّ على هذه الرسالة</p>
-        </td></tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const html = renderHasaadEmail({
+    title: subjectContext,
+    preheader: `${count} معلم بدون نقاط ترحيبية.`,
+    tone: "admin",
+    bodyHtml: `
+      ${emailHighlight(`<strong>${count}</strong> معلم يحتاج إلى المراجعة.`, "admin")}
+      <p style="margin:0 0 18px">${esc(contextText)}</p>
+      <div style="overflow-x:auto">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:0 0 8px;font-size:12px">
+          <thead>
+            <tr style="background:#f9fafb">
+              <th style="padding:10px 8px;text-align:right;color:#374151;border-bottom:1px solid #e5e7eb">ID</th>
+              <th style="padding:10px 8px;text-align:right;color:#374151;border-bottom:1px solid #e5e7eb">الاسم</th>
+              <th style="padding:10px 8px;text-align:left;color:#374151;border-bottom:1px solid #e5e7eb;direction:ltr">البريد</th>
+              <th style="padding:10px 8px;text-align:right;color:#374151;border-bottom:1px solid #e5e7eb">التسجيل</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      ${moreNote}`,
+    cta: { label: "فتح لوحة نقاط الترحيب", url: panelUrl },
+    footer: "تنبيه إداري آلي من حصاد.",
+  });
 
   // Plain-text fallback
   const rows = displayedRows
@@ -221,8 +178,8 @@ async function sendAdminAlert(
 
   const subject =
     context === "failure"
-      ? `🚨 حصاد: فشل منح نقاط الترحيب (${teachers.length} معلم)`
-      : `⚠️ حصاد: تقرير يومي — ${teachers.length} معلم بدون نقاط ترحيبية`;
+      ? `حصاد: فشل منح نقاط الترحيب (${teachers.length} معلم)`
+      : `حصاد: تقرير يومي — ${teachers.length} معلم بدون نقاط ترحيبية`;
 
   for (const adminEmail of admins) {
     try {

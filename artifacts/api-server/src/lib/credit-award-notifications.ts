@@ -1,7 +1,8 @@
 import { db, notificationsTable, teachersTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { sendEmail, getAppBaseUrl } from "./email";
-import { esc, safeUrl } from "./html-escape";
+import { emailHighlight, renderHasaadEmail } from "./email-design";
+import { esc } from "./html-escape";
 import { logger } from "./logger";
 
 export type CreditAward =
@@ -30,11 +31,11 @@ interface AwardMessage {
 }
 
 function formatNumber(value: number): string {
-  return value.toLocaleString("ar-KW");
+  return value.toLocaleString("ar-KW-u-nu-latn");
 }
 
 function formatDate(value: Date): string {
-  return value.toLocaleDateString("ar-KW", {
+  return value.toLocaleDateString("ar-KW-u-nu-latn", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -47,33 +48,33 @@ export function buildCreditAwardMessage(award: CreditAward): AwardMessage {
     const balance = formatNumber(award.newBalance);
     return {
       type: "credit_award",
-      title: "🎁 هدية جديدة في حسابك",
-      body: `تهانينا! أُضيفت لك ${amount} نقطة حصاد. رصيدك الآن ${balance} نقطة. السبب: ${award.reason}`,
-      subject: `🎁 أضفنا لك ${amount} نقطة حصاد`,
+      title: "هدية نقاط جديدة",
+      body: `أُضيفت ${amount} نقطة إلى حسابك، وأصبح رصيدك ${balance} نقطة. السبب: ${award.reason}`,
+      subject: "تم تحديث رصيد نقاطك",
     };
   }
 
   if (award.kind === "plan") {
     const creditsText =
       award.credits > 0
-        ? ` ومعها ${formatNumber(award.credits)} نقطة حصاد`
+        ? ` ومعها ${formatNumber(award.credits)} نقطة`
         : "";
     const expiryText = award.expiresAt
       ? ` الباقة متاحة حتى ${formatDate(award.expiresAt)}.`
       : "";
     return {
       type: "plan_award",
-      title: `🎉 حصلت على باقة ${award.planNameAr}`,
-      body: `خبر جميل! مُنح حسابك باقة ${award.planNameAr}${creditsText}.${expiryText}`,
-      subject: `🎉 باقة ${award.planNameAr} هدية لك من حصاد`,
+      title: `باقة ${award.planNameAr} هدية لك`,
+      body: `أُضيفت الباقة إلى حسابك${creditsText}.${expiryText}`,
+      subject: "تمت إضافة باقة إلى حسابك",
     };
   }
 
   return {
     type: "unlimited_award",
-    title: "🌟 حسابك أصبح غير محدود",
-    body: `خبر رائع! تم تفعيل الاستخدام غير المحدود لحسابك في منصة حصاد. السبب: ${award.reason}`,
-    subject: "🌟 تم تفعيل الاستخدام غير المحدود لحسابك",
+    title: "حسابك أصبح غير محدود",
+    body: `تم تفعيل الاستخدام غير المحدود. السبب: ${award.reason}`,
+    subject: "ميزة جديدة في حسابك",
   };
 }
 
@@ -82,43 +83,22 @@ function buildAwardEmail(
   message: AwardMessage,
 ): { html: string; text: string } {
   const platformUrl = getAppBaseUrl();
-  const safePlatformUrl = safeUrl(platformUrl);
-  const html = `<!doctype html>
-<html lang="ar" dir="rtl">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-  <body style="margin:0;background:#f5f3ef;font-family:Tahoma,Arial,sans-serif;color:#193326">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f3ef;padding:28px 12px">
-      <tr><td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #e5dfd4;box-shadow:0 8px 28px rgba(34,87,57,.1)">
-          <tr><td style="background:#225739;padding:24px 30px;text-align:center;border-bottom:4px solid #c9a050">
-            <div style="font-size:28px;margin-bottom:5px">🎉 ✨ 🎁</div>
-            <div style="color:#fff;font-size:21px;font-weight:800">منصة حصاد التعليمية</div>
-          </td></tr>
-          <tr><td style="padding:34px 30px;text-align:right">
-            <p style="margin:0 0 8px;color:#647066;font-size:14px">مرحبًا ${esc(teacherName)}،</p>
-            <h1 style="margin:0 0 18px;color:#225739;font-size:24px;line-height:1.5">${esc(message.title)}</h1>
-            <div style="background:#f4f8f5;border:1px solid #d8e5dc;border-right:5px solid #c9a050;border-radius:14px;padding:18px 20px;font-size:16px;line-height:1.9">
-              ${esc(message.body)}
-            </div>
-            <p style="margin:26px 0 0;text-align:center">
-              <a href="${safePlatformUrl}" style="display:inline-block;background:#225739;color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700">افتح منصة حصاد</a>
-            </p>
-          </td></tr>
-          <tr><td style="padding:18px 24px;background:#f5f3ef;text-align:center;color:#7b827d;font-size:12px">
-            هذه رسالة تلقائية لإبلاغك بهدية أو ميزة أضيفت إلى حسابك.
-          </td></tr>
-        </table>
-      </td></tr>
-    </table>
-  </body>
-</html>`;
+  const html = renderHasaadEmail({
+    title: message.title,
+    preheader: message.subject,
+    tone: "reward",
+    recipientName: teacherName,
+    bodyHtml: emailHighlight(esc(message.body), "reward"),
+    cta: { label: "عرض حسابي", url: platformUrl },
+    footer: "هذه رسالة خدمية لإبلاغك بميزة أضيفت إلى حسابك.",
+  });
   const text = `مرحبًا ${teacherName}،
 
 ${message.title}
 
 ${message.body}
 
-افتح منصة حصاد: ${platformUrl}`;
+عرض حسابي: ${platformUrl}`;
   return { html, text };
 }
 
