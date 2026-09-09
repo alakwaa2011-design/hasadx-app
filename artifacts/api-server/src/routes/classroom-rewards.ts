@@ -265,12 +265,18 @@ router.get("/classroom-rewards/ledger", async (req: any, res) => {
   `));
   res.json(found.map((r) => ({ id: r.id, studentName: r.student_name, reason: r.reason, points: r.points, createdAt: r.created_at, isReversed: r.is_reversed, ruleName:r.rule_name, sourceType:r.source_type, sourceId:r.source_result_id, evidenceSummary:r.evidence_summary })));
 });
+const blankToNull = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
 const controlProfileInput = z.object({
   name: z.string().trim().min(1).max(200).optional(),
-  gradeLevel: z.string().trim().max(100).nullish(), studentClass: z.string().trim().max(100).nullish(),
-  parentPhone: z.string().trim().max(100).nullish(), parentName: z.string().trim().max(200).nullish(),
-  parentEmail: z.string().trim().email().max(320).nullish(), notes: z.string().max(5000).nullish(),
-  avatar: z.string().refine((v) => NORMAL_AVATARS.has(v), "invalid avatar").nullish(),
+  gradeLevel: z.preprocess(blankToNull, z.string().trim().max(100).nullish()),
+  studentClass: z.preprocess(blankToNull, z.string().trim().max(100).nullish()),
+  parentPhone: z.preprocess(blankToNull, z.string().trim().max(100).nullish()),
+  parentName: z.preprocess(blankToNull, z.string().trim().max(200).nullish()),
+  parentEmail: z.preprocess(blankToNull, z.string().trim().email().max(320).nullish()),
+  notes: z.preprocess(blankToNull, z.string().max(5000).nullish()),
+  avatar: z.preprocess(blankToNull, z.string().refine((v) => NORMAL_AVATARS.has(v), "invalid avatar").nullish()),
 }).strict();
 
 /** Compact, owner-scoped control-center payload; secrets and assignment codes are never selected. */
@@ -295,7 +301,13 @@ router.get("/classroom-rewards/students/:studentId", async (req: any, res) => {
 
 router.patch(["/classroom-rewards/students/:studentId/profile", "/classroom-rewards/students/:studentId"], async (req: any, res) => {
   const teacherId=teacher(req,res), studentId=numericId(req.params.studentId); if(!teacherId)return; if(!studentId)return res.status(400).json({message:"معرف غير صالح"});
-  const parsed=controlProfileInput.safeParse(req.body); if(!parsed.success||!Object.keys(parsed.data).length)return res.status(400).json({message:"بيانات الطالب غير صالحة"});
+  const parsed=controlProfileInput.safeParse(req.body);
+  if(!parsed.success) {
+    const field = parsed.error.issues[0]?.path[0];
+    const message = field === "parentEmail" ? "البريد الإلكتروني لولي الأمر غير صالح" : field === "avatar" ? "شخصية الطالب المختارة غير معتمدة" : "بيانات الطالب غير صالحة";
+    return res.status(400).json({message});
+  }
+  if(!Object.keys(parsed.data).length)return res.status(400).json({message:"لا توجد تغييرات للحفظ"});
   const owned=resultRows(await db.execute(sql`SELECT id FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0]; if(!owned)return res.status(404).json({message:"الطالب غير موجود"});
   const d=parsed.data;
   const updates = [

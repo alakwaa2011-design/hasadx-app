@@ -319,7 +319,17 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate({ studentId, ...formData }, {
+    updateMutation.mutate({
+      studentId,
+      ...formData,
+      gradeLevel: formData.gradeLevel.trim() || null,
+      studentClass: formData.studentClass.trim() || null,
+      parentName: formData.parentName.trim() || null,
+      parentPhone: formData.parentPhone.trim() || null,
+      parentEmail: formData.parentEmail.trim() || null,
+      notes: formData.notes.trim() || null,
+      avatar: formData.avatar || null,
+    }, {
       onSuccess: () => {
         toast.success("تم تحديث بيانات الطالب بنجاح");
       },
