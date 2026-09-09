@@ -304,6 +304,41 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     `)).rows[0].reward_type_name_snapshot).toBe("تصحيح جماعي");
   });
 
+  it("reverses a multi-student grant atomically and excludes it from summary metrics", async () => {
+    const className = `UNDO-${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className})`);
+    const rows = (await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class)
+      VALUES ('أول',${teacherId},${className}),('ثان',${teacherId},${className})
+      RETURNING id
+    `)).rows;
+    const studentIds = rows.map((row: any) => Number(row.id));
+    const grant = await request(teacherApp())
+      .post("/api/classroom-rewards/grants")
+      .send({ className, studentIds, typeId: rewardTypeId, idempotencyKey: `grant-batch:${nonce}` });
+    expect(grant.status).toBe(201);
+    const batchId = Number(grant.body.grants[0].batch_id);
+
+    const before = await request(teacherApp()).get(`/api/classroom-rewards/summary?className=${encodeURIComponent(className)}&period=week`);
+    expect(before.body.metrics).toMatchObject({ totalGrantedPoints: 2, recognizedStudentCount: 2 });
+
+    const undoPayload = { idempotencyKey: `undo-batch:${nonce}` };
+    const [first, replay] = await Promise.all([
+      request(teacherApp()).post(`/api/classroom-rewards/batches/${batchId}/reverse`).send(undoPayload),
+      request(teacherApp()).post(`/api/classroom-rewards/batches/${batchId}/reverse`).send(undoPayload),
+    ]);
+    expect([first.status, replay.status].sort()).toEqual([200, 201]);
+    expect(Number((await db.execute(sql`
+      SELECT COALESCE(SUM(balance),0)::int balance
+      FROM classroom_reward_balances
+      WHERE teacher_id=${teacherId} AND student_id IN (${sql.join(studentIds.map((id) => sql`${id}`), sql`,`)})
+    `)).rows[0].balance)).toBe(0);
+
+    const after = await request(teacherApp()).get(`/api/classroom-rewards/summary?className=${encodeURIComponent(className)}&period=week`);
+    expect(after.body.metrics).toMatchObject({ totalGrantedPoints: 0, recognizedStudentIds: [], recognizedStudentCount: 0 });
+    expect(after.body.typeSummaries).toEqual([]);
+  });
+
   it("creates teacher-owned reward groups and replaces only same-class members", async () => {
     const created = await request(teacherApp())
       .post("/api/classroom-rewards/classes/A/groups")

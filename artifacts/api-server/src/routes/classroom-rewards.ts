@@ -756,6 +756,56 @@ router.post("/classroom-rewards/ledger/:id/reverse", async (req: any, res) => {
   res.status(outcome.idempotent ? 200 : 201).json(outcome);
 });
 
+router.post("/classroom-rewards/batches/:batchId/reverse", async (req: any, res) => {
+  const teacherId = teacher(req, res), batchId = numericId(req.params.batchId);
+  if (!teacherId) return;
+  if (!batchId) return res.status(400).json({ message: "معرف دفعة المنح غير صالح" });
+  const parsed = z.object({ idempotencyKey: requestKey }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "مفتاح التكرار غير صالح" });
+  const reversalKey = classroomRewardReversalKey(parsed.data.idempotencyKey);
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const batch = resultRows(await tx.execute(sql`SELECT id FROM classroom_reward_batches WHERE id=${batchId} AND teacher_id=${teacherId} FOR UPDATE`))[0];
+      if (!batch) return null;
+      const grants = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND batch_id=${batchId} AND kind='grant' ORDER BY student_id,id FOR UPDATE`));
+      if (!grants.length) return null;
+      const grantIds = grants.map((grant) => Number(grant.id));
+      const existing = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND reversal_of_id IN (${sql.join(grantIds.map((id) => sql`${id}`), sql`,`)}) ORDER BY reversal_of_id FOR UPDATE`));
+      if (existing.length) {
+        if (existing.length === grants.length && existing.every((entry) => entry.idempotency_key === reversalKey)) {
+          return { entries: existing, idempotent: true };
+        }
+        throw new Error("batch_already_partially_reversed");
+      }
+      const studentIds = [...new Set(grants.map((grant) => Number(grant.student_id)).filter(Boolean))].sort((a, b) => a - b);
+      if (studentIds.length) {
+        await tx.execute(sql`SELECT id FROM students WHERE teacher_id=${teacherId} AND id IN (${sql.join(studentIds.map((id) => sql`${id}`), sql`,`)}) ORDER BY id FOR UPDATE`);
+      }
+      const balances = studentIds.length
+        ? resultRows(await tx.execute(sql`SELECT student_id,reward_type_id,balance FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id IN (${sql.join(studentIds.map((id) => sql`${id}`), sql`,`)}) ORDER BY student_id,reward_type_id FOR UPDATE`))
+        : [];
+      for (const grant of grants) {
+        const balance = balances.find((row) => Number(row.student_id) === Number(grant.student_id) && Number(row.reward_type_id) === Number(grant.reward_type_id));
+        if (!balance || Number(balance.balance) < Number(grant.amount)) throw new Error("insufficient_balance_for_reversal");
+      }
+      const entries: any[] = [];
+      for (const grant of grants) {
+        const reversal = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,reversal_of_id,batch_id,batch_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${grant.student_id},${grant.student_name_snapshot},${grant.reward_type_id},${-Number(grant.amount)},'reversal',${reversalKey},${grant.id},${batchId},${parsed.data.idempotencyKey},${grant.class_name_snapshot},${grant.teacher_class_id},${grant.reward_type_name_snapshot},${grant.category_snapshot}) RETURNING *`))[0];
+        await tx.execute(sql`UPDATE classroom_reward_balances SET balance=balance-${grant.amount},updated_at=NOW() WHERE teacher_id=${teacherId} AND student_id=${grant.student_id} AND reward_type_id=${grant.reward_type_id}`);
+        entries.push(reversal);
+      }
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key) VALUES (${teacherId},'reverse_batch','reward_batch',${batchId},${parsed.data.idempotencyKey})`);
+      return { entries, idempotent: false };
+    });
+    if (!outcome) return res.status(404).json({ message: "دفعة المنح غير موجودة" });
+    res.status(outcome.idempotent ? 200 : 201).json(outcome);
+  } catch (error: any) {
+    if (error?.message === "batch_already_partially_reversed") return res.status(409).json({ message: "تم التراجع عن جزء من هذه الدفعة سابقًا؛ راجع السجل" });
+    if (error?.message === "insufficient_balance_for_reversal") return res.status(409).json({ message: "لا يمكن التراجع عن الدفعة لأن أحد الأرصدة عُدّل بعدها" });
+    throw error;
+  }
+});
+
 router.get("/classroom-rewards/summary", async (req: any, res) => {
   const teacherId = teacher(req, res); if (!teacherId) return;
   const className = req.query.className === undefined ? undefined : validateClassName(req.query.className);
@@ -763,10 +813,16 @@ router.get("/classroom-rewards/summary", async (req: any, res) => {
   const classRow = className ? await ownedClass(teacherId, className) : null;
   if (className && !classRow) return res.status(404).json({ message: "الصف غير موجود" });
   const start = periodStart(typeof req.query.period === "string" ? req.query.period : undefined);
-  const scope = sql`WHERE tr.teacher_id=${teacherId} ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className}))` : sql``} ${start ? sql`AND tr.created_at>=${start}` : sql``}`;
+  const scope = sql`WHERE tr.teacher_id=${teacherId} AND tr.kind='grant' AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rev WHERE rev.teacher_id=tr.teacher_id AND rev.reversal_of_id=tr.id AND rev.kind='reversal') ${className ? sql`AND (tr.teacher_class_id=${classRow!.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className}))` : sql``} ${start ? sql`AND tr.created_at>=${start}` : sql``}`;
   const studentRows = resultRows(await db.execute(sql`SELECT tr.student_id,COALESCE(s.name,tr.student_name_snapshot) AS student_name,SUM(tr.amount)::int AS points FROM classroom_reward_transactions tr LEFT JOIN students s ON s.id=tr.student_id ${scope} GROUP BY tr.student_id,COALESCE(s.name,tr.student_name_snapshot)`));
-  const typeRows = resultRows(await db.execute(sql`SELECT tr.reward_type_id,tr.reward_type_name_snapshot AS type_name,COUNT(*) FILTER (WHERE tr.kind='grant')::int AS count,SUM(tr.amount)::int AS points FROM classroom_reward_transactions tr ${scope} GROUP BY tr.reward_type_id,tr.reward_type_name_snapshot`));
-  res.json({ studentSummaries: studentRows.map((r) => ({ studentId: r.student_id, studentName: r.student_name, points: r.points })), typeSummaries: typeRows.map((r) => ({ typeId: r.reward_type_id, typeName: r.type_name, count: r.count, points: r.points })) });
+  const typeRows = resultRows(await db.execute(sql`SELECT tr.reward_type_id,tr.reward_type_name_snapshot AS type_name,COUNT(*)::int AS count,SUM(tr.amount)::int AS points FROM classroom_reward_transactions tr ${scope} GROUP BY tr.reward_type_id,tr.reward_type_name_snapshot`));
+  const recognizedStudentIds = studentRows.map((row) => Number(row.student_id)).filter(Boolean);
+  const totalGrantedPoints = studentRows.reduce((sum, row) => sum + Number(row.points ?? 0), 0);
+  res.json({
+    studentSummaries: studentRows.map((r) => ({ studentId: r.student_id, studentName: r.student_name, points: r.points })),
+    typeSummaries: typeRows.map((r) => ({ typeId: r.reward_type_id, typeName: r.type_name, count: r.count, points: r.points })),
+    metrics: { totalGrantedPoints, recognizedStudentIds, recognizedStudentCount: recognizedStudentIds.length },
+  });
 });
 
 export default router;

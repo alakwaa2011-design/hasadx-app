@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Check, Loader2, Plus, RefreshCw } from "lucide-react";
 import {
   RewardRuleInput,
@@ -51,6 +61,7 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
   const activeTypes = useMemo(() => rewardTypes.filter((type) => type.active), [rewardTypes]);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<RuleForm>(emptyRule());
+  const [reprocessRuleId, setReprocessRuleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -102,15 +113,19 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
     });
   };
 
-  const reprocess = (id: string) => {
-    if (!window.confirm("سيُعاد فحص المصادر السابقة لهذه القاعدة. هل تريد المتابعة؟")) return;
-    reprocessRule.mutate(id, {
-      onSuccess: () => toast.success("بدأت إعادة المعالجة بأمان"),
+  const confirmReprocess = () => {
+    if (!reprocessRuleId) return;
+    reprocessRule.mutate(reprocessRuleId, {
+      onSuccess: () => {
+        setReprocessRuleId(null);
+        toast.success("بدأت إعادة المعالجة بأمان");
+      },
       onError: (error) => toast.error(error.message || "تعذرت إعادة المعالجة"),
     });
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto p-0 bg-background/95 backdrop-blur-xl border-border" dir="rtl">
         <DialogHeader className="p-4 border-b border-border/50 bg-muted/20">
@@ -124,9 +139,9 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm truncate">{rule.name}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{rulePreview(rule, rewardTypes)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{rulePreview(rule, rewardTypes)}</p>
                 </div>
-                <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full", rule.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <span className={cn("text-xs font-bold px-2 py-1 rounded-full", rule.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
                   {rule.isActive ? "مفعّلة" : "متوقفة"}
                 </span>
               </div>
@@ -134,7 +149,7 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
                 <button data-testid={`button-toggle-rule-${rule.id}`} onClick={() => toggleRule(rule.id, rule.isActive)} disabled={updateRule.isPending} className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-muted">
                   {rule.isActive ? "إيقاف" : "تفعيل"}
                 </button>
-                <button data-testid={`button-reprocess-rule-${rule.id}`} onClick={() => reprocess(rule.id)} disabled={reprocessRule.isPending} className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-muted flex items-center gap-1">
+                <button data-testid={`button-reprocess-rule-${rule.id}`} onClick={() => setReprocessRuleId(rule.id)} disabled={reprocessRule.isPending} className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-muted flex items-center gap-1">
                   {reprocessRule.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} إعادة المعالجة
                 </button>
               </div>
@@ -181,5 +196,23 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
         </div>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={reprocessRuleId !== null} onOpenChange={(next) => !next && !reprocessRule.isPending && setReprocessRuleId(null)}>
+      <AlertDialogContent dir="rtl" className="rounded-2xl border-emerald-100">
+        <AlertDialogHeader className="text-right sm:text-right">
+          <AlertDialogTitle className="text-emerald-950">إعادة فحص الإنجازات السابقة؟</AlertDialogTitle>
+          <AlertDialogDescription className="leading-6">
+            ستراجع حصاد المصادر السابقة المطابقة لهذه القاعدة، مع الحفاظ على الحماية من تكرار منح النقاط.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="gap-2 sm:space-x-0">
+          <AlertDialogCancel disabled={reprocessRule.isPending}>إلغاء</AlertDialogCancel>
+          <AlertDialogAction onClick={(event) => { event.preventDefault(); confirmReprocess(); }} disabled={reprocessRule.isPending} className="gap-2 bg-emerald-700 hover:bg-emerald-800">
+            {reprocessRule.isPending ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            تأكيد إعادة الفحص
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

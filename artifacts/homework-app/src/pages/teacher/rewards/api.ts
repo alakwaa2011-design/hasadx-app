@@ -266,6 +266,22 @@ export const useReverseReward = () => {
   });
 };
 
+export const useReverseRewardBatch = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { batchId: string; idempotencyKey: string }) =>
+      fetcher(`/api/classroom-rewards/batches/${data.batchId}/reverse`, {
+        method: "POST",
+        body: JSON.stringify({ idempotencyKey: data.idempotencyKey }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
+    },
+  });
+};
+
 export const useGetRewardLedger = (className?: string, studentId?: string, period?: string) => {
   return useQuery({
     queryKey: ["classroom-rewards", "ledger", className, studentId, period],

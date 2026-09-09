@@ -8,7 +8,9 @@ import {
   useGrantRewards,
   useGetTeacherClasses,
   useGetRewardGroups,
+  useGetRewardSummary,
   useAdjustStudentBalances,
+  useReverseRewardBatch,
 } from "./api";
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
@@ -61,7 +63,7 @@ function AdventurePointsBadge({ points, className, animate = false }: { points: 
           <span className="absolute h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
         </span>
         <span className="text-base font-black leading-none text-white drop-shadow-md">{formatPoints(points)}</span>
-        <span className="text-[9px] font-black text-amber-50">نقطة</span>
+        <span className="text-xs font-black text-amber-50">نقطة</span>
       </div>
     </div>
   );
@@ -84,7 +86,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const { data: classData, isLoading: loadingStudents } = useGetClassRewards(currentClass);
   const { data: groupsData } = useGetRewardGroups(currentClass);
   const { data: rewardTypesData } = useGetRewardTypes();
+  const { data: weeklySummary, isLoading: weeklySummaryLoading, isError: weeklySummaryError } = useGetRewardSummary(currentClass, "week");
   const grantMutation = useGrantRewards();
+  const reverseBatchMutation = useReverseRewardBatch();
 
   const grantIntentRef = useRef<{ signature: string; key: string } | null>(null);
   const bulkGrantPendingRef = useRef(false);
@@ -156,6 +160,24 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   }, [activeGroupId, classData, groupsData, search]);
 
   const activeGroup = groupsData?.groups?.find((group) => group.id === activeGroupId) ?? null;
+  const weeklyStats = useMemo(() => {
+    const summaries = weeklySummary?.studentSummaries ?? [];
+    const rosterIds = new Set((classData?.students ?? []).map((student: any) => Number(student.id)));
+    const recognizedStudentIds = new Set(
+      ((weeklySummary as any)?.metrics?.recognizedStudentIds ?? [])
+        .map((studentId: unknown) => Number(studentId))
+        .filter((studentId: number) => rosterIds.has(studentId)),
+    );
+    const topType = [...(weeklySummary?.typeSummaries ?? [])]
+      .filter((type: any) => Number(type.count) > 0)
+      .sort((a: any, b: any) => Number(b.count) - Number(a.count))[0];
+    return {
+      totalPoints: Number((weeklySummary as any)?.metrics?.totalGrantedPoints ?? 0),
+      recognizedCount: recognizedStudentIds.size,
+      awaitingRecognition: Math.max(0, (classData?.students?.length ?? 0) - recognizedStudentIds.size),
+      topTypeName: topType?.typeName || "لا يوجد بعد",
+    };
+  }, [classData, weeklySummary]);
 
   const singleGrantStudent = useMemo(
     () => classData?.students?.find((student: any) => student.id === singleGrantStudentId) ?? null,
@@ -296,7 +318,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     };
 
     grantMutation.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: (result: any) => {
         playSound();
         const awardedStudents = (classData?.students ?? [])
           .filter((student: any) => payload.studentIds.includes(student.id))
@@ -310,7 +332,27 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         setSelectedIds(new Set());
         setCustomGrantOpen(false);
         const pts = type?.points || customData?.points;
-        toast.success(`تم منح ${pts} نقطة لـ ${payload.studentIds.length} طالب`);
+        const batchId = result?.grants?.[0]?.batch_id ? String(result.grants[0].batch_id) : null;
+        const reversalKey = crypto.randomUUID();
+        let undoStarted = false;
+        toast.success(`تم منح ${formatPoints(pts)} نقطة لـ ${formatPoints(payload.studentIds.length)} طالب`, {
+          duration: 8000,
+          action: batchId ? {
+            label: "تراجع",
+            onClick: async () => {
+              if (undoStarted) return;
+              undoStarted = true;
+              try {
+                await reverseBatchMutation.mutateAsync({ batchId, idempotencyKey: reversalKey });
+                setCelebration(null);
+                toast.success("تم التراجع عن منح النقاط");
+              } catch (error: any) {
+                undoStarted = false;
+                toast.error(error.message || "تعذر التراجع عن منح النقاط");
+              }
+            },
+          } : undefined,
+        });
       },
       onError: (err) => {
         toast.error(err.message || "حدث خطأ أثناء منح النقاط");
@@ -472,7 +514,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 relative z-10 hide-scrollbar">
+          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 relative z-10 [scrollbar-width:thin] sm:[scrollbar-width:none]">
             <button
               onClick={() => setDisplayMode(!displayMode)}
               className={cn("flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all motion-reduce:transition-none shadow-sm border whitespace-nowrap",
@@ -514,6 +556,39 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </div>
         </div>
 
+        {!displayMode && (
+          <section aria-label="ملخص التحفيز الأسبوعي" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+            {weeklySummaryLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-[74px] animate-pulse rounded-2xl border border-emerald-100 bg-emerald-50/60" />
+              ))
+            ) : weeklySummaryError ? (
+              <div className="col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-500 sm:col-span-4">
+                تعذر تحميل ملخص هذا الأسبوع الآن.
+              </div>
+            ) : (
+              <>
+            <div className="rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
+              <p className="text-xs font-bold text-emerald-900/60">نقاط هذا الأسبوع</p>
+              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.totalPoints)}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
+              <p className="text-xs font-bold text-emerald-900/60">طلاب تم تحفيزهم</p>
+              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.recognizedCount)}</p>
+            </div>
+            <div className={cn("rounded-2xl border px-3 py-3 shadow-sm", weeklyStats.awaitingRecognition > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-100 bg-white")}>
+              <p className="text-xs font-bold text-emerald-900/60">بانتظار التحفيز</p>
+              <p className={cn("mt-1 text-xl font-black", weeklyStats.awaitingRecognition > 0 ? "text-amber-800" : "text-emerald-950")}>{formatPoints(weeklyStats.awaitingRecognition)}</p>
+            </div>
+            <div className="min-w-0 rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
+              <p className="text-xs font-bold text-emerald-900/60">الأكثر استخدامًا</p>
+              <p className="mt-1 truncate text-sm font-black text-emerald-950">{weeklyStats.topTypeName}</p>
+            </div>
+              </>
+            )}
+          </section>
+        )}
+
         {/* Toolbar */}
         {!displayMode && (
           <div className="space-y-3">
@@ -537,7 +612,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
 
               {viewMode === "students" && (
                 <>
-                  <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                  <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] sm:[scrollbar-width:none]">
                   <button type="button" onClick={() => setActiveGroupId(null)}
                     className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
                     كل الطلاب
@@ -763,7 +838,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                           .filter((group) => group.members.some((member) => member.studentId === student.id))
                           .slice(0, 2)
                           .map((group) => (
-                            <span key={group.id} className="max-w-full truncate rounded-md border px-1.5 py-0.5 text-[9px] font-black"
+                            <span key={group.id} className="max-w-full truncate rounded-md border px-1.5 py-0.5 text-xs font-black"
                               style={{ borderColor: `${group.color}55`, backgroundColor: `${group.color}12`, color: group.color }}>
                               {group.name}
                             </span>
@@ -805,7 +880,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </div>
            </div>
 
-           <div className="flex-1 flex items-center justify-start gap-2 overflow-x-auto hide-scrollbar px-1 py-1 w-full">
+           <div className="flex-1 flex items-center justify-start gap-2 overflow-x-auto px-1 py-1.5 w-full [scrollbar-width:thin] sm:[scrollbar-width:none]">
              {activeRewardTypes.map((type: any) => (
                <button
                  key={type.id}

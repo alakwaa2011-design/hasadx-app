@@ -175,7 +175,7 @@ function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, set
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
         <div className="flex-1">
-          <label className="text-[10px] font-bold text-muted-foreground mb-1 block">الاسم</label>
+          <label className="text-xs font-bold text-muted-foreground mb-1 block">الاسم</label>
           <input 
             type="text" 
             value={form.name} 
@@ -186,7 +186,7 @@ function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, set
           />
         </div>
         <div className="w-20">
-          <label className="text-[10px] font-bold text-muted-foreground mb-1 block">النقاط</label>
+          <label className="text-xs font-bold text-muted-foreground mb-1 block">النقاط</label>
           <input 
             type="number" 
             min="1"
@@ -198,7 +198,7 @@ function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, set
       </div>
 
       <div>
-        <label className="text-[10px] font-bold text-muted-foreground mb-1 block">الأيقونة</label>
+        <label className="text-xs font-bold text-muted-foreground mb-1 block">الأيقونة</label>
         <div className="flex flex-wrap gap-1.5">
           {PRESET_ICONS.map(icon => (
             <button

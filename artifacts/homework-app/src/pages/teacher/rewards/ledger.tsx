@@ -132,9 +132,9 @@ function LedgerView({ className, period }: { className: string, period: string }
         const evidenceText = formatEvidenceSummary(item.sourceType, item.evidenceSummary);
         
         return (
-          <div key={item.id} className={cn("p-3 rounded-xl border flex items-center gap-3 transition-colors", item.isReversed ? "bg-muted/30 border-dashed border-border/50 opacity-60" : "bg-card border-border shadow-sm")}>
+          <div key={item.id} className={cn("p-3 rounded-xl border flex items-center gap-3 transition-colors", item.isReversed ? "bg-slate-50 border-dashed border-slate-300" : "bg-card border-border shadow-sm")}>
             <div className="w-10 text-center shrink-0">
-              <span className={cn("text-sm font-black block", item.points > 0 ? "text-primary" : "text-destructive")}>
+              <span className={cn("text-sm font-black block", item.isReversed ? "text-slate-500 line-through" : item.points > 0 ? "text-primary" : "text-destructive")}>
                 {item.points > 0 ? "+" : ""}{formatRewardPoints(item.points)}
               </span>
             </div>
@@ -148,7 +148,7 @@ function LedgerView({ className, period }: { className: string, period: string }
                 <span>{dateLabel} {timeLabel}</span>
               </div>
                 {(item.sourceType || item.ruleName || evidenceText || item.sourceId) && (
-                  <div data-testid={`text-ledger-evidence-${item.id}`} className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground">
+                  <div data-testid={`text-ledger-evidence-${item.id}`} className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
                     {item.sourceType && <span className="rounded bg-muted px-1.5 py-0.5 font-bold">{sourceLabel(item.sourceType)}</span>}
                     {item.ruleName && <span>قاعدة: {item.ruleName}</span>}
                     {evidenceText && <span>• {evidenceText}</span>}
@@ -168,7 +168,7 @@ function LedgerView({ className, period }: { className: string, period: string }
               </button>
             )}
             {item.isReversed && (
-              <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-muted text-muted-foreground">تم التراجع</span>
+              <span className="rounded-full border border-slate-300 bg-white px-2 py-1 text-xs font-bold text-slate-600">ملغاة ولا تدخل في الرصيد</span>
             )}
           </div>
         );
