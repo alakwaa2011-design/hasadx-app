@@ -236,43 +236,58 @@ test("single grant celebrates only success, resists repeated input, and saves on
 
   await page.getByRole("tab", { name: "البيانات" }).click();
   await page.getByRole("button", { name: /عرض المجموعة الكاملة/ }).click();
+  for (const avatar of ILLUSTRATED_AVATARS) {
+    const avatarChoice = page.getByRole("button", { name: avatar.label });
+    const avatarImage = avatarChoice.locator("img");
+    await expect(
+      avatarChoice,
+      `بطاقة الشخصية "${avatar.label}" غير ظاهرة في المجموعة الكاملة: ${avatar.value}`,
+    ).toBeVisible();
+    await expect(
+      avatarImage,
+      `صورة الشخصية "${avatar.label}" غير ظاهرة في المجموعة الكاملة: ${avatar.value}`,
+    ).toBeVisible();
+    await expect(
+      avatarImage,
+      `مصدر صورة الشخصية "${avatar.label}" لا يطابق مسارها: ${avatar.value}`,
+    ).toHaveAttribute("src", avatar.value);
+    await expect
+      .poll(
+        () =>
+          avatarImage.evaluate((image: HTMLImageElement) => ({
+            complete: image.complete,
+            naturalWidth: image.naturalWidth,
+            naturalHeight: image.naturalHeight,
+          })),
+        {
+          message: `الشخصية "${avatar.label}" لم تُحمّل صورة فعلية من ${avatar.value}`,
+        },
+      )
+      .toMatchObject({
+        complete: true,
+        naturalWidth: expect.any(Number),
+        naturalHeight: expect.any(Number),
+      });
+    const dimensions = await avatarImage.evaluate((image: HTMLImageElement) => ({
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+    }));
+    expect(
+      dimensions.naturalWidth,
+      `الشخصية "${avatar.label}" حمّلت ملفًا بلا عرض فعلي: ${avatar.value}`,
+    ).toBeGreaterThan(0);
+    expect(
+      dimensions.naturalHeight,
+      `الشخصية "${avatar.label}" حمّلت ملفًا بلا ارتفاع فعلي: ${avatar.value}`,
+    ).toBeGreaterThan(0);
+    expect(
+      failedAvatarRequests.filter((url) => new URL(url).pathname === avatar.value),
+      `فشل طلب صورة الشخصية "${avatar.label}": ${avatar.value}`,
+    ).toEqual([]);
+  }
+
   const avatarChoice = page.getByRole("button", { name: "روح الإبداع" });
   await avatarChoice.click();
-  const selectedAvatar = ILLUSTRATED_AVATARS.find((avatar) => avatar.label === "روح الإبداع");
-  if (!selectedAvatar) throw new Error("The selected illustrated avatar is missing from the local catalog");
-  const selectedAvatarImage = avatarChoice.locator("img");
-  await expect(selectedAvatarImage).toBeVisible();
-  await expect(selectedAvatarImage).toHaveAttribute("src", selectedAvatar.value);
-  await expect
-    .poll(
-      () =>
-        selectedAvatarImage.evaluate((image: HTMLImageElement) => ({
-          complete: image.complete,
-          naturalWidth: image.naturalWidth,
-          naturalHeight: image.naturalHeight,
-          currentSrc: image.currentSrc || image.src,
-        })),
-      {
-        message: `الشخصية "${selectedAvatar.label}" لم تُحمّل صورتها من ${selectedAvatar.value}`,
-      },
-    )
-    .toMatchObject({ complete: true });
-  const selectedAvatarDimensions = await selectedAvatarImage.evaluate((image: HTMLImageElement) => ({
-    naturalWidth: image.naturalWidth,
-    naturalHeight: image.naturalHeight,
-  }));
-  expect(
-    selectedAvatarDimensions.naturalWidth,
-    `الشخصية "${selectedAvatar.label}" حمّلت ملفًا بلا عرض فعلي: ${selectedAvatar.value}`,
-  ).toBeGreaterThan(0);
-  expect(
-    selectedAvatarDimensions.naturalHeight,
-    `الشخصية "${selectedAvatar.label}" حمّلت ملفًا بلا ارتفاع فعلي: ${selectedAvatar.value}`,
-  ).toBeGreaterThan(0);
-  expect(
-    failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
-    `فشل طلب صورة الشخصية "${selectedAvatar.label}": ${selectedAvatar.value}`,
-  ).toEqual([]);
   const saveAvatar = page.getByRole("button", { name: "حفظ الشخصية" });
   await expect(saveAvatar).toBeVisible();
   const avatarGrid = avatarChoice.locator("xpath=..");
