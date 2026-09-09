@@ -7,6 +7,12 @@ export const ILLUSTRATED_AVATARS = [
   { value: "/avatars/nature-boy.webp", label: "حارس الطبيعة" },
   { value: "/avatars/ocean-girl.webp", label: "مستكشفة المحيط" },
   { value: "/avatars/hero-boy.webp", label: "بطل الحكاية" },
+  { value: "/avatars/junior-archaeologist.webp", label: "باحث الآثار الصغير" },
+  { value: "/avatars/hijabi-stargazer.webp", label: "راصدة النجوم" },
+  { value: "/avatars/teen-inventor.webp", label: "مخترع المستقبل" },
+  { value: "/avatars/hijabi-navigator.webp", label: "دليلة الصحراء" },
+  { value: "/avatars/wise-explorer.webp", label: "حكيم الرحلة" },
+  { value: "/avatars/oryx-companion.webp", label: "رفيق المها" },
 ] as const;
 
 export const NORMAL_AVATARS: string[] = [

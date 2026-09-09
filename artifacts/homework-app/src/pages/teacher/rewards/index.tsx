@@ -13,6 +13,7 @@ import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
 import { StudentControlCenter } from "./student-control-center";
+import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import { 
   Star, Settings, History, Volume2, VolumeX, Eye, EyeOff, 
   Search, CheckSquare, Square, Plus, Trophy, Loader2, Check, Zap, Info
@@ -94,6 +95,7 @@ export default function RewardsPage() {
   const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   
   const [confettiActive, setConfettiActive] = useState(false);
+  const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
 
   const students = useMemo(() => {
     if (!classData?.students) return [];
@@ -180,6 +182,14 @@ export default function RewardsPage() {
       onSuccess: () => {
         playSound();
         fireConfetti();
+        const awardedStudents = (classData?.students ?? [])
+          .filter((student: any) => payload.studentIds.includes(student.id))
+          .map((student: any) => ({ id: student.id, name: student.name, avatar: student.avatar }));
+        setCelebration({
+          students: awardedStudents,
+          points: type?.points || customData?.points || 0,
+          rewardName: type?.name || customData?.reason,
+        });
         grantIntentRef.current = null;
         setSelectedIds(new Set());
         setCustomGrantOpen(false);
@@ -205,6 +215,7 @@ export default function RewardsPage() {
   return (
     <Layout>
       <ConfettiBurst active={confettiActive} />
+      <RewardCelebration celebration={celebration} onComplete={() => setCelebration(null)} />
       
       <div className={cn("max-w-5xl mx-auto space-y-4 pb-32 transition-all motion-reduce:transition-none", displayMode && "mt-2")}>
         {/* Header Bar */}
@@ -383,7 +394,7 @@ export default function RewardsPage() {
               <button
                 key={type.id}
                 onClick={() => handleGrant(type)}
-                disabled={grantMutation.isPending}
+                disabled={grantMutation.isPending || Boolean(celebration)}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted transition-all motion-reduce:transition-none motion-reduce:transform-none shrink-0 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                 style={{ borderColor: `${type.color}40` }}
               >
@@ -395,6 +406,7 @@ export default function RewardsPage() {
             
             <button
               onClick={() => setCustomGrantOpen(true)}
+              disabled={Boolean(celebration)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-border bg-card hover:border-primary/50 hover:bg-muted transition-all motion-reduce:transition-none motion-reduce:transform-none shrink-0 text-muted-foreground hover:text-foreground"
             >
               <Plus size={16} />

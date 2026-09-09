@@ -10,7 +10,8 @@ import {
   useGrantRewards,
 } from "./api";
 import { AvatarDisplay } from "@/components/avatar-display";
-import { ILLUSTRATED_AVATARS, NORMAL_AVATARS } from "@/lib/avatars";
+import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
+import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import { 
   User, Shield, Key, History, Trophy, FileText, Activity,
   Loader2, Save, Mail, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock
@@ -110,21 +111,31 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
 }) {
   const { student, rewards } = data;
   const grantMutation = useGrantRewards();
-  const grant = (typeId: number) => {
+  const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
+  const grant = (type: { id: number; name: string; points: number }) => {
     if (!className) return;
     grantMutation.mutate({
       className,
       studentIds: [studentId],
-      typeId,
+      typeId: type.id,
       idempotencyKey: crypto.randomUUID(),
     }, {
-      onSuccess: () => toast.success("تم منح التحفيز للطالب"),
+      onSuccess: () => {
+        setCelebration({
+          students: [{ id: studentId, name: student.name, avatar: student.avatar }],
+          points: type.points,
+          rewardName: type.name,
+        });
+        toast.success("تم منح التحفيز للطالب");
+      },
       onError: (error: any) => toast.error(error.message || "تعذر منح التحفيز"),
     });
   };
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <>
+      <RewardCelebration celebration={celebration} onComplete={() => setCelebration(null)} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-1 space-y-4">
         <div className="bg-card border rounded-2xl p-6 text-center shadow-sm flex flex-col items-center">
           <AvatarDisplay 
@@ -199,8 +210,8 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
                 <button
                   key={type.id}
                   type="button"
-                  disabled={!className || grantMutation.isPending}
-                  onClick={() => grant(type.id)}
+                  disabled={!className || grantMutation.isPending || Boolean(celebration)}
+                  onClick={() => grant(type)}
                   className="rounded-xl border px-3 py-2 text-sm font-bold transition-colors hover:bg-muted disabled:opacity-50"
                   style={{ borderColor: type.color ? `${type.color}66` : undefined }}
                 >
@@ -214,6 +225,7 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -364,26 +376,6 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
               </button>
             ))}
           </div>
-          <details className="mt-4 rounded-xl border bg-muted/30 p-3">
-            <summary className="cursor-pointer text-sm font-bold text-muted-foreground">رموز بسيطة إضافية</summary>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {NORMAL_AVATARS.filter((avatar) => !avatar.startsWith("/avatars/")).map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, avatar: emoji })}
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 bg-background text-xl transition-all",
-                    formData.avatar === emoji ? "border-primary bg-primary/10" : "border-transparent hover:bg-muted"
-                  )}
-                  aria-label={`اختيار ${emoji}`}
-                  aria-pressed={formData.avatar === emoji}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </details>
         </div>
 
         <div className="space-y-4">

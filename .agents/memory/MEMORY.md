@@ -79,3 +79,4 @@
 - [PostgreSQL parameter inference](postgres-parameter-inference.md) — each SQL interpolation has its own type; nullable predicates require real PostgreSQL coverage, not database mocks.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
+- [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are the official reward-system identity; never expose emoji or legacy avatars as alternatives.
