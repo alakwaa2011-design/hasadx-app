@@ -78,3 +78,4 @@
 - [Educational video quality](educational-video-quality-contract.md) — true generated motion, no silent still-image fallback; phase-one acceptance requires the user's manual review.
 - [PostgreSQL parameter inference](postgres-parameter-inference.md) — each SQL interpolation has its own type; nullable predicates require real PostgreSQL coverage, not database mocks.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
+- [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.

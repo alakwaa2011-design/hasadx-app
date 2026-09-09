@@ -14,6 +14,7 @@ import { persistWameethGameHistory } from "../lib/wameeth-game-history";
 import { saveFullWameethGame } from "../lib/wameeth-full-save";
 import { addPlayer, createGame, deleteGame, resetGameToLobby, type GameQuestion } from "../game/manager";
 import submissionsRouter from "../routes/submissions";
+import classroomRewardsRouter from "../routes/classroom-rewards";
 import gameHistoryRouter from "../routes/game-history";
 import { setupGameSocket } from "../game/socket-handlers";
 
@@ -25,15 +26,16 @@ let rewardTypeId=0, ruleId=0, submissionId=0;
 let assignmentId=0;
 let gameRuleId=0;
 
-function teacherApp() {
+function teacherApp(sessionTeacherId = teacherId) {
   const app = express();
   app.use(express.json());
   app.use((req: any, _res, next) => {
-    req.session = { teacherId };
+    req.session = { teacherId: sessionTeacherId };
     req.log = { error: () => {}, warn: () => {}, info: () => {} };
     next();
   });
   app.use("/api", submissionsRouter);
+  app.use("/api", classroomRewardsRouter);
   return app;
 }
 function gameHistoryApp(){
@@ -51,6 +53,11 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       "utf8",
     );
     await db.execute(sql.raw(migration));
+    const avatarMigration = readFileSync(
+      new URL("../../../../scripts/migrations/2026-06-14-student-roster-avatar.sql", import.meta.url),
+      "utf8",
+    );
+    await db.execute(sql.raw(avatarMigration));
     teacherId=Number((await db.execute(sql`INSERT INTO teachers(name,email,password_hash) VALUES (${"Reward "+nonce},${`reward_${nonce}@test.invalid`},'x') RETURNING id`)).rows[0].id);
     otherTeacherId=Number((await db.execute(sql`INSERT INTO teachers(name,email,password_hash) VALUES (${"Other "+nonce},${`other_${nonce}@test.invalid`},'x') RETURNING id`)).rows[0].id);
     accountId=Number((await db.execute(sql`INSERT INTO student_accounts(username,display_name,password_hash) VALUES (${`reward_${nonce}`},'طالب','x') RETURNING id`)).rows[0].id);
@@ -93,6 +100,26 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(await db.transaction(async tx=>{await lockAssignmentRewardEvidence(tx,teacherId,submissionId); return hasActiveAutomaticAssignmentGrant(tx,teacherId,submissionId);})).toBe(false);
     const corrected = await request(teacherApp()).patch(`/api/submissions/${submissionId}/student-link`).send({ studentId: otherStudentId });
     expect(corrected.status).toBe(200);
+  });
+
+  it("lets the owning teacher manage an avatar without a student account and hides control data from other teachers", async () => {
+    const avatar = "🦁";
+    const updated = await request(teacherApp())
+      .patch(`/api/classroom-rewards/students/${otherStudentId}/profile`)
+      .send({ avatar });
+    expect(updated.status).toBe(200);
+    expect(updated.body.student.avatar).toBe(avatar);
+    expect((await db.execute(sql`SELECT avatar FROM students WHERE id=${otherStudentId}`)).rows[0].avatar).toBe(avatar);
+
+    const detail = await request(teacherApp()).get(`/api/classroom-rewards/students/${otherStudentId}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.student.avatar).toBe(avatar);
+    expect(JSON.stringify(detail.body)).not.toContain("password");
+    expect(JSON.stringify(detail.body)).not.toContain("accessCode");
+
+    const denied = await request(teacherApp(otherTeacherId))
+      .get(`/api/classroom-rewards/students/${otherStudentId}`);
+    expect(denied.status).toBe(404);
   });
 
   it("maps question-bank sessions by teacher/account and rejects spoofed or wrong-teacher identities",async()=>{

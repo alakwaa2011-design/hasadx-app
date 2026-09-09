@@ -13,6 +13,8 @@ export const studentsTable = pgTable("students", {
   parentName: text("parent_name"),
   parentEmail: text("parent_email"),
   notes: text("notes"),
+  /** Teacher-owned roster avatar; account avatar is only a fallback. */
+  avatar: text("avatar"),
   accountUsername: text("account_username"),
   studentAccountId: integer("student_account_id").unique().references(() => studentAccountsTable.id, { onDelete: "set null" }),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),

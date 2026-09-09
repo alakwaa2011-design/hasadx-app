@@ -12,9 +12,10 @@ import {
 import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
+import { StudentControlCenter } from "./student-control-center";
 import { 
   Star, Settings, History, Volume2, VolumeX, Eye, EyeOff, 
-  Search, CheckSquare, Square, Plus, Trophy, Loader2, Check, Zap
+  Search, CheckSquare, Square, Plus, Trophy, Loader2, Check, Zap, Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,8 @@ export default function RewardsPage() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [customGrantOpen, setCustomGrantOpen] = useState(false);
+  const [studentControlOpen, setStudentControlOpen] = useState(false);
+  const [activeStudentId, setActiveStudentId] = useState<number | null>(null);
   
   const [confettiActive, setConfettiActive] = useState(false);
 
@@ -306,13 +309,27 @@ export default function RewardsPage() {
                   )}
                 >
                   {!displayMode && (
-                    <div className="absolute top-2 right-2">
-                      <div className={cn("w-5 h-5 rounded flex items-center justify-center border transition-colors motion-reduce:transition-none", 
-                        isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/30 bg-background/50"
+                    <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+                      <div className={cn("w-5 h-5 rounded flex items-center justify-center border transition-colors motion-reduce:transition-none bg-background",
+                        isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/30 bg-background/80"
                       )}>
                         {isSelected && <Check size={12} strokeWidth={4} />}
                       </div>
                     </div>
+                  )}
+
+                  {!displayMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveStudentId(student.id);
+                        setStudentControlOpen(true);
+                      }}
+                      className="absolute top-2 left-2 w-7 h-7 rounded-full bg-background/80 hover:bg-background border border-border/50 shadow-sm flex items-center justify-center text-muted-foreground hover:text-primary transition-colors z-10"
+                      title="ملف الطالب"
+                    >
+                      <Info size={14} />
+                    </button>
                   )}
 
                   <AvatarDisplay 
@@ -390,6 +407,13 @@ export default function RewardsPage() {
       <RewardTypesSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
       <RewardRulesDialog open={rulesOpen} onOpenChange={setRulesOpen} rewardTypes={rewardTypesData || []} />
       <RewardLedgerDialog open={ledgerOpen} onOpenChange={setLedgerOpen} className={currentClass} />
+      <StudentControlCenter
+        open={studentControlOpen}
+        onOpenChange={(v) => { setStudentControlOpen(v); if (!v) setActiveStudentId(null); }}
+        studentId={activeStudentId}
+        className={currentClass}
+        rewardTypes={activeRewardTypes}
+      />
       <CustomGrantDialog 
         open={customGrantOpen} 
         onOpenChange={setCustomGrantOpen} 

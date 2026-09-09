@@ -1,4 +1,16 @@
+export const ILLUSTRATED_AVATARS = [
+  { value: "/avatars/adventurer-boy.webp", label: "المستكشف الصغير" },
+  { value: "/avatars/adventurer-girl.webp", label: "مستكشفة النجوم" },
+  { value: "/avatars/space-boy.webp", label: "رائد الفضاء" },
+  { value: "/avatars/space-girl.webp", label: "رائدة الفضاء" },
+  { value: "/avatars/science-girl.webp", label: "عالمة المستقبل" },
+  { value: "/avatars/nature-boy.webp", label: "حارس الطبيعة" },
+  { value: "/avatars/ocean-girl.webp", label: "مستكشفة المحيط" },
+  { value: "/avatars/hero-boy.webp", label: "بطل الحكاية" },
+] as const;
+
 export const NORMAL_AVATARS: string[] = [
+  ...ILLUSTRATED_AVATARS.map((avatar) => avatar.value),
   "🧕🏽",
   "👳🏽‍♂️",
   "🤵🏽‍♂️",
@@ -38,5 +50,5 @@ export const DEFAULT_AVATAR = "🧒🏽";
 
 export function isAvatarUrl(value?: string | null): boolean {
   if (!value) return false;
-  return value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:");
+  return value.startsWith("/avatars/") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:");
 }

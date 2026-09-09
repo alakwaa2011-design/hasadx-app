@@ -180,3 +180,28 @@ export const useGetTeacherClasses = () => {
     queryFn: () => fetcher(`/api/teacher/classes`),
   });
 };
+
+export const useGetStudentProfile = (studentId?: number | null) => {
+  return useQuery({
+    queryKey: ["classroom-rewards", "students", studentId],
+    queryFn: () => fetcher(`/api/classroom-rewards/students/${studentId}`),
+    enabled: !!studentId,
+  });
+};
+
+export const useUpdateStudentProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, ...data }: any) => fetcher(`/api/classroom-rewards/students/${studentId}/profile`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", variables.studentId] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+    },
+  });
+};
+
+export const useResetStudentPassword = () => {
+  return useMutation({
+    mutationFn: ({ studentId, newPassword }: any) => fetcher(`/api/classroom-rewards/students/${studentId}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+  });
+};

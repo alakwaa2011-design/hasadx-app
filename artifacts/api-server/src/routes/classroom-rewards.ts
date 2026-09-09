@@ -2,11 +2,23 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { z } from "zod/v4";
+import bcrypt from "bcryptjs";
 import { classroomRewardFingerprint, classroomRewardReversalKey } from "../lib/classroom-reward-fingerprint";
 import { evaluateClassroomRewardEvidence } from "../lib/classroom-reward-evaluator";
 
 const router: IRouter = Router();
 const ICONS = new Set(["Star", "Heart", "ThumbsUp", "Zap", "Trophy", "Target", "Shield", "Flame", "Award", "Crown", "Lightbulb", "Rocket"]);
+// Keep this server-side allowlist deliberately closed: only bundled illustrations
+// and approved emoji are accepted, never user-supplied URLs, data URIs, or SVG.
+const NORMAL_AVATARS = new Set([
+  "/avatars/adventurer-boy.webp","/avatars/adventurer-girl.webp","/avatars/space-boy.webp",
+  "/avatars/space-girl.webp","/avatars/science-girl.webp","/avatars/nature-boy.webp",
+  "/avatars/ocean-girl.webp","/avatars/hero-boy.webp",
+  "🧕🏽","👳🏽‍♂️","🤵🏽‍♂️","👰🏽‍♀️","👨🏽‍🎓","👩🏽‍🎓","👨🏽‍🏫","👩🏽‍🏫",
+  "👨🏽‍💼","👩🏽‍💼","👨🏽‍⚕️","👩🏽‍⚕️","👨🏽‍💻","👩🏽‍💻","🧑🏽‍🚀","🧑🏽‍🔬",
+  "🏃🏽‍♂️","🏃🏽‍♀️","⛹🏽‍♂️","🤸🏽‍♀️","👦🏽","👧🏽","🧒🏽","🧑🏽","👨🏽","👩🏽",
+  "🦁","🐯","🦊","🐻","🐼","🐸","🦄","🐨","🐺","🦅",
+]);
 const COLORS = new Set(["#468064", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0891b2", "#f97316"]);
 const requestKey = z.string().trim().min(8).max(200);
 const typeInput = z.object({
@@ -145,14 +157,14 @@ router.patch("/classroom-rewards/types/:id", async (req: any, res) => {
 
 async function classStudents(teacherId: number, className: string) {
   return resultRows(await db.execute(sql`
-    SELECT s.id,s.name,COALESCE(a.avatar,k.avatar_key,NULL) AS avatar,
+    SELECT s.id,s.name,COALESCE(s.avatar,a.avatar,k.avatar_key,NULL) AS avatar,
       COALESCE(SUM(b.balance),0)::int AS points
     FROM students s
     LEFT JOIN student_accounts a ON a.id=s.student_account_id
     LEFT JOIN kids_profiles k ON k.student_account_id=s.student_account_id
     LEFT JOIN classroom_reward_balances b ON b.teacher_id=${teacherId} AND b.student_id=s.id
     WHERE s.teacher_id=${teacherId} AND (s.student_class=${className} OR s.grade_level=${className})
-    GROUP BY s.id,s.name,a.avatar,k.avatar_key ORDER BY s.name
+    GROUP BY s.id,s.name,s.avatar,a.avatar,k.avatar_key ORDER BY s.name
   `));
 }
 async function ownedClass(teacherId: number, name: string) {
@@ -253,6 +265,60 @@ router.get("/classroom-rewards/ledger", async (req: any, res) => {
   `));
   res.json(found.map((r) => ({ id: r.id, studentName: r.student_name, reason: r.reason, points: r.points, createdAt: r.created_at, isReversed: r.is_reversed, ruleName:r.rule_name, sourceType:r.source_type, sourceId:r.source_result_id, evidenceSummary:r.evidence_summary })));
 });
+const controlProfileInput = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  gradeLevel: z.string().trim().max(100).nullish(), studentClass: z.string().trim().max(100).nullish(),
+  parentPhone: z.string().trim().max(100).nullish(), parentName: z.string().trim().max(200).nullish(),
+  parentEmail: z.string().trim().email().max(320).nullish(), notes: z.string().max(5000).nullish(),
+  avatar: z.string().refine((v) => NORMAL_AVATARS.has(v), "invalid avatar").nullish(),
+}).strict();
+
+/** Compact, owner-scoped control-center payload; secrets and assignment codes are never selected. */
+router.get("/classroom-rewards/students/:studentId", async (req: any, res) => {
+  const teacherId = teacher(req, res), studentId = numericId(req.params.studentId);
+  if (!teacherId) return; if (!studentId) return res.status(400).json({ message: "معرف غير صالح" });
+  const student = resultRows(await db.execute(sql`SELECT s.id,s.name,s.grade_level,s.student_class,s.parent_phone,s.parent_name,s.parent_email,s.notes,s.avatar,s.student_account_id,sa.username account_username,sa.display_name account_display_name,(s.student_account_id IS NOT NULL AND sa.id IS NOT NULL) account_linked FROM students s LEFT JOIN student_accounts sa ON sa.id=s.student_account_id WHERE s.id=${studentId} AND s.teacher_id=${teacherId}`))[0];
+  if (!student) return res.status(404).json({ message: "الطالب غير موجود" });
+  const balance = resultRows(await db.execute(sql`SELECT COALESCE(SUM(balance),0)::int points FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${studentId}`))[0];
+  const ledger = resultRows(await db.execute(sql`SELECT id,amount AS points,kind,reward_type_name_snapshot AS reason,created_at FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND student_id=${studentId} ORDER BY created_at DESC,id DESC LIMIT 20`));
+  const assignments = resultRows(await db.execute(sql`SELECT a.id,a.title,a.subject,a.deadline,a.total_points,s.score,COALESCE(s.teacher_adjusted_points,s.earned_points) earned_points,s.submitted_at FROM submissions s JOIN assignments a ON a.id=s.assignment_id WHERE a.teacher_id=${teacherId} AND s.student_id=${studentId} ORDER BY s.submitted_at DESC,s.id DESC LIMIT 20`));
+  const achievements = resultRows(await db.execute(sql`SELECT d.id,d.title,d.description,d.icon_key,g.granted_at FROM motivation_badge_grants g JOIN motivation_badge_definitions d ON d.id=g.badge_definition_id AND d.teacher_id=${teacherId} JOIN kids_profiles kp ON kp.id=g.profile_id AND kp.student_account_id=${student.student_account_id ?? null} ORDER BY g.granted_at DESC LIMIT 20`));
+  const activity = student.student_account_id ? resultRows(await db.execute(sql`SELECT action,event_category,created_at FROM activity_logs WHERE user_id=${student.student_account_id} AND user_role='student' ORDER BY created_at DESC,id DESC LIMIT 20`)) : [];
+  res.json({
+    student: { id:student.id,name:student.name,gradeLevel:student.grade_level,studentClass:student.student_class,parentPhone:student.parent_phone,parentName:student.parent_name,parentEmail:student.parent_email,notes:student.notes,avatar:student.avatar,account:{linked:Boolean(student.account_linked),username:student.account_linked?student.account_username:null,displayName:student.account_linked?student.account_display_name:null} },
+    rewards:{balance:Number(balance?.points??0),ledger:ledger.map((r)=>({id:r.id,points:Number(r.points),kind:r.kind,reason:r.reason,createdAt:r.created_at}))},
+    achievements:achievements.map((r)=>({id:r.id,title:r.title,description:r.description,icon:r.icon_key,grantedAt:r.granted_at})),
+    assignments:assignments.map((r)=>({id:r.id,title:r.title,subject:r.subject,deadline:r.deadline,totalPoints:r.total_points,score:r.score,earnedPoints:r.earned_points,submittedAt:r.submitted_at})),
+    activity:activity.map((r)=>({action:r.action,category:r.event_category,createdAt:r.created_at})),
+  });
+});
+
+router.patch(["/classroom-rewards/students/:studentId/profile", "/classroom-rewards/students/:studentId"], async (req: any, res) => {
+  const teacherId=teacher(req,res), studentId=numericId(req.params.studentId); if(!teacherId)return; if(!studentId)return res.status(400).json({message:"معرف غير صالح"});
+  const parsed=controlProfileInput.safeParse(req.body); if(!parsed.success||!Object.keys(parsed.data).length)return res.status(400).json({message:"بيانات الطالب غير صالحة"});
+  const owned=resultRows(await db.execute(sql`SELECT id FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0]; if(!owned)return res.status(404).json({message:"الطالب غير موجود"});
+  const d=parsed.data;
+  const updates = [
+    d.name !== undefined ? sql`name=${d.name}` : null,
+    d.gradeLevel !== undefined ? sql`grade_level=${d.gradeLevel}` : null,
+    d.studentClass !== undefined ? sql`student_class=${d.studentClass}` : null,
+    d.parentPhone !== undefined ? sql`parent_phone=${d.parentPhone}` : null,
+    d.parentName !== undefined ? sql`parent_name=${d.parentName}` : null,
+    d.parentEmail !== undefined ? sql`parent_email=${d.parentEmail}` : null,
+    d.notes !== undefined ? sql`notes=${d.notes}` : null,
+    d.avatar !== undefined ? sql`avatar=${d.avatar}` : null,
+  ].filter((v): v is ReturnType<typeof sql> => v !== null);
+  const row=resultRows(await db.execute(sql`UPDATE students SET ${sql.join(updates, sql`, `)} WHERE id=${studentId} AND teacher_id=${teacherId} RETURNING id,name,grade_level,student_class,parent_phone,parent_name,parent_email,notes,avatar`))[0];
+  res.json({student:row});
+});
+
+router.post("/classroom-rewards/students/:studentId/reset-password", async (req:any,res) => {
+  const teacherId=teacher(req,res), studentId=numericId(req.params.studentId); if(!teacherId)return; if(!studentId)return res.status(400).json({message:"معرف غير صالح"});
+  const password=req.body?.newPassword; if(typeof password!=="string"||password.length<6||password.length>200)return res.status(400).json({message:"كلمة المرور يجب أن تكون بين 6 و200 حرفاً"});
+  const roster=resultRows(await db.execute(sql`SELECT student_account_id FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0]; if(!roster)return res.status(404).json({message:"الطالب غير موجود"}); if(!roster.student_account_id)return res.status(400).json({message:"لا يوجد حساب طالب مرتبط"});
+  const hash=await bcrypt.hash(password,10), account=resultRows(await db.execute(sql`UPDATE student_accounts SET password_hash=${hash} WHERE id=${roster.student_account_id} RETURNING id`))[0]; if(!account)return res.status(404).json({message:"حساب الطالب غير موجود"}); res.json({message:"تم تغيير كلمة مرور الطالب بنجاح"});
+});
+
 router.post("/classroom-rewards/ledger/:id/reverse", async (req: any, res) => {
   const teacherId = teacher(req, res), ledgerId = numericId(req.params.id); if (!teacherId) return; if (!ledgerId) return res.status(400).json({ message: "معرف غير صالح" });
   const parsed = z.object({ idempotencyKey: requestKey }).safeParse(req.body); if (!parsed.success) return res.status(400).json({ message: "مفتاح التكرار غير صالح" });

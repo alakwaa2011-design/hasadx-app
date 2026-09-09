@@ -410,7 +410,8 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE students
         ADD COLUMN IF NOT EXISTS account_username TEXT,
-        ADD COLUMN IF NOT EXISTS student_account_id INTEGER
+        ADD COLUMN IF NOT EXISTS student_account_id INTEGER,
+        ADD COLUMN IF NOT EXISTS avatar TEXT
     `);
     await db.execute(sql`
       ALTER TABLE assignments
