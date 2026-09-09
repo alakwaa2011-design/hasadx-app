@@ -136,8 +136,17 @@ router.get("/student-auth/me", async (req, res) => {
   }
 
   const [student] = await db
-    .select()
+    .select({
+      id: studentAccountsTable.id,
+      username: studentAccountsTable.username,
+      displayName: studentAccountsTable.displayName,
+      avatar: sql<string | null>`COALESCE(students.avatar, ${studentAccountsTable.avatar})`,
+      totalScore: studentAccountsTable.totalScore,
+      gamesPlayed: studentAccountsTable.gamesPlayed,
+      googleId: studentAccountsTable.googleId,
+    })
     .from(studentAccountsTable)
+    .leftJoin(studentsTable, eq(studentsTable.studentAccountId, studentAccountsTable.id))
     .where(eq(studentAccountsTable.id, req.session.studentAccountId))
     .limit(1);
 

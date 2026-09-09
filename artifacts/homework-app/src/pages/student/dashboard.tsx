@@ -52,6 +52,7 @@ import {
 } from "@/hooks/use-kids";
 import { Button } from "@/components/ui/button";
 import { ConfettiBurst } from "@/components/confetti-burst";
+import { AvatarDisplay } from "@/components/avatar-display";
 
 interface PublicAssignment {
   id: number;
@@ -502,12 +503,12 @@ export default function StudentDashboard() {
               />
               <div className="flex items-center justify-between relative">
                 <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}
-                  >
-                    <GraduationCap className="w-7 h-7" style={{ color: "#E8A80E" }} />
-                  </div>
+                  <AvatarDisplay
+                    avatar={student.avatar}
+                    fallback={student.displayName.charAt(0)}
+                    size="3xl"
+                    className="rounded-2xl border-amber-400/45 bg-amber-400/20 object-top"
+                  />
                   <div className="min-w-0">
                     <h1 className="text-2xl font-extrabold truncate">
                       {copy.welcome.replace("{name}", student.displayName)}

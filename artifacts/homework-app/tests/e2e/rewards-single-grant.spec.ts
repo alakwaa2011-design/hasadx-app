@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   db,
   pool,
+  studentAccountsTable,
   studentsTable,
   teacherClassesTable,
   teachersTable,
@@ -17,6 +18,7 @@ test.setTimeout(120_000);
 
 type RewardsFixture = {
   teacher: TestTeacher;
+  studentAccount: TestTeacher;
   className: string;
   students: Array<{ id: number; name: string }>;
 };
@@ -43,6 +45,26 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
   const otp = "994000";
   const className = `صف اختبار ${suffix}`;
   const studentNames = [`طالب اختبار أ ${suffix}`, `طالب اختبار ب ${suffix}`];
+  const studentUsername = `reward_student_${suffix}`;
+  const studentPassword = "RewardTest123!";
+  const studentApi = await newApi(baseURL);
+  let studentAccount: { id: number };
+  try {
+    const registration = await studentApi.post("/api/student-auth/register", {
+      data: {
+        username: studentUsername,
+        displayName: studentNames[0],
+        password: studentPassword,
+      },
+    });
+    if (!registration.ok()) {
+      throw new Error(`Could not register rewards student: ${registration.status()} ${await registration.text()}`);
+    }
+    const registrationBody = await registration.json();
+    studentAccount = { id: registrationBody.student.id };
+  } finally {
+    await studentApi.dispose();
+  }
   const [teacherRow] = await db.insert(teachersTable).values({
     name: `E2E Rewards Teacher ${suffix}`,
     email,
@@ -57,13 +79,14 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
 
   await db.insert(teacherClassesTable).values({ teacherId: teacherRow.id, name: className });
   const studentRows = await db.insert(studentsTable).values(
-    studentNames.map((name) => ({
+    studentNames.map((name, index) => ({
       teacherId: teacherRow.id,
       name,
       studentClass: className,
       parentName: "ولي أمر ثابت",
       notes: "ملاحظة ثابتة",
       avatar: "/avatars/adventurer-boy.webp",
+      studentAccountId: index === 0 ? studentAccount.id : null,
     })),
   ).returning({ id: studentsTable.id, name: studentsTable.name });
   if (studentRows.length !== studentNames.length) throw new Error("Could not create the rewards student fixtures");
@@ -87,6 +110,12 @@ async function seedRewardsFixture(baseURL: string): Promise<RewardsFixture> {
         password: "not-used-after-otp-verification",
         cookieHeader,
       },
+      studentAccount: {
+        id: studentAccount.id,
+        email: studentUsername,
+        password: studentPassword,
+        cookieHeader: "",
+      },
       className,
       students: studentRows,
     };
@@ -107,7 +136,10 @@ test.beforeEach(async ({ context, baseURL }) => {
 
 test.afterAll(async () => {
   try {
-    if (fixture) await pool.query("DELETE FROM teachers WHERE id = $1", [fixture.teacher.id]);
+    if (fixture) {
+      await pool.query("DELETE FROM teachers WHERE id = $1", [fixture.teacher.id]);
+      await pool.query("DELETE FROM student_accounts WHERE id = $1", [fixture.studentAccount.id]);
+    }
   } finally {
     await pool.end();
   }
@@ -329,6 +361,41 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await studentCard.locator("xpath=..").getByTitle("ملف الطالب").click();
   await page.getByRole("tab", { name: "البيانات" }).click();
   await expect(page.getByRole("button", { name: "روح الإبداع" })).toHaveAttribute("aria-pressed", "true");
+
+  const login = await page.request.post("/api/student-auth/login", {
+    data: {
+      username: fixture.studentAccount.email,
+      password: fixture.studentAccount.password,
+    },
+  });
+  expect(login.ok(), `Student login failed: ${login.status()} ${await login.text()}`).toBe(true);
+  await page.goto("/student/dashboard");
+  await page.reload();
+
+  const persistedAvatar = page.locator(`img[src="${selectedAvatar.value}"]`).first();
+  await expect(persistedAvatar).toBeVisible({ timeout: 20_000 });
+  await expect
+    .poll(() => persistedAvatar.evaluate((image: HTMLImageElement) => ({
+      complete: image.complete,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+    })), {
+      message: `لم تظهر الشخصية المحفوظة للطالب بعد إعادة تحميل لوحة الطالب: ${selectedAvatar.value}`,
+    })
+    .toEqual({
+      complete: true,
+      naturalWidth: expect.any(Number),
+      naturalHeight: expect.any(Number),
+    });
+  const persistedDimensions = await persistedAvatar.evaluate((image: HTMLImageElement) => ({
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+  }));
+  expect(persistedDimensions.naturalWidth).toBeGreaterThan(0);
+  expect(persistedDimensions.naturalHeight).toBeGreaterThan(0);
+  expect(
+    failedAvatarRequests.filter((url) => new URL(url).pathname === selectedAvatar.value),
+  ).toEqual([]);
 });
 
 test("bulk grant sends one request and records one grant per student under rapid click and Enter", async ({ page }) => {
