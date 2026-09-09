@@ -679,7 +679,7 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     expect(Number((await db.execute(sql`SELECT id FROM teacher_classes WHERE id=${classId}`)).rows[0].id)).toBe(classId);
   });
 
-  it("rolls back every class rename update when the target name already exists", async () => {
+  it("rolls back every class rename update when the target exists or the source is missing", async () => {
     const oldName = `RENAME-CONFLICT-OLD-${nonce}`;
     const existingName = `RENAME-CONFLICT-EXISTING-${nonce}`;
     const classes = (await db.execute(sql`
@@ -731,6 +731,12 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       .send({oldName,newName:existingName});
     expect(conflict.status).toBe(409);
     expect(conflict.body).toMatchObject({message:"اسم الصف مستخدم بالفعل"});
+
+    const missing = await request(teacherApp())
+      .patch("/api/teacher/classes/rename")
+      .send({oldName:`RENAME-MISSING-${nonce}`,newName:`RENAME-MISSING-NEW-${nonce}`});
+    expect(missing.status).toBe(404);
+    expect(missing.body).toMatchObject({message:"الصف غير موجود"});
 
     expect((await db.execute(sql`
       SELECT id,name FROM teacher_classes
