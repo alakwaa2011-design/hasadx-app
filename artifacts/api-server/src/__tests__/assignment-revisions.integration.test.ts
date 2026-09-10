@@ -198,6 +198,45 @@ suite("assignment revision safety with PostgreSQL", () => {
     }
   });
 
+  it("does not expose the revision list to another teacher", async () => {
+    const response = await request(app(otherTeacherId))
+      .get(`/api/assignments/${restorableId}/revisions`);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual(expect.objectContaining({ code: "OWNER_ONLY" }));
+    expect(JSON.stringify(response.body)).not.toContain("correctAnswer");
+    expect(JSON.stringify(response.body)).not.toContain("Historical question");
+  });
+
+  it("does not expose revision details or answer keys to another teacher", async () => {
+    const response = await request(app(otherTeacherId))
+      .get(`/api/assignments/${restorableId}/revisions/${oldRevisionId}`);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual(expect.objectContaining({ code: "OWNER_ONLY" }));
+    expect(JSON.stringify(response.body)).not.toContain("correctAnswer");
+    expect(JSON.stringify(response.body)).not.toContain("Historical question");
+  });
+
+  it("allows only the owner to read revision history and details", async () => {
+    const listResponse = await request(app(ownerId))
+      .get(`/api/assignments/${restorableId}/revisions`);
+    const detailResponse = await request(app(ownerId))
+      .get(`/api/assignments/${restorableId}/revisions/${oldRevisionId}`);
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: oldRevisionId, sourceVersion: 1 }),
+    ]));
+    expect(detailResponse.status).toBe(200);
+    expect(detailResponse.body.questions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        text: "Historical question",
+        correctAnswer: "A",
+      }),
+    ]));
+  });
+
   it("rejects a restore by a teacher who does not own the assignment", async () => {
     const response = await request(app(otherTeacherId))
       .post(`/api/assignments/${restorableId}/revisions/${oldRevisionId}/restore`)

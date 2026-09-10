@@ -1455,12 +1455,17 @@ router.get("/assignments/:id/revisions", async (req, res) => {
 router.get("/assignments/:id/revisions/:revisionId", async (req, res) => {
   const teacherId = req.session.teacherId;
   if (!teacherId) { res.status(401).json(revisionError("AUTH_REQUIRED", "يجب تسجيل الدخول أولاً", "Authentication required")); return; }
+  const assignmentId = Number(req.params.id);
+  const revisionId = Number(req.params.revisionId);
+  if (!Number.isInteger(assignmentId) || !Number.isInteger(revisionId)) { res.status(400).json(revisionError("INVALID_REVISION_ID", "معرّف الإصدار غير صالح", "Invalid revision id")); return; }
   try {
-    const [row] = await db.select().from(assignmentRevisionsTable)
-      .innerJoin(assignmentsTable, eq(assignmentRevisionsTable.assignmentId, assignmentsTable.id))
-      .where(and(eq(assignmentRevisionsTable.id, Number(req.params.revisionId)), eq(assignmentRevisionsTable.assignmentId, Number(req.params.id)), eq(assignmentsTable.teacherId, teacherId))).limit(1);
-    if (!row) { res.status(404).json(revisionError("REVISION_NOT_FOUND", "الإصدار غير موجود", "Revision not found")); return; }
-    res.json(row.assignment_revisions);
+    const [owner] = await db.select({ teacherId: assignmentsTable.teacherId }).from(assignmentsTable).where(eq(assignmentsTable.id, assignmentId)).limit(1);
+    if (!owner) { res.status(404).json(revisionError("ASSIGNMENT_NOT_FOUND", "الواجب غير موجود", "Assignment not found")); return; }
+    if (owner.teacherId !== teacherId) { res.status(403).json(revisionError("OWNER_ONLY", "غير مصرح لك", "Owner access required")); return; }
+    const [revision] = await db.select().from(assignmentRevisionsTable)
+      .where(and(eq(assignmentRevisionsTable.id, revisionId), eq(assignmentRevisionsTable.assignmentId, assignmentId))).limit(1);
+    if (!revision) { res.status(404).json(revisionError("REVISION_NOT_FOUND", "الإصدار غير موجود", "Revision not found")); return; }
+    res.json(revision);
   } catch (error) { req.log.error({ err: error }, "Get assignment revision failed"); res.status(500).json(revisionError("REVISION_GET_FAILED", "تعذر جلب الإصدار", "Could not fetch revision")); }
 });
 
