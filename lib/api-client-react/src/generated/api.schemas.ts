@@ -878,11 +878,23 @@ export interface AssignmentWithQuestions {
   version: number;
   archivedAt?: string | null;
   closedAt?: string | null;
+  /**
+     * Assignment-wide extra attempts available per device.
+     * @minimum 0
+     * @maximum 1
+     */
+  extraAttempts: number;
   questions: Question[];
 }
 
 export interface UpdateAssignmentLifecycleBody {
-  closed: boolean;
+  closed?: boolean;
+  deadline?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  extraAttempts?: number;
   /** @minimum 1 */
   version: number;
 }
@@ -890,6 +902,8 @@ export interface UpdateAssignmentLifecycleBody {
 export interface UpdateAssignmentLifecycleResponse {
   id: number;
   closedAt: string | null;
+  deadline: string | null;
+  extraAttempts: number;
   version: number;
   updatedAt: string;
 }

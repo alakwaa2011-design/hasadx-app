@@ -169,15 +169,46 @@ async function checkAccessAndDuplicate(
           eq(submissionsTable.deviceFingerprint, fp)
         )
       )
-      .limit(1);
+      .limit(2);
 
-    if (existing.length > 0) {
-      res.status(409).json({ message: "لقد قمت بالإجابة على هذا الواجب مسبقاً من هذا الجهاز" });
+    if (existing.length >= 1 + (assignment.extraAttempts || 0)) {
+      res.status(409).json({ message: "لقد استُخدمت جميع المحاولات المتاحة لهذا الواجب من هذا الجهاز" });
       return false;
     }
   }
 
   return true;
+}
+
+async function assertAttemptAvailable(tx: any, assignmentId: number, deviceFingerprint: string): Promise<void> {
+  const fp = deviceFingerprint.trim();
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${assignmentId}, hashtext(${fp}))`);
+  await assertAssignmentAcceptingStudentWork(tx, assignmentId);
+  const assignmentResult = await tx.execute(sql`
+    SELECT extra_attempts, deadline FROM assignments WHERE id = ${assignmentId}
+  `);
+  const deadline = assignmentResult.rows[0]?.deadline
+    ? new Date(String(assignmentResult.rows[0].deadline))
+    : null;
+  if (deadline && deadline <= new Date()) {
+    throw Object.assign(new Error("انتهى موعد تسليم الواجب"), {
+      statusCode: 403,
+      code: "ASSIGNMENT_DEADLINE_PASSED",
+    });
+  }
+  const allowedAttempts = 1 + Number(assignmentResult.rows[0]?.extra_attempts || 0);
+  const countResult = await tx.execute(sql`
+    SELECT COUNT(*)::int AS count
+    FROM submissions
+    WHERE assignment_id = ${assignmentId}
+      AND device_fingerprint = ${fp}
+  `);
+  if (Number(countResult.rows[0]?.count || 0) >= allowedAttempts) {
+    throw Object.assign(new Error("لقد استُخدمت جميع المحاولات المتاحة لهذا الواجب من هذا الجهاز"), {
+      statusCode: 409,
+      code: "ASSIGNMENT_ATTEMPTS_EXHAUSTED",
+    });
+  }
 }
 
 async function assertAssignmentAcceptingStudentWork(tx: any, assignmentId: number): Promise<void> {
@@ -235,7 +266,7 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
     }
 
     const session = await db.transaction(async (tx) => {
-      await assertAssignmentAcceptingStudentWork(tx, id);
+      await assertAttemptAvailable(tx, id, body.deviceFingerprint);
       const existing = await tx
         .select()
         .from(examSessionsTable)
@@ -244,7 +275,11 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
           eq(examSessionsTable.deviceFingerprint, body.deviceFingerprint),
         ))
         .limit(1);
-      if (existing.length > 0) return existing[0];
+      const priorSubmissions = await tx.select({ id: submissionsTable.id }).from(submissionsTable).where(and(
+        eq(submissionsTable.assignmentId, id),
+        eq(submissionsTable.deviceFingerprint, body.deviceFingerprint),
+      ));
+      if (priorSubmissions.length === 0 && existing.length > 0) return existing[0];
       return (await tx
         .insert(examSessionsTable)
         .values({
@@ -605,7 +640,7 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
 
     const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
     const submission = await db.transaction(async (tx) => {
-      await assertAssignmentAcceptingStudentWork(tx, id);
+      await assertAttemptAvailable(tx, id, body.deviceFingerprint);
       const [created] = await tx.insert(submissionsTable)
       .values({
         assignmentId: id,
@@ -1323,7 +1358,7 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
 
     const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
     const submission = await db.transaction(async (tx) => {
-      if (!isOwnerTeacher) await assertAssignmentAcceptingStudentWork(tx, id);
+      if (!isOwnerTeacher) await assertAttemptAvailable(tx, id, body.deviceFingerprint);
       const [created] = await tx.insert(submissionsTable)
       .values({
         assignmentId: id,

@@ -88,3 +88,4 @@
 - [Academic reward goals](academic-reward-goals.md) — student goals override class goals; progress and fairness use stable class identity and never include group competition scores.
 - [Submitted assignment question lock](submitted-assignment-question-lock.md) — once submissions exist, question edits are blocked so answer history cannot be cascaded or reinterpreted.
 - [Assignment archive and revision safety](assignment-archive-concurrency.md) — mutations use expected versions; history snapshots precede changes; restores never broaden access.
+- [Anonymous assignment attempts](anonymous-assignment-attempts.md) — without student accounts, extra attempts are assignment-wide but enforced per device with atomic server locks.

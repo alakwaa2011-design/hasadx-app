@@ -535,6 +535,9 @@ export const GetAssignmentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const getAssignmentResponseExtraAttemptsMin = 0;
+export const getAssignmentResponseExtraAttemptsMax = 1;
+
 export const getAssignmentResponseQuestionsItemQuestionTypeDefault = `mcq`;
 export const getAssignmentResponseQuestionsItemReadAloudDefault = false;
 export const getAssignmentResponseQuestionsItemAllowMultipleAnswersDefault = false;
@@ -570,6 +573,7 @@ export const GetAssignmentResponse = zod.object({
   "version": zod.int(),
   "archivedAt": zod.coerce.date().nullish(),
   "closedAt": zod.coerce.date().nullish(),
+  "extraAttempts": zod.int().min(getAssignmentResponseExtraAttemptsMin).max(getAssignmentResponseExtraAttemptsMax).describe('Assignment-wide extra attempts available per device.'),
   "questions": zod.array(zod.object({
   "id": zod.int(),
   "text": zod.string(),
@@ -629,17 +633,24 @@ export const UpdateAssignmentLifecycleParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateAssignmentLifecycleBodyExtraAttemptsMin = 0;
+export const updateAssignmentLifecycleBodyExtraAttemptsMax = 1;
+
 
 
 
 export const UpdateAssignmentLifecycleBody = zod.object({
-  "closed": zod.boolean(),
+  "closed": zod.boolean().optional(),
+  "deadline": zod.coerce.date().nullish(),
+  "extraAttempts": zod.int().min(updateAssignmentLifecycleBodyExtraAttemptsMin).max(updateAssignmentLifecycleBodyExtraAttemptsMax).optional(),
   "version": zod.int().min(1)
 })
 
 export const UpdateAssignmentLifecycleResponse = zod.object({
   "id": zod.int(),
   "closedAt": zod.coerce.date().nullable(),
+  "deadline": zod.coerce.date().nullable(),
+  "extraAttempts": zod.int(),
   "version": zod.int(),
   "updatedAt": zod.coerce.date()
 })

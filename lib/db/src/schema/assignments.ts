@@ -1,4 +1,5 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, index, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
@@ -45,6 +46,7 @@ export const assignmentsTable = pgTable("assignments", {
   version: integer("version").notNull().default(1),
   archivedAt: timestamp("archived_at"),
   closedAt: timestamp("closed_at"),
+  extraAttempts: integer("extra_attempts").notNull().default(0),
   /** When created from a presentation activity slide, stores "presId:slideId" so the same
    *  assignment is reused on subsequent plays instead of creating a new one each time. */
   fromPresentationSlide: text("from_presentation_slide"),
@@ -63,6 +65,7 @@ export const assignmentsTable = pgTable("assignments", {
   teacherIdx: index("assignments_teacher_idx").on(t.teacherId),
   teacherCreatedIdx: index("assignments_teacher_archive_created_idx").on(t.teacherId, t.archivedAt, t.createdAt),
   categoryIdx: index("assignments_category_idx").on(t.categoryId),
+  extraAttemptsRange: check("assignments_extra_attempts_range", sql`${t.extraAttempts} BETWEEN 0 AND 1`),
   // Hot path: shared-library scans filter by contentKind, isShared,
   // hiddenByAdmin, accessMode and order by createdAt DESC. A composite
   // index keyed on (content_kind, created_at desc) with isShared in the

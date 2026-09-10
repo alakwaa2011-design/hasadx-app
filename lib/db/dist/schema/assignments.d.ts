@@ -624,6 +624,23 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        extraAttempts: import("drizzle-orm/pg-core").PgColumn<{
+            name: "extra_attempts";
+            tableName: "assignments";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         fromPresentationSlide: import("drizzle-orm/pg-core").PgColumn<{
             name: "from_presentation_slide";
             tableName: "assignments";
@@ -760,6 +777,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     isAdaptive: z.ZodOptional<z.ZodBoolean>;
     adaptiveConfig: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     closedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    extraAttempts: z.ZodOptional<z.ZodInt>;
     fromPresentationSlide: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     activityType: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     listeningAudioText: z.ZodOptional<z.ZodNullable<z.ZodString>>;

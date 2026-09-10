@@ -42,5 +42,11 @@ export interface AssignmentWithQuestions {
   version: number;
   archivedAt?: Date | null;
   closedAt?: Date | null;
+  /**
+     * Assignment-wide extra attempts available per device.
+     * @minimum 0
+     * @maximum 1
+     */
+  extraAttempts: number;
   questions: Question[];
 }

@@ -28,6 +28,7 @@ const UpdateAssignmentBody = z.object({
   categoryId: z.number().nullish(),
   showResults: z.boolean().optional(),
   deadline: z.string().datetime({ offset: true }).nullish().or(z.literal("").transform(() => null)),
+  extraAttempts: z.number().int().min(0).max(1).optional(),
   examMode: z.boolean().optional(),
   examDurationMinutes: z.number().int().positive().nullish(),
   resultsReleaseMode: z.enum(["immediate", "after_deadline", "manual"]).optional(),
@@ -575,6 +576,7 @@ router.get("/assignments/shared", async (req, res) => {
         version: assignmentsTable.version,
         archivedAt: assignmentsTable.archivedAt,
         closedAt: assignmentsTable.closedAt,
+        extraAttempts: assignmentsTable.extraAttempts,
         questionCount: sql<number>`(SELECT COUNT(*) FROM questions WHERE questions.assignment_id = assignments.id)::int`,
       })
       .from(assignmentsTable)
@@ -684,6 +686,7 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         version: assignmentsTable.version,
         archivedAt: assignmentsTable.archivedAt,
         closedAt: assignmentsTable.closedAt,
+        extraAttempts: assignmentsTable.extraAttempts,
         examMode: assignmentsTable.examMode,
         examDurationMinutes: assignmentsTable.examDurationMinutes,
         resultsReleaseMode: assignmentsTable.resultsReleaseMode,
@@ -797,6 +800,7 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
       version: assignment.version,
       archivedAt: assignment.archivedAt?.toISOString() ?? null,
       closedAt: assignment.closedAt?.toISOString() ?? null,
+      extraAttempts: assignment.extraAttempts,
       examMode: assignment.examMode,
       examDurationMinutes: assignment.examDurationMinutes,
       resultsReleaseMode: assignment.resultsReleaseMode,
@@ -1309,6 +1313,7 @@ router.put("/assignments/:id", async (req, res) => {
       if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
       if (body.showResults !== undefined) updateData.showResults = body.showResults;
       if (body.deadline !== undefined) updateData.deadline = body.deadline ? new Date(body.deadline) : null;
+      if (body.extraAttempts !== undefined) updateData.extraAttempts = body.extraAttempts;
       if (body.examMode !== undefined) updateData.examMode = body.examMode;
       if (body.examDurationMinutes !== undefined) updateData.examDurationMinutes = body.examDurationMinutes;
       if (body.resultsReleaseMode !== undefined) updateData.resultsReleaseMode = body.resultsReleaseMode;
@@ -1731,9 +1736,13 @@ router.patch("/assignments/:id/lifecycle", async (req, res) => {
   }
   try {
     const { id } = GetAssignmentParams.parse(req.params);
-    const { closed, version } = z.object({
-      closed: z.boolean(),
+    const { closed, deadline, extraAttempts, version } = z.object({
+      closed: z.boolean().optional(),
+      deadline: z.string().datetime({ offset: true }).nullable().optional(),
+      extraAttempts: z.number().int().min(0).max(1).optional(),
       version: z.number().int().positive(),
+    }).refine((value) => value.closed !== undefined || value.deadline !== undefined || value.extraAttempts !== undefined, {
+      message: "يجب تحديد تغيير واحد على الأقل",
     }).parse(req.body);
     const teacherId = req.session.teacherId;
     const result = await db.transaction(async (tx) => {
@@ -1751,17 +1760,22 @@ router.patch("/assignments/:id/lifecycle", async (req, res) => {
         settings: assignment as unknown as Record<string, unknown>,
         questions: snapshotQuestions as unknown as unknown[],
       });
-      const [updated] = await tx.update(assignmentsTable).set({
-        closedAt: closed ? new Date() : null,
+      const changes: Record<string, unknown> = {
         updatedAt: new Date(),
         version: sql`${assignmentsTable.version} + 1`,
-      }).where(and(
+      };
+      if (closed !== undefined) changes.closedAt = closed ? new Date() : null;
+      if (deadline !== undefined) changes.deadline = deadline ? new Date(deadline) : null;
+      if (extraAttempts !== undefined) changes.extraAttempts = extraAttempts;
+      const [updated] = await tx.update(assignmentsTable).set(changes).where(and(
         eq(assignmentsTable.id, id),
         eq(assignmentsTable.teacherId, teacherId),
         eq(assignmentsTable.version, version),
       )).returning({
         id: assignmentsTable.id,
         closedAt: assignmentsTable.closedAt,
+        deadline: assignmentsTable.deadline,
+        extraAttempts: assignmentsTable.extraAttempts,
         version: assignmentsTable.version,
         updatedAt: assignmentsTable.updatedAt,
       });
@@ -1771,6 +1785,8 @@ router.patch("/assignments/:id/lifecycle", async (req, res) => {
     res.json({
       id: result.id,
       closedAt: result.closedAt?.toISOString() ?? null,
+      deadline: result.deadline?.toISOString() ?? null,
+      extraAttempts: result.extraAttempts,
       version: result.version,
       updatedAt: result.updatedAt.toISOString(),
     });

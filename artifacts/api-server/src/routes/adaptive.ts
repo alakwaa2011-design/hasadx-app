@@ -255,6 +255,7 @@ router.post("/adaptive/start", async (req, res) => {
     const initialPool = stagePool(pool, config.mode === "staged" ? config.stages[0] : undefined);
     if (!initialPool.length) return void res.status(400).json({ message: "لا توجد أسئلة مطابقة للمرحلة الحالية" });
     const session = await db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${Number(assignmentId)}, hashtext(${String(deviceFingerprint).trim()}))`);
       const [lockedAssignment] = await tx.select().from(assignmentsTable)
         .where(eq(assignmentsTable.id, assignmentId)).for("share").limit(1);
       if (!lockedAssignment || lockedAssignment.archivedAt || lockedAssignment.closedAt) {
@@ -272,12 +273,15 @@ router.post("/adaptive/start", async (req, res) => {
         eq(adaptiveSessionsTable.assignmentId, assignmentId),
         eq(adaptiveSessionsTable.deviceFingerprint, deviceFingerprint),
         eq(adaptiveSessionsTable.completed, 1),
-      )).limit(1);
+      ));
       const old = active[0] || completed[0];
-      if (old && old.completed && !config.allowRetry) {
-        throw Object.assign(new Error("لقد أكملت هذا الاختبار ولا يسمح بإعادة المحاولة"), { statusCode: 409 });
+      if (!config.allowRetry && !active.length && completed.length >= 1 + (lockedAssignment.extraAttempts || 0)) {
+        throw Object.assign(new Error("لقد استُخدمت جميع المحاولات المتاحة لهذا الاختبار"), {
+          statusCode: 409,
+          code: "ASSIGNMENT_ATTEMPTS_EXHAUSTED",
+        });
       }
-      if (!active.length && assignment.deadline && new Date(assignment.deadline) <= new Date()) {
+      if (!active.length && lockedAssignment.deadline && new Date(lockedAssignment.deadline) <= new Date()) {
         throw Object.assign(new Error("انتهى موعد الاختبار"), { statusCode: 403 });
       }
       if (old && !old.completed) return old;
@@ -350,7 +354,8 @@ router.post("/adaptive/answer", async (req, res) => {
       let runtime = stored.stageRuntime;
       const expired = expiresAt(assignment, session);
       const stageExpired = stageExpiresAt(config, runtime);
-      if (session.completed || (expired && expired <= new Date()) || (stageExpired && stageExpired <= new Date())) {
+      const assignmentExpired = assignment.deadline && new Date(assignment.deadline) <= new Date();
+      if (session.completed || assignmentExpired || (expired && expired <= new Date()) || (stageExpired && stageExpired <= new Date())) {
         const final = session.completed ? { submissionId: session.submissionId, score: null, earnedPoints: null, totalPoints: null } : await finishSession(tx, session, pool, sequence, session.currentAbility, abilities, session.correctCount, runtime, "timeout");
         return { status: 200, body: { done: true, timedOut: !session.completed, answeredCount: sequence.length, totalQuestions: session.totalToAnswer, ...final, ...(resultsAvailable(assignment) ? { resultAvailable: true, showAnswersAfterResult: config.showAnswersAfterResult } : deniedResult()) } };
       }

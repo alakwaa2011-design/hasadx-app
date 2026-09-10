@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -467,6 +467,45 @@ export default function TeacherAssignmentDetail() {
     onError: (error: Error) => {
       toast.error(error.message);
     }
+  });
+
+  const updateLifecycleSettingsMutation = useMutation({
+    mutationFn: async (change: { extendDays?: number; extraAttempts?: number }) => {
+      const payload: Record<string, unknown> = { version: (assignment as any).version };
+      if (change.extendDays) {
+        const current = (assignment as any).deadline ? new Date((assignment as any).deadline) : new Date();
+        const base = current.getTime() > Date.now() ? current : new Date();
+        base.setDate(base.getDate() + change.extendDays);
+        payload.deadline = base.toISOString();
+      }
+      if (change.extraAttempts !== undefined) payload.extraAttempts = change.extraAttempts;
+      const res = await fetch(`${BASE}/api/assignments/${id}/lifecycle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const error = new Error(data?.message || (lang === "ar" ? "تعذر تحديث إعدادات الواجب" : "Could not update assignment settings")) as Error & { code?: string };
+        error.code = data?.code;
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      toast.success(lang === "ar" ? "تم تحديث إعدادات الواجب" : "Assignment settings updated");
+    },
+    onError: (error: Error & { code?: string }) => {
+      if (error.code === "ASSIGNMENT_VERSION_CONFLICT") {
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+        toast.error(lang === "ar" ? "تغيّرت إعدادات الواجب في نافذة أخرى. تم تحميل أحدث نسخة." : "Settings changed elsewhere. The latest version was loaded.");
+        return;
+      }
+      toast.error(error.message);
+    },
   });
 
   const sortedFilteredSubmissions = useMemo(() => {
@@ -1258,7 +1297,43 @@ export default function TeacherAssignmentDetail() {
                 </div>
               </div>
 
-              <div className="w-full sm:w-auto pt-2 sm:pt-0">
+              <div className="w-full sm:w-auto pt-2 sm:pt-0 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => updateLifecycleSettingsMutation.mutate({ extendDays: 1 })}
+                  disabled={updateLifecycleSettingsMutation.isPending}
+                  className="flex-1 sm:flex-none font-bold"
+                >
+                  <Calendar className="w-4 h-4 me-1.5" />
+                  {lang === "ar" ? "تمديد يوم" : "+1 day"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => updateLifecycleSettingsMutation.mutate({ extendDays: 7 })}
+                  disabled={updateLifecycleSettingsMutation.isPending}
+                  className="flex-1 sm:flex-none font-bold"
+                >
+                  <Calendar className="w-4 h-4 me-1.5" />
+                  {lang === "ar" ? "تمديد أسبوع" : "+7 days"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => updateLifecycleSettingsMutation.mutate({
+                    extraAttempts: (assignment as any).extraAttempts ? 0 : 1,
+                  })}
+                  disabled={updateLifecycleSettingsMutation.isPending}
+                  className="flex-1 sm:flex-none font-bold"
+                >
+                  <RotateCcw className="w-4 h-4 me-1.5" />
+                  {(assignment as any).extraAttempts
+                    ? (lang === "ar" ? "إلغاء المحاولة الإضافية" : "Remove extra attempt")
+                    : (lang === "ar" ? "محاولة إضافية للجميع" : "Extra attempt for all")}
+                </Button>
+                <p className="basis-full text-[11px] leading-5 text-muted-foreground">
+                  {lang === "ar"
+                    ? "المحاولة الإضافية تُحسب لكل جهاز حاليًا، لأن حسابات الطلبة غير مفعّلة."
+                    : "The extra attempt is currently counted per device because student accounts are not enabled."}
+                </p>
                 <Button
                   variant={(assignment as any).closedAt ? "default" : "outline"}
                   onClick={() => toggleLifecycleMutation.mutate(!(assignment as any).closedAt)}

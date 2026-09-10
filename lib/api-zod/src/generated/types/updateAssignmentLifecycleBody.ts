@@ -7,7 +7,13 @@
  */
 
 export interface UpdateAssignmentLifecycleBody {
-  closed: boolean;
+  closed?: boolean;
+  deadline?: Date | null;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  extraAttempts?: number;
   /** @minimum 1 */
   version: number;
 }

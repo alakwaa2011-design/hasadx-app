@@ -2327,6 +2327,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        extraAttempts:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: Assignment-wide extra attempts available per device.
         questions:
           type: array
           items:
@@ -2344,6 +2349,7 @@ components:
         - createdAt
         - updatedAt
         - version
+        - extraAttempts
         - questions
 
     UpdateAssignmentLifecycleBody:
@@ -2351,10 +2357,18 @@ components:
       properties:
         closed:
           type: boolean
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        extraAttempts:
+          type: integer
+          minimum: 0
+          maximum: 1
         version:
           type: integer
           minimum: 1
-      required: [closed, version]
+      required: [version]
 
     UpdateAssignmentLifecycleResponse:
       type: object
@@ -2365,12 +2379,18 @@ components:
           type: string
           format: date-time
           nullable: true
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        extraAttempts:
+          type: integer
         version:
           type: integer
         updatedAt:
           type: string
           format: date-time
-      required: [id, closedAt, version, updatedAt]
+      required: [id, closedAt, deadline, extraAttempts, version, updatedAt]
 
     Question:
       type: object

@@ -9,6 +9,8 @@
 export interface UpdateAssignmentLifecycleResponse {
   id: number;
   closedAt: Date | null;
+  deadline: Date | null;
+  extraAttempts: number;
   version: number;
   updatedAt: Date;
 }
